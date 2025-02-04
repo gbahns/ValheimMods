@@ -1,0 +1,6 @@
+/list - list all containers currently loaded into memory
+/listlocal [radius=10] - lists all containers within the specified radius in meters (default 10)
+/listcontents [radius=10] - lists the contents of all containers within [radius] meters (default 10)
+/search [search-text] - search for items matching this string in nearby containers
+/store - stores items in nearby containers somewhat randomly
+/count [name of item to count] - omit to count everything

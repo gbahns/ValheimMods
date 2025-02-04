@@ -1,0 +1,40 @@
+GrabItemsFromNearbyContainers(grab wood 33)
+name of materials to grab: wood
+count to grab: 33
+checking distance of 6 containers
+grabbing 33 wood from 5 containers within 50 meters
+
+looking for 33 wood in piece_chest_wood(Clone) (Container) -74878
+wood 5
+grabbing 5 of 5 wood from piece_chest_wood(Clone) (Container) -74878
+wood 2
+grabbing 2 of 2 wood from piece_chest_wood(Clone) (Container) -74878
+wood 5
+grabbing 5 of 5 wood from piece_chest_wood(Clone) (Container) -74878
+grabbed a total of 12 wood from piece_chest_wood(Clone) (Container) -74878
+
+looking for 21 wood in piece_chest_wood(Clone) (Container) -74922
+wood 2
+grabbing 2 of 2 wood from piece_chest_wood(Clone) (Container) -74922
+wood 4
+grabbing 4 of 4 wood from piece_chest_wood(Clone) (Container) -74922
+wood 4
+grabbing 4 of 4 wood from piece_chest_wood(Clone) (Container) -74922
+wood 2
+grabbing 2 of 2 wood from piece_chest_wood(Clone) (Container) -74922
+grabbed a total of 12 wood from piece_chest_wood(Clone) (Container) -74922
+
+looking for 9 wood in piece_chest_wood(Clone) (Container) -74966
+wood 4
+grabbing 4 of 4 wood from piece_chest_wood(Clone) (Container) -74966
+wood 4
+grabbing 4 of 4 wood from piece_chest_wood(Clone) (Container) -74966
+grabbed a total of 8 wood from piece_chest_wood(Clone) (Container) -74966
+
+looking for 1 wood in piece_chest_wood(Clone) (Container) -75474
+wood 3
+grabbing 1 of 3 wood from piece_chest_wood(Clone) (Container) -75474
+grabbed a total of 1 wood from piece_chest_wood(Clone) (Container) -75474
+looking for 0 wood in piece_chest_wood(Clone) (Container) -75874
+grabbed a total of 0 wood from piece_chest_wood(Clone) (Container) -75874
+01/30/2025 20:54:46: Setting selected recipe 0
