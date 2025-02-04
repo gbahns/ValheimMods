@@ -77,5 +77,5 @@ namespace GrabMaterials
 	//		// Allow the original method to execute if it was not a right-click
 	//		return true;
 	//	}
-	//}
+	}
 }
