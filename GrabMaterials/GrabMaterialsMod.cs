@@ -4,8 +4,11 @@ using GrabMaterials;
 using HarmonyLib;
 using Jotunn.Configs;
 using Jotunn.Managers;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using System.Xml.Linq;
 using UnityEngine;
 
 namespace GrabMaterialsMod
@@ -18,60 +21,230 @@ namespace GrabMaterialsMod
 		const string ModGuid = "DeathMonger.GrabMaterialsMod";
 		private readonly Harmony harmony = new Harmony(ModGuid);
 
-		private ButtonConfig GrabPortalMatsButton;
-		private ConfigEntry<KeyCode> GrabPortalMatsKeyboardConfig;
-		private ConfigEntry<InputManager.GamepadButton> GrabPortalMatsGamepadConfig;
+		//private ButtonConfig GrabPortalMatsButton;
+		private ButtonConfig GrabSelectedPieceMatsButton;
+		//private ConfigEntry<KeyCode> GrabPortalMatsKeyboardConfig;
+		//private ConfigEntry<InputManager.GamepadButton> GrabPortalMatsGamepadConfig;
+		private ConfigEntry<KeyCode> GrabSelectedPieceMatsKeyboardConfig;
+
+		public class GrabPackConfig
+		{
+			//public string Name;
+			//public KeyCode Key;
+			//public string Items;
+			//public bool GrabDelta;
+			public ConfigEntry<string> Name;
+			public ConfigEntry<KeyboardShortcut> Key;
+			public ConfigEntry<string> Items;
+			public ConfigEntry<bool> GrabDelta;
+			public ButtonConfig Button;
+
+			public GrabPackConfig(ConfigFile config, string section, KeyboardShortcut keyboardShortcut, string items)
+			{
+				Name = config.Bind(section, section+" Name", section, new ConfigDescription("Name of the grab pack"));
+				Key = config.Bind(section, section+" Key", keyboardShortcut, new ConfigDescription("Key to grab materials for the grab pack"));
+				Items = config.Bind(section, section+" Items", items, new ConfigDescription("Items to grab for the grab pack"));
+				GrabDelta = config.Bind(section, section+" Grab Delta", false, new ConfigDescription("NOT YET SUPPORTED (Grab the delta of items needed for the grab pack)"));
+				Button = new ButtonConfig()
+				{
+					Name = Name.Value,
+					ShortcutConfig = Key
+				};
+			}
+		}
+
+		GrabPackConfig GrabPack1;
+		GrabPackConfig GrabPack2;
+		GrabPackConfig GrabPack3;
 
 		private void Awake()
 		{
 			harmony.PatchAll();
+			InitConfig();
 			InitCommands();
-			InitInputs();
+			InitButtons();
 		}
 
-		private void InitInputs()
+		private void InitConfig()
 		{
 			var configDescription = new ConfigDescription("Key to grab portal materials");
-			GrabPortalMatsKeyboardConfig = Config.Bind("Client config", "GrabPortalMaterialsKey", KeyCode.G, configDescription);
-			GrabPortalMatsGamepadConfig = Config.Bind("Client config", "GrabPortalMaterialsButton", InputManager.GamepadButton.ButtonSouth, configDescription);
+			//GrabPortalMatsKeyboardConfig = Config.Bind("Client config", "GrabPortalMaterialsKey", KeyCode.I, configDescription);
+			//GrabPortalMatsGamepadConfig = Config.Bind("Client config", "GrabPortalMaterialsButton", InputManager.GamepadButton.ButtonSouth, configDescription);
+			//new KeyboardShortcut(KeyCode.G, KeyCode.LeftShift, KeyCode.RightShift)
+			GrabSelectedPieceMatsKeyboardConfig = Config.Bind("Grab Selected Piece", "GrabSelectedPieceMatsKey", KeyCode.J, new ConfigDescription("Key to grab materials for the currently selectede build piece"));
 
-			GrabPortalMatsButton = new ButtonConfig()
+			GrabPack1 = new GrabPackConfig(Config, "Grab Pack 1", new KeyboardShortcut(KeyCode.G), "wood:10,finewood:20,greydwarfeye:10,surtlingcore:2");
+			GrabPack2 = new GrabPackConfig(Config, "Grab Pack 2", new KeyboardShortcut(KeyCode.G, KeyCode.LeftShift), "wood:10,finewood:40,ancientbark:40,ironnails:100,deeerhide:20");
+			GrabPack3 = new GrabPackConfig(Config, "Grab Pack 3", new KeyboardShortcut(KeyCode.G, KeyCode.LeftAlt), "wood:12,stone:5");
+		}
+
+		private static void InitCommands()
+		{
+			//grab materials from nearby containers
+			new Terminal.ConsoleCommand("grab", "[items] - grab items from nearby containers - 'help' to see supported options", (args) => { args.GrabItemsFromNearbyContainers(); });
+			new Terminal.ConsoleCommand("grabselected", "", (args) => { ConsoleCommands.GrabMaterialsForSelectedPiece(); });
+			new Terminal.ConsoleCommand("grabpiece", "grab materials for named build piece, e.g. workbench or portal", (args) => { args.GrabMaterialsForPiece(); });
+
+			//view container info
+			new Terminal.ConsoleCommand("listcontainers", "list all known containers", (args) => { ListKnownContainers(); });
+			new Terminal.ConsoleCommand("listlocalcontainers", "[radius] - Finds containers within the radius.", (args) => { ListLocalContainers(args); });
+			new Terminal.ConsoleCommand("listcontents", "[radius] - Finds containers within the radius and lists their contents.", (args) => { ListLocalContainerContents(args); });
+
+			//for testing/learning
+			new Terminal.ConsoleCommand("search", "[search-text] - search for items matching this string in nearby containers", (args) => { FindContainersWithMatchingItems(args); });
+			new Terminal.ConsoleCommand("store", "[items] - grab items from nearby containers - 'help' to see supported options", (args) => { StoreItemsInNearbyContainers(); });
+			new Terminal.ConsoleCommand("count", "[name of item to count] - omit to count everything", (args) => { CountInventory(args); });
+			new Terminal.ConsoleCommand("listpieces", "", (args) => { ListAllPieces(); });
+		}
+
+		private void InitButtons()
+		{
+			//GrabPortalMatsButton = new ButtonConfig()
+			//{
+			//	Name = "GrabPortalMaterials",
+			//	Config = GrabPortalMatsKeyboardConfig,
+			//	GamepadConfig = GrabPortalMatsGamepadConfig,
+			//};
+			//InputManager.Instance.AddButton(ModGuid, GrabPortalMatsButton);
+
+			GrabSelectedPieceMatsButton = new ButtonConfig()
 			{
-				Name = "GrabPortalMaterials",
-				Config = GrabPortalMatsKeyboardConfig,
-				GamepadConfig = GrabPortalMatsGamepadConfig,
+				Name = "GrabSelectedPieceMaterials",
+				Config = GrabSelectedPieceMatsKeyboardConfig,
 			};
-			InputManager.Instance.AddButton(ModGuid, GrabPortalMatsButton);
+			InputManager.Instance.AddButton(ModGuid, GrabSelectedPieceMatsButton);
+
+			InputManager.Instance.AddButton(ModGuid, GrabPack1.Button);
+			InputManager.Instance.AddButton(ModGuid, GrabPack2.Button);
+			InputManager.Instance.AddButton(ModGuid, GrabPack3.Button);
+		}
+
+		private void InitButton(string name, KeyCode key)
+		{
+			var button = new ButtonConfig()
+			{
+				Name = name,
+				Config = Config.Bind("", name, key),
+			};
+			InputManager.Instance.AddButton(ModGuid, button);
 		}
 
 		private void Update()
 		{
 			if (Player.m_localPlayer && Chat.instance && !Chat.instance.IsChatDialogWindowVisible())
 			{
-				//IsBuildMenuOpen();
-				//BuildMenu.instance.IsVisible();
-				if (ZInput.GetButtonDown(GrabPortalMatsButton.Name))
+				//if (ZInput.GetButtonDown(GrabPortalMatsButton.Name))
+				//{
+				//	ConsoleCommands.GrabItemsFromNearbyContainers("explore");
+				//}
+
+				if (ZInput.GetButtonDown(GrabSelectedPieceMatsButton.Name))
 				{
-					GrabItemsFromNearbyContainers("explore");
+					//var recipe = ItemManager.Instance.GetRecipe("wood");
+					ConsoleCommands.GrabMaterialsForSelectedPiece();
+				}
+
+				if (ZInput.GetButtonDown(GrabPack1.Button.Name))
+				{
+					ConsoleCommands.GrabMaterialsForPack(GrabPack1.Name.Value, GrabPack1.Items.Value);
+				}
+
+				if (ZInput.GetButtonDown(GrabPack2.Button.Name))
+				{
+					ConsoleCommands.GrabMaterialsForPack(GrabPack2.Name.Value, GrabPack2.Items.Value);
+				}
+
+				if (ZInput.GetButtonDown(GrabPack3.Button.Name))
+				{
+					ConsoleCommands.GrabMaterialsForPack(GrabPack3.Name.Value, GrabPack3.Items.Value);
 				}
 			}
 		}
+
+
 
 		void OnDestroy()
 		{
 			harmony.UnpatchSelf();
 		}
 
-		private static void InitCommands()
+		private static void ListAllPieces()
 		{
-			new Terminal.ConsoleCommand("list", "list all known containers", (args) => { ListKnownContainers(); });
-			new Terminal.ConsoleCommand("listlocal", "[radius] - Finds containers within the radius.", (args) => { ListLocalContainers(args); });
-			new Terminal.ConsoleCommand("listcontents", "[radius] - Finds containers within the radius and lists their contents.", (args) => { ListLocalContainerContents(args); });
-			new Terminal.ConsoleCommand("search", "[search-text] - search for items matching this string in nearby containers", (args) => { FindContainersWithMatchingItems(args); });
-			new Terminal.ConsoleCommand("grab", "[items] - grab items from nearby containers - 'help' to see supported options", (args) => { GrabItemsFromNearbyContainers(args); });
-			new Terminal.ConsoleCommand("store", "[items] - grab items from nearby containers - 'help' to see supported options", (args) => { StoreItemsInNearbyContainers(); });
-			new Terminal.ConsoleCommand("count", "[name of item to count] - omit to count everything", (args) => { CountInventory(args); });
+
+			if (!ZNetScene.instance)
+			{
+				Debug.LogWarning("Cannot index: ZNetScene.instance is null");
+				return;
+			}
+
+			Debug.LogWarning("listing prefabs");
+			foreach (var prefab in ZNetScene.instance.m_prefabs)
+			{
+				Debug.Log($"Prefab: {prefab.name}");
+			}
+
+			//Jotunn.Managers.PieceManager.Instance.GetPiece().Pieces.ForEach(piece =>
+			//{
+			//	Debug.Log($"{piece.name}");
+			//});
+
+			////this just list the build pieces available on the currently selected workbench category
+			//var pieces = player.GetBuildPieces();
+			//if (pieces == null)
+			//{
+			//	Debug.Log("No build pieces found");
+			//	return;
+			//}
+			//Debug.Log($"listing {pieces.Count()} pieces");
+			//foreach (var piece in pieces)
+			//{
+			//	Debug.Log($"{piece.name}");
+			//}
+
+			////this seems to only give the players base recipes without even a hammer
+			//var recipes = new List<Recipe>();
+			//player.GetAvailableRecipes(ref recipes);
+			//Debug.Log($"listing {recipes.Count()} recipes");
+			//foreach (var recipe in recipes)
+			//{
+			//	Debug.Log($"{recipe}");
+			//}
+
+			//var objectDB = ObjectDB.instance;
+			//if (objectDB == null)
+			//{
+			//	Debug.LogError("ObjectDB instance is null");
+			//	return;
+			//}
+
+			//foreach (var prefab in objectDB.m_items)
+			//{
+			//	Debug.Log($"Prefab: {prefab.name}");
+			//}
+
+			//Debug.LogWarning("listing named prefabs");
+			//foreach (var prefab in ZNetScene.instance.m_namedPrefabs.Values)
+			//{
+			//	Debug.Log($"Named Prefab: {prefab.name}");
+			//}
+
+			//PieceTable pieceTable = GetPieceTable();
+			//Jotunn.Utils.ModRegistry.GetPieces().ForEach(piece =>
+			//{
+			//	Debug.Log($"{piece.name}");
+			//});
 		}
+
+		//private static List<GameObject> GetPrefabs()
+		//{
+		//	HashSet<GameObject> prefabs = new HashSet<GameObject>(ZNetScene.instance.m_prefabs);
+		//	HashSet<GameObject> namedPrefabs = new HashSet<GameObject>(ZNetScene.instance.m_namedPrefabs.Values);
+
+		//	List<GameObject> combinedPrefabs = prefabs.Union(namedPrefabs).ToList();
+		//	combinedPrefabs.RemoveAll(prefab => !prefab);
+
+		//	return combinedPrefabs;
+		//}
 
 		private static void ListKnownContainers()
 		{
@@ -91,9 +264,6 @@ namespace GrabMaterialsMod
 			Debug.Log($"listing {nearbyContainers.Count} containers within {radius} meters out of {Boxes.Containers.Count} known containers");
 			foreach (var container in nearbyContainers)
 				Debug.Log($"{++i}. {container.name} {container.m_name}  ({container.GetType()} {container.GetInstanceID()})");
-			Player.m_localPlayer.Message(MessageHud.MessageType.Center, $"Found {nearbyContainers.Count} containers within {radius} meters");
-			//MessageHud.BiomeMessage("Found " + nearbyContainers.Count + " containers within " + radius + " meters", 0, null);
-			MessageHud.instance.SendMessage("Found " + nearbyContainers.Count + " containers within " + radius + " meters");
 		}
 
 		private static void ListLocalContainerContents(Terminal.ConsoleEventArgs args)
@@ -140,140 +310,15 @@ namespace GrabMaterialsMod
 					if (item.Name().Contains(text))
 					{
 						Debug.Log($"it contains {text}!");
-						HighlightContainer(container);
+						container.Highlight();
 					}
 				}
 				if (inventory.ContainsItemByName(text))
 				{
 					Debug.Log($"it contains {text}!");
-					HighlightContainer(container);
+					container.Highlight();
 				}
 			}
-		}
-
-		struct ItemToGrab
-		{
-			public string Name;
-			public int Count;
-			public ItemToGrab(string name, int count) { Name = name; Count = count; }
-			public string FullName { get { return $"$item_{Name}"; } }
-		}
-
-		/// <summary>
-		/// /grab all
-		/// /grab wood
-		/// /grab wood 10
-		/// /grab workbench
-		/// /grab portal
-		/// </summary>
-		/// <param name="args"></param>
-		static void GrabItemsFromNearbyContainers(Terminal.ConsoleEventArgs args)
-		{
-			Debug.Log($"GrabItemsFromNearbyContainers({args.FullLine})");
-
-			if (args.Length <= 1)
-			{
-				var msg = "usage: /grab <all | name> [count], e.g. /grab wood 10";
-				Chat.instance.SendMessage(msg);
-				Debug.Log(msg);
-				return;
-			}
-
-			var name = args[1];
-			Debug.Log($"name of materials to grab: {name}");
-			var count = 1;
-			if (args.Length > 2)
-				int.TryParse(args[2], out count);
-			Debug.Log($"count to grab: {count}");
-
-			GrabItemsFromNearbyContainers(name, count);
-		}
-
-		static void GrabItemsFromNearbyContainers(string name, int count = 1)
-		{
-			var radius = 50f; // Default radius
-			var itemsToGrab = new List<ItemToGrab>();
-
-			switch (name)
-			{
-				case "workbench":
-					itemsToGrab.Add(new ItemToGrab("wood", 10));
-					break;
-
-				case "portal":
-					itemsToGrab.Add(new ItemToGrab("finewood", 20));
-					itemsToGrab.Add(new ItemToGrab("greydwarfeye", 10));
-					itemsToGrab.Add(new ItemToGrab("surtlingcore", 2));
-					break;
-
-				case "explore":
-					itemsToGrab.Add(new ItemToGrab("wood", 10));
-					itemsToGrab.Add(new ItemToGrab("finewood", 20));
-					itemsToGrab.Add(new ItemToGrab("greydwarfeye", 10));
-					itemsToGrab.Add(new ItemToGrab("surtlingcore", 2));
-					break;
-
-				case "karve":
-					itemsToGrab.Add(new ItemToGrab("finewood", 30));
-					itemsToGrab.Add(new ItemToGrab("deerhide", 10));
-					itemsToGrab.Add(new ItemToGrab("resin", 20));
-					itemsToGrab.Add(new ItemToGrab("bronzenails", 80));
-					break;
-
-				case "longship":
-					itemsToGrab.Add(new ItemToGrab("finewood", 40));
-					itemsToGrab.Add(new ItemToGrab("elderbark", 40));
-					itemsToGrab.Add(new ItemToGrab("deerhide", 10));
-					itemsToGrab.Add(new ItemToGrab("ironnails", 100));
-					break;
-
-				default:
-					itemsToGrab.Add(new ItemToGrab(name, count));
-					break;
-			}
-
-			var nearbyContainers = Boxes.GetNearbyContainers(radius);
-			//Debug.Log($"grabbing items for {name} from {nearbyContainers.Count} containers within {radius} meters");
-			for (int i = 0; i < itemsToGrab.Count; i++)
-			{
-				var itemToGrab = itemsToGrab[i];
-				Debug.Log($"grabbing {itemToGrab.Count} {itemToGrab.Name} from {nearbyContainers.Count} containers within {radius} meters");
-				for (int j = 0; j < nearbyContainers.Count && itemToGrab.Count > 0; j++)
-				{
-					var container = nearbyContainers[j];
-					int countGrabbed = GrabItemFromContainer(container, itemToGrab.Name, itemToGrab.Count);
-					itemToGrab.Count -= countGrabbed;
-				}
-			}
-		}
-
-		public static int GrabItemFromContainer(Container container, string name, int count)
-		{
-			Debug.Log($"looking for {count} {name} in {container} {container.GetInstanceID()}");
-			var player = Player.m_localPlayer;
-			var playerInventory = player.GetInventory();
-			var containerInventory = container.GetInventory();
-			int countGrabbed = 0;
-			var items = containerInventory.GetAllItems().ToArray();
-			for (int i = 0; i < items.Count() && count > 0; i++)
-			{
-				var item = items[i];
-				Debug.Log($"{item.Name()} {item.Count()}");
-				if (item.Name() == name)
-				{
-					int numberToGrab = count > item.Count() ? item.Count() : count;
-					Debug.Log($"grabbing {numberToGrab} of {item.Count()} {name} from {container} {container.GetInstanceID()}");
-					var newItem = item.Clone();
-					newItem.m_stack = numberToGrab;
-					containerInventory.RemoveItem(item, numberToGrab);
-					playerInventory.AddItem(newItem);
-					countGrabbed += numberToGrab;
-					count -= numberToGrab;
-					//Debug.Log($"grabbed {numberToGrab} {name} from {container} {container.GetInstanceID()}");
-				}
-			}
-			Debug.Log($"grabbed a total of {countGrabbed} {name} from {container} {container.GetInstanceID()}");
-			return countGrabbed;
 		}
 
 		static void StoreItemsInNearbyContainers()
@@ -283,6 +328,9 @@ namespace GrabMaterialsMod
 			var player = Player.m_localPlayer;
 			var playerInventory = player.GetInventory();
 			var itemsToMove = new List<ItemDrop.ItemData>();
+
+			//this one works
+			player.Message(MessageHud.MessageType.Center, $"Storing items in {nearbyContainers.Count} containers within {radius} meters");
 
 			for (int y = 1; y < playerInventory.GetHeight(); y++)
 			{
@@ -301,30 +349,12 @@ namespace GrabMaterialsMod
 			int currentContainer = 0;
 			while (itemsToMove.Count > 0)
 			{
-				StoreItemInContainer(nearbyContainers[currentContainer], itemsToMove[0]);
+				nearbyContainers[currentContainer].StoreItemInContainer(itemsToMove[0]);
 				currentContainer++;
 				if (currentContainer == nearbyContainers.Count)
 					currentContainer = 0;
 				itemsToMove.RemoveAt(0);
 			}
-		}
-
-		static bool StoreItemInContainer(Container container, ItemDrop.ItemData item)
-		{
-			var player = Player.m_localPlayer;
-			var playerInventory = player.GetInventory();
-			var containerInventory = container.GetInventory();
-			if (!containerInventory.CanAddItem(item))
-			{
-				Debug.LogWarning("Container's inventory full.");
-				return false;
-			}
-			Debug.Log($"moving {item.Name()} {item.Count()}");
-			//playerInventory.RemoveItem(item);
-			//containerInventory.AddItem(item);
-			containerInventory.MoveItemToThis(playerInventory, item);
-			Debug.Log($"moved {item.Name()} {item.Count()}");
-			return true;
 		}
 
 		static void CountInventory(Terminal.ConsoleEventArgs args)
@@ -336,74 +366,14 @@ namespace GrabMaterialsMod
 			if (args.Length > 1)
 			{
 				itemName = args[1];
-				count = CountItemsInInventory(playerInventory, itemName);
+				count = playerInventory.CountItems(itemName);
 				Debug.Log($"{count} {itemName} in inventory");
 			}
 			else
 			{
-				count = CountItemsInInventory(playerInventory);
+				count = playerInventory.CountItems();
 				Debug.Log($"{count} items in inventory");
 			}
 		}
-
-		static int CountItemsInInventory(Inventory inventory)
-		{
-			var count = 0;
-			var player = Player.m_localPlayer;
-			var playerInventory = player.GetInventory();
-			foreach (var item in playerInventory.GetAllItems())
-			{
-				count += item.Count();
-			}
-			return count;
-		}
-
-		static int CountItemsInInventory(Inventory inventory, string name)
-		{
-			var count = 0;
-			var player = Player.m_localPlayer;
-			var playerInventory = player.GetInventory();
-			foreach (var item in playerInventory.GetAllItems())
-			{
-				if (item.Name() == name)
-					count += item.Count();
-			}
-			return count;
-		}
-
-		static void HighlightContainer(Container container)
-		{
-			WearNTear component = container.GetComponent<WearNTear>();
-
-			if (component)
-			{
-				component.Highlight();
-			}
-		}
-
-		//[HarmonyPatch(typeof(CraftingStation), "CheckResources")]
-		//static bool GrabMaterials(CraftingStation __instance, ref bool __result)
-		//{
-		//    // Find nearby chests
-		//    Chest[] nearbyChests = GameObject.FindObjectsOfType<Chest>();
-
-		//    foreach (Recipe recipe in __instance.m_recipes)
-		//    {
-		//        // Check if player has enough materials
-		//        foreach (Piece.Requirement requirement in recipe.m_resources)
-		//        {
-		//            int requiredAmount = requirement.m_amount;
-
-		//            // Search chests for required materials
-		//            foreach (Chest chest in nearbyChests)
-		//            {
-		//                // Logic to transfer materials from chest to crafting station
-		//                // Implement inventory management and material transfer
-		//            }
-		//        }
-		//    }
-
-		//    return true;
-		//}
 	}
 }

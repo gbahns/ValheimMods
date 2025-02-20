@@ -89,6 +89,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Boxes.cs" />
+    <Compile Include="ConsoleCommands.cs" />
     <Compile Include="PieceTablePatch.cs" />
     <Compile Include="ChestSearch.cs" />
     <Compile Include="ContainerFinder.cs" />
