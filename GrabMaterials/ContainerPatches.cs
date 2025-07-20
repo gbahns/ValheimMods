@@ -19,7 +19,7 @@ namespace GrabMaterials
 	{
 		private static void Postfix(Container __instance)
 		{
-			Debug.Log($"*** CONTAINER AWAKE POSTFIX GOT CALLED *** {__instance.name} {__instance.GetInstanceID()}");
+			//Debug.Log($"*** CONTAINER AWAKE POSTFIX GOT CALLED *** {__instance.name} {__instance.GetInstanceID()}");
 			Boxes.ConditionallyAddContainer(__instance, "Awake");
 		}
 	}

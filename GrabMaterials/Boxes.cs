@@ -17,7 +17,7 @@ namespace GrabMaterials
 			if (!Containers.Contains(container))
 			{
 				ContainersToAdd.Add(container);
-				Debug.Log($"Added container {container.name} ({container.GetType()} {container.GetInstanceID()}) to list");
+				Jotunn.Logger.LogDebug($"Added container {container.name} ({container.GetType()} {container.GetInstanceID()}) to list");
 			}
 			UpdateContainers();
 		}
@@ -26,7 +26,7 @@ namespace GrabMaterials
 			if (Containers.Contains(container))
 			{
 				ContainersToRemove.Add(container);
-				Debug.Log($"Removed container {container.name} ({container.GetType()} {container.GetInstanceID()}) from list");
+				Jotunn.Logger.LogDebug($"Removed container {container.name} ({container.GetType()} {container.GetInstanceID()}) from list");
 			}
 			UpdateContainers();
 		}
@@ -75,6 +75,18 @@ namespace GrabMaterials
 			Debug.Log($"checking distance of {Boxes.Containers.Count} containers");
 			foreach (var container in Boxes.Containers)
 			{
+				if (container == null)
+				{
+					Debug.LogWarning("Found null container in list");
+					ContainersToRemove.Add(container);
+					continue;
+				}
+				if (container.transform == null)
+				{
+					Debug.LogWarning($"Found container {container.name} with null transform in list");
+					ContainersToRemove.Add(container);
+					continue;
+				}
 				var distance = Vector3.Distance(playerPosition, container.transform.position);
 				//Debug.Log($"Checking distance of {container.name} {container.GetInstanceID()} {container.transform.position}: {distance} meters from player");
 				if (distance < radius)
@@ -82,6 +94,7 @@ namespace GrabMaterials
 					nearbyContainers.Add(container);
 				}
 			}
+			UpdateContainers();
 			return nearbyContainers;
 		}
 

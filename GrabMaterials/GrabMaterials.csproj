@@ -51,7 +51,8 @@
       <HintPath>..\Libs\BepInEx.dll</HintPath>
     </Reference>
     <Reference Include="Jotunn, Version=2.6.2.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\JotunnLib.Debug.2.6.2\lib\net462\Jotunn.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\Libs\Jotunn.dll</HintPath>
     </Reference>
     <Reference Include="Mono.Cecil, Version=0.11.4.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e, processorArchitecture=MSIL">
       <HintPath>..\packages\Mono.Cecil.0.11.4\lib\net40\Mono.Cecil.dll</HintPath>
@@ -102,6 +103,11 @@
     <None Include="app.config" />
     <None Include="packages.config" />
     <None Include="readme.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="BuildPieceList.txt" />
+    <Content Include="ItemList.txt" />
+    <Content Include="PrefabList.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
