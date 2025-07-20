@@ -79,20 +79,22 @@
             </div>
         </div>
 
-        <main class="card p-4 rounded-lg shadow-md overflow-x-auto">
+        <main class="card p-2 rounded-lg shadow-md overflow-x-auto">
              <table id="ship-table" class="w-full text-left">
                 <thead class="valheim-title text-lg border-b-2 border-[#4A3F35]">
                     <tr>
-                        <th class="p-2" data-sort="name">Name</th>
-                        <th class="p-2 text-center" data-sort="category">Category</th>
-                        <th class="p-2 text-center" data-sort="health">Health</th>
-                        <th class="p-2 text-center" data-sort="mass">Mass</th>
-                        <th class="p-2 text-center" data-sort="sailForce">Sail Force</th>
-                        <th class="p-2 text-center" data-sort="relativeAccel">Acceleration</th>
-                        <th class="p-2 text-center" data-sort="topSpeed"><span title="Estimated Top Speed in meters/second">Top Speed</span></th>
-                        <th class="p-2 text-center" data-sort="cargoSlots">Cargo Slots</th>
-                        <th class="p-2 text-center" data-sort="cargoThroughput"><span title="Cargo Slots * Top Speed">Cargo Throughput</span></th>
-                        <th class="p-2">Build Recipe</th>
+                        <th class="px-1 py-2" data-sort="name">Name</th>
+                        <th class="px-1 py-2 text-center" data-sort="category">Category</th>
+                        <th class="px-1 py-2 text-center" data-sort="health">Health</th>
+                        <th class="px-1 py-2 text-center" data-sort="mass">Mass</th>
+                        <th class="px-1 py-2 text-center" data-sort="rudderSpeed">Rudder Speed</th>
+                        <th class="px-1 py-2 text-center" data-sort="agility"><span title="Relative turning ability based on Rudder Speed and Mass">Agility</span></th>
+                        <th class="px-1 py-2 text-center" data-sort="sailForce">Sail Force</th>
+                        <th class="px-1 py-2 text-center" data-sort="relativeAccel">Acceleration</th>
+                        <th class="px-1 py-2 text-center" data-sort="topSpeed"><span title="Estimated Top Speed in meters/second">Top Speed</span></th>
+                        <th class="px-1 py-2 text-center" data-sort="cargoSlots">Cargo Slots</th>
+                        <th class="px-1 py-2 text-center" data-sort="cargoThroughput"><span title="Cargo Slots * Top Speed">Cargo Throughput</span></th>
+                        <th class="px-1 py-2">Build Recipe</th>
                     </tr>
                 </thead>
                 <tbody id="ship-table-body">
@@ -156,14 +158,13 @@
 
         const processShipData = (data) => {
             const shipsWithSails = data.filter(s => s.sailForce > 0);
-            if (shipsWithSails.length === 0) return data;
-
             const longship = data.find(s => s.name === "Longship");
             const longshipKnownSpeed = 9.5; // m/s
             const longshipTopSpeedIndex = longship.sailForce / Math.sqrt(longship.mass);
             const conversionFactor = longshipKnownSpeed / longshipTopSpeedIndex;
 
             const minAccel = Math.min(...shipsWithSails.map(s => s.sailForce / s.mass));
+            const minManeuverability = Math.min(...data.map(s => s.rudderSpeed / s.mass));
 
             return data.map(ship => {
                 if (ship.sailForce > 0) {
@@ -178,6 +179,7 @@
                     }
                 }
                 ship.cargoThroughput = ship.cargoSlots * ship.topSpeed;
+                ship.agility = (ship.rudderSpeed / ship.mass) / minManeuverability;
                 return ship;
             });
         };
@@ -211,16 +213,18 @@
                 const row = document.createElement('tr');
                 row.className = 'border-b border-stone-300/50 hover:bg-amber-50/50 transition-colors text-base';
                 row.innerHTML = `
-                    <td class="p-2 font-bold valheim-title">${ship.name}</td>
-                    <td class="p-2 text-center">${ship.category}</td>
-                    <td class="p-2 text-center">${ship.health}</td>
-                    <td class="p-2 text-center">${ship.mass}</td>
-                    <td class="p-2 text-center">${ship.sailForce}</td>
-                    <td class="p-2 text-center">${ship.relativeAccel.toFixed(1)}</td>
-                    <td class="p-2 text-center">${ship.topSpeed.toFixed(1)}</td>
-                    <td class="p-2 text-center">${ship.cargoSlots}</td>
-                    <td class="p-2 text-center">${ship.cargoThroughput.toFixed(1)}</td>
-                    <td class="p-2 text-sm">${ship.recipe.replace(/; /g, ', ')}</td>
+                    <td class="px-1 py-2 font-bold valheim-title">${ship.name}</td>
+                    <td class="px-1 py-2 text-center">${ship.category}</td>
+                    <td class="px-1 py-2 text-center">${ship.health}</td>
+                    <td class="px-1 py-2 text-center">${ship.mass}</td>
+                    <td class="px-1 py-2 text-center">${ship.rudderSpeed}</td>
+                    <td class="px-1 py-2 text-center">${ship.agility.toFixed(1)}</td>
+                    <td class="px-1 py-2 text-center">${ship.sailForce}</td>
+                    <td class="px-1 py-2 text-center">${ship.relativeAccel.toFixed(1)}</td>
+                    <td class="px-1 py-2 text-center">${ship.topSpeed.toFixed(1)}</td>
+                    <td class="px-1 py-2 text-center">${ship.cargoSlots}</td>
+                    <td class="px-1 py-2 text-center">${ship.cargoThroughput.toFixed(1)}</td>
+                    <td class="px-1 py-2 text-sm">${ship.recipe.replace(/; /g, ', ')}</td>
                 `;
                 shipTableBody.appendChild(row);
             });
@@ -242,7 +246,6 @@
                     currentSort.asc = !currentSort.asc;
                 } else {
                     currentSort.key = sortKey;
-                    // Default to descending for numeric columns, ascending for text
                     currentSort.asc = (sortKey === 'name' || sortKey === 'category');
                 }
                 renderShips();
