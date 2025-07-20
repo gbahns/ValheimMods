@@ -211,7 +211,7 @@ namespace GrabMaterials
 
 		public static int GrabItemFromContainer(this Container container, string name, int count)
 		{
-			Debug.Log($"looking for {count} {name} in {container} {container.GetInstanceID()}");
+			//Debug.Log($"looking for {count} {name} in {container} {container.GetInstanceID()}");
 			var player = Player.m_localPlayer;
 			var playerInventory = player.GetInventory();
 			var containerInventory = container.GetInventory();
@@ -234,7 +234,7 @@ namespace GrabMaterials
 					//Debug.Log($"grabbed {numberToGrab} {name} from {container} {container.GetInstanceID()}");
 				}
 			}
-			Debug.Log($"grabbed a total of {countGrabbed} {name} from {container} {container.GetInstanceID()}");
+			//Debug.Log($"grabbed a total of {countGrabbed} {name} from {container} {container.GetInstanceID()}");
 			if (countGrabbed > 0)
 			{
 				container.Highlight();
@@ -286,5 +286,19 @@ namespace GrabMaterials
 			return count;
 		}
 
+		public static string GetResourceList(this Piece piece)
+		{
+			var resources = piece.m_resources;
+			var sb = new StringBuilder();
+			if (resources != null)
+			{
+				foreach (var requirement in resources)
+				{
+					//Debug.Log($"{requirement.m_amount} {requirement.m_resItem.m_itemData.Name()}");
+					sb.Append($"{requirement.m_resItem.m_itemData.m_shared.m_name.Replace("$item_", "")}:{requirement.m_amount},");
+				}
+			}
+			return sb.ToString();
+		}
 	}
 }

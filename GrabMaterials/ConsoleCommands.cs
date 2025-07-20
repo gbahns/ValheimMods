@@ -1,4 +1,5 @@
-﻿using Jotunn.Managers;
+﻿using Jotunn.Extensions;
+using Jotunn.Managers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -357,21 +358,6 @@ namespace GrabMaterials
 			}
 		}
 
-		private static string GetPieceResourceList(Piece piece)
-		{
-			var resources = piece.m_resources;
-			var sb = new StringBuilder();
-			if (resources != null)
-			{
-				foreach (var requirement in resources)
-				{
-					//Debug.Log($"{requirement.m_amount} {requirement.m_resItem.m_itemData.Name()}");
-					sb.Append($"{requirement.m_resItem.m_itemData.m_shared.m_name.Replace("$item_", "")}:{requirement.m_amount},");
-				}
-			}
-			return sb.ToString();
-		}
-
 		private static void BuildPieceLookUp()
 		{
 			// ObjectDB contains all prefabs, including pieces.
@@ -388,6 +374,12 @@ namespace GrabMaterials
 			{
 				if (prefab.TryGetComponent<Piece>(out var piece))
 				{
+					if (prefab.name.ContainsAny("loot_chest", "TreasureChest"))
+					{
+						//Debug.Log($"Not adding {prefab.name} to build piece lookup table");
+						continue;
+					}
+
 					// Get the localized, user-facing name (e.g., "Campfire")
 					var localizedName = "";
 					try

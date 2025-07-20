@@ -244,6 +244,13 @@ namespace GrabMaterialsMod
 				return;
 			}
 
+			//Debug.LogWarning("listing all recipies");
+			//foreach (Recipe recipe in ObjectDB.instance.m_recipes)
+			//{
+			//	Debug.Log($"Recipe: {recipe.name} {(recipe.m_item != null ? recipe.m_item.name : "m_item is null")} {recipe.m_enabled} {recipe.IsValid()} {recipe.m_craftingStation}");
+			//	//Debug.Log($"{recipe.m_item.name} {recipe.m_item.enabled} {recipe.m_enabled} {recipe.m_item.m_itemData.Count()} {recipe.IsValid()} {recipe.m_craftingStation}");
+			//}
+
 			Debug.LogWarning("listing build pieces (prefabs with an associated component)");
 			foreach (var prefab in ZNetScene.instance.m_prefabs)
 			{
@@ -270,7 +277,21 @@ namespace GrabMaterialsMod
 					if (prefab.name == piece.name)
 					{
 						//Debug.Log($"{prefab.name} \"{localizedName}\" {GetPieceResourceList(piece)}");
-						Debug.Log($"{prefab.name} \"{localizedName}\"");
+						// Check if the piece has an enabled recipe
+						var hasEnabledRecipe = false;
+						foreach (Recipe recipe in ObjectDB.instance.m_recipes)
+						{
+							// Find the matching recipe AND check if it's enabled.
+							if (recipe.m_item == piece && recipe.m_enabled)
+							{
+								hasEnabledRecipe = true; // Found an enabled recipe for this item.
+								break; // No need to check further recipes.
+							}
+						}
+
+						Debug.Log($"{prefab.name} \"{localizedName}\" {piece.GetResourceList()} {hasEnabledRecipe} {prefab.activeInHierarchy} {piece.enabled} {piece.m_enabled} {piece.isActiveAndEnabled} {piece.IsPlacedByPlayer()} {piece.m_category} {piece.m_craftingStation}");
+						//if (localizedName == "Chest")
+						//	Debug.Log($"{hasEnabledRecipe} {prefab.activeInHierarchy} {prefab.activeSelf} {prefab.gameObject.activeInHierarchy} {prefab.gameObject.activeSelf} {piece.m_destroyedLootPrefab} {piece.enabled} {piece.m_enabled} {piece.isActiveAndEnabled} {piece.IsPlacedByPlayer()} {prefab.name} \"{localizedName}\" {piece.GetResourceList()} {piece.m_category} {piece.m_craftingStation}");
 					}
 					else
 					{
