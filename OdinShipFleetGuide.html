@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OdinShip+ Fleet Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Valheim Parchment & Stone -->
+    <!-- Application Structure Plan: The application is designed as an interactive dashboard. The primary content is a responsive, sortable table view of all ships, which is optimal for direct stat comparison. Key interactions include filtering ships by category (Speed, Cargo, etc.) and sorting by clicking table headers. This is more direct than a dropdown for sorting. The structure also includes summary charts for high-level visual comparison and an info section for essential mod context. -->
+    <!-- Visualization & Content Choices: Ship data is presented in a responsive HTML table, with JS handling the dynamic filtering, sorting, and rendering of rows. This is a classic and effective way to handle tabular data. A bar chart (Chart.js) compares cargo capacity, and a scatter plot (Chart.js) shows the mass vs. sail force relationship. These visualizations complement the table by providing at-a-glance insights. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'IM Fell English', serif;
+            background-color: #FDF5E6; /* Parchment background */
+        }
+        .valheim-title {
+            font-family: 'IM Fell English', serif;
+            font-weight: 700;
+            color: #4A3F35; /* Dark stone color */
+        }
+        .card {
+            background-color: #FAF3E0; /* Lighter parchment */
+            border: 1px solid #D2B48C; /* Tan border */
+        }
+        .filter-btn {
+            background-color: #D2B48C;
+            color: #4A3F35;
+        }
+        .filter-btn.active, .filter-btn:hover {
+            background-color: #4A3F35;
+            color: #FAF3E0;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 400px;
+            max-height: 50vh;
+            background-color: #FAF3E0;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #D2B48C;
+        }
+        th {
+            cursor: pointer;
+        }
+        th:hover {
+            color: #D2B48C;
+        }
+        th span[title] {
+            border-bottom: 1px dotted #4A3F35;
+            cursor: help;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-6xl valheim-title">OdinShip+ Fleet Guide</h1>
+            <p class="text-lg text-gray-600 mt-2">An interactive guide to the ships of the OdinShipPlus mod.</p>
+        </header>
+
+        <div class="bg-white/50 backdrop-blur-sm p-4 rounded-lg shadow-md mb-8 sticky top-4 z-10">
+            <div id="category-filters" class="flex flex-wrap gap-2 justify-center">
+                <button class="filter-btn px-4 py-2 rounded-md text-sm font-bold active" data-category="All">All</button>
+                <button class="filter-btn px-4 py-2 rounded-md text-sm font-bold" data-category="Vanilla">Vanilla</button>
+                <button class="filter-btn px-4 py-2 rounded-md text-sm font-bold" data-category="Speed">Speed</button>
+                <button class="filter-btn px-4 py-2 rounded-md text-sm font-bold" data-category="Cargo">Cargo</button>
+                <button class="filter-btn px-4 py-2 rounded-md text-sm font-bold" data-category="Fishing">Fishing</button>
+                <button class="filter-btn px-4 py-2 rounded-md text-sm font-bold" data-category="War">War</button>
+            </div>
+        </div>
+
+        <main class="card p-4 rounded-lg shadow-md overflow-x-auto">
+             <table id="ship-table" class="w-full text-left">
+                <thead class="valheim-title text-lg border-b-2 border-[#4A3F35]">
+                    <tr>
+                        <th class="p-2" data-sort="name">Name</th>
+                        <th class="p-2 text-center" data-sort="category">Category</th>
+                        <th class="p-2 text-center" data-sort="health">Health</th>
+                        <th class="p-2 text-center" data-sort="mass">Mass</th>
+                        <th class="p-2 text-center" data-sort="sailForce">Sail Force</th>
+                        <th class="p-2 text-center" data-sort="relativeAccel">Acceleration</th>
+                        <th class="p-2 text-center" data-sort="topSpeed"><span title="Estimated Top Speed in meters/second">Top Speed</span></th>
+                        <th class="p-2 text-center" data-sort="cargoSlots">Cargo Slots</th>
+                        <th class="p-2 text-center" data-sort="cargoThroughput"><span title="Cargo Slots * Top Speed">Cargo Throughput</span></th>
+                        <th class="p-2">Build Recipe</th>
+                    </tr>
+                </thead>
+                <tbody id="ship-table-body">
+                </tbody>
+            </table>
+        </main>
+
+        <section class="mt-12">
+            <h2 class="text-3xl md:text-4xl valheim-title text-center mb-8">Fleet Comparison</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="chart-container">
+                    <canvas id="cargoChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+             <div class="text-center text-sm text-gray-500 mt-4">
+                <p>The charts above provide a high-level comparison of the fleet. The Cargo Capacity chart helps identify the best haulers, while the Performance chart shows the trade-off between a ship's mass and its speed potential under sail.</p>
+            </div>
+        </section>
+        
+        <section class="mt-12 card p-6">
+             <h2 class="text-3xl md:text-4xl valheim-title text-center mb-6">Key Information</h2>
+             <div class="text-center max-w-3xl mx-auto text-gray-700 space-y-4">
+                <p>To build these advanced ships, you must first understand the mod's custom crafting progression. This guide will help you get started on your naval adventures.</p>
+                <div class="p-4 bg-amber-100/50 border-l-4 border-amber-500 text-amber-800 rounded-r-lg">
+                    <h3 class="font-bold text-lg mb-2">Custom Materials & Crafting Station</h3>
+                    <p>The OdinShip mod introduces its own materials like <span class="font-bold">Resin Wood</span>, <span class="font-bold">Caulked Wood</span>, <span class="font-bold">Cloth Ship</span>, and <span class="font-bold">Ship Rope</span>. You must craft these components at the new <span class="font-bold">Carpenter Table</span> station before you can build the ships themselves.</p>
+                </div>
+                 <p>Remember to check the mod's configuration files in your `BepInEx/config` folder for the most precise and up-to-date stats, as these can sometimes be customized by server administrators or updated by the mod author.</p>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const shipData = [
+            { name: "Raft", category: "Vanilla", health: 300, mass: 400, sailForce: 0.2, rudderSpeed: 1, cargoSlots: 3, recipe: "Wood: 20; Leather Scraps: 6; Resin: 6" },
+            { name: "Karve", category: "Vanilla", health: 500, mass: 600, sailForce: 0.5, rudderSpeed: 1, cargoSlots: 4, recipe: "Fine Wood: 30; Deer Hide: 10; Resin: 20; Bronze Nails: 80" },
+            { name: "Longship", category: "Vanilla", health: 1000, mass: 1000, sailForce: 0.7, rudderSpeed: 1, cargoSlots: 18, recipe: "Iron Nails: 100; Deer Hide: 10; Fine Wood: 40; Ancient Bark: 40" },
+            { name: "Drakkar", category: "Vanilla", health: 3000, mass: 1500, sailForce: 0.8, rudderSpeed: 1, cargoSlots: 24, recipe: "Iron Nails: 100; Ceramic Plate: 30; Fine Wood: 50; Yggdrasil Wood: 25" },
+            { name: "Rowing Canoe", category: "Speed", health: 400, mass: 400, sailForce: 0, rudderSpeed: 1, cargoSlots: 4, recipe: "Resin: 8; Wood: 20" },
+            { name: "Double Rowing Canoe", category: "Speed", health: 500, mass: 400, sailForce: 0, rudderSpeed: 1, cargoSlots: 4, recipe: "Resin: 10; Wood: 25" },
+            { name: "Little Boat", category: "Fishing", health: 800, mass: 500, sailForce: 0.3, rudderSpeed: 1, cargoSlots: 4, recipe: "Leather Scraps: 8; Wood: 40" },
+            { name: "Hercule Fishing Boat", category: "Fishing", health: 1200, mass: 1500, sailForce: 0.5, rudderSpeed: 1, cargoSlots: 12, recipe: "Cloth Ship: 2; Resin Wood: 30; Bronze Nails: 100; Ship Rope: 2" },
+            { name: "Goblin Boat", category: "War", health: 1500, mass: 2000, sailForce: 0.6, rudderSpeed: 1, cargoSlots: 28, recipe: "Cloth Ship: 5; Caulked Wood: 50; Iron Nails: 120; Ship Rope: 5" },
+            { name: "Merchant Ship", category: "Cargo", health: 1800, mass: 2000, sailForce: 0.5, rudderSpeed: 1, cargoSlots: 21, recipe: "Cloth Ship: 4; Resin Wood: 40; Iron Nails: 100; Ship Rope: 2" },
+            { name: "Cargo Ship", category: "Cargo", health: 2000, mass: 2000, sailForce: 0.4, rudderSpeed: 0.8, cargoSlots: 64, recipe: "Cloth Ship: 4; Caulked Wood: 40; Iron Nails: 100; Ship Rope: 2" },
+            { name: "Big Cargo Ship", category: "Cargo", health: 2500, mass: 2000, sailForce: 0.4, rudderSpeed: 0.8, cargoSlots: 64, recipe: "Cloth Ship: 4; Caulked Wood: 50; Iron Nails: 150; Ship Rope: 4" },
+            { name: "Huge Cargo Ship", category: "Cargo", health: 3000, mass: 2500, sailForce: 0.4, rudderSpeed: 0.8, cargoSlots: 128, recipe: "Cloth Ship: 4; Caulked Wood: 50; Iron Nails: 150; Ship Rope: 6" },
+            { name: "Cargo Animal Ship", category: "Cargo", health: 2800, mass: 2500, sailForce: 0.4, rudderSpeed: 1, cargoSlots: 64, recipe: "Cloth Ship: 4; Caulked Wood: 50; Iron Nails: 150; Ship Rope: 6" },
+            { name: "Cargo Caravel", category: "Cargo", health: 3500, mass: 3000, sailForce: 0.4, rudderSpeed: 0.5, cargoSlots: 64, recipe: "Cloth Ship: 5; Caulked Wood: 60; Iron Nails: 120; Ship Rope: 4" },
+            { name: "War Ship", category: "War", health: 2000, mass: 2000, sailForce: 0.6, rudderSpeed: 1, cargoSlots: 24, recipe: "Cloth Ship: 4; Caulked Wood: 50; Iron Nails: 120; Ship Rope: 2" },
+            { name: "War Ship Skuldelev", category: "War", health: 2500, mass: 2500, sailForce: 0.6, rudderSpeed: 1, cargoSlots: 28, recipe: "Cloth Ship: 4; Caulked Wood: 60; Iron Nails: 160; Ship Rope: 4" },
+            { name: "Taurus War Ship", category: "War", health: 3000, mass: 3000, sailForce: 0.6, rudderSpeed: 1, cargoSlots: 32, recipe: "Cloth Ship: 4; Caulked Wood: 60; Iron Nails: 180; Ship Rope: 4" },
+            { name: "Fast Ship Skuldelev", category: "Speed", health: 1500, mass: 1000, sailForce: 0.9, rudderSpeed: 1, cargoSlots: 6, recipe: "Cloth Ship: 4; Caulked Wood: 40; Iron Nails: 100; Ship Rope: 2" }
+        ];
+
+        let currentFilter = 'All';
+        let currentSort = { key: 'name', asc: true };
+
+        const processShipData = (data) => {
+            const shipsWithSails = data.filter(s => s.sailForce > 0);
+            if (shipsWithSails.length === 0) return data;
+
+            const longship = data.find(s => s.name === "Longship");
+            const longshipKnownSpeed = 9.5; // m/s
+            const longshipTopSpeedIndex = longship.sailForce / Math.sqrt(longship.mass);
+            const conversionFactor = longshipKnownSpeed / longshipTopSpeedIndex;
+
+            const minAccel = Math.min(...shipsWithSails.map(s => s.sailForce / s.mass));
+
+            return data.map(ship => {
+                if (ship.sailForce > 0) {
+                    ship.relativeAccel = (ship.sailForce / ship.mass) / minAccel;
+                    ship.topSpeed = (ship.sailForce / Math.sqrt(ship.mass)) * conversionFactor;
+                } else {
+                    ship.relativeAccel = 0;
+                    if (ship.name.includes("Canoe")) {
+                        ship.topSpeed = 3.0; // Estimated rowing speed
+                    } else {
+                        ship.topSpeed = 0;
+                    }
+                }
+                ship.cargoThroughput = ship.cargoSlots * ship.topSpeed;
+                return ship;
+            });
+        };
+        
+        const processedShipData = processShipData(shipData);
+
+        const shipTableBody = document.getElementById('ship-table-body');
+        const filterButtons = document.querySelectorAll('#category-filters button');
+        const sortHeaders = document.querySelectorAll('#ship-table th[data-sort]');
+
+        const renderShips = () => {
+            shipTableBody.innerHTML = '';
+            
+            const filteredData = processedShipData.filter(ship => currentFilter === 'All' || ship.category === currentFilter);
+
+            const sortedData = filteredData.sort((a, b) => {
+                const valA = a[currentSort.key];
+                const valB = b[currentSort.key];
+                
+                let comparison = 0;
+                if (typeof valA === 'string') {
+                    comparison = valA.localeCompare(valB);
+                } else {
+                    comparison = valA - valB;
+                }
+                
+                return currentSort.asc ? comparison : -comparison;
+            });
+
+            sortedData.forEach(ship => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-stone-300/50 hover:bg-amber-50/50 transition-colors text-base';
+                row.innerHTML = `
+                    <td class="p-2 font-bold valheim-title">${ship.name}</td>
+                    <td class="p-2 text-center">${ship.category}</td>
+                    <td class="p-2 text-center">${ship.health}</td>
+                    <td class="p-2 text-center">${ship.mass}</td>
+                    <td class="p-2 text-center">${ship.sailForce}</td>
+                    <td class="p-2 text-center">${ship.relativeAccel.toFixed(1)}</td>
+                    <td class="p-2 text-center">${ship.topSpeed.toFixed(1)}</td>
+                    <td class="p-2 text-center">${ship.cargoSlots}</td>
+                    <td class="p-2 text-center">${ship.cargoThroughput.toFixed(1)}</td>
+                    <td class="p-2 text-sm">${ship.recipe.replace(/; /g, ', ')}</td>
+                `;
+                shipTableBody.appendChild(row);
+            });
+        };
+
+        filterButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                filterButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                currentFilter = button.dataset.category;
+                renderShips();
+            });
+        });
+
+        sortHeaders.forEach(header => {
+            header.addEventListener('click', () => {
+                const sortKey = header.dataset.sort;
+                if (currentSort.key === sortKey) {
+                    currentSort.asc = !currentSort.asc;
+                } else {
+                    currentSort.key = sortKey;
+                    // Default to descending for numeric columns, ascending for text
+                    currentSort.asc = (sortKey === 'name' || sortKey === 'category');
+                }
+                renderShips();
+            });
+        });
+
+        const renderCharts = () => {
+            const sortedByCargo = [...processedShipData].sort((a, b) => b.cargoSlots - a.cargoSlots);
+            const cargoLabels = sortedByCargo.map(s => s.name);
+            const cargoValues = sortedByCargo.map(s => s.cargoSlots);
+            
+            const ctxCargo = document.getElementById('cargoChart').getContext('2d');
+            new Chart(ctxCargo, {
+                type: 'bar',
+                data: {
+                    labels: cargoLabels,
+                    datasets: [{
+                        label: 'Cargo Slots',
+                        data: cargoValues,
+                        backgroundColor: '#8B4513',
+                        borderColor: '#4A3F35',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        title: { display: true, text: 'Ship Cargo Capacity', font: { size: 18, family: "'IM Fell English', serif" } },
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { beginAtZero: true },
+                         y: { ticks: { font: { size: 10 } } }
+                    }
+                }
+            });
+
+            const performanceData = processedShipData.map(s => ({
+                x: s.mass,
+                y: s.sailForce,
+                r: Math.max(s.cargoSlots / 8, 5),
+                label: s.name
+            }));
+
+            const ctxPerformance = document.getElementById('performanceChart').getContext('2d');
+            new Chart(ctxPerformance, {
+                type: 'bubble',
+                data: {
+                    datasets: [{
+                        label: 'Ships',
+                        data: performanceData,
+                        backgroundColor: 'rgba(139, 69, 19, 0.6)',
+                        borderColor: '#4A3F35'
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: { display: true, text: 'Performance (Mass vs. Sail Force)', font: { size: 18, family: "'IM Fell English', serif" } },
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const dataPoint = context.raw;
+                                    return `${dataPoint.label}: Mass ${dataPoint.x}, Sail Force ${dataPoint.y}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Mass' }
+                        },
+                        y: {
+                            title: { display: true, text: 'Sail Force Factor' },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        };
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            renderShips();
+            renderCharts();
+        });
+    </script>
+</body>
+</html>
