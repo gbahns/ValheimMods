@@ -1,6 +1,6 @@
 {
     "name": "GrabMaterials",
-    "version_number": "1.0.0",
+    "version_number": "1.0.1",
     "website_url": "https://thunderstore.io/c/valheim/p/MojoRyzen/GrabMaterials/",
     "description": "Grab materials from nearby chests needed to build things out in the world, e.g. grab materials for a workbench, for portal, for a longship, for exploring (workbench, and portal), etc.",
     "dependencies": ["denikson-BepInExPack_Valheim-5.4.2202", "ValheimModding-Jotunn-2.23.1"]

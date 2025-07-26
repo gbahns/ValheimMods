@@ -26,6 +26,11 @@ Quickly pull materials from nearby chests into your inventory without having to 
 <li>Destroyed containers not removed from the list causing NullPointerException
 <li>Removed unnecessary logging
 
+<h3>Fix in version 1.0.1</h3>
+
+<li>Fixed a bug where it would grab 10 stone instead of 10 wood for the Chest build piece
+
+
 Join [my discord server](https://discord.gg/2gnsrZSN) to ask questions or provide feedback.
 
 View [the backlog](https://github.com/users/gbahns/projects/1/views/1) here.
