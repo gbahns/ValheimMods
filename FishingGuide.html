@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Valheim Fishing Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Valheim Parchment & Stone -->
+    <!-- Application Structure Plan: The application uses a card-based layout, which is more visually organized and mobile-friendly than a simple table. The core interaction is filtering by biome, as a player's primary question is "What can I fish for where I am right now?". This structure directly supports the user's goal. An info section at the bottom provides essential context about crafting. -->
+    <!-- Visualization & Content Choices: The data is presented as a responsive grid of cards (HTML/JS), which is ideal for grouping the related bait/fish/ingredient information. The main interaction is JS-powered filtering, which is fast and intuitive. No complex charts are needed because the data is categorical, and the filtered card view serves as the primary data visualization. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'IM Fell English', serif;
+            background-color: #FDF5E6; /* Parchment background */
+        }
+        .valheim-title {
+            font-family: 'IM Fell English', serif;
+            font-weight: 700;
+            color: #4A3F35; /* Dark stone color */
+        }
+        .card {
+            background-color: #FAF3E0; /* Lighter parchment */
+            border: 1px solid #D2B48C; /* Tan border */
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .filter-btn, .layout-btn, .view-btn {
+            background-color: #D2B48C;
+            color: #4A3F35;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .filter-btn.active, .filter-btn:hover, .layout-btn.active, .layout-btn:hover, .view-btn.active, .view-btn:hover {
+            background-color: #4A3F35;
+            color: #FAF3E0;
+        }
+        th {
+            cursor: pointer;
+        }
+        th:hover {
+            color: #D2B48C;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-6xl valheim-title">Valheim Fishing Guide</h1>
+            <p class="text-lg text-gray-600 mt-2">An interactive guide to bait, fish, and biomes.</p>
+        </header>
+
+        <div class="bg-white/50 backdrop-blur-sm p-4 rounded-lg shadow-md mb-8 sticky top-4 z-10">
+            <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+                <div class="flex items-center gap-2">
+                     <p class="font-bold valheim-title text-sm">View by:</p>
+                    <div id="view-toggle" class="flex border border-stone-600/50 rounded-md">
+                        <button class="view-btn px-3 py-1 text-xs font-bold active" data-view="bait">Bait</button>
+                        <button class="view-btn px-3 py-1 text-xs font-bold" data-view="fish">Fish</button>
+                        <button class="view-btn px-3 py-1 text-xs font-bold" data-view="biome">Biome</button>
+                    </div>
+                </div>
+                <div id="layout-toggle" class="flex border border-stone-600/50 rounded-md">
+                    <button class="layout-btn px-3 py-1 text-xs font-bold active" data-layout="table">Table</button>
+                    <button class="layout-btn px-3 py-1 text-xs font-bold" data-layout="cards">Cards</button>
+                </div>
+            </div>
+            <p class="font-bold valheim-title text-center mb-2">Filter by Biome (Multi-select):</p>
+            <div id="biome-filters" class="flex flex-wrap gap-2 justify-center">
+                <button class="filter-btn px-4 py-2 rounded-md text-sm font-bold active" data-biome="All">All</button>
+                <button class="filter-btn px-4 py-2 rounded-md text-sm font-bold" data-biome="Meadows">Meadows</button>
+                <button class="filter-btn px-4 py-2 rounded-md text-sm font-bold" data-biome="Black Forest">Black Forest</button>
+                <button class="filter-btn px-4 py-2 rounded-md text-sm font-bold" data-biome="Ocean">Ocean</button>
+                <button class="filter-btn px-4 py-2 rounded-md text-sm font-bold" data-biome="Swamp">Swamp</button>
+                <button class="filter-btn px-4 py-2 rounded-md text-sm font-bold" data-biome="Mountains">Mountains</button>
+                <button class="filter-btn px-4 py-2 rounded-md text-sm font-bold" data-biome="Plains">Plains</button>
+                <button class="filter-btn px-4 py-2 rounded-md text-sm font-bold" data-biome="Mistlands">Mistlands</button>
+                <button class="filter-btn px-4 py-2 rounded-md text-sm font-bold" data-biome="Ashlands">Ashlands</button>
+                <button class="filter-btn px-4 py-2 rounded-md text-sm font-bold" data-biome="Deep North">Deep North</button>
+            </div>
+        </div>
+
+        <main>
+            <div id="table-view" class="card p-2 rounded-lg shadow-md overflow-x-auto">
+                 <table id="data-table" class="w-full text-left">
+                    <thead id="table-head" class="valheim-title text-lg border-b-2 border-[#4A3F35]">
+                    </thead>
+                    <tbody id="table-body">
+                    </tbody>
+                </table>
+            </div>
+            <div id="card-view" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 hidden">
+            </div>
+        </main>
+        
+        <section class="mt-12 card p-6">
+             <h2 class="text-3xl md:text-4xl valheim-title text-center mb-6">Important Notes</h2>
+             <div class="text-center max-w-3xl mx-auto text-gray-700 space-y-4">
+                <p>This guide helps you find the right bait for the right fish. To get started, you must first find the trader Haldor in the Black Forest to purchase your first Fishing Rod and some basic Fishing Bait.</p>
+                <div class="p-4 bg-amber-100/50 border-l-4 border-amber-500 text-amber-800 rounded-r-lg">
+                    <h3 class="font-bold text-lg mb-2">Crafting Bait</h3>
+                    <p>All craftable bait recipes yield <span class="font-bold">20 bait</span> and require <span class="font-bold">1x Raw Fish</span> in addition to the unique ingredient listed on the card.</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const baitData = [
+            { bait: "Cold Bait", ingredient: "1x Fenring Trophy", fish: "Tetra", biomes: ["Mountains"] },
+            { bait: "Fishing Bait", ingredient: "Purchased from Haldor", fish: "Perch, Pike", biomes: ["Meadows", "Black Forest"] },
+            { bait: "Frosty Bait", ingredient: "1x Drake Trophy", fish: "Northern Salmon", biomes: ["Deep North"] },
+            { bait: "Heavy Bait", ingredient: "1x Serpent Trophy", fish: "Tuna, Coral Cod", biomes: ["Ocean"] },
+            { bait: "Hot Bait", ingredient: "1x Charred Warrior Trophy", fish: "Magmafish", biomes: ["Ashlands"] },
+            { bait: "Misty Bait", ingredient: "1x Lox Trophy", fish: "Pufferfish, Anglerfish", biomes: ["Ocean", "Mistlands"] },
+            { bait: "Mossy Bait", ingredient: "1x Troll Trophy", fish: "Trollfish", biomes: ["Black Forest"] },
+            { bait: "Sticky Bait", ingredient: "1x Abomination Trophy", fish: "Giant Herring", biomes: ["Swamp"] },
+            { bait: "Stingy Bait", ingredient: "1x Fuling Trophy", fish: "Grouper", biomes: ["Plains"] }
+        ];
+
+        const fishData = [];
+        baitData.forEach(baitItem => {
+            const fishes = baitItem.fish.split(', ');
+            fishes.forEach(fishName => {
+                fishData.push({
+                    fish: fishName.trim(),
+                    bait: baitItem.bait,
+                    ingredient: baitItem.ingredient,
+                    biomes: baitItem.biomes
+                });
+            });
+        });
+        
+        const biomeData = [];
+        baitData.forEach(baitItem => {
+            const fishes = baitItem.fish.split(', ');
+            baitItem.biomes.forEach(biome => {
+                fishes.forEach(fishName => {
+                     biomeData.push({
+                        biome: biome,
+                        fish: fishName.trim(),
+                        bait: baitItem.bait,
+                        ingredient: baitItem.ingredient
+                    });
+                });
+            });
+        });
+
+
+        let currentView = 'bait';
+        let currentLayout = 'table';
+        let selectedBiomes = [];
+        let currentSort = { key: 'bait', asc: true };
+
+        const tableView = document.getElementById('table-view');
+        const cardView = document.getElementById('card-view');
+        const tableHead = document.getElementById('table-head');
+        const tableBody = document.getElementById('table-body');
+        const filterButtons = document.querySelectorAll('#biome-filters button');
+        const layoutButtons = document.querySelectorAll('#layout-toggle button');
+        const viewButtons = document.querySelectorAll('#view-toggle button');
+
+        const render = () => {
+            let data;
+            if (currentView === 'bait') data = baitData;
+            else if (currentView === 'fish') data = fishData;
+            else data = biomeData;
+
+            const filteredData = selectedBiomes.length === 0
+                ? data
+                : data.filter(item => {
+                    if (currentView === 'biome') {
+                        return selectedBiomes.includes(item.biome);
+                    }
+                    return item.biomes.some(b => selectedBiomes.includes(b));
+                });
+
+            updateTableHeaders();
+            if (currentLayout === 'table') {
+                renderTable(filteredData);
+            } else {
+                renderCards(filteredData);
+            }
+        };
+
+        const updateTableHeaders = () => {
+            if (currentView === 'bait') {
+                tableHead.innerHTML = `<tr><th class="px-2 py-2" data-sort="bait">Bait</th><th class="px-2 py-2" data-sort="ingredient">Unique Ingredient</th><th class="px-2 py-2" data-sort="fish">Attracts</th><th class="px-2 py-2" data-sort="biomes">Biome(s)</th></tr>`;
+            } else if (currentView === 'fish') {
+                tableHead.innerHTML = `<tr><th class="px-2 py-2" data-sort="fish">Fish</th><th class="px-2 py-2" data-sort="bait">Required Bait</th><th class="px-2 py-2" data-sort="ingredient">Ingredient for Bait</th><th class="px-2 py-2" data-sort="biomes">Biome(s)</th></tr>`;
+            } else { // Biome view
+                tableHead.innerHTML = `<tr><th class="px-2 py-2" data-sort="biome">Biome</th><th class="px-2 py-2" data-sort="fish">Fish</th><th class="px-2 py-2" data-sort="bait">Bait</th><th class="px-2 py-2" data-sort="ingredient">Ingredient</th></tr>`;
+            }
+            document.querySelectorAll('#table-head th').forEach(header => header.addEventListener('click', handleSort));
+        };
+
+        const renderTable = (data) => {
+            tableBody.innerHTML = '';
+            const sortedData = [...data].sort((a, b) => {
+                const valA = a[currentSort.key];
+                const valB = b[currentSort.key];
+                const comparison = Array.isArray(valA) ? valA[0].localeCompare(valB[0]) : String(valA).localeCompare(String(valB));
+                return currentSort.asc ? comparison : -comparison;
+            });
+
+            if (sortedData.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-gray-500">No results for the selected biomes.</td></tr>`;
+                return;
+            }
+
+            sortedData.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-stone-300/50 hover:bg-amber-50/50 transition-colors text-base';
+                if (currentView === 'bait') {
+                    row.innerHTML = `<td class="px-2 py-3 font-bold valheim-title">${item.bait}</td><td class="px-2 py-3">${item.ingredient}</td><td class="px-2 py-3">${item.fish}</td><td class="px-2 py-3">${item.biomes.join(', ')}</td>`;
+                } else if (currentView === 'fish') {
+                     row.innerHTML = `<td class="px-2 py-3 font-bold valheim-title">${item.fish}</td><td class="px-2 py-3">${item.bait}</td><td class="px-2 py-3">${item.ingredient}</td><td class="px-2 py-3">${item.biomes.join(', ')}</td>`;
+                } else { // Biome view
+                    row.innerHTML = `<td class="px-2 py-3 font-bold valheim-title">${item.biome}</td><td class="px-2 py-3">${item.fish}</td><td class="px-2 py-3">${item.bait}</td><td class="px-2 py-3">${item.ingredient}</td>`;
+                }
+                tableBody.appendChild(row);
+            });
+        };
+
+        const renderCards = (data) => {
+            cardView.innerHTML = '';
+            if (data.length === 0) {
+                cardView.innerHTML = `<p class="text-center text-gray-500 md:col-span-2 xl:col-span-3">No results for the selected biomes.</p>`;
+                return;
+            }
+
+            if (currentView === 'biome') {
+                const groupedByBiome = data.reduce((acc, item) => {
+                    if (!acc[item.biome]) {
+                        acc[item.biome] = { biome: item.biome, items: [] };
+                    }
+                    acc[item.biome].items.push(item);
+                    return acc;
+                }, {});
+
+                Object.values(groupedByBiome).forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'card p-6 rounded-lg shadow-md flex flex-col';
+                    const detailsHtml = item.items.map(i => `<div class="mb-2"><strong>${i.fish}</strong><p class="text-sm text-gray-600">Bait: ${i.bait} <em>(${i.ingredient})</em></p></div>`).join('');
+                    card.innerHTML = `<h3 class="text-2xl font-bold valheim-title mb-2">${item.biome}</h3><div class="flex-grow">${detailsHtml}</div>`;
+                    cardView.appendChild(card);
+                });
+                return;
+            }
+
+            data.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'card p-6 rounded-lg shadow-md flex flex-col';
+                if (currentView === 'bait') {
+                    card.innerHTML = `<h3 class="text-2xl font-bold valheim-title mb-2">${item.bait}</h3><div class="mb-4"><p class="text-sm text-gray-600">Unique Ingredient:</p><p class="font-bold text-lg">${item.ingredient}</p></div><div class="mb-4 flex-grow"><p class="text-sm text-gray-600">Attracts:</p><p class="font-bold text-lg">${item.fish}</p></div><div><p class="text-sm text-gray-600">Found In:</p><div class="flex flex-wrap gap-2 mt-1">${item.biomes.map(biome => `<span class="bg-gray-200 text-gray-700 px-2 py-1 text-xs rounded-full">${biome}</span>`).join('')}</div></div>`;
+                } else if (currentView === 'fish') {
+                    card.innerHTML = `<h3 class="text-2xl font-bold valheim-title mb-2">${item.fish}</h3><div class="mb-4"><p class="text-sm text-gray-600">Required Bait:</p><p class="font-bold text-lg">${item.bait}</p></div><div class="mb-4 flex-grow"><p class="text-sm text-gray-600">Ingredient for Bait:</p><p class="font-bold text-lg">${item.ingredient}</p></div><div><p class="text-sm text-gray-600">Found In:</p><div class="flex flex-wrap gap-2 mt-1">${item.biomes.map(biome => `<span class="bg-gray-200 text-gray-700 px-2 py-1 text-xs rounded-full">${biome}</span>`).join('')}</div></div>`;
+                }
+                cardView.appendChild(card);
+            });
+        };
+
+        const handleSort = (e) => {
+            const sortKey = e.currentTarget.dataset.sort;
+            if (currentSort.key === sortKey) {
+                currentSort.asc = !currentSort.asc;
+            } else {
+                currentSort.key = sortKey;
+                currentSort.asc = true;
+            }
+            render();
+        };
+
+        filterButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const biome = button.dataset.biome;
+                const allButton = document.querySelector('button[data-biome="All"]');
+
+                if (biome === 'All') {
+                    selectedBiomes = [];
+                    filterButtons.forEach(btn => btn.classList.remove('active'));
+                    allButton.classList.add('active');
+                } else {
+                    allButton.classList.remove('active');
+                    const index = selectedBiomes.indexOf(biome);
+                    if (index > -1) {
+                        selectedBiomes.splice(index, 1);
+                        button.classList.remove('active');
+                    } else {
+                        selectedBiomes.push(biome);
+                        button.classList.add('active');
+                    }
+                    if (selectedBiomes.length === 0) {
+                        allButton.classList.add('active');
+                    }
+                }
+                render();
+            });
+        });
+
+        layoutButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                layoutButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                currentLayout = button.dataset.layout;
+                if (currentLayout === 'table') {
+                    tableView.classList.remove('hidden');
+                    cardView.classList.add('hidden');
+                } else {
+                    tableView.classList.add('hidden');
+                    cardView.classList.remove('hidden');
+                }
+                render();
+            });
+        });
+
+        viewButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                viewButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                currentView = button.dataset.view;
+                currentSort.key = currentView;
+                currentSort.asc = true;
+                render();
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            render();
+        });
+    </script>
+</body>
+</html>
