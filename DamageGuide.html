@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valheim AI Damage Calculator & Report</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Earthy Harmony -->
+    <!-- Application Structure Plan: A two-column SPA. The left column contains all user inputs (weapon, skill, target, scenario) for a clear, task-oriented flow. The right column is a dynamic dashboard that instantly displays the results (DPH, DPS, detailed breakdown, charts) of the calculation. This structure was chosen to separate controls from results, allowing users to easily experiment with "what-if" scenarios and see the impact of their choices in real-time, making the complex data from the report digestible and interactive. Gemini API features are integrated directly into this flow, with tactical advice appearing alongside the analysis and weapon suggestions available before choosing a weapon, enhancing the user's decision-making process. A new collapsible section below contains the full text report for users who want to deep-dive into the mechanics. -->
+    <!-- Visualization & Content Choices: Report data is used to populate JS objects. User inputs (sliders, dropdowns) trigger a central calculation function. Goal: Inform/Compare/Advise/Educate. Method: Key metrics (DPH/DPS) are in summary cards. A Chart.js bar chart visualizes damage types. Gemini API calls generate qualitative tactical advice and structured weapon suggestions. The full report is now included in an accordion section. Interaction: All outputs update instantly. Buttons with loading states trigger AI features. The report section is toggled via a click. Justification: This blend of quantitative calculation, qualitative AI advice, and in-depth reference material provides a complete, holistic tool for all levels of players. Library: Chart.js, Gemini API via fetch. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F3F0E9; /* Warm neutral background */
+            color: #4A4540;
+        }
+        .bg-primary { background-color: #E9E3D8; }
+        .bg-secondary { background-color: #D9D2C5; }
+        .bg-accent { background-color: #A98B73; }
+        .text-accent { color: #8C6A52; }
+        .border-accent { border-color: #A98B73; }
+        .slider-thumb::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #8C6A52;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        .slider-thumb::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #8C6A52;
+            cursor: pointer;
+            border-radius: 50%;
+            border: none;
+        }
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #A98B73;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #A98B73;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #8C6A52;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #report-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+        }
+        #report-content th, #report-content td {
+            border: 1px solid #A98B73;
+            padding: 0.75rem;
+            text-align: left;
+        }
+        #report-content th {
+            background-color: #D9D2C5;
+            font-weight: bold;
+        }
+        #report-content h3 {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #8C6A52;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid #D9D2C5;
+            padding-bottom: 0.5rem;
+        }
+         #report-content h4 {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #8C6A52;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+        #report-content p, #report-content li {
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+        #report-content ul {
+            list-style-type: disc;
+            padding-left: 2rem;
+        }
+        #report-content code {
+            background-color: #D9D2C5;
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        .report-toggle-icon {
+            transition: transform 0.3s ease;
+        }
+        .report-toggle.open .report-toggle-icon {
+            transform: rotate(90deg);
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-accent">Valheim AI Damage Calculator & Report</h1>
+            <p class="text-lg mt-2 text-gray-600">An interactive tool with AI insights and the complete damage mechanics report.</p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <aside class="lg:col-span-1 bg-primary p-6 rounded-2xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-6 text-accent border-b-2 border-accent pb-2">Combat Scenario</h2>
+                
+                <div class="space-y-6">
+                    <div>
+                        <label for="weapon-select" class="block text-lg font-semibold mb-2">Weapon</label>
+                        <select id="weapon-select" class="w-full p-3 bg-secondary rounded-lg border-2 border-transparent focus:border-accent focus:outline-none transition"></select>
+                    </div>
+
+                    <div>
+                        <label for="quality-slider" class="block text-lg font-semibold mb-2">Weapon Quality: <span id="quality-value" class="font-bold text-accent">1</span></label>
+                        <input id="quality-slider" type="range" min="1" max="4" value="1" class="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer slider-thumb">
+                    </div>
+
+                    <div>
+                        <label for="skill-slider" class="block text-lg font-semibold mb-2">Relevant Skill Level: <span id="skill-value" class="font-bold text-accent">0</span></label>
+                        <input id="skill-slider" type="range" min="0" max="100" value="0" class="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer slider-thumb">
+                    </div>
+
+                    <div>
+                        <label for="enemy-select" class="block text-lg font-semibold mb-2">Target</label>
+                        <select id="enemy-select" class="w-full p-3 bg-secondary rounded-lg border-2 border-transparent focus:border-accent focus:outline-none transition"></select>
+                    </div>
+
+                    <div>
+                        <label for="stars-slider" class="block text-lg font-semibold mb-2">Target Stars: <span id="stars-value" class="font-bold text-accent">0</span></label>
+                        <input id="stars-slider" type="range" min="0" max="2" value="0" class="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer slider-thumb">
+                    </div>
+                    
+                    <div class="pt-4 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-lg font-semibold">Backstab (Unaware)</span>
+                            <div class="relative inline-block w-14 align-middle select-none transition duration-200 ease-in">
+                                <input type="checkbox" name="backstab-toggle" id="backstab-toggle" class="toggle-checkbox absolute block w-7 h-7 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                                <label for="backstab-toggle" class="toggle-label block overflow-hidden h-7 rounded-full bg-gray-300 cursor-pointer"></label>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-lg font-semibold">Target Staggered</span>
+                            <div class="relative inline-block w-14 align-middle select-none transition duration-200 ease-in">
+                                <input type="checkbox" name="stagger-toggle" id="stagger-toggle" class="toggle-checkbox absolute block w-7 h-7 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                                <label for="stagger-toggle" class="toggle-label block overflow-hidden h-7 rounded-full bg-gray-300 cursor-pointer"></label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t-2 border-secondary">
+                         <button id="suggest-weapon-btn" class="w-full bg-accent text-white font-bold py-3 px-4 rounded-lg hover:bg-opacity-90 transition-all flex items-center justify-center">
+                            <span class="mr-2">✨ Suggest Optimal Weapon</span>
+                            <div id="suggest-loader" class="loader hidden"></div>
+                        </button>
+                        <div id="weapon-suggestion-output" class="mt-4 space-y-2"></div>
+                    </div>
+                </div>
+            </aside>
+
+            <section class="lg:col-span-2 bg-primary p-6 rounded-2xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-6 text-accent border-b-2 border-accent pb-2">Damage Analysis</h2>
+                <div class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-center">
+                        <div class="bg-secondary p-6 rounded-xl">
+                            <h3 class="text-lg font-semibold text-gray-600">Average Damage Per Hit (DPH)</h3>
+                            <p id="dph-output" class="text-5xl font-bold text-accent">0</p>
+                        </div>
+                        <div class="bg-secondary p-6 rounded-xl">
+                            <h3 class="text-lg font-semibold text-gray-600">Sustained Damage Per Second (DPS)</h3>
+                            <p id="dps-output" class="text-5xl font-bold text-accent">0.00</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="text-xl font-bold mb-2 text-accent">Damage Breakdown</h3>
+                        <p class="mb-4 text-gray-600">This section details how each damage type on your weapon is calculated against the target's resistances.</p>
+                        <div id="breakdown-output" class="bg-secondary p-4 rounded-xl space-y-2">
+                            <p class="text-gray-500">Select a scenario to see the breakdown.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="pt-4">
+                        <button id="generate-advice-btn" class="w-full bg-accent text-white font-bold py-3 px-4 rounded-lg hover:bg-opacity-90 transition-all flex items-center justify-center mb-4">
+                            <span class="mr-2">✨ Get AI Tactical Advice</span>
+                            <div id="advice-loader" class="loader hidden"></div>
+                        </button>
+                        <div id="tactical-advice-output" class="bg-secondary p-4 rounded-xl hidden"></div>
+                    </div>
+
+                    <div>
+                        <h3 class="text-xl font-bold mb-2 text-accent">Final Damage Comparison</h3>
+                         <p class="mb-4 text-gray-600">This chart visually compares the final damage dealt by each damage type.</p>
+                        <div class="chart-container bg-secondary p-4 rounded-xl">
+                            <canvas id="damageChart"></canvas>
+                        </div>
+                    </div>
+                     <div>
+                        <h3 class="text-xl font-bold mb-2 text-accent">Stamina Efficiency</h3>
+                        <p class="mb-4 text-gray-600">Understand your combat endurance with a base 100 stamina pool.</p>
+                        <div id="stamina-output" class="bg-secondary p-4 rounded-xl grid grid-cols-2 gap-4 text-center">
+                             <div>
+                                <h4 class="font-semibold text-gray-600">Cost Per Swing</h4>
+                                <p id="stamina-cost" class="text-3xl font-bold text-accent">0</p>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-600">Swings per 100 Stamina</h4>
+                                <p id="stamina-swings" class="text-3xl font-bold text-accent">∞</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <section class="mt-8">
+            <div id="report-toggle" class="report-toggle bg-primary p-4 rounded-2xl shadow-lg cursor-pointer flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-accent">Full Damage Calculation Report</h2>
+                <span class="text-3xl text-accent report-toggle-icon">&#9654;</span>
+            </div>
+            <div id="report-content" class="hidden bg-primary p-6 rounded-b-2xl shadow-lg -mt-2 prose max-w-none">
+                <h3>Section 1: The Foundational Principles of Damage Calculation in Valheim</h3>
+                <h4>1.1. Introduction to the Damage Pipeline</h4>
+                <p>The combat system in <em>Valheim</em> presents a deceptive simplicity. While players are given clear feedback through on-screen numbers, the underlying mechanics that generate these values are a complex interplay of multiple systems. Understanding this system is paramount for any Viking seeking to optimize their combat effectiveness, from selecting the appropriate weapon for a given biome to prioritizing skill development. The calculation of damage is not a single event but rather a sequential process, a "pipeline" through which a weapon's base potential is modified by a series of factors before being applied to a target.</p>
+                <p>This report will deconstruct this pipeline in its entirety. The analysis begins with the weapon's intrinsic attributes—its base damage values and types. This initial value is then scaled according to the wielder's proficiency, or skill level, in that weapon class. Subsequently, this skill-modified damage is subject to situational multipliers, such as those granted by attacking an unaware or staggered opponent. Finally, this calculated offensive value is filtered through the target's specific resistances, weaknesses, or immunities to the various damage types being applied. Only after every stage of this pipeline has been processed is the final damage value determined and inflicted upon the target. By examining each stage of this process with empirical data and mathematical formulation, it becomes possible to predict combat outcomes with a high degree of accuracy, transforming strategic planning from guesswork into a data-driven science.</p>
+                
+                <h4>1.2. The Grand Unified Damage Formula (Conceptual)</h4>
+                <p>To provide a clear framework for the detailed analysis that follows, the entire damage pipeline can be conceptualized as a single, comprehensive formula. This "Grand Unified Damage Formula" serves as a theoretical model that encapsulates all the interacting variables. While the game processes these calculations for each damage type on a weapon individually, the conceptual model for a single damage type is as follows:</p>
+                <p><code>D_final = (D_base * M_skill * M_situational) * M_resistance</code></p>
+                <p>For weapons that possess multiple damage types (e.g., Frostner, which deals Blunt, Frost, and Spirit damage), this calculation is performed for each damage type independently. The sum of the results for each type constitutes the total damage of the hit.</p>
+                <p><code>Total Damage = &Sigma; D_final</code></p>
+                
+                <h4>1.3. Damage Types: The Seven Pillars of Combat</h4>
+                <p><strong>Physical Damage Types:</strong></p>
+                <ul>
+                    <li><strong>Blunt:</strong> Primarily dealt by clubs, maces, and hammers. This damage type is exceptionally effective against creatures with rigid or skeletal structures.</li>
+                    <li><strong>Slash:</strong> The domain of swords and axes. It is a general-purpose damage type effective against unarmored and fleshy targets.</li>
+                    <li><strong>Pierce:</strong> Dealt by spears, atgeirs, bows, and pickaxes. This type is often effective against large, thick-skinned creatures and is the primary form of ranged physical damage.</li>
+                </ul>
+                <p><strong>Elemental Damage Types:</strong></p>
+                <ul>
+                    <li><strong>Fire:</strong> Applies a damage-over-time (DoT) effect known as 'Burning'.</li>
+                    <li><strong>Frost:</strong> Deals immediate damage and applies a 'Frost' debuff, which slows the target's movement and attack speed.</li>
+                    <li><strong>Poison:</strong> Applies a non-stacking damage-over-time effect.</li>
+                    <li><strong>Spirit:</strong> A unique damage type that applies a DoT effect primarily effective against the undead.</li>
+                    <li><strong>Lightning:</strong> A rare damage type that deals immediate damage. No creature in the game possesses a natural resistance to Lightning damage.</li>
+                </ul>
+                <p>A crucial element of the game's design is the asymmetry in how these damage types are distributed among enemy weaknesses and resistances. Analysis of creature statistics reveals a clear hierarchy of utility. Blunt damage is a frequent weakness, particularly for formidable "gatekeeper" enemies like Skeletons in the Black Forest and Blobs in the Swamp, positioning maces and clubs as vital tools for progression. Conversely, no creature in the game possesses a specific weakness to Slash damage. This design choice establishes slashing weapons like swords and axes as reliable, general-purpose armaments that are seldom resisted but are rarely the mathematically optimal choice for a specific threat. Pierce damage, while essential for ranged combat and effective against key targets like Trolls, is also one of the most commonly resisted physical types, particularly by bosses and heavily armored enemies. This deliberate imbalance incentivizes players to maintain a diverse arsenal and adapt their loadout to the specific challenges of each biome and enemy encounter, rather than relying on a single "best" weapon.</p>
+
+                <h3>Section 2: The Valheim Armory: An Empirical Compendium of Weapon Attributes</h3>
+                <h4>2.1. Methodology for Data Compilation</h4>
+                <p>The data presented herein represents a synthesis of information from multiple community-driven and datamined sources. Base damage values were primarily sourced from extensive weapon lists. Attack timings for primary combos and secondary attacks, along with base stamina costs, were derived from detailed frame-by-frame analysis and community testing data. Backstab multipliers were compiled from specific mechanical deep dives. All data has been cross-referenced to ensure accuracy and reflect the current state of the game, accounting for balance changes such as the adjustment of knife backstab multipliers from a 10x to a 6x bonus. The following table serves as the foundational dataset for all subsequent calculations in this report. Note that all damage and stamina values are base figures at Quality 1 and are subject to modification by skill level, as detailed in Section 3.</p>
+
+                <h4>2.2. Comprehensive Weapon Statistics Table</h4>
+                <div class="overflow-x-auto">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Weapon Name</th><th>Class</th><th>Base Damage (Quality 1)</th><th>Primary Combo Time (s)</th><th>Stamina (Primary)</th><th>Secondary Attack Time (s)</th><th>Stamina (Secondary)</th><th>Backstab Multiplier</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>CLUBS & MACES</strong></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>Club</td><td>Club</td><td>12 Blunt</td><td>2.46</td><td>15</td><td>N/A</td><td>N/A</td><td>3x</td></tr>
+                            <tr><td>Bronze Mace</td><td>Club</td><td>35 Blunt</td><td>2.46</td><td>15</td><td>1.72</td><td>30</td><td>3x</td></tr>
+                            <tr><td>Iron Mace</td><td>Club</td><td>55 Blunt</td><td>2.46</td><td>15</td><td>1.72</td><td>30</td><td>3x</td></tr>
+                            <tr><td>Porcupine</td><td>Club</td><td>50 Blunt, 45 Pierce</td><td>2.46</td><td>15</td><td>1.72</td><td>30</td><td>3x</td></tr>
+                            <tr><td>Frostner</td><td>Club</td><td>35 Blunt, 40 Frost, 20 Spirit</td><td>2.46</td><td>15</td><td>1.72</td><td>30</td><td>3x</td></tr>
+                            <tr><td><strong>TWO-HANDED CLUBS</strong></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>Stagbreaker</td><td>2H Club</td><td>20 Blunt, 5 Pierce</td><td>2.23</td><td>25</td><td>N/A</td><td>N/A</td><td>3x</td></tr>
+                            <tr><td>Iron Sledge</td><td>2H Club</td><td>55 Blunt</td><td>2.23</td><td>25</td><td>N/A</td><td>N/A</td><td>3x</td></tr>
+                            <tr><td>Demolisher</td><td>2H Club</td><td>140 Blunt</td><td>2.23</td><td>25</td><td>N/A</td><td>N/A</td><td>3x</td></tr>
+                            <tr><td><strong>SWORDS</strong></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>Bronze Sword</td><td>Sword</td><td>35 Slash</td><td>2.46</td><td>10</td><td>1.84</td><td>30</td><td>3x</td></tr>
+                            <tr><td>Iron Sword</td><td>Sword</td><td>55 Slash</td><td>2.46</td><td>10</td><td>1.84</td><td>30</td><td>3x</td></tr>
+                            <tr><td>Silver Sword</td><td>Sword</td><td>75 Slash, 30 Spirit</td><td>2.46</td><td>10</td><td>1.84</td><td>30</td><td>3x</td></tr>
+                            <tr><td>Blackmetal Sword</td><td>Sword</td><td>95 Slash</td><td>2.46</td><td>10</td><td>1.84</td><td>30</td><td>3x</td></tr>
+                            <tr><td>Mistwalker</td><td>Sword</td><td>75 Slash, 40 Spirit</td><td>2.46</td><td>10</td><td>1.84</td><td>30</td><td>3x</td></tr>
+                            <tr><td>Krom</td><td>2H Sword</td><td>150 Slash</td><td>2.74</td><td>20</td><td>1.72</td><td>40</td><td>3x</td></tr>
+                            <tr><td><strong>AXES</strong></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>Stone Axe</td><td>Axe</td><td>15 Slash</td><td>2.74</td><td>10</td><td>N/A</td><td>N/A</td><td>3x</td></tr>
+                            <tr><td>Flint Axe</td><td>Axe</td><td>20 Slash</td><td>2.74</td><td>10</td><td>N/A</td><td>N/A</td><td>3x</td></tr>
+                            <tr><td>Bronze Axe</td><td>Axe</td><td>40 Slash</td><td>2.74</td><td>10</td><td>N/A</td><td>N/A</td><td>3x</td></tr>
+                            <tr><td>Iron Axe</td><td>Axe</td><td>60 Slash</td><td>2.74</td><td>10</td><td>N/A</td><td>N/A</td><td>3x</td></tr>
+                            <tr><td>Blackmetal Axe</td><td>Axe</td><td>100 Slash</td><td>2.74</td><td>10</td><td>N/A</td><td>N/A</td><td>3x</td></tr>
+                            <tr><td>Jotun Bane</td><td>Axe</td><td>80 Slash, 40 Poison</td><td>2.74</td><td>10</td><td>N/A</td><td>N/A</td><td>3x</td></tr>
+                            <tr><td><strong>BATTLEAXES</strong></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>Battleaxe</td><td>Battleaxe</td><td>70 Slash</td><td>3.44</td><td>25</td><td>1.72</td><td>15</td><td>3x</td></tr>
+                            <tr><td>Crystal Battleaxe</td><td>Battleaxe</td><td>90 Slash, 30 Spirit</td><td>3.44</td><td>25</td><td>1.72</td><td>15</td><td>3x</td></tr>
+                            <tr><td><strong>KNIVES</strong></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>Flint Knife</td><td>Knife</td><td>5 Slash, 5 Pierce</td><td>2.04</td><td>5</td><td>1.72</td><td>40</td><td>6x</td></tr>
+                            <tr><td>Copper Knife</td><td>Knife</td><td>12 Slash, 12 Pierce</td><td>2.04</td><td>5</td><td>1.72</td><td>40</td><td>6x</td></tr>
+                            <tr><td>Abyssal Razor</td><td>Knife</td><td>20 Slash, 20 Pierce</td><td>2.04</td><td>5</td><td>1.72</td><td>40</td><td>6x</td></tr>
+                            <tr><td>Silver Knife</td><td>Knife</td><td>25 Slash, 25 Pierce, 12 Spirit</td><td>2.04</td><td>5</td><td>1.72</td><td>40</td><td>6x</td></tr>
+                            <tr><td>Blackmetal Knife</td><td>Knife</td><td>34 Slash, 34 Pierce</td><td>2.04</td><td>5</td><td>1.72</td><td>40</td><td>6x</td></tr>
+                            <tr><td>Skoll and Hati</td><td>Knife</td><td>45 Slash, 45 Pierce</td><td>2.04</td><td>5</td><td>1.72</td><td>40</td><td>6x</td></tr>
+                            <tr><td>Flesh Rippers</td><td>Fist</td><td>60 Slash</td><td>2.04</td><td>5</td><td>1.72</td><td>40</td><td>6x</td></tr>
+                            <tr><td><strong>SPEARS</strong></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>Flint Spear</td><td>Spear</td><td>20 Pierce</td><td>0.68</td><td>15</td><td>1.57</td><td>15</td><td>3x</td></tr>
+                            <tr><td>Bronze Spear</td><td>Spear</td><td>35 Pierce</td><td>0.68</td><td>15</td><td>1.57</td><td>15</td><td>3x</td></tr>
+                            <tr><td>Ancient Bark Spear</td><td>Spear</td><td>55 Pierce</td><td>0.68</td><td>15</td><td>1.57</td><td>15</td><td>3x</td></tr>
+                            <tr><td>Fang Spear</td><td>Spear</td><td>75 Pierce</td><td>0.68</td><td>15</td><td>1.57</td><td>15</td><td>3x</td></tr>
+                            <tr><td>Carapace Spear</td><td>Spear</td><td>108 Pierce</td><td>0.68</td><td>15</td><td>1.57</td><td>15</td><td>3x</td></tr>
+                            <tr><td><strong>POLEARMS (ATGEIRS)</strong></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>Bronze Atgeir</td><td>Polearm</td><td>45 Pierce</td><td>2.98</td><td>20</td><td>1.74</td><td>35</td><td>3x</td></tr>
+                            <tr><td>Iron Atgeir</td><td>Polearm</td><td>65 Pierce</td><td>2.98</td><td>20</td><td>1.74</td><td>35</td><td>3x</td></tr>
+                            <tr><td>Blackmetal Atgeir</td><td>Polearm</td><td>105 Pierce</td><td>2.98</td><td>20</td><td>1.74</td><td>35</td><td>3x</td></tr>
+                            <tr><td>Himmin Afl</td><td>Polearm</td><td>85 Pierce, 40 Lightning</td><td>2.98</td><td>20</td><td>1.74</td><td>35</td><td>3x</td></tr>
+                            <tr><td><strong>BOWS</strong></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>Crude Bow</td><td>Bow</td><td>22 Pierce</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>3x</td></tr>
+                            <tr><td>Finewood Bow</td><td>Bow</td><td>32 Pierce</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>3x</td></tr>
+                            <tr><td>Huntsman Bow</td><td>Bow</td><td>42 Pierce</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>3x</td></tr>
+                            <tr><td>Draugr Fang</td><td>Bow</td><td>47 Pierce, 5 Poison</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>3x</td></tr>
+                            <tr><td>Spine Snap</td><td>Bow</td><td>62 Pierce</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>3x</td></tr>
+                            <tr><td><strong>CROSSBOWS</strong></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>Arbalest</td><td>Crossbow</td><td>200 Pierce</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>3x</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h4>2.3. Analysis of Weapon Archetypes</h4>
+                <p>The statistical data reveals distinct design philosophies behind each weapon archetype, balancing raw damage output against resource efficiency and tactical utility. A critical metric that emerges from this data is Stamina-per-Damage (SpD), calculated as the base stamina cost divided by the total base damage. This ratio quantifies the efficiency of a weapon, revealing a hidden layer of balance that extends beyond simple Damage Per Second (DPS).</p>
+                <p>For example, a comparison between the Iron Mace and the Iron Sword, both prominent mid-game weapons, is illustrative. The Iron Mace has a base damage of 55 and a primary stamina cost of 15, yielding an SpD of 15 / 55 &approx; 0.27. The Iron Sword also has a base damage of 55 but a lower stamina cost of 10, resulting in a more efficient SpD of 10 / 55 &approx; 0.18. This indicates that while both weapons may have similar DPS in short bursts, the sword allows for a greater number of attacks before exhausting the player's stamina pool, making it superior for sustained combat against single targets where Blunt damage is not a specific weakness.</p>
+                <p>This principle extends across archetypes. Knives exhibit the lowest SpD, with a base stamina cost of 5, making them the most efficient weapons for sustained, rapid attacks, though their low base damage and short range are significant trade-offs. Conversely, two-handed weapons like the Iron Sledge or Battleaxe have the highest SpD values. Their high stamina costs are a direct trade-off for their significant area-of-effect (AoE) crowd control capabilities and high stagger potential. This balance ensures that no single weapon is universally superior; instead, the optimal choice is dictated by the specific combat scenario. A high-DPS, high-SpD weapon like the Iron Sledge is ideal for clearing crypts filled with multiple weak enemies, while a lower-DPS, low-SpD weapon like a knife or sword is better suited for a prolonged duel with a single, durable foe. This design forces players to consider not just how much damage they can deal, but how long they can sustain that damage output within the constraints of their stamina.</p>
+
+                <h3>Section 3: The Skill of the Viking: Quantifying the Impact of Proficiency</h3>
+                <h4>3.1. The Damage Scaling Formula</h4>
+                <p>The average damage multiplier (M_avg) at a given skill level (S) can be calculated as follows:</p>
+                <p>For S &lt; 75: <code>M_avg = 0.4 * (1 + (S * 0.015))</code></p>
+                <p>For S &ge; 75: <code>M_avg = 0.4 * (1 + (75 * 0.015) + ((S - 75) * 0.0075))</code></p>
+                <p>The actual damage dealt on any given hit (D_actual) is then a randomized value within a range determined by this skill level, applied to the weapon's base damage (D_base). The average damage of many hits will converge on this value: <code>D_average = D_base * M_avg</code></p>
+                
+                <h4>3.2. Minimum vs. Maximum Damage: The Consistency Curve</h4>
+                <p>The damage scaling formula reveals a second, more nuanced mechanic: the relationship between minimum and maximum damage. While both ends of the damage range increase with skill, they do so at different rates. A key finding is that a weapon's <em>maximum</em> possible damage reaches 100% of its listed base value precisely at skill level 75 and does not increase further. From level 75 to 100, only the <em>minimum</em> damage continues to increase.</p>
+                <p>This has profound strategic implications. Many players might perceive the effort to level a skill from 75 to 100 as offering diminishing returns, as the average damage only increases by a small margin and the maximum damage is already capped. However, this perspective overlooks the tactical value of consistency. In a game governed by discrete health pools and stagger thresholds, the ability to reliably deal a certain amount of damage is a powerful offensive advantage.</p>
+                
+                <h4>3.3. The Stamina Reduction Formula</h4>
+                <p>The formula for the final stamina cost (C_final) based on the base cost (C_base) and skill level (S) is:</p>
+                <p><code>C_final = C_base * (1 - (S / 300))</code></p>
+                <p>This equates to a reduction of approximately 0.33% per skill level. This consistent and significant reduction in stamina consumption is a powerful incentive for skill development. It directly increases a player's sustained damage output, allowing for longer attack combos, more frequent use of powerful secondary attacks, and leaving a larger stamina reserve for essential defensive maneuvers like blocking, parrying, and dodging. This linear scaling makes every point of skill valuable for improving a player's overall combat viability.</p>
+
+                <h3>Section 4: Know Thine Enemy: A Taxonomy of Creature Resistances and Weaknesses</h3>
+                <h4>4.1. The Resistance Multiplier System</h4>
+                <p>Damage numbers are color-coded: yellow for weakness (1.5x or 2.0x damage), dark gray for resistance (0.5x or 0.25x damage), and white for neutral (1.0x damage).</p>
+                
+                <h4>4.2. Comprehensive Creature Resistance & Weakness Compendium</h4>
+                <div class="overflow-x-auto">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Creature</th><th>Blunt</th><th>Slash</th><th>Pierce</th><th>Fire</th><th>Frost</th><th>Poison</th><th>Spirit</th><th>Lightning</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>MEADOWS</strong></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>Boar</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td></tr>
+                            <tr><td>Deer</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td></tr>
+                            <tr><td>Greyling</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.5</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td></tr>
+                            <tr><td>Neck</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.5</td><td>1.0</td><td>0.5</td><td>0.0</td><td>1.0</td></tr>
+                            <tr><td>Eikthyr (Boss)</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td></tr>
+                            <tr><td><strong>BLACK FOREST</strong></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>Greydwarf</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.5</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td></tr>
+                            <tr><td>Greydwarf Brute</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.5</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td></tr>
+                            <tr><td>Greydwarf Shaman</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.5</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td></tr>
+                            <tr><td>Skeleton</td><td>1.5</td><td>1.0</td><td>0.5</td><td>1.5</td><td>0.5</td><td>0.0</td><td>1.0</td><td>1.0</td></tr>
+                            <tr><td>Ghost</td><td>0.5</td><td>0.5</td><td>0.5</td><td>1.0</td><td>1.0</td><td>0.0</td><td>1.5</td><td>1.0</td></tr>
+                            <tr><td>Troll</td><td>0.5</td><td>1.0</td><td>1.5</td><td>1.0</td><td>1.0</td><td>1.0</td><td>0.0</td><td>1.0</td></tr>
+                            <tr><td>The Elder (Boss)</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.5</td><td>1.0</td><td>0.0</td><td>0.0</td><td>1.0</td></tr>
+                            <tr><td><strong>SWAMP</strong></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>Blob</td><td>1.5</td><td>0.5</td><td>0.5</td><td>0.5</td><td>1.5</td><td>0.0</td><td>1.0</td><td>1.5</td></tr>
+                            <tr><td>Oozer</td><td>1.5</td><td>0.5</td><td>0.5</td><td>0.5</td><td>1.5</td><td>0.0</td><td>1.0</td><td>1.5</td></tr>
+                            <tr><td>Draugr</td><td>1.0</td><td>1.0</td><td>1.0</td><td>0.5</td><td>1.0</td><td>0.0</td><td>1.0</td><td>1.0</td></tr>
+                            <tr><td>Draugr Elite</td><td>1.0</td><td>1.0</td><td>1.0</td><td>0.5</td><td>1.0</td><td>0.0</td><td>1.0</td><td>1.0</td></tr>
+                            <tr><td>Leech</td><td>1.0</td><td>1.0</td><td>1.0</td><td>0.0</td><td>1.0</td><td>0.5</td><td>0.0</td><td>1.0</td></tr>
+                            <tr><td>Surtling</td><td>1.0</td><td>1.0</td><td>1.0</td><td>0.0</td><td>1.5</td><td>0.0</td><td>0.0</td><td>1.0</td></tr>
+                            <tr><td>Wraith</td><td>0.5</td><td>0.5</td><td>0.5</td><td>1.5</td><td>0.0</td><td>0.0</td><td>1.5</td><td>1.0</td></tr>
+                            <tr><td>Abomination</td><td>1.0</td><td>1.0</td><td>0.5</td><td>1.5</td><td>0.0</td><td>1.0</td><td>1.0</td><td>1.0</td></tr>
+                            <tr><td>Bonemass (Boss)</td><td>1.5</td><td>0.5</td><td>0.5</td><td>0.5</td><td>1.5</td><td>0.0</td><td>1.0</td><td>1.0</td></tr>
+                            <tr><td><strong>MOUNTAINS</strong></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>Wolf</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>0.0</td><td>1.0</td></tr>
+                            <tr><td>Fenring</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.5</td><td>1.0</td><td>0.5</td><td>1.0</td><td>1.0</td></tr>
+                            <tr><td>Drake</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.5</td><td>0.0</td><td>1.0</td><td>0.0</td><td>1.0</td></tr>
+                            <tr><td>Stone Golem</td><td>1.0</td><td>0.5</td><td>0.5</td><td>0.0</td><td>0.0</td><td>0.0</td><td>0.0</td><td>1.0</td></tr>
+                            <tr><td>Bat</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td></tr>
+                            <tr><td>Cultist</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.5</td><td>1.0</td></tr>
+                            <tr><td>Moder (Boss)</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.5</td><td>0.0</td><td>1.0</td><td>0.0</td><td>1.0</td></tr>
+                            <tr><td><strong>PLAINS</strong></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>Deathsquito</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>0.0</td><td>1.0</td></tr>
+                            <tr><td>Fuling</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>0.0</td><td>1.0</td></tr>
+                            <tr><td>Fuling Berserker</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>0.0</td><td>1.0</td></tr>
+                            <tr><td>Fuling Shaman</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>0.0</td><td>1.0</td></tr>
+                            <tr><td>Lox</td><td>0.5</td><td>0.5</td><td>1.0</td><td>1.5</td><td>0.5</td><td>1.0</td><td>0.0</td><td>1.0</td></tr>
+                            <tr><td>Yagluth (Boss)</td><td>1.0</td><td>1.0</td><td>0.5</td><td>0.5</td><td>1.0</td><td>0.0</td><td>1.0</td><td>1.0</td></tr>
+                            <tr><td><strong>MISTLANDS</strong></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>Seeker</td><td>0.5</td><td>0.5</td><td>0.5</td><td>1.0</td><td>1.0</td><td>1.0</td><td>0.0</td><td>1.0</td></tr>
+                            <tr><td>Seeker Soldier</td><td>0.5</td><td>0.5</td><td>0.5</td><td>1.0</td><td>1.0</td><td>1.0</td><td>0.0</td><td>1.0</td></tr>
+                            <tr><td>Gjall</td><td>1.0</td><td>1.0</td><td>1.0</td><td>0.5</td><td>1.0</td><td>1.0</td><td>0.0</td><td>1.0</td></tr>
+                            <tr><td>Tick</td><td>1.0</td><td>1.0</td><td>1.5</td><td>1.0</td><td>1.0</td><td>1.0</td><td>0.0</td><td>1.0</td></tr>
+                            <tr><td>The Queen (Boss)</td><td>1.0</td><td>1.0</td><td>0.5</td><td>1.0</td><td>1.0</td><td>1.0</td><td>0.0</td><td>1.0</td></tr>
+                            <tr><td><strong>OCEAN</strong></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>Serpent</td><td>1.0</td><td>1.0</td><td>1.0</td><td>0.0</td><td>1.5</td><td>0.5</td><td>0.0</td><td>1.0</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h4>4.3. Strategic Implications of Resistance Profiles</h4>
+                <p>The data within the compendium reveals clear patterns in creature defenses that define the combat meta of each biome. The Swamp, for instance, is characterized by creatures overwhelmingly resistant or immune to Poison, while simultaneously being weak to Blunt and/or Frost damage (e.g., Blobs, Oozers, Bonemass). This heavily incentivizes the crafting and use of the Iron Mace and, later, Frostner, effectively making Blunt damage a prerequisite for efficient progression through this biome. Similarly, the Mountains feature creatures like Drakes that are immune to Frost but weak to Fire, necessitating a shift to Fire Arrows for ranged combat. The Mistlands introduces the Seeker, a common enemy resistant to all three physical damage types, which encourages players to adopt weapons with elemental damage components to bypass these defenses. These biome-specific trends underscore the central design philosophy of <em>Valheim's</em> combat: progression is tied not just to acquiring materials for stronger weapons, but to acquiring the <em>correct type</em> of weapon for the challenges ahead.</p>
+
+                <h3>Section 5: Tactical Advantage: The Mechanics of Situational Damage Multipliers</h3>
+                <h4>5.1. The Stagger State</h4>
+                <p>The stagger mechanic is a cornerstone of melee combat. A creature enters a staggered state when it takes an amount of damage in a short period that exceeds its internal stagger limit, or when it is successfully parried. Once staggered, the creature is briefly incapacitated and becomes highly vulnerable. During this staggered state, the creature receives double damage from <em>all</em> subsequent sources for the duration of the stagger animation. This is a universal multiplier of 2.0. Critically, this bonus is not limited to physical attacks; it applies equally to all forms of elemental damage, including the initial application of damage-over-time effects like Fire and Poison. A successful parry, therefore, not only negates incoming damage and creates a defensive opening but also initiates a window of opportunity for immense offensive output. This 2.0x multiplier is a key component of the M_situational variable in the damage formula and is fundamental to the combat loop of parrying followed by a high-damage counter-attack.</p>
+                
+                <h4>5.2. The Backstab (Unaware Bonus)</h4>
+                <p>The "backstab" mechanic is a powerful tool for stealth-oriented gameplay, allowing for massive initial damage against unsuspecting targets. The term is a misnomer, as the bonus is granted for attacking any enemy that is not yet aware of the player's presence, regardless of the angle of attack. An enemy's awareness is indicated by the icon above its head; a flat line indicates it is unaware and vulnerable to a backstab, while a peaked line or a red exclamation mark signifies it is alerted and the bonus cannot be applied. After a creature is successfully backstabbed, it gains an immunity to further backstabs for five minutes.</p>
+                <p>The damage multiplier for a backstab varies by weapon archetype. Knives and Fist weapons receive a massive 6x damage multiplier, while most other weapons receive a 3x damage multiplier. This bonus multiplies the entire pre-resistance damage of the attack, compounding with any inherent multipliers from a weapon's secondary attack. For instance, a knife's secondary lunge attack has its own damage multiplier (typically 3x the base damage). When this lunge is used as a backstab, the multipliers are compounded: <code>D_pre-resistance = (D_base * M_secondary) * M_backstab</code>. For a knife lunge, this would be (D_base * 3) * 6, resulting in an 18x total multiplier on the weapon's base damage. This multiplicative interaction is what allows for the highest single instances of damage in the game and defines a distinct "alpha strike" playstyle.</p>
+
+                <h3>Section 6: Lingering Wounds: A Deep Dive into Damage Over Time (DoT) Mechanics</h3>
+                <h4>6.1. Fire and Spirit Damage: The Stacking DoTs</h4>
+                <p>Fire and Spirit damage both function as stacking DoTs. When an attack with one of these damage types connects, it applies a debuff that inflicts the total elemental damage value over a fixed duration. The crucial mechanic for these types is how they stack. When a second application of Fire or Spirit damage hits a target already affected by the same debuff, the new damage does not simply override the old one. Instead, the total damage value of the new application is added to the <em>remaining</em> damage of the existing debuff. The game then recalculates a new, higher damage-per-tick over a refreshed, full duration. The formula is: <code>D_DoT_new = D_remaining_old + D_total_new</code>. This mechanic heavily rewards rapid, successive attacks with Fire or Spirit weapons, leading to an exponential ramp-up in damage per tick.</p>
+
+                <h4>6.2. Poison Damage: The Non-Stacking DoT</h4>
+                <p>Poison damage operates under a fundamentally different and more restrictive ruleset. Poison from player attacks does not stack. When a target already suffering from a poison DoT is struck with another poison attack, the new application does not add to the existing one. Instead, the game performs a comparison: if the total potential damage of the new poison application is greater than the total <em>remaining</em> damage of the current debuff, the old debuff is completely replaced by the new one, with a fresh duration. If the new application is weaker, it has no effect. The duration of the poison DoT is not fixed; it scales with the magnitude of the poison damage applied. Because of the non-stacking nature, repeatedly striking a target with poison attacks before the previous DoT has expired results in a significant loss of potential damage.</p>
+
+                <h4>6.3. The Draugr Fang Conundrum: Bow Poison + Arrow Poison</h4>
+                <p>A specific and important interaction occurs with the Draugr Fang bow, which has innate poison damage, when it is used to fire Poison Arrows. The poison damage from the bow and the poison damage from the arrow are combined into a single, more potent poison application on the initial hit. This initial combination is powerful, but this combined DoT still adheres to the fundamental non-stacking rule of poison. Firing a second Poison Arrow from a Draugr Fang will simply replace the existing, powerful DoT, wasting any remaining damage from the first shot. This leads to the "Poison DPS Fallacy." The most effective strategy is to apply a single Poison Arrow, then immediately switch to a high direct-damage arrow (like Needle or Obsidian) for the 6-7 second duration of the poison DoT before reapplying a single Poison Arrow to refresh the effect. This counter-intuitive rotation is the mathematically superior method for maximizing damage output with poison-based archery.</p>
+
+                <h3>Section 7: Synthesis and Application: Calculating True DPH and DPS</h3>
+                <h4>7.1. Calculating Damage Per Hit (DPH): A Case Study</h4>
+                <p><strong>Scenario:</strong> A player with a Swords skill of 60 wields a Quality 1 Blackmetal Sword against a 1-star Fuling.
+                <br>1. <strong>Base Damage:</strong> 95 Slash.
+                <br>2. <strong>Skill Multiplier (S=60):</strong> <code>0.4 * (1 + (60 * 0.015)) = 0.76</code>
+                <br>3. <strong>Average Pre-Resistance Damage:</strong> <code>95 * 0.76 = 72.2</code>
+                <br>4. <strong>Resistance Multiplier (Fuling vs Slash):</strong> 1.0 (Neutral).
+                <br>5. <strong>Final Average DPH:</strong> <code>72.2 * 1.0 = 72.2</code>
+                </p>
+
+                <h4>7.2. Calculating Sustained Damage Per Second (DPS): A Case Study</h4>
+                <p><strong>Scenario:</strong> A player with skill 60 in Clubs and Swords compares a Quality 4 Iron Mace vs. a Quality 4 Iron Sword against Bonemass. (Q4 adds +18 base damage).
+                <br><strong>Iron Mace:</strong>
+                <br>1. <strong>Base Damage:</strong> 55 + 18 = 73 Blunt.
+                <br>2. <strong>Skill-Modified Damage:</strong> <code>73 * 0.76 = 55.48</code>
+                <br>3. <strong>Apply Resistance (Bonemass vs Blunt):</strong> <code>55.48 * 1.5 = 83.22</code>
+                <br>4. <strong>Calculate DPS (3-hit combo, 2.46s, 3rd hit 2x dmg):</strong> <code>(83.22 + 83.22 + (83.22 * 2)) / 2.46 &approx; 135.32 DPS</code>
+                <br><strong>Iron Sword:</strong>
+                <br>1. <strong>Base Damage:</strong> 55 + 18 = 73 Slash.
+                <br>2. <strong>Skill-Modified Damage:</strong> <code>73 * 0.76 = 55.48</code>
+                <br>3. <strong>Apply Resistance (Bonemass vs Slash):</strong> <code>55.48 * 0.5 = 27.74</code>
+                <br>4. <strong>Calculate DPS:</strong> <code>(27.74 + 27.74 + (27.74 * 2)) / 2.46 &approx; 45.11 DPS</code>
+                <br><strong>Conclusion:</strong> The Iron Mace is nearly three times more effective in this specific encounter.</p>
+
+                <h4>7.3. Calculating Maximum Potential Damage: The Alpha Strike Case Study</h4>
+                <p><strong>Scenario:</strong> A player with Knives skill 75 performs a secondary attack (lunge) from stealth with a Q4 Blackmetal Knife against an unaware Lox.
+                <br>1. <strong>Base Damage (Q4):</strong> 43 Slash, 43 Pierce.
+                <br>2. <strong>Skill-Modified Damage (S=75):</strong> Max damage = 100% of base, so 43 of each type.
+                <br>3. <strong>Situational Multipliers:</strong> Lunge (3x) * Backstab (6x) = 18x total multiplier.
+                <br>4. <strong>Pre-Resistance Damage:</strong> Slash: <code>43 * 18 = 774</code>, Pierce: <code>43 * 18 = 774</code>.
+                <br>5. <strong>Apply Resistance (Lox):</strong> Slash (0.5x), Pierce (1.0x). Final Slash: <code>774 * 0.5 = 387</code>. Final Pierce: <code>774 * 1.0 = 774</code>.
+                <br>6. <strong>Total Max Damage:</strong> <code>387 + 774 = 1161</code>.
+                <br><strong>Conclusion:</strong> A single, perfectly executed backstab lunge can deal 1161 damage, potentially one-shotting the Lox.</p>
+
+                <h3>Section 8: Conclusion: Strategic Implications and Optimization Pathways</h3>
+                <h4>8.1. The Optimal Weapon is Situational</h4>
+                <p>The data unequivocally refutes the notion of a single "best" weapon or damage type. The intricate system of creature resistances and weaknesses is the primary balancing factor, creating a "rock-paper-scissors" dynamic where combat effectiveness is dictated by preparation and adaptation. True combat mastery in <em>Valheim</em> is not achieved by finding one perfect weapon, but by understanding the tactical requirements of each encounter and deploying the appropriate tool for the task.</p>
+                
+                <h4>8.2. Skill Investment Strategy</h4>
+                <p>The non-linear scaling of weapon skills presents players with clear strategic goals. The primary objective for any weapon specialization should be to reach skill level 75. This threshold represents a critical "soft cap" where a weapon's maximum potential damage is unlocked. The investment beyond level 75, while offering a smaller increase in average DPS, should not be dismissed. The primary benefit of leveling from 75 to 100 is the increase in minimum damage, which translates directly to combat consistency, allowing players to reliably meet enemy stagger and kill thresholds.</p>
+                
+                <h4>8.3. The Duality of DPS: Sustained vs. Burst</h4>
+                <p>This analysis identifies two distinct and equally valid doctrines for approaching combat: sustained DPS and alpha strike DPH. Sustained DPS is paramount in prolonged engagements, maximized by weapons with high stamina efficiency and a damage type that exploits the target's weakness. Alpha Strike DPH prioritizes eliminating high-value targets with a single, overwhelming blow from stealth, a domain where the knife archetype is unparalleled.</p>
+                
+                <h4>8.4. Avenues for Further Research</h4>
+                <p>While this report provides a comprehensive model based on available data, certain areas of the game's mechanics warrant further investigation. The precise formula governing a creature's stagger limit remains an area for more detailed empirical testing. A quantitative analysis of how weapon knockback interacts with different enemy mass values could yield deeper insights into crowd control strategies. Finally, as the game continues to evolve with new biomes, the introduction of new creatures and weapon types will necessitate an expansion of this framework.</p>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const weaponData = {
+            "Club": { class: "Clubs", damage: { "Blunt": 12 }, comboTime: 2.46, stamina: 15, backstab: 3 },
+            "Bronze Mace": { class: "Clubs", damage: { "Blunt": 35 }, comboTime: 2.46, stamina: 15, backstab: 3 },
+            "Iron Mace": { class: "Clubs", damage: { "Blunt": 55 }, comboTime: 2.46, stamina: 15, backstab: 3 },
+            "Porcupine": { class: "Clubs", damage: { "Blunt": 50, "Pierce": 45 }, comboTime: 2.46, stamina: 15, backstab: 3 },
+            "Frostner": { class: "Clubs", damage: { "Blunt": 35, "Frost": 40, "Spirit": 20 }, comboTime: 2.46, stamina: 15, backstab: 3 },
+            "Stagbreaker": { class: "Two-handed Clubs", damage: { "Blunt": 20, "Pierce": 5 }, comboTime: 2.23, stamina: 25, backstab: 3 },
+            "Iron Sledge": { class: "Two-handed Clubs", damage: { "Blunt": 55 }, comboTime: 2.23, stamina: 25, backstab: 3 },
+            "Demolisher": { class: "Two-handed Clubs", damage: { "Blunt": 140 }, comboTime: 2.23, stamina: 25, backstab: 3 },
+            "Bronze Sword": { class: "Swords", damage: { "Slash": 35 }, comboTime: 2.46, stamina: 10, backstab: 3 },
+            "Iron Sword": { class: "Swords", damage: { "Slash": 55 }, comboTime: 2.46, stamina: 10, backstab: 3 },
+            "Silver Sword": { class: "Swords", damage: { "Slash": 75, "Spirit": 30 }, comboTime: 2.46, stamina: 10, backstab: 3 },
+            "Blackmetal Sword": { class: "Swords", damage: { "Slash": 95 }, comboTime: 2.46, stamina: 10, backstab: 3 },
+            "Mistwalker": { class: "Swords", damage: { "Slash": 75, "Frost": 40 }, comboTime: 2.46, stamina: 10, backstab: 3 },
+            "Krom": { class: "Two-handed Swords", damage: { "Slash": 150 }, comboTime: 2.74, stamina: 20, backstab: 3 },
+            "Stone Axe": { class: "Axes", damage: { "Slash": 15 }, comboTime: 2.74, stamina: 10, backstab: 3 },
+            "Flint Axe": { class: "Axes", damage: { "Slash": 20 }, comboTime: 2.74, stamina: 10, backstab: 3 },
+            "Bronze Axe": { class: "Axes", damage: { "Slash": 40 }, comboTime: 2.74, stamina: 10, backstab: 3 },
+            "Iron Axe": { class: "Axes", damage: { "Slash": 60 }, comboTime: 2.74, stamina: 10, backstab: 3 },
+            "Blackmetal Axe": { class: "Axes", damage: { "Slash": 100 }, comboTime: 2.74, stamina: 10, backstab: 3 },
+            "Jotun Bane": { class: "Axes", damage: { "Slash": 80, "Poison": 40 }, comboTime: 2.74, stamina: 10, backstab: 3 },
+            "Battleaxe": { class: "Battleaxes", damage: { "Slash": 70 }, comboTime: 3.44, stamina: 25, backstab: 3 },
+            "Crystal Battleaxe": { class: "Battleaxes", damage: { "Slash": 90, "Spirit": 30 }, comboTime: 3.44, stamina: 25, backstab: 3 },
+            "Flint Knife": { class: "Knives", damage: { "Slash": 5, "Pierce": 5 }, comboTime: 2.04, stamina: 5, backstab: 6 },
+            "Copper Knife": { class: "Knives", damage: { "Slash": 12, "Pierce": 12 }, comboTime: 2.04, stamina: 5, backstab: 6 },
+            "Abyssal Razor": { class: "Knives", damage: { "Slash": 20, "Pierce": 20 }, comboTime: 2.04, stamina: 5, backstab: 6 },
+            "Silver Knife": { class: "Knives", damage: { "Slash": 25, "Pierce": 25, "Spirit": 12 }, comboTime: 2.04, stamina: 5, backstab: 6 },
+            "Blackmetal Knife": { class: "Knives", damage: { "Slash": 34, "Pierce": 34 }, comboTime: 2.04, stamina: 5, backstab: 6 },
+            "Skoll and Hati": { class: "Knives", damage: { "Slash": 45, "Pierce": 45 }, comboTime: 2.04, stamina: 5, backstab: 6 },
+            "Flesh Rippers": { class: "Fists", damage: { "Slash": 60 }, comboTime: 2.04, stamina: 5, backstab: 6 },
+            "Flint Spear": { class: "Spears", damage: { "Pierce": 20 }, comboTime: 0.68, stamina: 15, backstab: 3 },
+            "Bronze Spear": { class: "Spears", damage: { "Pierce": 35 }, comboTime: 0.68, stamina: 15, backstab: 3 },
+            "Ancient Bark Spear": { class: "Spears", damage: { "Pierce": 55 }, comboTime: 0.68, stamina: 15, backstab: 3 },
+            "Fang Spear": { class: "Spears", damage: { "Pierce": 75 }, comboTime: 0.68, stamina: 15, backstab: 3 },
+            "Carapace Spear": { class: "Spears", damage: { "Pierce": 108 }, comboTime: 0.68, stamina: 15, backstab: 3 },
+            "Bronze Atgeir": { class: "Polearms", damage: { "Pierce": 45 }, comboTime: 2.98, stamina: 20, backstab: 3 },
+            "Iron Atgeir": { class: "Polearms", damage: { "Pierce": 65 }, comboTime: 2.98, stamina: 20, backstab: 3 },
+            "Blackmetal Atgeir": { class: "Polearms", damage: { "Pierce": 105 }, comboTime: 2.98, stamina: 20, backstab: 3 },
+            "Himmin Afl": { class: "Polearms", damage: { "Pierce": 85, "Lightning": 40 }, comboTime: 2.98, stamina: 20, backstab: 3 },
+        };
+
+        const enemyData = {
+            "Boar": { health: 10, resistances: {} }, "Deer": { health: 10, resistances: {} }, "Greyling": { health: 20, resistances: { "Fire": 1.5 } },
+            "Neck": { health: 5, resistances: { "Fire": 1.5, "Poison": 0.5, "Spirit": 0 } }, "Eikthyr": { health: 500, resistances: {} },
+            "Greydwarf": { health: 40, resistances: { "Fire": 1.5 } }, "Greydwarf Brute": { health: 150, resistances: { "Fire": 1.5 } },
+            "Greydwarf Shaman": { health: 75, resistances: { "Fire": 1.5 } }, "Skeleton": { health: 40, resistances: { "Blunt": 1.5, "Pierce": 0.5, "Fire": 1.5, "Frost": 0.5, "Poison": 0 } },
+            "Ghost": { health: 60, resistances: { "Blunt": 0.5, "Slash": 0.5, "Pierce": 0.5, "Poison": 0, "Spirit": 1.5 } }, "Troll": { health: 600, resistances: { "Blunt": 0.5, "Pierce": 1.5, "Spirit": 0 } },
+            "The Elder": { health: 2500, resistances: { "Fire": 1.5, "Poison": 0, "Spirit": 0 } }, "Blob": { health: 75, resistances: { "Blunt": 1.5, "Slash": 0.5, "Pierce": 0.5, "Fire": 0.5, "Frost": 1.5, "Poison": 0, "Lightning": 1.5 } },
+            "Oozer": { health: 150, resistances: { "Blunt": 1.5, "Slash": 0.5, "Pierce": 0.5, "Fire": 0.5, "Frost": 1.5, "Poison": 0, "Lightning": 1.5 } },
+            "Draugr": { health: 100, resistances: { "Fire": 0.5, "Poison": 0 } }, "Draugr Elite": { health: 200, resistances: { "Fire": 0.5, "Poison": 0 } },
+            "Leech": { health: 60, resistances: { "Fire": 0, "Poison": 0.5, "Spirit": 0 } }, "Surtling": { health: 20, resistances: { "Fire": 0, "Frost": 1.5, "Poison": 0, "Spirit": 0 } },
+            "Wraith": { health: 100, resistances: { "Blunt": 0.5, "Slash": 0.5, "Pierce": 0.5, "Fire": 1.5, "Frost": 0, "Poison": 0, "Spirit": 1.5 } },
+            "Abomination": { health: 800, resistances: { "Pierce": 0.5, "Fire": 1.5, "Frost": 0 } }, "Bonemass": { health: 5000, resistances: { "Blunt": 1.5, "Slash": 0.5, "Pierce": 0.5, "Fire": 0.5, "Frost": 1.5, "Poison": 0 } },
+            "Wolf": { health: 80, resistances: { "Spirit": 0 } }, "Fenring": { health: 300, resistances: { "Fire": 1.5, "Poison": 0.5 } },
+            "Drake": { health: 100, resistances: { "Fire": 1.5, "Frost": 0, "Spirit": 0 } }, "Stone Golem": { health: 800, resistances: { "Slash": 0.5, "Pierce": 0.5, "Fire": 0, "Frost": 0, "Poison": 0, "Spirit": 0 } },
+            "Bat": { health: 20, resistances: {} }, "Cultist": { health: 300, resistances: { "Spirit": 1.5 } }, "Moder": { health: 7500, resistances: { "Fire": 1.5, "Frost": 0, "Spirit": 0 } },
+            "Deathsquito": { health: 10, resistances: { "Spirit": 0 } }, "Fuling": { health: 200, resistances: { "Spirit": 0 } },
+            "Fuling Berserker": { health: 800, resistances: { "Spirit": 0 } }, "Fuling Shaman": { health: 100, resistances: { "Spirit": 0 } },
+            "Lox": { health: 900, resistances: { "Blunt": 0.5, "Slash": 0.5, "Fire": 1.5, "Frost": 0.5, "Spirit": 0 } },
+            "Yagluth": { health: 10000, resistances: { "Pierce": 0.5, "Fire": 0.5, "Poison": 0 } }, "Seeker": { health: 400, resistances: { "Blunt": 0.5, "Slash": 0.5, "Pierce": 0.5, "Spirit": 0 } },
+            "Seeker Soldier": { health: 1200, resistances: { "Blunt": 0.5, "Slash": 0.5, "Pierce": 0.5, "Spirit": 0 } }, "Gjall": { health: 1500, resistances: { "Fire": 0.5, "Spirit": 0 } },
+            "Tick": { health: 50, resistances: { "Pierce": 1.5, "Spirit": 0 } }, "The Queen": { health: 12500, resistances: { "Pierce": 0.5, "Spirit": 0 } },
+            "Serpent": { health: 400, resistances: { "Fire": 0, "Frost": 1.5, "Poison": 0.5, "Spirit": 0 } },
+        };
+
+        const qualityDamageBonus = { 1: 0, 2: 6, 3: 12, 4: 18 };
+
+        const weaponSelect = document.getElementById('weapon-select');
+        const qualitySlider = document.getElementById('quality-slider');
+        const qualityValue = document.getElementById('quality-value');
+        const skillSlider = document.getElementById('skill-slider');
+        const skillValue = document.getElementById('skill-value');
+        const enemySelect = document.getElementById('enemy-select');
+        const starsSlider = document.getElementById('stars-slider');
+        const starsValue = document.getElementById('stars-value');
+        const backstabToggle = document.getElementById('backstab-toggle');
+        const staggerToggle = document.getElementById('stagger-toggle');
+
+        const dphOutput = document.getElementById('dph-output');
+        const dpsOutput = document.getElementById('dps-output');
+        const breakdownOutput = document.getElementById('breakdown-output');
+        const staminaCost = document.getElementById('stamina-cost');
+        const staminaSwings = document.getElementById('stamina-swings');
+        
+        const generateAdviceBtn = document.getElementById('generate-advice-btn');
+        const adviceLoader = document.getElementById('advice-loader');
+        const tacticalAdviceOutput = document.getElementById('tactical-advice-output');
+        
+        const suggestWeaponBtn = document.getElementById('suggest-weapon-btn');
+        const suggestLoader = document.getElementById('suggest-loader');
+        const weaponSuggestionOutput = document.getElementById('weapon-suggestion-output');
+        
+        const reportToggle = document.getElementById('report-toggle');
+        const reportContent = document.getElementById('report-content');
+
+        let damageChart;
+
+        function populateDropdowns() {
+            Object.keys(weaponData).sort().forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                weaponSelect.appendChild(option);
+            });
+
+            Object.keys(enemyData).sort().forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                enemySelect.appendChild(option);
+            });
+        }
+
+        function calculateDamage() {
+            tacticalAdviceOutput.classList.add('hidden');
+            tacticalAdviceOutput.innerHTML = '';
+            
+            const weaponName = weaponSelect.value;
+            const quality = parseInt(qualitySlider.value);
+            const skill = parseInt(skillSlider.value);
+            const enemyName = enemySelect.value;
+            const isBackstab = backstabToggle.checked;
+            const isStaggered = staggerToggle.checked;
+
+            const weapon = weaponData[weaponName];
+            if (!weapon) return;
+            const enemy = enemyData[enemyName];
+            
+            const qualityBonus = qualityDamageBonus[quality];
+            const numDamageTypes = Object.keys(weapon.damage).length;
+            const bonusPerType = qualityBonus / numDamageTypes;
+
+            let totalDph = 0;
+            let breakdownHtml = '';
+            const chartLabels = [];
+            const chartData = [];
+            const chartColors = [];
+
+            const damageTypeColors = {
+                "Blunt": 'rgba(169, 139, 115, 0.7)', "Slash": 'rgba(217, 210, 197, 0.7)', "Pierce": 'rgba(140, 106, 82, 0.7)',
+                "Fire": 'rgba(255, 99, 71, 0.7)', "Frost": 'rgba(135, 206, 250, 0.7)', "Poison": 'rgba(124, 252, 0, 0.7)',
+                "Spirit": 'rgba(238, 130, 238, 0.7)', "Lightning": 'rgba(255, 215, 0, 0.7)'
+            };
+
+            for (const type in weapon.damage) {
+                const baseDamage = weapon.damage[type] + bonusPerType;
+                const skillMultiplier = 0.4 * (1 + (skill * 0.015));
+                const skillAdjustedDamage = baseDamage * skillMultiplier;
+                let situationalMultiplier = 1;
+                if (isBackstab) situationalMultiplier *= weapon.backstab;
+                if (isStaggered) situationalMultiplier *= 2;
+                const situationalDamage = skillAdjustedDamage * situationalMultiplier;
+                const resistanceMultiplier = enemy.resistances[type] ?? 1.0;
+                let finalDamage = situationalDamage * resistanceMultiplier;
+                totalDph += finalDamage;
+                
+                breakdownHtml += `<div class="p-3 bg-primary rounded-lg"><div class="flex justify-between items-center font-bold text-lg"><span>${type}</span><span style="color: ${damageTypeColors[type]?.replace('0.7', '1')}">${finalDamage.toFixed(1)}</span></div><div class="text-sm text-gray-600 mt-1">Base: ${baseDamage.toFixed(1)} &rarr; Skill (${skill}): ${skillAdjustedDamage.toFixed(1)} &rarr; Sit.: ${situationalDamage.toFixed(1)} &rarr; Resist (${resistanceMultiplier}x): <span class="font-semibold">${finalDamage.toFixed(1)}</span></div></div>`;
+                chartLabels.push(type);
+                chartData.push(finalDamage.toFixed(2));
+                chartColors.push(damageTypeColors[type] || 'rgba(128, 128, 128, 0.7)');
+            }
+            
+            dphOutput.textContent = totalDph.toFixed(0);
+            const comboTime = weapon.comboTime;
+            const hitsInCombo = (weapon.class === "Spears") ? 1 : 3;
+            const dps = (totalDph * hitsInCombo) / comboTime;
+            dpsOutput.textContent = dps.toFixed(2);
+            breakdownOutput.innerHTML = breakdownHtml;
+            updateChart(chartLabels, chartData, chartColors);
+
+            const staminaReduction = 1 - (skill / 300);
+            const finalStaminaCost = weapon.stamina * staminaReduction;
+            staminaCost.textContent = finalStaminaCost.toFixed(1);
+            const swings = Math.floor(100 / finalStaminaCost);
+            staminaSwings.textContent = isFinite(swings) ? swings : '∞';
+        }
+
+        async function getTacticalAdvice() {
+            const weaponName = weaponSelect.value;
+            const skill = parseInt(skillSlider.value);
+            const enemyName = enemySelect.value;
+            const stars = parseInt(starsSlider.value);
+            const weapon = weaponData[weaponName];
+
+            generateAdviceBtn.disabled = true;
+            adviceLoader.classList.remove('hidden');
+            tacticalAdviceOutput.classList.add('hidden');
+
+            const prompt = `As a Valheim expert, provide a short, actionable tactical tip for the following scenario.
+            - Player Weapon: ${weaponName} (Quality ${qualitySlider.value})
+            - Player Skill with ${weapon.class}: ${skill}
+            - Target: ${stars}-star ${enemyName}
+            - Calculated Damage Per Hit: ${dphOutput.textContent}
+            - Calculated Damage Per Second: ${dpsOutput.textContent}
+            Focus on positioning, attack patterns to use (e.g., primary vs secondary attack), and how to exploit the enemy's key weakness if my weapon is suited for it. Be concise and direct.`;
+
+            try {
+                let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+                const payload = { contents: chatHistory };
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) throw new Error(`API call failed with status: ${response.status}`);
+                const result = await response.json();
+                if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    tacticalAdviceOutput.innerHTML = result.candidates[0].content.parts[0].text.replace(/\n/g, '<br>');
+                } else {
+                    tacticalAdviceOutput.textContent = 'Could not generate advice. The response was empty.';
+                }
+            } catch (error) {
+                tacticalAdviceOutput.textContent = `Error fetching advice: ${error.message}`;
+            } finally {
+                tacticalAdviceOutput.classList.remove('hidden');
+                generateAdviceBtn.disabled = false;
+                adviceLoader.classList.add('hidden');
+            }
+        }
+
+        async function getWeaponSuggestions() {
+            const enemyName = enemySelect.value;
+            const enemy = enemyData[enemyName];
+            
+            suggestWeaponBtn.disabled = true;
+            suggestLoader.classList.remove('hidden');
+            weaponSuggestionOutput.innerHTML = '';
+
+            const prompt = `I am fighting a ${enemyName} in Valheim. Its resistances are: ${JSON.stringify(enemy.resistances)}. 
+            Given the following list of all available weapons and their damage types: ${JSON.stringify(weaponData)}.
+            Which 3 weapons are most effective against this enemy? Consider only the base weapon stats and damage types against the enemy's resistances.
+            Present the answer as a JSON array of objects, where each object has "weaponName" and "reason" keys. The reason should be a short, single sentence.`;
+
+            try {
+                const payload = {
+                    contents: [{ role: "user", parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "ARRAY",
+                            items: {
+                                type: "OBJECT",
+                                properties: { "weaponName": { "type": "STRING" }, "reason": { "type": "STRING" } },
+                                required: ["weaponName", "reason"]
+                            }
+                        }
+                    }
+                };
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) throw new Error(`API call failed with status: ${response.status}`);
+                const result = await response.json();
+                if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    const suggestions = JSON.parse(result.candidates[0].content.parts[0].text);
+                    let suggestionHtml = '<h4 class="font-bold text-accent">AI Recommendations:</h4>';
+                    suggestions.forEach(s => {
+                        suggestionHtml += `<div class="bg-secondary p-3 rounded-lg"><p class="font-bold">${s.weaponName}</p><p class="text-sm text-gray-700">${s.reason}</p></div>`;
+                    });
+                    weaponSuggestionOutput.innerHTML = suggestionHtml;
+                } else {
+                     weaponSuggestionOutput.innerHTML = '<p>Could not generate suggestions.</p>';
+                }
+            } catch (error) {
+                weaponSuggestionOutput.innerHTML = `<p class="text-red-600">Error: ${error.message}</p>`;
+            } finally {
+                suggestWeaponBtn.disabled = false;
+                suggestLoader.classList.add('hidden');
+            }
+        }
+
+        function setupChart() {
+            const ctx = document.getElementById('damageChart').getContext('2d');
+            damageChart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: [], datasets: [{ label: 'Final Damage by Type', data: [], backgroundColor: [], borderColor: [], borderWidth: 1 }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+                    scales: {
+                        x: { beginAtZero: true, ticks: { color: '#4A4540' }, grid: { color: 'rgba(0,0,0,0.05)' } },
+                        y: { ticks: { color: '#4A4540', font: { weight: 'bold' } }, grid: { display: false } }
+                    },
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `${c.dataset.label || ''}: ${c.parsed.x.toFixed(2)}` } } }
+                }
+            });
+        }
+
+        function updateChart(labels, data, colors) {
+            damageChart.data.labels = labels;
+            damageChart.data.datasets[0].data = data;
+            damageChart.data.datasets[0].backgroundColor = colors;
+            damageChart.data.datasets[0].borderColor = colors.map(c => c.replace('0.7', '1'));
+            damageChart.update();
+        }
+
+        function setupEventListeners() {
+            [weaponSelect, qualitySlider, skillSlider, enemySelect, starsSlider, backstabToggle, staggerToggle].forEach(el => {
+                el.addEventListener('input', calculateDamage);
+            });
+            qualitySlider.addEventListener('input', () => qualityValue.textContent = qualitySlider.value);
+            skillSlider.addEventListener('input', () => skillValue.textContent = skillSlider.value);
+            starsSlider.addEventListener('input', () => starsValue.textContent = starsSlider.value);
+            generateAdviceBtn.addEventListener('click', getTacticalAdvice);
+            suggestWeaponBtn.addEventListener('click', getWeaponSuggestions);
+            reportToggle.addEventListener('click', () => {
+                reportContent.classList.toggle('hidden');
+                reportToggle.classList.toggle('open');
+            });
+        }
+
+        window.onload = () => {
+            populateDropdowns();
+            setupChart();
+            setupEventListeners();
+            calculateDamage(); 
+        };
+    </script>
+</body>
+</html>

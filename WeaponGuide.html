@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valheim Interactive Armory</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=MedievalSharp&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Ashen Oak -->
+    <!-- Application Structure Plan: The application is designed as a multi-section, single-page dashboard. The user can navigate between distinct, task-oriented sections using a persistent top navigation bar. The sections are: 1) 'Home/Intro' to set the scene. 2) 'Combat Guide' for fundamental mechanics, presented in an easy-to-digest accordion format. 3) 'Weapon Explorer', the core of the app, featuring powerful filters (by tier, type, damage) and an interactive table to compare weapons, with a dynamic chart visualizing the selected weapon's stats. 4) 'Enemy Intel', a filterable database of creatures and their vulnerabilities. This structure was chosen over a linear report format to empower users to find specific information quickly. A player can ask "What blunt weapon is best for the Swamp?" and use the filters to get an immediate answer, which is a more natural user flow for a game guide. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Weapon damage statistics (Blunt, Pierce, Slash, Elemental). -> Goal: Compare weapon damage profiles. -> Viz/Presentation: Dynamic Doughnut Chart (Chart.js/Canvas). -> Interaction: Chart updates when a user clicks a weapon in the main table. -> Justification: A doughnut chart provides a clear, at-a-glance breakdown of a weapon's damage composition, which is critical for tactical decisions.
+        - Report Info: Comprehensive list of all weapons with stats and recipes. -> Goal: Allow users to browse, filter, and compare all weapons. -> Viz/Presentation: Interactive HTML Table. -> Interaction: Users can filter by biome/tier, weapon type, and damage type using dropdowns and buttons. Clicking a row highlights it and updates the companion chart. -> Justification: A filterable table is the most efficient way to handle a large dataset like this, letting users narrow down the options to their specific needs.
+        - Report Info: Enemy vulnerability data. -> Goal: Provide quick reference for combat preparation. -> Viz/Presentation: Card-based grid layout. -> Interaction: Filter by biome to see relevant threats. -> Justification: Cards allow for a visually appealing presentation of enemy info, including an image placeholder and key data points in a scannable format.
+        - Report Info: Core combat mechanics. -> Goal: Educate users on game fundamentals. -> Viz/Presentation: HTML Accordion. -> Interaction: Users can click to expand/collapse sections. -> Justification: An accordion prevents the initial view from being overwhelmed with text, allowing users to explore the mechanics they are interested in without excessive scrolling.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #2D3748; /* bg-gray-800 */
+        }
+        .font-medieval {
+            font-family: 'MedievalSharp', cursive;
+        }
+        .nav-link {
+            transition: all 0.3s ease;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-link.active, .nav-link:hover {
+            color: #FBBF24; /* amber-400 */
+            border-bottom-color: #FBBF24; /* amber-400 */
+        }
+        .filter-btn {
+            transition: all 0.2s ease;
+        }
+        .filter-btn.active {
+            background-color: #FBBF24; /* amber-400 */
+            color: #1A202C; /* gray-900 */
+            font-weight: 600;
+        }
+        .table-row-clickable:hover {
+            background-color: #4A5568; /* gray-700 */
+        }
+        .table-row-clickable.selected {
+            background-color: #5A6578; /* gray-600 */
+            outline: 2px solid #FBBF24; /* amber-400 */
+        }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-800 text-gray-200">
+
+    <header class="bg-gray-900 shadow-lg sticky top-0 z-50">
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <h1 class="text-2xl md:text-3xl font-medieval text-white">Valheim Armory</h1>
+            <div class="hidden md:flex space-x-6 text-lg">
+                <a href="#home" class="nav-link">Home</a>
+                <a href="#combat" class="nav-link">Combat Guide</a>
+                <a href="#explorer" class="nav-link active">Weapon Explorer</a>
+                <a href="#intel" class="nav-link">Enemy Intel</a>
+            </div>
+            <div class="md:hidden">
+                <select id="mobile-nav" class="bg-gray-800 text-white border border-gray-600 rounded-md p-2">
+                    <option value="#home">Home</option>
+                    <option value="#combat">Combat Guide</option>
+                    <option value="#explorer" selected>Weapon Explorer</option>
+                    <option value="#intel">Enemy Intel</option>
+                </select>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section id="home" class="min-h-screen flex items-center justify-center text-center bg-gray-800 px-4 hidden">
+            <div class="max-w-4xl">
+                <h2 class="text-5xl md:text-7xl font-medieval text-amber-400 mb-4">Forge Your Legend</h2>
+                <p class="text-lg md:text-xl text-gray-300 mb-8">Welcome to the interactive armory for Valheim. This guide translates the comprehensive weapon report into a practical, hands-on tool. Here, you won't just read about weapons; you'll explore, compare, and strategize. Use the navigation above to delve into combat mechanics, explore the full arsenal of weapons with powerful filters, and study your foes' weaknesses. Prepare yourself, Viking—Odin is watching.</p>
+                <a href="#explorer" class="bg-amber-400 text-gray-900 font-bold py-3 px-8 rounded-lg hover:bg-amber-500 transition-colors duration-300 text-xl">Explore Weapons</a>
+            </div>
+        </section>
+
+        <section id="combat" class="py-20 bg-gray-900 px-4 hidden">
+            <div class="container mx-auto">
+                <h2 class="text-4xl font-medieval text-center text-amber-400 mb-12">The Art of Viking Combat</h2>
+                <div class="max-w-3xl mx-auto space-y-4" id="accordion-container">
+                </div>
+            </div>
+        </section>
+
+        <section id="explorer" class="py-20 bg-gray-800 px-4">
+            <div class="container mx-auto">
+                <h2 class="text-4xl font-medieval text-center text-amber-400 mb-4">Weapon Explorer</h2>
+                <p class="text-center text-gray-400 max-w-3xl mx-auto mb-12">This is the heart of the armory. Use the filters and enter your skill levels to find the perfect tool for your needs. Click on any weapon in the table to see a detailed breakdown of its damage profile in the chart. Find what you need to conquer the next biome.</p>
+
+                <div class="bg-gray-900 p-6 rounded-lg shadow-xl mb-8">
+                    <h3 class="text-xl font-semibold text-amber-400 mb-4 border-b border-gray-700 pb-2">Your Weapon Skills</h3>
+                    <div id="skill-inputs" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
+                        <!-- Skill inputs will be generated here -->
+                    </div>
+                    <h3 class="text-xl font-semibold text-amber-400 mb-4 border-b border-gray-700 pb-2">Filters & Calculation</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="tier-filter" class="block text-sm font-medium text-gray-300 mb-2">Filter by Biome / Tier</label>
+                            <select id="tier-filter" class="w-full bg-gray-800 border border-gray-600 rounded-md p-2 focus:ring-amber-400 focus:border-amber-400">
+                                <option value="all">All Tiers</option>
+                            </select>
+                            <div class="mt-2 flex items-center">
+                                <input id="include-previous-tiers" type="checkbox" class="h-4 w-4 rounded border-gray-500 bg-gray-700 text-amber-500 focus:ring-amber-500">
+                                <label for="include-previous-tiers" class="ml-2 block text-sm text-gray-300">Include Previous Tiers</label>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="type-filter" class="block text-sm font-medium text-gray-300 mb-2">Filter by Weapon Type</label>
+                            <select id="type-filter" class="w-full bg-gray-800 border border-gray-600 rounded-md p-2 focus:ring-amber-400 focus:border-amber-400">
+                                <option value="all">All Types</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Filter by Primary Damage</label>
+                            <div id="damage-type-filters" class="flex flex-wrap gap-2">
+                                <button class="filter-btn flex-grow bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded active" data-damage="all">All</button>
+                                <button class="filter-btn flex-grow bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded" data-damage="Blunt">Blunt</button>
+                                <button class="filter-btn flex-grow bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded" data-damage="Slash">Slash</button>
+                                <button class="filter-btn flex-grow bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded" data-damage="Pierce">Pierce</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="enemy-selector" class="block text-sm font-medium text-gray-300 mb-2">Calculate Damage vs. Enemy</label>
+                            <select id="enemy-selector" class="w-full bg-gray-800 border border-gray-600 rounded-md p-2 focus:ring-amber-400 focus:border-amber-400">
+                                <option value="none">-- Select an Enemy --</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col lg:flex-row gap-8">
+                    <div class="lg:w-3/4 overflow-x-auto bg-gray-900 p-4 rounded-lg shadow-xl">
+                        <table class="min-w-full text-sm">
+                            <thead class="border-b border-gray-600">
+                                <tr>
+                                    <th class="p-2 text-left font-semibold text-gray-300 tracking-wider">Weapon</th>
+                                    <th class="p-2 text-left font-semibold text-gray-300 tracking-wider">Type</th>
+                                    <th class="p-2 text-left font-semibold text-gray-300 tracking-wider">Tier</th>
+                                    <th class="p-2 text-center font-bold text-gray-300 tracking-wider">Total</th>
+                                    <th class="p-2 text-center font-semibold text-gray-300 tracking-wider" title="Blunt">Blunt</th>
+                                    <th class="p-2 text-center font-semibold text-gray-300 tracking-wider" title="Slash">Slash</th>
+                                    <th class="p-2 text-center font-semibold text-gray-300 tracking-wider" title="Pierce">Pierce</th>
+                                    <th class="p-2 text-center font-semibold text-gray-300 tracking-wider" title="Fire">Fire</th>
+                                    <th class="p-2 text-center font-semibold text-gray-300 tracking-wider" title="Frost">Frost</th>
+                                    <th class="p-2 text-center font-semibold text-gray-300 tracking-wider" title="Spirit">Spirit</th>
+                                    <th class="p-2 text-center font-semibold text-gray-300 tracking-wider" title="Poison">Poison</th>
+                                </tr>
+                            </thead>
+                            <tbody id="weapon-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="lg:w-1/4 bg-gray-900 p-6 rounded-lg shadow-xl flex flex-col items-center">
+                        <h3 id="chart-title" class="text-xl font-bold mb-4 text-amber-400">Select a Weapon</h3>
+                        <div class="chart-container">
+                            <canvas id="weapon-chart"></canvas>
+                        </div>
+                        <div id="weapon-details" class="mt-4 text-center text-gray-400">
+                            <p>Click a weapon to see its details.</p>
+                        </div>
+                        <div id="calculated-damage-display" class="w-full text-center"></div>
+                        <div id="enemy-stats-display" class="w-full text-left mt-4"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="intel" class="py-20 bg-gray-900 px-4 hidden">
+            <div class="container mx-auto">
+                <h2 class="text-4xl font-medieval text-center text-amber-400 mb-4">Enemy Intel</h2>
+                <p class="text-center text-gray-400 max-w-3xl mx-auto mb-12">"Know thy foe." This section provides crucial intelligence on the creatures of Valheim. Filter by biome to prepare for your expeditions. Understanding an enemy's weaknesses and resistances is the first step to victory.</p>
+                <div class="flex justify-center mb-8">
+                     <select id="enemy-biome-filter" class="w-full max-w-sm bg-gray-800 border border-gray-600 rounded-md p-2 focus:ring-amber-400 focus:border-amber-400">
+                        <option value="all">All Biomes</option>
+                    </select>
+                </div>
+                <div id="enemy-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                </div>
+            </div>
+        </section>
+    </main>
+    
+    <footer class="bg-gray-900 text-center py-6 mt-20">
+        <p class="text-gray-500">Valheim Interactive Armory | Data sourced from community reports.</p>
+    </footer>
+
+    <script>
+        const weaponData = [
+            { name: 'Club', type: 'Club (1H)', tier: 'Meadows', damage: { Blunt: 12 }, maxDamage: 21, totalDamage: 12 },
+            { name: 'Flint Knife', type: 'Knife (1H)', tier: 'Meadows', damage: { Slash: 6, Pierce: 6 }, maxDamage: 24, totalDamage: 12 },
+            { name: 'Flint Spear', type: 'Spear (2H)', tier: 'Meadows', damage: { Pierce: 20 }, maxDamage: 35, totalDamage: 20 },
+            { name: 'Crude Bow', type: 'Bow (2H)', tier: 'Meadows', damage: { Pierce: 22 }, maxDamage: 31, totalDamage: 22 },
+            { name: 'Abyssal Razor', type: 'Knife (1H)', tier: 'Black Forest', damage: { Slash: 24, Pierce: 24 }, maxDamage: 66, totalDamage: 48 },
+            { name: 'Abyssal Harpoon', type: 'Harpoon (2H)', tier: 'Black Forest', damage: { Pierce: 10 }, maxDamage: 10, totalDamage: 10 },
+            { name: 'Stagbreaker', type: 'Sledge (2H)', tier: 'Black Forest', damage: { Blunt: 20, Pierce: 5 }, maxDamage: 40, totalDamage: 25 },
+            { name: 'Copper Knife', type: 'Knife (1H)', tier: 'Black Forest', damage: { Slash: 9, Pierce: 9 }, maxDamage: 36, totalDamage: 18 },
+            { name: 'Bronze Mace', type: 'Mace (1H)', tier: 'Black Forest', damage: { Blunt: 35 }, maxDamage: 50, totalDamage: 35 },
+            { name: 'Bronze Sword', type: 'Sword (1H)', tier: 'Black Forest', damage: { Slash: 35 }, maxDamage: 50, totalDamage: 35 },
+            { name: 'Bronze Spear', type: 'Spear (2H)', tier: 'Black Forest', damage: { Pierce: 35 }, maxDamage: 50, totalDamage: 35 },
+            { name: 'Bronze Atgeir', type: 'Atgeir (2H)', tier: 'Black Forest', damage: { Pierce: 45 }, maxDamage: 60, totalDamage: 45 },
+            { name: 'Finewood Bow', type: 'Bow (2H)', tier: 'Black Forest', damage: { Pierce: 32 }, maxDamage: 41, totalDamage: 32 },
+            { name: 'Iron Mace', type: 'Mace (1H)', tier: 'Swamp', damage: { Blunt: 55 }, maxDamage: 70, totalDamage: 55 },
+            { name: 'Iron Sledge', type: 'Sledge (2H)', tier: 'Swamp', damage: { Blunt: 55, Spirit: 30 }, maxDamage: 100, totalDamage: 85 },
+            { name: 'Battleaxe', type: 'Axe (2H)', tier: 'Swamp', damage: { Slash: 70 }, maxDamage: 85, totalDamage: 70 },
+            { name: 'Iron Sword', type: 'Sword (1H)', tier: 'Swamp', damage: { Slash: 55 }, maxDamage: 70, totalDamage: 55 },
+            { name: 'Iron Atgeir', type: 'Atgeir (2H)', tier: 'Swamp', damage: { Pierce: 65 }, maxDamage: 80, totalDamage: 65 },
+            { name: 'Ancient Bark Spear', type: 'Spear (2H)', tier: 'Swamp', damage: { Pierce: 55 }, maxDamage: 70, totalDamage: 55 },
+            { name: 'Huntsman Bow', type: 'Bow (2H)', tier: 'Swamp', damage: { Pierce: 42 }, maxDamage: 51, totalDamage: 42 },
+            { name: 'Flesh Rippers', type: 'Fist (1H)', tier: 'Mountains', damage: { Slash: 60 }, maxDamage: 75, totalDamage: 60 },
+            { name: 'Silver Knife', type: 'Knife (1H)', tier: 'Mountains', damage: { Slash: 21, Pierce: 21, Spirit: 12 }, maxDamage: 66, totalDamage: 54 },
+            { name: 'Silver Sword', type: 'Sword (1H)', tier: 'Mountains', damage: { Slash: 75, Spirit: 30 }, maxDamage: 120, totalDamage: 105 },
+            { name: 'Frostner', type: 'Mace (1H)', tier: 'Mountains', damage: { Blunt: 35, Frost: 40, Spirit: 20 }, maxDamage: 128, totalDamage: 95 },
+            { name: 'Fang Spear', type: 'Spear (2H)', tier: 'Mountains', damage: { Pierce: 70 }, maxDamage: 85, totalDamage: 70 },
+            { name: 'Crystal Battleaxe', type: 'Axe (2H)', tier: 'Mountains', damage: { Slash: 90, Spirit: 30 }, maxDamage: 135, totalDamage: 120 },
+            { name: 'Draugr Fang', type: 'Bow (2H)', tier: 'Mountains', damage: { Pierce: 47, Poison: 5 }, maxDamage: 76, totalDamage: 52 },
+            { name: 'Porcupine', type: 'Mace (1H)', tier: 'Plains', damage: { Blunt: 50, Pierce: 45 }, maxDamage: 125, totalDamage: 95 },
+            { name: 'Blackmetal Axe', type: 'Axe (1H)', tier: 'Plains', damage: { Slash: 95 }, maxDamage: 110, totalDamage: 95 },
+            { name: 'Blackmetal Knife', type: 'Knife (1H)', tier: 'Plains', damage: { Slash: 28, Pierce: 28 }, maxDamage: 74, totalDamage: 56 },
+            { name: 'Blackmetal Sword', type: 'Sword (1H)', tier: 'Plains', damage: { Slash: 95 }, maxDamage: 110, totalDamage: 95 },
+            { name: 'Blackmetal Atgeir', type: 'Atgeir (2H)', tier: 'Plains', damage: { Pierce: 105 }, maxDamage: 120, totalDamage: 105 },
+            { name: 'Mistwalker', type: 'Sword (1H)', tier: 'Mistlands', damage: { Slash: 75, Frost: 40 }, maxDamage: 127, totalDamage: 115 },
+            { name: 'Krom', type: 'Sword (2H)', tier: 'Mistlands', damage: { Slash: 150 }, maxDamage: 162, totalDamage: 150 },
+            { name: 'Demolisher', type: 'Sledge (2H)', tier: 'Mistlands', damage: { Blunt: 140 }, maxDamage: 152, totalDamage: 140 },
+            { name: 'Jotun Bane', type: 'Axe (1H)', tier: 'Mistlands', damage: { Slash: 80, Poison: 30 }, maxDamage: 122, totalDamage: 110 },
+            { name: 'Spine Snap', type: 'Bow (2H)', tier: 'Mistlands', damage: { Pierce: 62 }, maxDamage: 68, totalDamage: 62 },
+            { name: 'Arbalest', type: 'Crossbow (2H)', tier: 'Mistlands', damage: { Pierce: 200 }, maxDamage: 209, totalDamage: 200 },
+            { name: 'Staff of Embers', type: 'Staff (2H)', tier: 'Mistlands', damage: { Blunt: 120, Fire: 120 }, maxDamage: 276, totalDamage: 240 },
+            { name: 'Staff of Frost', type: 'Staff (2H)', tier: 'Mistlands', damage: { Frost: 30 }, maxDamage: 36, totalDamage: 30 },
+        ];
+
+        const combatData = [
+            { title: "Deconstructing Damage", content: "Damage is split into physical (Blunt, Slash, Pierce) and elemental (Fire, Frost, Spirit, Poison). Yellow numbers mean an enemy is weak (1.5x damage), grey means resistant (0.5x damage), and white is neutral (1x damage). Matching damage type to enemy weakness is the core of combat strategy." },
+            { title: "Stamina Management", content: "Stamina is your most critical resource. Attacking, blocking, dodging, and running all consume it. Running out of stamina leaves you helpless. Always fight rested and with a full stomach from good food to maximize your stamina pool and regeneration." },
+            { title: "Blocking & Parrying", content: "Blocking absorbs damage based on your shield's Block Power. Parrying (blocking at the last second) negates all damage and staggers the enemy, leaving them open for critical hits. A successful parry is a huge tactical advantage." },
+            { title: "Staggering & Backstabbing", content: "Every hit contributes to an enemy's invisible stagger bar. When it fills, they are stunned. Aim for combos to stagger foes. Backstabbing an unaware enemy provides a massive damage bonus, especially with knives which have a 10x multiplier." },
+            { title: "Attack Chains & Special Attacks", content: "Most weapons have a three-hit combo. The final hit is usually the strongest. Don't just spam the first attack. The middle-mouse button unleashes a powerful but stamina-heavy secondary attack, like the Atgeir's spin, which is great for crowd control." },
+        ];
+
+        const enemyData = [
+            { name: 'Greydwarf', biome: 'Black Forest', weak: 'Fire', resist: '', immune: '', notes: 'Very common, weak to any fire source.' },
+            { name: 'Troll', biome: 'Black Forest', weak: 'Pierce', resist: '', immune: '', notes: 'Kite with a bow. Its attacks are slow but devastating.' },
+            { name: 'Skeleton', biome: 'Swamp', weak: 'Blunt, Fire', resist: 'Pierce, Frost', immune: '', notes: 'A mace is essential. They shatter easily to blunt force.' },
+            { name: 'Blob / Oozer', biome: 'Swamp', weak: 'Blunt, Frost', resist: 'Pierce, Slash', immune: 'Poison', notes: 'Poison resistant. Use a mace and stay mobile.' },
+            { name: 'Draugr', biome: 'Swamp', weak: 'Fire, Blunt', resist: 'Slash', immune: '', notes: 'The reason you craft an Iron Mace. Parry their attacks.' },
+            { name: 'Surtling', biome: 'Swamp', weak: 'Frost', resist: '', immune: 'Fire', notes: 'Instantly killed by any frost damage.' },
+            { name: 'Wolf', biome: 'Mountains', weak: '', resist: 'Spirit', immune: '', notes: 'Fast and aggressive. Parrying is the key to victory.' },
+            { name: 'Drake', biome: 'Mountains', weak: 'Fire', resist: '', immune: 'Frost', notes: 'Flying targets. Use fire arrows for best results.' },
+            { name: 'Stone Golem', biome: 'Mountains', weak: 'Pickaxe', resist: 'Blunt, Slash, Fire, Frost', immune: '', notes: 'Resistant to all normal weapons. Must be fought with a pickaxe.' },
+            { name: 'Fuling', biome: 'Plains', weak: '', resist: '', immune: '', notes: 'High damage and health. Parry carefully and focus them down.' },
+            { name: 'Deathsquito', biome: 'Plains', weak: 'Pierce, Fire', resist: 'Frost', immune: '', notes: 'Low health but lethal damage. Shoot them from a distance.' },
+            { name: 'Lox', biome: 'Plains', weak: 'Fire, Frost', resist: 'Blunt, Slash', immune: '', notes: 'Tanky beasts. Use elemental damage and parry their stomp.' },
+            { name: 'Seeker', biome: 'Mistlands', weak: '', resist: '', immune: '', notes: 'Aggressive and dangerous. High-tier weapons are required.' },
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const weaponTableBody = document.getElementById('weapon-table-body');
+            const tierFilter = document.getElementById('tier-filter');
+            const typeFilter = document.getElementById('type-filter');
+            const includePreviousTiersCheckbox = document.getElementById('include-previous-tiers');
+            const damageTypeFilters = document.getElementById('damage-type-filters');
+            const enemySelector = document.getElementById('enemy-selector');
+            const skillInputsContainer = document.getElementById('skill-inputs');
+            const chartTitle = document.getElementById('chart-title');
+            const weaponDetails = document.getElementById('weapon-details');
+            const calculatedDamageDisplay = document.getElementById('calculated-damage-display');
+            const enemyStatsDisplay = document.getElementById('enemy-stats-display');
+            const accordionContainer = document.getElementById('accordion-container');
+            const enemyGrid = document.getElementById('enemy-grid');
+            const enemyBiomeFilter = document.getElementById('enemy-biome-filter');
+
+            let weaponChart;
+            let activeDamageFilter = 'all';
+            let selectedWeapon = null;
+            let selectedEnemy = null;
+            const tierOrder = ['Meadows', 'Black Forest', 'Swamp', 'Mountains', 'Plains', 'Mistlands'];
+            
+            const skillLevels = { Axes: 0, Bows: 0, Clubs: 0, Knives: 0, Polearms: 0, Spears: 0, Swords: 0, Fists: 0, Crossbows: 0 };
+            const weaponTypeToSkillMap = {
+                'Axe (1H)': 'Axes', 'Axe (2H)': 'Axes', 'Bow (2H)': 'Bows', 'Club (1H)': 'Clubs', 'Sledge (2H)': 'Clubs',
+                'Knife (1H)': 'Knives', 'Atgeir (2H)': 'Polearms', 'Spear (2H)': 'Spears', 'Harpoon (2H)': 'Spears',
+                'Sword (1H)': 'Swords', 'Sword (2H)': 'Swords', 'Fist (1H)': 'Fists', 'Crossbow (2H)': 'Crossbows'
+            };
+
+            function saveState() {
+                const state = {
+                    skills: skillLevels,
+                    tier: tierFilter.value,
+                    type: typeFilter.value,
+                    includePrevious: includePreviousTiersCheckbox.checked,
+                    damageFilter: activeDamageFilter,
+                    enemy: enemySelector.value
+                };
+                localStorage.setItem('valheimArmoryState', JSON.stringify(state));
+            }
+
+            function loadAndApplyState() {
+                const savedState = localStorage.getItem('valheimArmoryState');
+                if (savedState) {
+                    const state = JSON.parse(savedState);
+                    if (state.skills) Object.assign(skillLevels, state.skills);
+                    
+                    // Update skill inputs
+                    Object.keys(skillLevels).forEach(skill => {
+                        const input = document.getElementById(`skill-${skill}`);
+                        if (input) input.value = skillLevels[skill];
+                    });
+
+                    // Update filters
+                    tierFilter.value = state.tier || 'all';
+                    typeFilter.value = state.type || 'all';
+                    includePreviousTiersCheckbox.checked = state.includePrevious || false;
+                    activeDamageFilter = state.damageFilter || 'all';
+                    enemySelector.value = state.enemy || 'none';
+                    if (enemySelector.value !== 'none') {
+                        selectedEnemy = enemyData.find(e => e.name === enemySelector.value);
+                    }
+                    
+                    damageTypeFilters.querySelectorAll('button').forEach(btn => {
+                        btn.classList.toggle('active', btn.dataset.damage === activeDamageFilter);
+                    });
+                }
+            }
+
+            function populateSkillInputs() {
+                skillInputsContainer.innerHTML = '';
+                Object.keys(skillLevels).forEach(skill => {
+                    const div = document.createElement('div');
+                    div.innerHTML = `
+                        <label for="skill-${skill}" class="block text-sm font-medium text-gray-300">${skill}</label>
+                        <input type="number" id="skill-${skill}" data-skill="${skill}" value="0" min="0" max="100" class="skill-input mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-1 px-2 text-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500">
+                    `;
+                    skillInputsContainer.appendChild(div);
+                });
+
+                document.querySelectorAll('.skill-input').forEach(input => {
+                    input.addEventListener('change', (e) => {
+                        const skill = e.target.dataset.skill;
+                        let value = parseInt(e.target.value, 10);
+                        if (isNaN(value) || value < 0) value = 0;
+                        if (value > 100) value = 100;
+                        e.target.value = value;
+                        skillLevels[skill] = value;
+                        updateCalculatedDamage(selectedWeapon, selectedEnemy);
+                        saveState();
+                    });
+                });
+            }
+
+            function populateFilters() {
+                tierFilter.innerHTML = '<option value="all">All Tiers</option>';
+                tierOrder.forEach(tier => {
+                    const option = document.createElement('option');
+                    option.value = tier;
+                    option.textContent = tier;
+                    tierFilter.appendChild(option);
+                });
+
+                const types = [...new Set(weaponData.map(w => w.type))].sort();
+                typeFilter.innerHTML = '<option value="all">All Types</option>';
+                types.forEach(type => {
+                    const option = document.createElement('option');
+                    option.value = type;
+                    option.textContent = type;
+                    typeFilter.appendChild(option);
+                });
+                
+                const enemyBiomes = [...new Set(enemyData.map(e => e.biome))];
+                enemyBiomeFilter.innerHTML = '<option value="all">All Biomes</option>';
+                enemyBiomes.forEach(biome => {
+                    const option = document.createElement('option');
+                    option.value = biome;
+                    option.textContent = biome;
+                    enemyBiomeFilter.appendChild(option);
+                });
+
+                enemyData.sort((a,b) => a.name.localeCompare(b.name)).forEach(enemy => {
+                    const option = document.createElement('option');
+                    option.value = enemy.name;
+                    option.textContent = enemy.name;
+                    enemySelector.appendChild(option);
+                });
+            }
+
+            function populateCombatAccordion() {
+                accordionContainer.innerHTML = '';
+                combatData.forEach((item) => {
+                    const div = document.createElement('div');
+                    div.className = 'bg-gray-800 rounded-lg shadow-md';
+                    div.innerHTML = `
+                        <button class="accordion-toggle w-full text-left p-4 font-semibold text-lg text-amber-400 hover:bg-gray-700 rounded-lg flex justify-between items-center">
+                            <span>${item.title}</span>
+                            <span class="transform transition-transform duration-300">&#9662;</span>
+                        </button>
+                        <div class="accordion-content px-4 pb-4 text-gray-300">
+                            <p>${item.content}</p>
+                        </div>
+                    `;
+                    accordionContainer.appendChild(div);
+                });
+
+                document.querySelectorAll('.accordion-toggle').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const content = button.nextElementSibling;
+                        const icon = button.querySelector('span:last-child');
+                        if (content.style.maxHeight) {
+                            content.style.maxHeight = null;
+                            icon.style.transform = 'rotate(0deg)';
+                        } else {
+                            document.querySelectorAll('.accordion-content').forEach(c => c.style.maxHeight = null);
+                            document.querySelectorAll('.accordion-toggle span:last-child').forEach(i => i.style.transform = 'rotate(0deg)');
+                            content.style.maxHeight = content.scrollHeight + "px";
+                            icon.style.transform = 'rotate(180deg)';
+                        }
+                    });
+                });
+            }
+
+            function populateWeaponTable() {
+                weaponTableBody.innerHTML = '';
+                const selectedTierValue = tierFilter.value;
+                const type = typeFilter.value;
+                const includePrevious = includePreviousTiersCheckbox.checked;
+
+                const filteredWeapons = weaponData.filter(weapon => {
+                    let tierMatch = false;
+                    if (selectedTierValue === 'all') {
+                        tierMatch = true;
+                    } else if (includePrevious) {
+                        const selectedTierIndex = tierOrder.indexOf(selectedTierValue);
+                        const allowedTiers = tierOrder.slice(0, selectedTierIndex + 1);
+                        tierMatch = allowedTiers.includes(weapon.tier);
+                    } else {
+                        tierMatch = weapon.tier === selectedTierValue;
+                    }
+
+                    const typeMatch = type === 'all' || weapon.type === type;
+                    const damageMatch = activeDamageFilter === 'all' || Object.keys(weapon.damage).includes(activeDamageFilter);
+                    return tierMatch && typeMatch && damageMatch;
+                });
+
+                filteredWeapons.forEach(weapon => {
+                    const row = document.createElement('tr');
+                    row.className = 'border-b border-gray-700 table-row-clickable cursor-pointer';
+                    row.innerHTML = `
+                        <td class="p-2 font-semibold">${weapon.name}</td>
+                        <td class="p-2 text-gray-400">${weapon.type}</td>
+                        <td class="p-2 text-gray-400">${weapon.tier}</td>
+                        <td class="p-2 text-center font-bold text-amber-400">${weapon.totalDamage}</td>
+                        <td class="p-2 text-center text-gray-400">${weapon.damage.Blunt || '-'}</td>
+                        <td class="p-2 text-center text-gray-400">${weapon.damage.Slash || '-'}</td>
+                        <td class="p-2 text-center text-gray-400">${weapon.damage.Pierce || '-'}</td>
+                        <td class="p-2 text-center text-gray-400">${weapon.damage.Fire || '-'}</td>
+                        <td class="p-2 text-center text-gray-400">${weapon.damage.Frost || '-'}</td>
+                        <td class="p-2 text-center text-gray-400">${weapon.damage.Spirit || '-'}</td>
+                        <td class="p-2 text-center text-gray-400">${weapon.damage.Poison || '-'}</td>
+                    `;
+                    row.addEventListener('click', () => {
+                        document.querySelectorAll('.table-row-clickable').forEach(r => r.classList.remove('selected'));
+                        row.classList.add('selected');
+                        selectedWeapon = weapon;
+                        updateChart(weapon);
+                        updateCalculatedDamage(weapon, selectedEnemy);
+                    });
+                    weaponTableBody.appendChild(row);
+                });
+            }
+            
+            function populateEnemyGrid() {
+                enemyGrid.innerHTML = '';
+                const biome = enemyBiomeFilter.value;
+                const filteredEnemies = enemyData.filter(enemy => biome === 'all' || enemy.biome === biome);
+
+                filteredEnemies.forEach(enemy => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-gray-800 rounded-lg shadow-lg p-4 flex flex-col';
+                    card.innerHTML = `
+                        <div class="h-24 bg-gray-700 rounded-md mb-4 flex items-center justify-center">
+                             <span class="text-gray-500 text-sm">Enemy Art</span>
+                        </div>
+                        <h4 class="text-lg font-bold text-amber-400">${enemy.name}</h4>
+                        <p class="text-sm text-gray-400 mb-3">${enemy.biome}</p>
+                        <div class="text-sm space-y-1 mt-auto">
+                            <p><strong class="text-green-400">Weak To:</strong> ${enemy.weak || 'None'}</p>
+                            <p><strong class="text-red-400">Resists:</strong> ${enemy.resist || 'None'}</p>
+                            <p><strong class="text-gray-500">Immune To:</strong> ${enemy.immune || 'None'}</p>
+                            <p class="mt-2 pt-2 border-t border-gray-700 text-gray-400">${enemy.notes}</p>
+                        </div>
+                    `;
+                    enemyGrid.appendChild(card);
+                });
+            }
+
+            function calculateDamage(weapon, enemy) {
+                if (!weapon || !enemy) return null;
+
+                const skillName = weaponTypeToSkillMap[weapon.type] || null;
+                const skillLevel = skillName ? skillLevels[skillName] : 0;
+                const skillMultiplier = 0.4 + (0.6 * (skillLevel / 100));
+
+                let totalModifiedDamage = 0;
+                for (const [damageType, baseValue] of Object.entries(weapon.damage)) {
+                    const skillBasedDamage = baseValue * skillMultiplier;
+                    
+                    let modifier = 1; // Neutral
+                    if (enemy.immune && enemy.immune.includes(damageType)) {
+                        modifier = 0; // Immune
+                    } else if (enemy.resist && enemy.resist.includes(damageType)) {
+                        modifier = 0.5; // Resistant
+                    } else if (enemy.weak && enemy.weak.includes(damageType)) {
+                        modifier = 1.5; // Weak
+                    }
+                    totalModifiedDamage += skillBasedDamage * modifier;
+                }
+                return totalModifiedDamage;
+            }
+
+            function updateCalculatedDamage(weapon, enemy) {
+                if (enemy) {
+                    if (weapon) {
+                        const damage = calculateDamage(weapon, enemy);
+                        calculatedDamageDisplay.innerHTML = `
+                            <h4 class="text-lg font-bold text-amber-400 mt-6">Damage vs. ${enemy.name}</h4>
+                            <p class="text-3xl font-bold text-white">${damage.toFixed(1)}</p>
+                            <p class="text-xs text-gray-500">per hit (with skills)</p>
+                        `;
+                    } else {
+                        calculatedDamageDisplay.innerHTML = `
+                            <h4 class="text-lg font-bold text-amber-400 mt-6">Damage vs. ${enemy.name}</h4>
+                            <p class="text-gray-400">Select a weapon to see calculated damage.</p>
+                        `;
+                    }
+                    enemyStatsDisplay.innerHTML = `
+                        <div class="text-sm space-y-1 mt-2 pt-2 border-t border-gray-700">
+                            <p><strong class="text-green-400">Weak To:</strong> ${enemy.weak || 'None'}</p>
+                            <p><strong class="text-red-400">Resists:</strong> ${enemy.resist || 'None'}</p>
+                            <p><strong class="text-gray-500">Immune To:</strong> ${enemy.immune || 'None'}</p>
+                        </div>
+                    `;
+                } else {
+                    calculatedDamageDisplay.innerHTML = '';
+                    enemyStatsDisplay.innerHTML = '';
+                }
+            }
+
+            function updateChart(weapon) {
+                chartTitle.textContent = weapon.name;
+                weaponDetails.innerHTML = `<p>Base Damage: ${weapon.totalDamage} | Max Lvl Damage: ${weapon.maxDamage}</p>`;
+                const damageTypes = Object.keys(weapon.damage);
+                const damageValues = Object.values(weapon.damage);
+                
+                const backgroundColors = damageTypes.map(type => {
+                    switch(type) {
+                        case 'Blunt': return 'rgba(251, 146, 60, 0.8)'; // orange-400
+                        case 'Slash': return 'rgba(248, 113, 113, 0.8)'; // red-400
+                        case 'Pierce': return 'rgba(96, 165, 250, 0.8)'; // blue-400
+                        case 'Fire': return 'rgba(239, 68, 68, 0.8)'; // red-600
+                        case 'Frost': return 'rgba(59, 130, 246, 0.8)'; // blue-600
+                        case 'Spirit': return 'rgba(167, 139, 250, 0.8)'; // violet-400
+                        case 'Poison': return 'rgba(74, 222, 128, 0.8)'; // green-400
+                        default: return 'rgba(156, 163, 175, 0.8)'; // gray-400
+                    }
+                });
+
+                if (weaponChart) {
+                    weaponChart.data.labels = damageTypes;
+                    weaponChart.data.datasets[0].data = damageValues;
+                    weaponChart.data.datasets[0].backgroundColor = backgroundColors;
+                    weaponChart.update();
+                } else {
+                    const ctx = document.getElementById('weapon-chart').getContext('2d');
+                    weaponChart = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: damageTypes,
+                            datasets: [{
+                                label: 'Damage Breakdown',
+                                data: damageValues,
+                                backgroundColor: backgroundColors,
+                                borderColor: '#2D3748', // bg-gray-800
+                                borderWidth: 2,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: {
+                                        color: '#D1D5DB' // text-gray-300
+                                    }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            let label = context.dataset.label || '';
+                                            if (label) {
+                                                label += ': ';
+                                            }
+                                            if (context.parsed !== null) {
+                                                label += `${context.label}: ${context.raw}`;
+                                            }
+                                            return label;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+
+            damageTypeFilters.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON') {
+                    activeDamageFilter = e.target.dataset.damage;
+                    damageTypeFilters.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                    e.target.classList.add('active');
+                    populateWeaponTable();
+                    saveState();
+                }
+            });
+
+            enemySelector.addEventListener('change', () => {
+                const enemyName = enemySelector.value;
+                if (enemyName === 'none') {
+                    selectedEnemy = null;
+                } else {
+                    selectedEnemy = enemyData.find(e => e.name === enemyName);
+                }
+                updateCalculatedDamage(selectedWeapon, selectedEnemy);
+                saveState();
+            });
+
+            tierFilter.addEventListener('change', () => { populateWeaponTable(); saveState(); });
+            typeFilter.addEventListener('change', () => { populateWeaponTable(); saveState(); });
+            includePreviousTiersCheckbox.addEventListener('change', () => { populateWeaponTable(); saveState(); });
+            enemyBiomeFilter.addEventListener('change', populateEnemyGrid);
+
+            // Corrected Initialization Order
+            populateFilters();
+            populateSkillInputs();
+            loadAndApplyState(); // Load state and apply it to the now-existing elements
+            populateWeaponTable();
+            populateCombatAccordion();
+            populateEnemyGrid();
+            updateCalculatedDamage(selectedWeapon, selectedEnemy);
+            
+            if (weaponData.length > 0) {
+                const firstRow = weaponTableBody.querySelector('tr');
+                if(firstRow) {
+                    firstRow.click();
+                }
+            }
+
+            const sections = document.querySelectorAll('main section');
+            const navLinks = document.querySelectorAll('.nav-link');
+            const mobileNav = document.getElementById('mobile-nav');
+
+            function showSection(hash) {
+                sections.forEach(section => {
+                    if ('#' + section.id === hash) {
+                        section.classList.remove('hidden');
+                    } else {
+                        section.classList.add('hidden');
+                    }
+                });
+                navLinks.forEach(link => {
+                    if (link.getAttribute('href') === hash) {
+                        link.classList.add('active');
+                    } else {
+                        link.classList.remove('active');
+                    }
+                });
+                if (document.getElementById(hash.substring(1))) {
+                     mobileNav.value = hash;
+                }
+            }
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const hash = e.target.getAttribute('href');
+                    history.pushState(null, null, hash);
+                    showSection(hash);
+                });
+            });
+            
+            mobileNav.addEventListener('change', (e) => {
+                 const hash = e.target.value;
+                 history.pushState(null, null, hash);
+                 showSection(hash);
+            });
+
+            window.addEventListener('popstate', () => {
+                showSection(window.location.hash || '#explorer');
+            });
+
+            showSection(window.location.hash || '#explorer');
+        });
+    </script>
+</body>
+</html>
