@@ -310,7 +310,7 @@
             { name: 'Stone Axe', type: 'Axe (1H)', tier: 'Meadows', damage: { Slash: 15 }, maxLvlDamage: 24, totalDamage: 15, attackSpeed: 1.2, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: true },
             { name: 'Flint Axe', type: 'Axe (1H)', tier: 'Meadows', damage: { Slash: 20 }, maxLvlDamage: 29, totalDamage: 20, attackSpeed: 1.2, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: true },
             { name: 'Club', type: 'Club (1H)', tier: 'Meadows', damage: { Blunt: 12 }, maxLvlDamage: 21, totalDamage: 12, attackSpeed: 1.1, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: true },
-            { name: 'Flint Knife', type: 'Knife (1H)', tier: 'Meadows', damage: { Slash: 6, Pierce: 6 }, maxLvlDamage: 24, totalDamage: 12, attackSpeed: 0.8, staminaCost: 6, backstab: 10, secondaryMult: 3, hasCombo: true },
+            { name: 'Flint Knife', type: 'Knife (1H)', tier: 'Meadows', damage: { Slash: 5, Pierce: 5 }, maxLvlDamage: 16, totalDamage: 10, attackSpeed: 0.8, staminaCost: 6, backstab: 10, secondaryMult: 3, hasCombo: true },
             { name: 'Flint Spear', type: 'Spear (2H)', tier: 'Meadows', damage: { Pierce: 20 }, maxLvlDamage: 35, totalDamage: 20, attackSpeed: 1.2, staminaCost: 12, backstab: 3, secondaryMult: 1, hasCombo: false },
             { name: 'Crude Bow', type: 'Bow (2H)', tier: 'Meadows', damage: { Pierce: 22 }, maxLvlDamage: 31, totalDamage: 22, attackSpeed: 2.0, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: false },
             { name: 'Abyssal Razor', type: 'Knife (1H)', tier: 'Black Forest', damage: { Slash: 24, Pierce: 24 }, maxLvlDamage: 66, totalDamage: 48, attackSpeed: 0.8, staminaCost: 6, backstab: 10, secondaryMult: 3, hasCombo: true },
@@ -444,7 +444,7 @@
             let currentEnemySort = { key: 'name', direction: 'asc' };
             let currentEnemyView = 'table';
             let weaponUpgradeLevels = {};
-            let damageBarMode = 'vsFoe';
+            let damageBarMode = 'dps';
             
             const skillLevels = { Axes: 0, Bows: 0, Clubs: 0, Knives: 0, Polearms: 0, Spears: 0, Swords: 0, Fists: 0, Crossbows: 0 };
             const weaponTypeToSkillMap = {
@@ -490,7 +490,7 @@
                     activeDamageFilter = state.damageFilter || 'all';
                     enemySelector.value = state.enemy || 'none';
                     currentEnemyView = state.enemyView || 'table';
-                    damageBarMode = state.damageBarMode || 'vsFoe';
+                    damageBarMode = state.damageBarMode || 'dps';
                     if (enemySelector.value !== 'none') {
                         selectedEnemy = enemyData.find(e => e.name === enemySelector.value);
                     }
