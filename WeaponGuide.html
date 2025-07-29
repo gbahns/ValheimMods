@@ -96,6 +96,25 @@
             font-weight: bold;
             color: #FBBF24;
         }
+        .damage-bar-container {
+            background-color: #4A5568;
+            border-radius: 0.25rem;
+            overflow: hidden;
+            position: relative;
+            height: 1.25rem;
+        }
+        .damage-bar {
+            background-color: #FBBF24;
+            height: 100%;
+            transition: width 0.3s ease-in-out;
+            white-space: nowrap;
+            text-align: right;
+            padding-right: 4px;
+            color: #1A202C;
+            font-weight: bold;
+            font-size: 0.75rem;
+            line-height: 1.25rem;
+        }
         @media (min-width: 768px) {
             .chart-container {
                 height: 350px;
@@ -172,11 +191,11 @@
                             <div class="mt-2 flex items-center space-x-4">
                                 <div class="flex items-center">
                                     <input id="show-damage-details" type="checkbox" class="h-4 w-4 rounded border-gray-500 bg-gray-700 text-amber-500 focus:ring-amber-500">
-                                    <label for="show-damage-details" class="ml-2 block text-sm text-gray-300">Show Damage Details</label>
+                                    <label for="show-damage-details" class="ml-2 block text-sm text-gray-300">Show Damage Type Columns</label>
                                 </div>
                                 <div class="flex items-center">
-                                    <input id="hide-details-panel" type="checkbox" class="h-4 w-4 rounded border-gray-500 bg-gray-700 text-amber-500 focus:ring-amber-500">
-                                    <label for="hide-details-panel" class="ml-2 block text-sm text-gray-300">Hide Details Panel</label>
+                                    <input id="show-details-panel" type="checkbox" class="h-4 w-4 rounded border-gray-500 bg-gray-700 text-amber-500 focus:ring-amber-500">
+                                    <label for="show-details-panel" class="ml-2 block text-sm text-gray-300">Show Details</label>
                                 </div>
                             </div>
                         </div>
@@ -196,6 +215,13 @@
                             </select>
                         </div>
                     </div>
+                     <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Damage Bar Display</label>
+                        <div id="damage-bar-toggle" class="flex items-center bg-gray-800 border border-gray-600 rounded-md p-1 w-max">
+                            <button class="filter-btn px-4 py-1 rounded" data-mode="vsFoe">Damage/Hit</button>
+                            <button class="filter-btn px-4 py-1 rounded" data-mode="dps">DPS</button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="flex flex-col lg:flex-row gap-8">
@@ -211,20 +237,14 @@
                                     <th class="p-2 text-center font-bold text-gray-300 tracking-wider sortable" data-sort="lvl3">Lvl 3</th>
                                     <th class="p-2 text-center font-bold text-gray-300 tracking-wider sortable" data-sort="lvl4">Lvl 4</th>
                                     <th class="p-2 text-center font-bold text-amber-400 tracking-wider sortable" data-sort="vsFoe">vs. Foe</th>
-                                    <th class="p-2 text-center font-semibold text-gray-300 tracking-wider sortable" data-sort="attackSpeed">Speed</th>
                                     <th class="p-2 text-center font-bold text-amber-400 tracking-wider sortable" data-sort="dps">DPS</th>
                                     <th class="p-2 text-center font-bold text-amber-400 tracking-wider sortable" data-sort="comboDps">Combo DPS</th>
-                                    <th class="p-2 text-center font-bold text-amber-400 tracking-wider sortable" data-sort="surpriseAtk">Surprise Atk</th>
-                                    <th class="p-2 text-center font-bold text-amber-400 tracking-wider sortable" data-sort="secondaryAtk">Secondary Atk</th>
                                     <th class="p-2 text-center text-gray-300 tracking-wider sortable" data-sort="staminaCost">Stamina</th>
                                     <th class="p-2 text-center font-bold text-amber-400 tracking-wider sortable" data-sort="dmgPerStamina">Dmg/Stam</th>
+                                    <th id="damage-bar-header" class="p-2 text-left font-semibold text-gray-300 tracking-wider" style="min-width: 150px;">Damage Bar</th>
                                     <th class="p-2 text-center font-semibold text-gray-300 tracking-wider damage-col sortable" data-sort="Blunt" title="Blunt">Blunt</th>
                                     <th class="p-2 text-center font-semibold text-gray-300 tracking-wider damage-col sortable" data-sort="Slash" title="Slash">Slash</th>
                                     <th class="p-2 text-center font-semibold text-gray-300 tracking-wider damage-col sortable" data-sort="Pierce" title="Pierce">Pierce</th>
-                                    <th class="p-2 text-center font-semibold text-gray-300 tracking-wider damage-col sortable" data-sort="Fire" title="Fire">Fire</th>
-                                    <th class="p-2 text-center font-semibold text-gray-300 tracking-wider damage-col sortable" data-sort="Frost" title="Frost">Frost</th>
-                                    <th class="p-2 text-center font-semibold text-gray-300 tracking-wider damage-col sortable" data-sort="Spirit" title="Spirit">Spirit</th>
-                                    <th class="p-2 text-center font-semibold text-gray-300 tracking-wider damage-col sortable" data-sort="Poison" title="Poison">Poison</th>
                                 </tr>
                             </thead>
                             <tbody id="weapon-table-body">
@@ -330,7 +350,7 @@
             { name: 'Spine Snap', type: 'Bow (2H)', tier: 'Mistlands', damage: { Pierce: 62 }, maxLvlDamage: 68, totalDamage: 62, attackSpeed: 2.0, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: false },
             { name: 'Arbalest', type: 'Crossbow (2H)', tier: 'Mistlands', damage: { Pierce: 200 }, maxLvlDamage: 209, totalDamage: 200, attackSpeed: 3.0, staminaCost: 15, backstab: 3, secondaryMult: 1, hasCombo: false },
             { name: 'Staff of Embers', type: 'Staff (2H)', tier: 'Mistlands', damage: { Blunt: 120, Fire: 120 }, maxLvlDamage: 276, totalDamage: 240, attackSpeed: 1.5, staminaCost: 0, backstab: 1, secondaryMult: 1, hasCombo: false },
-            { name: 'Staff of Frost', type: 'Staff (2H)', tier: 'Mistlands', damage: { Frost: 30 }, maxLvlDamage: 36, totalDamage: 30, attackSpeed: 0.25, staminaCost: 0, backstab: 1, secondaryMult: 1, hasCombo: false },
+            { name: 'Staff of Frost', type: 'Staff (2H)', tier: 'Mistlands', damage: { Frost: 30 }, maxLvlDamage: 36, totalDamage: 30, attackSpeed: 0.25, staminaCost: 0, backstab: 1, hasCombo: false },
         ];
 
         const combatData = [
@@ -406,12 +426,14 @@
             const enemyTableBody = document.getElementById('enemy-table-body');
             const enemyBiomeFilter = document.getElementById('enemy-biome-filter');
             const showDamageDetailsCheckbox = document.getElementById('show-damage-details');
-            const hideDetailsPanelCheckbox = document.getElementById('hide-details-panel');
+            const showDetailsPanelCheckbox = document.getElementById('show-details-panel');
             const tablePanel = document.getElementById('table-panel');
             const detailsPanel = document.getElementById('details-panel');
             const weaponTableHeader = document.getElementById('weapon-table-header');
             const enemyTableHeader = document.getElementById('enemy-table-header');
             const viewToggleButtons = document.getElementById('view-toggle-buttons');
+            const damageBarToggle = document.getElementById('damage-bar-toggle');
+            const damageBarHeader = document.getElementById('damage-bar-header');
 
             let weaponChart;
             let activeDamageFilter = 'all';
@@ -422,6 +444,7 @@
             let currentEnemySort = { key: 'name', direction: 'asc' };
             let currentEnemyView = 'table';
             let weaponUpgradeLevels = {};
+            let damageBarMode = 'vsFoe';
             
             const skillLevels = { Axes: 0, Bows: 0, Clubs: 0, Knives: 0, Polearms: 0, Spears: 0, Swords: 0, Fists: 0, Crossbows: 0 };
             const weaponTypeToSkillMap = {
@@ -439,9 +462,10 @@
                     damageFilter: activeDamageFilter,
                     enemy: enemySelector.value,
                     showDamage: showDamageDetailsCheckbox.checked,
-                    hidePanel: hideDetailsPanelCheckbox.checked,
+                    showPanel: showDetailsPanelCheckbox.checked,
                     enemyView: currentEnemyView,
-                    weaponLevels: weaponUpgradeLevels
+                    weaponLevels: weaponUpgradeLevels,
+                    damageBarMode: damageBarMode
                 };
                 localStorage.setItem('valheimArmoryState', JSON.stringify(state));
             }
@@ -462,10 +486,11 @@
                     typeFilter.value = state.type || 'all';
                     includePreviousTiersCheckbox.checked = state.includePrevious || false;
                     showDamageDetailsCheckbox.checked = state.showDamage || false;
-                    hideDetailsPanelCheckbox.checked = state.hidePanel || false;
+                    showDetailsPanelCheckbox.checked = state.showPanel || false;
                     activeDamageFilter = state.damageFilter || 'all';
                     enemySelector.value = state.enemy || 'none';
                     currentEnemyView = state.enemyView || 'table';
+                    damageBarMode = state.damageBarMode || 'vsFoe';
                     if (enemySelector.value !== 'none') {
                         selectedEnemy = enemyData.find(e => e.name === enemySelector.value);
                     }
@@ -473,6 +498,10 @@
                     damageTypeFilters.querySelectorAll('button').forEach(btn => {
                         btn.classList.toggle('active', btn.dataset.damage === activeDamageFilter);
                     });
+                     damageBarToggle.querySelectorAll('button').forEach(btn => {
+                        btn.classList.toggle('active', btn.dataset.mode === damageBarMode);
+                    });
+                    damageBarHeader.textContent = damageBarMode === 'dps' ? 'DPS' : 'DPH';
                 }
             }
 
@@ -640,8 +669,8 @@
                         valA = (damageA) / (stamA > 0 ? stamA : 1);
                         valB = (damageB) / (stamB > 0 ? stamB : 1);
                     } else if (isNumeric) {
-                        valA = a.damage[sortKey] || a[sortKey] || 0;
-                        valB = b.damage[sortKey] || b[sortKey] || 0;
+                        valA = a[sortKey] || a.damage[sortKey] || 0;
+                        valB = b[sortKey] || b.damage[sortKey] || 0;
                     } else { // String sort
                         valA = a[sortKey].toLowerCase();
                         valB = b[sortKey].toLowerCase();
@@ -667,20 +696,14 @@
                         <td class="p-2 text-center text-gray-400 level-selector" data-level="3">${weapon.lvl3}</td>
                         <td class="p-2 text-center text-gray-400 level-selector" data-level="4">${weapon.lvl4}</td>
                         <td class="p-2 text-center font-bold text-amber-400" id="damage-calc-${weaponId}">-</td>
-                        <td class="p-2 text-center text-gray-400">${weapon.attackSpeed.toFixed(2)}s</td>
                         <td class="p-2 text-center font-bold text-amber-400" id="dps-calc-${weaponId}">-</td>
                         <td class="p-2 text-center font-bold" id="combo-dps-calc-${weaponId}">-</td>
-                        <td class="p-2 text-center font-bold text-amber-400" id="surprise-atk-calc-${weaponId}">-</td>
-                        <td class="p-2 text-center font-bold text-amber-400" id="secondary-atk-calc-${weaponId}">-</td>
                         <td class="p-2 text-center text-gray-400" id="stamina-calc-${weaponId}">-</td>
                         <td class="p-2 text-center font-bold text-amber-400" id="dmg-per-stamina-calc-${weaponId}">-</td>
+                        <td class="p-2"><div class="damage-bar-container"><div class="damage-bar" id="damage-bar-${weaponId}"></div></div></td>
                         <td class="p-2 text-center text-gray-400 damage-col">${weapon.damage.Blunt || '-'}</td>
                         <td class="p-2 text-center text-gray-400 damage-col">${weapon.damage.Slash || '-'}</td>
                         <td class="p-2 text-center text-gray-400 damage-col">${weapon.damage.Pierce || '-'}</td>
-                        <td class="p-2 text-center text-gray-400 damage-col">${weapon.damage.Fire || '-'}</td>
-                        <td class="p-2 text-center text-gray-400 damage-col">${weapon.damage.Frost || '-'}</td>
-                        <td class="p-2 text-center text-gray-400 damage-col">${weapon.damage.Spirit || '-'}</td>
-                        <td class="p-2 text-center text-gray-400 damage-col">${weapon.damage.Poison || '-'}</td>
                     `;
                     row.addEventListener('click', (e) => {
                         if (e.target.classList.contains('level-selector')) {
@@ -774,7 +797,23 @@
             }
             
             function updateAllCalculatedColumns() {
-                weaponTableBody.querySelectorAll('tr').forEach(row => {
+                const rows = weaponTableBody.querySelectorAll('tr');
+                let maxBarValue = 0;
+
+                // First pass: find the maximum value for scaling
+                rows.forEach(row => {
+                    const weaponName = row.dataset.weaponName;
+                    const weapon = weaponData.find(w => w.name === weaponName);
+                    if (weapon) {
+                        const damage = calculateDamage(weapon, selectedEnemy);
+                        const dps = damage / weapon.attackSpeed;
+                        const val = damageBarMode === 'dps' ? dps : damage;
+                        if (val > maxBarValue) maxBarValue = val;
+                    }
+                });
+
+                // Second pass: update all cells and bars
+                rows.forEach(row => {
                     const weaponName = row.dataset.weaponName;
                     const weapon = weaponData.find(w => w.name === weaponName);
                     if (weapon) {
@@ -795,6 +834,7 @@
                         const secondaryAtkCell = row.querySelector(`#secondary-atk-calc-${weapon.name.replace(/\s+/g, '-')}`);
                         const staminaCell = row.querySelector(`#stamina-calc-${weapon.name.replace(/\s+/g, '-')}`);
                         const dmgPerStaminaCell = row.querySelector(`#dmg-per-stamina-calc-${weapon.name.replace(/\s+/g, '-')}`);
+                        const damageBar = row.querySelector(`#damage-bar-${weapon.name.replace(/\s+/g, '-')}`);
                         
                         if (comboDpsCell) comboDpsCell.className = `p-2 text-center font-bold ${weapon.hasCombo ? 'text-amber-400' : 'text-gray-500'}`;
 
@@ -806,6 +846,13 @@
                             if(secondaryAtkCell) secondaryAtkCell.textContent = secondaryAtk.toFixed(1);
                             if(staminaCell) staminaCell.textContent = stamina.toFixed(1);
                             if(dmgPerStaminaCell) dmgPerStaminaCell.textContent = isFinite(dmgPerStamina) ? dmgPerStamina.toFixed(2) : '∞';
+                            
+                            const barValue = damageBarMode === 'dps' ? dps : damage;
+                            const barWidth = maxBarValue > 0 ? (barValue / maxBarValue) * 100 : 0;
+                            if (damageBar) {
+                                damageBar.style.width = `${barWidth}%`;
+                                damageBar.textContent = barValue.toFixed(1);
+                            }
                         } else {
                             if(damageCell) damageCell.textContent = '-';
                             if(dpsCell) dpsCell.textContent = '-';
@@ -814,6 +861,10 @@
                             if(secondaryAtkCell) secondaryAtkCell.textContent = '-';
                             if(staminaCell) staminaCell.textContent = stamina.toFixed(1);
                             if(dmgPerStaminaCell) dmgPerStaminaCell.textContent = '-';
+                            if (damageBar) {
+                                damageBar.style.width = '0%';
+                                damageBar.textContent = '';
+                            }
                         }
                     }
                 });
@@ -824,7 +875,7 @@
                 
                 const selectedLevel = weaponUpgradeLevels[weapon.name] || 1;
                 const levelDamage = weapon[`lvl${selectedLevel}`];
-                const damageRatio = levelDamage / weapon.totalDamage;
+                const damageRatio = weapon.totalDamage > 0 ? levelDamage / weapon.totalDamage : 1;
 
                 const skillName = weaponTypeToSkillMap[weapon.type] || null;
                 const skillLevel = skillName ? skillLevels[skillName] : 0;
@@ -984,7 +1035,7 @@
             }
 
             function toggleDetailsPanel() {
-                const isHidden = hideDetailsPanelCheckbox.checked;
+                const isHidden = !showDetailsPanelCheckbox.checked;
                 detailsPanel.classList.toggle('hidden', isHidden);
                 tablePanel.classList.toggle('lg:w-3/4', !isHidden);
                 tablePanel.classList.toggle('lg:w-full', isHidden);
@@ -1012,6 +1063,17 @@
                     damageTypeFilters.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
                     e.target.classList.add('active');
                     populateWeaponTable();
+                    saveState();
+                }
+            });
+
+            damageBarToggle.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON') {
+                    damageBarMode = e.target.dataset.mode;
+                    damageBarToggle.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                    e.target.classList.add('active');
+                    damageBarHeader.textContent = damageBarMode === 'dps' ? 'DPS' : 'DPH';
+                    updateAllCalculatedColumns();
                     saveState();
                 }
             });
@@ -1074,7 +1136,7 @@
             includePreviousTiersCheckbox.addEventListener('change', () => { populateWeaponTable(); saveState(); });
             enemyBiomeFilter.addEventListener('change', populateEnemyViews);
             showDamageDetailsCheckbox.addEventListener('change', () => { toggleDamageColumns(); saveState(); });
-            hideDetailsPanelCheckbox.addEventListener('change', () => { toggleDetailsPanel(); saveState(); });
+            showDetailsPanelCheckbox.addEventListener('change', () => { toggleDetailsPanel(); saveState(); });
             viewToggleButtons.addEventListener('click', (e) => {
                 if(e.target.tagName === 'BUTTON') {
                     setEnemyView(e.target.dataset.view);
