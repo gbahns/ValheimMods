@@ -73,8 +73,8 @@ namespace GrabMaterials
 		// Pre-defined lists of prefab names for name-based checks.
 		// Using HashSet for fast lookups (O(1) average time complexity).
 		private static readonly HashSet<string> BossSummoningNames = new HashSet<string> { "trophydeer", "ancientseed", "witheredbone", "dragonegg", "goblintotem", "seekerbrood", "trophyfader", "bellfragment", "sealbreaker", "sealbreakerfragment" };
-		private static readonly HashSet<string> RawMeatNames = new HashSet<string> { "boar_meat", "wolfmeat", "loxmeat", "deermeat", "serpentmeat", "fishraw", "haremeat", "seekermeat", "chickenmeat", "asksvintail", "bonemawmeat", "chickenegg", "entrails" };
-		private static readonly HashSet<string> CookedMeatNames = new HashSet<string> { "cooked_boar_meat", "cookedwolfmeat", "cookedloxmeat", "cookeddeermeat", "serpentmeatcooked", "cookedfish", "cookedharemeat", "cookedseekermeat", "cookedchickenmeat", "cookedbonemawmeat" };
+		private static readonly HashSet<string> RawMeatNames = new HashSet<string> { "boar_meat", "wolfmeat", "loxmeat", "deermeat", "serpentmeat", "fishraw", "haremeat", "seekermeat", "chickenmeat", "asksvintail", "bonemawmeat", "chickenegg", "entrails", "necktail" };
+		private static readonly HashSet<string> CookedMeatNames = new HashSet<string> { "cooked_boar_meat", "cookedwolfmeat", "cookedloxmeat", "cookeddeermeat", "serpentmeatcooked", "cookedfish", "cookedharemeat", "cookedseekermeat", "cookedchickenmeat", "cookedbonemawmeat", "NeckTailGrilled" };
 		private static readonly HashSet<string> FoodIngredientNames = new HashSet<string> { "barleyflour", "bloodclot", "royaljelly" };
 		private static readonly HashSet<string> FishingBaitNames = new HashSet<string> { "fishingbait", "fishingbaitashlands", "fishingbaitcave", "fishingbaitdeepnorth", "fishingbaitforest", "fishingbaitmistlands", "fishingbaitocean", "fishingbaitplains", "fishingbaitswamp" };
 		private static readonly HashSet<string> AmmoNames = new HashSet<string> { "payload_grausten", "payload_explosive" };
