@@ -153,8 +153,10 @@
                         <div class="flex-shrink-0 pt-5">
                             <button id="skill-toggle-btn" class="filter-btn text-sm py-2 px-4 rounded w-32 active">My Skills</button>
                         </div>
-                        <div id="skill-inputs" class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-x-4 gap-y-3 flex-grow">
-                            <!-- Skill inputs will be generated here -->
+                        <div id="skill-inputs-wrapper" class="flex-grow overflow-hidden transition-all duration-300 ease-in-out">
+                            <div id="skill-inputs" class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-x-4 gap-y-3 pb-4">
+                                <!-- Skill inputs will be generated here -->
+                            </div>
                         </div>
                     </div>
                     <div class="flex flex-col gap-4 pt-4 border-t border-gray-700">
@@ -169,6 +171,12 @@
                                     <label for="type-filter" class="block text-sm font-medium text-gray-300 mb-2">Weapon Type</label>
                                     <select id="type-filter" class="w-auto bg-gray-800 border border-gray-600 rounded-md p-2 focus:ring-amber-400 focus:border-amber-400">
                                         <option value="all">All Types</option>
+                                    </select>
+                                </div>
+                                <div id="arrow-filter-container" class="hidden">
+                                    <label for="arrow-filter" class="block text-sm font-medium text-gray-300 mb-2">Arrow Type</label>
+                                    <select id="arrow-filter" class="w-auto bg-gray-800 border border-gray-600 rounded-md p-2 focus:ring-amber-400 focus:border-amber-400">
+                                        <!-- Options populated by JS -->
                                     </select>
                                 </div>
                                  <div class="w-48">
@@ -378,6 +386,20 @@
             { name: 'The Queen', biome: 'Mistlands', weak: '', resist: 'Pierce', immune: 'Spirit', notes: 'Final boss of the Mistlands.' }
         ];
 
+        const arrowData = {
+            "Wood Arrow": { Pierce: 22 },
+            "Flinthead Arrow": { Pierce: 27 },
+            "Bronzehead Arrow": { Pierce: 32 },
+            "Ironhead Arrow": { Pierce: 42 },
+            "Obsidian Arrow": { Pierce: 52 },
+            "Needle Arrow": { Pierce: 62 },
+            "Carapace Arrow": { Pierce: 72 },
+            "Fire Arrow": { Pierce: 11, Fire: 22 },
+            "Frost Arrow": { Pierce: 26, Frost: 52 },
+            "Poison Arrow": { Pierce: 26, Poison: 52 },
+            "Silver Arrow": { Pierce: 52, Spirit: 20 },
+        };
+
         document.addEventListener('DOMContentLoaded', () => {
             const weaponTableBody = document.getElementById('weapon-table-body');
             const tierFilter = document.getElementById('tier-filter');
@@ -401,6 +423,9 @@
             const skillToggleButton = document.getElementById('skill-toggle-btn');
             const enemyInfoContainer = document.getElementById('enemy-info-container');
             const enemyInfoPanel = document.getElementById('enemy-info-panel');
+            const skillInputsWrapper = document.getElementById('skill-inputs-wrapper');
+            const arrowFilterContainer = document.getElementById('arrow-filter-container');
+            const arrowFilter = document.getElementById('arrow-filter');
 
             let activeDamageFilters = [];
             let selectedWeapon = null;
@@ -432,7 +457,8 @@
                     showDamage: showDamageDetailsCheckbox.checked,
                     enemyView: currentEnemyView,
                     weaponLevels: weaponUpgradeLevels,
-                    damageBarMode: damageBarMode
+                    damageBarMode: damageBarMode,
+                    arrow: arrowFilter.value
                 };
                 localStorage.setItem('valheimArmoryState', JSON.stringify(state));
             }
@@ -457,6 +483,8 @@
                     enemySelector.value = state.enemy || 'none';
                     currentEnemyView = state.enemyView || 'table';
                     damageBarMode = state.damageBarMode || 'dps';
+                    arrowFilter.value = state.arrow || 'Wood Arrow';
+
                     if (enemySelector.value !== 'none') {
                         selectedEnemy = enemyData.find(e => e.name === enemySelector.value);
                     }
@@ -530,6 +558,15 @@
                     `;
                     damageTypeFilterDropdown.appendChild(item);
                 });
+
+                arrowFilter.innerHTML = '';
+                Object.keys(arrowData).forEach(arrowName => {
+                    const option = document.createElement('option');
+                    option.value = arrowName;
+                    option.textContent = arrowName;
+                    arrowFilter.appendChild(option);
+                });
+
 
                 const enemyBiomes = [...new Set(enemyData.map(e => e.biome))];
                 enemyBiomeFilter.innerHTML = '<option value="all">All Biomes</option>';
@@ -681,7 +718,7 @@
                     row.className = 'border-b border-gray-700 table-row-clickable cursor-pointer';
                     row.dataset.weaponName = weapon.name;
                     row.innerHTML = `
-                        <td class="p-2 font-semibold">${weapon.name}</td>
+                        <td class="p-2 font-semibold whitespace-nowrap">${weapon.name}</td>
                         <td class="p-2 text-gray-400">${weapon.type}</td>
                         <td class="p-2 text-gray-400">${weapon.tier}</td>
                         <td class="p-2 text-center text-white level-selector" data-level="1">${weapon.lvl1}</td>
@@ -716,6 +753,7 @@
                         document.querySelectorAll('.table-row-clickable').forEach(r => r.classList.remove('selected'));
                         row.classList.add('selected');
                         selectedWeapon = weapon;
+                        arrowFilterContainer.classList.toggle('hidden', selectedWeapon.type !== 'Bow (2H)');
                         updateCalculatedDamage(weapon, selectedEnemy);
                         updateEnemyInfoPanel(selectedEnemy, weapon);
                     });
@@ -871,15 +909,31 @@
                 const levelDamage = weapon[`lvl${selectedLevel}`];
                 const damageRatio = weapon.totalDamage > 0 ? levelDamage / weapon.totalDamage : 1;
 
-                const skillName = weaponTypeToSkillMap[weapon.type] || null;
+                const skillName = weaponTypeToSkillMap[weapon.type];
                 const skillLevel = skillName ? skillLevels[skillName] : 0;
-                const skillMultiplier = 0.4 + (0.6 * (skillLevel / 100));
+                
+                let skillFactor;
+                if (weapon.type === 'Fist (1H)') {
+                    skillFactor = 1 + (skillLevel / 100 * 0.5);
+                } else {
+                    skillFactor = 1 + (skillLevel / 100 * 0.25);
+                }
 
                 let totalModifiedDamage = 0;
                 let breakdown = [];
-                for (const [damageType, baseValue] of Object.entries(weapon.damage)) {
+                let combinedDamage = { ...weapon.damage };
+
+                if (weapon.type === 'Bow (2H)') {
+                    const selectedArrowName = arrowFilter.value;
+                    const arrow = arrowData[selectedArrowName];
+                    for (const type in arrow) {
+                        combinedDamage[type] = (combinedDamage[type] || 0) + arrow[type];
+                    }
+                }
+                
+                for (const [damageType, baseValue] of Object.entries(combinedDamage)) {
                     const levelAdjustedBase = baseValue * damageRatio;
-                    const skillBasedDamage = levelAdjustedBase * skillMultiplier;
+                    const skillBasedDamage = levelAdjustedBase * skillFactor;
                     
                     let modifier = 1;
                     let modifierText = 'Neutral';
@@ -902,7 +956,7 @@
                     const finalValue = skillBasedDamage * modifier;
                     totalModifiedDamage += finalValue;
                     if (getBreakdown) {
-                        breakdown.push({ type: damageType, base: levelAdjustedBase, skill: skillMultiplier, mod: modifierText, final: finalValue });
+                        breakdown.push({ type: damageType, base: levelAdjustedBase, skill: skillFactor, mod: modifierText, final: finalValue });
                     }
                 }
                 return getBreakdown ? { total: totalModifiedDamage, breakdown: breakdown } : totalModifiedDamage;
@@ -1069,18 +1123,19 @@
             });
 
             skillToggleButton.addEventListener('click', () => {
-                const inputs = document.querySelectorAll('.skill-input');
                 if (skillMode === 'mySkills') {
                     // Switch to baseline
                     skillMode = 'baseline';
                     skillToggleButton.textContent = 'Baseline Skills';
                     skillToggleButton.classList.remove('active');
-                    userStoredSkills = { ...skillLevels }; // Store user's skills
+                    userStoredSkills = { ...skillLevels };
                     
-                    inputs.forEach(input => {
-                        const skill = input.dataset.skill;
-                        skillLevels[skill] = 0; // Set model to baseline
-                        input.value = 0; // Update view
+                    Object.keys(skillLevels).forEach(skill => {
+                        skillLevels[skill] = 0;
+                    });
+                    
+                    document.querySelectorAll('.skill-input').forEach(input => {
+                        input.value = 0;
                         input.disabled = true;
                         input.classList.add('bg-gray-800');
                     });
@@ -1089,11 +1144,11 @@
                     skillMode = 'mySkills';
                     skillToggleButton.textContent = 'My Skills';
                     skillToggleButton.classList.add('active');
-                    Object.assign(skillLevels, userStoredSkills); // Restore user's skills
+                    Object.assign(skillLevels, userStoredSkills);
                     
-                    inputs.forEach(input => {
+                    document.querySelectorAll('.skill-input').forEach(input => {
                         const skill = input.dataset.skill;
-                        input.value = skillLevels[skill]; // Update view
+                        input.value = skillLevels[skill];
                         input.disabled = false;
                         input.classList.remove('bg-gray-800');
                     });
@@ -1103,7 +1158,16 @@
             });
 
             tierFilter.addEventListener('change', () => { populateWeaponTable(); saveState(); });
-            typeFilter.addEventListener('change', () => { populateWeaponTable(); saveState(); });
+            typeFilter.addEventListener('change', () => {
+                arrowFilterContainer.classList.toggle('hidden', typeFilter.value !== 'Bow (2H)');
+                populateWeaponTable(); 
+                saveState(); 
+            });
+            arrowFilter.addEventListener('change', () => {
+                updateAllCalculatedColumns();
+                updateCalculatedDamage(selectedWeapon, selectedEnemy);
+                saveState();
+            });
             includePreviousTiersCheckbox.addEventListener('change', () => { populateWeaponTable(); saveState(); });
             enemyBiomeFilter.addEventListener('change', populateEnemyViews);
             showDamageDetailsCheckbox.addEventListener('change', () => { toggleDamageColumns(); saveState(); });
