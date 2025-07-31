@@ -173,10 +173,10 @@
                         </div>
                     </div>
                     <h3 class="text-xl font-semibold text-amber-400 mb-4 border-b border-gray-700 pb-2">Filters & Calculation</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <div>
-                            <label for="tier-filter" class="block text-sm font-medium text-gray-300 mb-2">Filter by Biome / Tier</label>
-                            <select id="tier-filter" class="w-full bg-gray-800 border border-gray-600 rounded-md p-2 focus:ring-amber-400 focus:border-amber-400">
+                            <label for="tier-filter" class="block text-sm font-medium text-gray-300 mb-2">Tier</label>
+                            <select id="tier-filter" class="w-auto bg-gray-800 border border-gray-600 rounded-md p-2 focus:ring-amber-400 focus:border-amber-400">
                                 <option value="all">All Tiers</option>
                             </select>
                             <div class="mt-2 flex items-center">
@@ -185,23 +185,23 @@
                             </div>
                         </div>
                         <div>
-                            <label for="type-filter" class="block text-sm font-medium text-gray-300 mb-2">Filter by Weapon Type</label>
-                            <select id="type-filter" class="w-full bg-gray-800 border border-gray-600 rounded-md p-2 focus:ring-amber-400 focus:border-amber-400">
+                            <label for="type-filter" class="block text-sm font-medium text-gray-300 mb-2">Weapon Type</label>
+                            <select id="type-filter" class="w-auto bg-gray-800 border border-gray-600 rounded-md p-2 focus:ring-amber-400 focus:border-amber-400">
                                 <option value="all">All Types</option>
                             </select>
                             <div class="mt-2 flex items-center space-x-4">
                                 <div class="flex items-center">
                                     <input id="show-damage-details" type="checkbox" class="h-4 w-4 rounded border-gray-500 bg-gray-700 text-amber-500 focus:ring-amber-500">
-                                    <label for="show-damage-details" class="ml-2 block text-sm text-gray-300">Show Damage Type Columns</label>
+                                    <label for="show-damage-details" class="ml-2 block text-sm text-gray-300">Damage Columns</label>
                                 </div>
                                 <div class="flex items-center">
                                     <input id="show-details-panel" type="checkbox" class="h-4 w-4 rounded border-gray-500 bg-gray-700 text-amber-500 focus:ring-amber-500">
-                                    <label for="show-details-panel" class="ml-2 block text-sm text-gray-300">Show Details</label>
+                                    <label for="show-details-panel" class="ml-2 block text-sm text-gray-300">Details Panel</label>
                                 </div>
                             </div>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Filter by Primary Damage</label>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Primary Damage</label>
                             <div id="damage-type-filters" class="flex flex-wrap gap-2">
                                 <button class="filter-btn flex-grow bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded active" data-damage="all">All</button>
                                 <button class="filter-btn flex-grow bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded" data-damage="Blunt">Blunt</button>
@@ -210,19 +210,19 @@
                             </div>
                         </div>
                         <div>
-                            <label for="enemy-selector" class="block text-sm font-medium text-gray-300 mb-2">Calculate Damage vs. Enemy</label>
-                            <select id="enemy-selector" class="w-full bg-gray-800 border border-gray-600 rounded-md p-2 focus:ring-amber-400 focus:border-amber-400">
+                            <label for="enemy-selector" class="block text-sm font-medium text-gray-300 mb-2">Enemy</label>
+                            <select id="enemy-selector" class="w-auto bg-gray-800 border border-gray-600 rounded-md p-2 focus:ring-amber-400 focus:border-amber-400">
                                 <option value="none">-- Select an Enemy --</option>
                             </select>
+                             <div class="mt-4">
+                                 <label class="block text-sm font-medium text-gray-300 mb-2">Damage Bar</label>
+                                 <div id="damage-bar-toggle" class="flex items-center bg-gray-800 border border-gray-600 rounded-md p-1 w-max">
+                                     <button class="filter-btn px-4 py-1 rounded" data-mode="vsFoe">Damage/Hit</button>
+                                     <button class="filter-btn px-4 py-1 rounded" data-mode="dps">DPS</button>
+                                 </div>
+                             </div>
                         </div>
                     </div>
-                     <div class="mt-4">
-                         <label class="block text-sm font-medium text-gray-300 mb-2">Damage Bar Display</label>
-                         <div id="damage-bar-toggle" class="flex items-center bg-gray-800 border border-gray-600 rounded-md p-1 w-max">
-                             <button class="filter-btn px-4 py-1 rounded" data-mode="vsFoe">Damage/Hit</button>
-                             <button class="filter-btn px-4 py-1 rounded" data-mode="dps">DPS</button>
-                         </div>
-                     </div>
                 </div>
 
                 <div class="flex flex-col lg:flex-row gap-8">
@@ -516,7 +516,7 @@
                     div.className = "flex-shrink-0";
                     div.innerHTML = `
                         <label for="skill-${skill}" class="block text-sm font-medium text-gray-300">${skill}</label>
-                        <input type="number" id="skill-${skill}" data-skill="${skill}" value="0" min="0" max="100" class="skill-input mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-1 px-2 text-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500">
+                        <input type="number" id="skill-${skill}" data-skill="${skill}" value="0" min="0" max="100" class="skill-input mt-1 block w-16 bg-gray-700 border border-gray-600 rounded-md shadow-sm py-1 px-2 text-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500">
                     `;
                     skillInputsContainer.appendChild(div);
                 });
