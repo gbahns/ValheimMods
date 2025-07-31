@@ -12,10 +12,10 @@
     <!-- Chosen Palette: Ashen Oak -->
     <!-- Application Structure Plan: The application is designed as a multi-section, single-page dashboard. The user can navigate between distinct, task-oriented sections using a persistent top navigation bar. The sections are: 1) 'Home/Intro' to set the scene. 2) 'Combat Guide' for fundamental mechanics, presented in an easy-to-digest accordion format. 3) 'Weapon Explorer', the core of the app, featuring powerful filters (by tier, type, damage) and an interactive table to compare weapons, with a dynamic chart visualizing the selected weapon's stats. 4) 'Enemy Intel', a filterable database of creatures and their vulnerabilities. This structure was chosen over a linear report format to empower users to find specific information quickly. A player can ask "What blunt weapon is best for the Swamp?" and use the filters to get an immediate answer, which is a more natural user flow for a game guide. -->
     <!-- Visualization & Content Choices: 
-        - Report Info: Weapon damage statistics (Blunt, Pierce, Slash, Elemental). -> Goal: Compare weapon damage profiles. -> Viz/Presentation: Dynamic Doughnut Chart (Chart.js/Canvas). -> Interaction: Chart updates when a user clicks a weapon in the main table. -> Justification: A doughnut chart provides a clear, at-a-glance breakdown of a weapon's damage composition, which is critical for tactical decisions.
-        - Report Info: Comprehensive list of all weapons with stats and recipes. -> Goal: Allow users to browse, filter, and compare all weapons. -> Viz/Presentation: Interactive HTML Table. -> Interaction: Users can filter by biome/tier, weapon type, and damage type using dropdowns and buttons. Clicking a row highlights it and updates the companion chart. -> Justification: A filterable table is the most efficient way to handle a large dataset like this, letting users narrow down the options to their specific needs.
-        - Report Info: Enemy vulnerability data. -> Goal: Provide quick reference for combat preparation. -> Viz/Presentation: Card-based grid layout. -> Interaction: Filter by biome to see relevant threats. -> Justification: Cards allow for a visually appealing presentation of enemy info, including an image placeholder and key data points in a scannable format.
-        - Report Info: Core combat mechanics. -> Goal: Educate users on game fundamentals. -> Viz/Presentation: HTML Accordion. -> Interaction: Users can click to expand/collapse sections. -> Justification: An accordion prevents the initial view from being overwhelmed with text, allowing users to explore the mechanics they are interested in without excessive scrolling.
+         - Report Info: Weapon damage statistics (Blunt, Pierce, Slash, Elemental). -> Goal: Compare weapon damage profiles. -> Viz/Presentation: Dynamic Doughnut Chart (Chart.js/Canvas). -> Interaction: Chart updates when a user clicks a weapon in the main table. -> Justification: A doughnut chart provides a clear, at-a-glance breakdown of a weapon's damage composition, which is critical for tactical decisions.
+         - Report Info: Comprehensive list of all weapons with stats and recipes. -> Goal: Allow users to browse, filter, and compare all weapons. -> Viz/Presentation: Interactive HTML Table. -> Interaction: Users can filter by biome/tier, weapon type, and damage type using dropdowns and buttons. Clicking a row highlights it and updates the companion chart. -> Justification: A filterable table is the most efficient way to handle a large dataset like this, letting users narrow down the options to their specific needs.
+         - Report Info: Enemy vulnerability data. -> Goal: Provide quick reference for combat preparation. -> Viz/Presentation: Card-based grid layout. -> Interaction: Filter by biome to see relevant threats. -> Justification: Cards allow for a visually appealing presentation of enemy info, including an image placeholder and key data points in a scannable format.
+         - Report Info: Core combat mechanics. -> Goal: Educate users on game fundamentals. -> Viz/Presentation: HTML Accordion. -> Interaction: Users can click to expand/collapse sections. -> Justification: An accordion prevents the initial view from being overwhelmed with text, allowing users to explore the mechanics they are interested in without excessive scrolling.
     -->
     <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <style>
@@ -161,11 +161,8 @@
             </div>
         </section>
 
-        <section id="explorer" class="py-20 bg-gray-800 px-4">
+        <section id="explorer" class="py-4 bg-gray-800 px-1">
             <div class="container mx-auto">
-                <h2 class="text-4xl font-medieval text-center text-amber-400 mb-4">Weapon Explorer</h2>
-                <p class="text-center text-gray-400 max-w-3xl mx-auto mb-12">This is the heart of the armory. Use the filters and enter your skill levels to find the perfect tool for your needs. Click on any weapon in the table to see a detailed breakdown of its damage profile in the chart. Find what you need to conquer the next biome.</p>
-
                 <div class="bg-gray-900 p-6 rounded-lg shadow-xl mb-8">
                     <h3 class="text-xl font-semibold text-amber-400 mb-4 border-b border-gray-700 pb-2">Your Weapon Skills</h3>
                     <div id="skill-inputs" class="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-4 mb-6">
@@ -216,12 +213,12 @@
                         </div>
                     </div>
                      <div class="mt-4">
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Damage Bar Display</label>
-                        <div id="damage-bar-toggle" class="flex items-center bg-gray-800 border border-gray-600 rounded-md p-1 w-max">
-                            <button class="filter-btn px-4 py-1 rounded" data-mode="vsFoe">Damage/Hit</button>
-                            <button class="filter-btn px-4 py-1 rounded" data-mode="dps">DPS</button>
-                        </div>
-                    </div>
+                         <label class="block text-sm font-medium text-gray-300 mb-2">Damage Bar Display</label>
+                         <div id="damage-bar-toggle" class="flex items-center bg-gray-800 border border-gray-600 rounded-md p-1 w-max">
+                             <button class="filter-btn px-4 py-1 rounded" data-mode="vsFoe">Damage/Hit</button>
+                             <button class="filter-btn px-4 py-1 rounded" data-mode="dps">DPS</button>
+                         </div>
+                     </div>
                 </div>
 
                 <div class="flex flex-col lg:flex-row gap-8">
@@ -499,9 +496,9 @@
                         btn.classList.toggle('active', btn.dataset.damage === activeDamageFilter);
                     });
                      damageBarToggle.querySelectorAll('button').forEach(btn => {
-                        btn.classList.toggle('active', btn.dataset.mode === damageBarMode);
-                    });
-                    damageBarHeader.textContent = damageBarMode === 'dps' ? 'DPS' : 'DPH';
+                         btn.classList.toggle('active', btn.dataset.mode === damageBarMode);
+                     });
+                     damageBarHeader.textContent = damageBarMode === 'dps' ? 'DPS' : 'DPH';
                 }
             }
 
