@@ -164,9 +164,13 @@
         <section id="explorer" class="py-4 bg-gray-800 px-1">
             <div class="container mx-auto">
                 <div class="bg-gray-900 p-6 rounded-lg shadow-xl mb-8">
-                    <h3 class="text-xl font-semibold text-amber-400 mb-4 border-b border-gray-700 pb-2">Your Weapon Skills</h3>
-                    <div id="skill-inputs" class="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-4 mb-6">
-                        <!-- Skill inputs will be generated here -->
+                    <div class="flex items-start gap-6 mb-8">
+                        <div class="flex-shrink-0 pt-5">
+                            <button id="skill-toggle-btn" class="filter-btn text-sm py-2 px-4 rounded w-32 active">My Skills</button>
+                        </div>
+                        <div id="skill-inputs" class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-x-4 gap-y-3 flex-grow">
+                            <!-- Skill inputs will be generated here -->
+                        </div>
                     </div>
                     <h3 class="text-xl font-semibold text-amber-400 mb-4 border-b border-gray-700 pb-2">Filters & Calculation</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -431,6 +435,7 @@
             const viewToggleButtons = document.getElementById('view-toggle-buttons');
             const damageBarToggle = document.getElementById('damage-bar-toggle');
             const damageBarHeader = document.getElementById('damage-bar-header');
+            const skillToggleButton = document.getElementById('skill-toggle-btn');
 
             let weaponChart;
             let activeDamageFilter = 'all';
@@ -442,6 +447,8 @@
             let currentEnemyView = 'table';
             let weaponUpgradeLevels = {};
             let damageBarMode = 'dps';
+            let skillMode = 'mySkills'; // 'mySkills' or 'baseline'
+            let userStoredSkills = {};
             
             const skillLevels = { Axes: 0, Bows: 0, Clubs: 0, Knives: 0, Polearms: 0, Spears: 0, Swords: 0, Fists: 0, Crossbows: 0 };
             const weaponTypeToSkillMap = {
@@ -506,24 +513,27 @@
                 skillInputsContainer.innerHTML = '';
                 Object.keys(skillLevels).forEach(skill => {
                     const div = document.createElement('div');
+                    div.className = "flex-shrink-0";
                     div.innerHTML = `
                         <label for="skill-${skill}" class="block text-sm font-medium text-gray-300">${skill}</label>
-                        <input type="number" id="skill-${skill}" data-skill="${skill}" value="0" min="0" max="100" class="skill-input mt-1 block w-20 bg-gray-700 border border-gray-600 rounded-md shadow-sm py-1 px-2 text-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500">
+                        <input type="number" id="skill-${skill}" data-skill="${skill}" value="0" min="0" max="100" class="skill-input mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-1 px-2 text-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500">
                     `;
                     skillInputsContainer.appendChild(div);
                 });
 
                 document.querySelectorAll('.skill-input').forEach(input => {
                     input.addEventListener('change', (e) => {
-                        const skill = e.target.dataset.skill;
-                        let value = parseInt(e.target.value, 10);
-                        if (isNaN(value) || value < 0) value = 0;
-                        if (value > 100) value = 100;
-                        e.target.value = value;
-                        skillLevels[skill] = value;
-                        updateAllCalculatedColumns();
-                        updateCalculatedDamage(selectedWeapon, selectedEnemy);
-                        saveState();
+                        if (skillMode === 'mySkills') {
+                            const skill = e.target.dataset.skill;
+                            let value = parseInt(e.target.value, 10);
+                            if (isNaN(value) || value < 0) value = 0;
+                            if (value > 100) value = 100;
+                            e.target.value = value;
+                            skillLevels[skill] = value;
+                            updateAllCalculatedColumns();
+                            updateCalculatedDamage(selectedWeapon, selectedEnemy);
+                            saveState();
+                        }
                     });
                 });
             }
@@ -1126,6 +1136,40 @@
                 th.classList.add(currentEnemySort.direction === 'asc' ? 'sort-asc' : 'sort-desc');
 
                 populateEnemyViews();
+            });
+
+            skillToggleButton.addEventListener('click', () => {
+                const inputs = document.querySelectorAll('.skill-input');
+                if (skillMode === 'mySkills') {
+                    // Switch to baseline
+                    skillMode = 'baseline';
+                    skillToggleButton.textContent = 'Baseline Skills';
+                    skillToggleButton.classList.remove('active');
+                    userStoredSkills = { ...skillLevels }; // Store user's skills
+                    
+                    inputs.forEach(input => {
+                        const skill = input.dataset.skill;
+                        skillLevels[skill] = 0; // Set model to baseline
+                        input.value = 0; // Update view
+                        input.disabled = true;
+                        input.classList.add('bg-gray-800');
+                    });
+                } else {
+                    // Switch back to mySkills
+                    skillMode = 'mySkills';
+                    skillToggleButton.textContent = 'My Skills';
+                    skillToggleButton.classList.add('active');
+                    Object.assign(skillLevels, userStoredSkills); // Restore user's skills
+                    
+                    inputs.forEach(input => {
+                        const skill = input.dataset.skill;
+                        input.value = skillLevels[skill]; // Update view
+                        input.disabled = false;
+                        input.classList.remove('bg-gray-800');
+                    });
+                }
+                updateAllCalculatedColumns();
+                updateCalculatedDamage(selectedWeapon, selectedEnemy);
             });
 
             tierFilter.addEventListener('change', () => { populateWeaponTable(); saveState(); });
