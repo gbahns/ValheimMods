@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,7 +9,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=MedievalSharp&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=MedievalSharp&display=swap"
+        rel="stylesheet">
     <!-- Chosen Palette: Ashen Oak -->
     <!-- Application Structure Plan: The application is designed as a multi-section, single-page dashboard. The user can navigate between distinct, task-oriented sections using a persistent top navigation bar. The sections are: 1) 'Home/Intro' to set the scene. 2) 'Combat Guide' for fundamental mechanics, presented in an easy-to-digest accordion format. 3) 'Weapon Explorer', the core of the app, featuring powerful filters (by tier, type, damage) and an interactive table to compare weapons. 4) 'Enemy Intel', a filterable database of creatures and their vulnerabilities. This structure was chosen over a linear report format to empower users to find specific information quickly. A player can ask "What blunt weapon is best for the Swamp?" and use the filters to get an immediate answer, which is a more natural user flow for a game guide. -->
     <!-- Visualization & Content Choices: 
@@ -20,46 +22,67 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #2D3748; /* bg-gray-800 */
+            background-color: #2D3748;
+            /* bg-gray-800 */
         }
+
         .font-medieval {
             font-family: 'MedievalSharp', cursive;
         }
+
         .nav-link {
             transition: all 0.3s ease;
             border-bottom: 2px solid transparent;
         }
-        .nav-link.active, .nav-link:hover {
-            color: #FBBF24; /* amber-400 */
-            border-bottom-color: #FBBF24; /* amber-400 */
+
+        .nav-link.active,
+        .nav-link:hover {
+            color: #FBBF24;
+            /* amber-400 */
+            border-bottom-color: #FBBF24;
+            /* amber-400 */
         }
+
         .filter-btn {
             transition: all 0.2s ease;
         }
+
         .filter-btn.active {
-            background-color: #FBBF24; /* amber-400 */
-            color: #1A202C; /* gray-900 */
+            background-color: #FBBF24;
+            /* amber-400 */
+            color: #1A202C;
+            /* gray-900 */
             font-weight: 600;
         }
+
         .table-row-clickable:hover {
-            background-color: #4A5568; /* gray-700 */
+            background-color: #4A5568;
+            /* gray-700 */
         }
+
         .table-row-clickable.selected {
-            background-color: #5A6578; /* gray-600 */
-            outline: 2px solid #FBBF24; /* amber-400 */
+            background-color: #5A6578;
+            /* gray-600 */
+            outline: 2px solid #FBBF24;
+            /* amber-400 */
         }
+
         .accordion-content {
             max-height: 0;
             overflow: hidden;
             transition: max-height 0.5s ease-in-out;
         }
+
         th.sortable {
             cursor: pointer;
         }
+
         th.sortable:hover {
             color: #FBBF24;
         }
-        th.sort-asc::after, th.sort-desc::after {
+
+        th.sort-asc::after,
+        th.sort-desc::after {
             content: '';
             display: inline-block;
             margin-left: 0.5em;
@@ -68,24 +91,30 @@
             border-left: 4px solid transparent;
             border-right: 4px solid transparent;
         }
+
         th.sort-asc::after {
             border-bottom: 4px solid #FBBF24;
         }
+
         th.sort-desc::after {
             border-top: 4px solid #FBBF24;
         }
+
         .level-selector {
             cursor: pointer;
             transition: background-color 0.2s ease;
         }
+
         .level-selector:hover {
             background-color: rgba(251, 191, 36, 0.2);
         }
+
         .level-selected {
             background-color: rgba(251, 191, 36, 0.4);
             font-weight: bold;
             color: #FBBF24;
         }
+
         .damage-bar-container {
             background-color: #4A5568;
             border-radius: 0.25rem;
@@ -93,6 +122,7 @@
             position: relative;
             height: 1.25rem;
         }
+
         .damage-bar {
             background-color: #FBBF24;
             height: 100%;
@@ -107,20 +137,19 @@
         }
     </style>
 </head>
+
 <body class="bg-gray-800 text-gray-200">
 
     <header class="bg-gray-900 shadow-lg sticky top-0 z-50">
         <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
             <h1 class="text-2xl md:text-3xl font-medieval text-white">Valheim Armory</h1>
             <div class="hidden md:flex space-x-6 text-lg">
-                <a href="#home" class="nav-link">Home</a>
                 <a href="#combat" class="nav-link">Combat Guide</a>
                 <a href="#explorer" class="nav-link active">Weapon Explorer</a>
                 <a href="#intel" class="nav-link">Enemy Intel</a>
             </div>
             <div class="md:hidden">
                 <select id="mobile-nav" class="bg-gray-800 text-white border border-gray-600 rounded-md p-2">
-                    <option value="#home">Home</option>
                     <option value="#combat">Combat Guide</option>
                     <option value="#explorer" selected>Weapon Explorer</option>
                     <option value="#intel">Enemy Intel</option>
@@ -130,14 +159,6 @@
     </header>
 
     <main>
-        <section id="home" class="min-h-screen flex items-center justify-center text-center bg-gray-800 px-4 hidden">
-            <div class="max-w-4xl">
-                <h2 class="text-5xl md:text-7xl font-medieval text-amber-400 mb-4">Forge Your Legend</h2>
-                <p class="text-lg md:text-xl text-gray-300 mb-8">Welcome to the interactive armory for Valheim. This guide translates the comprehensive weapon report into a practical, hands-on tool. Here, you won't just read about weapons; you'll explore, compare, and strategize. Use the navigation above to delve into combat mechanics, explore the full arsenal of weapons with powerful filters, and study your foes' weaknesses. Prepare yourself, Viking—Odin is watching.</p>
-                <a href="#explorer" class="bg-amber-400 text-gray-900 font-bold py-3 px-8 rounded-lg hover:bg-amber-500 transition-colors duration-300 text-xl">Explore Weapons</a>
-            </div>
-        </section>
-
         <section id="combat" class="py-20 bg-gray-900 px-4 hidden">
             <div class="container mx-auto">
                 <h2 class="text-4xl font-medieval text-center text-amber-400 mb-12">The Art of Viking Combat</h2>
@@ -148,94 +169,107 @@
 
         <section id="explorer" class="py-4 bg-gray-800 px-1">
             <div class="container mx-auto">
-                <div class="bg-gray-900 p-6 rounded-lg shadow-xl mb-8">
-                    <div class="flex items-start gap-6 mb-4">
+                <div class="bg-gray-900 p-4 rounded-lg shadow-xl mb-4">
+                    <div class="flex items-start gap-6">
                         <div class="flex-shrink-0 pt-5">
-                            <button id="skill-toggle-btn" class="filter-btn text-sm py-2 px-4 rounded w-32 active">My Skills</button>
+                            <button id="skill-toggle-btn" class="filter-btn text-sm py-2 px-4 rounded w-32 active">My
+                                Skills</button>
                         </div>
-                        <div id="skill-inputs-wrapper" class="flex-grow overflow-hidden transition-all duration-300 ease-in-out">
-                            <div id="skill-inputs" class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-x-4 gap-y-3 pb-4">
+                        <div id="skill-inputs-wrapper"
+                            class="flex-grow overflow-hidden transition-all duration-300 ease-in-out">
+                            <div id="skill-inputs"
+                                class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-x-2 gap-y-3 pb-4">
                                 <!-- Skill inputs will be generated here -->
                             </div>
                         </div>
                     </div>
-                    <div class="flex flex-col gap-4 pt-4 border-t border-gray-700">
+                    <div class="flex flex-col gap-2 pt-2">
                         <div class="flex flex-wrap items-end gap-4">
-                                <div>
-                                    <label for="tier-filter" class="block text-sm font-medium text-gray-300 mb-2">Tier</label>
-                                    <select id="tier-filter" class="w-auto bg-gray-800 border border-gray-600 rounded-md p-2 focus:ring-amber-400 focus:border-amber-400">
-                                        <option value="all">All Tiers</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label for="type-filter" class="block text-sm font-medium text-gray-300 mb-2">Weapon Type</label>
-                                    <select id="type-filter" class="w-auto bg-gray-800 border border-gray-600 rounded-md p-2 focus:ring-amber-400 focus:border-amber-400">
-                                        <option value="all">All Types</option>
-                                    </select>
-                                </div>
-                                <div id="arrow-filter-container" class="hidden">
-                                    <label for="arrow-filter" class="block text-sm font-medium text-gray-300 mb-2">Arrow Type</label>
-                                    <select id="arrow-filter" class="w-auto bg-gray-800 border border-gray-600 rounded-md p-2 focus:ring-amber-400 focus:border-amber-400">
-                                        <!-- Options populated by JS -->
-                                    </select>
-                                </div>
-                                 <div class="w-48">
-                                    <label for="damage-filter-btn" class="block text-sm font-medium text-gray-300 mb-2">Primary Damage</label>
-                                    <div class="relative">
-                                        <button id="damage-filter-btn" class="w-full bg-gray-800 border border-gray-600 rounded-md p-2 text-left focus:ring-amber-400 focus:border-amber-400 text-sm truncate">Select Damage Types</button>
-                                        <div id="damage-filter-dropdown" class="absolute z-10 hidden w-full bg-gray-700 border border-gray-600 rounded-md mt-1 shadow-lg p-2 space-y-1">
-                                            <!-- Checkbox options populated by JS -->
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-6 ml-auto">
-                                     <div class="flex flex-col">
-                                        <div class="flex items-center">
-                                            <input id="include-previous-tiers" type="checkbox" class="h-4 w-4 rounded border-gray-500 bg-gray-700 text-amber-500 focus:ring-amber-500">
-                                            <label for="include-previous-tiers" class="ml-2 block text-sm text-gray-300">Include Previous</label>
-                                        </div>
-                                         <div class="flex items-center mt-2">
-                                            <input id="show-damage-details" type="checkbox" class="h-4 w-4 rounded border-gray-500 bg-gray-700 text-amber-500 focus:ring-amber-500">
-                                            <label for="show-damage-details" class="ml-2 block text-sm text-gray-300">Damage Columns</label>
-                                        </div>
-                                    </div>
-                                </div>
-                        </div>
-                        <div id="enemy-info-container" class="flex items-start gap-6 pt-4 border-t border-gray-700">
-                             <div>
-                                <label for="enemy-selector" class="block text-sm font-medium text-gray-300 mb-2">Enemy</label>
-                                <select id="enemy-selector" class="w-auto bg-gray-800 border border-gray-600 rounded-md p-2 focus:ring-amber-400 focus:border-amber-400">
-                                    <option value="none">-- Select an Enemy --</option>
+                            <div>
+                                <label for="tier-filter"
+                                    class="block text-sm font-medium text-gray-300 mb-2">Tier</label>
+                                <select id="tier-filter"
+                                    class="w-auto bg-gray-800 border border-gray-600 rounded-md p-2 focus:ring-amber-400 focus:border-amber-400">
+                                    <option value="all">All Tiers</option>
                                 </select>
                             </div>
-                            <div id="enemy-info-panel" class="bg-gray-800 p-2 rounded-lg flex-grow">
-                                <!-- Enemy info will be injected here -->
+                            <div id="arrow-filter-container" class="hidden">
+                                <label for="arrow-filter" class="block text-sm font-medium text-gray-300 mb-2">Arrow
+                                    Type</label>
+                                <select id="arrow-filter"
+                                    class="w-auto bg-gray-800 border border-gray-600 rounded-md p-2 focus:ring-amber-400 focus:border-amber-400">
+                                    <!-- Options populated by JS -->
+                                </select>
+                            </div>
+                            <div id="enemy-info-container" class="flex items-end gap-6 flex-grow">
+                                <div>
+                                    <label for="enemy-selector"
+                                        class="block text-sm font-medium text-gray-300 mb-2">Enemy</label>
+                                    <select id="enemy-selector"
+                                        class="w-auto bg-gray-800 border border-gray-600 rounded-md p-2 focus:ring-amber-400 focus:border-amber-400">
+                                        <option value="none">-- Select an Enemy --</option>
+                                    </select>
+                                </div>
+                                <div id="enemy-info-panel" class="bg-gray-800 p-2 rounded-lg flex-grow">
+                                    <!-- Enemy info will be injected here -->
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-6 mt-2">
+                            <div class="flex items-center">
+                                <input id="include-previous-tiers" type="checkbox"
+                                    class="h-4 w-4 rounded border-gray-500 bg-gray-700 text-amber-500 focus:ring-amber-500">
+                                <label for="include-previous-tiers" class="ml-2 block text-sm text-gray-300">Include
+                                    Previous Tiers</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input id="show-damage-details" type="checkbox"
+                                    class="h-4 w-4 rounded border-gray-500 bg-gray-700 text-amber-500 focus:ring-amber-500">
+                                <label for="show-damage-details" class="ml-2 block text-sm text-gray-300">Damage
+                                    Columns</label>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="flex flex-col lg:flex-row gap-8">
+                <div class="flex flex-col lg:flex-row gap-4">
                     <div id="table-panel" class="lg:w-full overflow-x-auto bg-gray-900 p-4 rounded-lg shadow-xl">
                         <table class="min-w-full text-sm">
                             <thead class="border-b border-gray-600">
                                 <tr id="weapon-table-header">
-                                    <th class="p-2 text-left font-semibold text-gray-300 tracking-wider sortable" data-sort="name">Weapon</th>
-                                    <th class="p-2 text-left font-semibold text-gray-300 tracking-wider sortable" data-sort="type">Type</th>
-                                    <th class="p-2 text-left font-semibold text-gray-300 tracking-wider sortable" data-sort="tier">Tier</th>
-                                    <th class="p-2 text-center font-bold text-gray-300 tracking-wider sortable" data-sort="lvl1">Lvl 1</th>
-                                    <th class="p-2 text-center font-bold text-gray-300 tracking-wider sortable" data-sort="lvl2">Lvl 2</th>
-                                    <th class="p-2 text-center font-bold text-gray-300 tracking-wider sortable" data-sort="lvl3">Lvl 3</th>
-                                    <th class="p-2 text-center font-bold text-gray-300 tracking-wider sortable" data-sort="lvl4">Lvl 4</th>
-                                    <th class="p-2 text-center font-bold text-amber-400 tracking-wider sortable" data-sort="vsFoe">vs. Foe</th>
-                                    <th class="p-2 text-center font-bold text-amber-400 tracking-wider sortable" data-sort="dps">DPS</th>
-                                    <th class="p-2 text-center font-bold text-amber-400 tracking-wider sortable" data-sort="comboDps">Combo DPS</th>
-                                    <th class="p-2 text-center text-gray-300 tracking-wider sortable" data-sort="staminaCost">Stamina</th>
-                                    <th class="p-2 text-center font-bold text-amber-400 tracking-wider sortable" data-sort="dmgPerStamina">Dmg/Stam</th>
-                                    <th id="damage-bar-header" class="p-2 text-left font-semibold text-gray-300 tracking-wider sortable" data-sort="damageBar" style="min-width: 150px;">DPS</th>
-                                    <th class="p-2 text-center font-semibold text-gray-300 tracking-wider damage-col sortable" data-sort="Blunt" title="Blunt">Blunt</th>
-                                    <th class="p-2 text-center font-semibold text-gray-300 tracking-wider damage-col sortable" data-sort="Slash" title="Slash">Slash</th>
-                                    <th class="p-2 text-center font-semibold text-gray-300 tracking-wider damage-col sortable" data-sort="Pierce" title="Pierce">Pierce</th>
+                                    <th class="p-2 text-left font-semibold text-gray-300 tracking-wider sortable"
+                                        data-sort="name">Weapon</th>
+                                    <th class="p-2 text-left font-semibold text-gray-300 tracking-wider sortable"
+                                        data-sort="type">Type</th>
+                                    <th class="p-2 text-left font-semibold text-gray-300 tracking-wider sortable"
+                                        data-sort="tier">Tier</th>
+                                    <th class="p-2 text-center font-bold text-gray-300 tracking-wider sortable"
+                                        data-sort="lvl1">Lvl1</th>
+                                    <th class="p-2 text-center font-bold text-gray-300 tracking-wider sortable"
+                                        data-sort="lvl2">Lvl2</th>
+                                    <th class="p-2 text-center font-bold text-gray-300 tracking-wider sortable"
+                                        data-sort="lvl3">Lvl3</th>
+                                    <th class="p-2 text-center font-bold text-gray-300 tracking-wider sortable"
+                                        data-sort="lvl4">Lvl4</th>
+                                    <th class="p-2 text-center font-bold text-amber-400 tracking-wider sortable"
+                                        data-sort="vsFoe">DPH</th>
+                                    <th class="p-2 text-center font-bold text-amber-400 tracking-wider sortable"
+                                        data-sort="dps">DPS</th>
+                                    <th class="p-2 text-center font-bold text-amber-400 tracking-wider sortable"
+                                        data-sort="comboDps">Combo</th>
+                                    <th class="p-2 text-center text-gray-300 tracking-wider sortable"
+                                        data-sort="staminaCost">Stamina</th>
+                                    <th class="p-2 text-center font-bold text-amber-400 tracking-wider sortable"
+                                        data-sort="dmgPerStamina">DPSt</th>
+                                    <th id="damage-bar-header"
+                                        class="p-2 text-left font-semibold text-gray-300 tracking-wider sortable"
+                                        data-sort="damageBar" style="min-width: 150px;">DPS</th>
+                                    <th class="p-2 text-center font-semibold text-gray-300 tracking-wider damage-col sortable"
+                                        data-sort="Blunt" title="Blunt">Blunt</th>
+                                    <th class="p-2 text-center font-semibold text-gray-300 tracking-wider damage-col sortable"
+                                        data-sort="Slash" title="Slash">Slash</th>
+                                    <th class="p-2 text-center font-semibold text-gray-300 tracking-wider damage-col sortable"
+                                        data-sort="Pierce" title="Pierce">Pierce</th>
                                 </tr>
                             </thead>
                             <tbody id="weapon-table-body">
@@ -249,12 +283,16 @@
         <section id="intel" class="py-20 bg-gray-900 px-4 hidden">
             <div class="container mx-auto">
                 <h2 class="text-4xl font-medieval text-center text-amber-400 mb-4">Enemy Intel</h2>
-                <p class="text-center text-gray-400 max-w-3xl mx-auto mb-12">"Know thy foe." This section provides crucial intelligence on the creatures of Valheim. Filter by biome to prepare for your expeditions. Understanding an enemy's weaknesses and resistances is the first step to victory.</p>
+                <p class="text-center text-gray-400 max-w-3xl mx-auto mb-12">"Know thy foe." This section provides
+                    crucial intelligence on the creatures of Valheim. Filter by biome to prepare for your expeditions.
+                    Understanding an enemy's weaknesses and resistances is the first step to victory.</p>
                 <div class="flex justify-center mb-8 gap-4">
-                    <select id="enemy-biome-filter" class="w-full max-w-sm bg-gray-800 border border-gray-600 rounded-md p-2 focus:ring-amber-400 focus:border-amber-400">
+                    <select id="enemy-biome-filter"
+                        class="w-full max-w-sm bg-gray-800 border border-gray-600 rounded-md p-2 focus:ring-amber-400 focus:border-amber-400">
                         <option value="all">All Biomes</option>
                     </select>
-                    <div id="view-toggle-buttons" class="flex items-center bg-gray-800 border border-gray-600 rounded-md p-1">
+                    <div id="view-toggle-buttons"
+                        class="flex items-center bg-gray-800 border border-gray-600 rounded-md p-1">
                         <button class="filter-btn px-4 py-1 rounded" data-view="cards">Cards</button>
                         <button class="filter-btn px-4 py-1 rounded" data-view="table">Table</button>
                     </div>
@@ -265,11 +303,16 @@
                     <table class="min-w-full text-sm">
                         <thead class="border-b border-gray-600">
                             <tr id="enemy-table-header">
-                                <th class="p-2 text-left font-semibold text-gray-300 sortable" data-sort="name">Creature</th>
-                                <th class="p-2 text-left font-semibold text-gray-300 sortable" data-sort="biome">Biome</th>
-                                <th class="p-2 text-left font-semibold text-green-400 sortable" data-sort="weak" title="Weak: 1.5x Damage, *Very Weak: 2x Damage">Weakness</th>
-                                <th class="p-2 text-left font-semibold text-red-400 sortable" data-sort="resist" title="Resistant: 0.5x Damage, *Very Resistant: 0.25x Damage">Resistance</th>
-                                <th class="p-2 text-left font-semibold text-gray-500 sortable" data-sort="immune">Immunity</th>
+                                <th class="p-2 text-left font-semibold text-gray-300 sortable" data-sort="name">Creature
+                                </th>
+                                <th class="p-2 text-left font-semibold text-gray-300 sortable" data-sort="biome">Biome
+                                </th>
+                                <th class="p-2 text-left font-semibold text-green-400 sortable" data-sort="weak"
+                                    title="Weak: 1.5x Damage, *Very Weak: 2x Damage">Weakness</th>
+                                <th class="p-2 text-left font-semibold text-red-400 sortable" data-sort="resist"
+                                    title="Resistant: 0.5x Damage, *Very Resistant: 0.25x Damage">Resistance</th>
+                                <th class="p-2 text-left font-semibold text-gray-500 sortable" data-sort="immune">
+                                    Immunity</th>
                             </tr>
                         </thead>
                         <tbody id="enemy-table-body">
@@ -279,58 +322,80 @@
             </div>
         </section>
     </main>
-    
+
     <footer class="bg-gray-900 text-center py-6 mt-20">
         <p class="text-gray-500">Valheim Interactive Armory | Data sourced from community reports.</p>
     </footer>
 
     <script>
         const weaponData = [
-            { name: 'Stone Axe', type: 'Axe (1H)', tier: 'Meadows', damage: { Slash: 15 }, maxLvlDamage: 24, totalDamage: 15, attackSpeed: 1.2, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: true },
-            { name: 'Flint Axe', type: 'Axe (1H)', tier: 'Meadows', damage: { Slash: 20 }, maxLvlDamage: 29, totalDamage: 20, attackSpeed: 1.2, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: true },
-            { name: 'Club', type: 'Club (1H)', tier: 'Meadows', damage: { Blunt: 12 }, maxLvlDamage: 21, totalDamage: 12, attackSpeed: 1.1, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: true },
-            { name: 'Flint Knife', type: 'Knife (1H)', tier: 'Meadows', damage: { Slash: 5, Pierce: 5 }, maxLvlDamage: 16, totalDamage: 10, attackSpeed: 0.8, staminaCost: 6, backstab: 10, secondaryMult: 3, hasCombo: true },
-            { name: 'Flint Spear', type: 'Spear (2H)', tier: 'Meadows', damage: { Pierce: 20 }, maxLvlDamage: 35, totalDamage: 20, attackSpeed: 1.2, staminaCost: 12, backstab: 3, secondaryMult: 1, hasCombo: false },
-            { name: 'Crude Bow', type: 'Bow (2H)', tier: 'Meadows', damage: { Pierce: 22 }, maxLvlDamage: 31, totalDamage: 22, attackSpeed: 2.0, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: false },
-            { name: 'Abyssal Razor', type: 'Knife (1H)', tier: 'Black Forest', damage: { Slash: 24, Pierce: 24 }, maxLvlDamage: 66, totalDamage: 48, attackSpeed: 0.8, staminaCost: 6, backstab: 10, secondaryMult: 3, hasCombo: true },
-            { name: 'Abyssal Razor', type: 'Knife (1H)', tier: 'Swamp', damage: { Slash: 24, Pierce: 24 }, maxLvlDamage: 66, totalDamage: 48, attackSpeed: 0.8, staminaCost: 6, backstab: 10, secondaryMult: 3, hasCombo: true },
-            { name: 'Abyssal Harpoon', type: 'Harpoon (2H)', tier: 'Black Forest', damage: { Pierce: 10 }, maxLvlDamage: 10, totalDamage: 10, attackSpeed: 1.2, staminaCost: 12, backstab: 3, secondaryMult: 1, hasCombo: false },
-            { name: 'Stagbreaker', type: 'Sledge (2H)', tier: 'Black Forest', damage: { Blunt: 20, Pierce: 5 }, maxLvlDamage: 40, totalDamage: 25, attackSpeed: 2.0, staminaCost: 20, backstab: 3, secondaryMult: 1, hasCombo: false },
-            { name: 'Copper Knife', type: 'Knife (1H)', tier: 'Black Forest', damage: { Slash: 9, Pierce: 9 }, maxLvlDamage: 36, totalDamage: 18, attackSpeed: 0.8, staminaCost: 6, backstab: 10, secondaryMult: 3, hasCombo: true },
-            { name: 'Bronze Axe', type: 'Axe (1H)', tier: 'Black Forest', damage: { Slash: 35 }, maxLvlDamage: 50, totalDamage: 35, attackSpeed: 1.2, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: true },
-            { name: 'Bronze Mace', type: 'Mace (1H)', tier: 'Black Forest', damage: { Blunt: 35 }, maxLvlDamage: 50, totalDamage: 35, attackSpeed: 1.1, staminaCost: 10, backstab: 3, secondaryMult: 2.5, hasCombo: true },
-            { name: 'Bronze Sword', type: 'Sword (1H)', tier: 'Black Forest', damage: { Slash: 35 }, maxLvlDamage: 50, totalDamage: 35, attackSpeed: 1.0, staminaCost: 10, backstab: 3, secondaryMult: 2, hasCombo: true },
-            { name: 'Bronze Spear', type: 'Spear (2H)', tier: 'Black Forest', damage: { Pierce: 35 }, maxLvlDamage: 50, totalDamage: 35, attackSpeed: 1.2, staminaCost: 12, backstab: 3, secondaryMult: 1, hasCombo: false },
-            { name: 'Bronze Atgeir', type: 'Atgeir (2H)', tier: 'Black Forest', damage: { Pierce: 45 }, maxLvlDamage: 60, totalDamage: 45, attackSpeed: 1.5, staminaCost: 15, backstab: 3, secondaryMult: 1.5, hasCombo: true },
-            { name: 'Finewood Bow', type: 'Bow (2H)', tier: 'Black Forest', damage: { Pierce: 32 }, maxLvlDamage: 41, totalDamage: 32, attackSpeed: 2.0, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: false },
-            { name: 'Iron Axe', type: 'Axe (1H)', tier: 'Swamp', damage: { Slash: 55 }, maxLvlDamage: 70, totalDamage: 55, attackSpeed: 1.2, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: true },
-            { name: 'Iron Mace', type: 'Mace (1H)', tier: 'Swamp', damage: { Blunt: 55 }, maxLvlDamage: 70, totalDamage: 55, attackSpeed: 1.1, staminaCost: 10, backstab: 3, secondaryMult: 2.5, hasCombo: true },
-            { name: 'Iron Sledge', type: 'Sledge (2H)', tier: 'Swamp', damage: { Blunt: 55, Spirit: 30 }, maxLvlDamage: 100, totalDamage: 85, attackSpeed: 2.0, staminaCost: 20, backstab: 3, secondaryMult: 1, hasCombo: false },
-            { name: 'Battleaxe', type: 'Axe (2H)', tier: 'Swamp', damage: { Slash: 70 }, maxLvlDamage: 85, totalDamage: 70, attackSpeed: 1.8, staminaCost: 18, backstab: 3, secondaryMult: 1.5, hasCombo: true },
-            { name: 'Iron Sword', type: 'Sword (1H)', tier: 'Swamp', damage: { Slash: 55 }, maxLvlDamage: 70, totalDamage: 55, attackSpeed: 1.0, staminaCost: 10, backstab: 3, secondaryMult: 2, hasCombo: true },
-            { name: 'Iron Atgeir', type: 'Atgeir (2H)', tier: 'Swamp', damage: { Pierce: 65 }, maxLvlDamage: 80, totalDamage: 65, attackSpeed: 1.5, staminaCost: 15, backstab: 3, secondaryMult: 1.5, hasCombo: true },
-            { name: 'Ancient Bark Spear', type: 'Spear (2H)', tier: 'Swamp', damage: { Pierce: 55 }, maxLvlDamage: 70, totalDamage: 55, attackSpeed: 1.2, staminaCost: 12, backstab: 3, secondaryMult: 1, hasCombo: false },
-            { name: 'Huntsman Bow', type: 'Bow (2H)', tier: 'Swamp', damage: { Pierce: 42 }, maxLvlDamage: 51, totalDamage: 42, attackSpeed: 2.0, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: false },
-            { name: 'Flesh Rippers', type: 'Fist (1H)', tier: 'Mountains', damage: { Slash: 60 }, maxLvlDamage: 75, totalDamage: 60, attackSpeed: 0.7, staminaCost: 5, backstab: 6, secondaryMult: 3, hasCombo: true },
-            { name: 'Silver Knife', type: 'Knife (1H)', tier: 'Mountains', damage: { Slash: 21, Pierce: 21, Spirit: 12 }, maxLvlDamage: 66, totalDamage: 54, attackSpeed: 0.8, staminaCost: 6, backstab: 10, secondaryMult: 3, hasCombo: true },
-            { name: 'Silver Sword', type: 'Sword (1H)', tier: 'Mountains', damage: { Slash: 75, Spirit: 30 }, maxLvlDamage: 120, totalDamage: 105, attackSpeed: 1.0, staminaCost: 10, backstab: 3, secondaryMult: 2, hasCombo: true },
-            { name: 'Frostner', type: 'Mace (1H)', tier: 'Mountains', damage: { Blunt: 35, Frost: 40, Spirit: 20 }, maxLvlDamage: 128, totalDamage: 95, attackSpeed: 1.1, staminaCost: 10, backstab: 3, secondaryMult: 2.5, hasCombo: true },
-            { name: 'Fang Spear', type: 'Spear (2H)', tier: 'Mountains', damage: { Pierce: 70 }, maxLvlDamage: 85, totalDamage: 70, attackSpeed: 1.2, staminaCost: 12, backstab: 3, secondaryMult: 1, hasCombo: false },
-            { name: 'Crystal Battleaxe', type: 'Axe (2H)', tier: 'Mountains', damage: { Slash: 90, Spirit: 30 }, maxLvlDamage: 135, totalDamage: 120, attackSpeed: 1.8, staminaCost: 18, backstab: 3, secondaryMult: 1.5, hasCombo: true },
-            { name: 'Draugr Fang', type: 'Bow (2H)', tier: 'Mountains', damage: { Pierce: 47, Poison: 5 }, maxLvlDamage: 76, totalDamage: 52, attackSpeed: 2.0, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: false },
-            { name: 'Porcupine', type: 'Mace (1H)', tier: 'Plains', damage: { Blunt: 50, Pierce: 45 }, maxLvlDamage: 125, totalDamage: 95, attackSpeed: 1.1, staminaCost: 10, backstab: 3, secondaryMult: 2.5, hasCombo: true },
-            { name: 'Blackmetal Axe', type: 'Axe (1H)', tier: 'Plains', damage: { Slash: 95 }, maxLvlDamage: 110, totalDamage: 95, attackSpeed: 1.2, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: true },
-            { name: 'Blackmetal Knife', type: 'Knife (1H)', tier: 'Plains', damage: { Slash: 28, Pierce: 28 }, maxLvlDamage: 74, totalDamage: 56, attackSpeed: 0.8, staminaCost: 6, backstab: 10, secondaryMult: 3, hasCombo: true },
-            { name: 'Blackmetal Sword', type: 'Sword (1H)', tier: 'Plains', damage: { Slash: 95 }, maxLvlDamage: 110, totalDamage: 95, attackSpeed: 1.0, staminaCost: 10, backstab: 3, secondaryMult: 2, hasCombo: true },
-            { name: 'Blackmetal Atgeir', type: 'Atgeir (2H)', tier: 'Plains', damage: { Pierce: 105 }, maxLvlDamage: 120, totalDamage: 105, attackSpeed: 1.5, staminaCost: 15, backstab: 3, secondaryMult: 1.5, hasCombo: true },
-            { name: 'Mistwalker', type: 'Sword (1H)', tier: 'Mistlands', damage: { Slash: 75, Frost: 40 }, maxLvlDamage: 127, totalDamage: 115, attackSpeed: 1.0, staminaCost: 10, backstab: 3, secondaryMult: 2, hasCombo: true },
-            { name: 'Krom', type: 'Sword (2H)', tier: 'Mistlands', damage: { Slash: 150 }, maxLvlDamage: 162, totalDamage: 150, attackSpeed: 1.5, staminaCost: 10, backstab: 3, secondaryMult: 1.5, hasCombo: true },
-            { name: 'Demolisher', type: 'Sledge (2H)', tier: 'Mistlands', damage: { Blunt: 140 }, maxLvlDamage: 152, totalDamage: 140, attackSpeed: 2.0, staminaCost: 20, backstab: 3, secondaryMult: 1, hasCombo: false },
-            { name: 'Jotun Bane', type: 'Axe (1H)', tier: 'Mistlands', damage: { Slash: 80, Poison: 30 }, maxLvlDamage: 122, totalDamage: 110, attackSpeed: 1.2, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: true },
-            { name: 'Spine Snap', type: 'Bow (2H)', tier: 'Mistlands', damage: { Pierce: 62 }, maxLvlDamage: 68, totalDamage: 62, attackSpeed: 2.0, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: false },
-            { name: 'Arbalest', type: 'Crossbow (2H)', tier: 'Mistlands', damage: { Pierce: 200 }, maxLvlDamage: 209, totalDamage: 200, attackSpeed: 3.0, staminaCost: 15, backstab: 3, secondaryMult: 1, hasCombo: false },
-            { name: 'Staff of Embers', type: 'Staff (2H)', tier: 'Mistlands', damage: { Blunt: 120, Fire: 120 }, maxLvlDamage: 276, totalDamage: 240, attackSpeed: 1.5, staminaCost: 0, backstab: 1, secondaryMult: 1, hasCombo: false },
-            { name: 'Staff of Frost', type: 'Staff (2H)', tier: 'Mistlands', damage: { Frost: 30 }, maxLvlDamage: 36, totalDamage: 30, attackSpeed: 0.25, staminaCost: 0, backstab: 1, hasCombo: false },
+            { name: 'Stone Axe', type: 'Axe', tier: 'Meadows', damage: { Slash: 15 }, maxLvlDamage: 24, totalDamage: 15, attackSpeed: 1.2, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: true },
+            { name: 'Flint Axe', type: 'Axe', tier: 'Meadows', damage: { Slash: 20 }, maxLvlDamage: 29, totalDamage: 20, attackSpeed: 1.2, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: true },
+            { name: 'Club', type: 'Club', tier: 'Meadows', damage: { Blunt: 12 }, maxLvlDamage: 21, totalDamage: 12, attackSpeed: 1.1, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: true },
+            { name: 'Flint Knife', type: 'Knife', tier: 'Meadows', damage: { Slash: 5, Pierce: 5 }, maxLvlDamage: 16, totalDamage: 10, attackSpeed: 0.8, staminaCost: 6, backstab: 10, secondaryMult: 3, hasCombo: true },
+            { name: 'Flint Spear', type: '2H Spear', tier: 'Meadows', damage: { Pierce: 20 }, maxLvlDamage: 35, totalDamage: 20, attackSpeed: 1.2, staminaCost: 12, backstab: 3, secondaryMult: 1, hasCombo: false },
+            { name: 'Crude Bow', type: '2H Bow', tier: 'Meadows', damage: { Pierce: 22 }, maxLvlDamage: 31, totalDamage: 22, attackSpeed: 2.0, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: false },
+            { name: 'Abyssal Razor', type: 'Knife', tier: 'Black Forest', damage: { Slash: 24, Pierce: 24 }, maxLvlDamage: 66, totalDamage: 48, attackSpeed: 0.8, staminaCost: 6, backstab: 10, secondaryMult: 3, hasCombo: true },
+            { name: 'Abyssal Razor', type: 'Knife', tier: 'Swamp', damage: { Slash: 24, Pierce: 24 }, maxLvlDamage: 66, totalDamage: 48, attackSpeed: 0.8, staminaCost: 6, backstab: 10, secondaryMult: 3, hasCombo: true },
+            { name: 'Abyssal Harpoon', type: '2H Harpoon', tier: 'Black Forest', damage: { Pierce: 10 }, maxLvlDamage: 10, totalDamage: 10, attackSpeed: 1.2, staminaCost: 12, backstab: 3, secondaryMult: 1, hasCombo: false },
+            { name: 'Stagbreaker', type: '2H Sledge', tier: 'Black Forest', damage: { Blunt: 20, Pierce: 5 }, maxLvlDamage: 40, totalDamage: 25, attackSpeed: 2.0, staminaCost: 20, backstab: 3, secondaryMult: 1, hasCombo: false },
+            { name: 'Copper Knife', type: 'Knife', tier: 'Black Forest', damage: { Slash: 9, Pierce: 9 }, maxLvlDamage: 36, totalDamage: 18, attackSpeed: 0.8, staminaCost: 6, backstab: 10, secondaryMult: 3, hasCombo: true },
+            { name: 'Bronze Axe', type: 'Axe', tier: 'Black Forest', damage: { Slash: 35 }, maxLvlDamage: 50, totalDamage: 35, attackSpeed: 1.2, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: true },
+            { name: 'Bronze Mace', type: 'Mace', tier: 'Black Forest', damage: { Blunt: 35 }, maxLvlDamage: 50, totalDamage: 35, attackSpeed: 1.1, staminaCost: 10, backstab: 3, secondaryMult: 2.5, hasCombo: true },
+            { name: 'Bronze Sword', type: 'Sword', tier: 'Black Forest', damage: { Slash: 35 }, maxLvlDamage: 50, totalDamage: 35, attackSpeed: 1.0, staminaCost: 10, backstab: 3, secondaryMult: 2, hasCombo: true },
+            { name: 'Bronze Spear', type: '2H Spear', tier: 'Black Forest', damage: { Pierce: 35 }, maxLvlDamage: 50, totalDamage: 35, attackSpeed: 1.2, staminaCost: 12, backstab: 3, secondaryMult: 1, hasCombo: false },
+            { name: 'Bronze Atgeir', type: '2H Atgeir', tier: 'Black Forest', damage: { Pierce: 45 }, maxLvlDamage: 60, totalDamage: 45, attackSpeed: 1.5, staminaCost: 15, backstab: 3, secondaryMult: 1.5, hasCombo: true },
+            { name: 'Finewood Bow', type: '2H Bow', tier: 'Black Forest', damage: { Pierce: 32 }, maxLvlDamage: 41, totalDamage: 32, attackSpeed: 2.0, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: false },
+            { name: 'Iron Axe', type: 'Axe', tier: 'Swamp', damage: { Slash: 55 }, maxLvlDamage: 70, totalDamage: 55, attackSpeed: 1.2, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: true },
+            { name: 'Iron Mace', type: 'Mace', tier: 'Swamp', damage: { Blunt: 55 }, maxLvlDamage: 70, totalDamage: 55, attackSpeed: 1.1, staminaCost: 10, backstab: 3, secondaryMult: 2.5, hasCombo: true },
+            { name: 'Iron Sledge', type: '2H Sledge', tier: 'Swamp', damage: { Blunt: 55, Spirit: 30 }, maxLvlDamage: 100, totalDamage: 85, attackSpeed: 2.0, staminaCost: 20, backstab: 3, secondaryMult: 1, hasCombo: false },
+            { name: 'Battleaxe', type: '2H Axe', tier: 'Swamp', damage: { Slash: 70 }, maxLvlDamage: 85, totalDamage: 70, attackSpeed: 1.8, staminaCost: 18, backstab: 3, secondaryMult: 1.5, hasCombo: true },
+            { name: 'Iron Sword', type: 'Sword', tier: 'Swamp', damage: { Slash: 55 }, maxLvlDamage: 70, totalDamage: 55, attackSpeed: 1.0, staminaCost: 10, backstab: 3, secondaryMult: 2, hasCombo: true },
+            { name: 'Iron Atgeir', type: '2H Atgeir', tier: 'Swamp', damage: { Pierce: 65 }, maxLvlDamage: 80, totalDamage: 65, attackSpeed: 1.5, staminaCost: 15, backstab: 3, secondaryMult: 1.5, hasCombo: true },
+            { name: 'Ancient Bark Spear', type: '2H Spear', tier: 'Swamp', damage: { Pierce: 55 }, maxLvlDamage: 70, totalDamage: 55, attackSpeed: 1.2, staminaCost: 12, backstab: 3, secondaryMult: 1, hasCombo: false },
+            { name: 'Huntsman Bow', type: '2H Bow', tier: 'Swamp', damage: { Pierce: 42 }, maxLvlDamage: 51, totalDamage: 42, attackSpeed: 2.0, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: false },
+            { name: 'Flesh Rippers', type: 'Fist', tier: 'Mountains', damage: { Slash: 60 }, maxLvlDamage: 75, totalDamage: 60, attackSpeed: 0.7, staminaCost: 5, backstab: 6, secondaryMult: 3, hasCombo: true },
+            { name: 'Silver Knife', type: 'Knife', tier: 'Mountains', damage: { Slash: 21, Pierce: 21, Spirit: 12 }, maxLvlDamage: 66, totalDamage: 54, attackSpeed: 0.8, staminaCost: 6, backstab: 10, secondaryMult: 3, hasCombo: true },
+            { name: 'Silver Sword', type: 'Sword', tier: 'Mountains', damage: { Slash: 75, Spirit: 30 }, maxLvlDamage: 120, totalDamage: 105, attackSpeed: 1.0, staminaCost: 10, backstab: 3, secondaryMult: 2, hasCombo: true },
+            { name: 'Frostner', type: 'Mace', tier: 'Mountains', damage: { Blunt: 35, Frost: 40, Spirit: 20 }, maxLvlDamage: 128, totalDamage: 95, attackSpeed: 1.1, staminaCost: 10, backstab: 3, secondaryMult: 2.5, hasCombo: true },
+            { name: 'Fang Spear', type: '2H Spear', tier: 'Mountains', damage: { Pierce: 70 }, maxLvlDamage: 85, totalDamage: 70, attackSpeed: 1.2, staminaCost: 12, backstab: 3, secondaryMult: 1, hasCombo: false },
+            { name: 'Crystal Battleaxe', type: '2H Axe', tier: 'Mountains', damage: { Slash: 90, Spirit: 30 }, maxLvlDamage: 135, totalDamage: 120, attackSpeed: 1.8, staminaCost: 18, backstab: 3, secondaryMult: 1.5, hasCombo: true },
+            { name: 'Draugr Fang', type: '2H Bow', tier: 'Mountains', damage: { Pierce: 47, Poison: 5 }, maxLvlDamage: 76, totalDamage: 52, attackSpeed: 2.0, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: false },
+            { name: 'Porcupine', type: 'Mace', tier: 'Plains', damage: { Blunt: 50, Pierce: 45 }, maxLvlDamage: 125, totalDamage: 95, attackSpeed: 1.1, staminaCost: 10, backstab: 3, secondaryMult: 2.5, hasCombo: true },
+            { name: 'Blackmetal Axe', type: 'Axe', tier: 'Plains', damage: { Slash: 95 }, maxLvlDamage: 110, totalDamage: 95, attackSpeed: 1.2, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: true },
+            { name: 'Blackmetal Knife', type: 'Knife', tier: 'Plains', damage: { Slash: 28, Pierce: 28 }, maxLvlDamage: 74, totalDamage: 56, attackSpeed: 0.8, staminaCost: 6, backstab: 10, secondaryMult: 3, hasCombo: true },
+            { name: 'Blackmetal Sword', type: 'Sword', tier: 'Plains', damage: { Slash: 95 }, maxLvlDamage: 110, totalDamage: 95, attackSpeed: 1.0, staminaCost: 10, backstab: 3, secondaryMult: 2, hasCombo: true },
+            { name: 'Blackmetal Atgeir', type: '2H Atgeir', tier: 'Plains', damage: { Pierce: 105 }, maxLvlDamage: 120, totalDamage: 105, attackSpeed: 1.5, staminaCost: 15, backstab: 3, secondaryMult: 1.5, hasCombo: true },
+            { name: 'Mistwalker', type: 'Sword', tier: 'Mistlands', damage: { Slash: 75, Frost: 40 }, maxLvlDamage: 127, totalDamage: 115, attackSpeed: 1.0, staminaCost: 10, backstab: 3, secondaryMult: 2, hasCombo: true },
+            { name: 'Krom', type: '2H Sword', tier: 'Mistlands', damage: { Slash: 150 }, maxLvlDamage: 162, totalDamage: 150, attackSpeed: 1.5, staminaCost: 10, backstab: 3, secondaryMult: 1.5, hasCombo: true },
+            { name: 'Demolisher', type: '2H Sledge', tier: 'Mistlands', damage: { Blunt: 140 }, maxLvlDamage: 152, totalDamage: 140, attackSpeed: 2.0, staminaCost: 20, backstab: 3, secondaryMult: 1, hasCombo: false },
+            { name: 'Jotun Bane', type: 'Axe', tier: 'Mistlands', damage: { Slash: 80, Poison: 30 }, maxLvlDamage: 122, totalDamage: 110, attackSpeed: 1.2, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: true },
+            { name: 'Spine Snap', type: '2H Bow', tier: 'Mistlands', damage: { Pierce: 62 }, maxLvlDamage: 68, totalDamage: 62, attackSpeed: 2.0, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: false },
+            { name: 'Arbalest', type: '2H Crossbow', tier: 'Mistlands', damage: { Pierce: 200 }, maxLvlDamage: 209, totalDamage: 200, attackSpeed: 3.0, staminaCost: 15, backstab: 3, secondaryMult: 1, hasCombo: false },
+            { name: 'Staff of Embers', type: '2H Staff', tier: 'Mistlands', damage: { Blunt: 120, Fire: 120 }, maxLvlDamage: 276, totalDamage: 240, attackSpeed: 1.5, staminaCost: 0, backstab: 1, secondaryMult: 1, hasCombo: false },
+            { name: 'Staff of Frost', type: '2H Staff', tier: 'Mistlands', damage: { Frost: 30 }, maxLvlDamage: 36, totalDamage: 30, attackSpeed: 0.25, staminaCost: 0, backstab: 1, hasCombo: false },
+            { name: 'Skoll and Hati', type: '2H Knife', tier: 'Mistlands', damage: { Slash: 45, Pierce: 45 }, maxLvlDamage: 96, totalDamage: 90, attackSpeed: 0.7, staminaCost: 14, backstab: 6, secondaryMult: 3, hasCombo: true },
+            { name: 'Slayer', type: '2H Sword', tier: 'Ashlands', damage: { Slash: 162, Spirit: 81 }, maxLvlDamage: 280, totalDamage: 243, attackSpeed: 1.5, staminaCost: 10, backstab: 3, secondaryMult: 1.5, hasCombo: true },
+            { name: 'Ripper', type: 'Fist', tier: 'Ashlands', damage: { Slash: 112 }, maxLvlDamage: 140, totalDamage: 112, attackSpeed: 0.7, staminaCost: 5, backstab: 6, secondaryMult: 3, hasCombo: true },
+            { name: 'Splitnir', type: '2H Spear', tier: 'Ashlands', damage: { Pierce: 148, Lightning: 74 }, maxLvlDamage: 266, totalDamage: 222, attackSpeed: 1.2, staminaCost: 12, backstab: 3, secondaryMult: 1, hasCombo: false },
+            { name: 'Dyrnwyn', type: 'Sword', tier: 'Ashlands', damage: { Slash: 140, Fire: 70 }, maxLvlDamage: 245, totalDamage: 210, attackSpeed: 1.0, staminaCost: 10, backstab: 3, secondaryMult: 2, hasCombo: true },
+            { name: 'Ash-touched Bow', type: '2H Bow', tier: 'Ashlands', damage: { Pierce: 72 }, maxLvlDamage: 78, totalDamage: 72, attackSpeed: 2.0, staminaCost: 10, backstab: 3, secondaryMult: 1, hasCombo: false },
+            { name: 'Brute-Clubs', type: 'Club', tier: 'Ashlands', damage: { Blunt: 154 }, maxLvlDamage: 182, totalDamage: 154, attackSpeed: 1.1, staminaCost: 10, backstab: 3, secondaryMult: 2.5, hasCombo: true },
+            { name: 'Scourging Claws', type: 'Fist', tier: 'Ashlands', damage: { Slash: 95, Spirit: 95 }, maxLvlDamage: 223, totalDamage: 190, attackSpeed: 0.7, staminaCost: 5, backstab: 6, secondaryMult: 3, hasCombo: true },
+            { name: 'Staff of Wildfire', type: '2H Staff', tier: 'Ashlands', damage: { Fire: 150 }, maxLvlDamage: 180, totalDamage: 150, attackSpeed: 0.25, staminaCost: 0, backstab: 1, hasCombo: false },
+            { name: 'Dyrnwyn (Ruby)', type: 'Sword', tier: 'Ashlands', damage: { Slash: 140, Fire: 105 }, maxLvlDamage: 294, totalDamage: 245, attackSpeed: 1.0, staminaCost: 10, backstab: 3, secondaryMult: 2, hasCombo: true },
+            { name: 'Dyrnwyn (Sapphire)', type: 'Sword', tier: 'Ashlands', damage: { Slash: 140, Frost: 105 }, maxLvlDamage: 294, totalDamage: 245, attackSpeed: 1.0, staminaCost: 10, backstab: 3, secondaryMult: 2, hasCombo: true },
+            { name: 'Dyrnwyn (Emerald)', type: 'Sword', tier: 'Ashlands', damage: { Slash: 140, Lightning: 105 }, maxLvlDamage: 294, totalDamage: 245, attackSpeed: 1.0, staminaCost: 10, backstab: 3, secondaryMult: 2, hasCombo: true },
+            { name: 'Slayer (Ruby)', type: '2H Sword', tier: 'Ashlands', damage: { Slash: 162, Fire: 121.5 }, maxLvlDamage: 340, totalDamage: 283.5, attackSpeed: 1.5, staminaCost: 10, backstab: 3, secondaryMult: 1.5, hasCombo: true },
+            { name: 'Slayer (Sapphire)', type: '2H Sword', tier: 'Ashlands', damage: { Slash: 162, Frost: 121.5 }, maxLvlDamage: 340, totalDamage: 283.5, attackSpeed: 1.5, staminaCost: 10, backstab: 3, secondaryMult: 1.5, hasCombo: true },
+            { name: 'Slayer (Emerald)', type: '2H Sword', tier: 'Ashlands', damage: { Slash: 162, Lightning: 121.5 }, maxLvlDamage: 340, totalDamage: 283.5, attackSpeed: 1.5, staminaCost: 10, backstab: 3, secondaryMult: 1.5, hasCombo: true },
+            { name: 'Ripper (Ruby)', type: 'Fist', tier: 'Ashlands', damage: { Slash: 112, Fire: 56 }, maxLvlDamage: 202, totalDamage: 168, attackSpeed: 0.7, staminaCost: 5, backstab: 6, secondaryMult: 3, hasCombo: true },
+            { name: 'Ripper (Sapphire)', type: 'Fist', tier: 'Ashlands', damage: { Slash: 112, Frost: 56 }, maxLvlDamage: 202, totalDamage: 168, attackSpeed: 0.7, staminaCost: 5, backstab: 6, secondaryMult: 3, hasCombo: true },
+            { name: 'Ripper (Emerald)', type: 'Fist', tier: 'Ashlands', damage: { Slash: 112, Lightning: 56 }, maxLvlDamage: 202, totalDamage: 168, attackSpeed: 0.7, staminaCost: 5, backstab: 6, secondaryMult: 3, hasCombo: true },
+            { name: 'Splitnir (Ruby)', type: '2H Spear', tier: 'Ashlands', damage: { Pierce: 148, Fire: 111 }, maxLvlDamage: 311, totalDamage: 259, attackSpeed: 1.2, staminaCost: 12, backstab: 3, secondaryMult: 1, hasCombo: false },
+            { name: 'Splitnir (Sapphire)', type: '2H Spear', tier: 'Ashlands', damage: { Pierce: 148, Frost: 111 }, maxLvlDamage: 311, totalDamage: 259, attackSpeed: 1.2, staminaCost: 12, backstab: 3, secondaryMult: 1, hasCombo: false },
+            { name: 'Splitnir (Emerald)', type: '2H Spear', tier: 'Ashlands', damage: { Pierce: 148, Lightning: 111 }, maxLvlDamage: 311, totalDamage: 259, attackSpeed: 1.2, staminaCost: 12, backstab: 3, secondaryMult: 1, hasCombo: false },
+            { name: 'Nidhögg', type: 'Sword', tier: 'Ashlands', damage: { Blunt: 150, Fire: 150 }, maxLvlDamage: 300, totalDamage: 300, attackSpeed: 1.0, staminaCost: 20, backstab: 1, secondaryMult: 1, hasCombo: false },
         ];
 
         const combatData = [
@@ -383,7 +448,13 @@
             { name: 'Tick', biome: 'Mistlands', weak: 'Pierce, Fire', resist: '', immune: 'Spirit', notes: 'Small creatures that latch onto the player.' },
             { name: 'Dvergr Rogue', biome: 'Mistlands', weak: '', resist: '', immune: 'Spirit', notes: 'Hostile if provoked.' },
             { name: 'Dvergr Mage', biome: 'Mistlands', weak: '', resist: 'Fire, Frost', immune: 'Spirit', notes: 'Hostile if provoked.' },
-            { name: 'The Queen', biome: 'Mistlands', weak: '', resist: 'Pierce', immune: 'Spirit', notes: 'Final boss of the Mistlands.' }
+            { name: 'The Queen', biome: 'Mistlands', weak: '', resist: 'Pierce', immune: 'Spirit', notes: 'Final boss of the Mistlands.' },
+            { name: 'Charred Twitcher', biome: 'Ashlands', weak: 'Frost', resist: '', immune: 'Fire', notes: 'Fast, erratic enemy.' },
+            { name: 'Charred Warlock', biome: 'Ashlands', weak: 'Frost', resist: '', immune: 'Fire', notes: 'Casts fire and summoning spells.' },
+            { name: 'Fallen Valkyrie', biome: 'Ashlands', weak: 'Pierce, Spirit', resist: '', immune: 'Fire', notes: 'Fast, flying enemy.' },
+            { name: 'Charred Archer', biome: 'Ashlands', weak: 'Frost', resist: 'Pierce', immune: 'Fire', notes: 'Ranged enemy.' },
+            { name: 'Charred Warrior', biome: 'Ashlands', weak: 'Frost', resist: 'Slash', immune: 'Fire', notes: 'Standard melee enemy.' },
+            { name: 'Ashen Drake', biome: 'Ashlands', weak: 'Frost', resist: 'Pierce', immune: 'Fire', notes: 'Flying, fire-breathing enemy.' }
         ];
 
         const arrowData = {
@@ -403,10 +474,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             const weaponTableBody = document.getElementById('weapon-table-body');
             const tierFilter = document.getElementById('tier-filter');
-            const typeFilter = document.getElementById('type-filter');
             const includePreviousTiersCheckbox = document.getElementById('include-previous-tiers');
-            const damageTypeFilterDropdown = document.getElementById('damage-filter-dropdown');
-            const damageFilterBtn = document.getElementById('damage-filter-btn');
             const enemySelector = document.getElementById('enemy-selector');
             const skillInputsContainer = document.getElementById('skill-inputs');
             const accordionContainer = document.getElementById('accordion-container');
@@ -426,11 +494,12 @@
             const skillInputsWrapper = document.getElementById('skill-inputs-wrapper');
             const arrowFilterContainer = document.getElementById('arrow-filter-container');
             const arrowFilter = document.getElementById('arrow-filter');
+            const skillTypeButtons = document.getElementById('skill-inputs');
 
             let activeDamageFilters = [];
             let selectedWeapon = null;
             let selectedEnemy = null;
-            const tierOrder = ['Meadows', 'Black Forest', 'Swamp', 'Mountains', 'Plains', 'Mistlands'];
+            const tierOrder = ['Meadows', 'Black Forest', 'Swamp', 'Mountains', 'Plains', 'Mistlands', 'Ashlands'];
             let currentWeaponSort = { key: 'name', direction: 'asc' };
             let currentEnemySort = { key: 'name', direction: 'asc' };
             let currentEnemyView = 'table';
@@ -438,27 +507,27 @@
             let damageBarMode = 'dps';
             let skillMode = 'mySkills'; // 'mySkills' or 'baseline'
             let userStoredSkills = {};
-            
+            let activeSkillFilters = [];
+
             const skillLevels = { Axes: 0, Bows: 0, Clubs: 0, Knives: 0, Polearms: 0, Spears: 0, Swords: 0, Fists: 0, Crossbows: 0 };
             const weaponTypeToSkillMap = {
-                'Axe (1H)': 'Axes', 'Axe (2H)': 'Axes', 'Bow (2H)': 'Bows', 'Club (1H)': 'Clubs', 'Sledge (2H)': 'Clubs',
-                'Knife (1H)': 'Knives', 'Atgeir (2H)': 'Polearms', 'Spear (2H)': 'Spears', 'Harpoon (2H)': 'Spears',
-                'Sword (1H)': 'Swords', 'Sword (2H)': 'Swords', 'Fist (1H)': 'Fists', 'Crossbow (2H)': 'Crossbows'
+                'Axe': 'Axes', '2H Axe': 'Axes', '2H Bow': 'Bows', 'Club': 'Clubs', '2H Sledge': 'Clubs',
+                'Knife': 'Knives', '2H Knife': 'Knives', '2H Atgeir': 'Polearms', '2H Spear': 'Spears', '2H Harpoon': 'Spears',
+                'Sword': 'Swords', '2H Sword': 'Swords', 'Fist': 'Fists', '2H Crossbow': 'Crossbows'
             };
 
             function saveState() {
                 const state = {
                     skills: skillLevels,
                     tier: tierFilter.value,
-                    type: typeFilter.value,
                     includePrevious: includePreviousTiersCheckbox.checked,
-                    damageFilters: activeDamageFilters,
                     enemy: enemySelector.value,
                     showDamage: showDamageDetailsCheckbox.checked,
                     enemyView: currentEnemyView,
                     weaponLevels: weaponUpgradeLevels,
                     damageBarMode: damageBarMode,
-                    arrow: arrowFilter.value
+                    arrow: arrowFilter.value,
+                    skillFilters: activeSkillFilters
                 };
                 localStorage.setItem('valheimArmoryState', JSON.stringify(state));
             }
@@ -469,17 +538,16 @@
                     const state = JSON.parse(savedState);
                     if (state.skills) Object.assign(skillLevels, state.skills);
                     if (state.weaponLevels) Object.assign(weaponUpgradeLevels, state.weaponLevels);
-                    
+
                     Object.keys(skillLevels).forEach(skill => {
                         const input = document.getElementById(`skill-${skill}`);
                         if (input) input.value = skillLevels[skill];
                     });
 
                     tierFilter.value = state.tier || 'all';
-                    typeFilter.value = state.type || 'all';
                     includePreviousTiersCheckbox.checked = state.includePrevious || false;
                     showDamageDetailsCheckbox.checked = state.showDamage || false;
-                    activeDamageFilters = state.damageFilters || [];
+                    activeSkillFilters = state.skillFilters || [];
                     enemySelector.value = state.enemy || 'none';
                     currentEnemyView = state.enemyView || 'table';
                     damageBarMode = state.damageBarMode || 'dps';
@@ -488,15 +556,15 @@
                     if (enemySelector.value !== 'none') {
                         selectedEnemy = enemyData.find(e => e.name === enemySelector.value);
                     }
-                    
-                    damageTypeFilterDropdown.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-                        if (activeDamageFilters.includes(checkbox.value)) {
-                            checkbox.checked = true;
+
+                    skillInputsContainer.querySelectorAll('.skill-filter-btn').forEach(btn => {
+                        if (activeSkillFilters.includes(btn.dataset.skill)) {
+                            btn.classList.add('active');
                         }
                     });
-                    updateDamageFilterButtonText();
 
-                     damageBarHeader.textContent = damageBarMode === 'dps' ? 'DPS' : 'Damage/Hit';
+
+                    damageBarHeader.textContent = damageBarMode === 'dps' ? 'DPS' : 'Damage/Hit';
                 }
             }
 
@@ -506,8 +574,8 @@
                     const div = document.createElement('div');
                     div.className = "flex-shrink-0";
                     div.innerHTML = `
-                        <label for="skill-${skill}" class="block text-sm font-medium text-gray-300">${skill}</label>
-                        <input type="number" id="skill-${skill}" data-skill="${skill}" value="0" min="0" max="100" class="skill-input mt-1 block w-16 bg-gray-700 border border-gray-600 rounded-md shadow-sm py-1 px-2 text-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500">
+                        <button data-skill="${skill}" class="skill-filter-btn filter-btn w-full text-sm py-1 px-1 rounded">${skill}</button>
+                        <input type="number" id="skill-${skill}" data-skill="${skill}" value="0" min="0" max="100" class="skill-input mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-1 px-2 text-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 text-center">
                     `;
                     skillInputsContainer.appendChild(div);
                 });
@@ -527,6 +595,23 @@
                         }
                     });
                 });
+
+                skillInputsContainer.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('skill-filter-btn')) {
+                        const skill = e.target.dataset.skill;
+                        e.target.classList.toggle('active');
+
+                        if (activeSkillFilters.includes(skill)) {
+                            activeSkillFilters = activeSkillFilters.filter(s => s !== skill);
+                        } else {
+                            activeSkillFilters.push(skill);
+                        }
+
+                        arrowFilterContainer.classList.toggle('hidden', !activeSkillFilters.includes('Bows'));
+                        populateWeaponTable();
+                        saveState();
+                    }
+                });
             }
 
             function populateFilters() {
@@ -536,27 +621,6 @@
                     option.value = tier;
                     option.textContent = tier;
                     tierFilter.appendChild(option);
-                });
-
-                const types = [...new Set(weaponData.map(w => w.type))].sort();
-                typeFilter.innerHTML = '<option value="all">All Types</option>';
-                types.forEach(type => {
-                    const option = document.createElement('option');
-                    option.value = type;
-                    option.textContent = type;
-                    typeFilter.appendChild(option);
-                });
-                
-                const allDamageTypes = [...new Set(weaponData.flatMap(w => Object.keys(w.damage)))].sort();
-                damageTypeFilterDropdown.innerHTML = '';
-                allDamageTypes.forEach(type => {
-                    const item = document.createElement('label');
-                    item.className = 'flex items-center space-x-2 cursor-pointer';
-                    item.innerHTML = `
-                        <input type="checkbox" value="${type}" class="damage-type-checkbox h-4 w-4 rounded border-gray-500 bg-gray-800 text-amber-500 focus:ring-amber-500">
-                        <span>${type}</span>
-                    `;
-                    damageTypeFilterDropdown.appendChild(item);
                 });
 
                 arrowFilter.innerHTML = '';
@@ -577,22 +641,12 @@
                     enemyBiomeFilter.appendChild(option);
                 });
 
-                enemyData.sort((a,b) => a.name.localeCompare(b.name)).forEach(enemy => {
+                enemyData.sort((a, b) => a.name.localeCompare(b.name)).forEach(enemy => {
                     const option = document.createElement('option');
                     option.value = enemy.name;
                     option.textContent = enemy.name;
                     enemySelector.appendChild(option);
                 });
-            }
-            
-            function updateDamageFilterButtonText() {
-                if (activeDamageFilters.length === 0) {
-                    damageFilterBtn.textContent = 'Select Damage Types';
-                } else if (activeDamageFilters.length > 2) {
-                    damageFilterBtn.textContent = `${activeDamageFilters.length} types selected`;
-                } else {
-                    damageFilterBtn.textContent = activeDamageFilters.join(', ');
-                }
             }
 
             function populateCombatAccordion() {
@@ -631,7 +685,6 @@
 
             function populateWeaponTable() {
                 const selectedTierValue = tierFilter.value;
-                const type = typeFilter.value;
                 const includePrevious = includePreviousTiersCheckbox.checked;
 
                 let filteredWeapons = weaponData.filter(weapon => {
@@ -646,11 +699,17 @@
                         tierMatch = weapon.tier === selectedTierValue;
                     }
 
-                    const typeMatch = type === 'all' || weapon.type === type;
-                    const selectedDamageTypes = activeDamageFilters;
-                    const damageMatch = selectedDamageTypes.length === 0 || selectedDamageTypes.some(dtype => Object.keys(weapon.damage).includes(dtype));
-                    return tierMatch && typeMatch && damageMatch;
+                    const skillName = weaponTypeToSkillMap[weapon.type];
+                    const skillMatch = activeSkillFilters.length === 0 || activeSkillFilters.includes(skillName);
+
+                    return tierMatch && skillMatch;
                 });
+
+                // Handle Abyssal Razor duplication: If the Swamp version is visible, hide the Black Forest one.
+                const hasSwampRazor = filteredWeapons.some(w => w.name === 'Abyssal Razor' && w.tier === 'Swamp');
+                if (hasSwampRazor) {
+                    filteredWeapons = filteredWeapons.filter(w => !(w.name === 'Abyssal Razor' && w.tier === 'Black Forest'));
+                }
 
                 // Sorting logic
                 const sortKey = currentWeaponSort.key;
@@ -705,7 +764,7 @@
                         valA = a[sortKey].toLowerCase();
                         valB = b[sortKey].toLowerCase();
                     }
-                    
+
                     if (valA < valB) return sortDir === 'asc' ? -1 : 1;
                     if (valA > valB) return sortDir === 'asc' ? 1 : -1;
                     return 0;
@@ -714,12 +773,12 @@
                 weaponTableBody.innerHTML = '';
                 filteredWeapons.forEach(weapon => {
                     const row = document.createElement('tr');
-                    const weaponId = weapon.name.replace(/\s+/g, '-');
+                    const weaponId = weapon.name.replace(/[\s()]/g, '-');
                     row.className = 'border-b border-gray-700 table-row-clickable cursor-pointer';
                     row.dataset.weaponName = weapon.name;
                     row.innerHTML = `
                         <td class="p-2 font-semibold whitespace-nowrap">${weapon.name}</td>
-                        <td class="p-2 text-gray-400">${weapon.type}</td>
+                        <td class="p-2 text-gray-400 whitespace-nowrap">${weapon.type}</td>
                         <td class="p-2 text-gray-400">${weapon.tier}</td>
                         <td class="p-2 text-center text-white level-selector" data-level="1">${weapon.lvl1}</td>
                         <td class="p-2 text-center text-gray-400 level-selector" data-level="2">${weapon.lvl2}</td>
@@ -753,28 +812,27 @@
                         document.querySelectorAll('.table-row-clickable').forEach(r => r.classList.remove('selected'));
                         row.classList.add('selected');
                         selectedWeapon = weapon;
-                        arrowFilterContainer.classList.toggle('hidden', selectedWeapon.type !== 'Bow (2H)');
                         updateCalculatedDamage(weapon, selectedEnemy);
                         updateEnemyInfoPanel(selectedEnemy, weapon);
                     });
 
                     const selectedLvl = weaponUpgradeLevels[weapon.name] || 1;
                     row.querySelector(`[data-level="${selectedLvl}"]`).classList.add('level-selected');
-                    
+
                     weaponTableBody.appendChild(row);
                 });
                 updateAllCalculatedColumns();
                 toggleDamageColumns();
             }
-            
+
             function populateEnemyViews() {
                 const biome = enemyBiomeFilter.value;
                 let filteredEnemies = enemyData.filter(enemy => biome === 'all' || enemy.biome === biome);
-                
+
                 // Enemy Table Sorting
                 const sortKey = currentEnemySort.key;
                 const sortDir = currentEnemySort.direction;
-                filteredEnemies.sort((a,b) => {
+                filteredEnemies.sort((a, b) => {
                     const valA = (a[sortKey] || '').toLowerCase();
                     const valB = (b[sortKey] || '').toLowerCase();
                     if (valA < valB) return sortDir === 'asc' ? -1 : 1;
@@ -827,7 +885,7 @@
                     enemyTableBody.appendChild(row);
                 });
             }
-            
+
             function updateAllCalculatedColumns() {
                 const rows = weaponTableBody.querySelectorAll('tr');
                 let maxBarValue = 0;
@@ -858,27 +916,28 @@
                         const skillLevel = skillName ? skillLevels[skillName] : 0;
                         const stamina = weapon.staminaCost * (1 - (skillLevel / 100) * 0.33);
                         const dmgPerStamina = stamina > 0 ? damage / stamina : Infinity;
+                        const weaponId = weapon.name.replace(/[\s()]/g, '-');
 
-                        const damageCell = row.querySelector(`#damage-calc-${weapon.name.replace(/\s+/g, '-')}`);
-                        const dpsCell = row.querySelector(`#dps-calc-${weapon.name.replace(/\s+/g, '-')}`);
-                        const comboDpsCell = row.querySelector(`#combo-dps-calc-${weapon.name.replace(/\s+/g, '-')}`);
-                        const surpriseAtkCell = row.querySelector(`#surprise-atk-calc-${weapon.name.replace(/\s+/g, '-')}`);
-                        const secondaryAtkCell = row.querySelector(`#secondary-atk-calc-${weapon.name.replace(/\s+/g, '-')}`);
-                        const staminaCell = row.querySelector(`#stamina-calc-${weapon.name.replace(/\s+/g, '-')}`);
-                        const dmgPerStaminaCell = row.querySelector(`#dmg-per-stamina-calc-${weapon.name.replace(/\s+/g, '-')}`);
-                        const damageBar = row.querySelector(`#damage-bar-${weapon.name.replace(/\s+/g, '-')}`);
-                        
+                        const damageCell = row.querySelector(`#damage-calc-${weaponId}`);
+                        const dpsCell = row.querySelector(`#dps-calc-${weaponId}`);
+                        const comboDpsCell = row.querySelector(`#combo-dps-calc-${weaponId}`);
+                        const surpriseAtkCell = row.querySelector(`#surprise-atk-calc-${weaponId}`);
+                        const secondaryAtkCell = row.querySelector(`#secondary-atk-calc-${weaponId}`);
+                        const staminaCell = row.querySelector(`#stamina-calc-${weaponId}`);
+                        const dmgPerStaminaCell = row.querySelector(`#dmg-per-stamina-calc-${weaponId}`);
+                        const damageBar = row.querySelector(`#damage-bar-${weaponId}`);
+
                         if (comboDpsCell) comboDpsCell.className = `p-2 text-center font-bold ${weapon.hasCombo ? 'text-amber-400' : 'text-gray-500'}`;
 
                         if (selectedEnemy) {
-                            if(damageCell) damageCell.textContent = damage.toFixed(1);
-                            if(dpsCell) dpsCell.textContent = dps.toFixed(1);
-                            if(comboDpsCell) comboDpsCell.textContent = comboDps.toFixed(1);
-                            if(surpriseAtkCell) surpriseAtkCell.textContent = surpriseAtk.toFixed(1);
-                            if(secondaryAtkCell) secondaryAtkCell.textContent = secondaryAtk.toFixed(1);
-                            if(staminaCell) staminaCell.textContent = stamina.toFixed(1);
-                            if(dmgPerStaminaCell) dmgPerStaminaCell.textContent = isFinite(dmgPerStamina) ? dmgPerStamina.toFixed(2) : '∞';
-                            
+                            if (damageCell) damageCell.textContent = damage.toFixed(1);
+                            if (dpsCell) dpsCell.textContent = dps.toFixed(1);
+                            if (comboDpsCell) comboDpsCell.textContent = comboDps.toFixed(1);
+                            if (surpriseAtkCell) surpriseAtkCell.textContent = surpriseAtk.toFixed(1);
+                            if (secondaryAtkCell) secondaryAtkCell.textContent = secondaryAtk.toFixed(1);
+                            if (staminaCell) staminaCell.textContent = stamina.toFixed(1);
+                            if (dmgPerStaminaCell) dmgPerStaminaCell.textContent = isFinite(dmgPerStamina) ? dmgPerStamina.toFixed(2) : '∞';
+
                             const barValue = damageBarMode === 'dps' ? dps : damage;
                             const barWidth = maxBarValue > 0 ? (barValue / maxBarValue) * 100 : 0;
                             if (damageBar) {
@@ -886,13 +945,13 @@
                                 damageBar.textContent = barValue.toFixed(1);
                             }
                         } else {
-                            if(damageCell) damageCell.textContent = '-';
-                            if(dpsCell) dpsCell.textContent = '-';
-                            if(comboDpsCell) comboDpsCell.textContent = '-';
-                            if(surpriseAtkCell) surpriseAtkCell.textContent = '-';
-                            if(secondaryAtkCell) secondaryAtkCell.textContent = '-';
-                            if(staminaCell) staminaCell.textContent = stamina.toFixed(1);
-                            if(dmgPerStaminaCell) dmgPerStaminaCell.textContent = '-';
+                            if (damageCell) damageCell.textContent = '-';
+                            if (dpsCell) dpsCell.textContent = '-';
+                            if (comboDpsCell) comboDpsCell.textContent = '-';
+                            if (surpriseAtkCell) surpriseAtkCell.textContent = '-';
+                            if (secondaryAtkCell) secondaryAtkCell.textContent = '-';
+                            if (staminaCell) staminaCell.textContent = stamina.toFixed(1);
+                            if (dmgPerStaminaCell) dmgPerStaminaCell.textContent = '-';
                             if (damageBar) {
                                 damageBar.style.width = '0%';
                                 damageBar.textContent = '';
@@ -904,16 +963,16 @@
 
             function calculateDamage(weapon, enemy, getBreakdown = false) {
                 if (!weapon) return getBreakdown ? { total: 0, breakdown: [] } : 0;
-                
+
                 const selectedLevel = weaponUpgradeLevels[weapon.name] || 1;
                 const levelDamage = weapon[`lvl${selectedLevel}`];
                 const damageRatio = weapon.totalDamage > 0 ? levelDamage / weapon.totalDamage : 1;
 
                 const skillName = weaponTypeToSkillMap[weapon.type];
                 const skillLevel = skillName ? skillLevels[skillName] : 0;
-                
+
                 let skillFactor;
-                if (weapon.type === 'Fist (1H)') {
+                if (weapon.type === 'Fist') {
                     skillFactor = 1 + (skillLevel / 100 * 0.5);
                 } else {
                     skillFactor = 1 + (skillLevel / 100 * 0.25);
@@ -923,18 +982,18 @@
                 let breakdown = [];
                 let combinedDamage = { ...weapon.damage };
 
-                if (weapon.type === 'Bow (2H)') {
+                if (weapon.type === '2H Bow') {
                     const selectedArrowName = arrowFilter.value;
                     const arrow = arrowData[selectedArrowName];
                     for (const type in arrow) {
                         combinedDamage[type] = (combinedDamage[type] || 0) + arrow[type];
                     }
                 }
-                
+
                 for (const [damageType, baseValue] of Object.entries(combinedDamage)) {
                     const levelAdjustedBase = baseValue * damageRatio;
                     const skillBasedDamage = levelAdjustedBase * skillFactor;
-                    
+
                     let modifier = 1;
                     let modifierText = 'Neutral';
                     if (enemy && enemy.immune && enemy.immune.includes(damageType)) {
@@ -990,7 +1049,7 @@
 
                 if (weapon) {
                     const { breakdown } = calculateDamage(weapon, enemy, true);
-                    
+
                     let breakdownHtml = `<div class="text-xs text-gray-400 space-y-1">`;
                     breakdown.forEach(item => {
                         breakdownHtml += `<p>${item.type}: ${item.base.toFixed(1)} <span class="text-gray-500">(base)</span> &times; ${item.skill.toFixed(2)} <span class="text-gray-500">(skill)</span> &times; ${item.mod} = <span class="font-semibold text-white">${item.final.toFixed(1)}</span></p>`;
@@ -1012,7 +1071,7 @@
             function updateCalculatedDamage(weapon, enemy) {
                 updateEnemyInfoPanel(enemy, weapon);
             }
-            
+
             function toggleDamageColumns() {
                 const isHidden = !showDamageDetailsCheckbox.checked;
                 document.querySelectorAll('.damage-col').forEach(col => {
@@ -1036,26 +1095,6 @@
             }
 
             // Event Listeners
-            damageFilterBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                damageTypeFilterDropdown.classList.toggle('hidden');
-            });
-
-            window.addEventListener('click', (e) => {
-                if (!damageTypeFilterDropdown.classList.contains('hidden') && !damageFilterBtn.contains(e.target)) {
-                    damageTypeFilterDropdown.classList.add('hidden');
-                }
-            });
-
-            damageTypeFilterDropdown.addEventListener('change', (e) => {
-                if (e.target.classList.contains('damage-type-checkbox')) {
-                    activeDamageFilters = Array.from(damageTypeFilterDropdown.querySelectorAll('input:checked')).map(cb => cb.value);
-                    updateDamageFilterButtonText();
-                    populateWeaponTable();
-                    saveState();
-                }
-            });
-
             damageBarHeader.addEventListener('click', () => {
                 damageBarMode = damageBarMode === 'dps' ? 'vsFoe' : 'dps';
                 damageBarHeader.textContent = damageBarMode === 'dps' ? 'DPS' : 'Damage/Hit';
@@ -1084,14 +1123,14 @@
             weaponTableHeader.addEventListener('click', (e) => {
                 const th = e.target.closest('th');
                 if (!th || !th.classList.contains('sortable') || th.id === 'damage-bar-header') return;
-                
+
                 const sortKey = th.dataset.sort;
                 if (currentWeaponSort.key === sortKey) {
                     currentWeaponSort.direction = currentWeaponSort.direction === 'asc' ? 'desc' : 'asc';
                 } else {
                     currentWeaponSort.key = sortKey;
                     currentWeaponSort.direction = 'desc'; // Default to descending for numeric
-                    if(['name', 'type', 'tier'].includes(sortKey)) currentWeaponSort.direction = 'asc'; // Default to ascending for text
+                    if (['name', 'type', 'tier'].includes(sortKey)) currentWeaponSort.direction = 'asc'; // Default to ascending for text
                 }
 
                 weaponTableHeader.querySelectorAll('th').forEach(header => {
@@ -1105,7 +1144,7 @@
             enemyTableHeader.addEventListener('click', (e) => {
                 const th = e.target.closest('th');
                 if (!th || !th.classList.contains('sortable')) return;
-                
+
                 const sortKey = th.dataset.sort;
                 if (currentEnemySort.key === sortKey) {
                     currentEnemySort.direction = currentEnemySort.direction === 'asc' ? 'desc' : 'asc';
@@ -1129,11 +1168,11 @@
                     skillToggleButton.textContent = 'Baseline Skills';
                     skillToggleButton.classList.remove('active');
                     userStoredSkills = { ...skillLevels };
-                    
+
                     Object.keys(skillLevels).forEach(skill => {
                         skillLevels[skill] = 0;
                     });
-                    
+
                     document.querySelectorAll('.skill-input').forEach(input => {
                         input.value = 0;
                         input.disabled = true;
@@ -1145,7 +1184,7 @@
                     skillToggleButton.textContent = 'My Skills';
                     skillToggleButton.classList.add('active');
                     Object.assign(skillLevels, userStoredSkills);
-                    
+
                     document.querySelectorAll('.skill-input').forEach(input => {
                         const skill = input.dataset.skill;
                         input.value = skillLevels[skill];
@@ -1158,11 +1197,6 @@
             });
 
             tierFilter.addEventListener('change', () => { populateWeaponTable(); saveState(); });
-            typeFilter.addEventListener('change', () => {
-                arrowFilterContainer.classList.toggle('hidden', typeFilter.value !== 'Bow (2H)');
-                populateWeaponTable(); 
-                saveState(); 
-            });
             arrowFilter.addEventListener('change', () => {
                 updateAllCalculatedColumns();
                 updateCalculatedDamage(selectedWeapon, selectedEnemy);
@@ -1171,19 +1205,21 @@
             includePreviousTiersCheckbox.addEventListener('change', () => { populateWeaponTable(); saveState(); });
             enemyBiomeFilter.addEventListener('change', populateEnemyViews);
             showDamageDetailsCheckbox.addEventListener('change', () => { toggleDamageColumns(); saveState(); });
-            viewToggleButtons.addEventListener('click', (e) => {
-                if(e.target.tagName === 'BUTTON') {
-                    setEnemyView(e.target.dataset.view);
-                }
-            });
+            if (viewToggleButtons) {
+                viewToggleButtons.addEventListener('click', (e) => {
+                    if (e.target.tagName === 'BUTTON') {
+                        setEnemyView(e.target.dataset.view);
+                    }
+                });
+            }
 
             // --- INITIALIZATION ---
             populateFilters();
             populateSkillInputs();
             loadAndApplyState();
-            
+
             // FOR TESTING: Apply user-requested settings for this session
-            tierFilter.value = 'Meadows';
+            tierFilter.value = 'all';
             enemySelector.value = 'Greydwarf Brute';
             selectedEnemy = enemyData.find(e => e.name === 'Greydwarf Brute');
             currentWeaponSort = { key: 'vsFoe', direction: 'desc' };
@@ -1195,11 +1231,11 @@
             setEnemyView(currentEnemyView);
             toggleDamageColumns();
             updateEnemyInfoPanel(selectedEnemy, selectedWeapon);
-            
+
             if (weaponTableBody.querySelector('tr')) {
                 weaponTableBody.querySelector('tr').click();
             } else {
-                 updateCalculatedDamage(selectedWeapon, selectedEnemy);
+                updateCalculatedDamage(selectedWeapon, selectedEnemy);
             }
 
             const sections = document.querySelectorAll('main section');
@@ -1222,7 +1258,7 @@
                     }
                 });
                 if (document.getElementById(hash.substring(1))) {
-                     mobileNav.value = hash;
+                    mobileNav.value = hash;
                 }
             }
 
@@ -1234,11 +1270,11 @@
                     showSection(hash);
                 });
             });
-            
+
             mobileNav.addEventListener('change', (e) => {
-                 const hash = e.target.value;
-                 history.pushState(null, null, hash);
-                 showSection(hash);
+                const hash = e.target.value;
+                history.pushState(null, null, hash);
+                showSection(hash);
             });
 
             window.addEventListener('popstate', () => {
@@ -1249,4 +1285,5 @@
         });
     </script>
 </body>
+
 </html>
