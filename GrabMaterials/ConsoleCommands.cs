@@ -79,7 +79,7 @@ namespace GrabMaterials
 				}
 				//GrabItemsFromNearbyContainers(item, amount);
 			}
-			GrabItemsFromNearbyContainers(itemsToGrab, 50f);
+			GrabItemsFromNearbyContainers(itemsToGrab, 50f, packName);
 		}
 
 		/// <summary>
@@ -204,11 +204,13 @@ namespace GrabMaterials
 			var requirements = GetPieceRequirements(pieceName);
 			if (requirements != null)
 			{
+				var itemsToGrab = new List<ItemToGrab>();
 				foreach (var requirement in requirements)
 				{
 					Debug.Log($"Grabbing for {pieceName}: {requirement.m_amount} {requirement.m_resItem.m_itemData.m_shared.m_name}");
-					GrabItemsFromNearbyContainers(requirement.m_resItem.m_itemData.m_shared.m_name, requirement.m_amount);
+					itemsToGrab.Add(new ItemToGrab(requirement.m_resItem.m_itemData.m_shared.m_name, requirement.m_amount));
 				}
+				GrabItemsFromNearbyContainers(itemsToGrab, 50f, pieceName);
 			}
 
 			/*
@@ -305,26 +307,120 @@ namespace GrabMaterials
 			//GrabMaterialsForPiece(piece);
 		}
 
-		static void GrabItemsFromNearbyContainers(List<ItemToGrab> itemsToGrab, float radius)
+		static void GrabItemsFromNearbyContainers(List<ItemToGrab> itemsToGrab, float radius, string requestLabel = null)
 		{
 			var nearbyContainers = Boxes.GetNearbyContainers(radius);
 			var player = Player.m_localPlayer;
-			//Debug.Log($"grabbing items for {name} from {nearbyContainers.Count} containers within {radius} meters");
-			var msg = new StringBuilder();
-			for (int i = 0; i < itemsToGrab.Count; i++)
+
+			// Aggregate duplicate requests so a pack with several pieces sharing
+			// a material (e.g. wood) is checked against the combined total.
+			var aggregated = new List<ItemToGrab>();
+			foreach (var item in itemsToGrab)
 			{
-				var itemToGrab = itemsToGrab[i];
-				var totalItemsToGrab = itemToGrab.Count;
-				Debug.Log($"grabbing {itemToGrab.Count} {itemToGrab.Name} from {nearbyContainers.Count} containers within {radius} meters");
-				for (int j = 0; j < nearbyContainers.Count && itemToGrab.Count > 0; j++)
+				var idx = aggregated.FindIndex(a => string.Equals(a.Name, item.Name, StringComparison.OrdinalIgnoreCase));
+				if (idx >= 0)
 				{
-					var container = nearbyContainers[j];
-					int countGrabbed = container.GrabItemFromContainer(itemToGrab.Name, itemToGrab.Count);
-					itemToGrab.Count -= countGrabbed;
+					var existing = aggregated[idx];
+					existing.Count += item.Count;
+					aggregated[idx] = existing;
 				}
-				msg.AppendLine($"Grabbed {totalItemsToGrab - itemToGrab.Count} of {totalItemsToGrab} {itemToGrab.Name}");
+				else
+				{
+					aggregated.Add(item);
+				}
 			}
-			player.Message(MessageHud.MessageType.Center, msg.ToString());
+
+			// Pre-flight: total available across all nearby containers per requested item.
+			var available = new int[aggregated.Count];
+			foreach (var container in nearbyContainers)
+			{
+				var inventory = container.GetInventory();
+				if (inventory == null) continue;
+				foreach (var item in inventory.GetAllItems())
+				{
+					for (int i = 0; i < aggregated.Count; i++)
+					{
+						if (item.isMatch(aggregated[i].Name))
+						{
+							available[i] += item.Count();
+							break;
+						}
+					}
+				}
+			}
+
+			// Abort if any item is short — grab nothing, show the missing-materials panel
+			// with the full request status (available items get a checkmark).
+			var anyShort = false;
+			for (int i = 0; i < aggregated.Count; i++)
+			{
+				if (available[i] < aggregated[i].Count) { anyShort = true; break; }
+			}
+			if (anyShort)
+			{
+				var statuses = new List<MissingMaterialsPanel.ItemStatus>(aggregated.Count);
+				var debugShortages = new List<string>();
+				for (int i = 0; i < aggregated.Count; i++)
+				{
+					statuses.Add(new MissingMaterialsPanel.ItemStatus
+					{
+						Name = LocalizeItemName(aggregated[i]),
+						Needed = aggregated[i].Count,
+						Available = available[i],
+					});
+					if (available[i] < aggregated[i].Count)
+					{
+						debugShortages.Add($"{aggregated[i].Count - available[i]} of {aggregated[i].Count} {aggregated[i].Name}");
+					}
+				}
+				Debug.Log($"Cannot grab{(string.IsNullOrEmpty(requestLabel) ? "" : $" for {requestLabel}")} - missing: {string.Join(", ", debugShortages)}");
+				var failTitle = string.IsNullOrEmpty(requestLabel) ? "Missing materials" : $"Missing materials for {requestLabel}";
+				MissingMaterialsPanel.Show(failTitle, statuses);
+				return;
+			}
+
+			// Everything available — perform the grab.
+			var grabbed = new List<MissingMaterialsPanel.ItemStatus>(aggregated.Count);
+			for (int i = 0; i < aggregated.Count; i++)
+			{
+				var itemToGrab = aggregated[i];
+				var remaining = itemToGrab.Count;
+				Debug.Log($"grabbing {remaining} {itemToGrab.Name} from {nearbyContainers.Count} containers within {radius} meters");
+				for (int j = 0; j < nearbyContainers.Count && remaining > 0; j++)
+				{
+					int countGrabbed = nearbyContainers[j].GrabItemFromContainer(itemToGrab.Name, remaining);
+					remaining -= countGrabbed;
+				}
+				grabbed.Add(new MissingMaterialsPanel.ItemStatus
+				{
+					Name = LocalizeItemName(itemToGrab),
+					Needed = itemToGrab.Count,
+					Available = itemToGrab.Count - remaining,
+				});
+			}
+			var successTitle = string.IsNullOrEmpty(requestLabel) ? "Grabbed materials" : $"Grabbed materials for {requestLabel}";
+			MissingMaterialsPanel.Show(successTitle, grabbed);
+		}
+
+		private static string LocalizeItemName(ItemToGrab item)
+		{
+			var translated = LocalizationManager.Instance.TryTranslate(item.FullName);
+			return string.IsNullOrEmpty(translated) || translated == item.FullName ? item.Name : translated;
+		}
+
+		private static string LocalizePieceName(Piece piece)
+		{
+			if (piece == null) return null;
+			if (!piece.m_name.StartsWith("$")) return piece.m_name;
+			try
+			{
+				var translated = LocalizationManager.Instance.TryTranslate(piece.m_name);
+				return string.IsNullOrEmpty(translated) || translated == piece.m_name ? piece.m_name : translated;
+			}
+			catch
+			{
+				return piece.m_name;
+			}
 		}
 
 		public static void GrabMaterialsForSelectedPiece()
@@ -354,7 +450,7 @@ namespace GrabMaterials
 					itemsToGrab.Add(new ItemToGrab(requirement.m_resItem.m_itemData.Name(), requirement.m_amount));
 					//GrabItemsFromNearbyContainers(requirement.m_resItem.m_itemData.m_shared.m_name, requirement.m_amount);
 				}
-				GrabItemsFromNearbyContainers(itemsToGrab, 10f);
+				GrabItemsFromNearbyContainers(itemsToGrab, 10f, LocalizePieceName(piece));
 			}
 		}
 
@@ -462,7 +558,9 @@ namespace GrabMaterials
 		{
 			var radius = 50f; // Default radius
 			var itemsToGrab = GetItemsToGrab(name, count);
-			GrabItemsFromNearbyContainers(itemsToGrab, radius);
+			// GetItemsToGrab populates pieceLookup on first use; check after.
+			var label = pieceLookup.ContainsKey(name.ToLowerInvariant()) ? name : null;
+			GrabItemsFromNearbyContainers(itemsToGrab, radius, label);
 		}
 	}
 }

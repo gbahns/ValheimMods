@@ -17,7 +17,7 @@ using UnityEngine;
 namespace GrabMaterialsMod
 {
 
-	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "1.0.0")]
+	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "1.1.0")]
 	[BepInProcess("valheim.exe")]
 	public class GrabMaterialsMod : BaseUnityPlugin
 	{
@@ -27,6 +27,9 @@ namespace GrabMaterialsMod
 
 		//private ButtonConfig GrabPortalMatsButton;
 		public ConfigEntry<float> HighlightDuration;
+		public ConfigEntry<float> PanelIdleTimeout;
+		public ConfigEntry<float> PanelFadeDuration;
+		public ConfigEntry<bool> PanelDismissOnMovement;
 		private ButtonConfig GrabSelectedPieceMatsButton;
 		//private ConfigEntry<KeyCode> GrabPortalMatsKeyboardConfig;
 		//private ConfigEntry<InputManager.GamepadButton> GrabPortalMatsGamepadConfig;
@@ -96,6 +99,10 @@ namespace GrabMaterialsMod
 			//new KeyboardShortcut(KeyCode.G, KeyCode.LeftShift, KeyCode.RightShift)
 			GrabSelectedPieceMatsKeyboardConfig = Config.Bind("Grab Selected Piece", "GrabSelectedPieceMatsKey", KeyCode.J, new ConfigDescription("Key to grab materials for the currently selectede build piece"));
 			HighlightDuration = Config.Bind("Client config", "Highlight Duration", 2f, new ConfigDescription("Duration in seconds to highlight containers when grabbing materials"));
+
+			PanelIdleTimeout = Config.Bind("Panel UI", "Idle Timeout (seconds)", 15f, new ConfigDescription("Seconds the grab-results panel stays fully visible before fading out automatically."));
+			PanelFadeDuration = Config.Bind("Panel UI", "Fade Duration (seconds)", 3f, new ConfigDescription("Seconds the grab-results panel takes to fade out."));
+			PanelDismissOnMovement = Config.Bind("Panel UI", "Dismiss On Movement", true, new ConfigDescription("Start fading the panel when the player begins moving, attacking, blocking, or jumping. If false, only the idle timeout dismisses the panel."));
 
 			//GrabPack1 = new GrabPackConfig(Config, "Grab Pack 1", new KeyboardShortcut(KeyCode.G), "wood:10,finewood:20,greydwarfeye:10,surtlingcore:2");
 			//GrabPack2 = new GrabPackConfig(Config, "Grab Pack 2", new KeyboardShortcut(KeyCode.G, KeyCode.LeftShift), "wood:10,finewood:40,ancientbark:40,ironnails:100,deeerhide:20");
@@ -193,6 +200,8 @@ namespace GrabMaterialsMod
 
 		private void Update()
 		{
+			GrabMaterials.MissingMaterialsPanel.Tick();
+
 			if (Player.m_localPlayer && Chat.instance && !Chat.instance.IsChatDialogWindowVisible())
 			{
 				//if (ZInput.GetButtonDown(GrabPortalMatsButton.Name))
