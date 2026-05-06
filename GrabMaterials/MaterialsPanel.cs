@@ -36,7 +36,11 @@ namespace GrabMaterials
 
 		private const float DefaultPanelWidth = 480f;
 		private const float MinPanelWidth = 280f;
-		private const float MaxPanelWidth = 1200f;    // allow wide layouts when multi-column kicks in
+
+		// Dynamic max — at high aspect-ratio targets and large inventories the panel
+		// can grow up to (almost) the full screen width; that lets the column-search
+		// algorithm pick more columns instead of being capped by a hardcoded 1200px.
+		private static float MaxPanelWidth => Mathf.Max(800f, Screen.width - 40f);
 		private const float PanelSidePadding = 20f;   // panel-to-content margin per side (so contentWidth = panel - 2×this)
 		private const float TitleHeight = 50f;
 		private const float LineHeight = 26f;
@@ -46,8 +50,7 @@ namespace GrabMaterials
 		private const float BottomPadding = 20f;
 		private const float TopMargin = 20f;
 		private const float ArmDelaySeconds = 0.3f;
-		private const float MaxSingleColumnHeight = 600f;  // List: above this, fan out to multi-column
-		private const int MaxColumns = 3;
+		private const int MaxColumns = 20;
 
 		// Table column widths (data rows). Count column is fixed; name fills the rest.
 		private const float CountColumnWidth = 60f;
@@ -65,6 +68,7 @@ namespace GrabMaterials
 		private static float FadeDurationSeconds => GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelFadeDuration?.Value ?? 3f;
 		private static bool DismissOnMovement => GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelDismissOnMovement?.Value ?? true;
 		private static bool ShowCategoryUnderlines => GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelCategoryUnderlines?.Value ?? true;
+		private static float TargetAspectRatio => GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelInventoryAspectRatio?.Value ?? 1.5f;
 
 		private static GameObject _panel;
 		private static RectTransform _panelRect;
@@ -126,9 +130,6 @@ namespace GrabMaterials
 			// Inter-group spacing (n-1 spacers when laid out single-column).
 			if (groups.Count > 1) totalHeight += (groups.Count - 1) * CategorySpacing;
 
-			var numColumns = ComputeColumnCount(totalHeight);
-			var distribution = DistributeIntoColumns(groupHeights, numColumns);
-
 			// Per-column width = whatever fits the contents (rows + headers).
 			var maxNameWidth = 0f;
 			var maxCategoryWidth = 0f;
@@ -143,6 +144,10 @@ namespace GrabMaterials
 			var dataRowWidth = ListRowPadding * 2f + countCol + ColumnGap + maxNameWidth;
 			var headerRowWidth = ListRowPadding * 2f + maxCategoryWidth;
 			var perColumnWidth = Mathf.Max(dataRowWidth, headerRowWidth);
+
+			// Pick column count from the configured aspect-ratio target.
+			var numColumns = ComputeColumnCount(perColumnWidth, totalHeight);
+			var distribution = DistributeIntoColumns(groupHeights, numColumns);
 
 			var totalContentWidth = numColumns * perColumnWidth + (numColumns - 1) * ColumnSpacing;
 			var panelWidth = Mathf.Clamp(totalContentWidth + PanelSidePadding * 2f, MinPanelWidth, MaxPanelWidth);
@@ -176,54 +181,109 @@ namespace GrabMaterials
 					}
 				}
 
-				// Tell the layout group how tall the column is.
-				var colLE = col.GetComponent<LayoutElement>();
-				colLE.preferredHeight = colHeight;
+				// ContentSizeFitter on the column handles the height; we just need
+				// maxColHeight for sizing the outer panel.
 				maxColHeight = Mathf.Max(maxColHeight, colHeight);
 			}
 
 			FinalizeRowsLayout(panelWidth, maxColHeight);
 		}
 
-		private static int ComputeColumnCount(float totalHeight)
+		// Pick the column count whose resulting panel aspect ratio (W/H) comes
+		// closest to the user-configured target. Tries N = 1..MaxColumns.
+		private static int ComputeColumnCount(float perColumnContentWidth, float totalContentHeight)
 		{
-			if (totalHeight <= MaxSingleColumnHeight) return 1;
-			var needed = Mathf.CeilToInt(totalHeight / MaxSingleColumnHeight);
-			return Mathf.Min(needed, MaxColumns);
+			var target = TargetAspectRatio;
+			var bestN = 1;
+			var bestDiff = float.MaxValue;
+			for (int n = 1; n <= MaxColumns; n++)
+			{
+				var contentWidth = n * perColumnContentWidth + (n - 1) * ColumnSpacing;
+				var panelWidth = Mathf.Clamp(contentWidth + PanelSidePadding * 2f, MinPanelWidth, MaxPanelWidth);
+				var perColumnHeight = totalContentHeight / n;
+				var panelHeight = TitleHeight + perColumnHeight + BottomPadding;
+				var aspect = panelWidth / Mathf.Max(panelHeight, 1f);
+				var diff = Mathf.Abs(aspect - target);
+				if (diff < bestDiff)
+				{
+					bestDiff = diff;
+					bestN = n;
+				}
+			}
+			return bestN;
 		}
 
-		// Greedy distribution: walk groups in order, advance to next column when the
-		// running height of the current column would exceed the target. Keeps each
-		// category whole; later columns may be slightly shorter than earlier ones.
+		// Balanced partition: binary-search for the smallest "max column height"
+		// such that a greedy left-to-right pack fits all groups in ≤ numColumns.
+		// Newspaper-style — no column gets stuck with the leftovers.
 		private static List<List<int>> DistributeIntoColumns(List<float> groupHeights, int numColumns)
 		{
-			var columns = new List<List<int>>(numColumns);
-			for (int i = 0; i < numColumns; i++) columns.Add(new List<int>());
-
 			if (numColumns <= 1)
 			{
-				for (int i = 0; i < groupHeights.Count; i++) columns[0].Add(i);
-				return columns;
+				var single = new List<int>(groupHeights.Count);
+				for (int i = 0; i < groupHeights.Count; i++) single.Add(i);
+				return new List<List<int>> { single };
 			}
 
-			float total = 0f;
-			foreach (var h in groupHeights) total += h;
-			var target = total / numColumns;
-
-			int currentCol = 0;
-			float currentHeight = 0f;
-			for (int i = 0; i < groupHeights.Count; i++)
+			float low = 0f;
+			float high = 0f;
+			foreach (var h in groupHeights)
 			{
-				if (currentHeight > 0f && currentHeight + groupHeights[i] > target && currentCol < numColumns - 1)
-				{
-					currentCol++;
-					currentHeight = 0f;
-				}
-				columns[currentCol].Add(i);
-				currentHeight += groupHeights[i];
-				if (i < groupHeights.Count - 1) currentHeight += CategorySpacing;
+				if (h > low) low = h;       // a single group is the floor
+				high += h + CategorySpacing; // worst case: everything in one column
 			}
 
+			for (int iter = 0; iter < 40 && high - low > 0.5f; iter++)
+			{
+				var mid = (low + high) * 0.5f;
+				if (FitsInColumns(groupHeights, numColumns, mid)) high = mid;
+				else low = mid;
+			}
+
+			return PackGreedy(groupHeights, numColumns, high);
+		}
+
+		private static bool FitsInColumns(List<float> heights, int numColumns, float maxH)
+		{
+			int colsUsed = 1;
+			float currentHeight = 0f;
+			foreach (var h in heights)
+			{
+				var extra = (currentHeight > 0f ? CategorySpacing : 0f) + h;
+				if (currentHeight + extra > maxH && currentHeight > 0f)
+				{
+					colsUsed++;
+					if (colsUsed > numColumns) return false;
+					currentHeight = h;  // first group in the new column — no leading spacer
+				}
+				else
+				{
+					currentHeight += extra;
+				}
+			}
+			return true;
+		}
+
+		private static List<List<int>> PackGreedy(List<float> heights, int numColumns, float maxH)
+		{
+			var columns = new List<List<int>>();
+			columns.Add(new List<int>());
+			float currentHeight = 0f;
+			for (int i = 0; i < heights.Count; i++)
+			{
+				var extra = (currentHeight > 0f ? CategorySpacing : 0f) + heights[i];
+				if (currentHeight + extra > maxH && currentHeight > 0f)
+				{
+					columns.Add(new List<int>());
+					currentHeight = heights[i];
+				}
+				else
+				{
+					currentHeight += extra;
+				}
+				columns[columns.Count - 1].Add(i);
+			}
+			while (columns.Count < numColumns) columns.Add(new List<int>());
 			return columns;
 		}
 
@@ -231,13 +291,27 @@ namespace GrabMaterials
 		{
 			var col = new GameObject("Column");
 			col.transform.SetParent(_rowsContainer.transform, false);
-			col.AddComponent<RectTransform>();
+			var rect = col.AddComponent<RectTransform>();
+			// Top-left anchor + pivot so HLG's "UpperLeft" alignment lines up
+			// the column's top edge with the rows container's top edge. With
+			// the default (0.5, 0.5) pivot, half of each column ends up above
+			// the layout container's top edge.
+			rect.anchorMin = new Vector2(0f, 1f);
+			rect.anchorMax = new Vector2(0f, 1f);
+			rect.pivot = new Vector2(0f, 1f);
 			var vlg = col.AddComponent<VerticalLayoutGroup>();
 			vlg.childControlWidth = true;
 			vlg.childControlHeight = true;
 			vlg.childForceExpandWidth = true;
 			vlg.childForceExpandHeight = false;
+			vlg.childAlignment = TextAnchor.UpperLeft;
 			vlg.spacing = 0f;
+			// Auto-size column height to its content. Outer HLG has
+			// childControlHeight=false, so this is what determines the column's
+			// final height — and no extra space is distributed inside.
+			var fitter = col.AddComponent<ContentSizeFitter>();
+			fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+			fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
 			var le = col.AddComponent<LayoutElement>();
 			le.preferredWidth = width;
 			le.flexibleWidth = 0f;
@@ -282,7 +356,6 @@ namespace GrabMaterials
 				}
 			}
 
-			col.GetComponent<LayoutElement>().preferredHeight = totalHeight;
 			FinalizeRowsLayout(panelWidth, totalHeight);
 		}
 
@@ -692,7 +765,7 @@ namespace GrabMaterials
 			_rowsContainerRect.sizeDelta = new Vector2(DefaultPanelWidth - 40f, 200f);
 			var hlg = _rowsContainer.AddComponent<HorizontalLayoutGroup>();
 			hlg.childControlWidth = true;
-			hlg.childControlHeight = true;       // respect column LayoutElement.preferredHeight
+			hlg.childControlHeight = false;     // each column ContentSizeFits its own height
 			hlg.childForceExpandWidth = false;
 			hlg.childForceExpandHeight = false;
 			hlg.spacing = ColumnSpacing;
