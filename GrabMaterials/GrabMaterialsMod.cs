@@ -30,6 +30,8 @@ namespace GrabMaterialsMod
 		public ConfigEntry<float> PanelIdleTimeout;
 		public ConfigEntry<float> PanelFadeDuration;
 		public ConfigEntry<bool> PanelDismissOnMovement;
+		public ConfigEntry<bool> PanelCategoryUnderlines;
+		public ConfigEntry<GrabMaterials.MaterialsPanel.InventoryStyle> InventoryStyle;
 		private ButtonConfig GrabSelectedPieceMatsButton;
 		//private ConfigEntry<KeyCode> GrabPortalMatsKeyboardConfig;
 		//private ConfigEntry<InputManager.GamepadButton> GrabPortalMatsGamepadConfig;
@@ -103,6 +105,8 @@ namespace GrabMaterialsMod
 			PanelIdleTimeout = Config.Bind("Panel UI", "Idle Timeout (seconds)", 15f, new ConfigDescription("Seconds the grab-results panel stays fully visible before fading out automatically."));
 			PanelFadeDuration = Config.Bind("Panel UI", "Fade Duration (seconds)", 3f, new ConfigDescription("Seconds the grab-results panel takes to fade out."));
 			PanelDismissOnMovement = Config.Bind("Panel UI", "Dismiss On Movement", true, new ConfigDescription("Start fading the panel when the player begins moving, attacking, blocking, or jumping. If false, only the idle timeout dismisses the panel."));
+			InventoryStyle = Config.Bind("Panel UI", "Inventory Style", GrabMaterials.MaterialsPanel.InventoryStyle.List, new ConfigDescription("Display style for the /inventory panel. List = grouped by category, count + name per row (counts right-aligned). Table = flat 3-column table with Category / Item / Count headers."));
+			PanelCategoryUnderlines = Config.Bind("Panel UI", "Category Underlines", true, new ConfigDescription("In List mode, draw a thin orange line under each category name. Has no effect in Table mode."));
 
 			//GrabPack1 = new GrabPackConfig(Config, "Grab Pack 1", new KeyboardShortcut(KeyCode.G), "wood:10,finewood:20,greydwarfeye:10,surtlingcore:2");
 			//GrabPack2 = new GrabPackConfig(Config, "Grab Pack 2", new KeyboardShortcut(KeyCode.G, KeyCode.LeftShift), "wood:10,finewood:40,ancientbark:40,ironnails:100,deeerhide:20");
@@ -145,6 +149,7 @@ namespace GrabMaterialsMod
 			new Terminal.ConsoleCommand("listpacks", "Lists your configured grab packs.", (args) => { ListGrabPacks(); });
 			new Terminal.ConsoleCommand("inventory", "Displays counts of materials in containers in range.", (args) => { ListLocalInventory(args); });
 			new Terminal.ConsoleCommand("i", "Displays counts of materials in containers in range.", (args) => { ListLocalInventory(args); });
+			new Terminal.ConsoleCommand("istyle", "[1-2] - cycle inventory display style (1=List, 2=Table)", (args) => { SetInventoryStyle(args); });
 
 			//for testing/learning
 			new Terminal.ConsoleCommand("search", "[search-text] - search for items matching this string in nearby containers", (args) => { FindContainersWithMatchingItems(args); });
@@ -200,7 +205,7 @@ namespace GrabMaterialsMod
 
 		private void Update()
 		{
-			GrabMaterials.MissingMaterialsPanel.Tick();
+			GrabMaterials.MaterialsPanel.Tick();
 
 			if (Player.m_localPlayer && Chat.instance && !Chat.instance.IsChatDialogWindowVisible())
 			{
@@ -416,25 +421,54 @@ namespace GrabMaterialsMod
 			}
 		}
 
+		private static void SetInventoryStyle(Terminal.ConsoleEventArgs args)
+		{
+			var styles = (GrabMaterials.MaterialsPanel.InventoryStyle[])Enum.GetValues(typeof(GrabMaterials.MaterialsPanel.InventoryStyle));
+			GrabMaterials.MaterialsPanel.InventoryStyle next;
+			if (args.Length > 1 && int.TryParse(args[1], out var n) && n >= 1 && n <= styles.Length)
+			{
+				next = styles[n - 1];
+			}
+			else
+			{
+				// No arg / bad arg → cycle to next.
+				var current = Instance.InventoryStyle.Value;
+				var idx = Array.IndexOf(styles, current);
+				next = styles[(idx + 1) % styles.Length];
+			}
+			Instance.InventoryStyle.Value = next;
+			Player.m_localPlayer?.Message(MessageHud.MessageType.Center, $"Inventory style: {next}");
+		}
+
+		// Convert an enum name like "RawMeat" to a display label "Raw Meat".
+		private static string FormatCategoryName(GrabMaterials.Extensions.ItemCategory cat)
+		{
+			var name = cat.ToString();
+			var sb = new StringBuilder(name.Length + 4);
+			for (int i = 0; i < name.Length; i++)
+			{
+				if (i > 0 && char.IsUpper(name[i])) sb.Append(' ');
+				sb.Append(name[i]);
+			}
+			return sb.ToString();
+		}
+
 		private static void ListLocalInventory(Terminal.ConsoleEventArgs args)
 		{
 			var radius = 50f; // Default radius
 			var text = args.Length > 1 ? args.ArgsAll.ToLower() : null;
 
-			//if (args.Length > 1)
-			//	float.TryParse(args[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out radius);
 			var nearbyContainers = Boxes.GetNearbyContainers(radius);
 			Debug.Log($"searching {nearbyContainers.Count} containers within {radius} meters out of {Boxes.Containers.Count} known containers");
-			Debug.Log($"showing the inventory of {nearbyContainers.Count} nearby containers");
 
-			var itemCounts = new SortedDictionary<string, int>();
+			// Bucket matching items by category, then by m_shared.m_name (sorted) for stable display.
+			var byCategory = new Dictionary<GrabMaterials.Extensions.ItemCategory, SortedDictionary<string, int>>();
 			foreach (var container in nearbyContainers)
 			{
 				var inventory = container.GetInventory();
-				var items = inventory.GetAllItems();
+				if (inventory == null) continue;
 				var alreadyHighlighted = false;
-				//var firstTime = true;
-				foreach (var item in items)
+				foreach (var item in inventory.GetAllItems())
 				{
 					var itemName = item.m_shared.m_name;
 					var localizedName = LocalizationManager.Instance.TryTranslate(itemName).ToLower();
@@ -442,38 +476,58 @@ namespace GrabMaterialsMod
 					var itemCategoryString = itemCategory.ToString().ToLower();
 					GrabMaterials.Extensions.ItemCategory searchCategory = GrabMaterials.Extensions.ItemCategory.None;
 					var isCategorySearch = text != null ? Enum.TryParse(text, true, out searchCategory) : false;
-					var searchCategoryString = searchCategory.ToString().ToLower();
-					//if (firstTime && itemCategoryString.Contains("food"))
-					//{
-					//	Debug.Log($"{itemName} {item.Name()} {localizedName} {itemCategory} '{text}' isCategory:{isCategorySearch} {searchCategory} {searchCategoryString.Contains(text)}");
-					//	//firstTime = false;
-					//}
-					if (isCategorySearch ? itemCategory == searchCategory : text == null || item.Name().Contains(text) || itemName.Contains(text) || localizedName.Contains(text) || itemCategoryString.Contains(text))
+
+					var matches = isCategorySearch
+						? itemCategory == searchCategory
+						: text == null || item.Name().Contains(text) || itemName.Contains(text) || localizedName.Contains(text) || itemCategoryString.Contains(text);
+					if (!matches) continue;
+
+					if (!byCategory.TryGetValue(itemCategory, out var byName))
 					{
-						if (itemCounts.ContainsKey(itemName))
-						{
-							itemCounts[itemName] += item.Count();
-						}
-						else
-						{
-							itemCounts[itemName] = item.Count();
-						}
-						if (!alreadyHighlighted)
-						{
-							container.Highlight();
-							alreadyHighlighted = true;
-						}
+						byName = new SortedDictionary<string, int>();
+						byCategory[itemCategory] = byName;
+					}
+					if (byName.ContainsKey(itemName)) byName[itemName] += item.Count();
+					else byName[itemName] = item.Count();
+
+					if (!alreadyHighlighted)
+					{
+						container.Highlight();
+						alreadyHighlighted = true;
 					}
 				}
 			}
-			var msg = new StringBuilder();
-			foreach (var kvp in itemCounts)
+
+			if (byCategory.Count == 0)
 			{
-				var localizedName = LocalizationManager.Instance.TryTranslate(kvp.Key);
-				Debug.Log($"{kvp.Value} {localizedName}");
-				msg.AppendLine($"{kvp.Value} {localizedName}");
+				var emptyMsg = string.IsNullOrEmpty(text) ? "No items in nearby containers" : $"No items match '{text}'";
+				Player.m_localPlayer.Message(MessageHud.MessageType.Center, emptyMsg);
+				return;
 			}
-			Player.m_localPlayer.Message(MessageHud.MessageType.Center, msg.ToString());
+
+			// Iterate enum values in declaration order so the panel displays a stable, gameplay-grouped order.
+			var groups = new List<GrabMaterials.MaterialsPanel.InventoryGroup>();
+			foreach (GrabMaterials.Extensions.ItemCategory cat in Enum.GetValues(typeof(GrabMaterials.Extensions.ItemCategory)))
+			{
+				if (cat == GrabMaterials.Extensions.ItemCategory.None) continue;
+				if (!byCategory.TryGetValue(cat, out var byName)) continue;
+
+				var items = new List<GrabMaterials.MaterialsPanel.InventoryItem>(byName.Count);
+				foreach (var kvp in byName)
+				{
+					var localizedName = LocalizationManager.Instance.TryTranslate(kvp.Key);
+					Debug.Log($"{kvp.Value} {localizedName} [{cat}]");
+					items.Add(new GrabMaterials.MaterialsPanel.InventoryItem { Name = localizedName, Count = kvp.Value });
+				}
+				groups.Add(new GrabMaterials.MaterialsPanel.InventoryGroup
+				{
+					CategoryName = FormatCategoryName(cat),
+					Items = items,
+				});
+			}
+
+			var title = string.IsNullOrEmpty(text) ? "Inventory" : $"Inventory: {text}";
+			GrabMaterials.MaterialsPanel.ShowCategorizedInventory(title, groups, Instance.InventoryStyle.Value);
 		}
 
 		private static void ListGrabPacks()

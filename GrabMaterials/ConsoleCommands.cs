@@ -353,18 +353,11 @@ namespace GrabMaterials
 				effectiveNeed[i] = Math.Max(0, aggregated[i].Count - had[i]);
 			}
 
-			// All requested items already covered? Skip everything else.
+			// Whether the player already has everything (drives the success-panel title).
 			var allCovered = true;
 			for (int i = 0; i < aggregated.Count; i++)
 			{
 				if (effectiveNeed[i] > 0) { allCovered = false; break; }
-			}
-			if (allCovered)
-			{
-				var doneMsg = string.IsNullOrEmpty(requestLabel) ? "Already have everything" : $"Already have everything for {requestLabel}";
-				Debug.Log(doneMsg);
-				player?.Message(MessageHud.MessageType.Center, doneMsg);
-				return;
 			}
 
 			// Pre-flight: total available across nearby containers per requested item.
@@ -395,11 +388,11 @@ namespace GrabMaterials
 			}
 			if (anyShort)
 			{
-				var statuses = new List<MissingMaterialsPanel.ItemStatus>(aggregated.Count);
+				var statuses = new List<MaterialsPanel.ItemStatus>(aggregated.Count);
 				var debugShortages = new List<string>();
 				for (int i = 0; i < aggregated.Count; i++)
 				{
-					statuses.Add(new MissingMaterialsPanel.ItemStatus
+					statuses.Add(new MaterialsPanel.ItemStatus
 					{
 						Name = LocalizeItemName(aggregated[i]),
 						Needed = aggregated[i].Count,
@@ -413,12 +406,12 @@ namespace GrabMaterials
 				}
 				Debug.Log($"Cannot grab{(string.IsNullOrEmpty(requestLabel) ? "" : $" for {requestLabel}")} - missing: {string.Join(", ", debugShortages)}");
 				var failTitle = string.IsNullOrEmpty(requestLabel) ? "Missing materials" : $"Missing materials for {requestLabel}";
-				MissingMaterialsPanel.Show(failTitle, statuses);
+				MaterialsPanel.Show(failTitle, statuses);
 				return;
 			}
 
 			// Everything available — perform the grab.
-			var grabbed = new List<MissingMaterialsPanel.ItemStatus>(aggregated.Count);
+			var grabbed = new List<MaterialsPanel.ItemStatus>(aggregated.Count);
 			for (int i = 0; i < aggregated.Count; i++)
 			{
 				var itemToGrab = aggregated[i];
@@ -432,7 +425,7 @@ namespace GrabMaterials
 						remaining -= countGrabbed;
 					}
 				}
-				grabbed.Add(new MissingMaterialsPanel.ItemStatus
+				grabbed.Add(new MaterialsPanel.ItemStatus
 				{
 					Name = LocalizeItemName(itemToGrab),
 					Needed = itemToGrab.Count,
@@ -440,8 +433,17 @@ namespace GrabMaterials
 					Available = effectiveNeed[i] - remaining,
 				});
 			}
-			var successTitle = string.IsNullOrEmpty(requestLabel) ? "Grabbed materials" : $"Grabbed materials for {requestLabel}";
-			MissingMaterialsPanel.Show(successTitle, grabbed);
+			string successTitle;
+			if (allCovered)
+			{
+				successTitle = string.IsNullOrEmpty(requestLabel) ? "Already have everything" : $"Already have everything for {requestLabel}";
+				Debug.Log(successTitle);
+			}
+			else
+			{
+				successTitle = string.IsNullOrEmpty(requestLabel) ? "Grabbed materials" : $"Grabbed materials for {requestLabel}";
+			}
+			MaterialsPanel.Show(successTitle, grabbed);
 		}
 
 		private static string LocalizeItemName(ItemToGrab item)

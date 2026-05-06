@@ -73,7 +73,7 @@ namespace GrabMaterials
 		// Pre-defined lists of prefab names for name-based checks.
 		// Using HashSet for fast lookups (O(1) average time complexity).
 		private static readonly HashSet<string> BossSummoningNames = new HashSet<string> { "trophydeer", "ancientseed", "witheredbone", "dragonegg", "goblintotem", "seekerbrood", "trophyfader", "bellfragment", "sealbreaker", "sealbreakerfragment" };
-		private static readonly HashSet<string> RawMeatNames = new HashSet<string> { "boar_meat", "wolfmeat", "loxmeat", "deermeat", "serpentmeat", "fishraw", "haremeat", "seekermeat", "chickenmeat", "asksvintail", "bonemawmeat", "chickenegg", "entrails", "necktail" };
+		private static readonly HashSet<string> RawMeatNames = new HashSet<string> { "rawmeat", "wolfmeat", "loxmeat", "deermeat", "serpentmeat", "fishraw", "haremeat", "seekermeat", "chickenmeat", "asksvintail", "bonemawmeat", "chickenegg", "entrails", "necktail" };
 		private static readonly HashSet<string> CookedMeatNames = new HashSet<string> { "cooked_boar_meat", "cookedwolfmeat", "cookedloxmeat", "cookeddeermeat", "serpentmeatcooked", "cookedfish", "cookedharemeat", "cookedseekermeat", "cookedchickenmeat", "cookedbonemawmeat", "NeckTailGrilled" };
 		private static readonly HashSet<string> FoodIngredientNames = new HashSet<string> { "barleyflour", "bloodclot", "royaljelly" };
 		private static readonly HashSet<string> FishingBaitNames = new HashSet<string> { "fishingbait", "fishingbaitashlands", "fishingbaitcave", "fishingbaitdeepnorth", "fishingbaitforest", "fishingbaitmistlands", "fishingbaitocean", "fishingbaitplains", "fishingbaitswamp" };
@@ -127,30 +127,28 @@ namespace GrabMaterials
 			if (StoneNames.Contains(prefabName)) return ItemCategory.Stone;
 			if (TreasureNames.Contains(prefabName)) return ItemCategory.Treasure;
 			if (SkinNames.Contains(prefabName)) return ItemCategory.Skin;
-			if (PlantNames.Contains(prefabName) || prefabName.Contains("Seed")) return ItemCategory.Plant;
+			// Raw meat is checked here (not inside the food branch) because some raw
+			// items have m_food == 0 (e.g. NeckTail) — they're still "meat" to the player.
+			if (RawMeatNames.Contains(prefabName)) return ItemCategory.RawMeat;
 			if (FoodIngredientNames.Contains(prefabName)) return ItemCategory.FoodIngredient;
 			if (FishingBaitNames.Contains(prefabName)) return ItemCategory.FishingBait;
 			if (SeedNames.Contains(prefabName)) return ItemCategory.Seed;
 			if (WeedNames.Contains(prefabName)) return ItemCategory.Weed;
 			if (AmmoNames.Contains(prefabName)) return ItemCategory.Arrow; // If these are arrows, otherwise create a new enum value
 
-			// Check for food types. This is complex and must be ordered correctly.
+			// Food types: classify by stats. Cooked meats fall through to here so
+			// that Cooked Boar Meat etc. get HealthFood/StaminaFood/BalancedFood.
 			if (shared.m_food > 0)
 			{
-				// Check for specific meat types first, as they are also food.
-				if (RawMeatNames.Contains(prefabName)) return ItemCategory.RawMeat;
-				if (CookedMeatNames.Contains(prefabName)) return ItemCategory.CookedMeat;
-
-				// Check for Eitr food first as it's a primary distinguisher.
 				if (shared.m_foodEitr > 0) return ItemCategory.EitrFood;
-
-				// Check if it's primarily a health or stamina food.
 				if (shared.m_food > shared.m_foodStamina) return ItemCategory.HealthFood;
 				if (shared.m_foodStamina > shared.m_food) return ItemCategory.StaminaFood;
-
-				// If it's balanced or has no specific lean, it's generic "Food".
 				return ItemCategory.BalancedFood;
 			}
+
+			// Non-food plants (flax, sap, etc.). Edible plants like mushroom and
+			// raspberry hit the food branch above and never reach this check.
+			if (PlantNames.Contains(prefabName) || prefabName.Contains("Seed")) return ItemCategory.Plant;
 
 			// If no other category matches, return a generic fallback.
 			if (shared.m_itemType == ItemDrop.ItemData.ItemType.Material) return ItemCategory.Material;
