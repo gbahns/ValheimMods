@@ -12,6 +12,7 @@ Quickly pull materials from nearby chests into your inventory without having to 
 <li>The panel auto-fades over 3 seconds when you start moving, attacking, blocking, or jumping (after a brief grace period to handle the case where you trigger the grab while already running).  After 15 seconds of no input it fades on its own.  Click anywhere on the panel to dismiss it instantly.
 <li>New "Panel UI" config section to tune the idle timeout, the fade duration, and whether movement dismisses the panel.
 <li>You can now grab materials for any build piece by hovering over its icon in the build menu and pressing 'j' — no need to select it first.  (Falls back to the selected piece when you're not hovering anything.)
+<li>Grab pack "Grab Delta" flag is now supported — when enabled for a pack, only the shortfall between what you already have and what's needed is grabbed.  E.g. if the pack needs 10 wood and you have 7, only 3 will be pulled.
 
 <h3>Fix in version 1.0.1</h3>
 

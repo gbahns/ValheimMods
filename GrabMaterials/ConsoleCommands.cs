@@ -47,10 +47,10 @@ namespace GrabMaterials
 
 		public static void GrabMaterialsForPack(GrabMaterialsMod.GrabMaterialsMod.GrabPackConfig grabPack)
 		{
-			GrabMaterialsForPack(grabPack.Name.Value, grabPack.Items.Value);
+			GrabMaterialsForPack(grabPack.Name.Value, grabPack.Items.Value, grabPack.GrabDelta.Value);
 		}
 
-		public static void GrabMaterialsForPack(string packName, string itemsString)
+		public static void GrabMaterialsForPack(string packName, string itemsString, bool grabDelta = false)
 		{
 			Debug.Log($"GrabMaterialsForPack({packName}, {itemsString})");
 			var itemsToGrab = new List<ItemToGrab>();
@@ -81,7 +81,7 @@ namespace GrabMaterials
 				}
 				//GrabItemsFromNearbyContainers(item, amount);
 			}
-			GrabItemsFromNearbyContainers(itemsToGrab, 50f, packName);
+			GrabItemsFromNearbyContainers(itemsToGrab, 50f, packName, grabDelta);
 		}
 
 		/// <summary>
@@ -309,7 +309,7 @@ namespace GrabMaterials
 			//GrabMaterialsForPiece(piece);
 		}
 
-		static void GrabItemsFromNearbyContainers(List<ItemToGrab> itemsToGrab, float radius, string requestLabel = null)
+		static void GrabItemsFromNearbyContainers(List<ItemToGrab> itemsToGrab, float radius, string requestLabel = null, bool grabDelta = false)
 		{
 			var nearbyContainers = Boxes.GetNearbyContainers(radius);
 			var player = Player.m_localPlayer;
@@ -332,7 +332,42 @@ namespace GrabMaterials
 				}
 			}
 
-			// Pre-flight: total available across all nearby containers per requested item.
+			// GrabDelta: figure out what's already in the player's inventory so we
+			// can subtract it from the per-container request (but still report the
+			// original Needed in the panel).
+			var had = new int[aggregated.Count];
+			var effectiveNeed = new int[aggregated.Count];
+			for (int i = 0; i < aggregated.Count; i++)
+			{
+				if (grabDelta && player != null)
+				{
+					var playerInv = player.GetInventory();
+					if (playerInv != null)
+					{
+						foreach (var owned in playerInv.GetAllItems())
+						{
+							if (owned.isMatch(aggregated[i].Name)) had[i] += owned.Count();
+						}
+					}
+				}
+				effectiveNeed[i] = Math.Max(0, aggregated[i].Count - had[i]);
+			}
+
+			// All requested items already covered? Skip everything else.
+			var allCovered = true;
+			for (int i = 0; i < aggregated.Count; i++)
+			{
+				if (effectiveNeed[i] > 0) { allCovered = false; break; }
+			}
+			if (allCovered)
+			{
+				var doneMsg = string.IsNullOrEmpty(requestLabel) ? "Already have everything" : $"Already have everything for {requestLabel}";
+				Debug.Log(doneMsg);
+				player?.Message(MessageHud.MessageType.Center, doneMsg);
+				return;
+			}
+
+			// Pre-flight: total available across nearby containers per requested item.
 			var available = new int[aggregated.Count];
 			foreach (var container in nearbyContainers)
 			{
@@ -342,6 +377,7 @@ namespace GrabMaterials
 				{
 					for (int i = 0; i < aggregated.Count; i++)
 					{
+						if (effectiveNeed[i] == 0) continue;
 						if (item.isMatch(aggregated[i].Name))
 						{
 							available[i] += item.Count();
@@ -351,12 +387,11 @@ namespace GrabMaterials
 				}
 			}
 
-			// Abort if any item is short — grab nothing, show the missing-materials panel
-			// with the full request status (available items get a checkmark).
+			// Abort if any item's container availability is short of the (delta-adjusted) need.
 			var anyShort = false;
 			for (int i = 0; i < aggregated.Count; i++)
 			{
-				if (available[i] < aggregated[i].Count) { anyShort = true; break; }
+				if (effectiveNeed[i] > 0 && available[i] < effectiveNeed[i]) { anyShort = true; break; }
 			}
 			if (anyShort)
 			{
@@ -368,11 +403,12 @@ namespace GrabMaterials
 					{
 						Name = LocalizeItemName(aggregated[i]),
 						Needed = aggregated[i].Count,
+						Had = had[i],
 						Available = available[i],
 					});
-					if (available[i] < aggregated[i].Count)
+					if (effectiveNeed[i] > available[i])
 					{
-						debugShortages.Add($"{aggregated[i].Count - available[i]} of {aggregated[i].Count} {aggregated[i].Name}");
+						debugShortages.Add($"{effectiveNeed[i] - available[i]} of {aggregated[i].Count} {aggregated[i].Name}");
 					}
 				}
 				Debug.Log($"Cannot grab{(string.IsNullOrEmpty(requestLabel) ? "" : $" for {requestLabel}")} - missing: {string.Join(", ", debugShortages)}");
@@ -386,18 +422,22 @@ namespace GrabMaterials
 			for (int i = 0; i < aggregated.Count; i++)
 			{
 				var itemToGrab = aggregated[i];
-				var remaining = itemToGrab.Count;
-				Debug.Log($"grabbing {remaining} {itemToGrab.Name} from {nearbyContainers.Count} containers within {radius} meters");
-				for (int j = 0; j < nearbyContainers.Count && remaining > 0; j++)
+				var remaining = effectiveNeed[i];
+				if (remaining > 0)
 				{
-					int countGrabbed = nearbyContainers[j].GrabItemFromContainer(itemToGrab.Name, remaining);
-					remaining -= countGrabbed;
+					Debug.Log($"grabbing {remaining} {itemToGrab.Name} from {nearbyContainers.Count} containers within {radius} meters");
+					for (int j = 0; j < nearbyContainers.Count && remaining > 0; j++)
+					{
+						int countGrabbed = nearbyContainers[j].GrabItemFromContainer(itemToGrab.Name, remaining);
+						remaining -= countGrabbed;
+					}
 				}
 				grabbed.Add(new MissingMaterialsPanel.ItemStatus
 				{
 					Name = LocalizeItemName(itemToGrab),
 					Needed = itemToGrab.Count,
-					Available = itemToGrab.Count - remaining,
+					Had = had[i],
+					Available = effectiveNeed[i] - remaining,
 				});
 			}
 			var successTitle = string.IsNullOrEmpty(requestLabel) ? "Grabbed materials" : $"Grabbed materials for {requestLabel}";

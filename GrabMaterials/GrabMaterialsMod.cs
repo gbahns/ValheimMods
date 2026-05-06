@@ -52,7 +52,7 @@ namespace GrabMaterialsMod
 				Name = config.Bind(section, section+" Name", name, new ConfigDescription("Name of the grab pack"));
 				Key = config.Bind(section, section+" Key", keyboardShortcut, new ConfigDescription("Key to grab materials for the grab pack"));
 				Items = config.Bind(section, section+" Items", items, new ConfigDescription("Items to grab for the grab pack"));
-				GrabDelta = config.Bind(section, section+" Grab Delta", false, new ConfigDescription("NOT YET SUPPORTED (Grab the delta of items needed for the grab pack)"));
+				GrabDelta = config.Bind(section, section+" Grab Delta", false, new ConfigDescription("If true, only grab the shortfall between what you already have and what's needed (e.g. if the pack needs 10 wood and you have 7, only 3 will be grabbed)."));
 				Button = new ButtonConfig()
 				{
 					Name = Name.Value,

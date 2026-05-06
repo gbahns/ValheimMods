@@ -11,8 +11,9 @@ namespace GrabMaterials
 		public struct ItemStatus
 		{
 			public string Name;
-			public int Needed;
-			public int Available;
+			public int Needed;     // original request
+			public int Available;  // amount actually grabbed (success) or amount in containers (shortage)
+			public int Had;        // amount already in player inventory at request time (only > 0 with GrabDelta)
 		}
 
 		private const float PanelWidth = 480f;
@@ -46,14 +47,33 @@ namespace GrabMaterials
 			var sb = new StringBuilder();
 			foreach (var item in items)
 			{
-				if (item.Available >= item.Needed)
+				var totalCovered = item.Had + item.Available;
+				if (totalCovered >= item.Needed)
 				{
-					sb.AppendLine($"<color=#88ff88>✓ {item.Needed} {item.Name}</color>");
+					if (item.Had >= item.Needed)
+					{
+						sb.AppendLine($"<color=#88ff88>✓ {item.Needed} {item.Name}</color> <color=#aaaaaa>(already had)</color>");
+					}
+					else if (item.Had > 0)
+					{
+						sb.AppendLine($"<color=#88ff88>✓ {item.Needed} {item.Name}</color> <color=#aaaaaa>(had {item.Had}, grabbed {item.Available})</color>");
+					}
+					else
+					{
+						sb.AppendLine($"<color=#88ff88>✓ {item.Needed} {item.Name}</color>");
+					}
 				}
 				else
 				{
-					var missing = item.Needed - item.Available;
-					sb.AppendLine($"<color=#ff8888>✗ {item.Available} of {item.Needed} {item.Name} (missing {missing})</color>");
+					var missing = item.Needed - totalCovered;
+					if (item.Had > 0)
+					{
+						sb.AppendLine($"<color=#ff8888>✗ {totalCovered} of {item.Needed} {item.Name}</color> <color=#aaaaaa>(had {item.Had}, missing {missing})</color>");
+					}
+					else
+					{
+						sb.AppendLine($"<color=#ff8888>✗ {item.Available} of {item.Needed} {item.Name} (missing {missing})</color>");
+					}
 				}
 			}
 			_contentText.text = sb.ToString().TrimEnd();
