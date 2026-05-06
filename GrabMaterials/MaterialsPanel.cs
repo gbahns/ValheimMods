@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Text;
 using Jotunn.Managers;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace GrabMaterials
@@ -21,6 +22,7 @@ namespace GrabMaterials
 			public string Name;
 			public int Count;
 			public Sprite Icon;
+			public string SharedName; // m_shared.m_name — used to match the item back to chest contents on click
 		}
 
 		public struct InventoryGroup
@@ -123,6 +125,11 @@ namespace GrabMaterials
 		private static float _shownAt;
 		private static float _fadeStart = -1f;
 		private static bool _dismissArmed;
+		// Hover tracking — while the pointer is over the panel (a row or the
+		// wood background), Tick() keeps the panel alive instead of fading it.
+		internal static int _rowsHovered;
+		internal static bool _panelHovered;
+		private static bool IsPanelHovered => _rowsHovered > 0 || _panelHovered;
 
 		public static void Show(string title, List<ItemStatus> items)
 		{
@@ -214,11 +221,11 @@ namespace GrabMaterials
 					}
 					var groupIdx = colIndices[i];
 					var group = groups[groupIdx];
-					BuildHeaderRow(group.CategoryName, showUnderlines, ListRowPadding);
+					BuildHeaderRow(group.CategoryName, group.Items, showUnderlines, ListRowPadding);
 					colHeight += LineHeight + (showUnderlines ? HeaderUnderlineHeight : 0f);
 					foreach (var item in group.Items)
 					{
-						BuildDataRow(item.Count.ToString(), item.Icon, item.Name, ListRowPadding, countCol);
+						BuildDataRow(item.Count.ToString(), item.Icon, item.Name, item.SharedName, ListRowPadding, countCol);
 						colHeight += LineHeight;
 					}
 				}
@@ -400,7 +407,7 @@ namespace GrabMaterials
 			{
 				foreach (var item in group.Items)
 				{
-					BuildFlatDataRow(group.CategoryName, item.Icon, item.Name, item.Count.ToString());
+					BuildFlatDataRow(group.CategoryName, item.Icon, item.Name, item.Count.ToString(), item.SharedName);
 					totalHeight += LineHeight;
 				}
 			}
@@ -499,6 +506,21 @@ namespace GrabMaterials
 			if (_canvasGroup != null) _canvasGroup.alpha = 1f;
 			_fadeStart = -1f;
 			_dismissArmed = false;
+			_rowsHovered = 0;
+			_panelHovered = false;
+		}
+
+		// Reset the fade/dismiss timers as if the panel had just been opened.
+		// Used when the user actively interacts with the panel (e.g. clicks a
+		// row to highlight containers) so it doesn't immediately start fading
+		// from the click being treated as gameplay input.
+		public static void KeepAlive()
+		{
+			if (_panel == null || !_panel.activeSelf) return;
+			_shownAt = Time.time;
+			_fadeStart = -1f;
+			_dismissArmed = false;
+			if (_canvasGroup != null) _canvasGroup.alpha = 1f;
 		}
 
 		public static void Tick()
@@ -506,6 +528,17 @@ namespace GrabMaterials
 			if (_panel == null || !_panel.activeSelf) return;
 
 			var now = Time.time;
+
+			// Active engagement: pointer is over the panel. Reset all timers
+			// and ensure the panel stays fully opaque, even mid-fade.
+			if (IsPanelHovered)
+			{
+				_shownAt = now;
+				_fadeStart = -1f;
+				_dismissArmed = false;
+				if (_canvasGroup != null && _canvasGroup.alpha < 1f) _canvasGroup.alpha = 1f;
+				return;
+			}
 
 			// Fade in progress: advance and possibly hide.
 			if (_fadeStart >= 0f)
@@ -552,9 +585,12 @@ namespace GrabMaterials
 		}
 
 		// List style: category label, optionally followed by a thin underline strip.
-		private static void BuildHeaderRow(string categoryName, bool drawUnderline, float sidePadding)
+		// items is the items in this category — used to make the header
+		// clickable so a click highlights every container holding any of them.
+		private static void BuildHeaderRow(string categoryName, List<InventoryItem> items, bool drawUnderline, float sidePadding)
 		{
 			var hdr = MakeRow("CategoryHeader", sidePadding);
+			MakeHeaderClickable(hdr, items);
 			MakeCellText(hdr, categoryName, TextAnchor.MiddleLeft, CategoryColor, 0f, 1f);
 
 			if (drawUnderline)
@@ -574,9 +610,11 @@ namespace GrabMaterials
 		// List style: count + (icon) + name. countWidth is dynamic so the column
 		// hugs the widest count string (eliminates the "indent" effect from a
 		// fixed-width column). Icon column is omitted when ShowItemIcons is off.
-		private static void BuildDataRow(string countText, Sprite icon, string nameText, float sidePadding, float countWidth)
+		// sharedName drives click-to-highlight (#40); pass null to skip.
+		private static void BuildDataRow(string countText, Sprite icon, string nameText, string sharedName, float sidePadding, float countWidth)
 		{
 			var row = MakeRow("DataRow", sidePadding);
+			MakeRowClickable(row, sharedName);
 			MakeCellText(row, countText, TextAnchor.MiddleRight, Color.white, countWidth, 0f);
 			if (ShowItemIcons) MakeIconCell(row, icon);
 			MakeCellText(row, nameText, TextAnchor.MiddleLeft, Color.white, 0f, 1f);
@@ -605,13 +643,122 @@ namespace GrabMaterials
 		}
 
 		// Table style: category + (icon) + item + count.
-		private static void BuildFlatDataRow(string category, Sprite icon, string itemName, string countText)
+		private static void BuildFlatDataRow(string category, Sprite icon, string itemName, string countText, string sharedName)
 		{
 			var row = MakeRow("FlatDataRow", TableRowPadding);
+			MakeRowClickable(row, sharedName);
 			MakeCellText(row, category, TextAnchor.MiddleLeft, Color.white, CategoryColumnWidth, 0f);
 			if (ShowItemIcons) MakeIconCell(row, icon);
 			MakeCellText(row, itemName, TextAnchor.MiddleLeft, Color.white, 0f, 1f);
 			MakeCellText(row, countText, TextAnchor.MiddleRight, Color.white, CountColumnWidth, 0f);
+		}
+
+		// Adds a transparent Image + Button to the row so clicking it triggers
+		// onClick. The Image stays raycastable so clicks land on the row
+		// instead of falling through to the panel-wide dismiss button. Hover
+		// state tints the row faintly so users can see the row is clickable.
+		private static readonly Color RowNormalColor = new Color(1f, 1f, 1f, 0f);
+		private static readonly Color RowHoverColor = new Color(1f, 0.92f, 0.45f, 0.22f);
+		private static readonly Color RowPressedColor = new Color(1f, 0.92f, 0.45f, 0.4f);
+
+		private static void MakeClickable(GameObject row, UnityEngine.Events.UnityAction onClick)
+		{
+			if (onClick == null) return;
+			var img = row.AddComponent<Image>();
+			img.color = RowNormalColor;
+			img.raycastTarget = true;
+			img.maskable = false;
+			var btn = row.AddComponent<Button>();
+			btn.transition = Selectable.Transition.None;  // we drive the visuals ourselves
+			btn.onClick.AddListener(onClick);
+			// Selectable.ColorTint isn't applying in this Jotunn-panel context for
+			// reasons unclear, so we toggle Image.color manually via pointer events.
+			var hover = row.AddComponent<RowHoverTint>();
+			hover.target = img;
+			hover.normal = RowNormalColor;
+			hover.hover = RowHoverColor;
+			hover.pressed = RowPressedColor;
+		}
+
+		// Pointer event handler attached to clickable rows. Replaces the
+		// Selectable-based ColorTint transition (which doesn't visually update
+		// the targetGraphic in this panel context). Also bumps the hover
+		// counter so MaterialsPanel.Tick() keeps the panel alive while hovered.
+		internal class RowHoverTint : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler
+		{
+			public Image target;
+			public Color normal;
+			public Color hover;
+			public Color pressed;
+			private bool _hovered;
+			private bool _pressed;
+
+			public void OnPointerEnter(PointerEventData eventData)
+			{
+				if (!_hovered) { _hovered = true; _rowsHovered++; }
+				Apply();
+			}
+
+			public void OnPointerExit(PointerEventData eventData)
+			{
+				if (_hovered) { _hovered = false; _rowsHovered = Mathf.Max(0, _rowsHovered - 1); }
+				_pressed = false;
+				Apply();
+			}
+
+			public void OnPointerDown(PointerEventData eventData) { _pressed = true; Apply(); }
+			public void OnPointerUp(PointerEventData eventData)   { _pressed = false; Apply(); }
+
+			private void OnDisable()
+			{
+				// Row destroyed or panel deactivated while hovered — release the count.
+				if (_hovered) { _hovered = false; _rowsHovered = Mathf.Max(0, _rowsHovered - 1); }
+				_pressed = false;
+			}
+
+			private void Apply()
+			{
+				if (target == null) return;
+				if (_pressed) target.color = pressed;
+				else if (_hovered) target.color = hover;
+				else target.color = normal;
+			}
+		}
+
+		// Tracks pointer over the panel itself (the wood background between rows).
+		internal class PanelHoverTracker : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+		{
+			public void OnPointerEnter(PointerEventData eventData) { _panelHovered = true; }
+			public void OnPointerExit(PointerEventData eventData)  { _panelHovered = false; }
+			private void OnDisable() { _panelHovered = false; }
+		}
+
+		// Click-to-highlight: a single item's containers (#40).
+		private static void MakeRowClickable(GameObject row, string sharedName)
+		{
+			if (string.IsNullOrEmpty(sharedName)) return;
+			MakeClickable(row, () =>
+			{
+				ConsoleCommands.HighlightContainersHolding(sharedName);
+				KeepAlive();  // clicking is intentional engagement, not a "dismiss" signal
+			});
+		}
+
+		// Click-to-highlight: every container holding any item in this category.
+		private static void MakeHeaderClickable(GameObject row, List<InventoryItem> items)
+		{
+			if (items == null || items.Count == 0) return;
+			var sharedNames = new HashSet<string>();
+			foreach (var item in items)
+			{
+				if (!string.IsNullOrEmpty(item.SharedName)) sharedNames.Add(item.SharedName);
+			}
+			if (sharedNames.Count == 0) return;
+			MakeClickable(row, () =>
+			{
+				ConsoleCommands.HighlightContainersHoldingAny(sharedNames);
+				KeepAlive();
+			});
 		}
 
 		// Common HLG row scaffolding shared by data rows + column header rows.
@@ -870,6 +1017,10 @@ namespace GrabMaterials
 			var panelBtn = _panel.AddComponent<Button>();
 			panelBtn.transition = Selectable.Transition.None;
 			panelBtn.onClick.AddListener(Hide);
+
+			// Track pointer-over-panel so Tick() can hold the panel open while
+			// the user is actively browsing it.
+			_panel.AddComponent<PanelHoverTracker>();
 		}
 	}
 }

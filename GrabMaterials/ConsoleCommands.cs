@@ -486,6 +486,51 @@ namespace GrabMaterials
 		// DLL still has m_pieceIcons as private; AccessTools bypasses that.
 		private static AccessTools.FieldRef<Hud, List<Hud.PieceIconData>> _pieceIconsAccessor;
 
+		// Highlight every nearby container that holds at least one item whose
+		// m_shared.m_name matches. Powers the click-to-highlight behavior on
+		// inventory-panel rows (#40).
+		public static void HighlightContainersHolding(string sharedName)
+		{
+			if (string.IsNullOrEmpty(sharedName)) return;
+			var nearbyContainers = Boxes.GetNearbyContainers(50f);
+			foreach (var container in nearbyContainers)
+			{
+				var inventory = container.GetInventory();
+				if (inventory == null) continue;
+				foreach (var item in inventory.GetAllItems())
+				{
+					if (item.m_shared.m_name == sharedName)
+					{
+						container.Highlight();
+						break;
+					}
+				}
+			}
+		}
+
+		// Same as above but for a set of names — used by category headers in
+		// the inventory panel (clicking the header highlights every container
+		// holding any item in the category).
+		public static void HighlightContainersHoldingAny(ICollection<string> sharedNames)
+		{
+			if (sharedNames == null || sharedNames.Count == 0) return;
+			var nameSet = sharedNames as HashSet<string> ?? new HashSet<string>(sharedNames);
+			var nearbyContainers = Boxes.GetNearbyContainers(50f);
+			foreach (var container in nearbyContainers)
+			{
+				var inventory = container.GetInventory();
+				if (inventory == null) continue;
+				foreach (var item in inventory.GetAllItems())
+				{
+					if (nameSet.Contains(item.m_shared.m_name))
+					{
+						container.Highlight();
+						break;
+					}
+				}
+			}
+		}
+
 		public static Piece GetHoveredBuildPiece()
 		{
 			var hud = Hud.instance;

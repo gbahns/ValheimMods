@@ -531,7 +531,7 @@ namespace GrabMaterialsMod
 					var localizedName = LocalizationManager.Instance.TryTranslate(kvp.Key);
 					Debug.Log($"{kvp.Value} {localizedName} [{cat}]");
 					iconsByName.TryGetValue(kvp.Key, out var icon);
-					items.Add(new GrabMaterials.MaterialsPanel.InventoryItem { Name = localizedName, Count = kvp.Value, Icon = icon });
+					items.Add(new GrabMaterials.MaterialsPanel.InventoryItem { Name = localizedName, Count = kvp.Value, Icon = icon, SharedName = kvp.Key });
 				}
 				groups.Add(new GrabMaterials.MaterialsPanel.InventoryGroup
 				{
