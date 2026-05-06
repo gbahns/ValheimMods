@@ -35,6 +35,10 @@ namespace GrabMaterialsMod
 		public ConfigEntry<float> PanelIconSize;
 		public ConfigEntry<GrabMaterials.MaterialsPanel.InventoryShape> InventoryShape;
 		public ConfigEntry<GrabMaterials.MaterialsPanel.InventoryStyle> InventoryStyle;
+		public ConfigEntry<bool> ShowDistanceHud;
+		public ConfigEntry<bool> ShowDistanceCoords;
+		public ConfigEntry<float> DistanceHudOffsetX;
+		public ConfigEntry<float> DistanceHudOffsetY;
 		private ButtonConfig GrabSelectedPieceMatsButton;
 		//private ConfigEntry<KeyCode> GrabPortalMatsKeyboardConfig;
 		//private ConfigEntry<InputManager.GamepadButton> GrabPortalMatsGamepadConfig;
@@ -113,6 +117,11 @@ namespace GrabMaterialsMod
 			InventoryShape = Config.Bind("Panel UI", "Inventory Shape", GrabMaterials.MaterialsPanel.InventoryShape.SlightlyWide, new ConfigDescription("Target shape for the inventory panel in List mode. The panel auto-picks the column count that produces the closest match. MaxHeight = always 1 column. MaxWidth = fan out as many columns as fit on the screen."));
 			PanelShowItemIcons = Config.Bind("Panel UI", "Show Item Icons", true, new ConfigDescription("Show each item's icon next to its name in the inventory panel."));
 			PanelIconSize = Config.Bind("Panel UI", "Icon Size", 24f, new ConfigDescription("Width of the item-icon column in pixels. Icons are square and sized to fit. Beyond ~26 the row stays the same height so icons get visually capped by the row.", new AcceptableValueRange<float>(12f, 40f)));
+
+			ShowDistanceHud = Config.Bind("Distance HUD", "Enabled", true, new ConfigDescription("Show a small always-on widget displaying the player's horizontal distance from the world center."));
+			ShowDistanceCoords = Config.Bind("Distance HUD", "Show Coordinates", false, new ConfigDescription("Also include the player's (X, Z) coordinates in the distance widget."));
+			DistanceHudOffsetX = Config.Bind("Distance HUD", "Offset X (px)", 10f, new ConfigDescription("Horizontal offset from the upper-left corner of the screen."));
+			DistanceHudOffsetY = Config.Bind("Distance HUD", "Offset Y (px)", 10f, new ConfigDescription("Vertical offset from the top of the screen."));
 
 			//GrabPack1 = new GrabPackConfig(Config, "Grab Pack 1", new KeyboardShortcut(KeyCode.G), "wood:10,finewood:20,greydwarfeye:10,surtlingcore:2");
 			//GrabPack2 = new GrabPackConfig(Config, "Grab Pack 2", new KeyboardShortcut(KeyCode.G, KeyCode.LeftShift), "wood:10,finewood:40,ancientbark:40,ironnails:100,deeerhide:20");
@@ -212,6 +221,7 @@ namespace GrabMaterialsMod
 		private void Update()
 		{
 			GrabMaterials.MaterialsPanel.Tick();
+			GrabMaterials.DistanceHud.Tick();
 
 			if (Player.m_localPlayer && Chat.instance && !Chat.instance.IsChatDialogWindowVisible())
 			{
