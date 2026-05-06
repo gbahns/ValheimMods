@@ -31,6 +31,8 @@ namespace GrabMaterialsMod
 		public ConfigEntry<float> PanelFadeDuration;
 		public ConfigEntry<bool> PanelDismissOnMovement;
 		public ConfigEntry<bool> PanelCategoryUnderlines;
+		public ConfigEntry<bool> PanelShowItemIcons;
+		public ConfigEntry<float> PanelIconSize;
 		public ConfigEntry<GrabMaterials.MaterialsPanel.InventoryShape> InventoryShape;
 		public ConfigEntry<GrabMaterials.MaterialsPanel.InventoryStyle> InventoryStyle;
 		private ButtonConfig GrabSelectedPieceMatsButton;
@@ -109,6 +111,8 @@ namespace GrabMaterialsMod
 			InventoryStyle = Config.Bind("Panel UI", "Inventory Style", GrabMaterials.MaterialsPanel.InventoryStyle.List, new ConfigDescription("Display style for the /inventory panel. List = grouped by category, count + name per row (counts right-aligned). Table = flat 3-column table with Category / Item / Count headers."));
 			PanelCategoryUnderlines = Config.Bind("Panel UI", "Category Underlines", true, new ConfigDescription("In List mode, draw a thin orange line under each category name. Has no effect in Table mode."));
 			InventoryShape = Config.Bind("Panel UI", "Inventory Shape", GrabMaterials.MaterialsPanel.InventoryShape.SlightlyWide, new ConfigDescription("Target shape for the inventory panel in List mode. The panel auto-picks the column count that produces the closest match. MaxHeight = always 1 column. MaxWidth = fan out as many columns as fit on the screen."));
+			PanelShowItemIcons = Config.Bind("Panel UI", "Show Item Icons", true, new ConfigDescription("Show each item's icon next to its name in the inventory panel."));
+			PanelIconSize = Config.Bind("Panel UI", "Icon Size", 24f, new ConfigDescription("Width of the item-icon column in pixels. Icons are square and sized to fit. Beyond ~26 the row stays the same height so icons get visually capped by the row.", new AcceptableValueRange<float>(12f, 40f)));
 
 			//GrabPack1 = new GrabPackConfig(Config, "Grab Pack 1", new KeyboardShortcut(KeyCode.G), "wood:10,finewood:20,greydwarfeye:10,surtlingcore:2");
 			//GrabPack2 = new GrabPackConfig(Config, "Grab Pack 2", new KeyboardShortcut(KeyCode.G, KeyCode.LeftShift), "wood:10,finewood:40,ancientbark:40,ironnails:100,deeerhide:20");
@@ -465,6 +469,8 @@ namespace GrabMaterialsMod
 
 			// Bucket matching items by category, then by m_shared.m_name (sorted) for stable display.
 			var byCategory = new Dictionary<GrabMaterials.Extensions.ItemCategory, SortedDictionary<string, int>>();
+			// One sprite per unique item name (first encountered wins).
+			var iconsByName = new Dictionary<string, UnityEngine.Sprite>();
 			foreach (var container in nearbyContainers)
 			{
 				var inventory = container.GetInventory();
@@ -491,6 +497,11 @@ namespace GrabMaterialsMod
 					}
 					if (byName.ContainsKey(itemName)) byName[itemName] += item.Count();
 					else byName[itemName] = item.Count();
+
+					if (!iconsByName.ContainsKey(itemName) && item.m_shared.m_icons != null && item.m_shared.m_icons.Length > 0)
+					{
+						iconsByName[itemName] = item.m_shared.m_icons[0];
+					}
 
 					if (!alreadyHighlighted)
 					{
@@ -519,7 +530,8 @@ namespace GrabMaterialsMod
 				{
 					var localizedName = LocalizationManager.Instance.TryTranslate(kvp.Key);
 					Debug.Log($"{kvp.Value} {localizedName} [{cat}]");
-					items.Add(new GrabMaterials.MaterialsPanel.InventoryItem { Name = localizedName, Count = kvp.Value });
+					iconsByName.TryGetValue(kvp.Key, out var icon);
+					items.Add(new GrabMaterials.MaterialsPanel.InventoryItem { Name = localizedName, Count = kvp.Value, Icon = icon });
 				}
 				groups.Add(new GrabMaterials.MaterialsPanel.InventoryGroup
 				{

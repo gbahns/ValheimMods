@@ -20,6 +20,7 @@ namespace GrabMaterials
 		{
 			public string Name;
 			public int Count;
+			public Sprite Icon;
 		}
 
 		public struct InventoryGroup
@@ -85,6 +86,8 @@ namespace GrabMaterials
 		private static float FadeDurationSeconds => GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelFadeDuration?.Value ?? 3f;
 		private static bool DismissOnMovement => GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelDismissOnMovement?.Value ?? true;
 		private static bool ShowCategoryUnderlines => GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelCategoryUnderlines?.Value ?? true;
+		private static bool ShowItemIcons => GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelShowItemIcons?.Value ?? true;
+		private static float IconSize => GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelIconSize?.Value ?? 24f;
 		private static float TargetAspectRatio => AspectRatioFor(GrabMaterialsMod.GrabMaterialsMod.Instance?.InventoryShape?.Value ?? InventoryShape.SlightlyWide);
 
 		private static float AspectRatioFor(InventoryShape s)
@@ -179,7 +182,8 @@ namespace GrabMaterials
 					maxNameWidth = Mathf.Max(maxNameWidth, EstimateTextWidth(item.Name));
 				}
 			}
-			var dataRowWidth = ListRowPadding * 2f + countCol + ColumnGap + maxNameWidth;
+			var iconCol = ShowItemIcons ? IconSize + ColumnGap : 0f;
+			var dataRowWidth = ListRowPadding * 2f + countCol + ColumnGap + iconCol + maxNameWidth;
 			var headerRowWidth = ListRowPadding * 2f + maxCategoryWidth;
 			var perColumnWidth = Mathf.Max(dataRowWidth, headerRowWidth);
 
@@ -214,7 +218,7 @@ namespace GrabMaterials
 					colHeight += LineHeight + (showUnderlines ? HeaderUnderlineHeight : 0f);
 					foreach (var item in group.Items)
 					{
-						BuildDataRow(item.Count.ToString(), item.Name, ListRowPadding, countCol);
+						BuildDataRow(item.Count.ToString(), item.Icon, item.Name, ListRowPadding, countCol);
 						colHeight += LineHeight;
 					}
 				}
@@ -396,7 +400,7 @@ namespace GrabMaterials
 			{
 				foreach (var item in group.Items)
 				{
-					BuildFlatDataRow(group.CategoryName, item.Name, item.Count.ToString());
+					BuildFlatDataRow(group.CategoryName, item.Icon, item.Name, item.Count.ToString());
 					totalHeight += LineHeight;
 				}
 			}
@@ -476,7 +480,8 @@ namespace GrabMaterials
 			}
 			var categoryCol = Mathf.Max(CategoryColumnWidth, maxCategoryWidth);
 			var countCol = Mathf.Max(CountColumnWidth, maxCountWidth);
-			var contentWidth = TableRowPadding * 2f + categoryCol + ColumnGap + maxNameWidth + ColumnGap + countCol;
+			var iconCol = ShowItemIcons ? IconSize + ColumnGap : 0f;
+			var contentWidth = TableRowPadding * 2f + categoryCol + ColumnGap + iconCol + maxNameWidth + ColumnGap + countCol;
 			return Mathf.Clamp(contentWidth + PanelSidePadding * 2f, MinPanelWidth, MaxPanelWidth);
 		}
 
@@ -566,20 +571,25 @@ namespace GrabMaterials
 			}
 		}
 
-		// List style: count + name. countWidth is dynamic so the column hugs the
-		// widest count string (eliminates the "indent" effect from a fixed-width column).
-		private static void BuildDataRow(string countText, string nameText, float sidePadding, float countWidth)
+		// List style: count + (icon) + name. countWidth is dynamic so the column
+		// hugs the widest count string (eliminates the "indent" effect from a
+		// fixed-width column). Icon column is omitted when ShowItemIcons is off.
+		private static void BuildDataRow(string countText, Sprite icon, string nameText, float sidePadding, float countWidth)
 		{
 			var row = MakeRow("DataRow", sidePadding);
 			MakeCellText(row, countText, TextAnchor.MiddleRight, Color.white, countWidth, 0f);
+			if (ShowItemIcons) MakeIconCell(row, icon);
 			MakeCellText(row, nameText, TextAnchor.MiddleLeft, Color.white, 0f, 1f);
 		}
 
-		// Table style: header row "Category | Item | Count" + a thin underline strip.
+		// Table style: header row "Category | (icon) | Item | Count" + thin underline.
+		// The icon column gets an empty placeholder cell so the headers line up
+		// with the data rows below. Spacer is omitted when ShowItemIcons is off.
 		private static void BuildColumnHeadersRow()
 		{
 			var row = MakeRow("ColumnHeaders", TableRowPadding);
 			MakeCellText(row, "Category", TextAnchor.MiddleLeft, CategoryColor, CategoryColumnWidth, 0f);
+			if (ShowItemIcons) AddSpacerCell(row, IconSize);
 			MakeCellText(row, "Item",     TextAnchor.MiddleLeft, CategoryColor, 0f, 1f);
 			MakeCellText(row, "Count",    TextAnchor.MiddleRight, CategoryColor, CountColumnWidth, 0f);
 
@@ -594,11 +604,12 @@ namespace GrabMaterials
 			lineLE.flexibleWidth = 1f;
 		}
 
-		// Table style: a single data row with three columns.
-		private static void BuildFlatDataRow(string category, string itemName, string countText)
+		// Table style: category + (icon) + item + count.
+		private static void BuildFlatDataRow(string category, Sprite icon, string itemName, string countText)
 		{
 			var row = MakeRow("FlatDataRow", TableRowPadding);
 			MakeCellText(row, category, TextAnchor.MiddleLeft, Color.white, CategoryColumnWidth, 0f);
+			if (ShowItemIcons) MakeIconCell(row, icon);
 			MakeCellText(row, itemName, TextAnchor.MiddleLeft, Color.white, 0f, 1f);
 			MakeCellText(row, countText, TextAnchor.MiddleRight, Color.white, CountColumnWidth, 0f);
 		}
@@ -640,6 +651,44 @@ namespace GrabMaterials
 			le.flexibleWidth = flexibleWidth;
 			le.preferredHeight = LineHeight;
 			return t;
+		}
+
+		// Square Image cell holding the item icon. Always created, even with a
+		// null sprite — keeps row layouts aligned across rows where some items
+		// happen to lack an icon.
+		private static void MakeIconCell(GameObject parent, Sprite sprite)
+		{
+			var go = new GameObject("Icon");
+			go.transform.SetParent(parent.transform, false);
+			go.AddComponent<RectTransform>();
+			var img = go.AddComponent<Image>();
+			if (sprite != null)
+			{
+				img.sprite = sprite;
+				img.preserveAspect = true;
+			}
+			else
+			{
+				img.color = new Color(0f, 0f, 0f, 0f);  // invisible placeholder
+			}
+			img.raycastTarget = false;
+			var le = go.AddComponent<LayoutElement>();
+			le.preferredWidth = IconSize;
+			le.preferredHeight = IconSize;
+			le.flexibleWidth = 0f;
+		}
+
+		// Empty fixed-width cell — used in the Table-style header row to hold
+		// space for the icon column so headers line up with data rows.
+		private static void AddSpacerCell(GameObject parent, float width)
+		{
+			var go = new GameObject("SpacerCell");
+			go.transform.SetParent(parent.transform, false);
+			go.AddComponent<RectTransform>();
+			var le = go.AddComponent<LayoutElement>();
+			le.preferredWidth = width;
+			le.preferredHeight = LineHeight;
+			le.flexibleWidth = 0f;
 		}
 
 		private static void AddSpacer(float height)
