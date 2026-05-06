@@ -188,40 +188,7 @@ namespace GrabMaterials
 			_contentText.supportRichText = true;
 			_contentText.raycastTarget = false;
 
-			// Close button (X) in top-right corner
-			var closeObj = new GameObject("CloseButton");
-			closeObj.transform.SetParent(_panel.transform, false);
-			var closeRect = closeObj.AddComponent<RectTransform>();
-			closeRect.anchorMin = new Vector2(1f, 1f);
-			closeRect.anchorMax = new Vector2(1f, 1f);
-			closeRect.pivot = new Vector2(1f, 1f);
-			closeRect.anchoredPosition = new Vector2(-10f, -10f);
-			closeRect.sizeDelta = new Vector2(30f, 30f);
-			var closeImg = closeObj.AddComponent<Image>();
-			closeImg.color = new Color(0f, 0f, 0f, 0.01f); // near-invisible but raycastable
-			var closeBtn = closeObj.AddComponent<Button>();
-			closeBtn.transition = Selectable.Transition.None;
-			closeBtn.onClick.AddListener(Hide);
-
-			var closeLabelObj = GUIManager.Instance.CreateText(
-				text: "X",
-				parent: closeObj.transform,
-				anchorMin: new Vector2(0.5f, 0.5f),
-				anchorMax: new Vector2(0.5f, 0.5f),
-				position: Vector2.zero,
-				font: GUIManager.Instance.AveriaSerifBold,
-				fontSize: 22,
-				color: GUIManager.Instance.ValheimOrange,
-				outline: true,
-				outlineColor: Color.black,
-				width: 30f,
-				height: 30f,
-				addContentSizeFitter: false);
-			var closeLabel = closeLabelObj.GetComponent<Text>();
-			closeLabel.alignment = TextAnchor.MiddleCenter;
-			closeLabel.raycastTarget = false;
-
-			// Click anywhere else on panel also dismisses
+			// Click anywhere on panel dismisses (when the cursor is free, e.g. via Tab/Esc).
 			var panelBtn = _panel.AddComponent<Button>();
 			panelBtn.transition = Selectable.Transition.None;
 			panelBtn.onClick.AddListener(Hide);
