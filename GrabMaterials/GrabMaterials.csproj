@@ -134,4 +134,15 @@
     <Error Condition="!Exists('..\packages\NUnit.4.3.2\build\NUnit.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\NUnit.4.3.2\build\NUnit.props'))" />
     <Error Condition="!Exists('..\packages\NUnit3TestAdapter.4.6.0\build\net462\NUnit3TestAdapter.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\NUnit3TestAdapter.4.6.0\build\net462\NUnit3TestAdapter.props'))" />
   </Target>
+  <PropertyGroup>
+    <ThunderstoreTestPlugins>$(APPDATA)\Thunderstore Mod Manager\DataFolder\Valheim\profiles\Test\BepInEx\plugins</ThunderstoreTestPlugins>
+  </PropertyGroup>
+  <Target Name="DeployToTestProfile" AfterTargets="Build" Condition="Exists('$(ThunderstoreTestPlugins)')">
+    <ItemGroup>
+      <DeployFiles Include="$(TargetPath)" />
+      <DeployFiles Include="$(TargetDir)$(TargetName).pdb" Condition="Exists('$(TargetDir)$(TargetName).pdb')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(DeployFiles)" DestinationFolder="$(ThunderstoreTestPlugins)" />
+    <Message Text="Deployed $(TargetName).dll to Thunderstore Test profile" Importance="high" />
+  </Target>
 </Project>
