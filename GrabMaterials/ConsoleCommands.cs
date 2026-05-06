@@ -1,4 +1,5 @@
-﻿using Jotunn.Extensions;
+﻿using HarmonyLib;
+using Jotunn.Extensions;
 using Jotunn.Managers;
 using System;
 using System.Collections.Generic;
@@ -7,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using UnityEngine;
+using UnityEngine.UI;
 using static MeleeWeaponTrail;
 
 namespace GrabMaterials
@@ -426,10 +428,11 @@ namespace GrabMaterials
 		public static void GrabMaterialsForSelectedPiece()
 		{
 			var player = Player.m_localPlayer;
-			var piece = player.GetSelectedPiece();
+			if (player == null) return;
+			var piece = GetHoveredBuildPiece() ?? player.GetSelectedPiece();
 			if (!piece)
 			{
-				var msg = "No build piece selected";
+				var msg = "No build piece selected or hovered";
 				Debug.Log(msg);
 				player.Message(MessageHud.MessageType.Center, msg);
 				return;
@@ -437,7 +440,53 @@ namespace GrabMaterials
 			GrabMaterialsForPiece(piece);
 		}
 
-		private static void GrabMaterialsForPiece(Piece piece)
+		// The publicized Valheim assembly fixes compile-time access, but the runtime
+		// DLL still has m_pieceIcons as private; AccessTools bypasses that.
+		private static AccessTools.FieldRef<Hud, List<Hud.PieceIconData>> _pieceIconsAccessor;
+
+		public static Piece GetHoveredBuildPiece()
+		{
+			var hud = Hud.instance;
+			var player = Player.m_localPlayer;
+			if (hud == null || player == null) return null;
+
+			if (_pieceIconsAccessor == null)
+			{
+				try
+				{
+					_pieceIconsAccessor = AccessTools.FieldRefAccess<Hud, List<Hud.PieceIconData>>("m_pieceIcons");
+				}
+				catch (Exception e)
+				{
+					Debug.LogWarning($"GrabMaterials: cannot reflect Hud.m_pieceIcons - {e.Message}");
+					return null;
+				}
+			}
+			var pieceIcons = _pieceIconsAccessor(hud);
+			if (pieceIcons == null) return null;
+
+			foreach (var iconData in pieceIcons)
+			{
+				if (iconData == null) continue;
+				var icon = iconData.m_icon;
+				if (icon == null || !icon.gameObject.activeInHierarchy) continue;
+				if (!RectTransformUtility.RectangleContainsScreenPoint(icon.rectTransform, Input.mousePosition)) continue;
+				// PieceIconData doesn't expose the Piece directly, so match the
+				// icon's sprite against the player's available build pieces.
+				var sprite = icon.sprite;
+				if (sprite == null) return null;
+				var pieces = player.GetBuildPieces();
+				if (pieces == null) return null;
+				foreach (var piece in pieces)
+				{
+					if (piece != null && piece.m_icon == sprite) return piece;
+				}
+				return null;
+			}
+			return null;
+		}
+
+		public static void GrabMaterialsForPiece(Piece piece)
 		{
 			var resources = piece.m_resources;
 			Debug.Log($"grabbing materials for selected piece {piece.name} - requires {resources.Count()} resources");

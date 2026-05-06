@@ -11,6 +11,7 @@ Quickly pull materials from nearby chests into your inventory without having to 
 <li>Atomic grab — if any requested material is short, nothing is taken from any container; the panel tells you exactly what's missing so you can go get it.
 <li>The panel auto-fades over 3 seconds when you start moving, attacking, blocking, or jumping (after a brief grace period to handle the case where you trigger the grab while already running).  After 15 seconds of no input it fades on its own.  Click the X (or anywhere on the panel) to dismiss it instantly.
 <li>New "Panel UI" config section to tune the idle timeout, the fade duration, and whether movement dismisses the panel.
+<li>You can now grab materials for any build piece by hovering over its icon in the build menu and pressing 'j' — no need to select it first.  (Falls back to the selected piece when you're not hovering anything.)
 
 <h3>Fix in version 1.0.1</h3>
 
