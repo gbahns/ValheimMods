@@ -31,7 +31,7 @@ namespace GrabMaterialsMod
 		public ConfigEntry<float> PanelFadeDuration;
 		public ConfigEntry<bool> PanelDismissOnMovement;
 		public ConfigEntry<bool> PanelCategoryUnderlines;
-		public ConfigEntry<float> PanelInventoryAspectRatio;
+		public ConfigEntry<GrabMaterials.MaterialsPanel.InventoryShape> InventoryShape;
 		public ConfigEntry<GrabMaterials.MaterialsPanel.InventoryStyle> InventoryStyle;
 		private ButtonConfig GrabSelectedPieceMatsButton;
 		//private ConfigEntry<KeyCode> GrabPortalMatsKeyboardConfig;
@@ -108,7 +108,7 @@ namespace GrabMaterialsMod
 			PanelDismissOnMovement = Config.Bind("Panel UI", "Dismiss On Movement", true, new ConfigDescription("Start fading the panel when the player begins moving, attacking, blocking, or jumping. If false, only the idle timeout dismisses the panel."));
 			InventoryStyle = Config.Bind("Panel UI", "Inventory Style", GrabMaterials.MaterialsPanel.InventoryStyle.List, new ConfigDescription("Display style for the /inventory panel. List = grouped by category, count + name per row (counts right-aligned). Table = flat 3-column table with Category / Item / Count headers."));
 			PanelCategoryUnderlines = Config.Bind("Panel UI", "Category Underlines", true, new ConfigDescription("In List mode, draw a thin orange line under each category name. Has no effect in Table mode."));
-			PanelInventoryAspectRatio = Config.Bind("Panel UI", "Inventory Aspect Ratio", 1.5f, new ConfigDescription("Target width:height ratio for the inventory panel in List mode. Higher = wider/more columns (newspaper-style). Lower = taller/fewer columns. 1.5 ≈ slightly landscape, 1.0 = square, 0.7 ≈ portrait. The panel auto-picks 1, 2, or 3 columns to come closest to this ratio.", new AcceptableValueRange<float>(0.3f, 4.0f)));
+			InventoryShape = Config.Bind("Panel UI", "Inventory Shape", GrabMaterials.MaterialsPanel.InventoryShape.SlightlyWide, new ConfigDescription("Target shape for the inventory panel in List mode. The panel auto-picks the column count that produces the closest match. MaxHeight = always 1 column. MaxWidth = fan out as many columns as fit on the screen."));
 
 			//GrabPack1 = new GrabPackConfig(Config, "Grab Pack 1", new KeyboardShortcut(KeyCode.G), "wood:10,finewood:20,greydwarfeye:10,surtlingcore:2");
 			//GrabPack2 = new GrabPackConfig(Config, "Grab Pack 2", new KeyboardShortcut(KeyCode.G, KeyCode.LeftShift), "wood:10,finewood:40,ancientbark:40,ironnails:100,deeerhide:20");

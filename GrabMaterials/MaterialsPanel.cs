@@ -34,6 +34,19 @@ namespace GrabMaterials
 			Table,   // flat 3-column table with "Category | Item | Count" header row.
 		}
 
+		public enum InventoryShape
+		{
+			MaxHeight,    // single column, never splits
+			VeryTall,
+			Tall,
+			SlightlyTall,
+			Square,
+			SlightlyWide,
+			Wide,
+			VeryWide,
+			MaxWidth,     // fan out as many columns as fit on the screen
+		}
+
 		private const float DefaultPanelWidth = 480f;
 		private const float MinPanelWidth = 280f;
 
@@ -41,6 +54,10 @@ namespace GrabMaterials
 		// can grow up to (almost) the full screen width; that lets the column-search
 		// algorithm pick more columns instead of being capped by a hardcoded 1200px.
 		private static float MaxPanelWidth => Mathf.Max(800f, Screen.width - 40f);
+		// Leave room for the Valheim HUD (hotbar/health/stamina) at the bottom and
+		// a small top margin. Used to keep a long inventory from running off-screen
+		// even when the user picks a tall shape like MaxHeight.
+		private static float MaxPanelHeight => Mathf.Max(400f, Screen.height - 100f);
 		private const float PanelSidePadding = 20f;   // panel-to-content margin per side (so contentWidth = panel - 2×this)
 		private const float TitleHeight = 50f;
 		private const float LineHeight = 26f;
@@ -68,7 +85,28 @@ namespace GrabMaterials
 		private static float FadeDurationSeconds => GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelFadeDuration?.Value ?? 3f;
 		private static bool DismissOnMovement => GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelDismissOnMovement?.Value ?? true;
 		private static bool ShowCategoryUnderlines => GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelCategoryUnderlines?.Value ?? true;
-		private static float TargetAspectRatio => GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelInventoryAspectRatio?.Value ?? 1.5f;
+		private static float TargetAspectRatio => AspectRatioFor(GrabMaterialsMod.GrabMaterialsMod.Instance?.InventoryShape?.Value ?? InventoryShape.SlightlyWide);
+
+		private static float AspectRatioFor(InventoryShape s)
+		{
+			// Bias every preset slightly wider than its name suggests — in practice
+			// the title bar and category headers add visual height, so a literal
+			// 1.0 ratio panel reads as taller-than-square. These numbers are what
+			// "feels right" rather than what the math says.
+			switch (s)
+			{
+				case InventoryShape.MaxHeight:    return 0.1f;   // extreme: never splits
+				case InventoryShape.VeryTall:     return 0.6f;
+				case InventoryShape.Tall:         return 0.85f;
+				case InventoryShape.SlightlyTall: return 1.05f;
+				case InventoryShape.Square:       return 1.25f;
+				case InventoryShape.SlightlyWide: return 1.55f;
+				case InventoryShape.Wide:         return 2.0f;
+				case InventoryShape.VeryWide:     return 3.0f;
+				case InventoryShape.MaxWidth:     return 10.0f;  // extreme: as wide as fits
+				default:                          return 1.55f;
+			}
+		}
 
 		private static GameObject _panel;
 		private static RectTransform _panelRect;
@@ -190,11 +228,14 @@ namespace GrabMaterials
 		}
 
 		// Pick the column count whose resulting panel aspect ratio (W/H) comes
-		// closest to the user-configured target. Tries N = 1..MaxColumns.
+		// closest to the user-configured target. Skips column counts that would
+		// produce a panel too tall to fit on screen, so MaxHeight (and any tall
+		// shape) splits automatically when content overflows the screen.
 		private static int ComputeColumnCount(float perColumnContentWidth, float totalContentHeight)
 		{
 			var target = TargetAspectRatio;
-			var bestN = 1;
+			var maxHeight = MaxPanelHeight;
+			var bestN = -1;
 			var bestDiff = float.MaxValue;
 			for (int n = 1; n <= MaxColumns; n++)
 			{
@@ -202,6 +243,7 @@ namespace GrabMaterials
 				var panelWidth = Mathf.Clamp(contentWidth + PanelSidePadding * 2f, MinPanelWidth, MaxPanelWidth);
 				var perColumnHeight = totalContentHeight / n;
 				var panelHeight = TitleHeight + perColumnHeight + BottomPadding;
+				if (panelHeight > maxHeight) continue;  // doesn't fit; try more columns
 				var aspect = panelWidth / Mathf.Max(panelHeight, 1f);
 				var diff = Mathf.Abs(aspect - target);
 				if (diff < bestDiff)
@@ -210,6 +252,9 @@ namespace GrabMaterials
 					bestN = n;
 				}
 			}
+			// Nothing fit — content is enormous. Use the most columns we can
+			// (gives the shortest panel) so as much content as possible is visible.
+			if (bestN < 0) bestN = MaxColumns;
 			return bestN;
 		}
 
