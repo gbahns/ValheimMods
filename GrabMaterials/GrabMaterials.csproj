@@ -73,18 +73,22 @@
     </Reference>
   </ItemGroup>
 
-  <!-- Auto-deploy build output to the Thunderstore Test profile (no-op if
-       that folder doesn't exist on this machine). -->
+  <!-- Auto-deploy build output to Thunderstore profiles. Each Copy is
+       independently conditional on its target folder existing, so this is a
+       no-op for any profile not present on the current machine. -->
   <PropertyGroup>
     <ThunderstoreTestPlugins>$(APPDATA)\Thunderstore Mod Manager\DataFolder\Valheim\profiles\Test\BepInEx\plugins</ThunderstoreTestPlugins>
+    <ThunderstoreMyProfilePlugins>$(APPDATA)\Thunderstore Mod Manager\DataFolder\Valheim\profiles\my profile\BepInEx\plugins</ThunderstoreMyProfilePlugins>
   </PropertyGroup>
-  <Target Name="DeployToTestProfile" AfterTargets="Build" Condition="Exists('$(ThunderstoreTestPlugins)')">
+  <Target Name="DeployToThunderstoreProfiles" AfterTargets="Build">
     <ItemGroup>
       <DeployFiles Include="$(TargetPath)" />
       <DeployFiles Include="$(TargetDir)$(TargetName).pdb" Condition="Exists('$(TargetDir)$(TargetName).pdb')" />
     </ItemGroup>
-    <Copy SourceFiles="@(DeployFiles)" DestinationFolder="$(ThunderstoreTestPlugins)" />
-    <Message Text="Deployed $(TargetName).dll to Thunderstore Test profile" Importance="high" />
+    <Copy SourceFiles="@(DeployFiles)" DestinationFolder="$(ThunderstoreTestPlugins)" Condition="Exists('$(ThunderstoreTestPlugins)')" />
+    <Message Text="Deployed $(TargetName).dll to Thunderstore Test profile" Importance="high" Condition="Exists('$(ThunderstoreTestPlugins)')" />
+    <Copy SourceFiles="@(DeployFiles)" DestinationFolder="$(ThunderstoreMyProfilePlugins)" Condition="Exists('$(ThunderstoreMyProfilePlugins)')" />
+    <Message Text="Deployed $(TargetName).dll to Thunderstore my profile" Importance="high" Condition="Exists('$(ThunderstoreMyProfilePlugins)')" />
   </Target>
 
 </Project>
