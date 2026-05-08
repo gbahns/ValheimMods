@@ -31,6 +31,16 @@ namespace GrabMaterials
 			public List<InventoryItem> Items;
 		}
 
+		public struct PackRow
+		{
+			public string Name;
+			public string Hotkey;
+			public string Items;
+			public string Delta;
+			public System.Action OnClick;  // null = not clickable (e.g. empty packs)
+			public System.Action OnEdit;   // click on pencil column
+		}
+
 		public enum InventoryStyle
 		{
 			List,    // grouped by category (category as section header, optional underline). Counts right-aligned.
@@ -121,6 +131,8 @@ namespace GrabMaterials
 		private static GameObject _rowsContainer;          // outer (HorizontalLayoutGroup); holds 1+ column children
 		private static RectTransform _rowsContainerRect;
 		private static Transform _currentBuildParent;       // column GameObject the next BuildXxx call writes into
+		private static GameObject _editorContainer;         // pack-editor mode (absolute-positioned form)
+		private static RectTransform _editorContainerRect;
 		private static CanvasGroup _canvasGroup;
 		private static float _shownAt;
 		private static float _fadeStart = -1f;
@@ -155,6 +167,349 @@ namespace GrabMaterials
 			{
 				case InventoryStyle.Table: ShowTable(title, groups); break;
 				default:                   ShowList(title, groups); break;
+			}
+		}
+
+		// =========================================================================
+		// Pack editor (#49)
+		// =========================================================================
+
+		// Editor uses absolute positioning inside its own container — InputFields
+		// don't compose well with the HorizontalLayoutGroup-based row builders.
+		public static void ShowPackEditor(
+			string title,
+			string initialName,
+			string initialItems,
+			GrabMaterialsMod.GrabMaterialsMod.DeltaSetting initialDelta,
+			System.Action<string, string, GrabMaterialsMod.GrabMaterialsMod.DeltaSetting> onSave,
+			System.Action onCancel)
+		{
+			EnsureCreated();
+			if (_panel == null) return;
+
+			// Hide the other content modes; rebuild the editor container fresh.
+			if (_contentText != null) _contentText.gameObject.SetActive(false);
+			if (_rowsContainer != null) _rowsContainer.SetActive(false);
+			DestroyEditor();
+			_editorContainer = new GameObject("EditorContainer");
+			_editorContainer.transform.SetParent(_panel.transform, false);
+			_editorContainerRect = _editorContainer.AddComponent<RectTransform>();
+			_editorContainerRect.anchorMin = new Vector2(0.5f, 1f);
+			_editorContainerRect.anchorMax = new Vector2(0.5f, 1f);
+			_editorContainerRect.pivot = new Vector2(0.5f, 1f);
+			_editorContainerRect.anchoredPosition = new Vector2(0f, -TitleHeight);
+
+			// Click consumer: a transparent Image + no-op Button that absorbs
+			// clicks on the editor's wood backing so the panel-wide dismiss
+			// button doesn't fire when the user clicks between fields.
+			var bgImg = _editorContainer.AddComponent<Image>();
+			bgImg.color = new Color(0f, 0f, 0f, 0f);
+			bgImg.raycastTarget = true;
+			var bgBtn = _editorContainer.AddComponent<Button>();
+			bgBtn.transition = Selectable.Transition.None;
+
+			const float panelWidth = 600f;
+			var contentWidth = panelWidth - PanelSidePadding * 2f;
+			ApplyPanelWidth(panelWidth);
+			_titleText.text = title;
+
+			const float labelW = 90f;
+			const float gap = 10f;
+			const float rowH = 32f;
+			const float rowSpacing = 10f;
+			var fieldX = labelW + gap;
+			var fieldW = contentWidth - fieldX;
+
+			float y = -8f;  // top of editor container, growing downward (negative)
+
+			// Mutable state captured by the button callbacks.
+			var deltaState = new DeltaCycleState { Value = initialDelta };
+
+			AddEditorLabel("Name:", 0f, y, labelW, rowH);
+			var nameField = AddEditorInputField(initialName, fieldX, y, fieldW, rowH);
+			y -= rowH + rowSpacing;
+
+			AddEditorLabel("Items:", 0f, y, labelW, rowH);
+			var itemsField = AddEditorInputField(initialItems, fieldX, y, fieldW, rowH);
+			y -= rowH + rowSpacing;
+
+			AddEditorLabel("Delta:", 0f, y, labelW, rowH);
+			Text deltaButtonText = null;
+			AddEditorButton(DeltaSettingLabel(deltaState.Value), fieldX, y, 200f, rowH, () =>
+			{
+				deltaState.Value = NextDelta(deltaState.Value);
+				if (deltaButtonText != null) deltaButtonText.text = DeltaSettingLabel(deltaState.Value);
+			}, out deltaButtonText);
+			y -= rowH + rowSpacing;
+
+			y -= 10f;  // extra spacer before action buttons
+
+			const float actionBtnW = 110f;
+			var saveX = (contentWidth - 2 * actionBtnW - gap) / 2f;
+			var cancelX = saveX + actionBtnW + gap;
+			AddEditorButton("Save", saveX, y, actionBtnW, rowH, () =>
+			{
+				onSave?.Invoke(nameField != null ? nameField.text : initialName,
+					itemsField != null ? itemsField.text : initialItems,
+					deltaState.Value);
+			}, out _);
+			AddEditorButton("Cancel", cancelX, y, actionBtnW, rowH, () => onCancel?.Invoke(), out _);
+			y -= rowH;
+
+			var totalHeight = -y + 12f;
+			_editorContainerRect.sizeDelta = new Vector2(contentWidth, totalHeight);
+			var panelHeight = TitleHeight + totalHeight + BottomPadding;
+			_panelRect.sizeDelta = new Vector2(panelWidth, panelHeight);
+
+			_panel.SetActive(true);
+			_canvasGroup.alpha = 1f;
+			_shownAt = Time.time;
+			_fadeStart = -1f;
+			_dismissArmed = false;
+		}
+
+		private class DeltaCycleState { public GrabMaterialsMod.GrabMaterialsMod.DeltaSetting Value; }
+
+		private static GrabMaterialsMod.GrabMaterialsMod.DeltaSetting NextDelta(GrabMaterialsMod.GrabMaterialsMod.DeltaSetting d)
+		{
+			var values = (GrabMaterialsMod.GrabMaterialsMod.DeltaSetting[])System.Enum.GetValues(typeof(GrabMaterialsMod.GrabMaterialsMod.DeltaSetting));
+			var idx = System.Array.IndexOf(values, d);
+			return values[(idx + 1) % values.Length];
+		}
+
+		private static string DeltaSettingLabel(GrabMaterialsMod.GrabMaterialsMod.DeltaSetting d)
+		{
+			switch (d)
+			{
+				case GrabMaterialsMod.GrabMaterialsMod.DeltaSetting.On:  return "On";
+				case GrabMaterialsMod.GrabMaterialsMod.DeltaSetting.Off: return "Off";
+				default:                                                  return "Use Global";
+			}
+		}
+
+		private static void AddEditorLabel(string text, float x, float y, float width, float height)
+		{
+			var go = GUIManager.Instance.CreateText(
+				text: text,
+				parent: _editorContainer.transform,
+				anchorMin: new Vector2(0f, 1f),
+				anchorMax: new Vector2(0f, 1f),
+				position: new Vector2(x, y),
+				font: GUIManager.Instance.AveriaSerifBold,
+				fontSize: 18,
+				color: CategoryColor,
+				outline: true,
+				outlineColor: Color.black,
+				width: width,
+				height: height,
+				addContentSizeFitter: false);
+			var rect = go.GetComponent<RectTransform>();
+			rect.pivot = new Vector2(0f, 1f);
+			rect.anchoredPosition = new Vector2(x, y);
+			var t = go.GetComponent<Text>();
+			t.alignment = TextAnchor.MiddleLeft;
+			t.raycastTarget = false;
+		}
+
+		private static InputField AddEditorInputField(string initial, float x, float y, float width, float height)
+		{
+			var go = GUIManager.Instance.CreateInputField(
+				parent: _editorContainer.transform,
+				anchorMin: new Vector2(0f, 1f),
+				anchorMax: new Vector2(0f, 1f),
+				position: new Vector2(x, y),
+				contentType: InputField.ContentType.Standard,
+				placeholderText: "",
+				fontSize: 16,
+				width: width,
+				height: height);
+			var rect = go.GetComponent<RectTransform>();
+			rect.pivot = new Vector2(0f, 1f);
+			rect.anchoredPosition = new Vector2(x, y);
+			rect.sizeDelta = new Vector2(width, height);
+			var input = go.GetComponent<InputField>() ?? go.GetComponentInChildren<InputField>();
+			if (input != null) input.text = initial ?? "";
+			return input;
+		}
+
+		private static void AddEditorButton(string text, float x, float y, float width, float height, System.Action onClick, out Text labelText)
+		{
+			var go = GUIManager.Instance.CreateButton(
+				text: text,
+				parent: _editorContainer.transform,
+				anchorMin: new Vector2(0f, 1f),
+				anchorMax: new Vector2(0f, 1f),
+				position: new Vector2(x, y),
+				width: width,
+				height: height);
+			var rect = go.GetComponent<RectTransform>();
+			rect.pivot = new Vector2(0f, 1f);
+			rect.anchoredPosition = new Vector2(x, y);
+			rect.sizeDelta = new Vector2(width, height);
+			var btn = go.GetComponent<Button>();
+			if (btn != null && onClick != null) btn.onClick.AddListener(() => onClick());
+			labelText = go.GetComponentInChildren<Text>();
+		}
+
+		// Three-column table — Name | Hotkey | Items — used by `/listpacks` (#42).
+		// Empty packs (no Items configured) are rendered in dim grey so the user
+		// can see which pack slots are still available.
+		private static readonly Color PackEmptyColor = new Color(0.6f, 0.6f, 0.6f, 0.85f);
+
+		private const float EditPencilColWidth = 26f;
+
+		public static void ShowPacks(string title, List<PackRow> packs)
+		{
+			EnsureCreated();
+			if (_panel == null) return;
+
+			float maxNameW = EstimateTextWidth("Name");
+			float maxKeyW = EstimateTextWidth("Hotkey");
+			float maxDeltaW = EstimateTextWidth("Delta");
+			float maxItemsW = EstimateTextWidth("Items");
+			foreach (var p in packs)
+			{
+				maxNameW = Mathf.Max(maxNameW, EstimateTextWidth(p.Name));
+				maxKeyW = Mathf.Max(maxKeyW, EstimateTextWidth(p.Hotkey));
+				maxDeltaW = Mathf.Max(maxDeltaW, EstimateTextWidth(p.Delta ?? ""));
+				maxItemsW = Mathf.Max(maxItemsW, EstimateTextWidth(string.IsNullOrEmpty(p.Items) ? "(empty)" : p.Items));
+			}
+			var nameCol = maxNameW + 8f;
+			var keyCol = maxKeyW + 8f;
+			var deltaCol = maxDeltaW + 8f;
+			var itemsCol = maxItemsW + 8f;
+
+			var contentWidth = TableRowPadding * 2f + EditPencilColWidth + ColumnGap + nameCol + ColumnGap + keyCol + ColumnGap + deltaCol + ColumnGap + itemsCol;
+			var panelWidth = Mathf.Clamp(contentWidth + PanelSidePadding * 2f, MinPanelWidth, MaxPanelWidth);
+			SwitchToRowsMode(title, panelWidth);
+
+			var perColumnWidth = panelWidth - PanelSidePadding * 2f;
+			var col = CreateColumn(perColumnWidth);
+			_currentBuildParent = col.transform;
+
+			BuildPackHeadersRow(nameCol, keyCol, deltaCol);
+			float totalHeight = LineHeight + HeaderUnderlineHeight;
+
+			foreach (var p in packs)
+			{
+				var isEmpty = string.IsNullOrEmpty(p.Items);
+				var color = isEmpty ? PackEmptyColor : Color.white;
+				var itemsText = isEmpty ? "(empty)" : p.Items;
+				BuildPackDataRow(p.Name, p.Hotkey, p.Delta ?? "", itemsText, color, nameCol, keyCol, deltaCol, p.OnClick, p.OnEdit);
+				totalHeight += LineHeight;
+			}
+
+			FinalizeRowsLayout(panelWidth, totalHeight);
+		}
+
+		private static void BuildPackHeadersRow(float nameCol, float keyCol, float deltaCol)
+		{
+			var row = MakeRow("PackHeaders", TableRowPadding);
+			AddSpacerCell(row, EditPencilColWidth);  // align under the pencil column
+			MakeCellText(row, "Name",   TextAnchor.MiddleLeft, CategoryColor, nameCol, 0f);
+			MakeCellText(row, "Hotkey", TextAnchor.MiddleLeft, CategoryColor, keyCol, 0f);
+			MakeCellText(row, "Delta",  TextAnchor.MiddleLeft, CategoryColor, deltaCol, 0f);
+			MakeCellText(row, "Items",  TextAnchor.MiddleLeft, CategoryColor, 0f, 1f);
+
+			var line = new GameObject("PackHeadersUnderline");
+			line.transform.SetParent(_currentBuildParent, false);
+			line.AddComponent<RectTransform>();
+			var img = line.AddComponent<Image>();
+			img.color = UnderlineColor;
+			img.raycastTarget = false;
+			var lineLE = line.AddComponent<LayoutElement>();
+			lineLE.preferredHeight = HeaderUnderlineHeight;
+			lineLE.flexibleWidth = 1f;
+		}
+
+		private static void BuildPackDataRow(string name, string key, string delta, string items, Color color, float nameCol, float keyCol, float deltaCol, System.Action onClick, System.Action onEdit)
+		{
+			var row = MakeRow("PackRow", TableRowPadding);
+			if (onClick != null)
+			{
+				MakeClickable(row, () =>
+				{
+					onClick();
+					KeepAlive();  // clicking is intentional engagement, not a dismiss signal
+				});
+			}
+			MakePencilCell(row, onEdit);
+			MakeCellText(row, name,  TextAnchor.MiddleLeft, color, nameCol, 0f);
+			MakeCellText(row, key,   TextAnchor.MiddleLeft, color, keyCol, 0f);
+			MakeCellText(row, delta, TextAnchor.MiddleLeft, color, deltaCol, 0f);
+			MakeCellText(row, items, TextAnchor.MiddleLeft, color, 0f, 1f);
+		}
+
+		// Small clickable "✎" pencil cell — opens the pack editor for this row.
+		// Always visible (dimmer when not hovered, full alpha on hover) so it's
+		// discoverable without the user having to know it exists.
+		private static readonly Color PencilNormalColor = new Color(1f, 1f, 1f, 0.45f);
+		private static readonly Color PencilHoverColor = new Color(1f, 0.92f, 0.45f, 1f);
+
+		private static void MakePencilCell(GameObject parent, System.Action onEdit)
+		{
+			// Even with no editor wired up, reserve the column so headers + rows
+			// stay aligned. We just don't make it clickable.
+			var go = new GameObject("EditPencil");
+			go.transform.SetParent(parent.transform, false);
+			go.AddComponent<RectTransform>();
+			var t = go.AddComponent<Text>();
+			t.font = GUIManager.Instance.AveriaSerifBold;
+			t.fontSize = 18;
+			t.alignment = TextAnchor.MiddleCenter;
+			t.text = onEdit != null ? "✎" : "";  // ✎ pencil glyph
+			t.supportRichText = false;
+			t.color = onEdit != null ? PencilNormalColor : new Color(0f, 0f, 0f, 0f);
+			// Text serves as the click target — UGUI disallows two Graphic
+			// components on the same GameObject, so we can't also add an Image.
+			t.raycastTarget = onEdit != null;
+			AddOutline(go);
+			var le = go.AddComponent<LayoutElement>();
+			le.preferredWidth = EditPencilColWidth;
+			le.preferredHeight = LineHeight;
+			le.flexibleWidth = 0f;
+			if (onEdit == null) return;
+
+			var btn = go.AddComponent<Button>();
+			btn.transition = Selectable.Transition.None;
+			btn.targetGraphic = t;
+			btn.onClick.AddListener(() =>
+			{
+				onEdit();
+				KeepAlive();
+			});
+			var hover = go.AddComponent<PencilHoverTint>();
+			hover.target = t;
+			hover.normal = PencilNormalColor;
+			hover.hover = PencilHoverColor;
+		}
+
+		// Pointer handler for the pencil — separate from RowHoverTint so the
+		// pencil's own hover state is independent of the row's. Bumps the
+		// shared hover counter so the panel doesn't fade while the cursor is
+		// on the pencil.
+		internal class PencilHoverTint : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+		{
+			public Text target;
+			public Color normal;
+			public Color hover;
+			private bool _hovered;
+
+			public void OnPointerEnter(PointerEventData eventData)
+			{
+				if (!_hovered) { _hovered = true; _rowsHovered++; }
+				if (target != null) target.color = hover;
+			}
+
+			public void OnPointerExit(PointerEventData eventData)
+			{
+				if (_hovered) { _hovered = false; _rowsHovered = Mathf.Max(0, _rowsHovered - 1); }
+				if (target != null) target.color = normal;
+			}
+
+			private void OnDisable()
+			{
+				if (_hovered) { _hovered = false; _rowsHovered = Mathf.Max(0, _rowsHovered - 1); }
 			}
 		}
 
@@ -418,6 +773,7 @@ namespace GrabMaterials
 		private static void SwitchToRowsMode(string title, float panelWidth)
 		{
 			if (_contentText != null) _contentText.gameObject.SetActive(false);
+			DestroyEditor();
 			_rowsContainer.SetActive(true);
 			_titleText.text = title;
 			// Apply width up-front so layout-group children can size correctly during build.
@@ -508,6 +864,17 @@ namespace GrabMaterials
 			_dismissArmed = false;
 			_rowsHovered = 0;
 			_panelHovered = false;
+			DestroyEditor();
+		}
+
+		private static void DestroyEditor()
+		{
+			if (_editorContainer != null)
+			{
+				UnityEngine.Object.DestroyImmediate(_editorContainer);
+				_editorContainer = null;
+				_editorContainerRect = null;
+			}
 		}
 
 		// Reset the fade/dismiss timers as if the panel had just been opened.
@@ -900,8 +1267,9 @@ namespace GrabMaterials
 			EnsureCreated();
 			if (_panel == null) return;
 
-			// Switch to text-based content; hide the row-based table.
+			// Switch to text-based content; hide the row-based table and editor.
 			if (_rowsContainer != null) _rowsContainer.SetActive(false);
+			DestroyEditor();
 			_contentText.gameObject.SetActive(true);
 
 			_titleText.text = title;

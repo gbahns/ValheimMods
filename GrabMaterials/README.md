@@ -1,9 +1,18 @@
 # MojoRyzen's Grab Materials Mod
 
 Created on January 30 2025.<br>
-Version 1.1.0 released on May 5 2026.
+Version 2.0.0 released on May 8 2026.
 
 Quickly pull materials from nearby chests into your inventory without having to manually click on each chest.  The concept is similar to mods that let you craft or build directly from containers, but for things that you're not building in your base.  The typical example is workbench and portal when exploring - you're constantly having to grab 10 wood, 20 finewood, 10 greydwarf eyes, and 2 surtling cores.  This mod removes that tedium.
+
+<h3>New in version 2.0.0</h3>
+
+<li>Inventory panel — '/inventory' (or '/i') opens a wood-styled panel listing items in nearby containers, grouped by category with item icons.  Optional filter on item name or category, e.g. '/i wood' or '/i food'.
+<li>Configurable inventory layout — choose a List (grouped by category) or Table (flat columns) style, and a panel shape from MaxHeight (single column) through Square to MaxWidth (fans out as many columns as fit on the screen).  The mod auto-picks the column count that best matches your shape.  Cycle styles in-game with '/istyle'.
+<li>Click to highlight — click any inventory row to highlight nearby containers holding that item; click a category header to highlight every container holding any item in the category.
+<li>Grab pack panel — '/listpacks' opens an in-game panel showing each pack's name, hotkey, delta state, and items.  Click a row to trigger that pack; click the ✎ pencil to edit the pack's name, items, and delta inline (no need to alt-tab to the config file).
+<li>Global Grab Delta default — new "Grab Delta (default)" client setting (default ON) makes every grab take only the shortfall between what you have and what's needed.  Per-pack settings are now a tri-state — UseGlobal (the default), On, or Off — so you can override either way.
+<li>Cross-grab delta ledger — back-to-back delta grabs no longer double-count the same inventory.  E.g. '/g cart' (10 wood) then '/g explore' (20 wood total) — the ledger remembers the cart's wood is already spoken for, so Explore grabs the 20 it actually needs.  The ledger clears after 30 seconds of inactivity (configurable) so a fresh build session starts clean.  Use '/grabreset' to clear it explicitly.
 
 <h3>New in version 1.1.0</h3>
 

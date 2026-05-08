@@ -17,7 +17,7 @@ using UnityEngine;
 namespace GrabMaterialsMod
 {
 
-	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "1.1.0")]
+	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.0.0")]
 	[BepInProcess("valheim.exe")]
 	public class GrabMaterialsMod : BaseUnityPlugin
 	{
@@ -25,7 +25,16 @@ namespace GrabMaterialsMod
 		private readonly Harmony harmony = new Harmony(ModGuid);
 		public static GrabMaterialsMod Instance;
 
+		public enum DeltaSetting
+		{
+			UseGlobal,  // defer to GrabDeltaGlobal
+			On,         // delta enabled (only grab the shortfall)
+			Off,        // delta disabled (always grab the full amount)
+		}
+
 		//private ButtonConfig GrabPortalMatsButton;
+		public ConfigEntry<bool> GrabDeltaGlobal;
+		public ConfigEntry<float> GrabDeltaLedgerTimeout;
 		public ConfigEntry<float> HighlightDuration;
 		public ConfigEntry<float> PanelIdleTimeout;
 		public ConfigEntry<float> PanelFadeDuration;
@@ -53,7 +62,7 @@ namespace GrabMaterialsMod
 			public ConfigEntry<string> Name;
 			public ConfigEntry<KeyboardShortcut> Key;
 			public ConfigEntry<string> Items;
-			public ConfigEntry<bool> GrabDelta;
+			public ConfigEntry<DeltaSetting> GrabDelta;
 			public ButtonConfig Button;
 
 			public GrabPackConfig(ConfigFile config, string section, string name, KeyboardShortcut keyboardShortcut, string items)
@@ -61,7 +70,7 @@ namespace GrabMaterialsMod
 				Name = config.Bind(section, section+" Name", name, new ConfigDescription("Name of the grab pack"));
 				Key = config.Bind(section, section+" Key", keyboardShortcut, new ConfigDescription("Key to grab materials for the grab pack"));
 				Items = config.Bind(section, section+" Items", items, new ConfigDescription("Items to grab for the grab pack"));
-				GrabDelta = config.Bind(section, section+" Grab Delta", false, new ConfigDescription("If true, only grab the shortfall between what you already have and what's needed (e.g. if the pack needs 10 wood and you have 7, only 3 will be grabbed)."));
+				GrabDelta = config.Bind(section, section+" Grab Delta", DeltaSetting.UseGlobal, new ConfigDescription("UseGlobal = follow the 'Grab Delta (default)' setting; On = only grab the shortfall (e.g. if the pack needs 10 wood and you have 7, only 3 will be grabbed); Off = always grab the full amount."));
 				Button = new ButtonConfig()
 				{
 					Name = Name.Value,
@@ -108,6 +117,8 @@ namespace GrabMaterialsMod
 			//new KeyboardShortcut(KeyCode.G, KeyCode.LeftShift, KeyCode.RightShift)
 			GrabSelectedPieceMatsKeyboardConfig = Config.Bind("Grab Selected Piece", "GrabSelectedPieceMatsKey", KeyCode.J, new ConfigDescription("Key to grab materials for the currently selectede build piece"));
 			HighlightDuration = Config.Bind("Client config", "Highlight Duration", 2f, new ConfigDescription("Duration in seconds to highlight containers when grabbing materials"));
+			GrabDeltaGlobal = Config.Bind("Client config", "Grab Delta (default)", true, new ConfigDescription("If true, all grabs (packs, individual build pieces, /grab <piece>) only grab the shortfall between what you already have and what's needed. Per-pack settings can override this."));
+			GrabDeltaLedgerTimeout = Config.Bind("Client config", "Grab Delta Ledger Timeout (seconds)", 30f, new ConfigDescription("Back-to-back delta grabs share a ledger so the same inventory isn't credited toward two different builds (e.g. /g cart then /g explore won't both 'see' the same 10 wood). After this many seconds without a delta grab, the ledger clears so the next grab considers only what's currently in your inventory. Set to 0 to effectively disable cross-grab tracking."));
 
 			PanelIdleTimeout = Config.Bind("Panel UI", "Idle Timeout (seconds)", 15f, new ConfigDescription("Seconds the grab-results panel stays fully visible before fading out automatically."));
 			PanelFadeDuration = Config.Bind("Panel UI", "Fade Duration (seconds)", 3f, new ConfigDescription("Seconds the grab-results panel takes to fade out."));
@@ -118,7 +129,7 @@ namespace GrabMaterialsMod
 			PanelShowItemIcons = Config.Bind("Panel UI", "Show Item Icons", true, new ConfigDescription("Show each item's icon next to its name in the inventory panel."));
 			PanelIconSize = Config.Bind("Panel UI", "Icon Size", 24f, new ConfigDescription("Width of the item-icon column in pixels. Icons are square and sized to fit. Beyond ~26 the row stays the same height so icons get visually capped by the row.", new AcceptableValueRange<float>(12f, 40f)));
 
-			ShowDistanceHud = Config.Bind("Distance HUD", "Enabled", true, new ConfigDescription("Show a small always-on widget displaying the player's horizontal distance from the world center."));
+			ShowDistanceHud = Config.Bind("Distance HUD", "Enabled", false, new ConfigDescription("Show a small always-on widget displaying the player's horizontal distance from the world center."));
 			ShowDistanceCoords = Config.Bind("Distance HUD", "Show Coordinates", false, new ConfigDescription("Also include the player's (X, Z) coordinates in the distance widget."));
 			DistanceHudOffsetX = Config.Bind("Distance HUD", "Offset X (px)", 10f, new ConfigDescription("Horizontal offset from the upper-left corner of the screen."));
 			DistanceHudOffsetY = Config.Bind("Distance HUD", "Offset Y (px)", 10f, new ConfigDescription("Vertical offset from the top of the screen."));
@@ -162,6 +173,10 @@ namespace GrabMaterialsMod
 			new Terminal.ConsoleCommand("listlocalcontainers", "[radius] - Finds containers within the radius.", (args) => { ListLocalContainers(args); });
 			new Terminal.ConsoleCommand("listcontents", "[radius] - Finds containers within the radius and lists their contents.", (args) => { ListLocalContainerContents(args); });
 			new Terminal.ConsoleCommand("listpacks", "Lists your configured grab packs.", (args) => { ListGrabPacks(); });
+			new Terminal.ConsoleCommand("grabreset", "Clear the grab-delta ledger so the next delta grab considers only what's currently in your inventory.", (args) => {
+				GrabMaterials.ConsoleCommands.ResetPendingLedger();
+				Player.m_localPlayer?.Message(MessageHud.MessageType.Center, "Grab delta ledger cleared.");
+			});
 			new Terminal.ConsoleCommand("inventory", "Displays counts of materials in containers in range.", (args) => { ListLocalInventory(args); });
 			new Terminal.ConsoleCommand("i", "Displays counts of materials in containers in range.", (args) => { ListLocalInventory(args); });
 			new Terminal.ConsoleCommand("istyle", "[1-2] - cycle inventory display style (1=List, 2=Table)", (args) => { SetInventoryStyle(args); });
@@ -554,13 +569,72 @@ namespace GrabMaterialsMod
 			GrabMaterials.MaterialsPanel.ShowCategorizedInventory(title, groups, Instance.InventoryStyle.Value);
 		}
 
+		// Format a BepInEx KeyboardShortcut as e.g. "Shift + G" / "Ctrl + Alt + Y" / "G".
+		// BepInEx's default ToString() outputs "G + LeftShift" which reads awkwardly;
+		// this trims the Left/Right side prefix and renames Control->Ctrl.
+		private static string FormatShortcut(KeyboardShortcut shortcut)
+		{
+			var sb = new StringBuilder();
+			foreach (var mod in shortcut.Modifiers)
+			{
+				var name = mod.ToString();
+				if (name.StartsWith("Left")) name = name.Substring(4);
+				else if (name.StartsWith("Right")) name = name.Substring(5);
+				if (name == "Control") name = "Ctrl";
+				sb.Append(name).Append(" + ");
+			}
+			sb.Append(shortcut.MainKey.ToString());
+			return sb.ToString();
+		}
+
+		private static string FormatDelta(GrabPackConfig pack)
+		{
+			var resolved = GrabMaterials.ConsoleCommands.ResolveDelta(pack.GrabDelta.Value);
+			switch (pack.GrabDelta.Value)
+			{
+				case DeltaSetting.On:  return "On";
+				case DeltaSetting.Off: return "Off";
+				default:               return resolved ? "On (default)" : "Off (default)";
+			}
+		}
+
 		private static void ListGrabPacks()
 		{
 			Debug.Log($"listing {Instance.GrabPacks.Length} configured grab packs");
+			var rows = new List<GrabMaterials.MaterialsPanel.PackRow>(Instance.GrabPacks.Length);
 			foreach (var grabPack in Instance.GrabPacks)
 			{
 				Debug.Log($"{grabPack.Name.Value} ({grabPack.Key.Value}): {grabPack.Items.Value}");
+				var packRef = grabPack;  // capture for closure
+				var hasItems = !string.IsNullOrEmpty(grabPack.Items.Value);
+				rows.Add(new GrabMaterials.MaterialsPanel.PackRow
+				{
+					Name = grabPack.Name.Value,
+					Hotkey = FormatShortcut(grabPack.Key.Value),
+					Items = grabPack.Items.Value,
+					Delta = FormatDelta(grabPack),
+					OnClick = hasItems ? (System.Action)(() => GrabMaterials.ConsoleCommands.GrabMaterialsForPack(packRef)) : null,
+					OnEdit = () => OpenPackEditor(packRef),
+				});
 			}
+			GrabMaterials.MaterialsPanel.ShowPacks("Grab Packs", rows);
+		}
+
+		private static void OpenPackEditor(GrabPackConfig pack)
+		{
+			GrabMaterials.MaterialsPanel.ShowPackEditor(
+				title: $"Edit: {pack.Name.Value}",
+				initialName: pack.Name.Value,
+				initialItems: pack.Items.Value,
+				initialDelta: pack.GrabDelta.Value,
+				onSave: (newName, newItems, newDelta) =>
+				{
+					pack.Name.Value = newName;
+					pack.Items.Value = newItems;
+					pack.GrabDelta.Value = newDelta;
+					ListGrabPacks();  // back to the list, with updated values
+				},
+				onCancel: () => ListGrabPacks());
 		}
 
 		private static void FindContainersWithMatchingItems(Terminal.ConsoleEventArgs args)
