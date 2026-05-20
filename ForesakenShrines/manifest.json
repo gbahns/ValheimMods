@@ -1,0 +1,7 @@
+{
+    "name": "ForesakenShrines",
+    "version_number": "0.8.0",
+    "website_url": "https://github.com/gbahns/ValheimMods",
+    "description": "Build permanent shrines to honor the Forsaken. Each shrine lets you channel that boss's guardian power without returning to their altar. Unlocked by defeating the corresponding boss.",
+    "dependencies": ["denikson-BepInExPack_Valheim-5.4.2202", "ValheimModding-Jotunn-2.23.1"]
+}
