@@ -1,0 +1,7 @@
+{
+    "name": "Hungry_Viking",
+    "version_number": "1.1.0",
+    "website_url": "",
+    "description": "Visual warnings for hunger, smoke, and poison — screen vignettes and on-screen labels that escalate in urgency so you never miss a critical status.",
+    "dependencies": ["denikson-BepInExPack_Valheim-5.4.2202"]
+}

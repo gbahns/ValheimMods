@@ -1,0 +1,73 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net462</TargetFramework>
+    <OutputType>Library</OutputType>
+    <RootNamespace>HungryViking</RootNamespace>
+    <AssemblyName>HungryViking</AssemblyName>
+    <Deterministic>true</Deterministic>
+    <NoWarn>$(NoWarn);MSB3277</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="HarmonyX" Version="2.9.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="status_icon.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="assembly_valheim_publicized">
+      <HintPath>..\Libs\assembly_valheim_publicized.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>..\Libs\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>..\Libs\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>..\Libs\UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>..\Libs\UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>..\Libs\UnityEngine.UIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine_publicized">
+      <HintPath>..\Libs\UnityEngine_publicized.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Auto-deploy build output to Thunderstore profiles that exist on this machine. -->
+  <PropertyGroup>
+    <ThunderstoreTestPlugins>$(APPDATA)\Thunderstore Mod Manager\DataFolder\Valheim\profiles\Test\BepInEx\plugins</ThunderstoreTestPlugins>
+    <ThunderstoreDefaultPlugins>$(APPDATA)\Thunderstore Mod Manager\DataFolder\Valheim\profiles\Default\BepInEx\plugins</ThunderstoreDefaultPlugins>
+  </PropertyGroup>
+  <Target Name="DeployToTestProfile" AfterTargets="Build" Condition="Exists('$(ThunderstoreTestPlugins)')">
+    <ItemGroup>
+      <DeployFiles Include="$(TargetPath)" />
+      <DeployFiles Include="$(TargetDir)$(TargetName).pdb" Condition="Exists('$(TargetDir)$(TargetName).pdb')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(DeployFiles)" DestinationFolder="$(ThunderstoreTestPlugins)" />
+    <Message Text="Deployed $(TargetName).dll to Thunderstore Test profile" Importance="high" />
+  </Target>
+  <Target Name="DeployToDefaultProfile" AfterTargets="Build" Condition="Exists('$(ThunderstoreDefaultPlugins)')">
+    <ItemGroup>
+      <DeployFilesDefault Include="$(TargetPath)" />
+      <DeployFilesDefault Include="$(TargetDir)$(TargetName).pdb" Condition="Exists('$(TargetDir)$(TargetName).pdb')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(DeployFilesDefault)" DestinationFolder="$(ThunderstoreDefaultPlugins)" />
+    <Message Text="Deployed $(TargetName).dll to Thunderstore Default profile" Importance="high" />
+  </Target>
+
+</Project>
