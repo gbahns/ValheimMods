@@ -105,6 +105,10 @@ namespace ForesakenShrines
             if (stoneRef == null)
                 Jotunn.Logger.LogWarning("[ForesakenShrines] Phase 2: 'stone_wall_2x1' not found — WearNTear effects and place sound may be missing.");
 
+            // Register the custom tab once; with fixReference=false Jotunn never writes
+            // PieceConfig.Category back to piece.m_category, so we do it manually.
+            var shrineCategory = PieceManager.Instance.AddPieceCategory(Category);
+
             foreach (var def in ShrineDefinitions.All)
             {
                 var clone = _clones.Find(c => c != null && c.name == def.PieceName);
@@ -116,6 +120,8 @@ namespace ForesakenShrines
 
                 var piece = clone.GetComponent<Piece>();
                 if (piece == null) continue;
+
+                piece.m_category = shrineCategory;
 
                 // ── Build requirements from config string ───────────────────────────
                 piece.m_resources = ShrineConfig.BuildRequirements(def.PieceName);
