@@ -3,34 +3,21 @@
   <PropertyGroup>
     <TargetFramework>net462</TargetFramework>
     <OutputType>Library</OutputType>
-    <RootNamespace>GrabMaterials</RootNamespace>
-    <AssemblyName>GrabMaterials</AssemblyName>
+    <RootNamespace>HungryViking</RootNamespace>
+    <AssemblyName>HungryViking</AssemblyName>
     <Deterministic>true</Deterministic>
-    <!-- Use the existing Properties\AssemblyInfo.cs instead of letting the SDK
-         generate one, which would conflict on duplicate attributes. -->
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <!-- Suppress the netstandard 2.0 vs 2.1 reference-conflict warning. Valheim's
-         Unity assemblies reference netstandard 2.1; net462 ships the 2.0 facade.
-         Compile resolves against 2.0 (a subset that covers what we use) and at
-         runtime Valheim's Unity environment provides the real 2.1 — the
-         "conflict" is noise here. -->
     <NoWarn>$(NoWarn);MSB3277</NoWarn>
   </PropertyGroup>
 
-  <!-- HarmonyX brings Mono.Cecil and the MonoMod packages along as transitive
-       deps, so we no longer need to list them or System.* BCL backports
-       individually like the old packages.config did. -->
   <ItemGroup>
     <PackageReference Include="HarmonyX" Version="2.9.0" />
   </ItemGroup>
 
-  <!-- Local Valheim / Jotunn / Unity assemblies — these aren't on NuGet, so
-       they stay as Reference + HintPath. -->
   <ItemGroup>
-    <Reference Include="assembly_utils_publicized">
-      <HintPath>..\Libs\assembly_utils_publicized.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
+    <EmbeddedResource Include="status_icon.png" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Reference Include="assembly_valheim_publicized">
       <HintPath>..\Libs\assembly_valheim_publicized.dll</HintPath>
       <Private>false</Private>
@@ -39,32 +26,20 @@
       <HintPath>..\Libs\BepInEx.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="Jotunn">
-      <HintPath>..\Libs\Jotunn.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
     <Reference Include="UnityEngine.CoreModule">
       <HintPath>..\Libs\UnityEngine.CoreModule.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="UnityEngine.PhysicsModule">
-      <HintPath>..\Libs\UnityEngine.PhysicsModule.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="UnityEngine.UI">
-      <HintPath>..\Libs\UnityEngine.UI.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine.TextRenderingModule">
       <HintPath>..\Libs\UnityEngine.TextRenderingModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="UnityEngine.UIModule">
-      <HintPath>..\Libs\UnityEngine.UIModule.dll</HintPath>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>..\Libs\UnityEngine.UI.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="UnityEngine.InputLegacyModule">
-      <HintPath>..\Libs\UnityEngine.InputLegacyModule.dll</HintPath>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>..\Libs\UnityEngine.UIModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine_publicized">

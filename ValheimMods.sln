@@ -5,6 +5,10 @@ VisualStudioVersion = 17.12.35707.178
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GrabMaterials", "GrabMaterials\GrabMaterials.csproj", "{F3F4F7F9-7343-4B53-9531-AA1E3D80EA19}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HungryViking", "HungryViking\HungryViking.csproj", "{C4A8F2E1-B69D-4E37-9A52-D8C3F17E4B96}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ForesakenShrines", "ForesakenShrines\ForesakenShrines.csproj", "{DCAE6300-7F8D-4F5F-A9D0-1762477E277D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +19,14 @@ Global
 		{F3F4F7F9-7343-4B53-9531-AA1E3D80EA19}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F3F4F7F9-7343-4B53-9531-AA1E3D80EA19}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F3F4F7F9-7343-4B53-9531-AA1E3D80EA19}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C4A8F2E1-B69D-4E37-9A52-D8C3F17E4B96}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C4A8F2E1-B69D-4E37-9A52-D8C3F17E4B96}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C4A8F2E1-B69D-4E37-9A52-D8C3F17E4B96}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C4A8F2E1-B69D-4E37-9A52-D8C3F17E4B96}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DCAE6300-7F8D-4F5F-A9D0-1762477E277D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DCAE6300-7F8D-4F5F-A9D0-1762477E277D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DCAE6300-7F8D-4F5F-A9D0-1762477E277D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DCAE6300-7F8D-4F5F-A9D0-1762477E277D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
