@@ -85,26 +85,28 @@ Thunderstore will reject an upload if `version_number` in the manifest matches a
 
 ---
 
-## Auto-Deploy to Local Thunderstore Profile
+## Auto-Deploy to All Local Thunderstore Profiles
 
-The project's `.csproj` can auto-copy the built DLL into Thunderstore Mod Manager's local profile folder on every build, so you can test in-game without manually copying files.
+The project's `.csproj` can auto-copy the built DLL (and PDB if present) into every Thunderstore Mod Manager profile on the local machine after every build, so you can test in-game without manually copying files. Add a new profile in Thunderstore and the next build picks it up automatically — no csproj edit needed.
 
 Add to the `.csproj`:
 
 ```xml
+<!-- Auto-deploy build output to every Thunderstore Mod Manager profile on this machine. -->
 <PropertyGroup>
-  <ThunderstoreTestPlugins>$(APPDATA)\Thunderstore Mod Manager\DataFolder\Valheim\profiles\Test\BepInEx\plugins</ThunderstoreTestPlugins>
+  <ThunderstoreProfiles>$(APPDATA)\Thunderstore Mod Manager\DataFolder\Valheim\profiles</ThunderstoreProfiles>
 </PropertyGroup>
-<Target Name="DeployToTestProfile" AfterTargets="Build" Condition="Exists('$(ThunderstoreTestPlugins)')">
-  <ItemGroup>
-    <DeployFiles Include="$(TargetPath)" />
-  </ItemGroup>
-  <Copy SourceFiles="@(DeployFiles)" DestinationFolder="$(ThunderstoreTestPlugins)" />
-  <Message Text="Deployed $(TargetName).dll to Thunderstore Test profile" Importance="high" />
+<Target Name="DeployToProfiles" AfterTargets="Build" Condition="Exists('$(ThunderstoreProfiles)')">
+  <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;Get-ChildItem '$(ThunderstoreProfiles)' -Directory | ForEach-Object { %24plugins = Join-Path %24_.FullName 'BepInEx\plugins'; if (Test-Path %24plugins) { Copy-Item '$(TargetPath)' %24plugins -Force; if (Test-Path '$(TargetDir)$(TargetName).pdb') { Copy-Item '$(TargetDir)$(TargetName).pdb' %24plugins -Force }; Write-Host ('Deployed $(TargetName).dll to ' + %24_.Name + ' profile') } }&quot;" />
 </Target>
 ```
 
-The `Condition="Exists(...)"` means the target silently skips on machines without that profile — safe to commit.
+How it works:
+- The `Condition="Exists('$(ThunderstoreProfiles)')"` on the `<Target>` makes the whole target a no-op on machines without Thunderstore Mod Manager installed — safe to commit.
+- The PowerShell inline `<Exec>` enumerates every directory under `…\profiles\` and copies into any that has a `BepInEx\plugins` subfolder, so profiles without BepInEx are quietly skipped.
+- `%24` is MSBuild's escape for `$`, needed because PowerShell variables (`$plugins`, `$_`) would otherwise be eaten by MSBuild's own property expansion.
+
+The standard pattern across this repo. See any of the mod `.csproj` files for a working example.
 
 ---
 
