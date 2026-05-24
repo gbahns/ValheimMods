@@ -1,7 +1,7 @@
 using HarmonyLib;
 using UnityEngine;
 
-namespace ForesakenShrines
+namespace ForsakenShrines
 {
     /// <summary>
     /// Hard-blocks shrine placement if the site fails either of:
@@ -76,7 +76,7 @@ namespace ForesakenShrines
         [HarmonyPostfix]
         static void Postfix(string name)
         {
-            Jotunn.Logger.LogInfo($"[ForesakenShrines] ZoneSystem.SetGlobalKey('{name}') fired — refreshing unlocks.");
+            Jotunn.Logger.LogInfo($"[ForsakenShrines] ZoneSystem.SetGlobalKey('{name}') fired — refreshing unlocks.");
             ShrinePieces.UpdateUnlocks();
         }
     }
@@ -87,7 +87,7 @@ namespace ForesakenShrines
         [HarmonyPostfix]
         static void Postfix()
         {
-            Jotunn.Logger.LogInfo("[ForesakenShrines] Player.OnSpawned fired — refreshing unlocks.");
+            Jotunn.Logger.LogInfo("[ForsakenShrines] Player.OnSpawned fired — refreshing unlocks.");
             ShrinePieces.UpdateUnlocks();
         }
     }
@@ -104,6 +104,10 @@ namespace ForesakenShrines
         private static readonly System.Reflection.FieldInfo _ghostField =
             AccessTools.Field(typeof(Player), "m_placementGhost");
 
+        // Sink the shrine pivot slightly below terrain so the visible base sits flush
+        // with the ground instead of hovering a few centimeters above it.
+        private const float GroundSinkOffset = 0.15f;
+
         [HarmonyPostfix]
         static void Postfix(Player __instance)
         {
@@ -115,9 +119,9 @@ namespace ForesakenShrines
                     out var hit, 200f, LayerMask.GetMask("terrain")))
                 return;
 
-            float delta = ghost.transform.position.y - hit.point.y;
-            if (delta < -0.1f)
-                ghost.transform.position = new Vector3(ghost.transform.position.x, hit.point.y, ghost.transform.position.z);
+            float targetY = hit.point.y - GroundSinkOffset;
+            if (ghost.transform.position.y < targetY - 0.01f || ghost.transform.position.y > targetY + 0.01f)
+                ghost.transform.position = new Vector3(ghost.transform.position.x, targetY, ghost.transform.position.z);
         }
     }
 }

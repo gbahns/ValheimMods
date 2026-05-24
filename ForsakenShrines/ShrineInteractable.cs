@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace ForesakenShrines
+namespace ForsakenShrines
 {
     /// <summary>
     /// Attached to each shrine prefab clone.  Implements vanilla Hoverable + Interactable so

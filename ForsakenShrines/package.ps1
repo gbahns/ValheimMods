@@ -1,6 +1,6 @@
 # Builds the Release DLL and creates a Thunderstore-ready zip.
 # Uses ZipArchive directly so entry names use forward slashes (ZIP spec 4.4.17).
-# Output: ForesakenShrines-<version>.zip in the project directory.
+# Output: ForsakenShrines-<version>.zip in the project directory.
 
 param(
     [string]$Version = "0.8.0"
@@ -10,10 +10,10 @@ Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 $projectDir = $PSScriptRoot
-$zipPath    = Join-Path $projectDir "ForesakenShrines-$Version.zip"
+$zipPath    = Join-Path $projectDir "ForsakenShrines-$Version.zip"
 
 Write-Host "Building Release..."
-dotnet build "$projectDir\ForesakenShrines.csproj" -c Release
+dotnet build "$projectDir\ForsakenShrines.csproj" -c Release
 if ($LASTEXITCODE -ne 0) { Write-Error "Build failed."; exit 1 }
 
 if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
@@ -33,7 +33,7 @@ function Add-ZipEntry($archive, $filePath, $entryName) {
 Add-ZipEntry $zip "$projectDir\manifest.json"                            "manifest.json"
 Add-ZipEntry $zip "$projectDir\icon.png"                                 "icon.png"
 Add-ZipEntry $zip "$projectDir\README.md"                                "README.md"
-Add-ZipEntry $zip "$projectDir\bin\Release\net48\ForesakenShrines.dll"  "BepInEx/plugins/ForesakenShrines.dll"
+Add-ZipEntry $zip "$projectDir\bin\Release\net48\ForsakenShrines.dll"  "BepInEx/plugins/ForsakenShrines.dll"
 
 $zip.Dispose()
 $stream.Dispose()

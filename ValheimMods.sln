@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GrabMaterials", "GrabMateri
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HungryViking", "HungryViking\HungryViking.csproj", "{C4A8F2E1-B69D-4E37-9A52-D8C3F17E4B96}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ForesakenShrines", "ForesakenShrines\ForesakenShrines.csproj", "{DCAE6300-7F8D-4F5F-A9D0-1762477E277D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ForsakenShrines", "ForsakenShrines\ForsakenShrines.csproj", "{DCAE6300-7F8D-4F5F-A9D0-1762477E277D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

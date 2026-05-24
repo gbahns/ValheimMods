@@ -3,11 +3,11 @@ using Jotunn.Configs;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace ForesakenShrines
+namespace ForsakenShrines
 {
     /// <summary>
     /// All server-synced configuration entries for Forsaken Shrines.
-    /// Call Bind() once from ForesakenShrinesMod.Awake before event subscriptions.
+    /// Call Bind() once from ForsakenShrinesMod.Awake before event subscriptions.
     /// </summary>
     internal static class ShrineConfig
     {
@@ -20,7 +20,7 @@ namespace ForesakenShrines
         private static readonly Dictionary<string, ConfigEntry<string>> _recipes
             = new Dictionary<string, ConfigEntry<string>>();
 
-        internal static void Bind(ForesakenShrinesMod mod)
+        internal static void Bind(ForsakenShrinesMod mod)
         {
             RequireNaturalTerrain = mod.BindSynced("Placement", "RequireNaturalTerrain", true,
                 "Shrines must be placed directly on natural terrain — no player-built floor or platform beneath them.");
@@ -65,7 +65,7 @@ namespace ForesakenShrines
                 var drop   = prefab?.GetComponent<ItemDrop>();
                 if (drop == null)
                 {
-                    Jotunn.Logger.LogWarning($"[ForesakenShrines] {pieceName}: '{itemName}' not found in ObjectDB — skipped.");
+                    Jotunn.Logger.LogWarning($"[ForsakenShrines] {pieceName}: '{itemName}' not found in ObjectDB — skipped.");
                     continue;
                 }
                 result.Add(new Piece.Requirement { m_resItem = drop, m_amount = amount, m_recover = recover });
