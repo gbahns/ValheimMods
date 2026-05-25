@@ -73,12 +73,12 @@
     </Reference>
   </ItemGroup>
 
-  <!-- Auto-deploy build output to every Thunderstore Mod Manager profile on this machine. -->
+  <!-- Auto-deploy build output to every r2modman profile on this machine. -->
   <PropertyGroup>
-    <ThunderstoreProfiles>$(APPDATA)\Thunderstore Mod Manager\DataFolder\Valheim\profiles</ThunderstoreProfiles>
+    <R2ModManProfiles>$(APPDATA)\r2modmanPlus-local\Valheim\profiles</R2ModManProfiles>
   </PropertyGroup>
-  <Target Name="DeployToProfiles" AfterTargets="Build" Condition="Exists('$(ThunderstoreProfiles)')">
-    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;Get-ChildItem '$(ThunderstoreProfiles)' -Directory | ForEach-Object { %24plugins = Join-Path %24_.FullName 'BepInEx\plugins'; if (Test-Path %24plugins) { Copy-Item '$(TargetPath)' %24plugins -Force; if (Test-Path '$(TargetDir)$(TargetName).pdb') { Copy-Item '$(TargetDir)$(TargetName).pdb' %24plugins -Force }; Write-Host ('Deployed $(TargetName).dll to ' + %24_.Name + ' profile') } }&quot;" />
+  <Target Name="DeployToProfiles" AfterTargets="Build" Condition="Exists('$(R2ModManProfiles)')">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;Get-ChildItem '$(R2ModManProfiles)' -Directory | ForEach-Object { %24plugins = Join-Path %24_.FullName 'BepInEx\plugins'; if (Test-Path %24plugins) { Copy-Item '$(TargetPath)' %24plugins -Force; if (Test-Path '$(TargetDir)$(TargetName).pdb') { Copy-Item '$(TargetDir)$(TargetName).pdb' %24plugins -Force }; Write-Host ('Deployed $(TargetName).dll to ' + %24_.Name + ' profile') } }&quot;" />
   </Target>
 
 </Project>
