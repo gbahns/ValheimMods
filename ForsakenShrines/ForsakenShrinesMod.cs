@@ -4,18 +4,18 @@ using HarmonyLib;
 using Jotunn.Managers;
 using ServerSync;
 
-namespace ForesakenShrines
+namespace ForsakenShrines
 {
     [BepInPlugin(ModGuid, ModName, ModVersion)]
     [BepInDependency(Jotunn.Main.ModGuid)]
     [BepInProcess("valheim.exe")]
-    public class ForesakenShrinesMod : BaseUnityPlugin
+    public class ForsakenShrinesMod : BaseUnityPlugin
     {
-        public const string ModGuid    = "DeathMonger.ForesakenShrines";
+        public const string ModGuid    = "DeathMonger.ForsakenShrines";
         public const string ModName    = "Forsaken Shrines";
         public const string ModVersion = "0.8.0";
 
-        internal static ForesakenShrinesMod Instance { get; private set; }
+        internal static ForsakenShrinesMod Instance { get; private set; }
 
         private readonly Harmony _harmony = new Harmony(ModGuid);
 

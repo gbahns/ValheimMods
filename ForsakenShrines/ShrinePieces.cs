@@ -6,7 +6,7 @@ using Jotunn.Entities;
 using Jotunn.Managers;
 using UnityEngine;
 
-namespace ForesakenShrines
+namespace ForsakenShrines
 {
     internal static class ShrinePieces
     {
@@ -41,7 +41,7 @@ namespace ForesakenShrines
                     GetNamedPrefabs()?.TryGetValue(def.BasePrefab.GetStableHashCode(), out basePrefab);
                 if (basePrefab == null)
                 {
-                    Jotunn.Logger.LogWarning($"[ForesakenShrines] Base prefab '{def.BasePrefab}' not found — skipping {def.PieceName}.");
+                    Jotunn.Logger.LogWarning($"[ForsakenShrines] Base prefab '{def.BasePrefab}' not found — skipping {def.PieceName}.");
                     continue;
                 }
 
@@ -69,7 +69,7 @@ namespace ForesakenShrines
                 piece.m_resources   = new Piece.Requirement[0];
 
                 _clones.Add(clone);
-                Jotunn.Logger.LogInfo($"[ForesakenShrines] Phase 1 — cloned: {def.PieceName}");
+                Jotunn.Logger.LogInfo($"[ForsakenShrines] Phase 1 — cloned: {def.PieceName}");
             }
         }
 
@@ -88,13 +88,13 @@ namespace ForesakenShrines
 
             if (_clones.Count == 0)
             {
-                Jotunn.Logger.LogWarning("[ForesakenShrines] Phase 2: no clones from Phase 1 — retrying.");
+                Jotunn.Logger.LogWarning("[ForsakenShrines] Phase 2: no clones from Phase 1 — retrying.");
                 _clonesCreated = false;
                 CreateClones();
             }
             if (_clones.Count == 0)
             {
-                Jotunn.Logger.LogError("[ForesakenShrines] Phase 2: clone creation failed — shrines unavailable.");
+                Jotunn.Logger.LogError("[ForsakenShrines] Phase 2: clone creation failed — shrines unavailable.");
                 return;
             }
 
@@ -103,7 +103,7 @@ namespace ForesakenShrines
             var refWnT    = stoneRef?.GetComponent<WearNTear>();
             var refPiece  = stoneRef?.GetComponent<Piece>();
             if (stoneRef == null)
-                Jotunn.Logger.LogWarning("[ForesakenShrines] Phase 2: 'stone_wall_2x1' not found — WearNTear effects and place sound may be missing.");
+                Jotunn.Logger.LogWarning("[ForsakenShrines] Phase 2: 'stone_wall_2x1' not found — WearNTear effects and place sound may be missing.");
 
             // Register the custom tab once; with fixReference=false Jotunn never writes
             // PieceConfig.Category back to piece.m_category, so we do it manually.
@@ -114,7 +114,7 @@ namespace ForesakenShrines
                 var clone = _clones.Find(c => c != null && c.name == def.PieceName);
                 if (clone == null)
                 {
-                    Jotunn.Logger.LogWarning($"[ForesakenShrines] Phase 2: clone '{def.PieceName}' not found.");
+                    Jotunn.Logger.LogWarning($"[ForsakenShrines] Phase 2: clone '{def.PieceName}' not found.");
                     continue;
                 }
 
@@ -135,7 +135,7 @@ namespace ForesakenShrines
                 if (icon != null)
                     piece.m_icon = icon;
                 else
-                    Jotunn.Logger.LogWarning($"[ForesakenShrines] {def.PieceName}: icon item '{def.IconItem}' not found.");
+                    Jotunn.Logger.LogWarning($"[ForsakenShrines] {def.PieceName}: icon item '{def.IconItem}' not found.");
 
                 // ── Place effect: stone sounds for build and demolish ────────────────
                 if (refPiece != null)
@@ -145,7 +145,7 @@ namespace ForesakenShrines
                 var stonecutterGo = PrefabManager.Instance.GetPrefab("piece_stonecutter");
                 piece.m_craftingStation = stonecutterGo?.GetComponent<CraftingStation>();
                 if (piece.m_craftingStation == null)
-                    Jotunn.Logger.LogWarning($"[ForesakenShrines] {def.PieceName}: 'piece_stonecutter' not found — no crafting station.");
+                    Jotunn.Logger.LogWarning($"[ForsakenShrines] {def.PieceName}: 'piece_stonecutter' not found — no crafting station.");
 
                 // ── WearNTear: hammer hover highlight + destruction effects ───────────
                 var wnt = clone.GetComponent<WearNTear>() ?? clone.AddComponent<WearNTear>();
@@ -171,7 +171,7 @@ namespace ForesakenShrines
                     cp.Piece.m_resources = System.Array.FindAll(cp.Piece.m_resources, r => r?.m_resItem != null);
 
                 PieceManager.Instance.AddPiece(cp);
-                Jotunn.Logger.LogInfo($"[ForesakenShrines] Phase 2 — registered: {def.PieceName}");
+                Jotunn.Logger.LogInfo($"[ForsakenShrines] Phase 2 — registered: {def.PieceName}");
             }
 
             EnsureInPieceTable();
@@ -183,7 +183,7 @@ namespace ForesakenShrines
         {
             if (ZoneSystem.instance == null)
             {
-                Jotunn.Logger.LogInfo("[ForesakenShrines] UpdateUnlocks: ZoneSystem not ready — skipping.");
+                Jotunn.Logger.LogInfo("[ForsakenShrines] UpdateUnlocks: ZoneSystem not ready — skipping.");
                 return;
             }
 
@@ -192,13 +192,13 @@ namespace ForesakenShrines
                 var customPiece = PieceManager.Instance.GetPiece(def.PieceName);
                 if (customPiece?.Piece == null)
                 {
-                    Jotunn.Logger.LogWarning($"[ForesakenShrines] UpdateUnlocks: GetPiece('{def.PieceName}') returned null.");
+                    Jotunn.Logger.LogWarning($"[ForsakenShrines] UpdateUnlocks: GetPiece('{def.PieceName}') returned null.");
                     continue;
                 }
 
                 bool hasKey = ZoneSystem.instance.GetGlobalKey(def.BossKey);
                 customPiece.Piece.m_enabled = hasKey;
-                Jotunn.Logger.LogInfo($"[ForesakenShrines] {def.PieceName}: key='{def.BossKey}' hasKey={hasKey} m_enabled={customPiece.Piece.m_enabled}");
+                Jotunn.Logger.LogInfo($"[ForsakenShrines] {def.PieceName}: key='{def.BossKey}' hasKey={hasKey} m_enabled={customPiece.Piece.m_enabled}");
             }
         }
 
@@ -236,7 +236,7 @@ namespace ForesakenShrines
             var namedPrefabs = GetNamedPrefabs();
             if (namedPrefabs == null)
             {
-                Jotunn.Logger.LogWarning("[ForesakenShrines] EnsureInNamedPrefabs: ZNetScene not accessible.");
+                Jotunn.Logger.LogWarning("[ForsakenShrines] EnsureInNamedPrefabs: ZNetScene not accessible.");
                 return;
             }
             int added = 0;
@@ -247,8 +247,8 @@ namespace ForesakenShrines
                 if (!namedPrefabs.ContainsKey(hash)) { namedPrefabs[hash] = clone; added++; }
             }
             Jotunn.Logger.LogInfo(added > 0
-                ? $"[ForesakenShrines] EnsureInNamedPrefabs: added {added} shrine(s)."
-                : $"[ForesakenShrines] EnsureInNamedPrefabs: all {_clones.Count} already present.");
+                ? $"[ForsakenShrines] EnsureInNamedPrefabs: added {added} shrine(s)."
+                : $"[ForsakenShrines] EnsureInNamedPrefabs: all {_clones.Count} already present.");
         }
 
         private static void EnsureInPieceTable()
@@ -260,7 +260,7 @@ namespace ForesakenShrines
                 ?.m_itemData?.m_shared?.m_buildPieces;
             if (table == null)
             {
-                Jotunn.Logger.LogInfo("[ForesakenShrines] EnsureInPieceTable: Hammer not accessible yet.");
+                Jotunn.Logger.LogInfo("[ForsakenShrines] EnsureInPieceTable: Hammer not accessible yet.");
                 return;
             }
             int added = 0;
@@ -271,8 +271,8 @@ namespace ForesakenShrines
                 added++;
             }
             Jotunn.Logger.LogInfo(added > 0
-                ? $"[ForesakenShrines] EnsureInPieceTable: inserted {added} shrine(s)."
-                : $"[ForesakenShrines] EnsureInPieceTable: all {_clones.Count} already present.");
+                ? $"[ForsakenShrines] EnsureInPieceTable: inserted {added} shrine(s)."
+                : $"[ForsakenShrines] EnsureInPieceTable: all {_clones.Count} already present.");
         }
     }
 }

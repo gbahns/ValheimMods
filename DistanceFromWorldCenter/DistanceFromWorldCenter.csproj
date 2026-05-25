@@ -45,18 +45,12 @@
     </Reference>
   </ItemGroup>
 
-  <!-- Auto-deploy build output to the Thunderstore Default profile (no-op if
-       that folder doesn't exist on this machine). -->
+  <!-- Auto-deploy build output to every Thunderstore Mod Manager profile on this machine. -->
   <PropertyGroup>
-    <ThunderstorePlugins>$(APPDATA)\Thunderstore Mod Manager\DataFolder\Valheim\profiles\Default\BepInEx\plugins</ThunderstorePlugins>
+    <ThunderstoreProfiles>$(APPDATA)\Thunderstore Mod Manager\DataFolder\Valheim\profiles</ThunderstoreProfiles>
   </PropertyGroup>
-  <Target Name="DeployToProfile" AfterTargets="Build" Condition="Exists('$(ThunderstorePlugins)')">
-    <ItemGroup>
-      <DeployFiles Include="$(TargetPath)" />
-      <DeployFiles Include="$(TargetDir)$(TargetName).pdb" Condition="Exists('$(TargetDir)$(TargetName).pdb')" />
-    </ItemGroup>
-    <Copy SourceFiles="@(DeployFiles)" DestinationFolder="$(ThunderstorePlugins)" />
-    <Message Text="Deployed $(TargetName).dll to Thunderstore Default profile" Importance="high" />
+  <Target Name="DeployToProfiles" AfterTargets="Build" Condition="Exists('$(ThunderstoreProfiles)')">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;Get-ChildItem '$(ThunderstoreProfiles)' -Directory | ForEach-Object { %24plugins = Join-Path %24_.FullName 'BepInEx\plugins'; if (Test-Path %24plugins) { Copy-Item '$(TargetPath)' %24plugins -Force; if (Test-Path '$(TargetDir)$(TargetName).pdb') { Copy-Item '$(TargetDir)$(TargetName).pdb' %24plugins -Force }; Write-Host ('Deployed $(TargetName).dll to ' + %24_.Name + ' profile') } }&quot;" />
   </Target>
 
 </Project>

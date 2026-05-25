@@ -138,7 +138,7 @@ Violating either condition blocks placement and shows a message explaining why.
 
 All settings are server-synced — the server's values override clients.
 
-The config file is created at `BepInEx/config/DeathMonger.ForesakenShrines.cfg` on first run.
+The config file is created at `BepInEx/config/DeathMonger.ForsakenShrines.cfg` on first run.
 
 **\[Placement\]**
 - `RequireNaturalTerrain` (default: true) — require natural ground beneath the shrine

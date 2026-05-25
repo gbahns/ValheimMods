@@ -2,7 +2,7 @@ using Jotunn.Entities;
 using Jotunn.Managers;
 using System.Collections.Generic;
 
-namespace ForesakenShrines
+namespace ForsakenShrines
 {
     internal static class ShrineConsoleCommands
     {
@@ -53,7 +53,7 @@ namespace ForesakenShrines
             }
 
             Console.instance.Print(
-                $"[ForesakenShrines] Added {added} item types for all {ShrineDefinitions.All.Length} shrines.");
+                $"[ForsakenShrines] Added {added} item types for all {ShrineDefinitions.All.Length} shrines.");
         }
     }
 }

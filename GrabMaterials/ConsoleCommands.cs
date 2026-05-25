@@ -26,6 +26,56 @@ namespace GrabMaterials
 		private static Dictionary<string, Piece> pieceLookup = new Dictionary<string, Piece>();
 		private static Dictionary<string, GameObject> itemLookup = new Dictionary<string, GameObject>();
 
+		// Global delta default — read live from config so toggling the "Grab Delta (default)"
+		// setting takes effect without restart.
+		internal static bool GlobalDelta => GrabMaterialsMod.GrabMaterialsMod.Instance?.GrabDeltaGlobal?.Value ?? true;
+
+		// Resolve a per-pack tri-state against the global default.
+		internal static bool ResolveDelta(GrabMaterialsMod.GrabMaterialsMod.DeltaSetting setting)
+		{
+			switch (setting)
+			{
+				case GrabMaterialsMod.GrabMaterialsMod.DeltaSetting.On: return true;
+				case GrabMaterialsMod.GrabMaterialsMod.DeltaSetting.Off: return false;
+				default: return GlobalDelta;
+			}
+		}
+
+		// Pending ledger — tracks recently-grabbed amounts so back-to-back delta
+		// grabs don't double-count the same inventory across different build plans.
+		// Cleared on a TTL: if you don't follow up within the configured timeout,
+		// the ledger forgets prior grabs (matches the player's own memory).
+		// Keyed by the request name (the unsuffixed item name).
+		private static readonly Dictionary<string, int> _pendingByName =
+			new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+		private static float _lastGrabTime;
+
+		private static float LedgerTimeoutSeconds =>
+			GrabMaterialsMod.GrabMaterialsMod.Instance?.GrabDeltaLedgerTimeout?.Value ?? 30f;
+
+		internal static void ResetPendingLedger()
+		{
+			_pendingByName.Clear();
+			_lastGrabTime = 0f;
+		}
+
+		private static void MaybeExpirePendingLedger()
+		{
+			if (_pendingByName.Count == 0) return;
+			if (Time.time - _lastGrabTime > LedgerTimeoutSeconds) _pendingByName.Clear();
+		}
+
+		private static int GetPending(string name)
+		{
+			return _pendingByName.TryGetValue(name, out var v) ? v : 0;
+		}
+
+		private static void AddPending(string name, int amount)
+		{
+			if (amount <= 0) return;
+			_pendingByName[name] = GetPending(name) + amount;
+		}
+
 		public static void GrabMaterialsForPiece(this Terminal.ConsoleEventArgs args)
 		{
 			Debug.Log($"GrabMaterialsForPiece({args.FullLine})");
@@ -47,7 +97,7 @@ namespace GrabMaterials
 
 		public static void GrabMaterialsForPack(GrabMaterialsMod.GrabMaterialsMod.GrabPackConfig grabPack)
 		{
-			GrabMaterialsForPack(grabPack.Name.Value, grabPack.Items.Value, grabPack.GrabDelta.Value);
+			GrabMaterialsForPack(grabPack.Name.Value, grabPack.Items.Value, ResolveDelta(grabPack.GrabDelta.Value));
 		}
 
 		public static void GrabMaterialsForPack(string packName, string itemsString, bool grabDelta = false)
@@ -212,7 +262,7 @@ namespace GrabMaterials
 					Debug.Log($"Grabbing for {pieceName}: {requirement.m_amount} {requirement.m_resItem.m_itemData.m_shared.m_name}");
 					itemsToGrab.Add(new ItemToGrab(requirement.m_resItem.m_itemData.m_shared.m_name, requirement.m_amount));
 				}
-				GrabItemsFromNearbyContainers(itemsToGrab, 50f, pieceName);
+				GrabItemsFromNearbyContainers(itemsToGrab, 50f, pieceName, GlobalDelta);
 			}
 
 			/*
@@ -334,7 +384,9 @@ namespace GrabMaterials
 
 			// GrabDelta: figure out what's already in the player's inventory so we
 			// can subtract it from the per-container request (but still report the
-			// original Needed in the panel).
+			// original Needed in the panel). Reservations from recent grabs are
+			// subtracted too — see the pending-ledger comment up top.
+			if (grabDelta) MaybeExpirePendingLedger();
 			var had = new int[aggregated.Count];
 			var effectiveNeed = new int[aggregated.Count];
 			for (int i = 0; i < aggregated.Count; i++)
@@ -349,6 +401,9 @@ namespace GrabMaterials
 							if (owned.isMatch(aggregated[i].Name)) had[i] += owned.Count();
 						}
 					}
+					// Reserve out items already grabbed for in-progress builds.
+					var reserved = GetPending(aggregated[i].Name);
+					if (reserved > 0) had[i] = Math.Max(0, had[i] - reserved);
 				}
 				effectiveNeed[i] = Math.Max(0, aggregated[i].Count - had[i]);
 			}
@@ -407,6 +462,9 @@ namespace GrabMaterials
 				Debug.Log($"Cannot grab{(string.IsNullOrEmpty(requestLabel) ? "" : $" for {requestLabel}")} - missing: {string.Join(", ", debugShortages)}");
 				var failTitle = string.IsNullOrEmpty(requestLabel) ? "Missing materials" : $"Missing materials for {requestLabel}";
 				MaterialsPanel.Show(failTitle, statuses);
+				// Failed grab still indicates the player is actively building —
+				// keep the ledger alive so the next grab inherits the window.
+				if (grabDelta) _lastGrabTime = Time.time;
 				return;
 			}
 
@@ -425,14 +483,17 @@ namespace GrabMaterials
 						remaining -= countGrabbed;
 					}
 				}
+				var grabbedAmount = effectiveNeed[i] - remaining;
+				if (grabDelta) AddPending(itemToGrab.Name, grabbedAmount);
 				grabbed.Add(new MaterialsPanel.ItemStatus
 				{
 					Name = LocalizeItemName(itemToGrab),
 					Needed = itemToGrab.Count,
 					Had = had[i],
-					Available = effectiveNeed[i] - remaining,
+					Available = grabbedAmount,
 				});
 			}
+			if (grabDelta) _lastGrabTime = Time.time;
 			string successTitle;
 			if (allCovered)
 			{
@@ -586,7 +647,7 @@ namespace GrabMaterials
 					itemsToGrab.Add(new ItemToGrab(requirement.m_resItem.m_itemData.Name(), requirement.m_amount));
 					//GrabItemsFromNearbyContainers(requirement.m_resItem.m_itemData.m_shared.m_name, requirement.m_amount);
 				}
-				GrabItemsFromNearbyContainers(itemsToGrab, 10f, LocalizePieceName(piece));
+				GrabItemsFromNearbyContainers(itemsToGrab, 10f, LocalizePieceName(piece), GlobalDelta);
 			}
 		}
 
@@ -695,8 +756,11 @@ namespace GrabMaterials
 			var radius = 50f; // Default radius
 			var itemsToGrab = GetItemsToGrab(name, count);
 			// GetItemsToGrab populates pieceLookup on first use; check after.
-			var label = pieceLookup.ContainsKey(name.ToLowerInvariant()) ? name : null;
-			GrabItemsFromNearbyContainers(itemsToGrab, radius, label);
+			var isPiece = pieceLookup.ContainsKey(name.ToLowerInvariant());
+			var label = isPiece ? name : null;
+			// Apply delta only when we're grabbing a piece's recipe (e.g. /g cart).
+			// A bare /g wood request is literal — the user asked for that count.
+			GrabItemsFromNearbyContainers(itemsToGrab, radius, label, isPiece && GlobalDelta);
 		}
 	}
 }

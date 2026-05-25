@@ -1,6 +1,6 @@
 using Jotunn.Configs;
 
-namespace ForesakenShrines
+namespace ForsakenShrines
 {
     internal sealed class ShrineDefinition
     {
