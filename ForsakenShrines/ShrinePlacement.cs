@@ -104,9 +104,11 @@ namespace ForsakenShrines
         private static readonly System.Reflection.FieldInfo _ghostField =
             AccessTools.Field(typeof(Player), "m_placementGhost");
 
-        // Sink the shrine pivot slightly below terrain so the visible base sits flush
-        // with the ground instead of hovering a few centimeters above it.
-        private const float GroundSinkOffset = 0.15f;
+        // BossStone-derived prefabs have a pivot that sits ~2m below the visible stone base,
+        // so Valheim's default placement leaves the ghost root underground and the stone
+        // hovering well above terrain.  We snap the ghost root to terrain.y minus this small
+        // sink so the visible base sits naturally just into the ground.
+        private const float GroundSinkOffset = 0.1f;
 
         [HarmonyPostfix]
         static void Postfix(Player __instance)

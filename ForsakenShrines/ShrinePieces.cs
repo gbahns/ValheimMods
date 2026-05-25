@@ -53,19 +53,24 @@ namespace ForsakenShrines
                 if (namedPrefabs != null)
                     namedPrefabs[clone.name.GetStableHashCode()] = clone;
 
-                // Lift children so the stone base sits flush on terrain (BossStone origin is partially buried).
-                float lowestY = MeasureLowestMeshY(clone);
-                float lift    = -lowestY + 0.05f;
-                foreach (Transform child in clone.transform)
-                    child.localPosition += Vector3.up * lift;
+                // No prefab-level lift: BossStone children stay at their natural local positions.
+                // Vertical placement is handled by PlacementGhostHeightPatch + ShrineInteractable's
+                // lack of a ground-snap.
 
                 var interactable = clone.AddComponent<ShrineInteractable>();
                 interactable.Definition = def;
 
                 var piece = clone.GetComponent<Piece>() ?? clone.AddComponent<Piece>();
                 piece.m_name        = def.DisplayName;
-                piece.m_description = $"$shrine_{def.PieceName}_desc";
-                piece.m_groundOnly  = true;
+                piece.m_description = def.Description;
+                // m_groundOnly causes Player.PlacePiece to snap the spawn position back to terrain
+                // Y, overriding the lowered Y our ghost patch set.  Natural-terrain validation is
+                // handled by ShrinePlacement.Prefix's IsNaturalTerrain check, so disabling this
+                // doesn't lose the constraint — only the unwanted terrain snap.
+                piece.m_groundOnly  = false;
+                piece.m_groundPiece = false;
+                piece.m_clipGround  = false;
+                piece.m_clipEverything = false;
                 piece.m_resources   = new Piece.Requirement[0];
 
                 _clones.Add(clone);
@@ -200,34 +205,6 @@ namespace ForsakenShrines
                 customPiece.Piece.m_enabled = hasKey;
                 Jotunn.Logger.LogInfo($"[ForsakenShrines] {def.PieceName}: key='{def.BossKey}' hasKey={hasKey} m_enabled={customPiece.Piece.m_enabled}");
             }
-        }
-
-        private static float MeasureLowestMeshY(GameObject root)
-        {
-            float lowest = 0f;
-            bool  found  = false;
-
-            foreach (var mf in root.GetComponentsInChildren<MeshFilter>(true))
-            {
-                if (mf.sharedMesh == null) continue;
-                foreach (var v in mf.sharedMesh.vertices)
-                {
-                    float y = root.transform.InverseTransformPoint(mf.transform.TransformPoint(v)).y;
-                    if (!found || y < lowest) { lowest = y; found = true; }
-                }
-            }
-
-            foreach (var smr in root.GetComponentsInChildren<SkinnedMeshRenderer>(true))
-            {
-                if (smr.sharedMesh == null) continue;
-                foreach (var v in smr.sharedMesh.vertices)
-                {
-                    float y = root.transform.InverseTransformPoint(smr.transform.TransformPoint(v)).y;
-                    if (!found || y < lowest) { lowest = y; found = true; }
-                }
-            }
-
-            return lowest;
         }
 
         private static void EnsureInNamedPrefabs()
