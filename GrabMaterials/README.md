@@ -49,7 +49,7 @@ Quickly pull materials from nearby chests into your inventory without having to 
 <li>Removed unnecessary logging
 
 
-Join [my discord server](https://discord.gg/2gnsrZSN) to ask questions or provide feedback.
+Join [my discord server](https://discord.gg/eH7UfRj5mG) to ask questions or provide feedback.
 
 View [the backlog](https://github.com/users/gbahns/projects/1/views/1) here.
 

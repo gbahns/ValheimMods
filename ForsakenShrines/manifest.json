@@ -1,7 +1,7 @@
 {
     "name": "ForsakenShrines",
     "version_number": "0.8.0",
-    "website_url": "https://github.com/gbahns/ValheimMods",
+    "website_url": "https://thunderstore.io/c/valheim/p/MojoRyzen/ForsakenShrines/",
     "description": "Build permanent shrines to the Forsaken bosses. Each shrine remotely channels its boss's guardian power once you mount the boss's trophy on it - requires the matching power to have first been unlocked at the world-center altar.",
     "dependencies": ["denikson-BepInExPack_Valheim-5.4.2202", "ValheimModding-Jotunn-2.23.1"]
 }

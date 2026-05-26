@@ -102,4 +102,4 @@ Slot numbers are 1, 2, or 3.
 
 
 ## Support
-Join [my discord server](https://discord.gg/2gnsrZSN) to ask questions or provide feedback.
+Join [my discord server](https://discord.gg/eH7UfRj5mG) to ask questions or provide feedback.
