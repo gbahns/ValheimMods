@@ -18,102 +18,19 @@ Each shrine is a remote access point that channels the Forsaken Power through th
 
 ## Shrines and Build Costs
 
-Stone, Chain, and Iron are **returned** if the shrine is demolished. The creature and sub-boss trophies listed below are **consumed** at build time. The main boss trophy is **not** in the build recipe — it is consumed separately when you mount it on the placed shrine.
+Stone, Chain, and Iron are **returned** if the shrine is demolished. The trophies listed below are **consumed** at build time. The main boss trophy is **not** in the build recipe — it is consumed separately when you mount it on the placed shrine.
 
-### Eikthyr — Meadows
-*Unlocked by: defeating Eikthyr*
+| Shrine | Stone | Chain | Iron | Trophy 1 | Trophy 2 |
+|---|---|---|---|---|---|
+| Eikthyr | 20 | 2 | 2 | 2 Bear | 5 Deer |
+| Elder | 30 | 2 | 2 | 1 Brenna | 4 Troll |
+| Bonemass | 40 | 3 | 2 | 4 Wraith | 4 Abomination |
+| Moder | 50 | 3 | 2 | 1 Geirrhafa | 2 Fenring |
+| Yagluth | 60 | 3 | 2 | 1 Zil | 1 Thungr |
+| Queen | 70 | 5 | 2 | 3 G'jall | 5 Seeker Soldier |
+| Fader | 60 | 5 | 2 | 2 Fallen Valkyrie | 2 Charred Warlock |
 
-| Item | Amount |
-|---|---|
-| Stone | 20 |
-| Chain | 2 |
-| Iron | 2 |
-| Bear Trophy | 2 |
-| Deer Trophy | 5 |
-
----
-
-### The Elder — Black Forest
-*Unlocked by: defeating The Elder*
-
-| Item | Amount |
-|---|---|
-| Stone | 30 |
-| Chain | 2 |
-| Iron | 2 |
-| Brenna's Trophy | 1 |
-| Troll Trophy | 4 |
-
-*Brenna is the boss of the Smouldering Tomb (Hildir's Request dungeon).*
-
----
-
-### Bonemass — Swamp
-*Unlocked by: defeating Bonemass*
-
-| Item | Amount |
-|---|---|
-| Stone | 40 |
-| Chain | 3 |
-| Iron | 2 |
-| Wraith Trophy | 4 |
-| Abomination Trophy | 4 |
-
----
-
-### Moder — Mountain
-*Unlocked by: defeating Moder*
-
-| Item | Amount |
-|---|---|
-| Stone | 50 |
-| Chain | 3 |
-| Iron | 2 |
-| Geirrhafa's Trophy | 1 |
-| Fenring Trophy | 2 |
-
-*Geirrhafa is the boss of the Whispering Caves (Hildir's Request dungeon).*
-
----
-
-### Yagluth — Plains
-*Unlocked by: defeating Yagluth*
-
-| Item | Amount |
-|---|---|
-| Stone | 60 |
-| Chain | 3 |
-| Iron | 2 |
-| Zil's Trophy | 1 |
-| Thungr's Trophy | 1 |
-
-*Zil and Thungr are the twin bosses of the Sealed Tower (Hildir's Request dungeon).*
-
----
-
-### The Queen — Mistlands
-*Unlocked by: defeating The Queen*
-
-| Item | Amount |
-|---|---|
-| Stone | 70 |
-| Chain | 5 |
-| Iron | 2 |
-| G'jall Trophy | 3 |
-| Seeker Soldier Trophy | 5 |
-
----
-
-### Fader — Ashlands
-*Unlocked by: defeating Fader*
-
-| Item | Amount |
-|---|---|
-| Stone | 60 |
-| Chain | 5 |
-| Iron | 2 |
-| Fallen Valkyrie Trophy | 2 |
-| Charred Warlock Trophy | 2 |
+*Brenna, Geirrhafa, Zil, and Thungr are mini-bosses from Hildir's Request dungeons (Smouldering Tomb, Whispering Caves, and Sealed Tower respectively).*
 
 ---
 
