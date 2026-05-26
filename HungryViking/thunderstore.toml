@@ -1,0 +1,29 @@
+[config]
+schemaVersion = "0.0.1"
+
+[package]
+namespace = "MojoRyzen"
+name = "Hungry_Viking"
+versionNumber = "1.1.0"
+description = "Visual warnings for hunger, smoke, and poison — screen vignettes and on-screen labels that escalate in urgency so you never miss a critical status."
+websiteUrl = "https://thunderstore.io/c/valheim/p/MojoRyzen/Hungry_Viking/"
+containsNsfwContent = false
+
+[package.dependencies]
+"denikson-BepInExPack_Valheim" = "5.4.2202"
+
+[build]
+icon = "./icon.png"
+readme = "./README.md"
+outdir = "./build"
+
+[[build.copy]]
+source = "./bin/Release/net462/HungryViking.dll"
+target = "BepInEx/plugins/"
+
+[publish]
+repository = "https://thunderstore.io"
+communities = ["valheim"]
+
+[publish.categories]
+valheim = ["mods"]

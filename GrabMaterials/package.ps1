@@ -1,9 +1,17 @@
 # Builds the Release DLL and creates a Thunderstore-ready zip.
 # Uses ZipArchive directly so entry names use forward slashes (ZIP spec 4.4.17).
 # Output: GrabMaterials-<version>.zip in the project directory.
+#
+# Usage:
+#   package.ps1 -Version "2.0.0"              # build + zip only
+#   package.ps1 -Version "2.0.0" -Publish     # build + zip + upload to Thunderstore
+#
+# Publishing requires the TCLI_AUTH_TOKEN environment variable to be set.
+# Get your token from: thunderstore.io → Settings → Teams → Service Accounts
 
 param(
-    [string]$Version = "1.1.0"
+    [string]$Version = "2.0.0",
+    [switch]$Publish
 )
 
 Add-Type -AssemblyName System.IO.Compression
@@ -38,4 +46,17 @@ Add-ZipEntry $zip "$projectDir\bin\Release\net462\GrabMaterials.dll"  "BepInEx/p
 $zip.Dispose()
 $stream.Dispose()
 
-Write-Host "Package ready: GrabMaterials-$Version.zip"
+Write-Host "Package ready: $zipPath"
+
+if ($Publish) {
+    if (-not $env:TCLI_AUTH_TOKEN) {
+        Write-Error "TCLI_AUTH_TOKEN is not set. Get your token from thunderstore.io → Settings → Teams → Service Accounts"
+        exit 1
+    }
+
+    Write-Host "Publishing to Thunderstore..."
+    tcli publish --file "$zipPath" --config-path "$projectDir\thunderstore.toml"
+    if ($LASTEXITCODE -ne 0) { Write-Error "Publish failed."; exit 1 }
+
+    Write-Host "Published successfully."
+}

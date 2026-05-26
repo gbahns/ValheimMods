@@ -1,0 +1,30 @@
+[config]
+schemaVersion = "0.0.1"
+
+[package]
+namespace = "MojoRyzen"
+name = "GrabMaterials"
+versionNumber = "2.0.0"
+description = "Grab materials from nearby chests needed to build things out in the world, e.g. grab materials for a workbench, for portal, for a longship, for exploring (workbench, and portal), etc."
+websiteUrl = "https://thunderstore.io/c/valheim/p/MojoRyzen/GrabMaterials/"
+containsNsfwContent = false
+
+[package.dependencies]
+"denikson-BepInExPack_Valheim" = "5.4.2202"
+"ValheimModding-Jotunn" = "2.23.1"
+
+[build]
+icon = "./icon.png"
+readme = "./README.md"
+outdir = "./build"
+
+[[build.copy]]
+source = "./bin/Release/net462/GrabMaterials.dll"
+target = "BepInEx/plugins/"
+
+[publish]
+repository = "https://thunderstore.io"
+communities = ["valheim"]
+
+[publish.categories]
+valheim = ["mods"]

@@ -13,7 +13,7 @@ namespace ForsakenShrines
     {
         public const string ModGuid    = "DeathMonger.ForsakenShrines";
         public const string ModName    = "Forsaken Shrines";
-        public const string ModVersion = "0.8.0";
+        public const string ModVersion = "0.8.1";
 
         internal static ForsakenShrinesMod Instance { get; private set; }
 

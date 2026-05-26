@@ -20,11 +20,12 @@ How to build, deploy, and package this mod for Thunderstore. See also [../THUNDE
 
 ## Version Bump Checklist
 
-Update the version string in **all three places** before packaging a new release:
+Update the version string in **all four places** before packaging a new release:
 
 1. [ForsakenShrinesMod.cs](ForsakenShrinesMod.cs) — `public const string ModVersion = "X.Y.Z";`
 2. [manifest.json](manifest.json) — `"version_number": "X.Y.Z"`
-3. Pass `-Version "X.Y.Z"` to `package.ps1` (controls the output zip filename)
+3. [thunderstore.toml](thunderstore.toml) — `versionNumber = "X.Y.Z"`
+4. Pass `-Version "X.Y.Z"` to `package.ps1` (controls the output zip filename)
 
 ---
 
@@ -40,6 +41,14 @@ This will:
 1. Build the Release DLL (`bin\Release\net48\ForsakenShrines.dll`)
 2. Auto-deploy `ForsakenShrines.dll` to every r2modman profile on this machine (via the csproj's `DeployToProfiles` target)
 3. Create `ForsakenShrines-0.8.1.zip` in the project directory
+
+To also **upload to Thunderstore** in one step, add `-Publish`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File package.ps1 -Version "0.8.1" -Publish
+```
+
+See [Uploading to Thunderstore](#uploading-to-thunderstore) below for the one-time setup of `tcli` and the auth token.
 
 ---
 
@@ -65,10 +74,37 @@ This will:
 
 ## Uploading to Thunderstore
 
-1. Go to [thunderstore.io](https://thunderstore.io), log in, and navigate to your team.
-2. Click **Upload** and select `ForsakenShrines-X.Y.Z.zip`.
-3. Thunderstore validates manifest, icon dimensions, and zip structure before accepting.
-4. First upload creates the listing; subsequent uploads with the same `name` are treated as updates.
+### Automated (recommended): `tcli` + `package.ps1 -Publish`
+
+**One-time setup:**
+
+1. Install the Thunderstore CLI:
+   ```powershell
+   dotnet tool install -g tcli
+   ```
+2. Get a Thunderstore service-account token: log in at [thunderstore.io](https://thunderstore.io) → **Settings** → **Teams** → pick your team → **Service Accounts** → create one, copy the token (`tss_...`).
+3. Store the token as an environment variable (persists across sessions):
+   ```powershell
+   [Environment]::SetEnvironmentVariable("TCLI_AUTH_TOKEN", "tss_paste_your_token_here", "User")
+   ```
+   Open a new shell after running this so the variable is visible to subsequent `package.ps1` runs.
+
+**Per-release:**
+
+1. Bump the version in all four places (see [Version Bump Checklist](#version-bump-checklist)).
+2. Run:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File package.ps1 -Version "X.Y.Z" -Publish
+   ```
+   This builds, zips, and uploads the new version to Thunderstore.
+
+[thunderstore.toml](thunderstore.toml) drives the publish target (namespace, community, categories). It already points at the `DeathMonger` team and `valheim` community; first publish creates the listing on Thunderstore, subsequent publishes are treated as version updates.
+
+### Manual fallback
+
+1. Build the zip without `-Publish`.
+2. Go to [thunderstore.io](https://thunderstore.io), log in, and navigate to your team.
+3. Click **Upload** and select `ForsakenShrines-X.Y.Z.zip`.
 
 ---
 

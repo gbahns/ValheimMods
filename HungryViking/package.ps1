@@ -10,7 +10,7 @@
 # Get your token from: thunderstore.io → Settings → Teams → Service Accounts
 
 param(
-    [string]$Version = "1.0.0",
+    [string]$Version = "1.1.0",
     [switch]$Publish
 )
 
@@ -55,7 +55,7 @@ if ($Publish) {
     }
 
     Write-Host "Publishing to Thunderstore..."
-    tcli publish --file "$zipPath"
+    tcli publish --file "$zipPath" --config-path "$projectDir\thunderstore.toml"
     if ($LASTEXITCODE -ne 0) { Write-Error "Publish failed."; exit 1 }
 
     Write-Host "Published successfully."
