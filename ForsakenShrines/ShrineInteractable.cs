@@ -42,10 +42,10 @@ namespace ForsakenShrines
             if (Definition == null) return string.Empty;
             if (IsTrophyMounted())
             {
-                return $"[<color=yellow><b>$KEY_Use</b></color>] Channel {Definition.DisplayName}\n<color=#aaaaaa>The 20-minute activation cooldown still applies.</color>";
+                return $"[<color=yellow><b>$KEY_Use</b></color>] Channel its power\n<color=#aaaaaa>The 20-minute activation cooldown still applies.</color>";
             }
             string trophyDisplay = GetTrophyDisplayName();
-            return $"[<color=yellow><b>$KEY_Use</b></color>] Place {trophyDisplay}\n<color=#aaaaaa>Requires {Definition.DisplayName}'s power to be your active Forsaken Power.</color>";
+            return $"[<color=yellow><b>$KEY_Use</b></color>] Place {trophyDisplay}\n<color=#aaaaaa>Requires the matching Forsaken Power to be your active selection.</color>";
         }
 
         public bool Interact(Humanoid user, bool hold, bool alt)

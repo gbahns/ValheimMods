@@ -28,6 +28,21 @@ namespace ForsakenShrines
         private static bool _clonesCreated  = false;
         private static bool _piecesConfigured = false;
 
+        // The Piece.PieceCategory value Jotunn allocated for our build tab.  Used by the
+        // Hud patch in ShrinePlacement to toggle tab visibility based on whether any shrine
+        // is unlocked.  -1 sentinel means "not yet registered".
+        internal static Piece.PieceCategory PieceCategory { get; private set; } = (Piece.PieceCategory)(-1);
+
+        // True if at least one shrine's boss has been defeated (i.e., any shrine is buildable).
+        internal static bool AnyShrineUnlocked()
+        {
+            if (ZoneSystem.instance == null) return false;
+            foreach (var def in ShrineDefinitions.All)
+                if (ZoneSystem.instance.GetGlobalKey(def.BossKey))
+                    return true;
+            return false;
+        }
+
         // ── Phase 1: OnVanillaPrefabsAvailable ──────────────────────────────────────
         internal static void CreateClones()
         {
@@ -113,6 +128,7 @@ namespace ForsakenShrines
             // Register the custom tab once; with fixReference=false Jotunn never writes
             // PieceConfig.Category back to piece.m_category, so we do it manually.
             var shrineCategory = PieceManager.Instance.AddPieceCategory(Category);
+            PieceCategory = shrineCategory;
 
             foreach (var def in ShrineDefinitions.All)
             {
@@ -204,6 +220,38 @@ namespace ForsakenShrines
                 bool hasKey = ZoneSystem.instance.GetGlobalKey(def.BossKey);
                 customPiece.Piece.m_enabled = hasKey;
                 Jotunn.Logger.LogInfo($"[ForsakenShrines] {def.PieceName}: key='{def.BossKey}' hasKey={hasKey} m_enabled={customPiece.Piece.m_enabled}");
+            }
+
+            UpdateHammerCategoryRegistration();
+        }
+
+        // Add or remove our category from the Hammer's piece table based on whether any shrine
+        // is unlocked.  When no shrines are unlocked the category is absent from the table, so
+        // Valheim/Jotunn never create a tab for it — much cleaner than trying to hide an already-
+        // created tab in the Hud.
+        internal static void UpdateHammerCategoryRegistration()
+        {
+            if ((int)PieceCategory < 0) return;
+
+            var table = ObjectDB.instance?.GetItemPrefab("Hammer")?.GetComponent<ItemDrop>()?.m_itemData?.m_shared?.m_buildPieces;
+            if (table == null) return;
+
+            // m_categories is private at runtime despite the publicized assembly — use reflection.
+            var catsField = AccessTools.Field(typeof(PieceTable), "m_categories");
+            if (catsField?.GetValue(table) is not System.Collections.Generic.List<Piece.PieceCategory> cats) return;
+
+            bool present = cats.Contains(PieceCategory);
+            bool shouldShow = AnyShrineUnlocked();
+
+            if (shouldShow && !present)
+            {
+                cats.Add(PieceCategory);
+                Jotunn.Logger.LogInfo($"[ForsakenShrines] Hammer categories: added {PieceCategory} (shrines unlocked).");
+            }
+            else if (!shouldShow && present)
+            {
+                cats.Remove(PieceCategory);
+                Jotunn.Logger.LogInfo($"[ForsakenShrines] Hammer categories: removed {PieceCategory} (no shrines unlocked).");
             }
         }
 

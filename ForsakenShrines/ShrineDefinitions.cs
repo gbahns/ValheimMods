@@ -88,8 +88,7 @@ namespace ForsakenShrines
                 }),
 
             // ── Moder — Mountain ────────────────────────────────────────────────────
-            // TrophyGeirrhafa: boss of the Whispering Caves (Hildir's Request dungeon).
-            // TrophyFenring: verify exact ObjectDB name — may need adjustment.
+            // TrophyCultist_Hildir: Geirrhafa, boss of the Whispering Caves (Hildir's Request dungeon).
             new ShrineDefinition(
                 bossKey:     "defeated_dragon",
                 powerPrefab: "GP_Moder",
@@ -103,8 +102,8 @@ namespace ForsakenShrines
                     new RequirementConfig { Item = "Stone", Recover = true,            Amount = 50 },
                     new RequirementConfig { Item = "Chain", Recover = true,            Amount = 3  },
                     new RequirementConfig { Item = "Iron", Recover = true,             Amount = 2  },
-                    new RequirementConfig { Item = "TrophyGeirrhafa",  Amount = 1,  Recover = false },
-                    new RequirementConfig { Item = "TrophyFenring",    Amount = 2,  Recover = false },
+                    new RequirementConfig { Item = "TrophyCultist_Hildir", Amount = 1,  Recover = false },
+                    new RequirementConfig { Item = "TrophyFenring",        Amount = 2,  Recover = false },
                 }),
 
             // ── Yagluth — Plains ────────────────────────────────────────────────────
