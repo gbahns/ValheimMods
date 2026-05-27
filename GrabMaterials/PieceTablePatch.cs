@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using HarmonyLib;
 using UnityEngine;
+using static GrabMaterialsMod.GrabMaterialsMod;
 
 namespace GrabMaterials
 {
@@ -51,7 +52,7 @@ namespace GrabMaterials
 	{
 		static void Postfix(Hud __instance)
 		{
-			Debug.Log($"Hud active {__instance.name}");
+			Log.LogInfo($"Hud active {__instance.name}");
 				// Add your logic here for when the PieceTable is opened
 		}
 	}   
@@ -67,7 +68,7 @@ namespace GrabMaterials
 		//			var item = __instance.GetItem(itemIndex);
 
 	//			// Implement your custom functionality here
-	//			Debug.Log($"Right-clicked on item: {item}");
+	//			Log.LogInfo($"Right-clicked on item: {item}");
 	//			//Player.m_localPlayer.Message(MessageHud.MessageType.Center, $"Right-clicked on item: {item.}");
 
 	//			// Return false to prevent the original method from executing if desired

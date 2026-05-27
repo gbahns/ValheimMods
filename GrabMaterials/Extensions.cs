@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
+using static GrabMaterialsMod.GrabMaterialsMod;
 
 namespace GrabMaterials
 {
@@ -171,26 +172,26 @@ namespace GrabMaterials
 
 		private static IEnumerator HighlightRoutine(WearNTear wearTear)
 		{
-			//Debug.Log("HighlightRoutine");
-			//Debug.Log($"Highlighting {wearTear.name} {wearTear.GetInstanceID()}");
+			//Log.LogInfo("HighlightRoutine");
+			//Log.LogInfo($"Highlighting {wearTear.name} {wearTear.GetInstanceID()}");
 			//if (_highlightField == null)
 			//{
 			//	// Use reflection to get the private field "m_highlight" from WearNTear
 			//	_highlightField = typeof(WearNTear).GetField("m_highlight", BindingFlags.NonPublic | BindingFlags.Instance);
-			//	Debug.Log($"Found field: {_highlightField}");
-			//	Debug.Log($"Found field: {_highlightField.Name}");
+			//	Log.LogInfo($"Found field: {_highlightField}");
+			//	Log.LogInfo($"Found field: {_highlightField.Name}");
 			//}
 
-			//Debug.Log($"Highlighting {wearTear.name} {wearTear.GetInstanceID()} using field {_highlightField.Name}");
+			//Log.LogInfo($"Highlighting {wearTear.name} {wearTear.GetInstanceID()} using field {_highlightField.Name}");
 
 			//// Get the actual highlight GameObject using reflection
 			//GameObject highlightObject = (GameObject)_highlightField.GetValue(wearTear);
 
-			//Debug.Log($"Highlight object: {highlightObject}");
+			//Log.LogInfo($"Highlight object: {highlightObject}");
 
 			//if (highlightObject == null)
 			//{
-			//	Debug.LogWarning("WearNTear highlight object is null.");
+			//	Log.LogWarning("WearNTear highlight object is null.");
 			//	yield break;
 			//}
 			//highlightObject.SetActive(true);
@@ -209,7 +210,7 @@ namespace GrabMaterials
 
 		public static int GrabItemFromContainer(this Container container, string name, int count)
 		{
-			//Debug.Log($"looking for {count} {name} in {container} {container.GetInstanceID()}");
+			//Log.LogInfo($"looking for {count} {name} in {container} {container.GetInstanceID()}");
 			var player = Player.m_localPlayer;
 			var playerInventory = player.GetInventory();
 			var containerInventory = container.GetInventory();
@@ -218,21 +219,21 @@ namespace GrabMaterials
 			for (int i = 0; i < items.Count() && count > 0; i++)
 			{
 				var item = items[i];
-				//Debug.Log($"{item.Name()} {item.LocalizedName()} {item.Count()}");
+				//Log.LogInfo($"{item.Name()} {item.LocalizedName()} {item.Count()}");
 				if (item.isMatch(name))
 				{
 					int numberToGrab = count > item.Count() ? item.Count() : count;
-					Debug.Log($"grabbing {numberToGrab} of {item.Count()} {name} from {container} {container.GetInstanceID()}");
+					Log.LogInfo($"grabbing {numberToGrab} of {item.Count()} {name} from {container} {container.GetInstanceID()}");
 					var newItem = item.Clone();
 					newItem.m_stack = numberToGrab;
 					containerInventory.RemoveItem(item, numberToGrab);
 					playerInventory.AddItem(newItem);
 					countGrabbed += numberToGrab;
 					count -= numberToGrab;
-					//Debug.Log($"grabbed {numberToGrab} {name} from {container} {container.GetInstanceID()}");
+					//Log.LogInfo($"grabbed {numberToGrab} {name} from {container} {container.GetInstanceID()}");
 				}
 			}
-			//Debug.Log($"grabbed a total of {countGrabbed} {name} from {container} {container.GetInstanceID()}");
+			//Log.LogInfo($"grabbed a total of {countGrabbed} {name} from {container} {container.GetInstanceID()}");
 			if (countGrabbed > 0)
 			{
 				container.Highlight();
@@ -247,14 +248,14 @@ namespace GrabMaterials
 			var containerInventory = container.GetInventory();
 			if (!containerInventory.CanAddItem(item))
 			{
-				Debug.LogWarning("Container's inventory full.");
+				Log.LogWarning("Container's inventory full.");
 				return false;
 			}
-			Debug.Log($"moving {item.Name()} {item.Count()}");
+			Log.LogInfo($"moving {item.Name()} {item.Count()}");
 			//playerInventory.RemoveItem(item);
 			//containerInventory.AddItem(item);
 			containerInventory.MoveItemToThis(playerInventory, item);
-			Debug.Log($"moved {item.Name()} {item.Count()}");
+			Log.LogInfo($"moved {item.Name()} {item.Count()}");
 			container.Highlight();
 			return true;
 		}
@@ -292,7 +293,7 @@ namespace GrabMaterials
 			{
 				foreach (var requirement in resources)
 				{
-					//Debug.Log($"{requirement.m_amount} {requirement.m_resItem.m_itemData.Name()}");
+					//Log.LogInfo($"{requirement.m_amount} {requirement.m_resItem.m_itemData.Name()}");
 					sb.Append($"{requirement.m_resItem.m_itemData.m_shared.m_name.Replace("$item_", "")}:{requirement.m_amount},");
 				}
 			}

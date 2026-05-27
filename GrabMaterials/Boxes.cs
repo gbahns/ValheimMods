@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using HarmonyLib;
+using static GrabMaterialsMod.GrabMaterialsMod;
 
 namespace GrabMaterials
 {
@@ -47,7 +48,7 @@ namespace GrabMaterials
 
 		internal static void ConditionallyAddContainer(Container container, string trigger)
 		{
-			// Debug.Log($"Container {trigger}: {container.name} {container.GetType()} {container.GetInstanceID()}");
+			// Log.LogInfo($"Container {trigger}: {container.name} {container.GetType()} {container.GetInstanceID()}");
 
 			if (container.GetInventory() == null)
 			{
@@ -60,7 +61,7 @@ namespace GrabMaterials
 			long playerID = Game.instance.GetPlayerProfile().GetPlayerID();
 			//if (container.CheckAccess(playerID) && PrivateArea.CheckAccess(((Component)container).transform.position, 0f, false, true))
 			{
-				//Debug.Log($"adding container {container.name}");
+				//Log.LogInfo($"adding container {container.name}");
 				Boxes.AddContainer(container);
 			}
 		}
@@ -71,24 +72,24 @@ namespace GrabMaterials
 			if (!Player.m_localPlayer)
 				return nearbyContainers;
 			Vector3 playerPosition = Player.m_localPlayer.transform.position;
-			//Debug.Log($"player position: {playerPosition}");
-			Debug.Log($"checking distance of {Boxes.Containers.Count} containers");
+			//Log.LogInfo($"player position: {playerPosition}");
+			Log.LogInfo($"checking distance of {Boxes.Containers.Count} containers");
 			foreach (var container in Boxes.Containers)
 			{
 				if (container == null)
 				{
-					Debug.LogWarning("Found null container in list");
+					Log.LogWarning("Found null container in list");
 					ContainersToRemove.Add(container);
 					continue;
 				}
 				if (container.transform == null)
 				{
-					Debug.LogWarning($"Found container {container.name} with null transform in list");
+					Log.LogWarning($"Found container {container.name} with null transform in list");
 					ContainersToRemove.Add(container);
 					continue;
 				}
 				var distance = Vector3.Distance(playerPosition, container.transform.position);
-				//Debug.Log($"Checking distance of {container.name} {container.GetInstanceID()} {container.transform.position}: {distance} meters from player");
+				//Log.LogInfo($"Checking distance of {container.name} {container.GetInstanceID()} {container.transform.position}: {distance} meters from player");
 				if (distance < radius)
 				{
 					nearbyContainers.Add(container);

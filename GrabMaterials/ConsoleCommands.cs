@@ -10,6 +10,7 @@ using System.Xml.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using static MeleeWeaponTrail;
+using static GrabMaterialsMod.GrabMaterialsMod;
 
 namespace GrabMaterials
 {
@@ -78,18 +79,18 @@ namespace GrabMaterials
 
 		public static void GrabMaterialsForPiece(this Terminal.ConsoleEventArgs args)
 		{
-			Debug.Log($"GrabMaterialsForPiece({args.FullLine})");
+			Log.LogInfo($"GrabMaterialsForPiece({args.FullLine})");
 
 			if (args.Length <= 1)
 			{
 				var msg = "usage: /grabpiece  <name>, e.g. /grab workbench";
 				Chat.instance.SendMessage(msg);
-				Debug.Log(msg);
+				Log.LogInfo(msg);
 				return;
 			}
 
 			var name = args[1];
-			Debug.Log($"name of piece to grab materials for: {name}");
+			Log.LogInfo($"name of piece to grab materials for: {name}");
 
 			//GrabMaterialsForPiece($"$item_{name}");
 			GrabMaterialsForPiece(name);
@@ -102,7 +103,7 @@ namespace GrabMaterials
 
 		public static void GrabMaterialsForPack(string packName, string itemsString, bool grabDelta = false)
 		{
-			Debug.Log($"GrabMaterialsForPack({packName}, {itemsString})");
+			Log.LogInfo($"GrabMaterialsForPack({packName}, {itemsString})");
 			var itemsToGrab = new List<ItemToGrab>();
 			var entries = itemsString.Replace(" ", "").Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
 			foreach (var entry in entries)
@@ -110,7 +111,7 @@ namespace GrabMaterials
 				var parts = entry.Split(new[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
 				if (parts.Length > 2)
 				{
-					Debug.LogError($"Invalid format for {packName} item list: was {itemsString}, expected 'item[:quantity],item[:quantity],...'");
+					Log.LogError($"Invalid format for {packName} item list: was {itemsString}, expected 'item[:quantity],item[:quantity],...'");
 					return;
 				}
 				var item = parts[0];
@@ -119,11 +120,11 @@ namespace GrabMaterials
 				{
 					if (!int.TryParse(parts[1], out amount))
 					{
-						Debug.LogError($"Invalid format for {packName} item list: was {itemsString}, expected 'item[:quantity],item[:quantity],...'");
+						Log.LogError($"Invalid format for {packName} item list: was {itemsString}, expected 'item[:quantity],item[:quantity],...'");
 						return;
 					}
 				}
-				Debug.Log($"grabbing {amount} {item}");
+				Log.LogInfo($"grabbing {amount} {item}");
 				//itemsToGrab.Add(new ItemToGrab(item, amount));
 				foreach (var itemToGrab in GetItemsToGrab(item, amount))
 				{
@@ -147,7 +148,7 @@ namespace GrabMaterials
 		/// <param name="args"></param>
 		public static void GrabItemsFromNearbyContainers(this Terminal.ConsoleEventArgs args)
 		{
-			Debug.Log($"GrabItemsFromNearbyContainers('{args.FullLine})' args.Length={args.Length}");
+			Log.LogInfo($"GrabItemsFromNearbyContainers('{args.FullLine})' args.Length={args.Length}");
 
 			if (args.Length > 1)
 			{
@@ -161,7 +162,7 @@ namespace GrabMaterials
 				foreach (var pack in GrabMaterialsMod.GrabMaterialsMod.Instance.GrabPacks)
 				{
 					var packName = args.ArgsAll;
-					Debug.Log($"Checking pack {pack.Name.Value} against args.ArgsAll='{packName}'");
+					Log.LogInfo($"Checking pack {pack.Name.Value} against args.ArgsAll='{packName}'");
 					if (pack.Name.Value == args.ArgsAll)
 					{
 						GrabMaterialsForPack(pack);
@@ -184,7 +185,7 @@ namespace GrabMaterials
 					nameEndingArg = int.TryParse(args[n], out count) ? n - 1 : n;
 					if (count == 0) count = 1;
 				}
-				Debug.Log($"count={count}, n={n}, nameStartingArg={nameStartingArg}, nameEndingArg={nameEndingArg}");
+				Log.LogInfo($"count={count}, n={n}, nameStartingArg={nameStartingArg}, nameEndingArg={nameEndingArg}");
 
 				var sb = new StringBuilder();
 				for (int i = nameStartingArg; i <= nameEndingArg; i++)
@@ -196,7 +197,7 @@ namespace GrabMaterials
 
 				if (name != "")
 				{
-					Debug.Log($"grabbing {count} '{name}'");
+					Log.LogInfo($"grabbing {count} '{name}'");
 					GrabItemsFromNearbyContainers(name, count);
 					return;
 				}
@@ -204,31 +205,31 @@ namespace GrabMaterials
 
 			var msg = "usage: /grab <all | name> [count], e.g. /grab 10 wood";
 			Chat.instance.SendMessage(msg);
-			Debug.Log(msg);
+			Log.LogInfo(msg);
 		}
 
 		public static Piece.Requirement[] GetPieceRequirements(string pieceName)
 		{
-			Debug.Log($"GetPieceRequirements({pieceName})");
+			Log.LogInfo($"GetPieceRequirements({pieceName})");
 			if (!ZNetScene.instance)
 			{
-				Debug.LogWarning("Cannot look for prefab: ZNetScene.instance is null");
+				Log.LogWarning("Cannot look for prefab: ZNetScene.instance is null");
 				return null;
 			}
-			Debug.Log("looking for prefab...");
-			Debug.Log($"ZNetScene.instance has {ZNetScene.instance.m_prefabs.Count} prefabs");
+			Log.LogInfo("looking for prefab...");
+			Log.LogInfo($"ZNetScene.instance has {ZNetScene.instance.m_prefabs.Count} prefabs");
 			var prefab = ZNetScene.instance.m_prefabs.Find(_prefab => _prefab.name == pieceName);
 			if (prefab == null)
 			{
-				Debug.LogError($"No prefab found for {pieceName}");
+				Log.LogError($"No prefab found for {pieceName}");
 				return null;
 			}
 			//var requirements = 
 			//prefab.gameObject.GetComponent<Piece>().m_resources.ToList().ForEach(requirement =>
 			//{
-			//	Debug.Log($"{requirement.m_amount} {requirement.m_resItem.m_itemData.m_shared.m_name}");
+			//	Log.LogInfo($"{requirement.m_amount} {requirement.m_resItem.m_itemData.m_shared.m_name}");
 			//});
-			Debug.Log($"Prefab found: {prefab.name} {prefab.gameObject.name} {prefab.gameObject.tag} {prefab.gameObject.GetComponent<Piece>().m_name}");
+			Log.LogInfo($"Prefab found: {prefab.name} {prefab.gameObject.name} {prefab.gameObject.tag} {prefab.gameObject.GetComponent<Piece>().m_name}");
 			return prefab.gameObject.GetComponent<Piece>().m_resources;
 
 
@@ -236,14 +237,14 @@ namespace GrabMaterials
 			//var prefab = prefabManager.GetPrefab(pieceName);
 			//if (prefab == null)
 			//{
-			//	Debug.LogError($"No prefab found for {pieceName}");
+			//	Log.LogError($"No prefab found for {pieceName}");
 			//	return null;
 			//}
 
 			//var piece = prefab.GetComponent<Piece>();
 			//if (piece == null)
 			//{
-			//	Debug.LogError($"No Piece component found on prefab for {pieceName}");
+			//	Log.LogError($"No Piece component found on prefab for {pieceName}");
 			//	return null;
 			//}
 
@@ -259,7 +260,7 @@ namespace GrabMaterials
 				var itemsToGrab = new List<ItemToGrab>();
 				foreach (var requirement in requirements)
 				{
-					Debug.Log($"Grabbing for {pieceName}: {requirement.m_amount} {requirement.m_resItem.m_itemData.m_shared.m_name}");
+					Log.LogInfo($"Grabbing for {pieceName}: {requirement.m_amount} {requirement.m_resItem.m_itemData.m_shared.m_name}");
 					itemsToGrab.Add(new ItemToGrab(requirement.m_resItem.m_itemData.m_shared.m_name, requirement.m_amount));
 				}
 				GrabItemsFromNearbyContainers(itemsToGrab, 50f, pieceName, GlobalDelta);
@@ -287,12 +288,12 @@ namespace GrabMaterials
 			//var player = Player.m_localPlayer;
 			//if (player == null)
 			//{
-			//	Debug.Log("No local player found");
+			//	Log.LogInfo("No local player found");
 			//	return;
 			//}
 			//foreach (var recipe in player.m_knownRecipes)
 			//{
-			//	Debug.Log($"{recipe}");
+			//	Log.LogInfo($"{recipe}");
 			//}
 
 
@@ -302,13 +303,13 @@ namespace GrabMaterials
 			//if (prefab == null)
 			//{
 			//	var msg = $"No prefab found for {pieceName}";
-			//	Debug.Log(msg);
+			//	Log.LogInfo(msg);
 			//	pieceName = $"$item_{pieceName}";
 			//	prefab = prefabManager.GetPrefab(pieceName);
 			//	if (prefab == null)
 			//	{
 			//		msg = $"No recipe found for {pieceName}";
-			//		Debug.Log(msg);
+			//		Log.LogInfo(msg);
 			//		return;
 			//	}
 			//}
@@ -322,13 +323,13 @@ namespace GrabMaterials
 			//if (recipe == null)
 			//{
 			//	var msg = $"No recipe found for {pieceName}";
-			//	Debug.Log(msg);
+			//	Log.LogInfo(msg);
 			//	pieceName = $"$item_{pieceName}";
 			//	recipe = ItemManager.Instance.GetRecipe(pieceName);
 			//	if (recipe == null)
 			//	{
 			//		msg = $"No recipe found for {pieceName}";
-			//		Debug.Log(msg);
+			//		Log.LogInfo(msg);
 			//		return;
 			//	}
 			//}
@@ -336,13 +337,13 @@ namespace GrabMaterials
 			//if (resources == null)
 			//{
 			//	var msg = $"No resources found for {pieceName}";
-			//	Debug.Log(msg);
+			//	Log.LogInfo(msg);
 			//	Chat.instance.SendMessage(msg);
 			//	return;
 			//}
 			//foreach (var requirement in resources)
 			//{
-			//	Debug.Log($"{requirement.m_amount} {requirement.m_resItem.m_itemData.Name()}");
+			//	Log.LogInfo($"{requirement.m_amount} {requirement.m_resItem.m_itemData.Name()}");
 			//}
 
 			//var player = Player.m_localPlayer;
@@ -352,7 +353,7 @@ namespace GrabMaterials
 			//if (!piece)
 			//{
 			//	var msg = $"No build piece named {pieceName} selected";
-			//	Debug.Log(msg);
+			//	Log.LogInfo(msg);
 			//	player.Message(MessageHud.MessageType.Center, msg);
 			//	return;
 			//}
@@ -459,7 +460,7 @@ namespace GrabMaterials
 						debugShortages.Add($"{effectiveNeed[i] - available[i]} of {aggregated[i].Count} {aggregated[i].Name}");
 					}
 				}
-				Debug.Log($"Cannot grab{(string.IsNullOrEmpty(requestLabel) ? "" : $" for {requestLabel}")} - missing: {string.Join(", ", debugShortages)}");
+				Log.LogInfo($"Cannot grab{(string.IsNullOrEmpty(requestLabel) ? "" : $" for {requestLabel}")} - missing: {string.Join(", ", debugShortages)}");
 				var failTitle = string.IsNullOrEmpty(requestLabel) ? "Missing materials" : $"Missing materials for {requestLabel}";
 				MaterialsPanel.Show(failTitle, statuses);
 				// Failed grab still indicates the player is actively building —
@@ -476,7 +477,7 @@ namespace GrabMaterials
 				var remaining = effectiveNeed[i];
 				if (remaining > 0)
 				{
-					Debug.Log($"grabbing {remaining} {itemToGrab.Name} from {nearbyContainers.Count} containers within {radius} meters");
+					Log.LogInfo($"grabbing {remaining} {itemToGrab.Name} from {nearbyContainers.Count} containers within {radius} meters");
 					for (int j = 0; j < nearbyContainers.Count && remaining > 0; j++)
 					{
 						int countGrabbed = nearbyContainers[j].GrabItemFromContainer(itemToGrab.Name, remaining);
@@ -498,7 +499,7 @@ namespace GrabMaterials
 			if (allCovered)
 			{
 				successTitle = string.IsNullOrEmpty(requestLabel) ? "Already have everything" : $"Already have everything for {requestLabel}";
-				Debug.Log(successTitle);
+				Log.LogInfo(successTitle);
 			}
 			else
 			{
@@ -536,7 +537,7 @@ namespace GrabMaterials
 			if (!piece)
 			{
 				var msg = "No build piece selected or hovered";
-				Debug.Log(msg);
+				Log.LogInfo(msg);
 				player.Message(MessageHud.MessageType.Center, msg);
 				return;
 			}
@@ -606,7 +607,7 @@ namespace GrabMaterials
 				}
 				catch (Exception e)
 				{
-					Debug.LogWarning($"GrabMaterials: cannot reflect Hud.m_pieceIcons - {e.Message}");
+					Log.LogWarning($"GrabMaterials: cannot reflect Hud.m_pieceIcons - {e.Message}");
 					return null;
 				}
 			}
@@ -637,13 +638,13 @@ namespace GrabMaterials
 		public static void GrabMaterialsForPiece(Piece piece)
 		{
 			var resources = piece.m_resources;
-			Debug.Log($"grabbing materials for selected piece {piece.name} - requires {resources.Count()} resources");
+			Log.LogInfo($"grabbing materials for selected piece {piece.name} - requires {resources.Count()} resources");
 			if (resources != null)
 			{
 				List<ItemToGrab> itemsToGrab = new List<ItemToGrab>();
 				foreach (var requirement in resources)
 				{
-					Debug.Log($"{requirement.m_amount} {requirement.m_resItem.m_itemData.Name()}");
+					Log.LogInfo($"{requirement.m_amount} {requirement.m_resItem.m_itemData.Name()}");
 					itemsToGrab.Add(new ItemToGrab(requirement.m_resItem.m_itemData.Name(), requirement.m_amount));
 					//GrabItemsFromNearbyContainers(requirement.m_resItem.m_itemData.m_shared.m_name, requirement.m_amount);
 				}
@@ -658,18 +659,18 @@ namespace GrabMaterials
 
 			if (!ZNetScene.instance)
 			{
-				Debug.LogWarning("Cannot index: ZNetScene.instance is null");
+				Log.LogWarning("Cannot index: ZNetScene.instance is null");
 				return;
 			}
 
-			Debug.Log("building lookup table for all build pieces");
+			Log.LogInfo("building lookup table for all build pieces");
 			foreach (var prefab in ZNetScene.instance.m_prefabs)
 			{
 				if (prefab.TryGetComponent<Piece>(out var piece))
 				{
 					if (prefab.name.ContainsAny("loot_chest", "TreasureChest"))
 					{
-						//Debug.Log($"Not adding {prefab.name} to build piece lookup table");
+						//Log.LogInfo($"Not adding {prefab.name} to build piece lookup table");
 						continue;
 					}
 
@@ -688,16 +689,16 @@ namespace GrabMaterials
 					}
 					catch (Exception e)
 					{
-						Debug.LogError($"Error translating piece name {piece.m_name}: {e.Message}");
+						Log.LogError($"Error translating piece name {piece.m_name}: {e.Message}");
 						localizedName = piece.m_name;
 					}
-					//Debug.Log($"{prefab.name} \"{localizedName}\" {GetPieceResourceList(piece)}");
+					//Log.LogInfo($"{prefab.name} \"{localizedName}\" {GetPieceResourceList(piece)}");
 					pieceLookup[localizedName.ToLowerInvariant()] = piece;
-					//Debug.Log($"Piece: {piece.name} ({prefab.name})");
+					//Log.LogInfo($"Piece: {piece.name} ({prefab.name})");
 				}
 				else
 				{
-					//Debug.Log($"Prefab {prefab.name} does not have a Piece component");
+					//Log.LogInfo($"Prefab {prefab.name} does not have a Piece component");
 				}
 			}
 		}
@@ -716,7 +717,7 @@ namespace GrabMaterials
 				// The internal prefab name (e.g., "BoarMeat") is the most reliable key.
 				string prefabName = itemPrefab.name;
 				itemLookup[prefabName] = itemPrefab;
-				//Debug.Log($"added item to list: {prefabName}");
+				//Log.LogInfo($"added item to list: {prefabName}");
 			}
 
 			Jotunn.Logger.LogInfo($"Built a lookup table with {itemLookup.Count} items.");
@@ -732,20 +733,20 @@ namespace GrabMaterials
 			if (pieceLookup.ContainsKey(name.ToLowerInvariant()))
 			{
 				var piece = pieceLookup[name.ToLowerInvariant()];
-				Debug.Log($"Found piece {name} in lookup table, grabbing materials for it");
+				Log.LogInfo($"Found piece {name} in lookup table, grabbing materials for it");
 				var resources = piece.m_resources;
 				if (resources != null)
 				{
 					foreach (var requirement in resources)
 					{
-						Debug.Log($"{requirement.m_amount} {requirement.m_resItem.m_itemData.Name()}");
+						Log.LogInfo($"{requirement.m_amount} {requirement.m_resItem.m_itemData.Name()}");
 						itemsToGrab.Add(new ItemToGrab(requirement.m_resItem.m_itemData.Name(), requirement.m_amount * count));
 					}
 				}
 			}
 			else
 			{
-				Debug.Log($"No piece found for {name}, looking for material by this name instead");
+				Log.LogInfo($"No piece found for {name}, looking for material by this name instead");
 				itemsToGrab.Add(new ItemToGrab(name, count));
 			}
 			return itemsToGrab;

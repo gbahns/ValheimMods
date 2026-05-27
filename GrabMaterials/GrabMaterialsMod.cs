@@ -1,5 +1,6 @@
 ﻿using BepInEx;
 using BepInEx.Configuration;
+using BepInEx.Logging;
 using GrabMaterials;
 using HarmonyLib;
 using Jotunn.Configs;
@@ -24,6 +25,7 @@ namespace GrabMaterialsMod
 		const string ModGuid = "DeathMonger.GrabMaterialsMod";
 		private readonly Harmony harmony = new Harmony(ModGuid);
 		public static GrabMaterialsMod Instance;
+		internal static ManualLogSource Log;
 
 		public enum DeltaSetting
 		{
@@ -87,18 +89,19 @@ namespace GrabMaterialsMod
 
 		private void Awake()
 		{
+			Log = Logger;
 			if (Instance == null)
 			{
-				Debug.Log("GrabMaterialsMod instance created and Awake called for the first time");
+				Log.LogInfo("GrabMaterialsMod instance created and Awake called for the first time");
 				Instance = this;
 			}
 			else if (Instance == this)
 			{
-				Debug.LogWarning("GrabMaterialsMod Awake called an additional time");
+				Log.LogWarning("GrabMaterialsMod Awake called an additional time");
 			}
 			else 
 			{
-				Debug.LogError("GrabMaterialsMod instance already exists, additional one created, should it be destroyed?");
+				Log.LogError("GrabMaterialsMod instance already exists, additional one created, should it be destroyed?");
 				Instance = this;
 				//Destroy(this);
 				//return;
@@ -154,7 +157,7 @@ namespace GrabMaterialsMod
 
 			GrabPacks[8].Name.SettingChanged += (sender, e) =>
 			{
-				Debug.Log($"Grabpack renamed {sender.ToString()} {e.ToString()}");
+				Log.LogInfo($"Grabpack renamed {sender.ToString()} {e.ToString()}");
 			};
 
 			new ConfigFileWatcher(Config);
@@ -285,18 +288,18 @@ namespace GrabMaterialsMod
 		{
 			if (!ZNetScene.instance)
 			{
-				Debug.LogWarning("Cannot index: ZNetScene.instance is null");
+				Log.LogWarning("Cannot index: ZNetScene.instance is null");
 				return;
 			}
 
-			//Debug.LogWarning("listing all recipies");
+			//Log.LogWarning("listing all recipies");
 			//foreach (Recipe recipe in ObjectDB.instance.m_recipes)
 			//{
-			//	Debug.Log($"Recipe: {recipe.name} {(recipe.m_item != null ? recipe.m_item.name : "m_item is null")} {recipe.m_enabled} {recipe.IsValid()} {recipe.m_craftingStation}");
-			//	//Debug.Log($"{recipe.m_item.name} {recipe.m_item.enabled} {recipe.m_enabled} {recipe.m_item.m_itemData.Count()} {recipe.IsValid()} {recipe.m_craftingStation}");
+			//	Log.LogInfo($"Recipe: {recipe.name} {(recipe.m_item != null ? recipe.m_item.name : "m_item is null")} {recipe.m_enabled} {recipe.IsValid()} {recipe.m_craftingStation}");
+			//	//Log.LogInfo($"{recipe.m_item.name} {recipe.m_item.enabled} {recipe.m_enabled} {recipe.m_item.m_itemData.Count()} {recipe.IsValid()} {recipe.m_craftingStation}");
 			//}
 
-			Debug.LogWarning("listing build pieces (prefabs with an associated component)");
+			Log.LogWarning("listing build pieces (prefabs with an associated component)");
 			foreach (var prefab in ZNetScene.instance.m_prefabs)
 			{
 				if (prefab.TryGetComponent<Piece>(out var piece))
@@ -316,12 +319,12 @@ namespace GrabMaterialsMod
 					}
 					catch (Exception e)
 					{
-						Debug.LogError($"Error translating piece name {piece.m_name}: {e.Message}");
+						Log.LogError($"Error translating piece name {piece.m_name}: {e.Message}");
 						localizedName = $"translation failed";
 					}
 					if (prefab.name == piece.name)
 					{
-						//Debug.Log($"{prefab.name} \"{localizedName}\" {GetPieceResourceList(piece)}");
+						//Log.LogInfo($"{prefab.name} \"{localizedName}\" {GetPieceResourceList(piece)}");
 						// Check if the piece has an enabled recipe
 						var hasEnabledRecipe = false;
 						foreach (Recipe recipe in ObjectDB.instance.m_recipes)
@@ -334,67 +337,67 @@ namespace GrabMaterialsMod
 							}
 						}
 
-						Debug.Log($"{prefab.name} \"{localizedName}\" {piece.GetResourceList()} {hasEnabledRecipe} {prefab.activeInHierarchy} {piece.enabled} {piece.m_enabled} {piece.isActiveAndEnabled} {piece.IsPlacedByPlayer()} {piece.m_category} {piece.m_craftingStation}");
+						Log.LogInfo($"{prefab.name} \"{localizedName}\" {piece.GetResourceList()} {hasEnabledRecipe} {prefab.activeInHierarchy} {piece.enabled} {piece.m_enabled} {piece.isActiveAndEnabled} {piece.IsPlacedByPlayer()} {piece.m_category} {piece.m_craftingStation}");
 						//if (localizedName == "Chest")
-						//	Debug.Log($"{hasEnabledRecipe} {prefab.activeInHierarchy} {prefab.activeSelf} {prefab.gameObject.activeInHierarchy} {prefab.gameObject.activeSelf} {piece.m_destroyedLootPrefab} {piece.enabled} {piece.m_enabled} {piece.isActiveAndEnabled} {piece.IsPlacedByPlayer()} {prefab.name} \"{localizedName}\" {piece.GetResourceList()} {piece.m_category} {piece.m_craftingStation}");
+						//	Log.LogInfo($"{hasEnabledRecipe} {prefab.activeInHierarchy} {prefab.activeSelf} {prefab.gameObject.activeInHierarchy} {prefab.gameObject.activeSelf} {piece.m_destroyedLootPrefab} {piece.enabled} {piece.m_enabled} {piece.isActiveAndEnabled} {piece.IsPlacedByPlayer()} {prefab.name} \"{localizedName}\" {piece.GetResourceList()} {piece.m_category} {piece.m_craftingStation}");
 					}
 					else
 					{
-						Debug.LogError($"DIFFERENT NAMES Piece: {prefab.name} {piece.name} {localizedName}");
+						Log.LogError($"DIFFERENT NAMES Piece: {prefab.name} {piece.name} {localizedName}");
 					}
-					//Debug.Log($"Piece: {piece.name} ({prefab.name})");
+					//Log.LogInfo($"Piece: {piece.name} ({prefab.name})");
 				}
 			}
 
 			//Jotunn.Managers.PieceManager.Instance.GetPiece().Pieces.ForEach(piece =>
 			//{
-			//	Debug.Log($"{piece.name}");
+			//	Log.LogInfo($"{piece.name}");
 			//});
 
 			////this just list the build pieces available on the currently selected workbench category
 			//var pieces = player.GetBuildPieces();
 			//if (pieces == null)
 			//{
-			//	Debug.Log("No build pieces found");
+			//	Log.LogInfo("No build pieces found");
 			//	return;
 			//}
-			//Debug.Log($"listing {pieces.Count()} pieces");
+			//Log.LogInfo($"listing {pieces.Count()} pieces");
 			//foreach (var piece in pieces)
 			//{
-			//	Debug.Log($"{piece.name}");
+			//	Log.LogInfo($"{piece.name}");
 			//}
 
 			////this seems to only give the players base recipes without even a hammer
 			//var recipes = new List<Recipe>();
 			//player.GetAvailableRecipes(ref recipes);
-			//Debug.Log($"listing {recipes.Count()} recipes");
+			//Log.LogInfo($"listing {recipes.Count()} recipes");
 			//foreach (var recipe in recipes)
 			//{
-			//	Debug.Log($"{recipe}");
+			//	Log.LogInfo($"{recipe}");
 			//}
 
 			//var objectDB = ObjectDB.instance;
 			//if (objectDB == null)
 			//{
-			//	Debug.LogError("ObjectDB instance is null");
+			//	Log.LogError("ObjectDB instance is null");
 			//	return;
 			//}
 
 			//foreach (var prefab in objectDB.m_items)
 			//{
-			//	Debug.Log($"Prefab: {prefab.name}");
+			//	Log.LogInfo($"Prefab: {prefab.name}");
 			//}
 
-			//Debug.LogWarning("listing named prefabs");
+			//Log.LogWarning("listing named prefabs");
 			//foreach (var prefab in ZNetScene.instance.m_namedPrefabs.Values)
 			//{
-			//	Debug.Log($"Named Prefab: {prefab.name}");
+			//	Log.LogInfo($"Named Prefab: {prefab.name}");
 			//}
 
 			//PieceTable pieceTable = GetPieceTable();
 			//Jotunn.Utils.ModRegistry.GetPieces().ForEach(piece =>
 			//{
-			//	Debug.Log($"{piece.name}");
+			//	Log.LogInfo($"{piece.name}");
 			//});
 		}
 
@@ -412,9 +415,9 @@ namespace GrabMaterialsMod
 		private static void ListKnownContainers()
 		{
 			int i = 0;
-			Debug.Log($"listing {Boxes.Containers.Count} known containers");
+			Log.LogInfo($"listing {Boxes.Containers.Count} known containers");
 			foreach (var container in Boxes.Containers)
-				Debug.Log($"{++i}. {container.name} {container.m_name}  ({container.GetType()} {container.GetInstanceID()})");
+				Log.LogInfo($"{++i}. {container.name} {container.m_name}  ({container.GetType()} {container.GetInstanceID()})");
 		}
 
 		private static void ListLocalContainers(Terminal.ConsoleEventArgs args)
@@ -424,9 +427,9 @@ namespace GrabMaterialsMod
 			if (args.Length > 1)
 				float.TryParse(args[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out radius);
 			var nearbyContainers = Boxes.GetNearbyContainers(radius);
-			Debug.Log($"listing {nearbyContainers.Count} containers within {radius} meters out of {Boxes.Containers.Count} known containers");
+			Log.LogInfo($"listing {nearbyContainers.Count} containers within {radius} meters out of {Boxes.Containers.Count} known containers");
 			foreach (var container in nearbyContainers)
-				Debug.Log($"{++i}. {container.name} {container.m_name}  ({container.GetType()} {container.GetInstanceID()})");
+				Log.LogInfo($"{++i}. {container.name} {container.m_name}  ({container.GetType()} {container.GetInstanceID()})");
 		}
 
 		private static void ListLocalContainerContents(Terminal.ConsoleEventArgs args)
@@ -435,19 +438,19 @@ namespace GrabMaterialsMod
 			if (args.Length > 1)
 				float.TryParse(args[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out radius);
 			var nearbyContainers = Boxes.GetNearbyContainers(radius);
-			Debug.Log($"listing {nearbyContainers.Count} containers within {radius} meters out of {Boxes.Containers.Count} known containers");
-			Debug.Log($"showing the contents of {nearbyContainers.Count} nearby containers");
+			Log.LogInfo($"listing {nearbyContainers.Count} containers within {radius} meters out of {Boxes.Containers.Count} known containers");
+			Log.LogInfo($"showing the contents of {nearbyContainers.Count} nearby containers");
 			foreach (var container in nearbyContainers)
 			{
-				Debug.Log($"contents of {container.name} {container.GetInstanceID()}:");
+				Log.LogInfo($"contents of {container.name} {container.GetInstanceID()}:");
 				var inventory = container.GetInventory();
 				var items = inventory.GetAllItems();
 				foreach (var item in items)
 				{
 					var localizedName = "";
 					localizedName = LocalizationManager.Instance.TryTranslate(item.m_shared.m_name);
-					//Debug.Log($"{item.Name()} ({item.m_shared.m_name}) [{localizedName}] {item.Count()} crafted by '{item.m_crafterName}'\ntooltip: {item.GetTooltip()}\nname: {item.Name()}\n{item.ToString()}");
-					Debug.Log($"{item.Count()},{localizedName},{item.Name()},{item.GetCategory()},{item.m_shared.m_itemType},{item.IsWeapon()},{item.IsEquipable()},{item.m_shared.m_isDrink},{item.GetArmor()},{item.m_shared.m_armorMaterial},{item.m_shared.m_food},{item.m_shared.m_foodStamina},{item.m_shared.m_foodEitr},{item.m_shared.m_ammoType},{item.m_shared.m_questItem},{item.m_shared.m_skillType}"); //crafted by '{item.m_crafterName}'
+					//Log.LogInfo($"{item.Name()} ({item.m_shared.m_name}) [{localizedName}] {item.Count()} crafted by '{item.m_crafterName}'\ntooltip: {item.GetTooltip()}\nname: {item.Name()}\n{item.ToString()}");
+					Log.LogInfo($"{item.Count()},{localizedName},{item.Name()},{item.GetCategory()},{item.m_shared.m_itemType},{item.IsWeapon()},{item.IsEquipable()},{item.m_shared.m_isDrink},{item.GetArmor()},{item.m_shared.m_armorMaterial},{item.m_shared.m_food},{item.m_shared.m_foodStamina},{item.m_shared.m_foodEitr},{item.m_shared.m_ammoType},{item.m_shared.m_questItem},{item.m_shared.m_skillType}"); //crafted by '{item.m_crafterName}'
 				}
 			}
 		}
@@ -490,7 +493,7 @@ namespace GrabMaterialsMod
 			var text = args.Length > 1 ? args.ArgsAll.ToLower() : null;
 
 			var nearbyContainers = Boxes.GetNearbyContainers(radius);
-			Debug.Log($"searching {nearbyContainers.Count} containers within {radius} meters out of {Boxes.Containers.Count} known containers");
+			Log.LogInfo($"searching {nearbyContainers.Count} containers within {radius} meters out of {Boxes.Containers.Count} known containers");
 
 			// Bucket matching items by category, then by m_shared.m_name (sorted) for stable display.
 			var byCategory = new Dictionary<GrabMaterials.Extensions.ItemCategory, SortedDictionary<string, int>>();
@@ -554,7 +557,7 @@ namespace GrabMaterialsMod
 				foreach (var kvp in byName)
 				{
 					var localizedName = LocalizationManager.Instance.TryTranslate(kvp.Key);
-					Debug.Log($"{kvp.Value} {localizedName} [{cat}]");
+					Log.LogInfo($"{kvp.Value} {localizedName} [{cat}]");
 					iconsByName.TryGetValue(kvp.Key, out var icon);
 					items.Add(new GrabMaterials.MaterialsPanel.InventoryItem { Name = localizedName, Count = kvp.Value, Icon = icon, SharedName = kvp.Key });
 				}
@@ -600,11 +603,11 @@ namespace GrabMaterialsMod
 
 		private static void ListGrabPacks()
 		{
-			Debug.Log($"listing {Instance.GrabPacks.Length} configured grab packs");
+			Log.LogInfo($"listing {Instance.GrabPacks.Length} configured grab packs");
 			var rows = new List<GrabMaterials.MaterialsPanel.PackRow>(Instance.GrabPacks.Length);
 			foreach (var grabPack in Instance.GrabPacks)
 			{
-				Debug.Log($"{grabPack.Name.Value} ({grabPack.Key.Value}): {grabPack.Items.Value}");
+				Log.LogInfo($"{grabPack.Name.Value} ({grabPack.Key.Value}): {grabPack.Items.Value}");
 				var packRef = grabPack;  // capture for closure
 				var hasItems = !string.IsNullOrEmpty(grabPack.Items.Value);
 				rows.Add(new GrabMaterials.MaterialsPanel.PackRow
@@ -643,7 +646,7 @@ namespace GrabMaterialsMod
 			{
 				var msg = "Please specify the text you want to search for in nearby containers";
 				Chat.instance.SendMessage(msg);
-				Debug.Log(msg);
+				Log.LogInfo(msg);
 				return;
 			}
 
@@ -651,7 +654,7 @@ namespace GrabMaterialsMod
 			var text = args[1];
 
 			var nearbyContainers = Boxes.GetNearbyContainers(radius);
-			Debug.Log($"searching for {text} in {nearbyContainers.Count} containers within {radius} meters");
+			Log.LogInfo($"searching for {text} in {nearbyContainers.Count} containers within {radius} meters");
 			foreach (var container in nearbyContainers)
 			{
 				var inventory = container.GetInventory();
@@ -660,13 +663,13 @@ namespace GrabMaterialsMod
 				{
 					if (item.Name().Contains(text))
 					{
-						Debug.Log($"it contains {text}!");
+						Log.LogInfo($"it contains {text}!");
 						container.Highlight();
 					}
 				}
 				if (inventory.ContainsItemByName(text))
 				{
-					Debug.Log($"it contains {text}!");
+					Log.LogInfo($"it contains {text}!");
 					container.Highlight();
 				}
 			}
@@ -695,7 +698,7 @@ namespace GrabMaterialsMod
 				}
 			}
 
-			Debug.Log($"storing {itemsToMove.Count()} items in {nearbyContainers.Count} containers within {radius} meters");
+			Log.LogInfo($"storing {itemsToMove.Count()} items in {nearbyContainers.Count} containers within {radius} meters");
 
 			int currentContainer = 0;
 			while (itemsToMove.Count > 0)
@@ -718,12 +721,12 @@ namespace GrabMaterialsMod
 			{
 				itemName = args[1];
 				count = playerInventory.CountItems(itemName);
-				Debug.Log($"{count} {itemName} in inventory");
+				Log.LogInfo($"{count} {itemName} in inventory");
 			}
 			else
 			{
 				count = playerInventory.CountItems();
-				Debug.Log($"{count} items in inventory");
+				Log.LogInfo($"{count} items in inventory");
 			}
 		}
 	}
