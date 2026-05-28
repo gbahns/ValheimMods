@@ -83,7 +83,7 @@ namespace ForsakenShrines
                     new RequirementConfig { Item = "Stone", Recover = true,             Amount = 40 },
                     new RequirementConfig { Item = "Chain", Recover = true,             Amount = 3  },
                     new RequirementConfig { Item = "Iron", Recover = true,              Amount = 2  },
-                    new RequirementConfig { Item = "TrophyWraith",      Amount = 4,  Recover = false },
+                    new RequirementConfig { Item = "TrophyWraith",      Amount = 2,  Recover = false },
                     new RequirementConfig { Item = "TrophyAbomination", Amount = 4,  Recover = false },
                 }),
 

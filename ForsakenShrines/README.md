@@ -24,7 +24,7 @@ Stone, Chain, and Iron are **returned** if the shrine is demolished. The trophie
 |---|---|---|---|---|---|
 | Eikthyr | 20 | 2 | 2 | 2 Bear | 5 Deer |
 | Elder | 30 | 2 | 2 | 1 Brenna | 4 Troll |
-| Bonemass | 40 | 3 | 2 | 4 Wraith | 4 Abomination |
+| Bonemass | 40 | 3 | 2 | 2 Wraith | 4 Abomination |
 | Moder | 50 | 3 | 2 | 1 Geirrhafa | 2 Fenring |
 | Yagluth | 60 | 3 | 2 | 1 Zil | 1 Thungr |
 | Queen | 70 | 5 | 2 | 3 G'jall | 5 Seeker Soldier |
