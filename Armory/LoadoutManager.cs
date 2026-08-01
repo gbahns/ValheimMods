@@ -616,5 +616,56 @@ namespace Armory
             while (data.Slots.Count < count)
                 data.Slots.Add(new LoadoutSlot { Name = $"Slot {data.Slots.Count + 1}" });
         }
+
+        /// <summary>
+        /// Relocate any items whose saved grid position is outside the container's current
+        /// width/height into the first empty in-bounds slot.  Vanilla Inventory.Load happily
+        /// loads items at any position from the ZDO, but the vanilla InventoryGui only renders
+        /// cells inside (0..width-1, 0..height-1) — so an item left at e.g. y=4 in a chest
+        /// that's been resized down to height=4 becomes invisible and unreachable until we
+        /// move it.  Called by ArmoryUI.Open before showing the chest panel.
+        /// </summary>
+        public static void MigrateOutOfBoundsItems(Inventory inv)
+        {
+            if (inv == null) return;
+            int w = inv.GetWidth();
+            int h = inv.GetHeight();
+
+            // Snapshot first — we'll be mutating m_gridPos while iterating.
+            var oob = new List<ItemDrop.ItemData>();
+            foreach (var item in inv.GetAllItems())
+            {
+                if (item == null) continue;
+                int x = item.m_gridPos.x, y = item.m_gridPos.y;
+                if (x < 0 || x >= w || y < 0 || y >= h) oob.Add(item);
+            }
+            if (oob.Count == 0) return;
+
+            int moved = 0, lost = 0;
+            foreach (var item in oob)
+            {
+                var dest = FindFirstEmptySlot(inv);
+                if (dest.x < 0)
+                {
+                    // Chest is somehow full of in-bounds items already — nothing we can do
+                    // without dropping the item to the world (which would be surprising).
+                    Jotunn.Logger.LogWarning($"[Armory] Migrate: '{item.m_shared?.m_name}' at ({item.m_gridPos.x},{item.m_gridPos.y}) — chest full, cannot relocate");
+                    lost++;
+                    continue;
+                }
+                Jotunn.Logger.LogInfo($"[Armory] Migrate: '{item.m_shared?.m_name}' ({item.m_gridPos.x},{item.m_gridPos.y}) → ({dest.x},{dest.y})");
+                item.m_gridPos = dest;
+                moved++;
+            }
+
+            if (moved > 0)
+            {
+                InvokeChanged(inv);
+                Player.m_localPlayer?.Message(MessageHud.MessageType.Center,
+                    lost > 0
+                        ? $"Armory: relocated {moved} item(s), {lost} still out of bounds (chest full)"
+                        : $"Armory: relocated {moved} item(s) from out-of-bounds slots");
+            }
+        }
     }
 }

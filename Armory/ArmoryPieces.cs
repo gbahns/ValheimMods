@@ -298,11 +298,13 @@ namespace Armory
                     storage.m_destroyedLootPrefab = refContainer.m_destroyedLootPrefab;
                 }
                 storage.m_name   = "$armory_rack_name";
-                // 8×5 = 40 slots — bigger than any vanilla chest (black metal is 6×4=24) so late-game
-                // players can keep multiple full armor sets, weapons, capes, and utility items in one
-                // rack.  Width matches the player inventory so the side-by-side UI lines up cleanly.
+                // 8×4 = 32 slots — matches the black metal chest layout exactly.  The vanilla
+                // InventoryGui chest panel is hard-coded to 8 columns × 4 rows at fixed cell
+                // size, so going wider or taller would clip the outer slots off-screen until
+                // we ship a custom chest UI.  Players who need more storage can place a regular
+                // chest next to the rack.
                 storage.m_width  = 8;
-                storage.m_height = 5;
+                storage.m_height = 4;
             }
 
             var pieceConfig = new PieceConfig

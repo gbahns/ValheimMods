@@ -77,7 +77,20 @@ namespace Armory
         // Panel-sizing constants used by ComputePanelHeight + ResizeMainPanel.
         private const float TitleAreaPx  = 70f;   // title + close button strip at top
         private const float FooterAreaPx = 70f;   // add-slot button + margin at bottom
-        private const float RowHeightPx  = 130f;  // name+buttons (48) + summary (22) + icons (36) + spacing/padding
+
+        // Per-row sub-section heights (in pixels) — must mirror what BuildSlotRow actually
+        // creates, otherwise ComputePanelHeight under/over-counts and the scroll view shows.
+        private const float TopRowPx       = 48f;        // name + buttons strip
+        private const float SummaryRowPx   = 22f;        // single line of summary text
+        private const float IconStripPx    = IconSize + 6f; // icons + the 6px hgroup padding
+        private const float RowPaddingPx   = 8f;         // VLG vertical padding (4 top + 4 bottom)
+        private const float RowSpacingPx   = 2f;         // VLG spacing between adjacent visible children
+        private const float ScrollListPadPx = 8f;        // content VLG vertical padding (4 top + 4 bottom)
+        private const float ScrollListGapPx = 4f;        // content VLG spacing between rows
+
+        // Track previous toggle values so Tick can detect a config flip and trigger a resize.
+        private static bool? _lastShowSummary;
+        private static bool? _lastShowIcons;
 
         // Tracked so ResizeMainPanel can update the scroll view too.
         private static RectTransform _scrollRT;
@@ -99,6 +112,12 @@ namespace Armory
             _isOpen      = true;
 
             BuildUI();
+
+            // Migrate items left out-of-bounds by a previous container size (e.g. the brief
+            // 8×5 layout — anything at y=4 is now outside our 10×4 grid and would be hidden
+            // from the vanilla chest UI).  Move them into the first empty in-bounds slot
+            // before InventoryGui.Show so the player sees a clean grid with all their items.
+            LoadoutManager.MigrateOutOfBoundsItems(rack.GetStorageInventory());
 
             // Show vanilla inventory + the rack's storage container alongside our window.
             // Passing the Container makes the standard chest-style two-panel layout appear:
@@ -150,6 +169,8 @@ namespace Armory
             }
             _slotsContent = null;
             _rows.Clear();
+            _lastShowSummary = null;
+            _lastShowIcons   = null;
 
             _rack = null;
 
@@ -169,10 +190,21 @@ namespace Armory
         {
             if (!_isOpen) return;
 
-            if (Input.GetKeyDown(KeyCode.Escape))
+            // Delete-confirm modal eats Esc first.  Doesn't interact with the InventoryGui
+            // watch below — the modal is one of our own GameObjects.
+            if (_confirmModal != null && Input.GetKeyDown(KeyCode.Escape))
             {
-                // If the delete-confirm modal is up, Esc dismisses just the modal.
-                if (_confirmModal != null) { CloseConfirmModal(); return; }
+                CloseConfirmModal();
+                return;
+            }
+
+            // Mirror the vanilla InventoryGui's visibility.  When the player presses Tab (the
+            // inventory-toggle hotkey) or Esc, Valheim closes InventoryGui itself — if we kept
+            // our panel up we'd be orphaned, AND if we *also* handled Esc here we'd race vanilla
+            // and end up opening the pause menu the same frame.  Letting vanilla own Esc and just
+            // following IGui closes both UIs together with the right key semantics for free.
+            if (InventoryGui.instance == null || !InventoryGui.IsVisible())
+            {
                 Close();
                 return;
             }
@@ -201,6 +233,17 @@ namespace Armory
             // each row's icon availability colors and apply the show/hide config toggles.
             bool showSummary = ArmoryMod.ShowSummaryText?.Value ?? true;
             bool showIcons   = ArmoryMod.ShowIcons?.Value       ?? true;
+
+            // If either toggle flipped since last frame, the per-row preferred height changed —
+            // re-run the panel sizing so the scroll view either stops scrolling or reclaims
+            // the now-unused vertical space.
+            if (_lastShowSummary != showSummary || _lastShowIcons != showIcons)
+            {
+                _lastShowSummary = showSummary;
+                _lastShowIcons   = showIcons;
+                ResizeMainPanel();
+            }
+
             for (int i = 0; i < _rows.Count && i < _data.Slots.Count; i++)
             {
                 var refs = _rows[i];
@@ -714,13 +757,32 @@ namespace Armory
             ResizeMainPanel();
         }
 
+        // Per-row preferred height, accounting for whether Summary and Icons are visible.
+        // VerticalLayoutGroup skips inactive children, so the row collapses naturally — this
+        // mirrors that math so ComputePanelHeight stays in sync with what's rendered.
+        private static float ComputeRowHeight()
+        {
+            bool showSummary = ArmoryMod.ShowSummaryText?.Value ?? true;
+            bool showIcons   = ArmoryMod.ShowIcons?.Value       ?? true;
+            float h = TopRowPx + RowPaddingPx;     // always-present pieces
+            int gaps = 0;                          // VLG only adds spacing between *visible* children
+            if (showSummary) { h += SummaryRowPx;  gaps++; }
+            if (showIcons)   { h += IconStripPx;   gaps++; }
+            h += gaps * RowSpacingPx;
+            return h;
+        }
+
         // Compute desired panel height based on the current slot count, clamped to the screen.
         private static float ComputePanelHeight()
         {
-            int slotCount = _data?.Slots?.Count ?? DefaultSlotCount;
-            float desired = TitleAreaPx + FooterAreaPx + slotCount * RowHeightPx + 30f;  // +padding
-            float min     = TitleAreaPx + FooterAreaPx + 3 * RowHeightPx + 30f;  // never tighter than ~3 rows
-            float max     = Screen.height * 0.9f;
+            int   slotCount = _data?.Slots?.Count ?? DefaultSlotCount;
+            float rowH      = ComputeRowHeight();
+            float listH     = slotCount * rowH
+                            + System.Math.Max(0, slotCount - 1) * ScrollListGapPx
+                            + ScrollListPadPx;
+            float desired   = TitleAreaPx + FooterAreaPx + listH;
+            float min       = TitleAreaPx + FooterAreaPx + (3 * rowH + 2 * ScrollListGapPx + ScrollListPadPx);
+            float max       = Screen.height * 0.9f;
             return Mathf.Clamp(desired, min, max);
         }
 
