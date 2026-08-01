@@ -493,12 +493,19 @@ namespace GrabMaterialsMod
 			var text = args.Length > 1 ? args.ArgsAll.ToLower() : null;
 
 			var nearbyContainers = Boxes.GetNearbyContainers(radius);
-			Log.LogInfo($"searching {nearbyContainers.Count} containers within {radius} meters out of {Boxes.Containers.Count} known containers");
+			var nearbySmelters = Boxes.GetNearbySmelters(radius);
+			Log.LogInfo($"searching {nearbyContainers.Count} containers and {nearbySmelters.Count} processors within {radius} meters");
 
 			// Bucket matching items by category, then by m_shared.m_name (sorted) for stable display.
 			var byCategory = new Dictionary<GrabMaterials.Extensions.ItemCategory, SortedDictionary<string, int>>();
 			// One sprite per unique item name (first encountered wins).
 			var iconsByName = new Dictionary<string, UnityEngine.Sprite>();
+			// Per-item, per-station-type tally of materials sitting in a smelter/kiln/etc.
+			// Keyed first by item m_shared.m_name, then by station label ("kiln",
+			// "smelter", etc.) so the panel can show "(N in kiln)" when an item only
+			// lives in one type of station, and fall back to "(N in processing)" when
+			// it's spread across multiple.
+			var inProcessByNameByLoc = new Dictionary<string, Dictionary<string, int>>();
 			foreach (var container in nearbyContainers)
 			{
 				var inventory = container.GetInventory();
@@ -539,6 +546,64 @@ namespace GrabMaterialsMod
 				}
 			}
 
+			// Walk processors (kilns, smelters, blast furnaces, windmills, etc.) — their
+			// queued inputs + fuel are real materials on the player's plot. Same filter
+			// and bucketing as containers, plus a parallel inProcess tally so the panel
+			// can show "(N in process)" next to the affected rows.
+			foreach (var smelter in nearbySmelters)
+			{
+				var queued = GrabMaterials.Processors.GetQueuedItems(smelter);
+				if (queued.Count == 0) continue;
+				var stationLabel = GrabMaterials.Processors.GetLabel(smelter);
+				var alreadyHighlighted = false;
+				foreach (var kvp in queued)
+				{
+					var prefab = ObjectDB.instance?.GetItemPrefab(kvp.Key);
+					if (prefab == null) continue;
+					var itemDrop = prefab.GetComponent<ItemDrop>();
+					if (itemDrop == null) continue;
+					var itemData = itemDrop.m_itemData;
+					var itemName = itemData.m_shared.m_name;
+					var localizedName = LocalizationManager.Instance.TryTranslate(itemName).ToLower();
+					var itemCategory = itemData.GetCategory();
+					var itemCategoryString = itemCategory.ToString().ToLower();
+					GrabMaterials.Extensions.ItemCategory searchCategory = GrabMaterials.Extensions.ItemCategory.None;
+					var isCategorySearch = text != null ? Enum.TryParse(text, true, out searchCategory) : false;
+
+					var matches = isCategorySearch
+						? itemCategory == searchCategory
+						: text == null || itemData.Name().Contains(text) || itemName.Contains(text) || localizedName.Contains(text) || itemCategoryString.Contains(text);
+					if (!matches) continue;
+
+					if (!byCategory.TryGetValue(itemCategory, out var byName))
+					{
+						byName = new SortedDictionary<string, int>();
+						byCategory[itemCategory] = byName;
+					}
+					if (byName.ContainsKey(itemName)) byName[itemName] += kvp.Value;
+					else byName[itemName] = kvp.Value;
+
+					if (!inProcessByNameByLoc.TryGetValue(itemName, out var byLoc))
+					{
+						byLoc = new Dictionary<string, int>();
+						inProcessByNameByLoc[itemName] = byLoc;
+					}
+					byLoc.TryGetValue(stationLabel, out var priorAtLoc);
+					byLoc[stationLabel] = priorAtLoc + kvp.Value;
+
+					if (!iconsByName.ContainsKey(itemName) && itemData.m_shared.m_icons != null && itemData.m_shared.m_icons.Length > 0)
+					{
+						iconsByName[itemName] = itemData.m_shared.m_icons[0];
+					}
+
+					if (!alreadyHighlighted)
+					{
+						GrabMaterials.Processors.Highlight(smelter);
+						alreadyHighlighted = true;
+					}
+				}
+			}
+
 			if (byCategory.Count == 0)
 			{
 				var emptyMsg = string.IsNullOrEmpty(text) ? "No items in nearby containers" : $"No items match '{text}'";
@@ -559,7 +624,26 @@ namespace GrabMaterialsMod
 					var localizedName = LocalizationManager.Instance.TryTranslate(kvp.Key);
 					Log.LogInfo($"{kvp.Value} {localizedName} [{cat}]");
 					iconsByName.TryGetValue(kvp.Key, out var icon);
-					items.Add(new GrabMaterials.MaterialsPanel.InventoryItem { Name = localizedName, Count = kvp.Value, Icon = icon, SharedName = kvp.Key });
+
+					// Sum per-station tallies into a total + single label. If the item
+					// sits in only one type of station ("kiln"), use that; if it's split
+					// across multiple types, fall back to the generic "processing".
+					var inProcess = 0;
+					string locLabel = null;
+					if (inProcessByNameByLoc.TryGetValue(kvp.Key, out var byLoc))
+					{
+						foreach (var entry in byLoc) inProcess += entry.Value;
+						if (byLoc.Count == 1)
+						{
+							foreach (var entry in byLoc) { locLabel = entry.Key; break; }
+						}
+						else
+						{
+							locLabel = "processing";
+						}
+					}
+
+					items.Add(new GrabMaterials.MaterialsPanel.InventoryItem { Name = localizedName, Count = kvp.Value, InProcess = inProcess, InProcessLocation = locLabel, Icon = icon, SharedName = kvp.Key });
 				}
 				groups.Add(new GrabMaterials.MaterialsPanel.InventoryGroup
 				{

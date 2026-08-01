@@ -11,6 +11,10 @@ namespace GrabMaterials
 		internal static readonly List<Container> Containers = new List<Container>();
 		private static readonly List<Container> ContainersToAdd = new List<Container>();
 		private static readonly List<Container> ContainersToRemove = new List<Container>();
+
+		internal static readonly List<Smelter> Smelters = new List<Smelter>();
+		private static readonly List<Smelter> SmeltersToAdd = new List<Smelter>();
+		private static readonly List<Smelter> SmeltersToRemove = new List<Smelter>();
 		//private static ConcurrentDictionary<float, Stopwatch> stopwatches = new ConcurrentDictionary<float, Stopwatch>();
 
 		internal static void AddContainer(Container container)
@@ -64,6 +68,59 @@ namespace GrabMaterials
 				//Log.LogInfo($"adding container {container.name}");
 				Boxes.AddContainer(container);
 			}
+		}
+
+		internal static void AddSmelter(Smelter smelter)
+		{
+			if (!Smelters.Contains(smelter))
+			{
+				SmeltersToAdd.Add(smelter);
+				Jotunn.Logger.LogDebug($"Added smelter {smelter.name} ({smelter.GetType()} {smelter.GetInstanceID()}) to list");
+			}
+			UpdateSmelters();
+		}
+
+		internal static void RemoveSmelter(Smelter smelter)
+		{
+			if (Smelters.Contains(smelter))
+			{
+				SmeltersToRemove.Add(smelter);
+				Jotunn.Logger.LogDebug($"Removed smelter {smelter.name} ({smelter.GetType()} {smelter.GetInstanceID()}) from list");
+			}
+			UpdateSmelters();
+		}
+
+		internal static void UpdateSmelters()
+		{
+			foreach (var s in SmeltersToAdd) Smelters.Add(s);
+			SmeltersToAdd.Clear();
+			foreach (var s in SmeltersToRemove) Smelters.Remove(s);
+			SmeltersToRemove.Clear();
+		}
+
+		internal static void ConditionallyAddSmelter(Smelter smelter)
+		{
+			if (smelter == null) return;
+			AddSmelter(smelter);
+		}
+
+		internal static List<Smelter> GetNearbySmelters(float radius)
+		{
+			var nearby = new List<Smelter>();
+			if (!Player.m_localPlayer) return nearby;
+			var playerPosition = Player.m_localPlayer.transform.position;
+			foreach (var smelter in Smelters)
+			{
+				if (smelter == null || smelter.transform == null)
+				{
+					SmeltersToRemove.Add(smelter);
+					continue;
+				}
+				var distance = Vector3.Distance(playerPosition, smelter.transform.position);
+				if (distance < radius) nearby.Add(smelter);
+			}
+			UpdateSmelters();
+			return nearby;
 		}
 
 		internal static List<Container> GetNearbyContainers(float radius)

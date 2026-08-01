@@ -21,6 +21,8 @@ namespace GrabMaterials
 		{
 			public string Name;
 			public int Count;
+			public int InProcess;             // amount of Count that's queued in a smelter/kiln/etc.
+			public string InProcessLocation;  // e.g. "kiln", "smelter" — or "processing" when split across multiple types
 			public Sprite Icon;
 			public string SharedName; // m_shared.m_name — used to match the item back to chest contents on click
 		}
@@ -541,7 +543,7 @@ namespace GrabMaterials
 				maxCategoryWidth = Mathf.Max(maxCategoryWidth, EstimateTextWidth(group.CategoryName));
 				foreach (var item in group.Items)
 				{
-					maxNameWidth = Mathf.Max(maxNameWidth, EstimateTextWidth(item.Name));
+					maxNameWidth = Mathf.Max(maxNameWidth, EstimateTextWidth(ItemDisplayPlain(item.Name, item.InProcess, item.InProcessLocation)));
 				}
 			}
 			var iconCol = ShowItemIcons ? IconSize + ColumnGap : 0f;
@@ -580,7 +582,7 @@ namespace GrabMaterials
 					colHeight += LineHeight + (showUnderlines ? HeaderUnderlineHeight : 0f);
 					foreach (var item in group.Items)
 					{
-						BuildDataRow(item.Count.ToString(), item.Icon, item.Name, item.SharedName, ListRowPadding, countCol);
+						BuildDataRow(item.Count.ToString(), item.Icon, item.Name, item.InProcess, item.InProcessLocation, item.SharedName, ListRowPadding, countCol);
 						colHeight += LineHeight;
 					}
 				}
@@ -762,7 +764,7 @@ namespace GrabMaterials
 			{
 				foreach (var item in group.Items)
 				{
-					BuildFlatDataRow(group.CategoryName, item.Icon, item.Name, item.Count.ToString(), item.SharedName);
+					BuildFlatDataRow(group.CategoryName, item.Icon, item.Name, item.InProcess, item.InProcessLocation, item.Count.ToString(), item.SharedName);
 					totalHeight += LineHeight;
 				}
 			}
@@ -818,7 +820,7 @@ namespace GrabMaterials
 				maxCategoryWidth = Mathf.Max(maxCategoryWidth, EstimateTextWidth(group.CategoryName));
 				foreach (var item in group.Items)
 				{
-					maxNameWidth = Mathf.Max(maxNameWidth, EstimateTextWidth(item.Name));
+					maxNameWidth = Mathf.Max(maxNameWidth, EstimateTextWidth(ItemDisplayPlain(item.Name, item.InProcess, item.InProcessLocation)));
 				}
 			}
 			var dataRowWidth = ListRowPadding * 2f + countCol + ColumnGap + maxNameWidth;
@@ -837,7 +839,7 @@ namespace GrabMaterials
 				maxCategoryWidth = Mathf.Max(maxCategoryWidth, EstimateTextWidth(group.CategoryName));
 				foreach (var item in group.Items)
 				{
-					maxNameWidth = Mathf.Max(maxNameWidth, EstimateTextWidth(item.Name));
+					maxNameWidth = Mathf.Max(maxNameWidth, EstimateTextWidth(ItemDisplayPlain(item.Name, item.InProcess, item.InProcessLocation)));
 					maxCountWidth = Mathf.Max(maxCountWidth, EstimateTextWidth(item.Count.ToString()));
 				}
 			}
@@ -978,13 +980,32 @@ namespace GrabMaterials
 		// hugs the widest count string (eliminates the "indent" effect from a
 		// fixed-width column). Icon column is omitted when ShowItemIcons is off.
 		// sharedName drives click-to-highlight (#40); pass null to skip.
-		private static void BuildDataRow(string countText, Sprite icon, string nameText, string sharedName, float sidePadding, float countWidth)
+		// inProcess > 0 appends a dim "(N in <location>)" marker via rich text.
+		private static void BuildDataRow(string countText, Sprite icon, string nameText, int inProcess, string inProcessLocation, string sharedName, float sidePadding, float countWidth)
 		{
 			var row = MakeRow("DataRow", sidePadding);
 			MakeRowClickable(row, sharedName);
 			MakeCellText(row, countText, TextAnchor.MiddleRight, Color.white, countWidth, 0f);
 			if (ShowItemIcons) MakeIconCell(row, icon);
-			MakeCellText(row, nameText, TextAnchor.MiddleLeft, Color.white, 0f, 1f);
+			MakeCellText(row, ItemDisplayRich(nameText, inProcess, inProcessLocation), TextAnchor.MiddleLeft, Color.white, 0f, 1f, inProcess > 0);
+		}
+
+		// "(N in <location>)" marker for items partially queued in a kiln/smelter/etc.
+		private const string InProcessMarkerColor = "#888888";
+		private static string ItemDisplayRich(string name, int inProcess, string location)
+		{
+			if (inProcess <= 0) return name;
+			var loc = string.IsNullOrEmpty(location) ? "processing" : location;
+			return $"{name} <color={InProcessMarkerColor}>({inProcess} in {loc})</color>";
+		}
+
+		// Plain version of the display string — used for width estimation only,
+		// since rich-text tags don't contribute to rendered width.
+		private static string ItemDisplayPlain(string name, int inProcess, string location)
+		{
+			if (inProcess <= 0) return name;
+			var loc = string.IsNullOrEmpty(location) ? "processing" : location;
+			return $"{name} ({inProcess} in {loc})";
 		}
 
 		// Table style: header row "Category | (icon) | Item | Count" + thin underline.
@@ -1010,13 +1031,13 @@ namespace GrabMaterials
 		}
 
 		// Table style: category + (icon) + item + count.
-		private static void BuildFlatDataRow(string category, Sprite icon, string itemName, string countText, string sharedName)
+		private static void BuildFlatDataRow(string category, Sprite icon, string itemName, int inProcess, string inProcessLocation, string countText, string sharedName)
 		{
 			var row = MakeRow("FlatDataRow", TableRowPadding);
 			MakeRowClickable(row, sharedName);
 			MakeCellText(row, category, TextAnchor.MiddleLeft, Color.white, CategoryColumnWidth, 0f);
 			if (ShowItemIcons) MakeIconCell(row, icon);
-			MakeCellText(row, itemName, TextAnchor.MiddleLeft, Color.white, 0f, 1f);
+			MakeCellText(row, ItemDisplayRich(itemName, inProcess, inProcessLocation), TextAnchor.MiddleLeft, Color.white, 0f, 1f, inProcess > 0);
 			MakeCellText(row, countText, TextAnchor.MiddleRight, Color.white, CountColumnWidth, 0f);
 		}
 
@@ -1146,7 +1167,7 @@ namespace GrabMaterials
 			return row;
 		}
 
-		private static Text MakeCellText(GameObject parent, string txt, TextAnchor alignment, Color color, float preferredWidth, float flexibleWidth)
+		private static Text MakeCellText(GameObject parent, string txt, TextAnchor alignment, Color color, float preferredWidth, float flexibleWidth, bool supportsRichText = false)
 		{
 			var go = new GameObject("Cell");
 			go.transform.SetParent(parent.transform, false);
@@ -1157,7 +1178,7 @@ namespace GrabMaterials
 			t.color = color;
 			t.alignment = alignment;
 			t.text = txt;
-			t.supportRichText = false;
+			t.supportRichText = supportsRichText;
 			t.raycastTarget = false;
 			AddOutline(go);
 			var le = go.AddComponent<LayoutElement>();
