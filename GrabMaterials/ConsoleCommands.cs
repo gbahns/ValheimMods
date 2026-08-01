@@ -77,6 +77,39 @@ namespace GrabMaterials
 			_pendingByName[name] = GetPending(name) + amount;
 		}
 
+		// "Run-again override": when the first grab of a request reports a shortage,
+		// the request is remembered. A repeat of the *same* request (same label, or
+		// same item list if there's no label) within OverrideTimeoutSeconds skips the
+		// atomic-abort and grabs whatever's available. Lets the player partial-grab a
+		// pack and head out to chop the missing finewood instead of grinding to a halt.
+		private static string _lastFailedRequestKey;
+		private static float _lastFailedRequestTime;
+		private const float OverrideTimeoutSeconds = 30f;
+
+		internal static void ClearOverrideState()
+		{
+			_lastFailedRequestKey = null;
+			_lastFailedRequestTime = 0f;
+		}
+
+		private static string ComputeRequestKey(string requestLabel, List<ItemToGrab> aggregated)
+		{
+			if (!string.IsNullOrEmpty(requestLabel)) return "label:" + requestLabel.ToLowerInvariant();
+			var sb = new StringBuilder("items:");
+			foreach (var item in aggregated)
+			{
+				sb.Append(item.Name.ToLowerInvariant()).Append(':').Append(item.Count).Append(',');
+			}
+			return sb.ToString();
+		}
+
+		private static bool IsOverrideRequest(string key)
+		{
+			return _lastFailedRequestKey != null
+				&& _lastFailedRequestKey == key
+				&& Time.time - _lastFailedRequestTime <= OverrideTimeoutSeconds;
+		}
+
 		public static void GrabMaterialsForPiece(this Terminal.ConsoleEventArgs args)
 		{
 			Log.LogInfo($"GrabMaterialsForPiece({args.FullLine})");
@@ -442,7 +475,13 @@ namespace GrabMaterials
 			{
 				if (effectiveNeed[i] > 0 && available[i] < effectiveNeed[i]) { anyShort = true; break; }
 			}
-			if (anyShort)
+
+			// Run-again override: if the player repeats a request that previously
+			// failed on shortages, fall through to a partial grab instead of aborting.
+			var requestKey = ComputeRequestKey(requestLabel, aggregated);
+			var isOverride = anyShort && IsOverrideRequest(requestKey);
+
+			if (anyShort && !isOverride)
 			{
 				var statuses = new List<MaterialsPanel.ItemStatus>(aggregated.Count);
 				var debugShortages = new List<string>();
@@ -461,8 +500,13 @@ namespace GrabMaterials
 					}
 				}
 				Log.LogInfo($"Cannot grab{(string.IsNullOrEmpty(requestLabel) ? "" : $" for {requestLabel}")} - missing: {string.Join(", ", debugShortages)}");
-				var failTitle = string.IsNullOrEmpty(requestLabel) ? "Missing materials" : $"Missing materials for {requestLabel}";
+				var failTitle = string.IsNullOrEmpty(requestLabel)
+					? "Missing materials — run again to grab what's available"
+					: $"Missing materials for {requestLabel} — run again to grab what's available";
 				MaterialsPanel.Show(failTitle, statuses);
+				// Remember the request so a repeat within the window triggers the override.
+				_lastFailedRequestKey = requestKey;
+				_lastFailedRequestTime = Time.time;
 				// Failed grab still indicates the player is actively building —
 				// keep the ledger alive so the next grab inherits the window.
 				if (grabDelta) _lastGrabTime = Time.time;
@@ -495,11 +539,18 @@ namespace GrabMaterials
 				});
 			}
 			if (grabDelta) _lastGrabTime = Time.time;
+			// Grab succeeded (full or partial-via-override) — clear the run-again state
+			// so the next attempt of the same request starts fresh.
+			ClearOverrideState();
 			string successTitle;
 			if (allCovered)
 			{
 				successTitle = string.IsNullOrEmpty(requestLabel) ? "Already have everything" : $"Already have everything for {requestLabel}";
 				Log.LogInfo(successTitle);
+			}
+			else if (isOverride)
+			{
+				successTitle = string.IsNullOrEmpty(requestLabel) ? "Partial grab" : $"Partial grab for {requestLabel}";
 			}
 			else
 			{
