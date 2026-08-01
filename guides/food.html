@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valheim Food Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="shared/styles.css">
+    <script src="shared/chrome.js" defer></script>
+    <style>
+        body {
+            font-family: 'IM Fell English', serif;
+            background-color: #FDF5E6;
+            color: #4A3F35;
+        }
+        .valheim-title {
+            font-family: 'IM Fell English', serif;
+            font-weight: 700;
+            color: #4A3F35;
+        }
+        .card {
+            background-color: #FAF3E0;
+            border: 1px solid #D2B48C;
+        }
+        .filter-btn {
+            background-color: #D2B48C;
+            color: #4A3F35;
+            transition: background-color 0.15s, color 0.15s;
+        }
+        .filter-btn.active, .filter-btn:hover {
+            background-color: #4A3F35;
+            color: #FAF3E0;
+        }
+        /* Fork colors mirror Valheim's HUD food-icon backgrounds */
+        .fork-pill {
+            display: inline-block;
+            padding: 0 0.45rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border: 1px solid #4A3F35;
+        }
+        .fork-White  { background-color: #F5F5F0; color: #4A3F35; }
+        .fork-Red    { background-color: #C45A11; color: #FAF3E0; }
+        .fork-Yellow { background-color: #E0B040; color: #4A3F35; }
+        .fork-Blue   { background-color: #4F8FCB; color: #FAF3E0; }
+        th.sortable { cursor: pointer; user-select: none; }
+        th.sortable:hover { color: #C45A11; }
+        th .sort-indicator { font-size: 0.75em; opacity: 0.6; margin-left: 0.25em; }
+        tr.food-row:hover { background-color: rgba(210, 180, 140, 0.25); }
+        /* Tight default: every cell nowrap; opt back into wrapping with .wrap */
+        td, th { padding: 0.25rem 0.55rem; white-space: nowrap; }
+        td.wrap, th.wrap { white-space: normal; }
+        /* Unlock note shown under a food name */
+        .food-note {
+            display: block;
+            font-size: 0.72rem;
+            font-style: italic;
+            color: #6B5D4F;
+            margin-top: 1px;
+        }
+    </style>
+</head>
+<body>
+    <main class="container mx-auto max-w-7xl px-3 py-4">
+
+        <header class="text-center mb-3">
+            <h1 class="valheim-title text-3xl leading-tight">Food</h1>
+            <p class="text-sm mt-0.5 text-stone-700">All vanilla foods, sortable and multi-select filterable.</p>
+        </header>
+
+        <section class="card rounded-lg px-3 py-2 mb-3">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div class="flex items-baseline gap-2 flex-wrap">
+                    <h3 class="valheim-title text-sm">Biome:</h3>
+                    <div id="biomeFilters" class="flex flex-wrap gap-1"></div>
+                </div>
+                <div class="flex items-baseline gap-2 flex-wrap">
+                    <h3 class="valheim-title text-sm">Fork:</h3>
+                    <div id="forkFilters" class="flex flex-wrap gap-1"></div>
+                </div>
+                <span id="resultCount" class="text-stone-700 text-sm"></span>
+            </div>
+        </section>
+
+        <section class="card rounded-lg overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-[#4A3F35] text-[#FAF3E0] valheim-title">
+                    <tr>
+                        <th class="sortable text-left" data-key="name">Food <span class="sort-indicator">↕</span></th>
+                        <th class="sortable text-center" data-key="fork">Fork <span class="sort-indicator">↕</span></th>
+                        <th class="sortable text-right" data-key="hp">HP <span class="sort-indicator">↕</span></th>
+                        <th class="sortable text-right" data-key="st">Stam <span class="sort-indicator">↕</span></th>
+                        <th class="sortable text-right" data-key="ei">Eitr <span class="sort-indicator">↕</span></th>
+                        <th class="sortable text-right" data-key="total">Total <span class="sort-indicator">↕</span></th>
+                        <th class="sortable text-right" data-key="heal">Heal <span class="sort-indicator">↕</span></th>
+                        <th class="sortable text-right" data-key="duration">Dur <span class="sort-indicator">↕</span></th>
+                        <th class="sortable text-right" data-key="weight">Wt <span class="sort-indicator">↕</span></th>
+                        <th class="sortable text-right" data-key="stack">Stack <span class="sort-indicator">↕</span></th>
+                        <th class="sortable" data-key="tier">Biome <span class="sort-indicator">↕</span></th>
+                        <th>Station</th>
+                        <th class="wrap text-left">Ingredients</th>
+                    </tr>
+                </thead>
+                <tbody id="foodTbody"></tbody>
+            </table>
+        </section>
+
+        <footer class="text-center text-xs text-stone-600 mt-3 pb-3">
+            Blank duration/healing = value unset in source (most Ashlands foods). Biome tier 1 Meadows → 7 Ashlands. <em class="font-semibold">Italic notes</em> under a food name flag boss-gated ingredients sold by the Bog Witch.
+        </footer>
+
+    </main>
+
+    <script>
+        const FOODS = [
+            // ── Tier 7 — Ashlands ────────────────────────────────────────────
+            { name: "Ashlands gourmet bowl",      hp:75, st:75, ei:38, total:188, fork:"White",  heal:6, duration:3000, weight:10,  stack:5,  tier:7, biome:"Ashlands",      station:"Food preparation table", ingredients:"Cooked asksvin tail x3, Vineberry cluster x5, Scorching medley x2, Fiery spice powder x1", note:"Fiery spice powder — Bog Witch, after Fader" },
+            { name: "Mushrooms galore á la Mistlands", hp:65, st:65, ei:33, total:163, fork:"White",  heal:5, duration:3000, weight:10,  stack:5,  tier:7, biome:"Ashlands",  station:"Food preparation table", ingredients:"Misthare supreme x1, Cooked seeker meat x3, Yggdrasil porridge x1, Herbs of the hidden hills x1", note:"Themed for Mistlands; Herbs of the hidden hills sold by Bog Witch after The Queen — gates this to Ashlands tier" },
+            { name: "Marinated greens",           hp:32, st:16, ei:95, total:143, fork:"Blue",   heal:4, duration:null, weight:1,   stack:10, tier:7, biome:"Ashlands",      station:"",                       ingredients:"Sap x3, Magecap x2, Fiddlehead x2, Smoke puff x2" },
+            { name: "Piquant pie",                hp:105,st:35, ei:0,  total:140, fork:"Red",    heal:6, duration:null, weight:1,   stack:10, tier:7, biome:"Ashlands",      station:"",                       ingredients:"Asksvin tail x2, Vineberry cluster x2, Barley flour x4" },
+            { name: "Sparkling shroomshake",      hp:30, st:15, ei:90, total:135, fork:"Blue",   heal:4, duration:null, weight:1,   stack:10, tier:7, biome:"Ashlands",      station:"",                       ingredients:"Sap x4, Magecap x2, Vineberry cluster x2, Smoke puff x2" },
+            { name: "Mashed meat",                hp:100,st:34, ei:0,  total:134, fork:"Red",    heal:6, duration:null, weight:1,   stack:10, tier:7, biome:"Ashlands",      station:"",                       ingredients:"Asksvin tail x1, Volture meat x1, Fiddlehead x1" },
+            { name: "Roasted crust pie",          hp:34, st:100,ei:0,  total:134, fork:"Yellow", heal:4, duration:null, weight:1,   stack:10, tier:7, biome:"Ashlands",      station:"",                       ingredients:"Volture egg x1, Vineberry cluster x2, Barley flour x4" },
+            { name: "Fiery svinstew",             hp:95, st:32, ei:0,  total:127, fork:"Red",    heal:6, duration:null, weight:1,   stack:10, tier:7, biome:"Ashlands",      station:"",                       ingredients:"Asksvin tail x1, Vineberry cluster x2, Smoke puff x1" },
+            { name: "Scorching medley",           hp:32, st:95, ei:0,  total:127, fork:"Yellow", heal:4, duration:null, weight:1,   stack:10, tier:7, biome:"Ashlands",      station:"",                       ingredients:"Jotun puffs x3, Onion x3, Fiddlehead x3" },
+            { name: "Sizzling berry broth",       hp:28, st:14, ei:85, total:127, fork:"Blue",   heal:4, duration:null, weight:1,   stack:10, tier:7, biome:"Ashlands",      station:"",                       ingredients:"Sap x3, Vineberry cluster x2, Fiddlehead x2" },
+            { name: "Cooked bonemaw meat",        hp:90, st:30, ei:0,  total:120, fork:"Red",    heal:6, duration:null, weight:10,  stack:50, tier:7, biome:"Ashlands",      station:"",                       ingredients:"Bonemaw meat x1" },
+            { name: "Spicy marmalade",            hp:30, st:90, ei:0,  total:120, fork:"Yellow", heal:4, duration:null, weight:1,   stack:10, tier:7, biome:"Ashlands",      station:"",                       ingredients:"Vineberry cluster x3, Honey x1, Fiddlehead x1" },
+            { name: "Cooked asksvin tail",        hp:70, st:24, ei:0,  total:94,  fork:"Red",    heal:6, duration:null, weight:1,   stack:20, tier:7, biome:"Ashlands",      station:"",                       ingredients:"Asksvin tail x1" },
+            { name: "Cooked volture meat",        hp:70, st:24, ei:0,  total:94,  fork:"Red",    heal:6, duration:null, weight:1,   stack:20, tier:7, biome:"Ashlands",      station:"",                       ingredients:"Volture meat x1" },
+            { name: "Vineberry cluster",          hp:30, st:30, ei:30, total:90,  fork:"White",  heal:1, duration:null, weight:0.1, stack:50, tier:7, biome:"Ashlands",      station:"",                       ingredients:"(Foraged)" },
+            { name: "Fiddlehead",                 hp:30, st:30, ei:0,  total:60,  fork:"White",  heal:1, duration:null, weight:0.1, stack:50, tier:7, biome:"Ashlands",      station:"",                       ingredients:"(Foraged)" },
+            { name: "Smoke puff",                 hp:15, st:15, ei:0,  total:30,  fork:"White",  heal:1, duration:null, weight:0.1, stack:50, tier:7, biome:"Ashlands",      station:"",                       ingredients:"(Foraged)" },
+
+            // ── Tier 6 — Mistlands ───────────────────────────────────────────
+            { name: "Plains pie picnic",          hp:55, st:55, ei:0,  total:110, fork:"White",  heal:4, duration:3000, weight:10,  stack:5,  tier:6, biome:"Mistlands",     station:"Food preparation table",  ingredients:"Bread x3, Lox meat pie x2, Cloudberries x5, Grasslands herbalist harvest x1", note:"Themed for Plains; Grasslands herbalist harvest sold by Bog Witch after Yagluth — gates this to Mistlands tier" },
+            { name: "Fish n' bread",              hp:30, st:90, ei:0,  total:120, fork:"Yellow", heal:3, duration:1800, weight:1,   stack:10, tier:6, biome:"Mistlands",     station:"Cauldron (5) + Stone Oven", ingredients:"Anglerfish x1, Bread dough x2" },
+            { name: "Yggdrasil porridge",         hp:27, st:13, ei:80, total:120, fork:"Blue",   heal:3, duration:1500, weight:1,   stack:10, tier:6, biome:"Mistlands",     station:"Cauldron (5)",            ingredients:"Sap x4, Barley x3, Royal jelly x2" },
+            { name: "Misthare supreme",           hp:85, st:28, ei:0,  total:113, fork:"Red",    heal:5, duration:1500, weight:1,   stack:10, tier:6, biome:"Mistlands",     station:"Cauldron (5) + Stone Oven", ingredients:"Hare meat x1, Jotun puffs x3, Carrot x2" },
+            { name: "Mushroom omelette",          hp:28, st:85, ei:0,  total:113, fork:"Yellow", heal:3, duration:1500, weight:1,   stack:10, tier:6, biome:"Mistlands",     station:"Cauldron (5)",            ingredients:"Egg x3, Jotun puffs x3" },
+            { name: "Stuffed mushroom",           hp:25, st:12, ei:75, total:112, fork:"Blue",   heal:3, duration:1500, weight:1,   stack:10, tier:6, biome:"Mistlands",     station:"Cauldron (5) + Stone Oven", ingredients:"Magecap x3, Blood clot x1, Turnip x2" },
+            { name: "Seeker aspic",               hp:28, st:14, ei:85, total:127, fork:"Blue",   heal:3, duration:1800, weight:1,   stack:10, tier:6, biome:"Mistlands",     station:"Cauldron (5)",            ingredients:"Seeker meat x2, Magecap x2, Royal jelly x2" },
+            { name: "Meat platter",               hp:80, st:26, ei:0,  total:106, fork:"Red",    heal:5, duration:1800, weight:1,   stack:10, tier:6, biome:"Mistlands",     station:"Cauldron (5) + Stone Oven", ingredients:"Seeker meat x1, Lox meat x1, Hare meat x1" },
+            { name: "Honey glazed chicken",       hp:80, st:26, ei:0,  total:106, fork:"Red",    heal:5, duration:1800, weight:1,   stack:10, tier:6, biome:"Mistlands",     station:"Cauldron (5) + Stone Oven", ingredients:"Chicken meat x1, Honey x3, Jotun puffs x2" },
+            { name: "Salad",                      hp:26, st:80, ei:0,  total:106, fork:"Yellow", heal:3, duration:1500, weight:1,   stack:10, tier:6, biome:"Mistlands",     station:"Cauldron (5)",            ingredients:"Jotun puffs x3, Onion x3, Cloudberries x3" },
+            { name: "Cooked chicken meat",        hp:60, st:20, ei:0,  total:80,  fork:"Red",    heal:5, duration:1200, weight:1,   stack:20, tier:6, biome:"Mistlands",     station:"Iron cooking station",    ingredients:"Chicken meat x1" },
+            { name: "Cooked seeker meat",         hp:60, st:20, ei:0,  total:80,  fork:"Red",    heal:5, duration:1200, weight:1,   stack:20, tier:6, biome:"Mistlands",     station:"Iron cooking station",    ingredients:"Seeker meat x1" },
+            { name: "Cooked hare meat",           hp:60, st:20, ei:0,  total:80,  fork:"Red",    heal:5, duration:1200, weight:1,   stack:20, tier:6, biome:"Mistlands",     station:"Iron cooking station",    ingredients:"Hare meat x1" },
+            { name: "Cooked egg",                 hp:35, st:12, ei:0,  total:47,  fork:"Red",    heal:1, duration:1200, weight:1,   stack:10, tier:6, biome:"Mistlands",     station:"Cauldron (1)",            ingredients:"Egg x1" },
+            { name: "Magecap",                    hp:25, st:25, ei:25, total:75,  fork:"White",  heal:1, duration:900,  weight:0.1, stack:50, tier:6, biome:"Mistlands",     station:"(Foraged in Mistlands)",  ingredients:"" },
+            { name: "Jotun puffs",                hp:25, st:25, ei:0,  total:50,  fork:"White",  heal:1, duration:900,  weight:0.1, stack:50, tier:6, biome:"Mistlands",     station:"(Foraged in Mistlands)",  ingredients:"" },
+
+            // ── Tier 5 — Plains ──────────────────────────────────────────────
+            { name: "Hearty Mountain logger's stew", hp:45, st:45, ei:0, total:90, fork:"White",  heal:3, duration:3000, weight:10,  stack:5,  tier:5, biome:"Plains",        station:"Food preparation table",  ingredients:"Wolf skewer x2, Onion soup x3, Carrot x4, Mountain peak pepper powder x1", note:"Themed for Mountain; Mountain peak pepper powder sold by Bog Witch after Moder — gates this to Plains tier" },
+            { name: "Blood pudding",              hp:25, st:75, ei:0,  total:100, fork:"Yellow", heal:2, duration:1800, weight:1,   stack:10, tier:5, biome:"Plains",        station:"Cauldron (4)",            ingredients:"Thistle x2, Bloodbag x2, Barley flour x4" },
+            { name: "Lox meat pie",               hp:75, st:24, ei:0,  total:99,  fork:"Red",    heal:4, duration:1800, weight:1,   stack:10, tier:5, biome:"Plains",        station:"Cauldron (4) + Stone Oven", ingredients:"Barley flour x4, Cloudberries x2, Lox meat x2" },
+            { name: "Fish wraps",                 hp:70, st:23, ei:0,  total:93,  fork:"Red",    heal:4, duration:1500, weight:1,   stack:10, tier:5, biome:"Plains",        station:"Cauldron (4)",            ingredients:"Barley flour x4, Cooked fish x2" },
+            { name: "Bread",                      hp:23, st:70, ei:0,  total:93,  fork:"Yellow", heal:2, duration:1500, weight:0.5, stack:20, tier:5, biome:"Plains",        station:"Cauldron (4) + Stone Oven", ingredients:"Bread dough x1 (from flour)" },
+            { name: "Cooked lox meat",            hp:50, st:16, ei:0,  total:66,  fork:"Red",    heal:4, duration:1200, weight:1,   stack:20, tier:5, biome:"Plains",        station:"Iron cooking station",    ingredients:"Lox meat x1" },
+            { name: "Cloudberries",               hp:13, st:40, ei:0,  total:53,  fork:"Yellow", heal:1, duration:900,  weight:0.1, stack:50, tier:5, biome:"Plains",        station:"(Foraged in Plains)",     ingredients:"" },
+
+            // ── Tier 4 — Mountain ────────────────────────────────────────────
+            { name: "Wolf skewer",                hp:65, st:21, ei:0,  total:86,  fork:"Red",    heal:3, duration:1500, weight:0.5, stack:20, tier:4, biome:"Mountain",      station:"Cauldron (3)",            ingredients:"Wolf meat x1, Mushroom x2, Onion x1" },
+            { name: "Eyescream",                  hp:21, st:65, ei:0,  total:86,  fork:"Yellow", heal:1, duration:1500, weight:0.5, stack:10, tier:4, biome:"Mountain",      station:"Cauldron (3)",            ingredients:"Greydwarf eye x3, Freeze gland x1" },
+            { name: "Onion Soup",                 hp:20, st:60, ei:0,  total:80,  fork:"Yellow", heal:1, duration:1200, weight:1,   stack:10, tier:4, biome:"Mountain",      station:"Cauldron (3)",            ingredients:"Boar meat x1, Turnip x3" },
+            { name: "Wolf jerky",                 hp:33, st:33, ei:0,  total:66,  fork:"White",  heal:3, duration:1800, weight:1,   stack:20, tier:4, biome:"Mountain",      station:"Cauldron (3)",            ingredients:"Wolf meat x1, Honey x1" },
+            { name: "Cooked wolf meat",           hp:45, st:15, ei:0,  total:60,  fork:"Red",    heal:3, duration:1200, weight:1,   stack:20, tier:4, biome:"Mountain",      station:"Cooking station",         ingredients:"Wolf meat x1" },
+            { name: "Onion",                      hp:13, st:40, ei:0,  total:53,  fork:"Yellow", heal:1, duration:900,  weight:0.3, stack:50, tier:4, biome:"Mountain",      station:"(Grown from onion seeds)", ingredients:"" },
+
+            // ── Tier 3 — Swamp / Ocean ───────────────────────────────────────
+            { name: "Sailor's bounty",            hp:45, st:45, ei:0,  total:90,  fork:"White",  heal:3, duration:3000, weight:10,  stack:5,  tier:3, biome:"Swamp",         station:"Food preparation table",  ingredients:"Cooked fish x5, Thistle x4, Cooked serpent meat x2, Seafarer's herbs x1", note:"Seafarer's herbs — Bog Witch, after defeating any Serpent" },
+            { name: "Whole roasted Meadow boar",  hp:35, st:35, ei:0,  total:70,  fork:"White",  heal:2, duration:3000, weight:10,  stack:5,  tier:3, biome:"Swamp",         station:"Food preparation table",  ingredients:"Cooked deer meat x2, Cooked boar meat x5, Dandelion x4, Woodland herb blend x1", note:"Woodland herb blend — Bog Witch, after The Elder" },
+            { name: "Black Forest buffet platter",hp:35, st:35, ei:0,  total:70,  fork:"White",  heal:3, duration:3000, weight:10,  stack:5,  tier:3, biome:"Swamp",         station:"Food preparation table",  ingredients:"Deer stew x3, Thistle x5, Queen's jam x4, Woodland herb blend x1", note:"Woodland herb blend — Bog Witch, after The Elder" },
+            { name: "Swamp dweller's delight",    hp:35, st:35, ei:0,  total:70,  fork:"White",  heal:3, duration:3000, weight:10,  stack:5,  tier:3, biome:"Swamp",         station:"Food preparation table",  ingredients:"Sausages x8, Bloodbag x4, Turnip stew x2, Woodland herb blend x1", note:"Woodland herb blend — Bog Witch, after The Elder" },
+            { name: "Serpent stew",               hp:80, st:26, ei:0,  total:106, fork:"Red",    heal:4, duration:1800, weight:1,   stack:10, tier:3, biome:"Ocean",         station:"Cauldron (2)",            ingredients:"Mushroom x1, Cooked serpent meat x1, Honey x2" },
+            { name: "Cooked serpent meat",        hp:70, st:23, ei:0,  total:93,  fork:"Red",    heal:3, duration:1500, weight:10,  stack:50, tier:3, biome:"Ocean",         station:"Iron cooking station",    ingredients:"Serpent meat x1" },
+            { name: "Sausages",                   hp:55, st:18, ei:0,  total:73,  fork:"Red",    heal:3, duration:1500, weight:0.5, stack:20, tier:3, biome:"Swamp",         station:"Cauldron (2)",            ingredients:"Entrails x4, Boar meat x1, Thistle x1" },
+            { name: "Turnip stew",                hp:18, st:55, ei:0,  total:73,  fork:"Yellow", heal:2, duration:1500, weight:1,   stack:10, tier:3, biome:"Swamp",         station:"Cauldron (2)",            ingredients:"" },
+            { name: "Black soup",                 hp:50, st:17, ei:0,  total:67,  fork:"Red",    heal:3, duration:1200, weight:1,   stack:10, tier:3, biome:"Swamp",         station:"Cauldron (2)",            ingredients:"Bloodbag x1, Honey x1, Turnip x1" },
+            { name: "Muckshake",                  hp:16, st:50, ei:0,  total:66,  fork:"Yellow", heal:1, duration:1200, weight:1,   stack:10, tier:3, biome:"Swamp",         station:"Cauldron (2)",            ingredients:"Ooze x1, Raspberries x2, Blueberries x2" },
+
+            // ── Tier 2 — Black Forest ────────────────────────────────────────
+            { name: "Deer stew",                  hp:45, st:15, ei:0,  total:60,  fork:"Red",    heal:3, duration:1500, weight:1,   stack:10, tier:2, biome:"Black Forest",  station:"Cauldron (1)",            ingredients:"Blueberries x1, Carrot x1, Cooked deer meat x1" },
+            { name: "Cooked fish",                hp:45, st:15, ei:0,  total:60,  fork:"Red",    heal:2, duration:1200, weight:0.5, stack:20, tier:2, biome:"Black Forest",  station:"Cooking station",         ingredients:"Raw fish x1" },
+            { name: "Carrot soup",                hp:15, st:45, ei:0,  total:60,  fork:"Yellow", heal:2, duration:1500, weight:1,   stack:10, tier:2, biome:"Black Forest",  station:"Cauldron (1)",            ingredients:"Mushroom x1, Carrot x3" },
+            { name: "Queen's jam",                hp:14, st:40, ei:0,  total:54,  fork:"Yellow", heal:2, duration:1200, weight:1,   stack:10, tier:2, biome:"Black Forest",  station:"Cauldron (1)",            ingredients:"Raspberries x8, Blueberries x6" },
+            { name: "Minced meat sauce",          hp:40, st:13, ei:0,  total:53,  fork:"Red",    heal:3, duration:1500, weight:1,   stack:10, tier:2, biome:"Black Forest",  station:"Cauldron (1)",            ingredients:"Boar meat x1, Neck tail x1, Carrot x1" },
+            { name: "Boar jerky",                 hp:23, st:23, ei:0,  total:46,  fork:"White",  heal:2, duration:1800, weight:0.5, stack:20, tier:2, biome:"Black Forest",  station:"Cauldron (1)",            ingredients:"Boar meat x1, Honey x1" },
+            { name: "Carrot",                     hp:10, st:32, ei:0,  total:42,  fork:"Yellow", heal:1, duration:900,  weight:0.3, stack:50, tier:2, biome:"Black Forest",  station:"(Grown from carrot seeds)", ingredients:"" },
+            { name: "Yellow mushroom",            hp:10, st:30, ei:0,  total:40,  fork:"Yellow", heal:1, duration:600,  weight:0.1, stack:50, tier:2, biome:"Black Forest",  station:"(Found in Burial Chambers)", ingredients:"" },
+            { name: "Blueberries",                hp:8,  st:25, ei:0,  total:33,  fork:"Yellow", heal:1, duration:600,  weight:0.1, stack:50, tier:2, biome:"Black Forest",  station:"(Foraged in Black Forest)", ingredients:"" },
+
+            // ── Tier 1 — Meadows ─────────────────────────────────────────────
+            { name: "Cooked deer meat",           hp:35, st:12, ei:0,  total:47,  fork:"Red",    heal:2, duration:1200, weight:1,   stack:20, tier:1, biome:"Meadows",       station:"Cooking station",         ingredients:"Deer meat x1" },
+            { name: "Cooked boar meat",           hp:30, st:10, ei:0,  total:40,  fork:"Red",    heal:2, duration:1200, weight:1,   stack:20, tier:1, biome:"Meadows",       station:"Cooking station",         ingredients:"Boar meat x1" },
+            { name: "Grilled neck tail",          hp:25, st:8,  ei:0,  total:33,  fork:"Red",    heal:2, duration:1200, weight:0.5, stack:20, tier:1, biome:"Meadows",       station:"Cooking station",         ingredients:"Neck tail x1" },
+            { name: "Honey",                      hp:8,  st:35, ei:0,  total:43,  fork:"Yellow", heal:1, duration:900,  weight:0.2, stack:50, tier:1, biome:"Meadows",       station:"(Beehive)",               ingredients:"" },
+            { name: "Mushroom",                   hp:15, st:15, ei:0,  total:30,  fork:"White",  heal:1, duration:900,  weight:0.1, stack:50, tier:1, biome:"Meadows",       station:"(Meadows / Black Forest)",  ingredients:"" },
+            { name: "Raspberries",                hp:7,  st:20, ei:0,  total:27,  fork:"Yellow", heal:1, duration:600,  weight:0.1, stack:50, tier:1, biome:"Meadows",       station:"(Foraged in Meadows)",    ingredients:"" },
+        ];
+
+        const BIOMES = [
+            { tier:0, label:"All"          },
+            { tier:1, label:"1 Meadows"    },
+            { tier:2, label:"2 Black Forest"},
+            { tier:3, label:"3 Swamp/Ocean"},
+            { tier:4, label:"4 Mountain"   },
+            { tier:5, label:"5 Plains"     },
+            { tier:6, label:"6 Mistlands"  },
+            { tier:7, label:"7 Ashlands"   },
+        ];
+        const FORKS = ["All", "White", "Red", "Yellow", "Blue"];
+
+        // Biome filter is multi-select: an empty Set means "show all".
+        // Clicking "All" clears the Set; clicking an individual tier toggles its membership.
+        const activeBiomes = new Set();
+        let activeFork  = "All";
+        let sortKey     = "total";
+        let sortDir     = -1; // -1 desc, 1 asc
+
+        // ── Render filter buttons ────────────────────────────────────────────
+        const biomeRow = document.getElementById('biomeFilters');
+        BIOMES.forEach(b => {
+            const btn = document.createElement('button');
+            btn.className = 'filter-btn px-3 py-1 rounded text-sm';
+            btn.textContent = b.label;
+            btn.onclick = () => {
+                if (b.tier === 0) {
+                    activeBiomes.clear();
+                } else if (activeBiomes.has(b.tier)) {
+                    activeBiomes.delete(b.tier);
+                } else {
+                    activeBiomes.add(b.tier);
+                }
+                refreshFilters();
+                render();
+            };
+            biomeRow.appendChild(btn);
+        });
+
+        const forkRow = document.getElementById('forkFilters');
+        FORKS.forEach(f => {
+            const btn = document.createElement('button');
+            btn.className = 'filter-btn px-3 py-1 rounded text-sm';
+            btn.textContent = f;
+            if (f === activeFork) btn.classList.add('active');
+            btn.onclick = () => { activeFork = f; refreshFilters(); render(); };
+            forkRow.appendChild(btn);
+        });
+
+        function refreshFilters() {
+            [...biomeRow.children].forEach((b, i) => {
+                const tier = BIOMES[i].tier;
+                const isActive = tier === 0 ? activeBiomes.size === 0 : activeBiomes.has(tier);
+                b.classList.toggle('active', isActive);
+            });
+            [...forkRow.children].forEach((b, i) =>
+                b.classList.toggle('active', FORKS[i] === activeFork));
+        }
+
+        // Initial highlight: "All" is the default active state.
+        refreshFilters();
+
+        // ── Sortable headers ─────────────────────────────────────────────────
+        document.querySelectorAll('th.sortable').forEach(th => {
+            th.onclick = () => {
+                const key = th.dataset.key;
+                if (key === sortKey) sortDir = -sortDir;
+                else { sortKey = key; sortDir = (typeof FOODS[0][key] === 'number') ? -1 : 1; }
+                render();
+            };
+        });
+
+        // ── Render rows ──────────────────────────────────────────────────────
+        function render() {
+            let rows = FOODS.filter(f =>
+                (activeBiomes.size === 0 || activeBiomes.has(f.tier)) &&
+                (activeFork === "All" || f.fork === activeFork)
+            );
+
+            rows.sort((a, b) => {
+                const av = a[sortKey], bv = b[sortKey];
+                if (av == null && bv == null) return 0;
+                if (av == null) return 1;
+                if (bv == null) return -1;
+                if (typeof av === 'number') return (av - bv) * sortDir;
+                return String(av).localeCompare(String(bv)) * sortDir;
+            });
+
+            document.getElementById('resultCount').textContent =
+                `Showing ${rows.length} of ${FOODS.length} foods`;
+
+            const tbody = document.getElementById('foodTbody');
+            tbody.innerHTML = rows.map(f => `
+                <tr class="food-row border-t border-stone-300">
+                    <td class="font-semibold">${f.name}${f.note ? `<span class="food-note">↳ ${f.note}</span>` : ''}</td>
+                    <td class="text-center"><span class="fork-pill fork-${f.fork}">${f.fork}</span></td>
+                    <td class="text-right">${f.hp}</td>
+                    <td class="text-right">${f.st}</td>
+                    <td class="text-right">${f.ei || ''}</td>
+                    <td class="text-right font-bold">${f.total}</td>
+                    <td class="text-right">${f.heal || ''}</td>
+                    <td class="text-right">${f.duration ?? ''}</td>
+                    <td class="text-right">${f.weight}</td>
+                    <td class="text-right">${f.stack}</td>
+                    <td>${f.tier}. ${f.biome}</td>
+                    <td>${f.station}</td>
+                    <td class="wrap text-xs text-stone-700">${f.ingredients}</td>
+                </tr>
+            `).join('');
+
+            // Update sort indicators
+            document.querySelectorAll('th.sortable .sort-indicator').forEach(s => s.textContent = '↕');
+            const active = document.querySelector(`th[data-key="${sortKey}"] .sort-indicator`);
+            if (active) active.textContent = sortDir > 0 ? '↑' : '↓';
+        }
+
+        render();
+    </script>
+</body>
+</html>

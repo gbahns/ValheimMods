@@ -9,6 +9,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="shared/styles.css">
+    <script src="shared/chrome.js" defer></script>
     <!-- Chosen Palette: Valheim Parchment & Stone -->
     <!-- Application Structure Plan: The application is designed as an interactive dashboard. The primary content is a responsive, sortable table view of all ships, which is optimal for direct stat comparison. Key interactions include filtering ships by category (Speed, Cargo, etc.) and sorting by clicking table headers. This is more direct than a dropdown for sorting. The structure also includes summary charts for high-level visual comparison and an info section for essential mod context. -->
     <!-- Visualization & Content Choices: Ship data is presented in a responsive HTML table, with JS handling the dynamic filtering, sorting, and rendering of rows. This is a classic and effective way to handle tabular data. A bar chart (Chart.js) compares cargo capacity, and a scatter plot (Chart.js) shows the mass vs. sail force relationship. These visualizations complement the table by providing at-a-glance insights. -->
@@ -150,7 +152,7 @@
             { name: "War Ship", category: "War", health: 2000, mass: 2000, sailForce: 0.6, rudderSpeed: 1, cargoSlots: 24, recipe: "Cloth Ship: 4; Caulked Wood: 50; Iron Nails: 120; Ship Rope: 2" },
             { name: "War Ship Skuldelev", category: "War", health: 2500, mass: 2500, sailForce: 0.6, rudderSpeed: 1, cargoSlots: 28, recipe: "Cloth Ship: 4; Caulked Wood: 60; Iron Nails: 160; Ship Rope: 4" },
             { name: "Taurus War Ship", category: "War", health: 3000, mass: 3000, sailForce: 0.6, rudderSpeed: 1, cargoSlots: 32, recipe: "Cloth Ship: 4; Caulked Wood: 60; Iron Nails: 180; Ship Rope: 4" },
-            { name: "Fast Ship Skuldelev", category: "Speed", health: 1500, mass: 1000, sailForce: 0.9, rudderSpeed: 1, cargoSlots: 6, recipe: "Cloth Ship: 4; Caulked Wood: 40; Iron Nails: 100; Ship Rope: 2" }
+            { name: "Fast Ship Skuldelev", category: "Speed", health: 1500, mass: 1000, sailForce: 0.9, rudderSpeed: 1, cargoSlots: 12, recipe: "Cloth Ship: 4; Caulked Wood: 40; Iron Nails: 100; Ship Rope: 2" }
         ];
 
         let currentFilter = 'All';

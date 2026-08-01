@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bog Witch — Valheim Knowledgebase</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="shared/styles.css">
+    <script src="shared/chrome.js" defer></script>
+    <style>
+        body {
+            font-family: 'IM Fell English', serif;
+            background-color: #FDF5E6;
+            color: #4A3F35;
+        }
+        .valheim-title {
+            font-family: 'IM Fell English', serif;
+            font-weight: 700;
+            color: #4A3F35;
+        }
+        .card {
+            background-color: #FAF3E0;
+            border: 1px solid #D2B48C;
+        }
+        .price-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            background-color: #E0B040;
+            color: #4A3F35;
+            padding: 0.15rem 0.55rem;
+            border-radius: 9999px;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+        .price-tag::before { content: "🪙"; }
+        .stub-note {
+            background: #FFF4D6;
+            border-left: 4px solid #E0B040;
+            padding: 0.75rem 1rem;
+            border-radius: 0.25rem;
+        }
+        th, td { padding: 0.5rem 0.75rem; }
+    </style>
+</head>
+<body>
+    <main class="container mx-auto max-w-6xl px-4 py-10">
+
+        <header class="text-center mb-8">
+            <h1 class="valheim-title text-5xl">The Bog Witch</h1>
+            <p class="text-lg mt-2 text-stone-700">Everything she sells — and what it unlocks.</p>
+        </header>
+
+        <section class="card rounded-lg p-4 mb-6 stub-note">
+            <strong>⚠️ Stub page.</strong> Items below need confirmation against the current Bog Witch update.
+            Edit the <code>STOCK</code> array in this file's <code>&lt;script&gt;</code> block to add or correct entries.
+            Each row: <code>{ name, price, category, summary, unlocks }</code>.
+        </section>
+
+        <section class="card rounded-lg p-4 mb-6">
+            <h2 class="valheim-title text-xl mb-2">Where to find her</h2>
+            <p class="text-stone-700">The Bog Witch lives in a hut in the Swamp biome. Locate her by finding a Witch Stone (a special structure type that spawns in Swamp), or by exploring Swamps after the Bog Witch update is active. She sells goods for <strong>Coins</strong>, accepts certain items in trade, and unlocks new recipes once you've purchased the relevant items.</p>
+        </section>
+
+        <section class="card rounded-lg overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-[#4A3F35] text-[#FAF3E0] valheim-title">
+                    <tr>
+                        <th>Item</th>
+                        <th class="text-right">Price</th>
+                        <th>Category</th>
+                        <th>What it does</th>
+                        <th>Unlocks / Enables</th>
+                    </tr>
+                </thead>
+                <tbody id="stockTbody"></tbody>
+            </table>
+        </section>
+
+        <footer class="text-center text-sm text-stone-600 mt-8 pb-4">
+            Coin prices reflect retail at the Bog Witch. Trade-in offers (giving her certain items in exchange) are not yet listed.
+        </footer>
+
+    </main>
+
+    <script>
+        // ── TODO: fill in real prices and any missing items ──────────────
+        // Categories used below: Seed | Recipe | Consumable | Trophy-trade | Other
+        const STOCK = [
+            { name: "Hen",                    price: null, category: "Consumable",  summary: "Female chicken — pair with rooster to start a flock for eggs and chicken meat.", unlocks: "Chicken farming loop." },
+            { name: "Jotun puffs seeds",      price: null, category: "Seed",        summary: "Plantable Mistlands mushroom seeds.",                                            unlocks: "Farming Jotun puffs in any biome." },
+            { name: "Magecap seeds",          price: null, category: "Seed",        summary: "Plantable Mistlands mushroom seeds.",                                            unlocks: "Farming Magecap." },
+            // ── add more rows below as you confirm them ──────────────────
+            // { name: "Bog Witch's brew", price: 100, category: "Consumable",
+            //   summary: "Short-duration potion that …",
+            //   unlocks: "After buying once, recipe unlocks at Cauldron." },
+        ];
+
+        const tbody = document.getElementById('stockTbody');
+        tbody.innerHTML = STOCK.map(item => `
+            <tr class="border-t border-stone-300 hover:bg-[rgba(210,180,140,0.25)]">
+                <td class="font-semibold">${item.name}</td>
+                <td class="text-right">${item.price != null ? `<span class="price-tag">${item.price}</span>` : '<span class="text-stone-500">?</span>'}</td>
+                <td>${item.category}</td>
+                <td class="text-stone-700">${item.summary}</td>
+                <td class="text-stone-700">${item.unlocks || ''}</td>
+            </tr>
+        `).join('');
+    </script>
+</body>
+</html>

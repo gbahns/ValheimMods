@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valheim Knowledgebase</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="shared/styles.css">
+    <script src="shared/chrome.js" defer></script>
+    <style>
+        body {
+            font-family: 'IM Fell English', serif;
+            background-color: #FDF5E6;
+            color: #4A3F35;
+        }
+        .hero h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            color: #4A3F35;
+            line-height: 1.1;
+        }
+        .hero p {
+            font-size: 1.25rem;
+            color: #6B5D4F;
+            max-width: 60ch;
+            margin: 0.75rem auto 0;
+        }
+    </style>
+</head>
+<body>
+
+    <main class="container mx-auto max-w-6xl px-4 py-10">
+
+        <section class="hero text-center mb-12">
+            <h1>Valheim Knowledgebase</h1>
+            <p>Interactive guides for ships, weapons, damage, fishing, food, and the Bog Witch's wares — a single reference for the Tenth World.</p>
+        </section>
+
+        <section class="kb-tile-grid">
+
+            <a href="ships.html" class="kb-tile">
+                <div class="kb-tile-icon">⛵</div>
+                <div class="kb-tile-title">Ships</div>
+                <div class="kb-tile-desc">The OdinShip+ fleet — sortable by health, mass, sail force, cargo, and recipe. Bar &amp; scatter charts for at-a-glance comparison.</div>
+            </a>
+
+            <a href="weapons.html" class="kb-tile">
+                <div class="kb-tile-icon">⚔️</div>
+                <div class="kb-tile-title">Weapons</div>
+                <div class="kb-tile-desc">Every vanilla weapon filterable by tier, type, and damage. Plus enemy intel for combat planning.</div>
+            </a>
+
+            <a href="damage.html" class="kb-tile">
+                <div class="kb-tile-icon">📊</div>
+                <div class="kb-tile-title">Damage</div>
+                <div class="kb-tile-desc">DPH / DPS calculator with skill level, target armor, and scenario inputs. Tactical advice and a damage-type breakdown chart.</div>
+            </a>
+
+            <a href="fishing.html" class="kb-tile">
+                <div class="kb-tile-icon">🎣</div>
+                <div class="kb-tile-title">Fishing</div>
+                <div class="kb-tile-desc">Every fish, bait, and biome — filterable card grid so you can answer "what bites here?" in one glance.</div>
+            </a>
+
+            <a href="food.html" class="kb-tile">
+                <div class="kb-tile-icon">🥩</div>
+                <div class="kb-tile-title">Food</div>
+                <div class="kb-tile-desc">All vanilla foods with HP / Stamina / Eitr / duration / ingredients / station. Sortable and filterable by biome tier and fork type.</div>
+            </a>
+
+            <a href="bog-witch.html" class="kb-tile">
+                <div class="kb-tile-icon">🧙‍♀️</div>
+                <div class="kb-tile-title">Bog Witch</div>
+                <div class="kb-tile-desc">Everything the Bog Witch sells — items, prices, and what each one unlocks or enables.</div>
+            </a>
+
+        </section>
+
+        <footer class="text-center text-sm text-stone-500 mt-16 pb-6">
+            Built as a personal Valheim reference. Add a new guide by dropping a new <code>.html</code> in this folder and an entry in <code>shared/chrome.js</code>.
+        </footer>
+
+    </main>
+
+</body>
+</html>

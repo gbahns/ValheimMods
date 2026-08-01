@@ -1,0 +1,99 @@
+/* Valheim Knowledgebase — shared chrome & palette
+   Per-page styles in each guide's <head> still apply on top of these. */
+
+:root {
+    --kb-parchment:       #FDF5E6;
+    --kb-parchment-light: #FAF3E0;
+    --kb-tan:             #D2B48C;
+    --kb-stone:           #4A3F35;
+    --kb-stone-light:     #6B5D4F;
+    --kb-accent:          #C45A11;
+    --kb-serif:           'IM Fell English', serif;
+}
+
+/* ── Top navigation bar (injected by chrome.js) ────────────────── */
+.kb-nav {
+    background: var(--kb-stone);
+    color: var(--kb-parchment);
+    padding: 0.75rem 1rem;
+    border-bottom: 3px solid var(--kb-tan);
+    font-family: var(--kb-serif);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+.kb-nav-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+.kb-brand {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--kb-parchment);
+    text-decoration: none;
+    white-space: nowrap;
+}
+.kb-brand:hover { color: var(--kb-tan); }
+.kb-links {
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+.kb-links a {
+    color: var(--kb-parchment);
+    text-decoration: none;
+    padding: 0.4rem 0.85rem;
+    border-radius: 0.25rem;
+    transition: background 0.15s, color 0.15s;
+    font-size: 1.05rem;
+}
+.kb-links a:hover {
+    background: rgba(210, 180, 140, 0.25);
+}
+.kb-links a.kb-active {
+    background: var(--kb-tan);
+    color: var(--kb-stone);
+    font-weight: 700;
+}
+
+/* ── Landing-page tile grid ────────────────────────────────────── */
+.kb-tile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1.25rem;
+}
+.kb-tile {
+    background: var(--kb-parchment-light);
+    border: 1px solid var(--kb-tan);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    text-decoration: none;
+    color: var(--kb-stone);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.kb-tile:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    border-color: var(--kb-stone);
+}
+.kb-tile-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+.kb-tile-title {
+    font-family: var(--kb-serif);
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 0.4rem;
+}
+.kb-tile-desc {
+    font-size: 0.95rem;
+    line-height: 1.4;
+    color: var(--kb-stone-light);
+}
