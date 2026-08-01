@@ -1,0 +1,7 @@
+{
+    "name": "StationExtensionGuard",
+    "version_number": "1.0.0",
+    "website_url": "https://github.com/gbahns/ValheimMods",
+    "description": "Defensive guard that strips dead StationExtension entries before vanilla iterates over them, suppressing the recurring CraftingStation.GetExtensions NRE caused by mods that leak destroyed extensions into the static list. Logs which mod's prefab leaked so you can report it upstream.",
+    "dependencies": ["denikson-BepInExPack_Valheim-5.4.2202"]
+}
