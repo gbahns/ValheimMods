@@ -17,6 +17,7 @@ namespace HungryViking
 
         public ConfigEntry<bool>  Enabled;
         public ConfigEntry<bool>  ShowStatusIcon;
+        public ConfigEntry<KeyboardShortcut> DismissKey;
         public ConfigEntry<float> HungerThreshold;
         public ConfigEntry<float> VignetteIntensity;
         public ConfigEntry<float> VignetteExtent;
@@ -36,6 +37,13 @@ namespace HungryViking
         // Hashes confirmed via hv_selist against a live game instance.
         private const int SmokedHash   = -1612278721; // "$se_smoked_name"
         private const int PoisonedHash = 0;           // TODO: run hv_selist while poisoned to confirm
+
+        // Hunger acknowledgment: the player can press DismissKey to clear the vignette and
+        // label while still hungry. The warning re-arms automatically if hunger worsens (a
+        // slot empties or urgency climbs past the level dismissed at) and resets once fed.
+        private bool  _hungerAck;
+        private float _ackUrgency;
+        private int   _ackFoodCount;
 
         private bool  _smokedTestActive;
         private bool  _poisonedTestActive;
@@ -194,6 +202,10 @@ namespace HungryViking
                 MigrateBool("General", "Show Status Icon", true),
                 "Show the Hunger status icon in the HUD alongside Rested, Shelter, etc.");
 
+            DismissKey = Config.Bind("Hunger", "Dismiss Vignette Key",
+                new KeyboardShortcut(KeyCode.H),
+                "Press to acknowledge the hunger warning and clear the vignette and label so you can see the screen clearly. The HUD status icon stays visible. The warning returns if your hunger worsens, and resets once you eat.");
+
             HungerThreshold = Config.Bind("Hunger", "Hunger Threshold (seconds)",
                 MigrateFloat("General", "Hunger Threshold (seconds)", 90f),
                 "Seconds remaining on a food buff when the warning begins. Vignette and label fade in from here.");
@@ -300,30 +312,41 @@ namespace HungryViking
             {
                 _activeStatusEffect = null;
                 _statusEffectPlayer = player;
+                _hungerAck          = false;
             }
 
             _vignette.SetInnerBoundary(1.0f - VignetteExtent.Value);
             _foodMonitor.Tick(Time.deltaTime);
 
-            bool  anyEmpty    = _foodMonitor.CurrentFoodCount < 3;
+            // Empty slots only register as hunger up to the most slots filled this session,
+            // so a player who has never eaten sees no warning until a food actually runs low.
+            bool  anyEmpty    = _foodMonitor.CurrentFoodCount < _foodMonitor.MaxFoodCount;
             float realUrgency = anyEmpty ? 1f : _foodMonitor.WorstSlotUrgency;
 
             if (_hungerPreviewTimer > 0f) _hungerPreviewTimer -= Time.deltaTime;
             bool  hungerTest     = _hungerTestActive || _hungerPreviewTimer > 0f;
             float displayUrgency = hungerTest ? 1f : realUrgency;
 
-            if (displayUrgency > 0f)
+            UpdateHungerAck(player, realUrgency, anyEmpty, displayUrgency, hungerTest);
+
+            // Test/preview always shows, so the player can dial in settings even after dismissing.
+            bool suppressed = _hungerAck && !hungerTest;
+
+            if (displayUrgency > 0f && !suppressed)
                 _vignette.SetBase(VignetteIntensity.Value * displayUrgency, new Color(1f, 0.8f, 0.15f));
             else
                 _vignette.SetBase(0f, Color.black);
 
             string label = null;
-            if (hungerTest || anyEmpty)
-                label = "You are hungry.";
-            else if (realUrgency >= 0.5f)
-                label = "You are getting hungry.";
-            else if (realUrgency > 0f)
-                label = "You are starting to feel hungry.";
+            if (!suppressed)
+            {
+                if (hungerTest || anyEmpty)
+                    label = "You are hungry.";
+                else if (realUrgency >= 0.5f)
+                    label = "You are getting hungry.";
+                else if (realUrgency > 0f)
+                    label = "You are starting to feel hungry.";
+            }
 
             _vignette.SetHungerLabel(label, displayUrgency);
 
@@ -340,6 +363,33 @@ namespace HungryViking
             {
                 player.GetSEMan().RemoveStatusEffect(_activeStatusEffect.NameHash(), false);
                 _activeStatusEffect = null;
+            }
+        }
+
+        // Margin by which urgency must climb past the dismissed level to re-trigger the warning.
+        private const float AckReArmUrgency = 0.15f;
+
+        private void UpdateHungerAck(Player player, float realUrgency, bool anyEmpty,
+                                     float displayUrgency, bool hungerTest)
+        {
+            // No longer hungry (ate enough): clear the acknowledgment so the next warning shows.
+            if (realUrgency <= 0f && !anyEmpty)
+                _hungerAck = false;
+
+            // Hunger worsened since dismissal — another slot emptied or urgency climbed.
+            if (_hungerAck && (_foodMonitor.CurrentFoodCount < _ackFoodCount
+                               || realUrgency > _ackUrgency + AckReArmUrgency))
+                _hungerAck = false;
+
+            // Only act on the key while a warning is actually showing and the player can take
+            // input (TakeInput is false when console, chat, or inventory has focus).
+            bool warningVisible = !_hungerAck && displayUrgency > 0f && !hungerTest;
+            if (warningVisible && DismissKey.Value.IsDown() && player.TakeInput())
+            {
+                _hungerAck    = true;
+                _ackUrgency   = realUrgency;
+                _ackFoodCount = _foodMonitor.CurrentFoodCount;
+                Log.LogInfo("HungryViking: hunger warning dismissed");
             }
         }
 

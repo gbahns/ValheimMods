@@ -15,8 +15,11 @@ Adds escalating visual warnings when your food buffs approach expiry, and overla
 - **Screen vignette** — an amber glow creeps in from the screen edges as your hungriest food slot ticks down. Intensity and extent are configurable. The vignette oscillates to draw your eye: slow pulse at first, faster as urgency increases.
 - **On-screen label** — "You are starting to feel hungry." → "You are getting hungry." → "You are hungry." The text color shifts from orange toward red as urgency rises.
 - **HUD status icon** — a Hungry icon appears in the same row as Rested and Shelter, so you can spot hunger state at a glance without reading the label.
+- **Dismiss key** — press **H** (configurable) to acknowledge the warning and clear the vignette and label so you can see the screen clearly during a fight or a careful build. The HUD status icon stays put as a quiet reminder, and the full warning returns on its own if your hunger gets worse — or resets once you eat.
 
 All hunger effects are off when you have 3 full food slots. Warnings begin when your hungriest slot crosses the configurable threshold (default 90 seconds remaining).
+
+Warnings only track food you've actually eaten this session: a fresh character who has never eaten sees nothing, and empty slots only count as hunger once a previously filled slot runs out (or is about to).
 
 ### Smoke
 
@@ -45,6 +48,7 @@ Open `BepInEx/config/DeathMonger.HungryViking.cfg` to adjust settings. Changing 
 | Setting | Default | Description |
 |---|---|---|
 | Show Status Icon | `true` | Show/hide the Hungry HUD icon |
+| Dismiss Vignette Key | `H` | Acknowledge the warning and clear the vignette/label until hunger worsens |
 | Hunger Threshold (seconds) | `90` | Seconds remaining when warnings begin |
 | Vignette Intensity | `0.20` | Max edge opacity (0–1) |
 | Vignette Extent | `0.50` | How far the vignette reaches toward center (0–1) |

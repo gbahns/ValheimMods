@@ -7,7 +7,7 @@ namespace HungryViking
 {
     // Polls Player.m_foods each tick and fires events when food approaches or hits expiry.
     // OnWarning fires once per slot per expiry cycle when it crosses below HungerThreshold.
-    // OnStarving fires when a slot disappears (expired or missing on load).
+    // OnStarving fires when a previously filled slot disappears.
     public class FoodMonitor
     {
         private readonly HungryVikingMod _mod;
@@ -26,6 +26,11 @@ namespace HungryViking
         // Number of active food slots this tick (0–3).
         public int CurrentFoodCount { get; private set; }
 
+        // Highest simultaneous food count seen this session for the current player.
+        // Empty slots only count as hunger up to this baseline, so a player who has
+        // never eaten (or never filled a slot) isn't warned about slots never in use.
+        public int MaxFoodCount { get; private set; }
+
         // 0 = all food above HungerThreshold.
         // Ramps 0→1 as the hungriest active slot ticks from HungerThreshold down to 0s.
         // Does not account for empty slots — the mod adds that separately.
@@ -33,7 +38,8 @@ namespace HungryViking
 
         private readonly Dictionary<string, SlotState> _states   = new Dictionary<string, SlotState>();
         private readonly HashSet<string>               _prevNames = new HashSet<string>();
-        private int _prevFoodCount = -1;
+        private int    _prevFoodCount = -1;
+        private Player _trackedPlayer;
 
         public FoodMonitor(HungryVikingMod mod) => _mod = mod;
 
@@ -87,12 +93,24 @@ namespace HungryViking
 
         public void Tick(float dt)
         {
-            var foods = FoodsRef(Player.m_localPlayer);
+            var player = Player.m_localPlayer;
+            if (player != _trackedPlayer)
+            {
+                _trackedPlayer = player;
+                _states.Clear();
+                _prevNames.Clear();
+                _prevFoodCount   = -1;
+                MaxFoodCount     = 0;
+                CurrentFoodCount = 0;
+            }
+
+            var foods = FoodsRef(player);
 
             if (CurrentFoodCount == 0 && foods.Count > 0)
                 HungryVikingMod.Log.LogInfo($"HungryViking: tracking {foods.Count} food slot(s)");
 
             CurrentFoodCount = foods.Count;
+            MaxFoodCount     = Math.Max(MaxFoodCount, CurrentFoodCount);
 
             var currentNames = new HashSet<string>();
             foreach (var food in foods)
@@ -108,10 +126,9 @@ namespace HungryViking
                     _states.Remove(name);
             }
 
-            // Starving: first tick with missing slots, or a slot disappears mid-session.
-            bool firstTick   = _prevFoodCount == -1;
-            bool slotExpired = CurrentFoodCount < _prevFoodCount;
-            if ((firstTick || slotExpired) && CurrentFoodCount < 3)
+            // Starving: a previously filled slot disappeared mid-session. Slots that were
+            // never filled this session don't count — a fresh character isn't starving.
+            if (CurrentFoodCount < _prevFoodCount)
                 OnStarving?.Invoke();
 
             // Per-slot urgency + one-shot warning event.
