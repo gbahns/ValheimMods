@@ -221,39 +221,16 @@ namespace ForsakenShrines
                 customPiece.Piece.m_enabled = hasKey;
                 Jotunn.Logger.LogInfo($"[ForsakenShrines] {def.PieceName}: key='{def.BossKey}' hasKey={hasKey} m_enabled={customPiece.Piece.m_enabled}");
             }
-
-            UpdateHammerCategoryRegistration();
         }
 
-        // Add or remove our category from the Hammer's piece table based on whether any shrine
-        // is unlocked.  When no shrines are unlocked the category is absent from the table, so
-        // Valheim/Jotunn never create a tab for it — much cleaner than trying to hide an already-
-        // created tab in the Hud.
-        internal static void UpdateHammerCategoryRegistration()
-        {
-            if ((int)PieceCategory < 0) return;
-
-            var table = ObjectDB.instance?.GetItemPrefab("Hammer")?.GetComponent<ItemDrop>()?.m_itemData?.m_shared?.m_buildPieces;
-            if (table == null) return;
-
-            // m_categories is private at runtime despite the publicized assembly — use reflection.
-            var catsField = AccessTools.Field(typeof(PieceTable), "m_categories");
-            if (catsField?.GetValue(table) is not System.Collections.Generic.List<Piece.PieceCategory> cats) return;
-
-            bool present = cats.Contains(PieceCategory);
-            bool shouldShow = AnyShrineUnlocked();
-
-            if (shouldShow && !present)
-            {
-                cats.Add(PieceCategory);
-                Jotunn.Logger.LogInfo($"[ForsakenShrines] Hammer categories: added {PieceCategory} (shrines unlocked).");
-            }
-            else if (!shouldShow && present)
-            {
-                cats.Remove(PieceCategory);
-                Jotunn.Logger.LogInfo($"[ForsakenShrines] Hammer categories: removed {PieceCategory} (no shrines unlocked).");
-            }
-        }
+        // Note: the FS tab category is registered once at Phase 2 via
+        // PieceManager.AddPieceCategory and never mutated afterward.  Earlier
+        // versions of this mod added/removed the category from PieceTable.m_categories
+        // at runtime to hide the tab when no shrines were unlocked, but that broke
+        // other mods that snapshot category indices at startup (e.g. OdinShipPlus's
+        // Hud.UpdateBuild patch).  Per-shrine visibility is handled by m_enabled on
+        // each Piece — until a boss is defeated, that shrine's piece is hidden inside
+        // the (now always-present) tab.
 
         private static void EnsureInNamedPrefabs()
         {
