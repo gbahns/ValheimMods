@@ -67,8 +67,9 @@ namespace ForsakenShrines
     }
 
     /// <summary>
-    /// When the game sets a global key (boss defeated), re-evaluate shrine unlock states so
-    /// newly killed bosses immediately unlock their shrine recipe without requiring a relog.
+    /// When the game sets a global key (boss defeated), re-evaluate shrine unlock states and
+    /// re-run the known-piece scan so the newly unlocked shrine appears in the Hammer at once,
+    /// without a relog or an inventory change.
     /// </summary>
     [HarmonyPatch(typeof(ZoneSystem), nameof(ZoneSystem.SetGlobalKey), typeof(string))]
     internal static class ZoneSystemSetGlobalKeyPatch
@@ -78,9 +79,15 @@ namespace ForsakenShrines
         {
             Jotunn.Logger.LogInfo($"[ForsakenShrines] ZoneSystem.SetGlobalKey('{name}') fired — refreshing unlocks.");
             ShrinePieces.UpdateUnlocks();
+            ShrinePieces.RefreshKnownPieces();
         }
     }
 
+    /// <summary>
+    /// On spawn the world's global keys are known, so refresh unlock state; then re-run the
+    /// known-piece scan, because vanilla's own scan ran in Player.Awake while every shrine was
+    /// still disabled.
+    /// </summary>
     [HarmonyPatch(typeof(Player), nameof(Player.OnSpawned))]
     internal static class PlayerOnSpawnedPatch
     {
@@ -89,6 +96,7 @@ namespace ForsakenShrines
         {
             Jotunn.Logger.LogInfo("[ForsakenShrines] Player.OnSpawned fired — refreshing unlocks.");
             ShrinePieces.UpdateUnlocks();
+            ShrinePieces.RefreshKnownPieces();
         }
     }
 

@@ -13,44 +13,71 @@ namespace ForsakenShrines
     {
         public const string ModGuid    = "DeathMonger.ForsakenShrines";
         public const string ModName    = "Forsaken Shrines";
-        public const string ModVersion = "0.8.1";
+        public const string ModVersion = "0.8.2";
 
         internal static ForsakenShrinesMod Instance { get; private set; }
 
+        // Master toggle.  Bound first and deliberately NOT server-synced, so a player who runs
+        // into a problem in-game can switch the mod off in
+        // BepInEx/config/DeathMonger.ForsakenShrines.cfg without removing the DLL.  When false,
+        // Awake binds this one entry and returns: no Harmony patches, no prefab clones, no piece
+        // registration, no console commands, and no ServerSync registration.  The remaining
+        // entries stay in the .cfg untouched (BepInEx preserves entries a plugin hasn't bound).
+        internal static ConfigEntry<bool> ModEnabled;
+
         private readonly Harmony _harmony = new Harmony(ModGuid);
 
-        // ServerSync keeps config values consistent between server and clients.
-        // v1 has no synced entries yet; the infrastructure is wired so adding one later is
-        // a one-liner call to BindSynced<T>().
-        private static readonly ConfigSync _configSync = new ConfigSync(ModGuid)
-        {
-            DisplayName          = ModName,
-            CurrentVersion       = ModVersion,
-            MinimumRequiredVersion = ModVersion,
-        };
-
-        // ── Future synced config entries go here ────────────────────────────────────
-        // Example (ward restriction, v2):
-        //   internal static ConfigEntry<bool> WardRestriction;
-        //   WardRestriction = Instance.BindSynced("Restrictions", "WardRestriction", false,
-        //       "Only one shrine may be built per ward.");
-        // ────────────────────────────────────────────────────────────────────────────
+        // ServerSync keeps config values consistent between server and clients.  Created only
+        // when the mod is enabled: ConfigSync's constructor registers the instance with
+        // ServerSync's ZNet patches, and a disabled mod should not take part in that.
+        private static ConfigSync _configSync;
 
         private void Awake()
         {
             Instance = this;
+
+            ModEnabled = Config.Bind("General", "Mod Enabled", true,
+                "Master toggle for the entire mod. Set to false to disable the shrine build pieces, " +
+                "placement rules, console commands, and all Harmony patches without removing the DLL. " +
+                "Useful for isolating a problem in-game. Not server-synced. Requires a game restart " +
+                "to take effect; shrines already placed in the world are hidden until re-enabled.");
+            if (!ModEnabled.Value)
+            {
+                Jotunn.Logger.LogInfo("[ForsakenShrines] Mod Enabled = false in config — skipping patches, piece registration, and console commands.");
+                return;
+            }
+
+            _configSync = new ConfigSync(ModGuid)
+            {
+                DisplayName            = ModName,
+                CurrentVersion         = ModVersion,
+                MinimumRequiredVersion = ModVersion,
+            };
+
             ShrineConfig.Bind(this);
             ShrineConsoleCommands.Register();
             _harmony.PatchAll();
-            // Phase 1: OnVanillaPrefabsAvailable fires inside ZNetScene.Awake, BEFORE the world
-            // file is deserialized. Clones must exist in ZNetScene.m_namedPrefabs at that moment
-            // so placed shrines survive a full game restart. ObjectDB is NOT ready here.
+
+            // Phase 1: Jotunn raises OnVanillaPrefabsAvailable from its ObjectDB.CopyOtherDB
+            // prefix at the main menu, once vanilla prefabs (including Valheim 1.0's
+            // soft-referenced BossStones) can be resolved.  Clones are created once per game
+            // session and parented under Jotunn's inactive prefab container, so they survive
+            // scene changes.
             PrefabManager.OnVanillaPrefabsAvailable += ShrinePieces.CreateClones;
-            // Per-world-load refresh (same event, fires every world load including first).
-            PrefabManager.OnVanillaPrefabsAvailable += ShrinePieces.OnWorldLoad;
-            // Phase 2: OnPiecesRegistered fires from ObjectDB.Awake, AFTER Phase 1.
-            // Populates requirements, icon, and Jotunn's piece registry.
-            PieceManager.OnPiecesRegistered += ShrinePieces.ConfigureAndRegister;
+
+            // Phase 2 (configure pieces, insert into the Hammer table and ZNetScene, refresh
+            // unlock state) runs from this mod's own ObjectDB.Awake / ZNetScene.Awake postfixes
+            // in ShrineLifecyclePatches — on every world load, not just the first.
+            //
+            // Jotunn's PieceManager is intentionally not used anywhere in this mod.  Merely
+            // touching it (an event subscription is enough) runs its static constructor, which
+            // Harmony-patches PieceTable.UpdateAvailable.  Jotunn 2.29.2's prefix reads
+            // PieceTable.m_availablePieces with its pre-1.0 type; Valheim 1.0 changed that field,
+            // so the prefix throws MissingFieldException, UpdateAvailable never populates the
+            // per-category lists, and anyone who logs in with a Hammer equipped is thrown into
+            // a respawn loop (spinning camera, character frozen in the wake-up pose).
+            // Jotunn 2.30.0 fixes that field access but still has no custom-category support
+            // on 1.0; staying off PieceManager keeps this mod independent of either.
         }
 
         private void OnDestroy()
@@ -60,7 +87,7 @@ namespace ForsakenShrines
 
         /// <summary>
         /// Binds a BepInEx config entry and registers it with ServerSync so the server's value
-        /// overrides clients.  Call from Awake to add future synced config options.
+        /// overrides clients.  Only valid once Awake has created the ConfigSync (mod enabled).
         /// </summary>
         internal ConfigEntry<T> BindSynced<T>(string section, string key, T defaultValue, string description)
         {

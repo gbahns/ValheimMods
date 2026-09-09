@@ -10,7 +10,7 @@
 # Get your token from: thunderstore.io → Settings → Teams → Service Accounts
 
 param(
-    [string]$Version = "0.8.0",
+    [string]$Version = "0.8.2",
     [switch]$Publish
 )
 
@@ -41,6 +41,7 @@ function Add-ZipEntry($archive, $filePath, $entryName) {
 Add-ZipEntry $zip "$projectDir\manifest.json"                            "manifest.json"
 Add-ZipEntry $zip "$projectDir\icon.png"                                 "icon.png"
 Add-ZipEntry $zip "$projectDir\README.md"                                "README.md"
+if (Test-Path "$projectDir\CHANGELOG.md") { Add-ZipEntry $zip "$projectDir\CHANGELOG.md" "CHANGELOG.md" }
 Add-ZipEntry $zip "$projectDir\bin\Release\net48\ForsakenShrines.dll"  "BepInEx/plugins/ForsakenShrines.dll"
 
 $zip.Dispose()

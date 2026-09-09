@@ -1,49 +1,48 @@
 using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
-using Jotunn.Configs;
-using Jotunn.Entities;
 using Jotunn.Managers;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace ForsakenShrines
 {
+    /// <summary>
+    /// Creates and registers the shrine build pieces.  Prefab lookup and cloning go through
+    /// Jotunn's PrefabManager (it resolves Valheim 1.0's soft-referenced BossStone prefabs);
+    /// everything after that — piece setup, Hammer table insertion, ZNetScene registration and
+    /// unlock state — is done directly against the game.  Jotunn's PieceManager is not used;
+    /// see ForsakenShrinesMod.Awake for why.
+    /// </summary>
     internal static class ShrinePieces
     {
-        private const string PieceTable = "_HammerPieceTable";
-        private const string Category   = "Forsaken Shrines";
-
-        // Cloned prefabs kept so EnsureInPieceTable can insert them directly when needed.
+        // Cloned prefabs, one per ShrineDefinition, created once per game session.
         private static readonly List<GameObject> _clones = new List<GameObject>();
 
         // ZNetScene.m_namedPrefabs is private; use AccessTools so runtime enforcement doesn't throw.
         private static readonly FieldInfo _namedPrefabsField =
             AccessTools.Field(typeof(ZNetScene), "m_namedPrefabs");
 
+        // Player.UpdateKnownRecipesList is private.  It is what makes a build piece appear in
+        // the Hammer: a piece is listed only once its m_name is in the player's known recipes,
+        // and the scan skips pieces whose m_enabled is false.  Vanilla runs it from Player.Awake
+        // (before our OnSpawned unlock refresh) and again on inventory changes, so we run it
+        // ourselves right after toggling m_enabled.
+        private static readonly MethodInfo _updateKnownRecipesList =
+            AccessTools.Method(typeof(Player), "UpdateKnownRecipesList");
+
         private static Dictionary<int, GameObject> GetNamedPrefabs() =>
             ZNetScene.instance != null
                 ? _namedPrefabsField?.GetValue(ZNetScene.instance) as Dictionary<int, GameObject>
                 : null;
 
-        private static bool _clonesCreated  = false;
+        private static bool _clonesCreated    = false;
         private static bool _piecesConfigured = false;
 
-        // The Piece.PieceCategory value Jotunn allocated for our build tab.  Used by the
-        // Hud patch in ShrinePlacement to toggle tab visibility based on whether any shrine
-        // is unlocked.  -1 sentinel means "not yet registered".
-        internal static Piece.PieceCategory PieceCategory { get; private set; } = (Piece.PieceCategory)(-1);
+        private static GameObject FindClone(string pieceName) =>
+            _clones.Find(c => c != null && c.name == pieceName);
 
-        // True if at least one shrine's boss has been defeated (i.e., any shrine is buildable).
-        internal static bool AnyShrineUnlocked()
-        {
-            if (ZoneSystem.instance == null) return false;
-            foreach (var def in ShrineDefinitions.All)
-                if (ZoneSystem.instance.GetGlobalKey(def.BossKey))
-                    return true;
-            return false;
-        }
-
-        // ── Phase 1: OnVanillaPrefabsAvailable ──────────────────────────────────────
+        // ── Phase 1: PrefabManager.OnVanillaPrefabsAvailable (main menu) ───────────
         internal static void CreateClones()
         {
             if (_clonesCreated) return;
@@ -61,12 +60,11 @@ namespace ForsakenShrines
                 }
 
                 var clone = PrefabManager.Instance.CreateClonedPrefab(def.PieceName, basePrefab);
-
-                // Jotunn's batch that copies PrefabManager→ZNetScene runs before OnVanillaPrefabsAvailable.
-                // Write directly to m_namedPrefabs now so world ZDOs can resolve this prefab on load.
-                var namedPrefabs = GetNamedPrefabs();
-                if (namedPrefabs != null)
-                    namedPrefabs[clone.name.GetStableHashCode()] = clone;
+                if (clone == null)
+                {
+                    Jotunn.Logger.LogWarning($"[ForsakenShrines] Failed to clone '{def.BasePrefab}' as {def.PieceName}.");
+                    continue;
+                }
 
                 // No prefab-level lift: BossStone children stay at their natural local positions.
                 // Vertical placement is handled by PlacementGhostHeightPatch + ShrineInteractable's
@@ -93,18 +91,42 @@ namespace ForsakenShrines
             }
         }
 
-        // Per-world-load: insert clones into piece table and refresh unlock state.
-        internal static void OnWorldLoad()
+        // ── Phase 2: ObjectDB.Awake postfix (every scene load) ──────────────────────
+        internal static void OnObjectDBAwake()
         {
-            EnsureInPieceTable();
-            UpdateUnlocks();
+            // The main menu (FejdStartup) has its own ObjectDB; only the world scene matters.
+            if (SceneManager.GetActiveScene().name != "main") return;
+            try
+            {
+                ConfigurePieces();
+                EnsureInPieceTable();
+                EnsureInNamedPrefabs();
+                UpdateUnlocks();
+            }
+            catch (System.Exception e)
+            {
+                Jotunn.Logger.LogError($"[ForsakenShrines] ObjectDB.Awake hook failed: {e}");
+            }
         }
 
-        // ── Phase 2: OnPiecesRegistered ──────────────────────────────────────────────
-        internal static void ConfigureAndRegister()
+        // ZNetScene.Awake postfix (every world load).  Placed shrines resolve their prefab
+        // through ZNetScene, so the clones must be registered again for each new ZNetScene.
+        internal static void OnZNetSceneAwake()
+        {
+            try
+            {
+                EnsureInNamedPrefabs();
+            }
+            catch (System.Exception e)
+            {
+                Jotunn.Logger.LogError($"[ForsakenShrines] ZNetScene.Awake hook failed: {e}");
+            }
+        }
+
+        // One-time piece setup that needs ObjectDB: requirements, icons, effects, station.
+        private static void ConfigurePieces()
         {
             if (_piecesConfigured) return;
-            _piecesConfigured = true;
 
             if (_clones.Count == 0)
             {
@@ -117,22 +139,33 @@ namespace ForsakenShrines
                 Jotunn.Logger.LogError("[ForsakenShrines] Phase 2: clone creation failed — shrines unavailable.");
                 return;
             }
+            _piecesConfigured = true;
 
-            // Reference stone piece used to copy WearNTear effects and place effect.
+            // Reference stone piece used to copy WearNTear effects, place effect, and category.
             var stoneRef  = PrefabManager.Instance.GetPrefab("stone_wall_2x1");
             var refWnT    = stoneRef?.GetComponent<WearNTear>();
             var refPiece  = stoneRef?.GetComponent<Piece>();
             if (stoneRef == null)
                 Jotunn.Logger.LogWarning("[ForsakenShrines] Phase 2: 'stone_wall_2x1' not found — WearNTear effects and place sound may be missing.");
 
-            // Register the custom tab once; with fixReference=false Jotunn never writes
-            // PieceConfig.Category back to piece.m_category, so we do it manually.
-            var shrineCategory = PieceManager.Instance.AddPieceCategory(Category);
-            PieceCategory = shrineCategory;
+            // Build category.  Valheim 1.0 sizes PieceTable's per-category lists to exactly
+            // Piece.PieceCategory.Max, so the separate "Forsaken Shrines" tab that earlier
+            // versions added through Jotunn cannot exist on 1.0 (Jotunn's category patches are
+            // precisely what broke).  Shrines share the vanilla tab of the reference stone piece
+            // instead — the tab the player already builds stonecutter pieces from, whatever this
+            // game version labels it.
+            var category = refPiece != null ? refPiece.m_category : Piece.PieceCategory.BuildingStonecutter;
+            if (category < 0 || category >= Piece.PieceCategory.Max)
+                category = Piece.PieceCategory.BuildingStonecutter;
+
+            var stonecutterGo = PrefabManager.Instance.GetPrefab("piece_stonecutter");
+            var stonecutter   = stonecutterGo?.GetComponent<CraftingStation>();
+            if (stonecutter == null)
+                Jotunn.Logger.LogWarning("[ForsakenShrines] Phase 2: 'piece_stonecutter' not found — shrines will have no crafting station.");
 
             foreach (var def in ShrineDefinitions.All)
             {
-                var clone = _clones.Find(c => c != null && c.name == def.PieceName);
+                var clone = FindClone(def.PieceName);
                 if (clone == null)
                 {
                     Jotunn.Logger.LogWarning($"[ForsakenShrines] Phase 2: clone '{def.PieceName}' not found.");
@@ -142,7 +175,7 @@ namespace ForsakenShrines
                 var piece = clone.GetComponent<Piece>();
                 if (piece == null) continue;
 
-                piece.m_category = shrineCategory;
+                piece.m_category = category;
 
                 // ── Build requirements from config string ───────────────────────────
                 piece.m_resources = ShrineConfig.BuildRequirements(def.PieceName);
@@ -162,11 +195,8 @@ namespace ForsakenShrines
                 if (refPiece != null)
                     piece.m_placeEffect = refPiece.m_placeEffect;
 
-                // ── Crafting station (set directly — PieceConfig mock stays unresolved with fixReference=false) ──
-                var stonecutterGo = PrefabManager.Instance.GetPrefab("piece_stonecutter");
-                piece.m_craftingStation = stonecutterGo?.GetComponent<CraftingStation>();
-                if (piece.m_craftingStation == null)
-                    Jotunn.Logger.LogWarning($"[ForsakenShrines] {def.PieceName}: 'piece_stonecutter' not found — no crafting station.");
+                // ── Crafting station ─────────────────────────────────────────────────
+                piece.m_craftingStation = stonecutter;
 
                 // ── WearNTear: hammer hover highlight + destruction effects ───────────
                 var wnt = clone.GetComponent<WearNTear>() ?? clone.AddComponent<WearNTear>();
@@ -180,26 +210,11 @@ namespace ForsakenShrines
                     wnt.m_hitEffect       = refWnT.m_hitEffect;
                 }
 
-                var pieceConfig = new PieceConfig
-                {
-                    Name       = def.DisplayName,
-                    PieceTable = PieceTable,
-                    Category   = Category,
-                };
-                var cp = new CustomPiece(clone, false, pieceConfig);
-
-                if (cp.Piece.m_resources != null)
-                    cp.Piece.m_resources = System.Array.FindAll(cp.Piece.m_resources, r => r?.m_resItem != null);
-
-                PieceManager.Instance.AddPiece(cp);
-                Jotunn.Logger.LogInfo($"[ForsakenShrines] Phase 2 — registered: {def.PieceName}");
+                Jotunn.Logger.LogInfo($"[ForsakenShrines] Phase 2 — configured: {def.PieceName} (category {category})");
             }
-
-            EnsureInPieceTable();
-            EnsureInNamedPrefabs();
-            UpdateUnlocks();
         }
 
+        // Enable each shrine piece only once its boss's global key is set.
         internal static void UpdateUnlocks()
         {
             if (ZoneSystem.instance == null)
@@ -210,27 +225,34 @@ namespace ForsakenShrines
 
             foreach (var def in ShrineDefinitions.All)
             {
-                var customPiece = PieceManager.Instance.GetPiece(def.PieceName);
-                if (customPiece?.Piece == null)
+                var piece = FindClone(def.PieceName)?.GetComponent<Piece>();
+                if (piece == null)
                 {
-                    Jotunn.Logger.LogWarning($"[ForsakenShrines] UpdateUnlocks: GetPiece('{def.PieceName}') returned null.");
+                    Jotunn.Logger.LogWarning($"[ForsakenShrines] UpdateUnlocks: no piece for '{def.PieceName}'.");
                     continue;
                 }
 
                 bool hasKey = ZoneSystem.instance.GetGlobalKey(def.BossKey);
-                customPiece.Piece.m_enabled = hasKey;
-                Jotunn.Logger.LogInfo($"[ForsakenShrines] {def.PieceName}: key='{def.BossKey}' hasKey={hasKey} m_enabled={customPiece.Piece.m_enabled}");
+                piece.m_enabled = hasKey;
+                Jotunn.Logger.LogInfo($"[ForsakenShrines] {def.PieceName}: key='{def.BossKey}' hasKey={hasKey} m_enabled={piece.m_enabled}");
             }
         }
 
-        // Note: the FS tab category is registered once at Phase 2 via
-        // PieceManager.AddPieceCategory and never mutated afterward.  Earlier
-        // versions of this mod added/removed the category from PieceTable.m_categories
-        // at runtime to hide the tab when no shrines were unlocked, but that broke
-        // other mods that snapshot category indices at startup (e.g. OdinShipPlus's
-        // Hud.UpdateBuild patch).  Per-shrine visibility is handled by m_enabled on
-        // each Piece — until a boss is defeated, that shrine's piece is hidden inside
-        // the (now always-present) tab.
+        // Re-runs the game's known-piece scan for the local player so a shrine that was just
+        // enabled shows up in the Hammer at once instead of after the next inventory change.
+        internal static void RefreshKnownPieces()
+        {
+            var player = Player.m_localPlayer;
+            if (player == null || _updateKnownRecipesList == null) return;
+            try
+            {
+                _updateKnownRecipesList.Invoke(player, null);
+            }
+            catch (System.Exception e)
+            {
+                Jotunn.Logger.LogWarning($"[ForsakenShrines] UpdateKnownRecipesList failed: {e.InnerException?.Message ?? e.Message}");
+            }
+        }
 
         private static void EnsureInNamedPrefabs()
         {
@@ -238,7 +260,7 @@ namespace ForsakenShrines
             var namedPrefabs = GetNamedPrefabs();
             if (namedPrefabs == null)
             {
-                Jotunn.Logger.LogWarning("[ForsakenShrines] EnsureInNamedPrefabs: ZNetScene not accessible.");
+                Jotunn.Logger.LogInfo("[ForsakenShrines] EnsureInNamedPrefabs: ZNetScene not up yet.");
                 return;
             }
             int added = 0;
