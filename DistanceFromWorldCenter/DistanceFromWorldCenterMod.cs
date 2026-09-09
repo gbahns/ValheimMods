@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace DistanceFromWorldCenter
 {
-	[BepInPlugin(ModGuid, "Distance From World Center", "1.0.0")]
+	[BepInPlugin(ModGuid, "Distance From World Center", "1.0.1")]
 	[BepInProcess("valheim.exe")]
 	[BepInDependency(Jotunn.Main.ModGuid)]
 	public class DistanceFromWorldCenterMod : BaseUnityPlugin

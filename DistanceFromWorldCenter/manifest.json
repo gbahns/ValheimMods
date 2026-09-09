@@ -1,10 +1,10 @@
 {
     "name": "DistanceFromWorldCenter",
-    "version_number": "1.0.0",
+    "version_number": "1.0.1",
     "website_url": "https://thunderstore.io/c/valheim/p/DeathMonger/DistanceFromWorldCenter/",
     "description": "Always-on HUD widget showing your horizontal distance from the world center (0,0), with optional X/Z coordinates.",
     "dependencies": [
-        "denikson-BepInExPack_Valheim-5.4.2202",
-        "ValheimModding-Jotunn-2.23.1"
+        "denikson-BepInExPack_Valheim-5.4.2350",
+        "ValheimModding-Jotunn-2.30.0"
     ]
 }

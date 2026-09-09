@@ -4,7 +4,7 @@
     "website_url": "https://thunderstore.io/c/valheim/p/DeathMonger/CaptainsLog/",
     "description": "Logs ship speed, wind, and heading to CSV while you sail, plus a live HUD - empirical data for comparing ship speeds instead of guesswork.",
     "dependencies": [
-        "denikson-BepInExPack_Valheim-5.4.2202",
-        "ValheimModding-Jotunn-2.23.1"
+        "denikson-BepInExPack_Valheim-5.4.2350",
+        "ValheimModding-Jotunn-2.30.0"
     ]
 }
