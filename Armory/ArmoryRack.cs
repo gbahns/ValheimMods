@@ -49,6 +49,7 @@ namespace Armory
         }
 
         public string GetHoverName() => "Armory";
+        public float  GetHoverOffset() => 0f; // Valheim 1.0: new Hoverable member (vertical hover-text offset)
 
         public string GetHoverText()
         {

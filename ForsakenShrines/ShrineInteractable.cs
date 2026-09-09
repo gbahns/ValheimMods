@@ -29,6 +29,9 @@ namespace ForsakenShrines
             return _znv.GetZDO().GetBool(ZdoKey_TrophyMounted, false);
         }
 
+        // Valheim 1.0: new Hoverable member (vertical hover-text offset); 0 matches vanilla default.
+        public float GetHoverOffset() => 0f;
+
         public string GetHoverName()
         {
             if (Definition == null) return "Shrine";

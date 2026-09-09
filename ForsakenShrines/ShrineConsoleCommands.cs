@@ -1,5 +1,5 @@
 using Jotunn.Entities;
-using Jotunn.Managers;
+using System.Linq;
 using System.Collections.Generic;
 
 namespace ForsakenShrines
@@ -8,8 +8,30 @@ namespace ForsakenShrines
     {
         internal static void Register()
         {
-            CommandManager.Instance.AddConsoleCommand(new ShrineSpawnAllCommand());
-            CommandManager.Instance.AddConsoleCommand(new ShrineSpawnTrophiesCommand());
+            // Valheim 1.0 added a parameter to the Terminal.ConsoleCommand constructor.  Jotunn
+            // 2.29.2's CommandManager looks that constructor up by reflection with the pre-1.0
+            // parameter list, logs "No suitable constructor for Terminal.ConsoleCommand found",
+            // and silently drops the command.  Construct the vanilla command directly instead —
+            // the optional-parameter defaults are baked in at compile time against the current
+            // game DLL, which is exactly what GrabMaterials does for its commands.
+            RegisterDirect(new ShrineSpawnAllCommand());
+            RegisterDirect(new ShrineSpawnTrophiesCommand());
+        }
+
+        // Mirrors what Jotunn.Managers.CommandManager.CreateVanillaCommand does, minus the
+        // reflection: strip the command name from args, forward the cheat/network/server/secret
+        // flags, and expose CommandOptionList() as the tab-completion fetcher.
+        private static void RegisterDirect(ConsoleCommand cmd)
+        {
+            new Terminal.ConsoleCommand(
+                cmd.Name,
+                cmd.Help,
+                args => cmd.Run(args.Args.Skip(1).ToArray(), args.Context),
+                isCheat: cmd.IsCheat,
+                isNetwork: cmd.IsNetwork,
+                onlyServer: cmd.OnlyServer,
+                isSecret: cmd.IsSecret,
+                optionsFetcher: () => cmd.CommandOptionList());
         }
 
         // Aggregate item totals across all shrine requirements, optionally filtering
@@ -43,7 +65,7 @@ namespace ForsakenShrines
             int added = 0;
             foreach (var kvp in totals)
             {
-                inv.AddItem(kvp.Key, kvp.Value, 1, 0, 0L, "");
+                inv.AddItem(kvp.Key, kvp.Value, 1, 0, 0L, "", cheated: true); // Valheim 1.0 added required `cheated` flag
                 added++;
             }
             return added;

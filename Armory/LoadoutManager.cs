@@ -358,6 +358,22 @@ namespace Armory
         private static readonly System.Reflection.MethodInfo M_InvChanged =
             AccessTools.Method(typeof(Inventory), "Changed");
 
+        // Valheim 1.0 changed the signature to Changed(bool success, bool cheatedStateChanged).
+        // Vanilla's own move/remove paths pass (false, false), which still fires m_onChanged; the
+        // flags only gate an achievement toast.  Build the arg array from the runtime parameter
+        // list (default values) so both the old 0-arg and new 2-arg forms work.
+        private static readonly object[] M_InvChangedArgs = BuildInvChangedArgs();
+
+        private static object[] BuildInvChangedArgs()
+        {
+            var ps = M_InvChanged?.GetParameters();
+            if (ps == null || ps.Length == 0) return null;
+            var args = new object[ps.Length];
+            for (int i = 0; i < ps.Length; i++)
+                args[i] = ps[i].ParameterType.IsValueType ? System.Activator.CreateInstance(ps[i].ParameterType) : null;
+            return args;
+        }
+
         // Inventory.m_inventory (the underlying List<ItemData>) is ALSO non-public at runtime
         // — direct field access throws FieldAccessException even though our publicized stub
         // claims public.  FieldRef builds a fast delegate that bypasses the JIT visibility check.
@@ -367,7 +383,7 @@ namespace Armory
         private static void InvokeChanged(Inventory inv)
         {
             if (inv == null || M_InvChanged == null) return;
-            try { M_InvChanged.Invoke(inv, null); } catch { /* swallow — UI staleness is harmless */ }
+            try { M_InvChanged.Invoke(inv, M_InvChangedArgs); } catch { /* swallow — UI staleness is harmless */ }
         }
 
         /// <summary>
