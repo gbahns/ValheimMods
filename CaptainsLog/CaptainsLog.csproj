@@ -1,0 +1,64 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net462</TargetFramework>
+    <OutputType>Library</OutputType>
+    <RootNamespace>CaptainsLog</RootNamespace>
+    <AssemblyName>CaptainsLog</AssemblyName>
+    <Deterministic>true</Deterministic>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <NoWarn>$(NoWarn);MSB3277</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="HarmonyX" Version="2.9.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="assembly_valheim_publicized">
+      <HintPath>..\Libs\assembly_valheim_publicized.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>..\Libs\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Jotunn">
+      <HintPath>..\Libs\Jotunn.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>..\Libs\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>..\Libs\UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>..\Libs\UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>..\Libs\UnityEngine.UIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine_publicized">
+      <HintPath>..\Libs\UnityEngine_publicized.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Auto-deploy build output to every r2modman profile on this machine. -->
+  <PropertyGroup>
+    <R2ModManProfiles>$(APPDATA)\r2modmanPlus-local\Valheim\profiles</R2ModManProfiles>
+  </PropertyGroup>
+  <!-- Deploy DLL+PDB to every r2modman profile.  If the target file is locked (Valheim
+       running), fall back to rename-and-replace: move the locked file aside, then copy in
+       the new one.  Windows allows the rename because .NET's Assembly.LoadFile opens with
+       FILE_SHARE_DELETE.  The renamed sidecar is best-effort cleaned up on subsequent builds. -->
+  <Target Name="DeployToProfiles" AfterTargets="Build" Condition="Exists('$(R2ModManProfiles)')">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;function DepFile(%24s,%24d,%24pn) { if (!(Test-Path %24s)) { return }; try { Copy-Item %24s %24d -Force -ErrorAction Stop } catch { try { %24bak=%24d+'.old-'+(Get-Random); Move-Item %24d %24bak -Force -ErrorAction Stop; Copy-Item %24s %24d -Force -ErrorAction Stop; Write-Host ('  shadow-replaced (was locked): '+(Split-Path %24d -Leaf)) } catch { Write-Warning ('  deploy failed: '+%24pn+' '+(Split-Path %24d -Leaf)+' - '+%24_.Exception.Message) } } }; %24tgt='$(TargetName)'; %24src='$(TargetPath)'; %24pdb='$(TargetDir)$(TargetName).pdb'; Get-ChildItem '$(R2ModManProfiles)' -Directory | ForEach-Object { %24pn=%24_.Name; %24pl=Join-Path %24_.FullName 'BepInEx\plugins'; if (!(Test-Path %24pl)) { return }; Get-ChildItem %24pl -Filter (%24tgt+'.*.old-*') -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue; DepFile %24src (Join-Path %24pl (%24tgt+'.dll')) %24pn; DepFile %24pdb (Join-Path %24pl (%24tgt+'.pdb')) %24pn; Write-Host ('Deployed '+%24tgt+' to '+%24pn) }&quot;" />
+  </Target>
+
+</Project>
