@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace HungryViking
 {
-    [BepInPlugin(ModGuid, "Hungry Viking", "1.1.0")]
+    [BepInPlugin(ModGuid, "Hungry Viking", "1.2.0")]
     [BepInProcess("valheim.exe")]
     public class HungryVikingMod : BaseUnityPlugin
     {
@@ -369,6 +369,16 @@ namespace HungryViking
         // Margin by which urgency must climb past the dismissed level to re-trigger the warning.
         private const float AckReArmUrgency = 0.15f;
 
+        // Player.TakeInput() is protected at runtime (the publicized DLL only makes it look public,
+        // and calling it throws MethodAccessException), so mirror its intent with the public checks.
+        private static bool GuiHasFocus()
+        {
+            return Console.IsVisible() || Menu.IsVisible() || InventoryGui.IsVisible()
+                || TextInput.IsVisible() || StoreGui.IsVisible() || Minimap.IsOpen()
+                || PlayerCustomizaton.IsBarberGuiVisible()
+                || (Chat.instance != null && Chat.instance.IsChatDialogWindowVisible());
+        }
+
         private void UpdateHungerAck(Player player, float realUrgency, bool anyEmpty,
                                      float displayUrgency, bool hungerTest)
         {
@@ -384,7 +394,7 @@ namespace HungryViking
             // Only act on the key while a warning is actually showing and the player can take
             // input (TakeInput is false when console, chat, or inventory has focus).
             bool warningVisible = !_hungerAck && displayUrgency > 0f && !hungerTest;
-            if (warningVisible && DismissKey.Value.IsDown() && player.TakeInput())
+            if (warningVisible && DismissKey.Value.IsDown() && !GuiHasFocus())
             {
                 _hungerAck    = true;
                 _ackUrgency   = realUrgency;
