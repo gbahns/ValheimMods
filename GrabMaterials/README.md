@@ -1,7 +1,9 @@
-# MojoRyzen's Grab Materials Mod
+# Grab Materials
 
 Created on January 30 2025.<br>
-Version 2.0.0 released on May 8 2026.
+Version 2.0.0 released on September 9 2026.
+
+> **Moved:** Grab Materials is now published under **DeathMonger**. If you installed it from the old `MojoRyzen/GrabMaterials` listing, uninstall that one and install this one. The plugin ID and config file are unchanged, so your settings, grab packs and hotkeys carry over.
 
 Quickly pull materials from nearby chests into your inventory without having to manually click on each chest.  The concept is similar to mods that let you craft or build directly from containers, but for things that you're not building in your base.  The typical example is workbench and portal when exploring - you're constantly having to grab 10 wood, 20 finewood, 10 greydwarf eyes, and 2 surtling cores.  This mod removes that tedium.
 
@@ -11,8 +13,10 @@ Quickly pull materials from nearby chests into your inventory without having to 
 <li>Configurable inventory layout — choose a List (grouped by category) or Table (flat columns) style, and a panel shape from MaxHeight (single column) through Square to MaxWidth (fans out as many columns as fit on the screen).  The mod auto-picks the column count that best matches your shape.  Cycle styles in-game with '/istyle'.
 <li>Click to highlight — click any inventory row to highlight nearby containers holding that item; click a category header to highlight every container holding any item in the category.
 <li>Grab pack panel — '/listpacks' opens an in-game panel showing each pack's name, hotkey, delta state, and items.  Click a row to trigger that pack; click the ✎ pencil to edit the pack's name, items, and delta inline (no need to alt-tab to the config file).
+<li>Pack HUD — a small always-on list of your grab packs and their hotkeys (like the quick-slot labels in AzuExtendedPlayerInventory), so you never have to remember what is on Shift+K vs Ctrl+K.  Packs with no items are left out.  Press O to show or hide it; corner and offsets are configurable under "Pack HUD".  Packs that need a material you have never held are hidden until you have picked it up (configurable).
 <li>Global Grab Delta default — new "Grab Delta (default)" client setting (default ON) makes every grab take only the shortfall between what you have and what's needed.  Per-pack settings are now a tri-state — UseGlobal (the default), On, or Off — so you can override either way.
 <li>Cross-grab delta ledger — back-to-back delta grabs no longer double-count the same inventory.  E.g. '/g cart' (10 wood) then '/g explore' (20 wood total) — the ledger remembers the cart's wood is already spoken for, so Explore grabs the 20 it actually needs.  The ledger clears after 30 seconds of inactivity (configurable) so a fresh build session starts clean.  Use '/grabreset' to clear it explicitly.
+<li>Default hotkeys moved — Valheim 1.0 put its new radial menu on G, so the pack defaults are now K (packs 1-4), L (5-8) and ; (9-10) with the same Shift/Ctrl/Alt modifiers.  Existing configs keep whatever keys they have; if yours are still on G, rebind the packs (or the radial) to stop both firing at once.
 
 <h3>New in version 1.1.0</h3>
 

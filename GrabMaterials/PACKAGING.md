@@ -8,9 +8,9 @@ How to build, deploy, and package this mod for Thunderstore. See also [../THUNDE
 
 | Field | Value |
 |---|---|
-| Thunderstore team | `MojoRyzen` |
+| Thunderstore team | `DeathMonger` |
 | Thunderstore mod name | `GrabMaterials` |
-| Thunderstore URL | `https://thunderstore.io/c/valheim/p/MojoRyzen/GrabMaterials/` |
+| Thunderstore URL | `https://thunderstore.io/c/valheim/p/DeathMonger/GrabMaterials/` |
 | BepInEx GUID | `DeathMonger.GrabMaterialsMod` |
 | Assembly name | `GrabMaterials` |
 | Config file (in-game) | `BepInEx/config/DeathMonger.GrabMaterialsMod.cfg` |
@@ -58,8 +58,8 @@ This will:
 
 ## Uploading to Thunderstore
 
-1. Go to `https://thunderstore.io/c/valheim/p/MojoRyzen/GrabMaterials/`
-2. Log in as MojoRyzen and click **Upload**
+1. Go to `https://thunderstore.io/c/valheim/p/DeathMonger/GrabMaterials/`
+2. Log in as DeathMonger and click **Upload**
 3. Select `GrabMaterials-X.Y.Z.zip`
 4. Thunderstore will validate and publish; the new version appears immediately
 
@@ -74,3 +74,11 @@ The `Nexus/` subfolder is leftover from an older NexusMods distribution flow. It
 ## Local Test Deploy
 
 The `.csproj` auto-copies the DLL to every Thunderstore profile on every build (Release or Debug). No manual copy needed — just build and launch Valheim via Thunderstore Mod Manager.
+
+---
+
+## Legacy MojoRyzen Listing
+
+Grab Materials was published under the `MojoRyzen` team through 1.1.0 and moved to `DeathMonger` with 2.0.0 (Valheim 1.0). Thunderstore cannot transfer packages between teams, so the old listing at `https://thunderstore.io/c/valheim/p/MojoRyzen/GrabMaterials/` got a final 2.0.0 "moved" release (same DLL, redirect README, `website_url` pointing at the DeathMonger listing) and was then deprecated on the site.
+
+The redirect package lives in `redirect-MojoRyzen/` and is built with `package-redirect.ps1`. It should not need another release; if it ever does, bump the version there and publish with `-Publish` using a token that belongs to the MojoRyzen team.

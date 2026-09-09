@@ -1,13 +1,10 @@
-# Builds the Release DLL and creates a Thunderstore-ready zip.
-# Uses ZipArchive directly so entry names use forward slashes (ZIP spec 4.4.17).
-# Output: GrabMaterials-<version>.zip in the project directory.
+# Builds the final "moved to DeathMonger" release for the legacy MojoRyzen/GrabMaterials
+# listing.  Same DLL as the main package; manifest/README/CHANGELOG come from
+# redirect-MojoRyzen/.  See PACKAGING.md -> "Legacy MojoRyzen Listing".
 #
 # Usage:
-#   package.ps1 -Version "2.0.0"              # build + zip only
-#   package.ps1 -Version "2.0.0" -Publish     # build + zip + upload to Thunderstore
-#
-# Publishing requires the TCLI_AUTH_TOKEN environment variable to be set.
-# Get your token from: thunderstore.io → Settings → Teams → Service Accounts
+#   package-redirect.ps1 -Version "2.0.0"            # build + zip only
+#   package-redirect.ps1 -Version "2.0.0" -Publish   # + upload (token must belong to MojoRyzen)
 
 param(
     [string]$Version = "2.0.0",
@@ -17,8 +14,9 @@ param(
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
-$projectDir = $PSScriptRoot
-$zipPath    = Join-Path $projectDir "GrabMaterials-$Version.zip"
+$projectDir  = $PSScriptRoot
+$redirectDir = Join-Path $projectDir "redirect-MojoRyzen"
+$zipPath     = Join-Path $projectDir "GrabMaterials-MojoRyzen-redirect-$Version.zip"
 
 Write-Host "Building Release..."
 dotnet build "$projectDir\GrabMaterials.csproj" -c Release
@@ -38,10 +36,10 @@ function Add-ZipEntry($archive, $filePath, $entryName) {
     $entryStream.Dispose()
 }
 
-Add-ZipEntry $zip "$projectDir\manifest.json"                         "manifest.json"
+Add-ZipEntry $zip "$redirectDir\manifest.json"                        "manifest.json"
 Add-ZipEntry $zip "$projectDir\icon.png"                              "icon.png"
-Add-ZipEntry $zip "$projectDir\README.md"                             "README.md"
-if (Test-Path "$projectDir\CHANGELOG.md") { Add-ZipEntry $zip "$projectDir\CHANGELOG.md" "CHANGELOG.md" }
+Add-ZipEntry $zip "$redirectDir\README.md"                            "README.md"
+Add-ZipEntry $zip "$redirectDir\CHANGELOG.md"                         "CHANGELOG.md"
 Add-ZipEntry $zip "$projectDir\bin\Release\net462\GrabMaterials.dll"  "BepInEx/plugins/GrabMaterials.dll"
 
 $zip.Dispose()
@@ -51,13 +49,11 @@ Write-Host "Package ready: $zipPath"
 
 if ($Publish) {
     if (-not $env:TCLI_AUTH_TOKEN) {
-        Write-Error "TCLI_AUTH_TOKEN is not set. Get your token from thunderstore.io → Settings → Teams → Service Accounts"
+        Write-Error "TCLI_AUTH_TOKEN is not set."
         exit 1
     }
-
-    Write-Host "Publishing to Thunderstore..."
-    tcli publish --file "$zipPath" --config-path "$projectDir\thunderstore.toml"
+    Write-Host "Publishing to Thunderstore (MojoRyzen)..."
+    tcli publish --file "$zipPath" --config-path "$redirectDir\thunderstore.toml"
     if ($LASTEXITCODE -ne 0) { Write-Error "Publish failed."; exit 1 }
-
     Write-Host "Published successfully."
 }

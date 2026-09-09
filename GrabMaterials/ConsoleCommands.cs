@@ -774,6 +774,52 @@ namespace GrabMaterials
 			Jotunn.Logger.LogInfo($"Built a lookup table with {itemLookup.Count} items.");
 		}
 
+		// "wood" -> "$item_wood", case-insensitive, built from ObjectDB so user-typed casing does not matter.
+		private static Dictionary<string, string> sharedNameLookup = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+		private static void BuildSharedNameLookup()
+		{
+			if (ObjectDB.instance == null) return;
+			foreach (var itemPrefab in ObjectDB.instance.m_items)
+			{
+				var drop = itemPrefab != null ? itemPrefab.GetComponent<ItemDrop>() : null;
+				var shared = drop?.m_itemData?.m_shared?.m_name;
+				if (string.IsNullOrEmpty(shared) || !shared.StartsWith("$item_")) continue;
+				sharedNameLookup[shared.Substring(6)] = shared;
+			}
+		}
+
+		// True when every material a pack resolves to has been held by the player at least once
+		// (Valheim's "known material" set).  Entries that cannot be resolved to a piece or item
+		// never hide a pack.  Quiet on purpose: the pack HUD calls this a few times a second.
+		internal static bool AreAllPackMaterialsKnown(string itemsString, Player player)
+		{
+			if (player == null || string.IsNullOrWhiteSpace(itemsString)) return true;
+			if (ObjectDB.instance == null || !ZNetScene.instance) return true;
+			if (sharedNameLookup.Count == 0) BuildSharedNameLookup();
+			if (pieceLookup.Count == 0) BuildPieceLookUp();
+
+			var entries = itemsString.Replace(" ", "").Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+			foreach (var entry in entries)
+			{
+				var name = entry.Split(':')[0];
+				if (pieceLookup.TryGetValue(name.ToLowerInvariant(), out var piece))
+				{
+					if (piece.m_resources == null) continue;
+					foreach (var req in piece.m_resources)
+					{
+						var shared = req.m_resItem?.m_itemData?.m_shared?.m_name;
+						if (!string.IsNullOrEmpty(shared) && !player.IsMaterialKnown(shared)) return false;
+					}
+				}
+				else if (sharedNameLookup.TryGetValue(name.Replace("$item_", ""), out var sharedName))
+				{
+					if (!player.IsMaterialKnown(sharedName)) return false;
+				}
+			}
+			return true;
+		}
+
 		private static List<ItemToGrab> GetItemsToGrab (string name, int count = 1)
 		{
 			var itemsToGrab = new List<ItemToGrab>();

@@ -2,10 +2,10 @@
 schemaVersion = "0.0.1"
 
 [package]
-namespace = "DeathMonger"
+namespace = "MojoRyzen"
 name = "GrabMaterials"
 versionNumber = "2.0.0"
-description = "Grab materials from nearby chests needed to build things out in the world, e.g. grab materials for a workbench, for portal, for a longship, for exploring (workbench, and portal), etc."
+description = "MOVED to DeathMonger/GrabMaterials - install that listing instead."
 websiteUrl = "https://thunderstore.io/c/valheim/p/DeathMonger/GrabMaterials/"
 containsNsfwContent = false
 
@@ -14,12 +14,12 @@ containsNsfwContent = false
 "ValheimModding-Jotunn" = "2.30.0"
 
 [build]
-icon = "./icon.png"
+icon = "../icon.png"
 readme = "./README.md"
 outdir = "./build"
 
 [[build.copy]]
-source = "./bin/Release/net462/GrabMaterials.dll"
+source = "../bin/Release/net462/GrabMaterials.dll"
 target = "BepInEx/plugins/"
 
 [publish]

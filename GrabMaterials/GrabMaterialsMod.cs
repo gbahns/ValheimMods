@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Xml.Linq;
+using System.IO;
 using UnityEngine;
 
 namespace GrabMaterialsMod
@@ -50,10 +51,18 @@ namespace GrabMaterialsMod
 		public ConfigEntry<bool> ShowDistanceCoords;
 		public ConfigEntry<float> DistanceHudOffsetX;
 		public ConfigEntry<float> DistanceHudOffsetY;
+		public ConfigEntry<bool> ShowPackHud;
+		public ConfigEntry<KeyboardShortcut> PackHudToggleKey;
+		public ConfigEntry<GrabMaterials.PackHud.Anchor> PackHudAnchor;
+		public ConfigEntry<float> PackHudOffsetX;
+		public ConfigEntry<float> PackHudOffsetY;
+		public ConfigEntry<bool> PackHudShowBuildPieceKey;
+		public ConfigEntry<bool> PackHudHideUndiscovered;
 		private ButtonConfig GrabSelectedPieceMatsButton;
 		//private ConfigEntry<KeyCode> GrabPortalMatsKeyboardConfig;
 		//private ConfigEntry<InputManager.GamepadButton> GrabPortalMatsGamepadConfig;
 		private ConfigEntry<KeyCode> GrabSelectedPieceMatsKeyboardConfig;
+		internal KeyCode GrabSelectedPieceKey => GrabSelectedPieceMatsKeyboardConfig.Value;
 
 		public class GrabPackConfig
 		{
@@ -108,8 +117,44 @@ namespace GrabMaterialsMod
 			}
 			harmony.PatchAll();
 			InitConfig();
+			SetupConfigWatcher();
 			InitCommands();
 			InitButtons();
+		}
+
+		// Reload the config when the .cfg file changes on disk so edits made in a text editor take
+		// effect live.  BepInEx only reads the file at startup; without this, an edited file is
+		// silently overwritten with the in-memory values the next time any setting is saved in-game.
+		private FileSystemWatcher _configWatcher;
+		private void SetupConfigWatcher()
+		{
+			try
+			{
+				_configWatcher = new FileSystemWatcher(BepInEx.Paths.ConfigPath, Path.GetFileName(Config.ConfigFilePath));
+				_configWatcher.Changed += OnConfigFileChanged;
+				_configWatcher.Created += OnConfigFileChanged;
+				_configWatcher.Renamed += OnConfigFileChanged;
+				_configWatcher.SynchronizingObject = ThreadingHelper.SynchronizingObject;
+				_configWatcher.EnableRaisingEvents = true;
+			}
+			catch (Exception ex)
+			{
+				Log.LogWarning($"Could not watch config file for changes: {ex.Message}");
+			}
+		}
+
+		private void OnConfigFileChanged(object sender, FileSystemEventArgs e)
+		{
+			if (!File.Exists(Config.ConfigFilePath)) return;
+			try
+			{
+				Config.Reload();
+				Log.LogInfo("Config file changed on disk; settings reloaded");
+			}
+			catch (Exception ex)
+			{
+				Log.LogError($"Config file changed but could not be reloaded: {ex.Message}");
+			}
 		}
 
 		private void InitConfig()
@@ -137,22 +182,30 @@ namespace GrabMaterialsMod
 			DistanceHudOffsetX = Config.Bind("Distance HUD", "Offset X (px)", 10f, new ConfigDescription("Horizontal offset from the upper-left corner of the screen."));
 			DistanceHudOffsetY = Config.Bind("Distance HUD", "Offset Y (px)", 10f, new ConfigDescription("Vertical offset from the top of the screen."));
 
-			//GrabPack1 = new GrabPackConfig(Config, "Grab Pack 1", new KeyboardShortcut(KeyCode.G), "wood:10,finewood:20,greydwarfeye:10,surtlingcore:2");
-			//GrabPack2 = new GrabPackConfig(Config, "Grab Pack 2", new KeyboardShortcut(KeyCode.G, KeyCode.LeftShift), "wood:10,finewood:40,ancientbark:40,ironnails:100,deeerhide:20");
-			//GrabPack3 = new GrabPackConfig(Config, "Grab Pack 3", new KeyboardShortcut(KeyCode.G, KeyCode.LeftAlt), "wood:12,stone:5");
+			ShowPackHud = Config.Bind("Pack HUD", "Show Pack HUD", true, new ConfigDescription("Show a small on-screen list of your grab packs and their hotkeys, like the quick-slot labels in AzuExtendedPlayerInventory. Packs with no items are left out. The toggle key below flips this setting, so the state persists."));
+			PackHudToggleKey = Config.Bind("Pack HUD", "Toggle Key", new KeyboardShortcut(KeyCode.O), new ConfigDescription("Key to show or hide the pack HUD."));
+			PackHudAnchor = Config.Bind("Pack HUD", "Anchor", GrabMaterials.PackHud.Anchor.BottomLeft, new ConfigDescription("Which corner of the screen the pack HUD sits in. Offsets below are measured from that corner."));
+			PackHudOffsetX = Config.Bind("Pack HUD", "Offset X (px)", 10f, new ConfigDescription("Horizontal distance from the anchored corner."));
+			PackHudOffsetY = Config.Bind("Pack HUD", "Offset Y (px)", 300f, new ConfigDescription("Vertical distance from the anchored corner. The default clears the health and stamina bars in the bottom-left."));
+			PackHudShowBuildPieceKey = Config.Bind("Pack HUD", "Show Build Piece Key", true, new ConfigDescription("Also list the key that grabs materials for the build piece under the cursor."));
+			PackHudHideUndiscovered = Config.Bind("Pack HUD", "Hide Undiscovered Packs", true, new ConfigDescription("Hide packs that need a material you have never held. A pack reappears once you have picked up every material it needs, so early-game clutter like Karve or Longship packs stays out of the way until nails and the like are in hand."));
+
+			//GrabPack1 = new GrabPackConfig(Config, "Grab Pack 1", new KeyboardShortcut(KeyCode.K), "wood:10,finewood:20,greydwarfeye:10,surtlingcore:2");
+			//GrabPack2 = new GrabPackConfig(Config, "Grab Pack 2", new KeyboardShortcut(KeyCode.K, KeyCode.LeftShift), "wood:10,finewood:40,ancientbark:40,ironnails:100,deeerhide:20");
+			//GrabPack3 = new GrabPackConfig(Config, "Grab Pack 3", new KeyboardShortcut(KeyCode.K, KeyCode.LeftAlt), "wood:12,stone:5");
 
 			GrabPacks = new GrabPackConfig[]
 			{
-				new GrabPackConfig(Config, "Grab Pack 1", "Explore", new KeyboardShortcut(KeyCode.G), "Workbench,Chest,Portal"),
-				new GrabPackConfig(Config, "Grab Pack 2", "Karve Explore", new KeyboardShortcut(KeyCode.G, KeyCode.LeftShift), "Workbench,Chest,Portal,Karve"),
-				new GrabPackConfig(Config, "Grab Pack 3", "Longship Explore", new KeyboardShortcut(KeyCode.G, KeyCode.LeftControl), "Workbench,Chest,Portal,Longship"),
-				new GrabPackConfig(Config, "Grab Pack 4", "Swamp Explore", new KeyboardShortcut(KeyCode.G, KeyCode.LeftAlt), "Workbench,Chest,Portal,Campfire"),
-				new GrabPackConfig(Config, "Grab Pack 5", "Ashlands Explore", new KeyboardShortcut(KeyCode.Y), "Workbench,Portal,Campfire:10"),
-				new GrabPackConfig(Config, "Grab Pack 6", "Ashlands Flametal", new KeyboardShortcut(KeyCode.Y, KeyCode.LeftShift), "Workbench,Stone Cutter,Stone Portal,Shield Generator,Bones:10"),
-				new GrabPackConfig(Config, "Grab Pack 7", "Grab Pack 7", new KeyboardShortcut(KeyCode.Y, KeyCode.LeftControl), ""),
-				new GrabPackConfig(Config, "Grab Pack 8", "Grab Pack 8", new KeyboardShortcut(KeyCode.Y, KeyCode.LeftAlt), ""),
-				new GrabPackConfig(Config, "Grab Pack 9", "Grab Pack 9", new KeyboardShortcut(KeyCode.U), ""),
-				new GrabPackConfig(Config, "Grab Pack 10", "Grab Pack 10", new KeyboardShortcut(KeyCode.U, KeyCode.LeftShift), ""),
+				new GrabPackConfig(Config, "Grab Pack 1", "Explore", new KeyboardShortcut(KeyCode.K), "Workbench,Chest,Portal"),
+				new GrabPackConfig(Config, "Grab Pack 2", "Karve Explore", new KeyboardShortcut(KeyCode.K, KeyCode.LeftShift), "Workbench,Chest,Portal,Karve"),
+				new GrabPackConfig(Config, "Grab Pack 3", "Longship Explore", new KeyboardShortcut(KeyCode.K, KeyCode.LeftControl), "Workbench,Chest,Portal,Longship"),
+				new GrabPackConfig(Config, "Grab Pack 4", "Swamp Explore", new KeyboardShortcut(KeyCode.K, KeyCode.LeftAlt), "Workbench,Chest,Portal,Campfire"),
+				new GrabPackConfig(Config, "Grab Pack 5", "Ashlands Explore", new KeyboardShortcut(KeyCode.L), "Workbench,Portal,Campfire:10"),
+				new GrabPackConfig(Config, "Grab Pack 6", "Ashlands Flametal", new KeyboardShortcut(KeyCode.L, KeyCode.LeftShift), "Workbench,Stone Cutter,Stone Portal,Shield Generator,Bones:10"),
+				new GrabPackConfig(Config, "Grab Pack 7", "Grab Pack 7", new KeyboardShortcut(KeyCode.L, KeyCode.LeftControl), ""),
+				new GrabPackConfig(Config, "Grab Pack 8", "Grab Pack 8", new KeyboardShortcut(KeyCode.L, KeyCode.LeftAlt), ""),
+				new GrabPackConfig(Config, "Grab Pack 9", "Grab Pack 9", new KeyboardShortcut(KeyCode.Semicolon), ""),
+				new GrabPackConfig(Config, "Grab Pack 10", "Grab Pack 10", new KeyboardShortcut(KeyCode.Semicolon, KeyCode.LeftShift), ""),
 			};
 
 			GrabPacks[8].Name.SettingChanged += (sender, e) =>
@@ -223,6 +276,33 @@ namespace GrabMaterialsMod
 				//	ShortcutConfig = grabPack.Key
 				//};
 				InputManager.Instance.AddButton(ModGuid, grabPack.Button);
+				var packRef = grabPack;
+				grabPack.Key.SettingChanged += (s, e) => RebindButton(packRef.Button, packRef.Key.Value.MainKey);
+			}
+		}
+
+		// Jotunn registers each pack key with ZInput once, at ZInput.Load, and its GetButtonDown patch
+		// requires BOTH that registered key and the live config shortcut to be down.  It only re-registers
+		// on change for plain KeyCode configs, not KeyboardShortcut ones, so a pack key edited in the
+		// config would need a restart.  This does the same rebind Jotunn does internally.
+		private static readonly System.Reflection.MethodInfo KeyCodeToPathMethod =
+			AccessTools.Method(typeof(ZInput), "KeyCodeToPath", new[] { typeof(KeyCode), typeof(bool) });
+
+		private static void RebindButton(ButtonConfig button, KeyCode key)
+		{
+			try
+			{
+				if (button == null || ZInput.instance == null || KeyCodeToPathMethod == null) return;
+				var def = ZInput.instance.GetButtonDef(button.Name);
+				if (def == null) return;
+				var path = KeyCodeToPathMethod.Invoke(null, new object[] { key, false }) as string;
+				if (string.IsNullOrEmpty(path)) return;
+				def.Rebind(path);
+				Log.LogInfo($"Rebound {button.Name} to {key}");
+			}
+			catch (Exception ex)
+			{
+				Log.LogWarning($"Could not rebind {button?.Name}: {ex.Message}");
 			}
 		}
 
@@ -236,10 +316,21 @@ namespace GrabMaterialsMod
 			InputManager.Instance.AddButton(ModGuid, button);
 		}
 
+		// Player.TakeInput() is protected at runtime (the publicized DLL only makes it look public,
+		// and calling it throws MethodAccessException), so mirror its intent with the public checks.
+		private static bool GuiHasFocus()
+		{
+			return Console.IsVisible() || Menu.IsVisible() || InventoryGui.IsVisible()
+				|| TextInput.IsVisible() || StoreGui.IsVisible() || Minimap.IsOpen()
+				|| PlayerCustomizaton.IsBarberGuiVisible()
+				|| (Chat.instance != null && Chat.instance.IsChatDialogWindowVisible());
+		}
+
 		private void Update()
 		{
 			GrabMaterials.MaterialsPanel.Tick();
 			GrabMaterials.DistanceHud.Tick();
+			GrabMaterials.PackHud.Tick();
 
 			if (Player.m_localPlayer && Chat.instance && !Chat.instance.IsChatDialogWindowVisible())
 			{
@@ -268,6 +359,12 @@ namespace GrabMaterialsMod
 				//{
 				//	ConsoleCommands.GrabMaterialsForPack(GrabPack3.Name.Value, GrabPack3.Items.Value);
 				//}
+
+				if (PackHudToggleKey.Value.IsDown() && !GuiHasFocus())
+				{
+					ShowPackHud.Value = !ShowPackHud.Value;
+					GrabMaterials.PackHud.Refresh();
+				}
 
 				foreach (var grabPack in GrabPacks)
 				{
@@ -659,7 +756,7 @@ namespace GrabMaterialsMod
 		// Format a BepInEx KeyboardShortcut as e.g. "Shift + G" / "Ctrl + Alt + Y" / "G".
 		// BepInEx's default ToString() outputs "G + LeftShift" which reads awkwardly;
 		// this trims the Left/Right side prefix and renames Control->Ctrl.
-		private static string FormatShortcut(KeyboardShortcut shortcut)
+		internal static string FormatShortcut(KeyboardShortcut shortcut)
 		{
 			var sb = new StringBuilder();
 			foreach (var mod in shortcut.Modifiers)
