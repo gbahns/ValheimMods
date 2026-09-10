@@ -1,0 +1,30 @@
+[config]
+schemaVersion = "0.0.1"
+
+[package]
+namespace = "DeathMonger"
+name = "CaptainsLog"
+versionNumber = "1.0.0"
+description = "Logs ship speed, wind, and heading to CSV while you sail, plus a live HUD - empirical data for comparing ship speeds instead of guesswork."
+websiteUrl = "https://thunderstore.io/c/valheim/p/DeathMonger/CaptainsLog/"
+containsNsfwContent = false
+
+[package.dependencies]
+"denikson-BepInExPack_Valheim" = "5.4.2350"
+"ValheimModding-Jotunn" = "2.30.0"
+
+[build]
+icon = "./icon.png"
+readme = "./README.md"
+outdir = "./build"
+
+[[build.copy]]
+source = "./bin/Release/net462/CaptainsLog.dll"
+target = "BepInEx/plugins/"
+
+[publish]
+repository = "https://thunderstore.io"
+communities = ["valheim"]
+
+[publish.categories]
+valheim = ["mods", "client-side", "utility", "ai-generated"]
