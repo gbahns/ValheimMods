@@ -39,7 +39,7 @@ powershell -ExecutionPolicy Bypass -File package.ps1 -Version "0.8.1"
 
 This will:
 1. Build the Release DLL (`bin\Release\net48\ForsakenShrines.dll`)
-2. Auto-deploy `ForsakenShrines.dll` to every r2modman profile on this machine (via the csproj's `DeployToProfiles` target)
+2. Auto-deploy `ForsakenShrines.dll` to every Gale profile on this machine (via the csproj's `DeployToProfiles` target)
 3. Create `ForsakenShrines-0.8.1.zip` in the project directory
 
 To also **upload to Thunderstore** in one step, add `-Publish`:
@@ -110,4 +110,4 @@ See [Uploading to Thunderstore](#uploading-to-thunderstore) below for the one-ti
 
 ## Local Test Deploy
 
-The `.csproj` auto-copies the DLL to every r2modman profile on every build (Release or Debug), using a rename-and-replace strategy that works even when Valheim has the DLL locked. No manual copy needed — just build and launch Valheim via r2modman.
+The `.csproj` auto-copies the DLL to every Gale profile on every build (Release or Debug), using a rename-and-replace strategy that works even when Valheim has the DLL locked. No manual copy needed — just build and launch Valheim via r2modman.

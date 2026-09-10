@@ -40,7 +40,7 @@ powershell -ExecutionPolicy Bypass -File package.ps1 -Version "2.0.1"
 
 This will:
 1. Build the Release DLL (`bin\Release\net462\GrabMaterials.dll`)
-2. Auto-deploy `GrabMaterials.dll` to every Thunderstore profile on this machine (via the csproj's `DeployToProfiles` target)
+2. Auto-deploy `GrabMaterials.dll` to every Gale profile on this machine (via the csproj's `DeployToProfiles` target)
 3. Create `GrabMaterials-2.0.1.zip` in the project directory
 
 ---
@@ -73,7 +73,7 @@ The `Nexus/` subfolder is leftover from an older NexusMods distribution flow. It
 
 ## Local Test Deploy
 
-The `.csproj` auto-copies the DLL to every Thunderstore profile on every build (Release or Debug). No manual copy needed — just build and launch Valheim via Thunderstore Mod Manager.
+The `.csproj` auto-copies the DLL to every Gale profile on every build (Release or Debug). No manual copy needed — just build and launch Valheim via Gale.
 
 ---
 

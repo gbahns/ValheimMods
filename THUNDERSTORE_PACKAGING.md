@@ -85,28 +85,24 @@ Thunderstore will reject an upload if `version_number` in the manifest matches a
 
 ---
 
-## Auto-Deploy to All Local Thunderstore Profiles
+## Auto-Deploy to All Local Gale Profiles
 
-The project's `.csproj` can auto-copy the built DLL (and PDB if present) into every Thunderstore Mod Manager profile on the local machine after every build, so you can test in-game without manually copying files. Add a new profile in Thunderstore and the next build picks it up automatically — no csproj edit needed.
+Every mod's `.csproj` auto-copies the built DLL and PDB into every **Gale** mod manager profile on the machine after each build, so you can test in-game without copying files by hand. Add a profile in Gale and the next build picks it up automatically.
 
-Add to the `.csproj`:
+Gale keeps profiles at:
 
-```xml
-<!-- Auto-deploy build output to every Thunderstore Mod Manager profile on this machine. -->
-<PropertyGroup>
-  <ThunderstoreProfiles>$(APPDATA)\Thunderstore Mod Manager\DataFolder\Valheim\profiles</ThunderstoreProfiles>
-</PropertyGroup>
-<Target Name="DeployToProfiles" AfterTargets="Build" Condition="Exists('$(ThunderstoreProfiles)')">
-  <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;Get-ChildItem '$(ThunderstoreProfiles)' -Directory | ForEach-Object { %24plugins = Join-Path %24_.FullName 'BepInEx\plugins'; if (Test-Path %24plugins) { Copy-Item '$(TargetPath)' %24plugins -Force; if (Test-Path '$(TargetDir)$(TargetName).pdb') { Copy-Item '$(TargetDir)$(TargetName).pdb' %24plugins -Force }; Write-Host ('Deployed $(TargetName).dll to ' + %24_.Name + ' profile') } }&quot;" />
-</Target>
+```
+%APPDATA%\com.kesomannen.gale\valheim\profiles\<profile>\BepInEx\plugins
 ```
 
-How it works:
-- The `Condition="Exists('$(ThunderstoreProfiles)')"` on the `<Target>` makes the whole target a no-op on machines without Thunderstore Mod Manager installed — safe to commit.
-- The PowerShell inline `<Exec>` enumerates every directory under `…\profiles\` and copies into any that has a `BepInEx\plugins` subfolder, so profiles without BepInEx are quietly skipped.
-- `%24` is MSBuild's escape for `$`, needed because PowerShell variables (`$plugins`, `$_`) would otherwise be eaten by MSBuild's own property expansion.
+How the `DeployToProfiles` target behaves (see any mod's `.csproj` for the current code):
 
-The standard pattern across this repo. See any of the mod `.csproj` files for a working example.
+- Gale installs each package into `plugins\<Team>-<Name>\`. If the mod is installed in a profile from Thunderstore or Hexium, the build overwrites the DLL inside that package folder and deletes any stale loose copy at the plugins root, so there is never a duplicate plugin GUID. Otherwise the DLL lands at the plugins root, which BepInEx loads too.
+- If the target file is locked because Valheim is running, the target renames the locked file aside (`<name>.dll.old-<n>`) and copies the new one in; the sidecar is cleaned up on a later build. The running game keeps the old code until restart.
+- `Condition="Exists('$(GaleProfiles)')"` on the target makes it a no-op on machines without Gale, so it is safe to commit.
+- `%24` in the inline PowerShell is MSBuild's escape for `$`.
+
+Before 2026-09-10 the target deployed to r2modman profiles (`%APPDATA%\r2modmanPlus-local\Valheim\profiles`). Those profiles still exist but no longer receive builds.
 
 ---
 
