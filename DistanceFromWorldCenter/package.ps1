@@ -1,17 +1,20 @@
-# Builds the Release DLL and creates a Thunderstore-ready zip.
+﻿# Builds the Release DLL and creates a Thunderstore-ready zip.
 # Uses ZipArchive directly so entry names use forward slashes (ZIP spec 4.4.17).
 # Output: DistanceFromWorldCenter-<version>.zip in the project directory.
 #
 # Usage:
 #   package.ps1 -Version "1.0.0"              # build + zip only
 #   package.ps1 -Version "1.0.0" -Publish     # build + zip + upload to Thunderstore
+#   package.ps1 -Version "x.y.z" -Hexium      # build + zip + upload to Hexium (valheim.hexium.gg)
+#   (both switches may be combined)
 #
 # Publishing requires the TCLI_AUTH_TOKEN environment variable to be set.
 # Get your token from: thunderstore.io -> Settings -> Teams -> Service Accounts
 
 param(
     [string]$Version = "1.0.1",
-    [switch]$Publish
+    [switch]$Publish,
+    [switch]$Hexium
 )
 
 Add-Type -AssemblyName System.IO.Compression
@@ -60,4 +63,22 @@ if ($Publish) {
     if ($LASTEXITCODE -ne 0) { Write-Error "Publish failed."; exit 1 }
 
     Write-Host "Published successfully."
+}
+
+if ($Hexium) {
+    # Hexium runs a Thunderstore-compatible API, so the same zip and toml publish there.
+    # The token is read from HEXIUM_AUTH_TOKEN, or from %USERPROFILE%.hexium_token, so it never
+    # has to be typed into a shell or a chat.  Create it at valheim.hexium.gg -> Settings -> Teams
+    # -> Service Accounts (team DeathMonger).
+    $hexToken = $env:HEXIUM_AUTH_TOKEN
+    $tokenFile = Join-Path $env:USERPROFILE ".hexium_token"
+    if (-not $hexToken -and (Test-Path $tokenFile)) { $hexToken = (Get-Content $tokenFile -Raw).Trim() }
+    if (-not $hexToken) {
+        Write-Error "No Hexium token. Set HEXIUM_AUTH_TOKEN or put the token in $tokenFile"
+        exit 1
+    }
+    Write-Host "Publishing to Hexium..."
+    tcli publish --file "$zipPath" --config-path "$projectDir\hexium.toml" --repository "https://valheim.hexium.gg" --token $hexToken
+    if ($LASTEXITCODE -ne 0) { Write-Error "Hexium publish failed."; exit 1 }
+    Write-Host "Published to Hexium."
 }

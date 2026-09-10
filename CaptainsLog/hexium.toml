@@ -1,0 +1,32 @@
+# Hexium (valheim.hexium.gg) publish config: same package, Hexium repository URL and category slugs.
+# Used by package.ps1 -Hexium.  Keep versionNumber/description in step with thunderstore.toml.
+[config]
+schemaVersion = "0.0.1"
+
+[package]
+namespace = "DeathMonger"
+name = "CaptainsLog"
+versionNumber = "1.0.0"
+description = "Logs ship speed, wind, and heading to CSV while you sail, plus a live HUD - empirical data for comparing ship speeds instead of guesswork."
+websiteUrl = "https://thunderstore.io/c/valheim/p/DeathMonger/CaptainsLog/"
+containsNsfwContent = false
+
+[package.dependencies]
+"denikson-BepInExPack_Valheim" = "5.4.2350"
+"ValheimModding-Jotunn" = "2.30.0"
+
+[build]
+icon = "./icon.png"
+readme = "./README.md"
+outdir = "./build"
+
+[[build.copy]]
+source = "./bin/Release/net462/CaptainsLog.dll"
+target = "BepInEx/plugins/"
+
+[publish]
+repository = "https://valheim.hexium.gg"
+communities = ["valheim"]
+
+[publish.categories]
+valheim = ["Tools", "Vehicles", "Logging", "Open Source", "Valheim 1.0"]
