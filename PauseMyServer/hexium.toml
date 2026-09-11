@@ -1,0 +1,31 @@
+# Hexium (valheim.hexium.gg) publish config: same package, Hexium repository URL and category slugs.
+# Used by package.ps1 -Hexium.  Keep versionNumber/description in step with thunderstore.toml.
+[config]
+schemaVersion = "0.0.1"
+
+[package]
+namespace = "DeathMonger"
+name = "PauseMyServer"
+versionNumber = "1.0.0"
+description = "The ESC menu pauses a server-hosted game the way it pauses solo: when you are the only player online, the world freezes on the server too."
+websiteUrl = "https://github.com/gbahns/ValheimMods"
+containsNsfwContent = false
+
+[package.dependencies]
+"denikson-BepInExPack_Valheim" = "5.4.2350"
+
+[build]
+icon = "./icon.png"
+readme = "./README.md"
+outdir = "./build"
+
+[[build.copy]]
+source = "./bin/Release/net48/PauseMyServer.dll"
+target = "BepInEx/plugins/"
+
+[publish]
+repository = "https://valheim.hexium.gg"
+communities = ["valheim"]
+
+[publish.categories]
+valheim = ["Tools", "Quality of Life", "Open Source", "Valheim 1.0"]
