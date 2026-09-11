@@ -116,6 +116,22 @@ Before 2026-09-10 the target deployed to r2modman profiles (`%APPDATA%\r2modmanP
 
 ---
 
+## Publishing to Hexium
+
+[Hexium](https://valheim.hexium.gg/) is the repository the community moved to after Valheim 1.0 (Gale reads both it and Thunderstore; r2modman reads only Thunderstore). Its API is Thunderstore-compatible, so the same zip publishes there with tcli:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File package.ps1 -Version "x.y.z" -Publish -Hexium
+```
+
+`-Hexium` uses the mod's `hexium.toml`, which differs from `thunderstore.toml` only in the `repository` URL and the category list: Hexium's category slugs are capitalized names such as `"Quality of Life"`, `"Valheim 1.0"` and `"Open Source"` rather than Thunderstore's kebab-case ones. Keep `versionNumber` and `description` in step between the two files.
+
+The token is read from the `HEXIUM_AUTH_TOKEN` environment variable or, failing that, from `%USERPROFILE%\.hexium_token` (one line, no quotes). Create it at valheim.hexium.gg under the team's API tokens. Team names that are well known on Thunderstore need a one-time moderator verification before the first upload.
+
+Dependency strings are identical on both sites (`denikson-BepInExPack_Valheim-5.4.2350`, `ValheimModding-Jotunn-2.30.0`), so `manifest.json` needs no changes.
+
+---
+
 ## Deprecating / Redirecting a Mod
 
 To redirect users from an old mod listing to a new one:
