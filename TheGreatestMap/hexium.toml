@@ -1,0 +1,31 @@
+# Hexium (valheim.hexium.gg) publish config: same package, Hexium repository URL and category slugs.
+# Used by package.ps1 -Hexium.  Keep versionNumber/description in step with thunderstore.toml.
+[config]
+schemaVersion = "0.0.1"
+
+[package]
+namespace = "DeathMonger"
+name = "TheGreatestMap"
+versionNumber = "0.1.2"
+description = "EARLY ALPHA. Shared markers that stay erased, a table that only carries exploration, and a pocket map that records only what you actually found."
+websiteUrl = "https://github.com/gbahns/ValheimMods"
+containsNsfwContent = false
+
+[package.dependencies]
+"denikson-BepInExPack_Valheim" = "5.4.2350"
+
+[build]
+icon = "./icon.png"
+readme = "./README.md"
+outdir = "./build"
+
+[[build.copy]]
+source = "./bin/Release/net48/TheGreatestMap.dll"
+target = "BepInEx/plugins/"
+
+[publish]
+repository = "https://valheim.hexium.gg"
+communities = ["valheim"]
+
+[publish.categories]
+valheim = ["Tools", "Quality of Life", "Open Source", "Valheim 1.0"]

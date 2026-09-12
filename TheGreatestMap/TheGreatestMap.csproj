@@ -1,0 +1,84 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <OutputType>Library</OutputType>
+    <RootNamespace>TheGreatestMap</RootNamespace>
+    <AssemblyName>TheGreatestMap</AssemblyName>
+    <Deterministic>true</Deterministic>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <!-- CS0436/CS8632 come from the vendored ServerSync/ConfigSync.cs (annotation type clash, nullable syntax). -->
+    <NoWarn>$(NoWarn);MSB3277;CS0436;CS8632</NoWarn>
+    <!-- C# 12 required by ServerSync/ConfigSync.cs (primary constructors, with-expressions). -->
+    <LangVersion>12</LangVersion>
+  </PropertyGroup>
+
+  <!-- HarmonyX pulls in Mono.Cecil and MonoMod transitively.
+       ServerSync is not on NuGet; ConfigSync.cs is bundled under ServerSync/ (needs JetBrainsAnnotations.cs). -->
+  <ItemGroup>
+    <PackageReference Include="HarmonyX" Version="2.9.0" />
+  </ItemGroup>
+
+  <!-- Local Valheim / Unity assemblies not on NuGet.  No Jotunn: this mod adds no prefabs.
+       Splatform.dll defines PlatformUserID, which appears in Minimap.AddPin's signature. -->
+  <ItemGroup>
+    <Reference Include="assembly_valheim_publicized">
+      <HintPath>..\Libs\assembly_valheim_publicized.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="assembly_utils_publicized">
+      <HintPath>..\Libs\assembly_utils_publicized.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="assembly_guiutils">
+      <HintPath>..\Libs\assembly_guiutils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Splatform">
+      <HintPath>..\Libs\Splatform.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>..\Libs\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>..\Libs\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>..\Libs\UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>..\Libs\UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>..\Libs\UnityEngine.UIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine_publicized">
+      <HintPath>..\Libs\UnityEngine_publicized.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Auto-deploy build output to every Gale profile on this machine
+       (%APPDATA%\com.kesomannen.gale\valheim\profiles). -->
+  <PropertyGroup>
+    <GaleProfiles>$(APPDATA)\com.kesomannen.gale\valheim\profiles</GaleProfiles>
+  </PropertyGroup>
+  <!-- Deploy DLL+PDB to every Gale profile.  Gale installs each package into
+       BepInEx\plugins\<Team>-<Name>\, so if this mod is installed from Thunderstore/Hexium
+       the build overwrites the DLL inside that package folder (and removes any stale loose
+       copy at the plugins root); otherwise it lands at the plugins root, which BepInEx also
+       loads.  If the target file is locked (Valheim running), fall back to rename-and-replace:
+       move the locked file aside, then copy in the new one.  Windows allows the rename
+       because .NET's Assembly.LoadFile opens with FILE_SHARE_DELETE.  The renamed sidecar
+       is best-effort cleaned up on subsequent builds (every build sweeps all *.old-* files it can). -->
+  <Target Name="DeployToProfiles" AfterTargets="Build" Condition="Exists('$(GaleProfiles)')">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;function DepFile(%24s,%24d,%24pn) { if (!(Test-Path %24s)) { return }; try { Copy-Item %24s %24d -Force -ErrorAction Stop } catch { try { %24bak=%24d+'.old-'+(Get-Random); Move-Item %24d %24bak -Force -ErrorAction Stop; Copy-Item %24s %24d -Force -ErrorAction Stop; Write-Host ('  shadow-replaced (was locked): '+(Split-Path %24d -Leaf)) } catch { Write-Warning ('  deploy failed: '+%24pn+' '+(Split-Path %24d -Leaf)+' - '+%24_.Exception.Message) } } }; %24tgt='$(TargetName)'; %24src='$(TargetPath)'; %24pdb='$(TargetDir)$(TargetName).pdb'; Get-ChildItem '$(GaleProfiles)' -Directory | ForEach-Object { %24pn=%24_.Name; %24pl=Join-Path %24_.FullName 'BepInEx\plugins'; if (!(Test-Path %24pl)) { return }; %24dests=@(Get-ChildItem %24pl -Directory | Where-Object { Test-Path (Join-Path %24_.FullName (%24tgt+'.dll')) } | ForEach-Object { %24_.FullName }); if (%24dests.Count -gt 0) { Get-ChildItem %24pl -File -Filter (%24tgt+'.*') -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue } else { %24dests=@(%24pl) }; foreach (%24dd in %24dests) { Get-ChildItem %24dd -Filter '*.old-*' -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue; DepFile %24src (Join-Path %24dd (%24tgt+'.dll')) %24pn; DepFile %24pdb (Join-Path %24dd (%24tgt+'.pdb')) %24pn; Write-Host ('Deployed '+%24tgt+' to '+%24pn+' ('+(Split-Path %24dd -Leaf)+')') } }&quot;" />
+  </Target>
+
+</Project>

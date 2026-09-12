@@ -211,6 +211,108 @@ No skill loss, no death penalty, configurable enemies.
 
 ---
 
+## Mod 8 — Shared Map (working title)
+
+### Concept
+
+**Status (2026-09-10):** built as `TheGreatestMap/` (v0.1.0 published 2026-09-11 as an early alpha on Thunderstore and Hexium; single-player tested, not yet
+tested in-game). Greg and Marco had used Better Cartography Table before and hit pins that kept coming back
+after being erased (vanilla re-imports every foreign pin on each table read). The fix here: a server-side
+store is the only copy, clients never persist shared markers, and erasing a recorded marker leaves a
+"suppressed spot" so the recorder does not put it back.
+Make the map a genuinely shared, living document between players on a server.
+Idea dump from Greg + Marco, 2026-09-10, refined the same day. More to come.
+
+- New map marker types (e.g. berries) beyond the five vanilla icons
+- Cartography table syncs automatically when you're in range (or via a keybind while in range)
+  instead of the manual read/write interaction
+- The cartography table is only for sharing *exploration* (fog). Map *markers* share instantly
+  between players, since players can already do that manually with pings anyway
+- A **Map** the character carries "in a pocket": it takes no inventory slot. A keybind takes it
+  out, and it occupies both hands (map in the left, pencil in the right). Markers can only be
+  written while it's out
+- **Automatic recording, no detection.** While the map is out, the character writes down
+  important things nearby that the player has *actually found*. No radar: nothing is recorded
+  that the player didn't see or interact with. Greg tried a proximity auto-pin mod once and
+  considers that a cheat
+
+### Open Design Questions
+- **What counts as "found"?** Candidate signals, strongest first: interacted with it (picked,
+  mined, entered, read); it was the crosshair hover target within 5 m; it was on screen with clear
+  line of sight within N m for a dwell time. Likely a two-phase model: a client-side "discovered"
+  ledger fills during normal play, and taking the map out writes pins for discovered-but-unrecorded
+  things within range after the ~3 s dwell.
+- **Where do instantly-shared pins live?** Pure broadcast never reaches a player who logs in
+  later. Options: (a) also write them into every cartography table's data, (b) a server-side store
+  (custom ZDO or file) replayed to joining clients, (c) hybrid. ServerSideMap and
+  OneMapToRuleThemAll both chose (b).
+- **Table reads delete foreign pins.** Vanilla `AddSharedMapData` removes every pin with a foreign
+  owner ID that isn't in the incoming table data. Instant-shared pins carrying the sender's owner
+  ID vanish on the next table read unless they're also in the table, or that behaviour is patched.
+- **Who receives shared pins?** Everyone, or only players who have taken the map out?
+- **What is "important"?** Pickables (berries, mushrooms, thistle, flax), locations (crypts,
+  caves, runestones, altars, trader), ore veins, boss altars, docked ships?
+- **Vanilla clients.** Custom pin types in a table crash an unmodded client that reads it (null
+  icon lookup, visibility array indexed past its end). Either require the mod on every client, or
+  downgrade custom types to vanilla icons when writing to the table. Custom pin indices also
+  collide between mods that each append to the enum (Asocial Cartography's README documents this).
+- **Does auto-sync respect ward access?** Vanilla read and write both check `PrivateArea.CheckAccess`.
+
+### Technical Notes (verified against assembly_valheim, 2026-09-10)
+- **Table read/write is simple.** `MapTable.OnRead` pulls a compressed byte array from the table's
+  ZDO (`ZDOVars.s_data`) and hands it to `Minimap.AddSharedMapData`. `OnWrite` reads first,
+  serialises via `Minimap.GetSharedMapData`, then sends a `MapData` RPC to the ZDO owner, who
+  stores it. Both are private; the publicized assembly exposes them. Auto-sync is "find MapTable
+  components within radius every few seconds, call OnWrite with a null item".
+- **Only saved, non-death pins are shared.** The serialiser writes owner ID, name, position, type
+  (as int), checked flag and author (`PlatformUserID`). Pins within 1 m of an existing pin are
+  de-duplicated on read.
+- **Custom pin types are an int cast.** `PinType` is an enum (18 values, last is `Memorial`);
+  icons come from `Minimap.m_icons` (a `List<SpriteData>` mapping type to sprite). Add entries for
+  new int values and cast, then resize `m_visibleIconTypes`. Round-trips through the table.
+- **Shared pins already render differently.** Non-zero owner ID pins draw grey-tinted, fade in via
+  the `_SharedFade` shader param, and toggle with the shared-map button. Author names are
+  supported since the `PinsAuthor` format version.
+- **Instant sharing.** Register a `ZRoutedRpc` message (like ping/chat) carrying the pin fields
+  and broadcast to all peers. Cheap and immediate.
+- **"Found" signals available in vanilla.** `Player.FindHoverObject` raycasts 50 m from the camera
+  on the interact mask but only sets `m_hovering` within `m_maxInteractDistance` (5 m); a mod can
+  reuse the same raycast with a longer cutoff plus a dwell timer for "looked at it". Interaction
+  hooks: `Pickable.Interact`, `MineRock5.Damage`, `RuneStone` / `Vegvisir.Interact`, dungeon entry.
+  `Location.m_discoverLabel` is the vanilla "entered a location" hook; boss altars are revealed
+  via `Game.DiscoverClosestLocation` / `Minimap.DiscoverLocation`.
+- **Pocket map, no item.** Since it takes no slot, model it as player state (a flag or custom
+  status effect) rather than an `ItemDrop`. The keybind toggles it; while out, both hand items are
+  hidden and attacks suppressed, and map/pencil prefabs attach to the hand bones the way
+  `VisEquipment` attaches held items. Needs a two-handed idle animation or a reuse of an existing
+  one (e.g. the crouch/read pose).
+
+### Prior Art (Thunderstore, checked 2026-09-10)
+- **OneMapToRuleThemAll** (DrummerCraig, 2.8.0, updated 2026-09-10, ~9k downloads): closest
+  overall. One server-wide map, fog merged in real time, player pins synced, plus proximity
+  auto-pins and a client radar driven by catalog files. Its auto-pins are exactly the detection
+  model we reject.
+- **ServerSideMap** (Mydayyy, 1.3.13, 2025-03, ~190k): server-authoritative explored map and
+  optional pins, synced on join. Incompatible with crossplay. Not updated since 2025-03.
+- **DiscoveryPins** (Searica, 0.3.10, 2025-03, ~37k): the "found it" model. Auto-pins dungeons on
+  entry, ore on damage, portals on build; a keybind pins things in your field of view. Client-side.
+- **PinAssistant** (WxAaRoNxW, 1.8.3, 2025-11, ~11k): pins the object you look at, or auto-pins
+  tracked object types. Local only.
+- **ZenMap** (ZenDragon, 1.10.0, 2026-08, ~44k): low-map play. Map only at the table or via a
+  crafted parchment copy (a static snapshot); pins are attached to signs in the world, not placed
+  on the map. Map data is universal. Different philosophy, but the carried-map idea exists here.
+- **Better Cartography Table** (nbusseneau, 0.8.1, 2025-08, ~77k): private/public/guild pins
+  shared selectively via tables, with real-time multi-user table editing.
+- **Asocial Cartography** (VentureValheim, 1.0.0, 2026-09-10, ~22k): toggle sharing/receiving
+  player pins at the table; overlap radius to cut clutter.
+- **AutoPinSigns** (shudnal, 2.0.1, 2026-09-10): pins from sign text, synced from the server.
+- Icon packs: MoreMapPins, RavenwoodMapPins, PixelMapIcons.
+- **Gap this mod fills:** nobody combines instant shared pins with an honest "only what you found"
+  recorder and the pocket-map ritual. The closest pieces are OneMapToRuleThemAll's sharing and
+  DiscoveryPins' triggers.
+
+---
+
 ## Technical Stack Reference
 
 - BepInEx 5.x (not 6)
@@ -231,3 +333,4 @@ No skill loss, no death penalty, configurable enemies.
 5. **Food-o-pedia** — medium complexity, data-heavy
 6. **D3 Armory** — most ambitious, save for last or parallel track
 7. **Practice Mode** — needs design resolution first
+8. **Shared Map** — design in progress with Marco; resolve the open questions first
