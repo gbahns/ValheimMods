@@ -8,7 +8,7 @@ namespace = "DeathMonger"
 name = "CaptainsLog"
 versionNumber = "1.0.0"
 description = "Logs ship speed, wind, and heading to CSV while you sail, plus a live HUD - empirical data for comparing ship speeds instead of guesswork."
-websiteUrl = "https://thunderstore.io/c/valheim/p/DeathMonger/CaptainsLog/"
+websiteUrl = "https://github.com/gbahns/ValheimMods/tree/main/CaptainsLog"
 containsNsfwContent = false
 
 [package.dependencies]

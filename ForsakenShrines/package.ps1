@@ -9,7 +9,7 @@
 #   (both switches may be combined)
 #
 # Publishing requires the TCLI_AUTH_TOKEN environment variable to be set.
-# Get your token from: thunderstore.io â†’ Settings â†’ Teams â†’ Service Accounts
+# Get your token from: thunderstore.io -> Settings -> Teams -> Service Accounts
 
 param(
     [string]$Version = "0.8.2",
@@ -22,6 +22,45 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 $projectDir = $PSScriptRoot
 $zipPath    = Join-Path $projectDir "ForsakenShrines-$Version.zip"
+
+# Guard against metadata drift between the two repositories.  Only the repository URL
+# and the category list are meant to differ between thunderstore.toml and hexium.toml;
+# a version or description edited in one file and not the other would publish two
+# listings that disagree.  manifest.json is checked too, since that is the version
+# that actually ships inside the zip.
+function Get-TomlValue($path, $key) {
+    if (-not (Test-Path $path)) { return $null }
+    $line = Select-String -Path $path -Pattern "^$key\s*=" | Select-Object -First 1
+    if (-not $line) { return $null }
+    return ($line.Line -replace "^$key\s*=\s*", "").Trim().Trim('"')
+}
+
+if ($Publish -or $Hexium) {
+    $tsToml   = Join-Path $projectDir "thunderstore.toml"
+    $hexToml  = Join-Path $projectDir "hexium.toml"
+    $manifest = Join-Path $projectDir "manifest.json"
+
+    if (Test-Path $hexToml) {
+        foreach ($key in @("namespace", "name", "versionNumber", "description")) {
+            $a = Get-TomlValue $tsToml $key
+            $b = Get-TomlValue $hexToml $key
+            if ($a -ne $b) {
+                Write-Error "thunderstore.toml and hexium.toml disagree on '$key'. Fix both before publishing.`n  thunderstore.toml: $a`n  hexium.toml:       $b"
+                exit 1
+            }
+        }
+    }
+
+    $manifestVersion = ((Get-Content $manifest -Raw) | ConvertFrom-Json).version_number
+    $tomlVersion     = Get-TomlValue $tsToml "versionNumber"
+    if ($manifestVersion -ne $tomlVersion) {
+        Write-Error "manifest.json and thunderstore.toml disagree on the version. Fix both before publishing.`n  manifest.json:     $manifestVersion`n  thunderstore.toml: $tomlVersion"
+        exit 1
+    }
+    if ($manifestVersion -ne $Version) {
+        Write-Warning "The -Version parameter ($Version) only names the zip file; the published version is $manifestVersion from manifest.json."
+    }
+}
 
 Write-Host "Building Release..."
 dotnet build "$projectDir\ForsakenShrines.csproj" -c Release
@@ -54,7 +93,7 @@ Write-Host "Package ready: $zipPath"
 
 if ($Publish) {
     if (-not $env:TCLI_AUTH_TOKEN) {
-        Write-Error "TCLI_AUTH_TOKEN is not set. Get your token from thunderstore.io â†’ Settings â†’ Teams â†’ Service Accounts"
+        Write-Error "TCLI_AUTH_TOKEN is not set. Get your token from thunderstore.io -> Settings -> Teams -> Service Accounts"
         exit 1
     }
 
