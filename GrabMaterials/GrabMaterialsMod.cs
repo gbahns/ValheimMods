@@ -19,7 +19,7 @@ using UnityEngine;
 namespace GrabMaterialsMod
 {
 
-	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.0.0")]
+	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.1.0")]
 	[BepInProcess("valheim.exe")]
 	public class GrabMaterialsMod : BaseUnityPlugin
 	{
@@ -44,6 +44,7 @@ namespace GrabMaterialsMod
 		public ConfigEntry<bool> PanelDismissOnMovement;
 		public ConfigEntry<bool> PanelCategoryUnderlines;
 		public ConfigEntry<bool> PanelShowItemIcons;
+		public ConfigEntry<bool> PanelMarkUndiscovered;
 		public ConfigEntry<float> PanelIconSize;
 		public ConfigEntry<GrabMaterials.MaterialsPanel.InventoryShape> InventoryShape;
 		public ConfigEntry<GrabMaterials.MaterialsPanel.InventoryStyle> InventoryStyle;
@@ -175,6 +176,7 @@ namespace GrabMaterialsMod
 			PanelCategoryUnderlines = Config.Bind("Panel UI", "Category Underlines", true, new ConfigDescription("In List mode, draw a thin orange line under each category name. Has no effect in Table mode."));
 			InventoryShape = Config.Bind("Panel UI", "Inventory Shape", GrabMaterials.MaterialsPanel.InventoryShape.SlightlyWide, new ConfigDescription("Target shape for the inventory panel in List mode. The panel auto-picks the column count that produces the closest match. MaxHeight = always 1 column. MaxWidth = fan out as many columns as fit on the screen."));
 			PanelShowItemIcons = Config.Bind("Panel UI", "Show Item Icons", true, new ConfigDescription("Show each item's icon next to its name in the inventory panel."));
+			PanelMarkUndiscovered = Config.Bind("Panel UI", "Mark Undiscovered Items", true, new ConfigDescription("Mark items in the /inventory panel that this character has never held with a '(new)' tag. Handy in multiplayer, where a shared chest is often full of a friend's crafting you have never handled yourself."));
 			PanelIconSize = Config.Bind("Panel UI", "Icon Size", 24f, new ConfigDescription("Width of the item-icon column in pixels. Icons are square and sized to fit. Beyond ~26 the row stays the same height so icons get visually capped by the row.", new AcceptableValueRange<float>(12f, 40f)));
 
 			ShowDistanceHud = Config.Bind("Distance HUD", "Enabled", false, new ConfigDescription("Show a small always-on widget displaying the player's horizontal distance from the world center."));
@@ -708,6 +710,11 @@ namespace GrabMaterialsMod
 				return;
 			}
 
+			// "(new)" marker for anything this character has never had in hand.  Valheim tracks that
+			// set itself and fills it the first time an item enters your inventory.
+			var player = Player.m_localPlayer;
+			var markUndiscovered = (Instance?.PanelMarkUndiscovered?.Value ?? true) && player != null;
+
 			// Iterate enum values in declaration order so the panel displays a stable, gameplay-grouped order.
 			var groups = new List<GrabMaterials.MaterialsPanel.InventoryGroup>();
 			foreach (GrabMaterials.Extensions.ItemCategory cat in Enum.GetValues(typeof(GrabMaterials.Extensions.ItemCategory)))
@@ -740,7 +747,7 @@ namespace GrabMaterialsMod
 						}
 					}
 
-					items.Add(new GrabMaterials.MaterialsPanel.InventoryItem { Name = localizedName, Count = kvp.Value, InProcess = inProcess, InProcessLocation = locLabel, Icon = icon, SharedName = kvp.Key });
+					items.Add(new GrabMaterials.MaterialsPanel.InventoryItem { Name = localizedName, Count = kvp.Value, InProcess = inProcess, InProcessLocation = locLabel, Icon = icon, SharedName = kvp.Key, Undiscovered = markUndiscovered && !player.IsMaterialKnown(kvp.Key) });
 				}
 				groups.Add(new GrabMaterials.MaterialsPanel.InventoryGroup
 				{

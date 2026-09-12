@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.0 — 2026-09-12
+
+- The `/inventory` panel now tags items this character has never held with a blue **(new)**. In multiplayer a shared chest is often full of a friend's crafting you have never handled yourself, and this makes those stand out. Turn it off with "Mark Undiscovered Items" under [Panel UI].
+
 ## 2.0.0 — 2026-09-09
 
 **Now published under DeathMonger**

@@ -7,6 +7,10 @@ Version 2.0.0 released on September 9 2026.
 
 Quickly pull materials from nearby chests into your inventory without having to manually click on each chest.  The concept is similar to mods that let you craft or build directly from containers, but for things that you're not building in your base.  The typical example is workbench and portal when exploring - you're constantly having to grab 10 wood, 20 finewood, 10 greydwarf eyes, and 2 surtling cores.  This mod removes that tedium.
 
+<h3>New in version 2.1.0</h3>
+
+<li>Undiscovered item marker — '/inventory' tags anything this character has never held with a blue '(new)'.  Most useful in multiplayer, where a shared chest is often full of a friend's crafting you have never handled yourself.  Configurable under "Panel UI".
+
 <h3>New in version 2.0.0</h3>
 
 <li>Inventory panel — '/inventory' (or '/i') opens a wood-styled panel listing items in nearby containers, grouped by category with item icons.  Optional filter on item name or category, e.g. '/i wood' or '/i food'.
@@ -57,4 +61,4 @@ Join [my discord server](https://discord.gg/eH7UfRj5mG) to ask questions or prov
 
 View [the backlog](https://github.com/users/gbahns/projects/1/views/1) here.
 
-See [wiki](https://thunderstore.io/c/valheim/p/MojoRyzen/GrabMaterials/wiki/3012-mojoryzens-grab-materials-mod/) for more details.
+See the [project on GitHub](https://github.com/gbahns/ValheimMods/tree/main/GrabMaterials) for source, issues and the full changelog.
