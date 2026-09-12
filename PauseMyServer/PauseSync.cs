@@ -3,34 +3,55 @@ using System.Collections.Generic;
 namespace PauseMyServer
 {
     /// <summary>
-    /// The pause state machine. The server is the single authority: a client only ever says
-    /// "I want the world paused" (its ESC menu is open) and the server decides, then tells
+    /// The pause state machine. The server is the single authority: clients only ever send
+    /// wishes ("my menu is open", "toggle the admin pause") and the server decides, then tells
     /// everybody what the state is. A client freezes only after the server has confirmed, so a
     /// server without the mod simply never pauses instead of leaving the client frozen while the
     /// world runs on without it.
     ///
-    /// v1.0 rule: the world is paused while exactly one player is connected to a dedicated server
-    /// and that player wants it paused. A second player becoming ready, or the pausing player
-    /// leaving, resumes the world on the next frame.
+    /// Two independent reasons keep the world paused:
+    ///  * lone pause (v1.0): exactly one player is connected to a dedicated server and that
+    ///    player's ESC menu is open. A second player becoming ready, or the pausing player
+    ///    leaving, lifts it.
+    ///  * admin pause (v1.1): an admin toggled it (pause key or console). It freezes every
+    ///    client regardless of menus, players joining meanwhile are frozen too, and it stays
+    ///    until any admin lifts it. As a safety net it is dropped when the last player leaves,
+    ///    so the next player to log in is never frozen with nobody able to resume.
     /// </summary>
     internal static class PauseSync
     {
-        private const string RpcWant  = "PMS_WantPause";   // client -> server: bool
-        private const string RpcState = "PMS_PauseState";  // server -> everybody: bool
+        private const string RpcWant         = "PMS_WantPause";     // client -> server: bool, menu open?
+        private const string RpcAdminToggle  = "PMS_AdminToggle";   // client -> server: toggle the admin pause
+        private const string RpcRequestState = "PMS_RequestState";  // client -> server: send me the state
+        private const string RpcState        = "PMS_PauseState";    // server -> client(s): bool paused, bool forced, string by
+        private const string RpcNotice       = "PMS_Notice";        // server -> client: string message
 
         // ── server ──────────────────────────────────────────────────────────────────
 
-        /// <summary>True while the server holds the world paused. Only ever set on the server.</summary>
+        /// <summary>True while the server holds the world paused for any reason. Only ever set on the server.</summary>
         internal static bool ServerPaused { get; private set; }
+
+        /// <summary>The admin pause, independent of the lone-player rule.</summary>
+        internal static bool AdminPaused { get; private set; }
+        internal static string AdminPausedBy { get; private set; } = "";
 
         private static readonly Dictionary<long, bool> _wants = new Dictionary<long, bool>();
         private static readonly List<long> _gone = new List<long>();
-        private static string _pausedBy = "";
+        private static string _resumedBy = "";
+        private static bool _sentForced;
+        private static string _sentBy = "";
+        private static int _lastReady;
 
         // ── client ──────────────────────────────────────────────────────────────────
 
         /// <summary>What the server last told us.</summary>
         internal static bool ClientPaused { get; private set; }
+
+        /// <summary>True when the pause is an admin pause: it applies whether or not our menu is open.</summary>
+        internal static bool ClientForced { get; private set; }
+
+        /// <summary>Who holds the pause (the admin, or ourselves for a lone pause).</summary>
+        internal static string PausedBy { get; private set; } = "";
 
         /// <summary>Mirrors Game.m_pause: true between Game.Pause() and Game.Unpause(), i.e. while the ESC menu is open.</summary>
         internal static bool WantPause;
@@ -44,15 +65,25 @@ namespace PauseMyServer
             var rpc = ZRoutedRpc.instance;
             if (rpc == null) return;
             rpc.Register<bool>(RpcWant, RPC_WantPause);
-            rpc.Register<bool>(RpcState, RPC_PauseState);
+            rpc.Register(RpcAdminToggle, RPC_AdminToggle);
+            rpc.Register(RpcRequestState, RPC_RequestState);
+            rpc.Register<bool, bool, string>(RpcState, RPC_PauseState);
+            rpc.Register<string>(RpcNotice, RPC_Notice);
         }
 
         internal static void Reset()
         {
             ServerPaused = false;
+            AdminPaused = false;
+            AdminPausedBy = "";
             _wants.Clear();
-            _pausedBy = "";
+            _resumedBy = "";
+            _sentForced = false;
+            _sentBy = "";
+            _lastReady = 0;
             ClientPaused = false;
+            ClientForced = false;
+            PausedBy = "";
             WantPause = false;
             _sentWant = false;
         }
@@ -65,6 +96,17 @@ namespace PauseMyServer
             else UpdateClient();
         }
 
+        internal static string Status()
+        {
+            var znet = ZNet.instance;
+            if (znet == null) return "Not in a game.";
+            string client = Player.m_localPlayer == null ? "" :
+                $" | client: paused={ClientPaused} admin={ClientForced} by='{PausedBy}' menu={WantPause}";
+            string server = !znet.IsServer() ? "" :
+                $"server: paused={ServerPaused} admin={AdminPaused} by='{AdminPausedBy}' players={_lastReady}";
+            return (server + client).TrimStart(' ', '|');
+        }
+
         // ── client side ─────────────────────────────────────────────────────────────
 
         private static void UpdateClient()
@@ -74,25 +116,59 @@ namespace PauseMyServer
             ZRoutedRpc.instance.InvokeRoutedRPC(RpcWant, WantPause);
         }
 
-        private static void RPC_PauseState(long sender, bool paused)
+        /// <summary>The admin pause key. Runs on clients and on a hosting player alike.</summary>
+        internal static void UpdateInput()
+        {
+            if (Player.m_localPlayer == null || ZRoutedRpc.instance == null) return;
+            if (!PauseMyServerMod.PauseKey.Value.IsDown()) return;
+            if (global::Console.IsVisible() || TextInput.IsVisible()) return;
+            if (Chat.instance != null && Chat.instance.HasFocus()) return;
+            SendAdminToggle();
+        }
+
+        internal static void SendAdminToggle()
+        {
+            if (ZRoutedRpc.instance == null) return;
+            ZRoutedRpc.instance.InvokeRoutedRPC(RpcAdminToggle);
+        }
+
+        /// <summary>Asked on spawn, so a player who joins during an admin pause is frozen too.</summary>
+        internal static void RequestState()
+        {
+            if (ZRoutedRpc.instance == null) return;
+            ZRoutedRpc.instance.InvokeRoutedRPC(RpcRequestState);
+        }
+
+        private static void RPC_PauseState(long sender, bool paused, bool forced, string by)
         {
             var znet = ZNet.instance;
-            if (znet == null || znet.IsServer()) return;          // the host's own broadcast
+            if (znet == null) return;
+            if (znet.IsServer() && Player.m_localPlayer == null) return;   // dedicated server: its own broadcast
             var server = znet.GetServerPeer();
-            if (server != null && sender != server.m_uid) return; // only the server decides
-            if (paused == ClientPaused) return;
+            if (server != null && sender != server.m_uid) return;         // only the server decides
 
+            bool wasPaused = ClientPaused;
+            bool wasForced = ClientForced;
             ClientPaused = paused;
-            PauseMyServerMod.Log.LogInfo(paused ? "[PauseMyServer] World paused." : "[PauseMyServer] World resumed.");
-            if (paused)
-            {
-                PauseMyServerMod.Message("World paused");
-            }
-            else if (WantPause)
-            {
-                // Resumed while our menu is still open: somebody else came online.
-                PauseMyServerMod.Message("World resumed: another player is online");
-            }
+            ClientForced = paused && forced;
+            PausedBy = by ?? "";
+            if (paused == wasPaused && ClientForced == wasForced) return;
+
+            PauseMyServerMod.Log.LogInfo(paused
+                ? $"[PauseMyServer] Game paused{(forced ? " by admin " + PausedBy : "")}."
+                : "[PauseMyServer] Game resumed.");
+            if (paused) return;
+
+            // The pause itself is announced by the persistent PauseOverlay label; only resumes
+            // that the player did not cause themselves get a message.
+            if (wasForced) PauseMyServerMod.Message(string.IsNullOrEmpty(PausedBy) ? "Game resumed" : $"Game resumed by {PausedBy}");
+            else if (WantPause) PauseMyServerMod.Message("World resumed: another player is online");
+        }
+
+        private static void RPC_Notice(long sender, string text)
+        {
+            if (Player.m_localPlayer == null) return;
+            PauseMyServerMod.Message(text, always: true);
         }
 
         // ── server side ─────────────────────────────────────────────────────────────
@@ -104,6 +180,54 @@ namespace PauseMyServer
             if (znet.GetPeer(sender) == null) return;             // unknown sender
             _wants[sender] = want;
             // The state is re-evaluated in UpdateServer on the next frame.
+        }
+
+        private static void RPC_AdminToggle(long sender)
+        {
+            var znet = ZNet.instance;
+            if (znet == null || !znet.IsServer()) return;
+            string name = PeerName(znet, sender);
+            if (!IsAdmin(znet, sender))
+            {
+                PauseMyServerMod.Log.LogInfo($"[PauseMyServer] {name} pressed the pause key but is not an admin.");
+                ZRoutedRpc.instance.InvokeRoutedRPC(sender, RpcNotice, "Only an admin can pause the server");
+                return;
+            }
+            SetAdminPause(!AdminPaused, name);
+        }
+
+        private static void RPC_RequestState(long sender)
+        {
+            var znet = ZNet.instance;
+            if (znet == null || !znet.IsServer()) return;
+            ZRoutedRpc.instance.InvokeRoutedRPC(sender, RpcState, ServerPaused, _sentForced, _sentBy);
+        }
+
+        /// <summary>Server only. Also used by the console command; the broadcast follows on the next frame.</summary>
+        internal static void SetAdminPause(bool paused, string by)
+        {
+            if (paused == AdminPaused) return;
+            AdminPaused = paused;
+            if (paused) { AdminPausedBy = by; _resumedBy = ""; }
+            else        { _resumedBy = by; AdminPausedBy = ""; }
+            PauseMyServerMod.Log.LogInfo($"[PauseMyServer] Admin pause {(paused ? "set" : "lifted")} by {by}.");
+        }
+
+        private static bool IsAdmin(ZNet znet, long sender)
+        {
+            if (sender == ZDOMan.GetSessionID()) return true;     // the hosting player
+            var peer = znet.GetPeer(sender);
+            if (peer == null || peer.m_socket == null) return false;
+            string host = peer.m_socket.GetHostName();
+            return !string.IsNullOrEmpty(host) && znet.IsAdmin(host);
+        }
+
+        private static string PeerName(ZNet znet, long sender)
+        {
+            if (sender == ZDOMan.GetSessionID())
+                return Player.m_localPlayer != null ? Player.m_localPlayer.GetPlayerName() : "the server";
+            var peer = znet.GetPeer(sender);
+            return peer != null && !string.IsNullOrEmpty(peer.m_playerName) ? peer.m_playerName : "an admin";
         }
 
         private static void UpdateServer(ZNet znet)
@@ -132,24 +256,35 @@ namespace PauseMyServer
                 for (int i = 0; i < _gone.Count; i++) _wants.Remove(_gone[i]);
             }
 
-            // v1.0: pause only for a lone player on a dedicated server. A hosting player counts as
+            // Safety net: the last player leaving drops an admin pause (a pause set from the
+            // console on an already empty server is kept on purpose).
+            if (AdminPaused && ready == 0 && _lastReady > 0 && Player.m_localPlayer == null)
+            {
+                PauseMyServerMod.Log.LogInfo("[PauseMyServer] Server is empty; admin pause dropped.");
+                AdminPaused = false;
+                AdminPausedBy = "";
+                _resumedBy = "";
+            }
+            _lastReady = ready;
+
+            // Lone pause only for a lone player on a dedicated server. A hosting player counts as
             // a player too, and vanilla already pauses a host who is alone.
             bool hostIsPlaying = Player.m_localPlayer != null;
-            bool should = !hostIsPlaying && ready == 1 && _wants.TryGetValue(sole, out bool want) && want;
-            if (should == ServerPaused) return;
+            bool lone = !hostIsPlaying && ready == 1 && _wants.TryGetValue(sole, out bool want) && want;
+
+            bool should = lone || AdminPaused;
+            bool forced = AdminPaused;
+            string by = AdminPaused ? AdminPausedBy : (lone ? soleName : _resumedBy);
+            if (should == ServerPaused && forced == _sentForced && by == _sentBy) return;
 
             ServerPaused = should;
-            if (should)
-            {
-                _pausedBy = soleName;
-                PauseMyServerMod.Log.LogInfo($"[PauseMyServer] World paused by {soleName}.");
-            }
-            else
-            {
-                PauseMyServerMod.Log.LogInfo($"[PauseMyServer] World resumed (was paused by {_pausedBy}; {ready} player(s) connected).");
-                _pausedBy = "";
-            }
-            ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.Everybody, RpcState, should);
+            _sentForced = forced;
+            _sentBy = by;
+            if (should) _resumedBy = "";   // a new pause; whoever lifted the last one is history
+            PauseMyServerMod.Log.LogInfo(should
+                ? $"[PauseMyServer] World paused ({(forced ? "admin: " : "alone: ")}{by}; {ready} player(s) connected)."
+                : $"[PauseMyServer] World resumed ({ready} player(s) connected{(string.IsNullOrEmpty(by) ? "" : "; lifted by " + by)}).");
+            ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.Everybody, RpcState, should, forced, by);
         }
     }
 }
