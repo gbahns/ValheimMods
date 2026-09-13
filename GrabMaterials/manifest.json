@@ -1,6 +1,6 @@
 {
     "name": "GrabMaterials",
-    "version_number": "2.3.0",
+    "version_number": "2.3.1",
     "website_url": "https://github.com/gbahns/ValheimMods/tree/main/GrabMaterials",
     "description": "Grab materials from nearby chests needed to build things out in the world, e.g. grab materials for a workbench, for portal, for a longship, for exploring (workbench, and portal), etc.",
     "dependencies": ["denikson-BepInExPack_Valheim-5.4.2350", "ValheimModding-Jotunn-2.30.0"]
