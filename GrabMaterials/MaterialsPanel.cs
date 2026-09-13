@@ -132,11 +132,18 @@ namespace GrabMaterials
 		// True while the current showing is one you browse (the /inventory panel), as opposed
 		// to a transient grab result. Only those get the pause toggle.
 		private static bool _pausable;
+		// True while the current showing is one you point at and click (inventory, packs,
+		// pack editor). Those take the cursor; a transient grab result must not.
+		private static bool _interactive;
+		private static bool _inputBlocked;
 		private static GameObject _pauseButton;
-		private static Text _pauseButtonText;
+		private static Image _pauseBarLeft;
+		private static Image _pauseBarRight;
+		private static Image _pauseSlash;
 
 		public static bool IsVisible => _panel != null && _panel.activeSelf;
 		public static bool PausablePanelVisible => _pausable && IsVisible;
+		public static bool InteractivePanelVisible => _interactive && IsVisible;
 		private static Text _contentText;
 		private static RectTransform _contentRect;
 		private static GameObject _rowsContainer;          // outer (HorizontalLayoutGroup); holds 1+ column children
@@ -157,6 +164,7 @@ namespace GrabMaterials
 		public static void Show(string title, List<ItemStatus> items)
 		{
 			_pausable = false;
+			_interactive = false;
 			var lines = new List<string>(items.Count);
 			foreach (var item in items) lines.Add(FormatItemStatus(item));
 			ShowLines(title, lines);
@@ -165,6 +173,7 @@ namespace GrabMaterials
 		public static void ShowInventory(string title, List<InventoryItem> items)
 		{
 			_pausable = false;
+			_interactive = false;
 			var maxWidth = MaxCountWidth(items);
 			var lines = new List<string>(items.Count);
 			foreach (var item in items)
@@ -177,6 +186,7 @@ namespace GrabMaterials
 		public static void ShowCategorizedInventory(string title, List<InventoryGroup> groups, InventoryStyle style = InventoryStyle.List)
 		{
 			_pausable = true;
+			_interactive = true;
 			switch (style)
 			{
 				case InventoryStyle.Table: ShowTable(title, groups); break;
@@ -380,6 +390,7 @@ namespace GrabMaterials
 		public static void ShowPacks(string title, List<PackRow> packs)
 		{
 			_pausable = false;
+			_interactive = true;
 			EnsureCreated();
 			if (_panel == null) return;
 
@@ -876,36 +887,69 @@ namespace GrabMaterials
 			return s.Length * FontSize * 0.55f;
 		}
 
+		// A borderless Image renders as a solid rectangle tinted by its colour, which is all the
+		// pause mark needs and avoids depending on a sprite or a font glyph.
+		private static Image MakeIconRect(Transform parent, Vector2 size, Vector2 pos, float rotation = 0f)
+		{
+			var go = new GameObject("Bar", typeof(RectTransform), typeof(Image));
+			go.transform.SetParent(parent, false);
+			var rt = go.GetComponent<RectTransform>();
+			rt.anchorMin = new Vector2(0.5f, 0.5f);
+			rt.anchorMax = new Vector2(0.5f, 0.5f);
+			rt.pivot     = new Vector2(0.5f, 0.5f);
+			rt.sizeDelta = size;
+			rt.anchoredPosition = pos;
+			if (rotation != 0f) rt.localRotation = Quaternion.Euler(0f, 0f, rotation);
+			var img = go.GetComponent<Image>();
+			img.raycastTarget = false;
+			return img;
+		}
+
 		// The button reports what the game is actually doing, not what was asked for.  A pause
 		// can be refused -- a dedicated server without Pause My Server, or with other players
-		// online -- and a button that still read "Paused" would be claiming something false.
+		// online -- and a mark that still looked paused would be claiming something false.
 		private static void UpdatePauseButton()
 		{
 			if (_pauseButton == null) return;
 			if (_pauseButton.activeSelf != _pausable) _pauseButton.SetActive(_pausable);
-			if (!_pausable || _pauseButtonText == null) return;
+			if (!_pausable || _pauseBarLeft == null) return;
 
 			var on = GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelPauseWhileOpen?.Value ?? false;
-			if (!on)
-			{
-				_pauseButtonText.text = "Pause";
-				_pauseButtonText.color = PauseOffColor;
-			}
-			else if (Game.IsPaused())
-			{
-				_pauseButtonText.text = "Paused";
-				_pauseButtonText.color = GUIManager.Instance.ValheimOrange;
-			}
-			else
-			{
-				_pauseButtonText.text = "Not paused";
-				_pauseButtonText.color = PauseRefusedColor;
-			}
+			Color color;
+			var refused = false;
+			if (!on)                  color = PauseOffColor;
+			else if (Game.IsPaused()) color = GUIManager.Instance.ValheimOrange;
+			else                    { color = PauseRefusedColor; refused = true; }
+
+			_pauseBarLeft.color  = color;
+			_pauseBarRight.color = color;
+			_pauseSlash.color    = color;
+			if (_pauseSlash.gameObject.activeSelf != refused) _pauseSlash.gameObject.SetActive(refused);
+		}
+
+		// Valheim only frees the cursor for its own screens (GameCamera.UpdateMouseCapture), so a
+		// custom panel gets no pointer of its own. Jotunn's BlockInput is the supported way in: it
+		// makes TextInput.IsVisible report true, which is one of the cases that releases the cursor,
+		// and stops the click reaching the player as an attack. It is reference counted, so every
+		// true must be matched by exactly one false.
+		private static void SetInputBlock(bool on)
+		{
+			if (on == _inputBlocked) return;
+			_inputBlocked = on;
+			GUIManager.BlockInput(on);
+		}
+
+		// Called every frame by the mod so the block is let go if the panel goes away for any
+		// reason, including the player logging out with it open.
+		public static void RefreshInputBlock()
+		{
+			SetInputBlock(InteractivePanelVisible && Player.m_localPlayer != null);
 		}
 
 		public static void Hide()
 		{
 			PanelPause.Release();
+			SetInputBlock(false);
 			if (_panel != null) _panel.SetActive(false);
 			if (_canvasGroup != null) _canvasGroup.alpha = 1f;
 			_fadeStart = -1f;
@@ -1414,35 +1458,30 @@ namespace GrabMaterials
 			_titleText.alignment = TextAnchor.UpperCenter;
 			_titleText.raycastTarget = false;
 
-			// Pause toggle, top-right of the title bar.  Only shown on panels you browse.
-			var pauseObj = GUIManager.Instance.CreateText(
-				text: "Pause",
-				parent: _panel.transform,
-				anchorMin: new Vector2(1f, 1f),
-				anchorMax: new Vector2(1f, 1f),
-				position: new Vector2(-14f, -16f),
-				font: GUIManager.Instance.AveriaSerifBold,
-				fontSize: 16,
-				color: PauseOffColor,
-				outline: true,
-				outlineColor: Color.black,
-				width: 110f,
-				height: 24f,
-				addContentSizeFitter: false);
-			pauseObj.name = "GrabMaterials_PauseToggle";
+			// Pause toggle, top-right of the title bar.  Drawn from plain UI rectangles rather than
+			// a glyph, because the panel's font has no media-control characters: two bars for the
+			// pause mark, plus a diagonal slash shown only when the pause was asked for and refused.
+			var pauseObj = new GameObject("GrabMaterials_PauseToggle", typeof(RectTransform), typeof(Image), typeof(Button));
+			pauseObj.transform.SetParent(_panel.transform, false);
 			_pauseButton = pauseObj;
 			var pauseRect = pauseObj.GetComponent<RectTransform>();
 			pauseRect.anchorMin = new Vector2(1f, 1f);
 			pauseRect.anchorMax = new Vector2(1f, 1f);
 			pauseRect.pivot = new Vector2(1f, 1f);
-			pauseRect.anchoredPosition = new Vector2(-14f, -16f);
-			pauseRect.sizeDelta = new Vector2(110f, 24f);
-			_pauseButtonText = pauseObj.GetComponent<Text>();
-			_pauseButtonText.alignment = TextAnchor.MiddleRight;
-			_pauseButtonText.raycastTarget = true;   // the Text itself is the click target
-			var pauseBtn = pauseObj.AddComponent<Button>();
+			pauseRect.anchoredPosition = new Vector2(-14f, -12f);
+			pauseRect.sizeDelta = new Vector2(28f, 28f);
+			var pauseHit = pauseObj.GetComponent<Image>();
+			pauseHit.color = new Color(1f, 1f, 1f, 0f);   // invisible, but it is what catches the click
+			pauseHit.raycastTarget = true;
+
+			_pauseBarLeft  = MakeIconRect(pauseObj.transform, new Vector2(6f, 18f), new Vector2(-5f, 0f));
+			_pauseBarRight = MakeIconRect(pauseObj.transform, new Vector2(6f, 18f), new Vector2( 5f, 0f));
+			_pauseSlash    = MakeIconRect(pauseObj.transform, new Vector2(30f, 3f), Vector2.zero, 45f);
+			_pauseSlash.gameObject.SetActive(false);
+
+			var pauseBtn = pauseObj.GetComponent<Button>();
 			pauseBtn.transition = Selectable.Transition.None;
-			pauseBtn.targetGraphic = _pauseButtonText;
+			pauseBtn.targetGraphic = pauseHit;
 			pauseBtn.onClick.AddListener(() =>
 			{
 				var cfg = GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelPauseWhileOpen;

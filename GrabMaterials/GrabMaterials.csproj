@@ -27,6 +27,10 @@
   <!-- Local Valheim / Jotunn / Unity assemblies — these aren't on NuGet, so
        they stay as Reference + HintPath. -->
   <ItemGroup>
+    <Reference Include="assembly_guiutils">
+      <HintPath>..\Libs\assembly_guiutils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="assembly_utils_publicized">
       <HintPath>..\Libs\assembly_utils_publicized.dll</HintPath>
       <Private>false</Private>

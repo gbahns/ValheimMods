@@ -601,7 +601,7 @@ namespace GrabMaterials
 
 		private static string LocalizeItemName(ItemToGrab item)
 		{
-			var translated = LocalizationManager.Instance.TryTranslate(item.FullName);
+			var translated = Extensions.Localize(item.FullName);
 			return string.IsNullOrEmpty(translated) || translated == item.FullName ? item.Name : translated;
 		}
 
@@ -611,7 +611,7 @@ namespace GrabMaterials
 			if (!piece.m_name.StartsWith("$")) return piece.m_name;
 			try
 			{
-				var translated = LocalizationManager.Instance.TryTranslate(piece.m_name);
+				var translated = Extensions.Localize(piece.m_name);
 				return string.IsNullOrEmpty(translated) || translated == piece.m_name ? piece.m_name : translated;
 			}
 			catch
@@ -771,7 +771,7 @@ namespace GrabMaterials
 					{
 						if (piece.m_name.StartsWith("$"))
 						{ // if the name starts with $, it is a localization key
-							localizedName = LocalizationManager.Instance.TryTranslate(piece.m_name);
+							localizedName = Extensions.Localize(piece.m_name);
 						}
 						else
 						{
@@ -825,7 +825,11 @@ namespace GrabMaterials
 				var drop = itemPrefab != null ? itemPrefab.GetComponent<ItemDrop>() : null;
 				var shared = drop?.m_itemData?.m_shared?.m_name;
 				if (string.IsNullOrEmpty(shared) || !shared.StartsWith("$item_")) continue;
-				sharedNameLookup[shared.Substring(6)] = shared;
+				// Keyed on the first token, the same way ItemData.Name() renders it, so the
+				// multi-token names Valheim 1.0 added still resolve.  First prefab wins if
+				// two of them lead with the same token.
+				var key = Extensions.TokenName(shared);
+				if (!sharedNameLookup.ContainsKey(key)) sharedNameLookup[key] = shared;
 			}
 		}
 

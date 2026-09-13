@@ -333,6 +333,8 @@ namespace GrabMaterialsMod
 
 		private void Update()
 		{
+			// First, so that being unable to move never depends on anything below succeeding.
+			GrabMaterials.MaterialsPanel.RefreshInputBlock();
 			GrabMaterials.MaterialsPanel.Tick();
 			GrabMaterials.DistanceHud.Tick();
 			GrabMaterials.PackHud.Tick();
@@ -413,7 +415,7 @@ namespace GrabMaterialsMod
 					{
 						if (piece.m_name.StartsWith("$"))
 						{ // if the name starts with $, it is a localization key
-							localizedName = LocalizationManager.Instance.TryTranslate(piece.m_name);
+							localizedName = GrabMaterials.Extensions.Localize(piece.m_name);
 						}
 						else
 						{
@@ -551,7 +553,7 @@ namespace GrabMaterialsMod
 				foreach (var item in items)
 				{
 					var localizedName = "";
-					localizedName = LocalizationManager.Instance.TryTranslate(item.m_shared.m_name);
+					localizedName = GrabMaterials.Extensions.Localize(item.m_shared.m_name);
 					//Log.LogInfo($"{item.Name()} ({item.m_shared.m_name}) [{localizedName}] {item.Count()} crafted by '{item.m_crafterName}'\ntooltip: {item.GetTooltip()}\nname: {item.Name()}\n{item.ToString()}");
 					Log.LogInfo($"{item.Count()},{localizedName},{item.Name()},{item.GetCategory()},{item.m_shared.m_itemType},{item.IsWeapon()},{item.IsEquipable()},{item.m_shared.m_isDrink},{item.GetArmor()},{item.m_shared.m_armorMaterial},{item.m_shared.m_food},{item.m_shared.m_foodStamina},{item.m_shared.m_foodEitr},{item.m_shared.m_ammoType},{item.m_shared.m_questItem},{item.m_shared.m_skillType}"); //crafted by '{item.m_crafterName}'
 				}
@@ -623,7 +625,7 @@ namespace GrabMaterialsMod
 				foreach (var item in inventory.GetAllItems())
 				{
 					var itemName = item.m_shared.m_name;
-					var localizedName = LocalizationManager.Instance.TryTranslate(itemName).ToLower();
+					var localizedName = GrabMaterials.Extensions.Localize(itemName).ToLower();
 					var itemCategory = item.GetCategory();
 					var itemCategoryString = itemCategory.ToString().ToLower();
 					GrabMaterials.Extensions.ItemCategory searchCategory = GrabMaterials.Extensions.ItemCategory.None;
@@ -675,7 +677,7 @@ namespace GrabMaterialsMod
 					if (itemDrop == null) continue;
 					var itemData = itemDrop.m_itemData;
 					var itemName = itemData.m_shared.m_name;
-					var localizedName = LocalizationManager.Instance.TryTranslate(itemName).ToLower();
+					var localizedName = GrabMaterials.Extensions.Localize(itemName).ToLower();
 					var itemCategory = itemData.GetCategory();
 					var itemCategoryString = itemCategory.ToString().ToLower();
 					GrabMaterials.Extensions.ItemCategory searchCategory = GrabMaterials.Extensions.ItemCategory.None;
@@ -740,7 +742,7 @@ namespace GrabMaterialsMod
 				var items = new List<GrabMaterials.MaterialsPanel.InventoryItem>(byName.Count);
 				foreach (var kvp in byName)
 				{
-					var localizedName = LocalizationManager.Instance.TryTranslate(kvp.Key);
+					var localizedName = GrabMaterials.Extensions.Localize(kvp.Key);
 					var isNew = markUndiscovered && !player.IsMaterialKnown(kvp.Key);
 					Log.LogInfo($"{kvp.Value} {localizedName} [{cat}]{(isNew ? " (new, never held)" : "")}");
 					iconsByName.TryGetValue(kvp.Key, out var icon);

@@ -12,6 +12,8 @@ Quickly pull materials from nearby chests into your inventory without having to 
 <li>Fixed a bug that could destroy items when your inventory was full — a grab emptied the container before checking that the items fit.  Nothing leaves a container now until it is safely in your inventory.
 <li>'/g new' — grabs one of every item in range you have never held, which is a quick way to learn the recipes they unlock.
 <li>Escape closes the inventory panel instead of opening the game menu; press it again for the menu.
+<li>The inventory and grab-pack panels now take the mouse cursor while open, so you can point at and click rows directly.
+<li>Fixed some items showing a raw token such as "[$item_upgrader_tier0 $item_upgrader_armor $item_upgrader_name]" instead of a name.  Valheim 1.0 added items whose name is several localization tokens joined together, and names now go through the game's own translator, which handles them.
 <li>Optional pause while the inventory panel is open — toggle it with the button in the panel's top-right corner and it is remembered.  It uses the game's own pause, so it works solo or hosting alone; on a dedicated server it takes the Pause My Server mod.  The button shows whether the pause actually took effect.
 
 <h3>New in version 2.2.0</h3>

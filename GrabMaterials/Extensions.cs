@@ -13,14 +13,54 @@ namespace GrabMaterials
 {
 	internal static class Extensions
 	{
+		// The short, unlocalized handle used for name matching: "$item_wood" -> "wood".
+		// Valheim 1.0 introduced items whose m_name is several tokens joined together, e.g.
+		// "$item_upgrader_tier0 $item_upgrader_armor $item_upgrader_name", so keep the first
+		// token only and leave anything that is not an $item_ token alone.
 		public static string Name(this ItemDrop.ItemData self)
 		{
-			return self.m_shared.m_name.Substring(6);
+			return TokenName(self?.m_shared?.m_name);
+		}
+
+		public static string TokenName(string sharedName)
+		{
+			if (string.IsNullOrEmpty(sharedName)) return string.Empty;
+			var space = sharedName.IndexOf(' ');
+			var first = space > 0 ? sharedName.Substring(0, space) : sharedName;
+			return first.StartsWith("$item_") ? first.Substring(6) : first;
 		}
 
 		public static string LocalizedName(this ItemDrop.ItemData self)
 		{
-			return LocalizationManager.Instance.TryTranslate(self.m_shared.m_name);
+			return Localize(self?.m_shared?.m_name);
+		}
+
+		/// <summary>
+		/// Display name for a localization token.  Goes through Valheim's own Localization,
+		/// which substitutes every $token it finds anywhere in the string.  Jotunn's
+		/// TryTranslate strips one leading $ and looks the whole remainder up as a single
+		/// key, so on the multi-token names Valheim 1.0 added it finds nothing and hands
+		/// back "[$item_upgrader_tier0 $item_upgrader_armor $item_upgrader_name]".  Falls
+		/// back to Jotunn before the game's Localization exists, and to the raw token if
+		/// neither can help.
+		/// </summary>
+		public static string Localize(string token)
+		{
+			if (string.IsNullOrEmpty(token)) return string.Empty;
+			try
+			{
+				var loc = Localization.instance;
+				if (loc != null)
+				{
+					var text = loc.Localize(token);
+					if (!string.IsNullOrEmpty(text)) return text;
+				}
+				return LocalizationManager.Instance.TryTranslate(token);
+			}
+			catch
+			{
+				return token;
+			}
 		}
 
 		public static bool isMatch(this ItemDrop.ItemData self, string matchString)
