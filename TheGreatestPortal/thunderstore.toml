@@ -1,0 +1,29 @@
+[config]
+schemaVersion = "0.0.1"
+
+[package]
+namespace = "DeathMonger"
+name = "TheGreatestPortal"
+versionNumber = "0.1.0"
+description = "EARLY ALPHA. Pick each portal's destination from a list or on the map, set a default for new portals, mark favourites, or leave it open and choose where to go when you step in."
+websiteUrl = "https://github.com/gbahns/ValheimMods"
+containsNsfwContent = false
+
+[package.dependencies]
+"denikson-BepInExPack_Valheim" = "5.4.2350"
+
+[build]
+icon = "./icon.png"
+readme = "./README.md"
+outdir = "./build"
+
+[[build.copy]]
+source = "./bin/Release/net48/TheGreatestPortal.dll"
+target = "BepInEx/plugins/"
+
+[publish]
+repository = "https://thunderstore.io"
+communities = ["valheim"]
+
+[publish.categories]
+valheim = ["mods", "server-side", "client-side", "utility", "ai-generated"]
