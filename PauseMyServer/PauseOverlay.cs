@@ -15,12 +15,13 @@ namespace PauseMyServer
     /// Two modes:
     ///  * Paused: whenever the game reports itself paused (a solo host too). During an admin
     ///    pause the text names the admin.
-    ///  * Unpaused warning, in bright red: the ESC menu is up but the game keeps running because
-    ///    other players are online and not all of them are in their menu. Shows how many are,
-    ///    when the server reports it. Without it the menu looks exactly like a pause.
+    ///  * Unpaused warning, in bright red: a pause was asked for and the game is still running.
+    ///    The trigger is the request, not the ESC menu, so it covers any mod that calls
+    ///    Game.Pause() (an open map, an open inventory panel) as well as the menu. Shows how
+    ///    many players are in, when the server reports it.
     ///
-    /// While the large map is open (possible during an admin pause) the label moves into the
-    /// strip between the map's edge and the screen edge instead of sitting on top of the map.
+    /// While the large map is open the label moves into the strip between the map's edge and the
+    /// screen edge instead of sitting on top of the map.
     /// </summary>
     internal static class PauseOverlay
     {
@@ -32,27 +33,42 @@ namespace PauseMyServer
         private const float DefaultBottomOffset = 90f;
         private const float MinEdgeOffset       = 4f;
 
+        // A pause request travels to the server and back before it can be granted. Only call it
+        // refused once it has gone unanswered for this long, so the round trip never flashes red.
+        private const float RefusedGraceSeconds = 0.5f;
+
         private static GameObject _root;
         private static Canvas _canvas;
         private static TMP_Text _label;
         private static Color _baseColor = Color.white;
         private static Mode _mode = Mode.Hidden;
         private static float _lastY = float.NaN;
+        private static float _wantSince = -1f;
         private static readonly Vector3[] _corners = new Vector3[4];
 
         internal static void Update()
         {
             Mode mode = Mode.Hidden;
-            if (Player.m_localPlayer != null)
+            if (Player.m_localPlayer == null)
             {
-                if (Game.IsPaused())
-                {
-                    if (PauseMyServerMod.ShowPauseMessage.Value) mode = Mode.Paused;
-                }
-                else if (PauseMyServerMod.ShowUnpausedWarning.Value && Menu.IsVisible() && OthersOnline())
-                {
+                _wantSince = -1f;
+            }
+            else if (Game.IsPaused())
+            {
+                _wantSince = -1f;
+                if (PauseMyServerMod.ShowPauseMessage.Value) mode = Mode.Paused;
+            }
+            else if (PauseSync.WantPause && !InCutscene())
+            {
+                // Somebody asked for a pause and the game is still running.
+                if (_wantSince < 0f) _wantSince = Time.unscaledTime;
+                if (PauseMyServerMod.ShowUnpausedWarning.Value
+                    && Time.unscaledTime - _wantSince >= RefusedGraceSeconds)
                     mode = Mode.Unpaused;
-                }
+            }
+            else
+            {
+                _wantSince = -1f;
             }
 
             if (mode == Mode.Hidden)
@@ -84,12 +100,12 @@ namespace PauseMyServer
             UpdatePosition();
         }
 
-        /// <summary>The server's count when it has reported one; else the player list (sent every two seconds), which counts us too.</summary>
-        private static bool OthersOnline()
+        /// <summary>The intro and the cinematic player pause of their own accord; that is not a refused request.</summary>
+        private static bool InCutscene()
         {
-            if (PauseSync.PlayerCount > 0) return PauseSync.PlayerCount > 1;
-            var znet = ZNet.instance;
-            return znet != null && znet.GetNrOfPlayers() > 1;
+            if (CinematicsManager.IsPlaying()) return true;
+            var game = Game.instance;
+            return game != null && game.InIntro(includeQueued: true);
         }
 
         private static string PausedText()

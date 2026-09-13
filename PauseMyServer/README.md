@@ -4,20 +4,28 @@ Pause a server-hosted Valheim game.
 
 Vanilla only pauses when you host the world yourself and nobody else is connected. On a dedicated server the menu never pauses anything: the day rolls on, raids fire, your smelter finishes and the boar you were fighting keeps chewing. This mod gives you two ways to pause a server.
 
-## Everyone in the menu pauses the game
+## Everyone asking for a pause pauses the game
 
-When **every player online** has the ESC menu open, the world pauses, exactly like solo:
+When **every player online** has asked for a pause, the world pauses, exactly like solo. Opening the ESC menu is how you ask; a mod can ask for you (see below):
 
 - Every client freezes (monsters, ships, physics, crafting, everything you see).
 - The server freezes its world clock, so day and night, weather, plant growth, fermenters, beehives and respawn timers stop too.
 - Raids and other random events are held.
 - A sleep time-skip in progress waits.
 
-Alone on the server, that is just you: open the menu and the world stops. With friends, the game pauses the moment the last of you opens the menu. Anyone closing their menu resumes it instantly, and so does a new player arriving (you will see a small message if your menu is still open).
+Alone on the server, that is just you: open the menu and the world stops. With friends, the game pauses the moment the last of you asks. Anyone closing their menu resumes it instantly, and so does a new player arriving (you will see a small message if your menu is still open).
 
-While your menu is open but the game keeps running because others are still playing, the label reads **"Game Unpaused (1 of 3 players paused)"** in bright red, so the menu never looks like a pause it is not.
+While you have asked for a pause but the game keeps running because others are still playing, the label reads **"Game Unpaused (1 of 3 players paused)"** in bright red, so a pause you asked for and did not get is never silent.
 
-Vanilla behaviour is kept for hosted (non-dedicated) games, where the host already pauses when alone; with guests online the host's menu counts like everyone else's.
+Vanilla behaviour is kept for hosted (non-dedicated) games, where the host already pauses when alone; with guests online the host's request counts like everyone else's.
+
+## Other mods can ask for a pause
+
+Any mod that calls Valheim's own `Game.Pause()` and `Game.Unpause()` takes part, with no reference to this mod and no API to call. The request goes to the server like a menu request, counts towards "everyone has asked", and the red warning appears if it is refused. Two of ours do it: The Greatest Map pauses while the large map is open, and Grab Materials while the inventory panel is open.
+
+For a mod that wants to show its own state, `Game.IsPaused()` is the honest answer: it is true only when the game really is frozen, whether this mod is installed or not. There is nothing else to query.
+
+One caveat, and it is vanilla's: the game keeps a single pause flag, not a count. If two mods ask at once and one of them calls `Game.Unpause()`, the request is dropped for both. A mod that pauses for a panel should re-assert while its panel is open.
 
 ## Admin pause
 
@@ -35,7 +43,7 @@ The admin pause is designed for dedicated servers. On a hosted (non-dedicated) g
 
 ## The on-screen label
 
-A persistent label is shown while the game is paused, in solo games too: "Game paused", or "Game paused by <admin>". While the ESC menu is up but the game runs on, it turns bright red: "Game Unpaused (1 of 3 players paused)". Texts, position (top or bottom) and size are configurable, and each mode can be turned off.
+A persistent label is shown while the game is paused, in solo games too: "Game paused", or "Game paused by <admin>". When a pause has been asked for and the game is still running, it turns bright red: "Game Unpaused (1 of 3 players paused)". It waits half a second first, so the trip to the server and back never flashes red, and it stays quiet during the intro and cinematics. Texts, position (top or bottom) and size are configurable, and each mode can be turned off.
 
 ## Installation
 
@@ -60,7 +68,7 @@ Works on Windows and Linux dedicated servers. Requires BepInExPack for Valheim.
 | Pause Message | Admin Text | Game paused by {0} | The label text during an admin pause; {0} is the admin's name. |
 | Pause Message | Position | Bottom | Centred at the Top or the Bottom of the screen. |
 | Pause Message | Font Size | 40 | Label size at a 1920x1080 reference; scales with the screen. |
-| Pause Message | Show Unpaused Warning | true | Red label while the menu is up but the game runs on because others are online. |
+| Pause Message | Show Unpaused Warning | true | Red label while a pause has been asked for and the game is still running. |
 | Pause Message | Unpaused Text | Game Unpaused | The warning text when the server has not reported counts. |
 | Pause Message | Unpaused Count Text | Game Unpaused ({0} of {1} players paused) | The warning text with counts: {0} in the menu, {1} online. |
 

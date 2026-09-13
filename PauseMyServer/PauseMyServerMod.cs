@@ -10,8 +10,8 @@ namespace PauseMyServer
     /// Pause My Server: pause a server-hosted game.
     ///
     /// Vanilla refuses to pause as soon as anyone is connected to a server. With this mod:
-    ///  * the world pauses when every player online has the ESC menu open; alone, that is just
-    ///    you, the way solo does (v1.0 for the lone player, v1.2 for everyone);
+    ///  * the world pauses when every player online has asked for a pause (the ESC menu, or any
+    ///    mod that calls Game.Pause()); alone, that is just you, the way solo does;
     ///  * an admin can pause the whole server for everyone with a key (default: Pause), even
     ///    with other players online; players joining meanwhile are frozen too, and any admin
     ///    can resume (v1.1).
@@ -28,7 +28,7 @@ namespace PauseMyServer
     {
         public const string ModGuid    = "DeathMonger.PauseMyServer";
         public const string ModName    = "Pause My Server";
-        public const string ModVersion = "1.2.0";
+        public const string ModVersion = "1.3.0";
 
         internal static ManualLogSource Log { get; private set; }
 
@@ -79,8 +79,8 @@ namespace PauseMyServer
                 new ConfigDescription("Label font size (at a 1920x1080 reference; scales with the screen).",
                     new AcceptableValueRange<int>(12, 120)));
             ShowUnpausedWarning = Config.Bind("Pause Message", "Show Unpaused Warning", true,
-                "Show the label in bright red while the ESC menu is up but the game keeps running because " +
-                "other players are online.");
+                "Show the label in bright red while something has asked for a pause and the game is still " +
+                "running: the ESC menu, or any mod that pauses for an open map or inventory panel.");
             UnpausedText = Config.Bind("Pause Message", "Unpaused Text", "Game Unpaused",
                 "The label text for that warning when the server has not reported how many players want to pause.");
             UnpausedCountText = Config.Bind("Pause Message", "Unpaused Count Text", "Game Unpaused ({0} of {1} players paused)",

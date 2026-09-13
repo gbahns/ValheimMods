@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0 — 2026-09-13
+
+- **Any mod can ask for a pause.** A mod that calls `Game.Pause()` for its own reason, an open map or an open inventory panel, now counts as that player asking for a pause, exactly like the ESC menu. Nothing to add on their side.
+- The red "Game Unpaused" warning follows the request instead of the ESC menu, so a pause that was asked for and refused is always visible. Before, a mod could ask for a pause, not get one, and say nothing.
+- The warning waits half a second before appearing, so the trip to the server and back never flashes red, and it stays quiet during the intro and cinematics.
+
 ## 1.2.0 — 2026-09-13
 
 - **Everyone in the menu pauses the game.** The lone-player rule is now the general one: the world pauses when every player online has the ESC menu open. Anyone closing their menu, or a new player arriving, resumes it. Alone, nothing changes.
