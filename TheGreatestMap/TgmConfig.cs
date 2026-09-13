@@ -31,6 +31,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> PauseWhileMapOpen;
         internal static ConfigEntry<bool> MarkerButton;
         internal static ConfigEntry<bool> ShowAllMarkers;
+        internal static ConfigEntry<float> RevealNewMarkers;
         private static HashSet<string> _hiddenIconKeys;
 
         private static HashSet<string> HiddenIconKeys()
@@ -176,6 +177,12 @@ namespace TheGreatestMap
                 "say, including markers that have no kind; they stay on your map and keep syncing. This is what the " +
                 "map-pin button on the map screen toggles.");
             ShowAllMarkers.SettingChanged += (_, __) => ClientPins.Restyle();
+            RevealNewMarkers = mod.BindLocal("Display", "Reveal New Markers Seconds", 30f,
+                "How long a marker you have just recorded is drawn on both maps even though its kind or its icon is " +
+                "hidden, so writing something down always shows you what you wrote. 0 turns it off. It does not " +
+                "override the map-pin button's master switch or a marker you hid by hand, and it cannot show kinds " +
+                "drawn on a vanilla icon (structures, portals, camps, boss altars) while vanilla's own icon button " +
+                "has that icon switched off.");
             RequireMapOutToEdit = mod.BindSynced("Sharing", "Require Map Out To Edit", false,
                 "You must have the pocket map out to place a marker, erase one (yours, someone else's or a recorded one) " +
                 "or cross one off on the map screen. Pings are always allowed. Off by default: the map screen edits like vanilla.");

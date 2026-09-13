@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.4 — 2026-09-13
+
+Client-side; works with a 0.2.x server.
+
+- The per-kind buttons from 0.2.3 are replaced by a single map-pin button above vanilla's icon buttons on the right edge of the large map. Right-clicking it hides or shows every marker from this mod at once, the same gesture that hides and shows one icon's pins on each vanilla button, and it covers markers with no kind, which the per-kind switches never did. Left-clicking it opens the list of kinds that have markers on your map, each with its icon, for hiding them one at a time without leaving the map; that list also carries the hide-all row. The pin is gold while markers are shown and gray while they are hidden. The config option "Kind Buttons On Map" is replaced by "Marker Button On Map" (on by default) and "Show Markers".
+- A marker you have just recorded shows on the minimap and the large map for thirty seconds even when its kind or its icon is hidden, so writing something down always shows you what you wrote ("Reveal New Markers Seconds", 0 turns it off). Markers that arrive from another player's map do not do this, and the reveal never overrides the hide-all switch or a marker you hid by hand.
+- Structures, portals, camps and boss altars are no longer offered in this mod's own hide and show controls, because they draw on vanilla's map icons (house, portal, campfire, boss) and vanilla's icon buttons already hide and show them, including pins you placed by hand with the same icon. One control for those instead of two that half overlapped. Runestones keep ours, since the memorial pin has no vanilla button.
+
 ## 0.2.3 — 2026-09-13
 
 Client-side; works with a 0.2.x server.
@@ -7,8 +15,7 @@ Client-side; works with a 0.2.x server.
 - Right-clicking one of this mod's markers on the map now opens a small menu instead of erasing it: "Hide this marker", "Hide all Dandelion markers" (that icon), "Hide all herbs" (that kind), "Cross off" / "Uncross", "Erase for everyone" (dimmed unless the server allows erasing, as before), and "Show all hidden" once anything is hidden. Shift + right-click is still the quick erase where erasing is allowed. Vanilla pins keep their vanilla right-click.
 - Markers hidden one at a time are remembered with the character; icon and kind choices go straight into the Display settings ("Hidden Icons", "Show <Kind>"). Hidden markers stay on the map and keep syncing.
 - New console command `tgm_show` brings every hidden marker back in one go.
-- A map-pin button above vanilla's icon buttons on the right edge of the large map. Right-clicking it hides or shows every marker from this mod at once, the same gesture that hides and shows one icon's pins on each vanilla button, and it covers markers with no kind, which the per-kind switches never did. Left-clicking it opens the list of kinds that have markers on your map, each with its icon, for hiding them one at a time without leaving the map; that list also carries the hide-all row. The pin is gold while markers are shown and gray while they are hidden. Config "Marker Button On Map" (on by default) and "Show Markers".
-- Structures, portals, camps and boss altars are no longer offered in this mod's own hide and show controls, because they draw on vanilla's map icons (house, portal, campfire, boss) and vanilla's icon buttons already hide and show them, including pins you placed by hand with the same icon. One control for those instead of two that half overlapped. Runestones keep ours, since the memorial pin has no vanilla button.
+- Kind buttons on the map: beside vanilla's icon buttons on the right edge of the large map there is now one button per kind that has markers on your map (berries, herbs, ore, structures and so on), showing the kind's icon. A click, left or right, hides or shows that kind, and a hidden kind's button turns gray, the same as vanilla's own filter buttons. Config "Kind Buttons On Map" (on by default).
 - New option "Pause While Map Open" (off by default): the game pauses while the large map screen is open, the way the ESC menu does. It uses vanilla's own pause, so it works by itself solo or hosting alone, and on a dedicated server through Pause My Server, which grants it only while you are the only player online. The map screen's own timers (flick scrolling, click and double-click timing, the pin name box) now run on unscaled time, so the map stays usable while the game is paused, by this option or by an admin pause.
 
 ## 0.2.2 — 2026-09-13

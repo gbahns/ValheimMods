@@ -63,6 +63,11 @@ of them to hide or show that kind without leaving the map, and the list stays op
 several. It also carries the hide-all row and a row that shows every kind again. Config "Marker
 Button On Map" turns the button off.
 
+A marker you have just recorded is drawn on both maps for thirty seconds even when its kind or its
+icon is hidden, so writing something down always shows you what you wrote ("Reveal New Markers
+Seconds", 0 turns it off). It does not override the button's own hide-all or a marker you hid by
+hand, and it cannot reveal a kind whose icon vanilla's button has switched off.
+
 Structures, portals, camps and boss altars are not in that list, because they draw on vanilla's own
 map icons (house, portal, campfire, boss). Vanilla's icon buttons on the right edge already hide and
 show them, and those buttons cover the pins you placed by hand with the same icon, which a switch of

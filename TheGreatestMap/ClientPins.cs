@@ -38,6 +38,7 @@ namespace TheGreatestMap
             InTableRead = false;
             MarkerToggle.Reset();
             MarkerMenu.Close();
+            Reveals.Reset();
         }
 
         private static int LocalType(SharedPin shared)
@@ -87,6 +88,7 @@ namespace TheGreatestMap
             };
             Store.Upsert(pin);
             EnsurePin(pin);
+            Reveals.Add(pin.Id);
             PersonalMap.Touch();
             return pin;
         }
@@ -457,12 +459,17 @@ namespace TheGreatestMap
                 if (pin.m_uiElement == null) continue;
                 if (!Store.Pins.TryGetValue(kv.Value, out var shared)) continue;
                 var kind = KindOf(shared);
-                bool hidden = hideEverything || ViewPrefs.IsHidden(kv.Value) || TgmConfig.IsIconHidden(shared.Icon);
+                bool hiddenByHand = ViewPrefs.IsHidden(kv.Value);
+                bool hidden = hideEverything || hiddenByHand || TgmConfig.IsIconHidden(shared.Icon);
                 if (!hidden && kind.HasValue)
                 {
                     if (TgmConfig.ShowKind.TryGetValue(kind.Value, out var showKind) && !showKind.Value) hidden = true;
                     else if (smallMap && TgmConfig.ShowOnMinimap.TryGetValue(kind.Value, out var show) && !show.Value) hidden = true;
                 }
+                // Just recorded: show it for a while anyway, so writing something down always
+                // shows you what you wrote. Not against the master switch or a marker hidden by
+                // hand, which both mean "not this one".
+                if (hidden && !hideEverything && !hiddenByHand && Reveals.IsRevealed(kv.Value)) hidden = false;
                 SetMarkerActive(pin, !hidden);
                 if (hidden) continue;
                 float scale = 1f;
