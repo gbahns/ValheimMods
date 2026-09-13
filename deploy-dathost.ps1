@@ -1,0 +1,260 @@
+# Pushes mods to a DatHost Valheim server over the DatHost REST API. Two modes:
+#   -Mod <names>      the repo's own built DLLs (default: TheGreatestMap), each uploaded over the
+#                     copy already under BepInEx/plugins
+#   -Profile <name>   mirror a Gale profile's whole BepInEx/plugins tree: every file that is
+#                     missing on the server or differs by content is uploaded. Nothing is ever
+#                     deleted on the server. Packages that exist only locally are skipped and
+#                     listed unless -IncludeLocalOnly is given.
+#
+# DatHost's stop is a hard kill: the server console never shows a shutdown save, and the
+# Valheim dedicated server ignores console input, so the world cannot be saved through DatHost
+# itself. TheGreatestMap (0.1.5+) running on the server saves the world when a file named
+# "save-now" appears in BepInEx/config/TheGreatestMap/. This script:
+#   1. counts completed world saves in the server console,
+#   2. creates the save-now trigger over the file API and waits for a new save to complete,
+#   3. stops the server, uploads, starts the server and waits until DatHost reports it running.
+# If no save shows up the script stops before touching anything unless -SkipSave is given.
+#
+# Usage (from the repo root):
+#   .\deploy-dathost.ps1                                  # deploys TheGreatestMap
+#   .\deploy-dathost.ps1 -Mod TheGreatestMap,Armory       # several mods in one restart
+#   .\deploy-dathost.ps1 -Profile "Default SD"            # mirror the whole profile's plugins
+#   .\deploy-dathost.ps1 -Profile "Default SD" -IncludeLocalOnly
+#   .\deploy-dathost.ps1 ... -WhatIf                      # show the plan, change nothing
+#   .\deploy-dathost.ps1 ... -NoRestart                   # upload only (server should be stopped)
+#   .\deploy-dathost.ps1 ... -SkipSave                    # do not wait for the pre-stop save
+#
+# Secrets live in %USERPROFILE%\.dathost (never in the repo or a chat), a JSON file:
+#   { "email": "you@example.com", "token": "<DatHost account password>", "server_id": "<id from the panel URL>" }
+# DatHost has no API keys: the API is HTTP Basic auth with the account email and password. To
+# keep the main password out of this file, invite a second DatHost account to the server
+# (Account -> Shared Account Access) and use that account's login here. The server id is the
+# long hex string in the control panel URL for the server.
+
+param(
+    [string[]]$Mod = @("TheGreatestMap"),
+    [string]$Profile,
+    [switch]$IncludeLocalOnly,
+    [string]$SecretsPath = (Join-Path $env:USERPROFILE ".dathost"),
+    [switch]$NoRestart,
+    [switch]$SkipSave,
+    [switch]$WhatIf
+)
+
+$ErrorActionPreference = "Stop"
+$base = "https://dathost.net/api/0.1"
+$repo = $PSScriptRoot
+$saveTrigger = "BepInEx/config/TheGreatestMap/save-now"
+# Files never worth sending to a server: debug symbols, build sidecars, store metadata and docs.
+$skipNames = @("manifest.json", "README.md", "CHANGELOG.md", "icon.png", "LICENSE", "LICENSE.md", "LICENSE.txt")
+$skipPatterns = @('\.pdb$', '\.old-\d+$', '\.old$', '-disabled$', '\.cs$', '^Placeholder')
+
+# ── secrets ─────────────────────────────────────────────────────────────────────
+if (-not (Test-Path $SecretsPath)) { Write-Error "Secrets file not found: $SecretsPath"; exit 1 }
+$cred = Get-Content $SecretsPath -Raw | ConvertFrom-Json
+foreach ($k in @("email", "token", "server_id")) {
+    if (-not $cred.$k) { Write-Error "Secrets file is missing '$k'"; exit 1 }
+}
+$basic = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("$($cred.email):$($cred.token)"))
+$headers = @{ Authorization = "Basic $basic" }
+$id = $cred.server_id
+
+Add-Type -AssemblyName System.Net.Http
+$client = New-Object System.Net.Http.HttpClient
+$client.Timeout = [TimeSpan]::FromMinutes(5)
+$client.DefaultRequestHeaders.Authorization = New-Object System.Net.Http.Headers.AuthenticationHeaderValue("Basic", $basic)
+
+function Get-Server {
+    Invoke-RestMethod -Method Get -Uri "$base/game-servers/$id" -Headers $headers
+}
+
+# DatHost returns paths relative to the queried folder; keys here are full paths from the root.
+function Get-ServerListing([string]$path) {
+    $listing = Invoke-RestMethod -Method Get -Uri "$base/game-servers/$id/files?path=$path&hide_default_files=true" -Headers $headers
+    $map = @{}
+    foreach ($e in @($listing)) {
+        if ($e.deleted) { continue }
+        $p = if ($e.path) { $e.path } elseif ($e.name) { $e.name } else { "$e" }
+        if ($p -match '/$') { continue }
+        if ($path -and $p -notmatch ("^" + [regex]::Escape($path) + "/")) { $p = "$path/$p" }
+        $map[$p] = [long]$e.size
+    }
+    $map
+}
+
+# Gale disables a mod by renaming its files to *.old; a hand-disabled DLL ends in -disabled.
+# A package with no active DLL is disabled locally and must not be sent.
+function Test-PackageActive([string]$folder) {
+    $dlls = Get-ChildItem $folder -Recurse -File | Where-Object { $_.Name -match '\.dll$' }
+    return ($dlls.Count -gt 0)
+}
+
+function Get-ServerFileHash([string]$path) {
+    $uri = "$base/game-servers/$id/files/" + ($path -replace " ", "%20")
+    $bytes = $client.GetByteArrayAsync($uri).Result
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try { [BitConverter]::ToString($sha.ComputeHash($bytes)) -replace "-", "" } finally { $sha.Dispose() }
+}
+
+# Valheim 1.0 logs every world save as "World save (1/5) ... => Save number N" through
+# "World save (5/5) done". Counting completed saves before and after an action shows whether
+# the world was saved by it.
+function Get-SaveEvidence {
+    try {
+        $c = Invoke-RestMethod -Method Get -Uri "$base/game-servers/$id/console?max_lines=400" -Headers $headers
+        $lines = @($c.lines)
+        $done = @($lines | Where-Object { $_ -match 'World save \(5/5\) done' })
+        $numbers = @($lines | Where-Object { $_ -match 'Save number (\d+)' } | ForEach-Object { [int]([regex]::Match($_, 'Save number (\d+)').Groups[1].Value) })
+        [pscustomobject]@{
+            Saves = $done.Count
+            LastSaveLine = $(if ($done.Count -gt 0) { $done[-1] } else { $null })
+            LastNumber = $(if ($numbers.Count -gt 0) { ($numbers | Measure-Object -Maximum).Maximum } else { 0 })
+        }
+    } catch {
+        [pscustomobject]@{ Saves = -1; LastSaveLine = $null; LastNumber = 0 }
+    }
+}
+
+function Wait-ServerState([bool]$wantOn, [int]$timeoutSeconds = 180) {
+    $deadline = (Get-Date).AddSeconds($timeoutSeconds)
+    do {
+        Start-Sleep -Seconds 3
+        $s = Get-Server
+        if ([bool]$s.on -eq $wantOn -and -not [bool]$s.booting) { return $s }
+    } while ((Get-Date) -lt $deadline)
+    Write-Error ("Server did not reach on={0} within {1} s" -f $wantOn, $timeoutSeconds); exit 1
+}
+
+function Send-ServerFile([byte[]]$bytes, [string]$name, [string]$target) {
+    $content = New-Object System.Net.Http.MultipartFormDataContent
+    $fileContent = New-Object System.Net.Http.ByteArrayContent(, $bytes)
+    $fileContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse("application/octet-stream")
+    $content.Add($fileContent, "file", $name)
+    $uri = "$base/game-servers/$id/files/" + ($target -replace " ", "%20")
+    $resp = $client.PostAsync($uri, $content).Result
+    if (-not $resp.IsSuccessStatusCode) {
+        $body = $resp.Content.ReadAsStringAsync().Result
+        Write-Error ("Upload to {0} failed: {1} {2}" -f $target, [int]$resp.StatusCode, $body); exit 1
+    }
+}
+
+try {
+    # ── server state ────────────────────────────────────────────────────────────
+    $server = Get-Server
+    if ($server.game -ne "valheim") { Write-Error "Server '$($server.name)' is running '$($server.game)', not valheim."; exit 1 }
+    if (-not $server.valheim_settings.enable_bepinex) { Write-Error "BepInEx is not enabled on '$($server.name)'."; exit 1 }
+    Write-Host ("Server '{0}': on={1}, booting={2}" -f $server.name, $server.on, $server.booting)
+    $serverFiles = Get-ServerListing "BepInEx/plugins"
+
+    # ── plan ────────────────────────────────────────────────────────────────────
+    $plan = @()
+    if ($Profile) {
+        $root = Join-Path $env:APPDATA "com.kesomannen.gale\valheim\profiles\$Profile\BepInEx\plugins"
+        if (-not (Test-Path $root)) { Write-Error "Profile plugins folder not found: $root"; exit 1 }
+        $serverPackages = @{}
+        foreach ($p in $serverFiles.Keys) {
+            $rel = $p -replace '^BepInEx/plugins/', ''
+            if ($rel -match '^([^/]+)/') { $serverPackages[$Matches[1]] = $true }
+        }
+        $skippedPackages = @{}
+        $disabledPackages = @{}
+        $checked = 0
+        foreach ($f in Get-ChildItem $root -Recurse -File) {
+            if ($skipNames -contains $f.Name) { continue }
+            if ($skipPatterns | Where-Object { $f.Name -match $_ }) { continue }
+            # XML next to a same-named DLL is compiler documentation, not data.
+            if ($f.Extension -eq ".xml" -and (Test-Path (Join-Path $f.DirectoryName ($f.BaseName + ".dll")))) { continue }
+            $rel = $f.FullName.Substring($root.Length + 1) -replace '\\', '/'
+            $top = if ($rel -match '^([^/]+)/') { $Matches[1] } else { $null }
+            if ($top -and -not $disabledPackages.ContainsKey($top) -and -not (Test-PackageActive (Join-Path $root $top))) { $disabledPackages[$top] = $true }
+            if ($top -and $disabledPackages.ContainsKey($top)) { continue }
+            if ($top -and -not $serverPackages.ContainsKey($top) -and -not $IncludeLocalOnly) { $skippedPackages[$top] = $true; continue }
+            $target = "BepInEx/plugins/$rel"
+            $reason = $null
+            if (-not $serverFiles.ContainsKey($target)) { $reason = "new" }
+            elseif ($serverFiles[$target] -ne $f.Length) { $reason = "size differs" }
+            else {
+                $checked++
+                $localHash = (Get-FileHash $f.FullName -Algorithm SHA256).Hash
+                if ((Get-ServerFileHash $target) -ne $localHash) { $reason = "content differs" }
+            }
+            if ($reason) {
+                $plan += [pscustomobject]@{ Mod = $(if ($top) { $top } else { $f.Name }); Version = ""; Local = $f.FullName; Target = $target; New = ($reason -eq "new"); Reason = $reason }
+            }
+        }
+        Write-Host ("Profile '{0}': {1} files compared by hash, {2} to upload." -f $Profile, $checked, $plan.Count)
+        if ($disabledPackages.Count -gt 0) { Write-Host ("Disabled locally, not sent: " + (($disabledPackages.Keys | Sort-Object) -join ", ")) -ForegroundColor Yellow }
+        if ($skippedPackages.Count -gt 0) { Write-Host ("Local-only packages skipped (add -IncludeLocalOnly to send them): " + (($skippedPackages.Keys | Sort-Object) -join ", ")) -ForegroundColor Yellow }
+        $localPackages = @{}
+        Get-ChildItem $root -Directory | ForEach-Object { $localPackages[$_.Name] = $true }
+        $serverOnly = @($serverPackages.Keys | Where-Object { -not $localPackages.ContainsKey($_) } | Sort-Object)
+        if ($serverOnly.Count -gt 0) { Write-Host ("Server-only packages left untouched: " + ($serverOnly -join ", ")) -ForegroundColor Yellow }
+    } else {
+        foreach ($m in $Mod) {
+            $candidates = @("net48", "net462") | ForEach-Object { Join-Path $repo "$m\bin\Release\$_\$m.dll" }
+            $dll = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+            if (-not $dll) { Write-Error "No Release build found for $m (looked in $($candidates -join ', ')). Build it first."; exit 1 }
+            $manifest = Join-Path $repo "$m\manifest.json"
+            $ver = if (Test-Path $manifest) { (Get-Content $manifest -Raw | ConvertFrom-Json).version_number } else { (Get-Item $dll).VersionInfo.FileVersion }
+            $existing = $serverFiles.Keys | Where-Object { $_ -match ("(^|/)" + [regex]::Escape("$m.dll") + "$") } | Select-Object -First 1
+            $target = if ($existing) { $existing } else { "BepInEx/plugins/$m.dll" }
+            $plan += [pscustomobject]@{ Mod = $m; Version = $ver; Local = $dll; Target = $target; New = (-not $existing); Reason = $(if ($existing) { "update" } else { "new" }) }
+        }
+    }
+
+    Write-Host "Plan:"
+    if ($plan.Count -eq 0) { Write-Host "  nothing to upload; the server already matches." }
+    $plan | ForEach-Object { Write-Host ("  {0} {1} -> {2}  ({3})" -f $_.Mod, $_.Version, $_.Target, $_.Reason) }
+    if ($WhatIf) { Write-Host "WhatIf: nothing changed."; exit 0 }
+    if ($plan.Count -eq 0) { exit 0 }
+
+    $wasOn = [bool]$server.on
+
+    # ── save the world before stopping (DatHost's stop does not) ────────────────
+    if ($wasOn -and -not $NoRestart) {
+        if ($SkipSave) {
+            Write-Warning "SkipSave: not forcing a world save. Anything since the last save is lost on stop unless you ran /save in-game."
+        } else {
+            $before = Get-SaveEvidence
+            Write-Host ("Asking the server to save (last save number so far: {0})..." -f $before.LastNumber)
+            Send-ServerFile ([byte[]]@()) "save-now" $saveTrigger
+            $saved = $false
+            $deadline = (Get-Date).AddSeconds(60)
+            do {
+                Start-Sleep -Seconds 4
+                $now = Get-SaveEvidence
+                if ($now.Saves -gt $before.Saves -or $now.LastNumber -gt $before.LastNumber) { $saved = $true; break }
+            } while ((Get-Date) -lt $deadline)
+            if (-not $saved) {
+                Write-Error "No world save appeared within 60 s of the save-now trigger. Either the server does not yet run a TheGreatestMap version with the trigger (0.1.5+), or saving failed. Nothing was changed. Save by hand with /save in-game as an admin, then re-run with -SkipSave."
+                exit 1
+            }
+            Write-Host ("World saved: {0}" -f ($now.LastSaveLine -replace '\s+', ' ')) -ForegroundColor Green
+        }
+
+        Write-Host "Stopping server..."
+        Invoke-RestMethod -Method Post -Uri "$base/game-servers/$id/stop" -Headers $headers | Out-Null
+        Wait-ServerState $false | Out-Null
+        Write-Host "Stopped."
+    } elseif ($wasOn) {
+        Write-Warning "Server is running and -NoRestart was given: files are replaced now but the running game keeps the old code until its next restart."
+    }
+
+    # ── upload ──────────────────────────────────────────────────────────────────
+    $n = 0
+    foreach ($p in $plan) {
+        Send-ServerFile ([IO.File]::ReadAllBytes($p.Local)) (Split-Path $p.Local -Leaf) $p.Target
+        $n++
+        Write-Host ("Uploaded {0}/{1}: {2} -> {3}" -f $n, $plan.Count, $p.Mod, $p.Target)
+    }
+} finally {
+    $client.Dispose()
+}
+
+if ($wasOn -and -not $NoRestart) {
+    Write-Host "Starting server..."
+    Invoke-RestMethod -Method Post -Uri "$base/game-servers/$id/start" -Headers $headers | Out-Null
+    $s = Wait-ServerState $true
+    Write-Host ("Running again ('{0}')." -f $s.name)
+}
+Write-Host "Done."

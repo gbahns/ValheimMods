@@ -167,3 +167,46 @@ Run with:
 ```powershell
 powershell -ExecutionPolicy Bypass -File package.ps1 -Version "1.0.1"
 ```
+
+---
+
+## Deploying to the DatHost server
+
+`deploy-dathost.ps1` at the repo root pushes freshly built DLLs to the DatHost Valheim server over
+its REST API.
+
+**DatHost's stop is a hard kill.** Its server console never shows a shutdown save (checked over nine
+restarts on 2026-09-12), and the Valheim dedicated server ignores the console endpoint, so nothing
+on the DatHost side saves the world. TheGreatestMap 0.1.5+ running on the server saves the world and
+all player profiles when a file named `save-now` appears in `BepInEx/config/TheGreatestMap/`. The
+script creates that file over the file API, waits for the save to show up in the console (Valheim
+1.0 logs "World save (1/5) ... => Save number N" through "World save (5/5) done"), and only then
+stops, uploads and starts. If no save appears within 60 s it aborts without changing anything.
+
+```powershell
+.\deploy-dathost.ps1                              # TheGreatestMap
+.\deploy-dathost.ps1 -Mod TheGreatestMap,Armory   # several mods, one restart
+.\deploy-dathost.ps1 -Profile "Default SD"        # mirror the whole Gale profile: upload every plugin file that differs by hash
+.\deploy-dathost.ps1 -Profile "Default SD" -IncludeLocalOnly   # also send packages the server does not have yet
+.\deploy-dathost.ps1 -WhatIf                      # show the plan only
+.\deploy-dathost.ps1 -NoRestart                   # upload only; the game keeps old code until its next restart
+.\deploy-dathost.ps1 -SkipSave                    # skip the forced save (only after /save in-game as an admin)
+```
+
+The first deploy of the trigger-capable version to a server still on an older build needs
+`-SkipSave` after a manual `/save`. The mod's `Server Autosave Minutes` setting (Server section of
+the server's config) adds an extra periodic save for the same reason.
+
+Secrets live in `%USERPROFILE%\.dathost`, a JSON file that is never committed or pasted anywhere:
+
+```json
+{ "email": "you@example.com", "token": "<DatHost account password>", "server_id": "<id from the panel URL>" }
+```
+
+DatHost has no API keys: its API is HTTP Basic auth with the account email and password. To keep the main
+password out of the file, invite a second DatHost account to the server (Account -> Shared Account Access)
+and use that login. The server id is the hex string in the control panel URL. DatHost's own "BepInEx
+plugins" list is its one-click catalogue only, so custom mods always go through the file API. Uploads are
+capped at 100 MB. A version whose shared-marker format changed (a raised compatibility floor in
+`TheGreatestMapMod.MinCompatibleVersion`) must be deployed to the server and all clients together; other
+versions can go to clients first.
