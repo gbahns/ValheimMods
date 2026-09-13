@@ -11,6 +11,7 @@ namespace TheGreatestPortal
         internal static ConfigEntry<bool> UntargetedOpensMap;
         internal static ConfigEntry<bool> AdoptExistingConnections;
         internal static ConfigEntry<bool> AnyoneCanRedirectAll;
+        internal static ConfigEntry<bool> AnyoneCanRenameRemote;
 
         // ── keys ────────────────────────────────────────────────────────────────────
         internal static ConfigEntry<KeyboardShortcut> TogglePinsKey;
@@ -40,6 +41,9 @@ namespace TheGreatestPortal
             AnyoneCanRedirectAll = mod.BindSynced("Rules", "Anyone Can Redirect All Portals", false,
                 "Let any player use the panel's 'All portals lead here' button, which points every portal in the " +
                 "world at one portal. When false only admins can (the host of a local game counts as an admin).");
+            AnyoneCanRenameRemote = mod.BindSynced("Rules", "Anyone Can Rename Remote Portals", true,
+                "Let any player rename a portal from the panel's list without standing at it (the 'edit' button on " +
+                "a row). When false only admins can; renaming the portal you are standing at is always allowed.");
 
             TogglePinsKey = mod.BindLocal("Keys", "Toggle Portal Pins", new KeyboardShortcut(KeyCode.P),
                 "While the large map is open: show or hide every portal on the map, with the portal list on the left. " +

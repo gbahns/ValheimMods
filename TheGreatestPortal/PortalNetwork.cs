@@ -22,6 +22,7 @@ namespace TheGreatestPortal
         private const string RpcRequest = "TGP_Request";   // client -> server: send me the list
         private const string RpcSet     = "TGP_SetPortal"; // client -> server: ZDOID portal, string name, long target
         private const string RpcSetAll  = "TGP_SetAll";    // client -> server: long target (every portal leads there)
+        private const string RpcRename  = "TGP_Rename";    // client -> server: long portal id, string name
         private const string RpcNotice  = "TGP_Notice";    // server -> client: string message
 
         private const float Interval = 2f;
@@ -46,6 +47,7 @@ namespace TheGreatestPortal
             rpc.Register(RpcRequest, RPC_Request);
             rpc.Register<ZPackage>(RpcSet, RPC_SetPortal);
             rpc.Register<long>(RpcSetAll, RPC_SetAll);
+            rpc.Register<long, string>(RpcRename, RPC_Rename);
             rpc.Register<string>(RpcNotice, RPC_Notice);
         }
 
@@ -101,6 +103,13 @@ namespace TheGreatestPortal
             pkg.Write(name ?? "");
             pkg.Write(targetId);
             ZRoutedRpc.instance.InvokeRoutedRPC(RpcSet, pkg);
+        }
+
+        /// <summary>Asks the server to rename any portal, near or far, by its permanent id.</summary>
+        internal static void SendRename(long portalId, string name)
+        {
+            if (ZRoutedRpc.instance == null || portalId == 0L) return;
+            ZRoutedRpc.instance.InvokeRoutedRPC(RpcRename, portalId, name ?? "");
         }
 
         /// <summary>Asks the server to point every portal in the world at one portal.</summary>
@@ -208,6 +217,32 @@ namespace TheGreatestPortal
             if (string.IsNullOrEmpty(name)) name = "the chosen portal";
             TheGreatestPortalMod.Log.LogInfo($"[TheGreatestPortal] {who} pointed {count} portal(s) at '{name}' ({target}).");
             Notice(sender, count == 0 ? "Every portal already leads to " + name : $"{count} portal(s) now lead to {name}");
+            _dirty = true;
+        }
+
+        private static void RPC_Rename(long sender, long portalId, string name)
+        {
+            var znet = ZNet.instance;
+            if (znet == null || !znet.IsServer()) return;
+            string who = PeerName(znet, sender);
+            if (!TgpConfig.AnyoneCanRenameRemote.Value && !IsAdmin(znet, sender))
+            {
+                Notice(sender, "Only an admin can rename a portal from afar");
+                return;
+            }
+            var zdo = FindById(portalId);
+            if (zdo == null)
+            {
+                Notice(sender, "That portal no longer exists");
+                return;
+            }
+            name = PortalData.CleanName(name, TgpConfig.MaxNameLength.Value);
+            string old = PortalData.GetName(zdo);
+            if (name == old) return;
+            Own(zdo);
+            zdo.Set(ZDOVars.s_tag, name);
+            ZDOMan.instance.ForceSendZDO(zdo.m_uid);
+            TheGreatestPortalMod.Log.LogInfo($"[TheGreatestPortal] {who} renamed portal '{old}' ({portalId}) to '{name}'.");
             _dirty = true;
         }
 

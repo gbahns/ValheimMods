@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.1 — 2026-09-13
+
+Works with a 0.2.0 server except for renaming from the list, which needs the server updated.
+
+- Right-click a portal in the panel's list for a menu: Rename, Add to favorites / Remove favorite,
+  Show on map. Rename turns the row's name into a text box; Enter saves, Escape or clicking away
+  cancels. Works on any portal, wherever it is. Server rule "Anyone Can Rename Remote Portals"
+  (default on) can limit renaming to admins.
+- Hovering an open portal no longer shows the "Open: choose the destination when you step in" text;
+  a fixed destination still shows "To ...".
+- Enter to confirm the panel no longer opens the chat as well.
+- Double-clicking a portal in the panel's list chooses it and confirms, like Enter or OK.
+- No more "LiberationSans SDF Font Asset was not found" warnings when the lists are built.
+
 ## 0.2.0 — 2026-09-13
 
 Works with a 0.1.0 server, but update everyone anyway.

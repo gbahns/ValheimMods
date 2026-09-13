@@ -60,9 +60,23 @@ namespace TheGreatestPortal
             TMP_Text source = null;
             if (TextInput.instance != null && TextInput.instance.m_topic != null) source = TextInput.instance.m_topic;
             else if (MessageHud.instance != null) source = MessageHud.instance.m_messageCenterText;
-            if (source == null) return;
-            _font = source.font;
-            _fontMaterial = source.fontSharedMaterial;
+            if (source != null && source.font != null)
+            {
+                _font = source.font;
+                _fontMaterial = source.fontSharedMaterial;
+                return;
+            }
+            // No HUD text to borrow from: take the game's own serif UI font, or any font asset at all.
+            TMP_FontAsset any = null;
+            foreach (var f in Resources.FindObjectsOfTypeAll<TMP_FontAsset>())
+            {
+                if (f == null) continue;
+                if (any == null) any = f;
+                if (f.name.IndexOf("Averia", StringComparison.OrdinalIgnoreCase) >= 0) { any = f; break; }
+            }
+            if (any == null) return;
+            _font = any;
+            _fontMaterial = any.material;
         }
 
         // ── keyboard focus ──────────────────────────────────────────────────────────
@@ -123,6 +137,9 @@ namespace TheGreatestPortal
         {
             EnsureFont();
             var go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer));
+            // Inactive while the component is added: TextMeshPro's Awake looks up Unity's default
+            // font (which the game does not ship, so it warns) unless a font is already assigned.
+            go.SetActive(false);
             go.transform.SetParent(parent, false);
             var t = go.AddComponent<TextMeshProUGUI>();
             if (_font != null) t.font = _font;
@@ -134,6 +151,7 @@ namespace TheGreatestPortal
             t.raycastTarget = false;
             t.overflowMode = TextOverflowModes.Ellipsis;
             t.textWrappingMode = TextWrappingModes.NoWrap;
+            go.SetActive(true);
             return t;
         }
 
@@ -302,7 +320,10 @@ namespace TheGreatestPortal
             }
         }
 
-        internal static RowHandle Row(Transform content, string label, string right, Action onClick, Action onRightClick, float fontSize = 17f, Color? labelColor = null)
+        /// <summary>Seconds between two clicks on a row for them to count as a double-click.</summary>
+        internal const float DoubleClickSeconds = 0.35f;
+
+        internal static RowHandle Row(Transform content, string label, string right, Action onClick, Action onRightClick, float fontSize = 17f, Color? labelColor = null, Action onDoubleClick = null)
         {
             var go = new GameObject("Row", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button), typeof(LayoutElement), typeof(Hover));
             go.transform.SetParent(content, false);
@@ -318,7 +339,22 @@ namespace TheGreatestPortal
             var handle = new RowHandle { Root = go, Background = img, Hover = go.GetComponent<Hover>() };
             handle.Hover.OnHoverChanged = _ => handle.Refresh();
             handle.Hover.OnRightClick = onRightClick;
-            if (onClick != null) btn.onClick.AddListener(() => onClick());
+            if (onClick != null || onDoubleClick != null)
+            {
+                float lastClick = -10f;
+                btn.onClick.AddListener(() =>
+                {
+                    onClick?.Invoke();
+                    if (onDoubleClick == null) return;
+                    float now = Time.unscaledTime;
+                    if (now - lastClick <= DoubleClickSeconds)
+                    {
+                        lastClick = -10f;
+                        onDoubleClick();
+                    }
+                    else lastClick = now;
+                });
+            }
 
             bool hasRight = !string.IsNullOrEmpty(right);
             var lbl = Text(go.transform, "Label", label, fontSize, TextAlignmentOptions.Left, labelColor);
@@ -372,6 +408,81 @@ namespace TheGreatestPortal
                 go.GetComponent<Hover>().OnHoverChanged = over => img.color = over ? hover : normal;
             }
             return new RowHandle { Root = go, Background = null, Label = lbl };
+        }
+
+        // ── context menu ────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// One right-click menu shared by every row: a short list of labelled actions that pops up
+        /// at the pointer and goes away on a choice, on Escape, or on a click anywhere else.
+        /// </summary>
+        internal static class ContextMenu
+        {
+            private const float Width = 190f;
+            private static GameObject _root;
+            private static RectTransform _rt;
+            private static Hover _hover;
+            private static int _openedFrame = -10;
+
+            internal static bool IsOpen => _root != null && _root.activeSelf;
+
+            internal static void Show(RectTransform parent, Vector3 screenPos, List<KeyValuePair<string, Action>> items)
+            {
+                if (parent == null || items == null || items.Count == 0) return;
+                if (_root == null)
+                {
+                    _root = new GameObject("TGP_ContextMenu", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Hover));
+                    var bg = _root.GetComponent<Image>();
+                    bg.color = new Color(0.06f, 0.045f, 0.03f, 0.97f);
+                    bg.raycastTarget = true;
+                    var outline = _root.AddComponent<Outline>();
+                    outline.effectColor = new Color(0.75f, 0.62f, 0.4f, 0.9f);
+                    outline.effectDistance = new Vector2(1f, -1f);
+                    _rt = _root.GetComponent<RectTransform>();
+                    _hover = _root.GetComponent<Hover>();
+                }
+                _root.transform.SetParent(parent, false);
+                _root.transform.SetAsLastSibling();
+                ClearChildren(_root.transform);
+
+                float y = 3f;
+                foreach (var item in items)
+                {
+                    var action = item.Value;
+                    var row = Row(_root.transform, item.Key, null, () => { Close(); action?.Invoke(); }, null, 15f);
+                    Place(row.Root.GetComponent<RectTransform>(), 3f, y, Width - 6f, RowHeight);
+                    y += RowHeight + RowSpacing;
+                }
+                float height = y + 1f;
+
+                // Anchor the top-left corner at the pointer, kept inside the parent.
+                var canvas = parent.GetComponentInParent<Canvas>();
+                var cam = canvas != null && canvas.rootCanvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.rootCanvas.worldCamera : null;
+                RectTransformUtility.ScreenPointToLocalPointInRectangle(parent, screenPos, cam, out Vector2 local);
+                var pr = parent.rect;
+                float x = local.x - pr.xMin;          // distance from the parent's left edge
+                float top = pr.yMax - local.y;        // distance from the parent's top edge
+                if (x + Width > pr.width) x = Mathf.Max(0f, pr.width - Width);
+                if (top + height > pr.height) top = Mathf.Max(0f, pr.height - height);
+                Place(_rt, x, top, Width, height);
+
+                _root.SetActive(true);
+                _openedFrame = Time.frameCount;
+            }
+
+            internal static void Close()
+            {
+                if (_root != null && _root.activeSelf) _root.SetActive(false);
+            }
+
+            /// <summary>Call every frame while open: Escape or a click off the menu closes it.</summary>
+            internal static void Update()
+            {
+                if (!IsOpen) return;
+                if (ZInput.GetKeyDown(KeyCode.Escape)) { Close(); return; }
+                if (Time.frameCount - _openedFrame <= 1) return;     // the click that opened it
+                if ((ZInput.GetMouseButtonDown(0) || ZInput.GetMouseButtonDown(1)) && !(_hover != null && _hover.Over)) Close();
+            }
         }
 
         /// <summary>A small text button for secondary actions such as "Expand all".</summary>
