@@ -45,6 +45,7 @@ namespace GrabMaterialsMod
 		public ConfigEntry<bool> PanelCategoryUnderlines;
 		public ConfigEntry<bool> PanelShowItemIcons;
 		public ConfigEntry<bool> PanelMarkUndiscovered;
+		public ConfigEntry<bool> PanelPauseWhileOpen;
 		public ConfigEntry<float> PanelIconSize;
 		public ConfigEntry<GrabMaterials.MaterialsPanel.InventoryShape> InventoryShape;
 		public ConfigEntry<GrabMaterials.MaterialsPanel.InventoryStyle> InventoryStyle;
@@ -177,6 +178,8 @@ namespace GrabMaterialsMod
 			InventoryShape = Config.Bind("Panel UI", "Inventory Shape", GrabMaterials.MaterialsPanel.InventoryShape.SlightlyWide, new ConfigDescription("Target shape for the inventory panel in List mode. The panel auto-picks the column count that produces the closest match. MaxHeight = always 1 column. MaxWidth = fan out as many columns as fit on the screen."));
 			PanelShowItemIcons = Config.Bind("Panel UI", "Show Item Icons", true, new ConfigDescription("Show each item's icon next to its name in the inventory panel."));
 			PanelMarkUndiscovered = Config.Bind("Panel UI", "Mark Undiscovered Items", true, new ConfigDescription("Mark items in the /inventory panel that this character has never held with a '(new)' tag. Handy in multiplayer, where a shared chest is often full of a friend's crafting you have never handled yourself."));
+			PanelPauseWhileOpen = Config.Bind("Panel UI", "Pause While Inventory Panel Open", false, new ConfigDescription("Pause the game while the /inventory panel is up, the way the ESC menu does. Toggle it from the button in the panel's top-right corner. This works by itself when playing solo or hosting alone; on a dedicated server it takes the Pause My Server mod. The button shows whether the pause actually took effect."));
+			PanelPauseWhileOpen.SettingChanged += (s, e) => GrabMaterials.PanelPause.Refresh();
 			PanelIconSize = Config.Bind("Panel UI", "Icon Size", 24f, new ConfigDescription("Width of the item-icon column in pixels. Icons are square and sized to fit. Beyond ~26 the row stays the same height so icons get visually capped by the row.", new AcceptableValueRange<float>(12f, 40f)));
 
 			ShowDistanceHud = Config.Bind("Distance HUD", "Enabled", false, new ConfigDescription("Show a small always-on widget displaying the player's horizontal distance from the world center."));
@@ -333,6 +336,7 @@ namespace GrabMaterialsMod
 			GrabMaterials.MaterialsPanel.Tick();
 			GrabMaterials.DistanceHud.Tick();
 			GrabMaterials.PackHud.Tick();
+			GrabMaterials.PanelPause.Refresh();
 
 			if (Player.m_localPlayer && Chat.instance && !Chat.instance.IsChatDialogWindowVisible())
 			{

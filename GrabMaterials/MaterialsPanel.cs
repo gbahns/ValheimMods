@@ -129,6 +129,14 @@ namespace GrabMaterials
 		private static GameObject _panel;
 		private static RectTransform _panelRect;
 		private static Text _titleText;
+		// True while the current showing is one you browse (the /inventory panel), as opposed
+		// to a transient grab result. Only those get the pause toggle.
+		private static bool _pausable;
+		private static GameObject _pauseButton;
+		private static Text _pauseButtonText;
+
+		public static bool IsVisible => _panel != null && _panel.activeSelf;
+		public static bool PausablePanelVisible => _pausable && IsVisible;
 		private static Text _contentText;
 		private static RectTransform _contentRect;
 		private static GameObject _rowsContainer;          // outer (HorizontalLayoutGroup); holds 1+ column children
@@ -148,6 +156,7 @@ namespace GrabMaterials
 
 		public static void Show(string title, List<ItemStatus> items)
 		{
+			_pausable = false;
 			var lines = new List<string>(items.Count);
 			foreach (var item in items) lines.Add(FormatItemStatus(item));
 			ShowLines(title, lines);
@@ -155,6 +164,7 @@ namespace GrabMaterials
 
 		public static void ShowInventory(string title, List<InventoryItem> items)
 		{
+			_pausable = false;
 			var maxWidth = MaxCountWidth(items);
 			var lines = new List<string>(items.Count);
 			foreach (var item in items)
@@ -166,6 +176,7 @@ namespace GrabMaterials
 
 		public static void ShowCategorizedInventory(string title, List<InventoryGroup> groups, InventoryStyle style = InventoryStyle.List)
 		{
+			_pausable = true;
 			switch (style)
 			{
 				case InventoryStyle.Table: ShowTable(title, groups); break;
@@ -267,6 +278,7 @@ namespace GrabMaterials
 			_panel.SetActive(true);
 			_canvasGroup.alpha = 1f;
 			_shownAt = Time.time;
+			UpdatePauseButton();
 			_fadeStart = -1f;
 			_dismissArmed = false;
 		}
@@ -358,11 +370,16 @@ namespace GrabMaterials
 		// Empty packs (no Items configured) are rendered in dim grey so the user
 		// can see which pack slots are still available.
 		private static readonly Color PackEmptyColor = new Color(0.6f, 0.6f, 0.6f, 0.85f);
+		// Pause toggle. Orange only when the game really is paused; red when the option is on
+		// but the pause was refused, so the button never implies a pause that is not happening.
+		private static readonly Color PauseOffColor     = new Color(0.6f, 0.6f, 0.6f, 0.85f);
+		private static readonly Color PauseRefusedColor = new Color(1f, 0.45f, 0.4f);
 
 		private const float EditPencilColWidth = 26f;
 
 		public static void ShowPacks(string title, List<PackRow> packs)
 		{
+			_pausable = false;
 			EnsureCreated();
 			if (_panel == null) return;
 
@@ -859,8 +876,36 @@ namespace GrabMaterials
 			return s.Length * FontSize * 0.55f;
 		}
 
+		// The button reports what the game is actually doing, not what was asked for.  A pause
+		// can be refused -- a dedicated server without Pause My Server, or with other players
+		// online -- and a button that still read "Paused" would be claiming something false.
+		private static void UpdatePauseButton()
+		{
+			if (_pauseButton == null) return;
+			if (_pauseButton.activeSelf != _pausable) _pauseButton.SetActive(_pausable);
+			if (!_pausable || _pauseButtonText == null) return;
+
+			var on = GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelPauseWhileOpen?.Value ?? false;
+			if (!on)
+			{
+				_pauseButtonText.text = "Pause";
+				_pauseButtonText.color = PauseOffColor;
+			}
+			else if (Game.IsPaused())
+			{
+				_pauseButtonText.text = "Paused";
+				_pauseButtonText.color = GUIManager.Instance.ValheimOrange;
+			}
+			else
+			{
+				_pauseButtonText.text = "Not paused";
+				_pauseButtonText.color = PauseRefusedColor;
+			}
+		}
+
 		public static void Hide()
 		{
+			PanelPause.Release();
 			if (_panel != null) _panel.SetActive(false);
 			if (_canvasGroup != null) _canvasGroup.alpha = 1f;
 			_fadeStart = -1f;
@@ -896,6 +941,8 @@ namespace GrabMaterials
 		public static void Tick()
 		{
 			if (_panel == null || !_panel.activeSelf) return;
+
+			UpdatePauseButton();
 
 			var now = Time.time;
 
@@ -1366,6 +1413,44 @@ namespace GrabMaterials
 			_titleText = titleObj.GetComponent<Text>();
 			_titleText.alignment = TextAnchor.UpperCenter;
 			_titleText.raycastTarget = false;
+
+			// Pause toggle, top-right of the title bar.  Only shown on panels you browse.
+			var pauseObj = GUIManager.Instance.CreateText(
+				text: "Pause",
+				parent: _panel.transform,
+				anchorMin: new Vector2(1f, 1f),
+				anchorMax: new Vector2(1f, 1f),
+				position: new Vector2(-14f, -16f),
+				font: GUIManager.Instance.AveriaSerifBold,
+				fontSize: 16,
+				color: PauseOffColor,
+				outline: true,
+				outlineColor: Color.black,
+				width: 110f,
+				height: 24f,
+				addContentSizeFitter: false);
+			pauseObj.name = "GrabMaterials_PauseToggle";
+			_pauseButton = pauseObj;
+			var pauseRect = pauseObj.GetComponent<RectTransform>();
+			pauseRect.anchorMin = new Vector2(1f, 1f);
+			pauseRect.anchorMax = new Vector2(1f, 1f);
+			pauseRect.pivot = new Vector2(1f, 1f);
+			pauseRect.anchoredPosition = new Vector2(-14f, -16f);
+			pauseRect.sizeDelta = new Vector2(110f, 24f);
+			_pauseButtonText = pauseObj.GetComponent<Text>();
+			_pauseButtonText.alignment = TextAnchor.MiddleRight;
+			_pauseButtonText.raycastTarget = true;   // the Text itself is the click target
+			var pauseBtn = pauseObj.AddComponent<Button>();
+			pauseBtn.transition = Selectable.Transition.None;
+			pauseBtn.targetGraphic = _pauseButtonText;
+			pauseBtn.onClick.AddListener(() =>
+			{
+				var cfg = GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelPauseWhileOpen;
+				if (cfg != null) cfg.Value = !cfg.Value;
+				PanelPause.Refresh();
+				UpdatePauseButton();
+				KeepAlive();   // clicking the panel is engagement, not a reason to start fading
+			});
 
 			// Text-based content (used by grab results and the uncategorized /inventory path).
 			var contentObj = GUIManager.Instance.CreateText(

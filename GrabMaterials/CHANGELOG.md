@@ -4,6 +4,8 @@
 
 - **Fixed: a grab could destroy items when your inventory was full.** Items were removed from the container before being added to your inventory, and the add was never checked, so anything that did not fit was lost. Nothing now leaves a container until it is safely in your inventory; whatever does not fit stays where it was.
 - `/g new` grabs one of every item in range this character has never held. Holding an item is what teaches you the recipes that use it, so this is a quick way to learn a batch of recipes from shared storage. Containers only, since you cannot take from a smelter.
+- Escape now closes the inventory panel instead of opening the game menu. Press it again for the menu.
+- Optional **pause while the `/inventory` panel is open**, toggled from a button in the panel's top-right corner and remembered between sessions. It goes through the game's own pause, so it works by itself solo or hosting alone; on a dedicated server it takes the Pause My Server mod. The button reports the real pause state and reads "Not paused" in red when the request was refused, so it never implies a pause that is not happening.
 
 ## 2.2.0 — 2026-09-13
 
