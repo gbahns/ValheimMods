@@ -58,6 +58,30 @@ namespace TheGreatestMap
 
         internal static string KeyForVanilla(int type) => "pin:" + ((Minimap.PinType)type).ToString();
 
+        /// <summary>
+        /// True when this icon is one of the pin types vanilla's own icon buttons hide and show
+        /// (its m_selectedIcons: the five placeable icons, death and boss). Markers drawn with one
+        /// of those are already covered by vanilla's button, so this mod does not offer its own.
+        /// The memorial pin, which runestones use, has no vanilla button and is not one of these.
+        /// </summary>
+        internal static bool VanillaFilters(string iconKey)
+        {
+            if (!TryVanilla(Normalize(iconKey), out var type)) return false;
+            switch (type)
+            {
+                case Minimap.PinType.Icon0:
+                case Minimap.PinType.Icon1:
+                case Minimap.PinType.Icon2:
+                case Minimap.PinType.Icon3:
+                case Minimap.PinType.Icon4:
+                case Minimap.PinType.Death:
+                case Minimap.PinType.Boss:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
         /// <summary>A readable name for an icon key: the item's translated name, or what the vanilla pin icon shows.</summary>
         internal static string DisplayName(string iconKey)
         {

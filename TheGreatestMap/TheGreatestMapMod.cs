@@ -83,7 +83,7 @@ namespace TheGreatestMap
             MapPause.Refresh(); // also lets go of the pause when the player is gone
             if (Player.m_localPlayer == null) return;
             MarkerMenu.Update();
-            KindBar.Update();
+            MarkerToggle.Update();
             PocketMap.Update();
             DiscoveryLedger.Update();
             Recorder.Update();

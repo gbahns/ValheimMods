@@ -53,10 +53,20 @@ drawn. The icon and kind choices are the Display settings "Hidden Icons" and "Sh
 can also be edited by hand, and `tgm_show` in the console brings everything back. Vanilla pins keep
 their vanilla right-click.
 
-**Kind buttons.** Beside vanilla's icon buttons on the right edge of the large map sits one button
-per kind that has markers on your map, showing that kind's icon. Click it, left or right, to hide
-or show the kind; a hidden kind's button turns gray, just like vanilla's filtered icons. Config
-"Kind Buttons On Map" turns the column off.
+**The marker button.** Above vanilla's icon buttons on the right edge of the large map sits a map
+pin in the same pale gold as recorded markers. **Right-click** it to hide or show every marker from
+this mod at once, the pin turning gray while they are hidden. That is the same gesture vanilla uses
+on its own icon buttons, so right-click means the same thing everywhere in that column. Unlike the
+per-kind switches, it also covers markers that have no kind, such as ones you placed yourself.
+**Left-click** it for the list of kinds that have markers on your map, each with its icon. Click any
+of them to hide or show that kind without leaving the map, and the list stays open so you can change
+several. It also carries the hide-all row and a row that shows every kind again. Config "Marker
+Button On Map" turns the button off.
+
+Structures, portals, camps and boss altars are not in that list, because they draw on vanilla's own
+map icons (house, portal, campfire, boss). Vanilla's icon buttons on the right edge already hide and
+show them, and those buttons cover the pins you placed by hand with the same icon, which a switch of
+ours never could. The other kinds have icons of their own and are ours to control.
 
 **Pause while the map is open** ("Pause While Map Open" in the Display section, off by default):
 the game pauses while the large map screen is open, the way the ESC menu does. Solo or hosting

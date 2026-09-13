@@ -36,7 +36,7 @@ namespace TheGreatestMap
             _pinById.Clear();
             _idByPin.Clear();
             InTableRead = false;
-            KindBar.Reset();
+            MarkerToggle.Reset();
             MarkerMenu.Close();
         }
 
@@ -450,13 +450,14 @@ namespace TheGreatestMap
         internal static void StylePins(Minimap map)
         {
             bool smallMap = map != null && map.m_mode != Minimap.MapMode.Large;
+            bool hideEverything = TgmConfig.ShowAllMarkers != null && !TgmConfig.ShowAllMarkers.Value;
             foreach (var kv in _idByPin)
             {
                 var pin = kv.Key;
                 if (pin.m_uiElement == null) continue;
                 if (!Store.Pins.TryGetValue(kv.Value, out var shared)) continue;
                 var kind = KindOf(shared);
-                bool hidden = ViewPrefs.IsHidden(kv.Value) || TgmConfig.IsIconHidden(shared.Icon);
+                bool hidden = hideEverything || ViewPrefs.IsHidden(kv.Value) || TgmConfig.IsIconHidden(shared.Icon);
                 if (!hidden && kind.HasValue)
                 {
                     if (TgmConfig.ShowKind.TryGetValue(kind.Value, out var showKind) && !showKind.Value) hidden = true;

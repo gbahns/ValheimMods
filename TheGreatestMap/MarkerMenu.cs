@@ -201,22 +201,29 @@ namespace TheGreatestMap
                 ClientPins.Restyle();
                 Note("Marker hidden. 'Show all hidden' in any marker's menu brings it back.");
             }));
-            items.Add(Item($"Hide all {iconName} markers", () =>
+            // A marker drawn with one of vanilla's own filterable pin icons is already hidden and
+            // shown by that icon's button on the map, which also covers pins the player placed by
+            // hand with it. Offering our own switch beside it only splits one job in two.
+            bool vanillaHides = IconRegistry.VanillaFilters(icon);
+            if (!vanillaHides)
             {
-                TgmConfig.AddHiddenIcon(icon);
-                ClientPins.Restyle();
-                Note($"Hiding all {iconName} markers (Display > Hidden Icons).");
-            }));
-            if (kind.HasValue)
-            {
-                var k = kind.Value;
-                string kindLabel = Categories.Label(k).ToLowerInvariant();
-                items.Add(Item($"Hide all {kindLabel}", () =>
+                items.Add(Item($"Hide all {iconName} markers", () =>
                 {
-                    if (TgmConfig.ShowKind.TryGetValue(k, out var entry)) entry.Value = false;
+                    TgmConfig.AddHiddenIcon(icon);
                     ClientPins.Restyle();
-                    Note($"Hiding all {kindLabel} (Display > Show {Categories.Label(k)}).");
+                    Note($"Hiding all {iconName} markers (Display > Hidden Icons).");
                 }));
+                if (kind.HasValue)
+                {
+                    var k = kind.Value;
+                    string kindLabel = Categories.Label(k).ToLowerInvariant();
+                    items.Add(Item($"Hide all {kindLabel}", () =>
+                    {
+                        if (TgmConfig.ShowKind.TryGetValue(k, out var entry)) entry.Value = false;
+                        ClientPins.Restyle();
+                        Note($"Hiding all {kindLabel} (Display > Show {Categories.Label(k)}).");
+                    }));
+                }
             }
 
             bool isChecked = pin.Checked;
@@ -227,7 +234,7 @@ namespace TheGreatestMap
             else
                 items.Add(Item("Erase for everyone", canEdit ? () => { if (ClientPins.EraseById(id)) Note("Marker erased."); } : (Action)null, "take out your map"));
 
-            if (ViewPrefs.Count > 0 || TgmConfig.HiddenIconCount() > 0 || TgmConfig.HiddenKindCount() > 0)
+            if (ViewPrefs.Count > 0 || TgmConfig.AnythingHidden())
                 items.Add(Item("Show all hidden", () =>
                 {
                     ViewPrefs.Clear();

@@ -29,7 +29,8 @@ namespace TheGreatestMap
         internal static readonly Dictionary<Category, ConfigEntry<bool>> ShowKind = new Dictionary<Category, ConfigEntry<bool>>();
         internal static ConfigEntry<string> HiddenIcons;
         internal static ConfigEntry<bool> PauseWhileMapOpen;
-        internal static ConfigEntry<bool> ShowKindButtons;
+        internal static ConfigEntry<bool> MarkerButton;
+        internal static ConfigEntry<bool> ShowAllMarkers;
         private static HashSet<string> _hiddenIconKeys;
 
         private static HashSet<string> HiddenIconKeys()
@@ -72,11 +73,19 @@ namespace TheGreatestMap
             return n;
         }
 
-        /// <summary>Clear the hidden icons and switch every kind back on.</summary>
+        /// <summary>Clear the hidden icons, switch every kind back on and undo the master hide.</summary>
         internal static void ShowEverything()
         {
             if (!string.IsNullOrEmpty(HiddenIcons.Value)) HiddenIcons.Value = "";
             foreach (var entry in ShowKind.Values) if (!entry.Value) entry.Value = true;
+            if (ShowAllMarkers != null && !ShowAllMarkers.Value) ShowAllMarkers.Value = true;
+        }
+
+        /// <summary>True when anything at all is being hidden, by any of the switches.</summary>
+        internal static bool AnythingHidden()
+        {
+            if (ShowAllMarkers != null && !ShowAllMarkers.Value) return true;
+            return HiddenIconCount() > 0 || HiddenKindCount() > 0;
         }
 
         // ── Cartography table ───────────────────────────────────────────────────────
@@ -157,10 +166,16 @@ namespace TheGreatestMap
                 "playing solo or hosting alone; on a dedicated server it takes the Pause My Server mod, which then " +
                 "pauses only while you are the only player online. Closing the map resumes. Applies at once.");
             PauseWhileMapOpen.SettingChanged += (_, __) => MapPause.Refresh();
-            ShowKindButtons = mod.BindLocal("Display", "Kind Buttons On Map", true,
-                "Add a button per kind of recorded marker beside vanilla's icon buttons on the right edge of the large map, " +
-                "for the kinds that have markers on your map. Clicking one (left or right) hides or shows that kind, " +
-                "the same as its Show <Kind> switch; hidden kinds are drawn gray, like vanilla's filtered icons.");
+            MarkerButton = mod.BindLocal("Display", "Marker Button On Map", true,
+                "Add a map-pin button above vanilla's icon buttons on the right edge of the large map. Right-clicking it hides " +
+                "or shows every marker from this mod at once, as right-clicking a vanilla icon does for that icon; " +
+                "left-clicking it opens the list of kinds, for hiding them one at a time. The pin is drawn gold while " +
+                "markers are shown and gray while they are hidden.");
+            ShowAllMarkers = mod.BindLocal("Display", "Show Markers", true,
+                "Draw this mod's markers on your map at all. Off hides every one of them, whatever the per-kind switches " +
+                "say, including markers that have no kind; they stay on your map and keep syncing. This is what the " +
+                "map-pin button on the map screen toggles.");
+            ShowAllMarkers.SettingChanged += (_, __) => ClientPins.Restyle();
             RequireMapOutToEdit = mod.BindSynced("Sharing", "Require Map Out To Edit", false,
                 "You must have the pocket map out to place a marker, erase one (yours, someone else's or a recorded one) " +
                 "or cross one off on the map screen. Pings are always allowed. Off by default: the map screen edits like vanilla.");
@@ -223,7 +238,11 @@ namespace TheGreatestMap
                     "Show recorded " + label.ToLowerInvariant() + " markers on the small minimap (when they are shown at all).");
                 ShowKind[cat] = mod.BindLocal("Display", "Show " + label, true,
                     "Draw recorded " + label.ToLowerInvariant() + " markers on your map. Off hides them on both the large map and the " +
-                    "minimap; they stay on your map and keep syncing. To hide single icons instead (say only dandelions) use Hidden Icons.");
+                    "minimap; they stay on your map and keep syncing. To hide single icons instead (say only dandelions) use Hidden Icons." +
+                    (IconRegistry.VanillaFilters(Categories.DefaultIcon(cat))
+                        ? " This kind draws on one of vanilla's own map icons, so vanilla's icon button on the map screen already hides and " +
+                          "shows it, along with any pin you placed by hand with that icon; this switch covers only the markers this mod recorded."
+                        : ""));
                 ShowKind[cat].SettingChanged += (_, __) => ClientPins.Restyle();
                 ShowOnMinimap[cat].SettingChanged += (_, __) => ClientPins.Restyle();
                 MarkerSize[cat].SettingChanged += (_, __) => ClientPins.Restyle();
