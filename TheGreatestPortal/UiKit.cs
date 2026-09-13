@@ -343,13 +343,15 @@ namespace TheGreatestPortal
             return handle;
         }
 
-        /// <summary>A section title in a list: same height as a row, not clickable.</summary>
-        internal static RowHandle SectionHeader(Transform content, string title)
+        /// <summary>A section title in a list: same height as a row. With <paramref name="onClick"/> it folds its group.</summary>
+        internal static RowHandle SectionHeader(Transform content, string title, Action onClick = null)
         {
-            var go = new GameObject("Header", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(LayoutElement));
+            var go = new GameObject("Header", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(LayoutElement), typeof(Hover));
             go.transform.SetParent(content, false);
             var img = go.GetComponent<Image>();
-            img.color = new Color(1f, 0.72f, 0.32f, 0.10f);
+            var normal = new Color(1f, 0.72f, 0.32f, 0.10f);
+            var hover = new Color(1f, 0.72f, 0.32f, 0.24f);
+            img.color = normal;
             img.raycastTarget = true;
             var le = go.GetComponent<LayoutElement>();
             le.preferredHeight = RowHeight;
@@ -361,7 +363,35 @@ namespace TheGreatestPortal
             lrt.anchorMax = Vector2.one;
             lrt.offsetMin = new Vector2(8f, 0f);
             lrt.offsetMax = new Vector2(-8f, 0f);
+            if (onClick != null)
+            {
+                var btn = go.AddComponent<Button>();
+                btn.transition = Selectable.Transition.None;
+                btn.targetGraphic = img;
+                btn.onClick.AddListener(() => onClick());
+                go.GetComponent<Hover>().OnHoverChanged = over => img.color = over ? hover : normal;
+            }
             return new RowHandle { Root = go, Background = null, Label = lbl };
+        }
+
+        /// <summary>A small text button for secondary actions such as "Expand all".</summary>
+        internal static Button LinkButton(Transform parent, string name, string label, Action onClick)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button), typeof(Hover));
+            go.transform.SetParent(parent, false);
+            var img = go.GetComponent<Image>();
+            var normal = new Color(1f, 1f, 1f, 0.06f);
+            var hover = new Color(1f, 1f, 1f, 0.2f);
+            img.color = normal;
+            img.raycastTarget = true;
+            var btn = go.GetComponent<Button>();
+            btn.transition = Selectable.Transition.None;
+            btn.targetGraphic = img;
+            if (onClick != null) btn.onClick.AddListener(() => onClick());
+            var text = Text(go.transform, "Label", label, 13f, TextAlignmentOptions.Center, Gold);
+            Stretch(text.rectTransform, 2f);
+            go.GetComponent<Hover>().OnHoverChanged = over => img.color = over ? hover : normal;
+            return btn;
         }
 
         /// <summary>A checkbox drawn from scratch: dark box, gold tick, label to the right.</summary>

@@ -21,6 +21,7 @@ namespace TheGreatestPortal
         internal static ConfigEntry<bool> HideOtherPinsWhileChoosing;
         internal static ConfigEntry<bool> ShowDistances;
         internal static ConfigEntry<bool> GroupByBiome;
+        internal static ConfigEntry<string> CollapsedGroups;
         internal static ConfigEntry<int> ListScrollRows;
         internal static ConfigEntry<float> AutoCloseGraceSeconds;
         internal static ConfigEntry<bool> ShowPortalListOnMap;
@@ -57,6 +58,9 @@ namespace TheGreatestPortal
             GroupByBiome = mod.BindLocal("Display", "Group By Biome", false,
                 "Group the destination lists by biome, with a Favorites section first. The 'Group by biome' " +
                 "switch on the panel and on the map changes this setting too.");
+            CollapsedGroups = mod.BindLocal("Display", "Collapsed Groups", "",
+                "Which groups are folded away in the destination lists, kept between sessions. Click a group's " +
+                "header, or Expand all / Collapse all, in the lists themselves rather than editing this.");
             ListScrollRows = mod.BindLocalRangeInt("Display", "List Scroll Rows", 4, 1, 20,
                 "How many rows a destination list moves per notch of the mouse wheel.");
             ShowPortalListOnMap = mod.BindLocal("Display", "Show Portal List On Map", true,

@@ -4,13 +4,14 @@
 
 Works with a 0.1.0 server, but update everyone anyway.
 
-- New icon.
+- New icon: an in-game portal.
 - Search box in the panel and in the map list: type part of a name or a biome to filter.
 - Group by biome: a switch in the panel and on the map (remembered in the config) puts a
-  Favorites section first, then one section per biome.
+  Favorites section first, then one section per biome. Click a section header to fold it away
+  or open it again; Expand all and Collapse all do the lot. Folded groups are remembered.
 - Up/Down move the selection in the panel, Enter confirms, Esc cancels.
 - A scrollbar appears on the lists when they overflow, and the mouse wheel moves a few rows per
-  notch ("List Scroll Rows", default 4).
+  notch ("List Scroll Rows", default 4). The wheel no longer zooms the camera while the panel is open.
 - "All portals lead here": points every portal in the world at this one. Click twice to confirm.
   Admins only, unless "Anyone Can Redirect All Portals" is on.
 - The default toggle reads "Default: new portals lead here".

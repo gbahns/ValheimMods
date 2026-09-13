@@ -22,7 +22,7 @@ without the mod, or with an older version than the server, is refused at connect
 | Name | Up to 32 characters (configurable). Names do not have to be unique. |
 | Destination list | Every other portal in the world, favorites first, with distances. The first entry, *Open portal*, means no fixed destination. Up/Down move the selection, Enter confirms. |
 | Search | Type part of a name (or a biome) to filter the list. |
-| Group by biome | Sections per biome, with a Favorites section first. Remembered between sessions. |
+| Group by biome | Sections per biome, with a Favorites section first. Click a header to fold or open that group; Expand all / Collapse all do the lot. All of it is remembered between sessions. |
 | Favorite | This portal is listed first everywhere and starred on the map. |
 | Default: new portals lead here | New portals you build lead here automatically. |
 | All portals lead here | Points every portal in the world at this one. Click twice to confirm. Admins only unless the server allows everyone. |

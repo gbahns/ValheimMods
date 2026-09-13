@@ -34,8 +34,11 @@ namespace TheGreatestPortal
         private static Toggle _favorite;
         private static Toggle _default;
         private static Button _redirectAll;
+        private static Button _expandAll;
+        private static Button _collapseAll;
         private static readonly List<UiKit.RowHandle> _rows = new List<UiKit.RowHandle>();
         private static readonly List<long> _rowIds = new List<long>();
+        private static List<ListEntry> _entries = new List<ListEntry>();
 
         private static TeleportWorld _portal;
         private static ZDOID _zdo = ZDOID.None;
@@ -182,8 +185,11 @@ namespace TheGreatestPortal
             AddRow(0L, UiKit.Row(_listContent, "Open portal: choose where to go each time you step in", null,
                 () => Choose(0L), null, 16f));
 
-            var entries = PortalList.Build(_id, _zdo, _query, TgpConfig.GroupByBiome.Value);
-            if (entries.Count == 0)
+            bool grouped = TgpConfig.GroupByBiome.Value;
+            _entries = PortalList.Build(_id, _zdo, _query, grouped);
+            if (_expandAll != null) _expandAll.gameObject.SetActive(grouped);
+            if (_collapseAll != null) _collapseAll.gameObject.SetActive(grouped);
+            if (_entries.Count == 0)
             {
                 if (!Catalog.HasSnapshot)
                     AddRow(HeaderId, UiKit.Row(_listContent, "Waiting for the portal list from the server...", null, null, null, 15f, UiKit.Dim));
@@ -192,11 +198,12 @@ namespace TheGreatestPortal
             }
 
             bool selectedPresent = _selected == 0L;
-            foreach (var e in entries)
+            foreach (var e in _entries)
             {
                 if (e.IsHeader)
                 {
-                    AddRow(HeaderId, UiKit.SectionHeader(_listContent, e.Title));
+                    string key = e.GroupKey;
+                    AddRow(HeaderId, UiKit.SectionHeader(_listContent, e.Title, key == null ? null : (Action)(() => { PortalList.ToggleCollapsed(key); Populate(); })));
                     continue;
                 }
                 AddPortalRow(e.Portal, e.Favorite);
@@ -207,7 +214,7 @@ namespace TheGreatestPortal
                 var current = Catalog.Get(_selected);
                 if (current != null)
                 {
-                    AddRow(HeaderId, UiKit.SectionHeader(_listContent, "Current destination (hidden by the search)"));
+                    AddRow(HeaderId, UiKit.SectionHeader(_listContent, "Current destination (hidden above)"));
                     AddPortalRow(current, Favorites.IsFavorite(current.Id));
                 }
                 else
@@ -473,8 +480,12 @@ namespace TheGreatestPortal
             if (_search != null) UiKit.Place(_search.GetComponent<RectTransform>(), 175f, 120f, 215f, 30f);
             _group = UiKit.SimpleToggle(content.transform, "GroupByBiome", "Group by biome", TgpConfig.GroupByBiome.Value, OnGroupToggle);
             UiKit.Place(_group.GetComponent<RectTransform>(), 410f, 120f, 240f, 30f);
-            var hint = UiKit.Text(content.transform, "Hint", "Click a portal, pick one on the map, or use Up/Down and Enter. Right-click a portal to mark it as a favorite.", 13f, TextAlignmentOptions.Left, UiKit.Dim);
-            UiKit.Place(hint.rectTransform, 30f, 152f, W - 60f, 20f);
+            var hint = UiKit.Text(content.transform, "Hint", "Click a portal, pick one on the map, or use Up/Down and Enter. Right-click marks a favorite.", 13f, TextAlignmentOptions.Left, UiKit.Dim);
+            UiKit.Place(hint.rectTransform, 30f, 152f, 440f, 20f);
+            _expandAll = UiKit.LinkButton(content.transform, "ExpandAll", "Expand all", () => { PortalList.ExpandAll(); Populate(); });
+            UiKit.Place(_expandAll.GetComponent<RectTransform>(), 478f, 150f, 82f, 22f);
+            _collapseAll = UiKit.LinkButton(content.transform, "CollapseAll", "Collapse all", () => { PortalList.CollapseAll(_entries); Populate(); });
+            UiKit.Place(_collapseAll.GetComponent<RectTransform>(), 564f, 150f, 86f, 22f);
             _listContent = UiKit.ScrollList(content.transform, "Destinations", out _scroll);
             UiKit.Place(_scroll.GetComponent<RectTransform>(), 30f, 176f, W - 60f, 230f);
 

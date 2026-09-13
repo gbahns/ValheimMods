@@ -44,6 +44,9 @@ namespace TheGreatestPortal
         private static TextMeshProUGUI _hint;
         private static TMP_InputField _search;
         private static Toggle _group;
+        private static Button _expandAll;
+        private static Button _collapseAll;
+        private static List<ListEntry> _entries = new List<ListEntry>();
         private static readonly List<UiKit.RowHandle> _rows = new List<UiKit.RowHandle>();
         private static readonly List<long> _rowIds = new List<long>();
         private static readonly List<Minimap.PinData> _hidden = new List<Minimap.PinData>();
@@ -368,18 +371,22 @@ namespace TheGreatestPortal
             _rowIds.Clear();
             var player = Player.m_localPlayer;
             Vector3 from = player != null ? player.transform.position : Vector3.zero;
-            var entries = PortalList.Build(IsSelecting ? _sourceId : 0L, IsSelecting ? _sourceZdo : ZDOID.None, _query, TgpConfig.GroupByBiome.Value);
-            if (entries.Count == 0)
+            bool grouped = TgpConfig.GroupByBiome.Value;
+            _entries = PortalList.Build(IsSelecting ? _sourceId : 0L, IsSelecting ? _sourceZdo : ZDOID.None, _query, grouped);
+            if (_expandAll != null) _expandAll.gameObject.SetActive(grouped);
+            if (_collapseAll != null) _collapseAll.gameObject.SetActive(grouped);
+            if (_entries.Count == 0)
             {
                 string text = !Catalog.HasSnapshot ? "Waiting for the portal list..." : (string.IsNullOrEmpty(_query) ? "No other portals yet." : $"No portal matches \"{_query}\"");
                 UiKit.Row(_listContent, text, null, null, null, 16f, UiKit.Dim);
                 return;
             }
-            foreach (var e in entries)
+            foreach (var e in _entries)
             {
                 if (e.IsHeader)
                 {
-                    _rows.Add(UiKit.SectionHeader(_listContent, e.Title));
+                    string key = e.GroupKey;
+                    _rows.Add(UiKit.SectionHeader(_listContent, e.Title, key == null ? null : (Action)(() => { PortalList.ToggleCollapsed(key); RefreshList(map); })));
                     _rowIds.Add(long.MinValue);
                     continue;
                 }
@@ -421,6 +428,10 @@ namespace TheGreatestPortal
             if (_search != null) UiKit.Place(_search.GetComponent<RectTransform>(), 8f, 98f, 196f, 28f);
             _group = UiKit.SimpleToggle(_list.transform, "GroupByBiome", "By biome", TgpConfig.GroupByBiome.Value, on => { TgpConfig.GroupByBiome.Value = on; RefreshList(map); });
             UiKit.Place(_group.GetComponent<RectTransform>(), 212f, 98f, 114f, 28f);
+            _expandAll = UiKit.LinkButton(_list.transform, "ExpandAll", "Expand all", () => { PortalList.ExpandAll(); RefreshList(map); });
+            UiKit.Place(_expandAll.GetComponent<RectTransform>(), 8f, 132f, 100f, 22f);
+            _collapseAll = UiKit.LinkButton(_list.transform, "CollapseAll", "Collapse all", () => { PortalList.CollapseAll(_entries); RefreshList(map); });
+            UiKit.Place(_collapseAll.GetComponent<RectTransform>(), 114f, 132f, 100f, 22f);
 
             _listContent = UiKit.ScrollList(_list.transform, "List", out _scroll);
             var lrt = _scroll.GetComponent<RectTransform>();
@@ -428,7 +439,7 @@ namespace TheGreatestPortal
             lrt.anchorMax = new Vector2(1f, 1f);
             lrt.pivot = new Vector2(0.5f, 0.5f);
             lrt.offsetMin = new Vector2(8f, 8f);
-            lrt.offsetMax = new Vector2(-8f, -134f);
+            lrt.offsetMax = new Vector2(-8f, -160f);
         }
 
         private static void DestroyList()
@@ -442,6 +453,8 @@ namespace TheGreatestPortal
             _hint = null;
             _search = null;
             _group = null;
+            _expandAll = null;
+            _collapseAll = null;
             _rows.Clear();
             _rowIds.Clear();
         }

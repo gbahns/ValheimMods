@@ -228,14 +228,16 @@ namespace TheGreatestPortal
         private static void Postfix(Minimap __instance) => MapPicker.OnPinsUpdated(__instance);
     }
 
-    // The mouse wheel scrolls the portal list when the pointer is over it, not the map.
+    // The mouse wheel is for the lists: while the panel is open it must not zoom the camera
+    // (GameCamera's zoom check ignores text prompts), and over the map list it must not zoom the
+    // map. The lists scroll through UI pointer events, which this does not touch.
     [HarmonyPatch(typeof(ZInput), nameof(ZInput.GetMouseScrollWheel))]
     internal static class ZInput_GetMouseScrollWheel_Patch
     {
         [HarmonyPostfix]
         private static void Postfix(ref float __result)
         {
-            if (__result != 0f && MapPicker.ListPointerOver) __result = 0f;
+            if (__result != 0f && (PortalPanel.IsOpen || MapPicker.ListPointerOver)) __result = 0f;
         }
     }
 }
