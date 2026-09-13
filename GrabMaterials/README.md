@@ -7,6 +7,10 @@ Version 2.0.0 released on September 9 2026.
 
 Quickly pull materials from nearby chests into your inventory without having to manually click on each chest.  The concept is similar to mods that let you craft or build directly from containers, but for things that you're not building in your base.  The typical example is workbench and portal when exploring - you're constantly having to grab 10 wood, 20 finewood, 10 greydwarf eyes, and 2 surtling cores.  This mod removes that tedium.
 
+<h3>New in version 2.2.0</h3>
+
+<li>'/i new' — lists just the items in range you have never held, instead of searching names for the word "new".
+
 <h3>New in version 2.1.0</h3>
 
 <li>Undiscovered item marker — '/inventory' tags anything this character has never held with a blue '(new)'.  Most useful in multiplayer, where a shared chest is often full of a friend's crafting you have never handled yourself.  Configurable under "Panel UI".

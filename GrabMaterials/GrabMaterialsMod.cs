@@ -19,7 +19,7 @@ using UnityEngine;
 namespace GrabMaterialsMod
 {
 
-	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.1.0")]
+	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.2.0")]
 	[BepInProcess("valheim.exe")]
 	public class GrabMaterialsMod : BaseUnityPlugin
 	{
@@ -235,8 +235,8 @@ namespace GrabMaterialsMod
 				GrabMaterials.ConsoleCommands.ResetPendingLedger();
 				Player.m_localPlayer?.Message(MessageHud.MessageType.Center, "Grab delta ledger cleared.");
 			});
-			new Terminal.ConsoleCommand("inventory", "Displays counts of materials in containers in range.", (args) => { ListLocalInventory(args); });
-			new Terminal.ConsoleCommand("i", "Displays counts of materials in containers in range.", (args) => { ListLocalInventory(args); });
+			new Terminal.ConsoleCommand("inventory", "[filter] - counts of items in nearby containers. Filter by item name, by category, or with 'new' for items you have never held.", (args) => { ListLocalInventory(args); });
+			new Terminal.ConsoleCommand("i", "[filter] - counts of items in nearby containers. Filter by item name, by category, or with 'new' for items you have never held.", (args) => { ListLocalInventory(args); });
 			new Terminal.ConsoleCommand("istyle", "[1-2] - cycle inventory display style (1=List, 2=Table)", (args) => { SetInventoryStyle(args); });
 
 			//for testing/learning
@@ -591,6 +591,12 @@ namespace GrabMaterialsMod
 			var radius = 50f; // Default radius
 			var text = args.Length > 1 ? args.ArgsAll.ToLower() : null;
 
+			// "/i new" lists only what this character has never held, rather than matching the
+			// word "new" against item names.  Valheim keeps that set itself and fills it the
+			// first time an item enters your inventory.
+			var player = Player.m_localPlayer;
+			var isNewSearch = text == "new";
+
 			var nearbyContainers = Boxes.GetNearbyContainers(radius);
 			var nearbySmelters = Boxes.GetNearbySmelters(radius);
 			Log.LogInfo($"searching {nearbyContainers.Count} containers and {nearbySmelters.Count} processors within {radius} meters");
@@ -619,7 +625,9 @@ namespace GrabMaterialsMod
 					GrabMaterials.Extensions.ItemCategory searchCategory = GrabMaterials.Extensions.ItemCategory.None;
 					var isCategorySearch = text != null ? Enum.TryParse(text, true, out searchCategory) : false;
 
-					var matches = isCategorySearch
+					var matches = isNewSearch
+						? (player != null && !player.IsMaterialKnown(itemName))
+						: isCategorySearch
 						? itemCategory == searchCategory
 						: text == null || item.Name().Contains(text) || itemName.Contains(text) || localizedName.Contains(text) || itemCategoryString.Contains(text);
 					if (!matches) continue;
@@ -669,7 +677,9 @@ namespace GrabMaterialsMod
 					GrabMaterials.Extensions.ItemCategory searchCategory = GrabMaterials.Extensions.ItemCategory.None;
 					var isCategorySearch = text != null ? Enum.TryParse(text, true, out searchCategory) : false;
 
-					var matches = isCategorySearch
+					var matches = isNewSearch
+						? (player != null && !player.IsMaterialKnown(itemName))
+						: isCategorySearch
 						? itemCategory == searchCategory
 						: text == null || itemData.Name().Contains(text) || itemName.Contains(text) || localizedName.Contains(text) || itemCategoryString.Contains(text);
 					if (!matches) continue;
@@ -705,15 +715,16 @@ namespace GrabMaterialsMod
 
 			if (byCategory.Count == 0)
 			{
-				var emptyMsg = string.IsNullOrEmpty(text) ? "No items in nearby containers" : $"No items match '{text}'";
+				var emptyMsg = string.IsNullOrEmpty(text) ? "No items in nearby containers"
+					: isNewSearch ? "Nothing here you have not held before"
+					: $"No items match '{text}'";
 				Player.m_localPlayer.Message(MessageHud.MessageType.Center, emptyMsg);
 				return;
 			}
 
 			// "(new)" marker for anything this character has never had in hand.  Valheim tracks that
 			// set itself and fills it the first time an item enters your inventory.
-			var player = Player.m_localPlayer;
-			var markUndiscovered = (Instance?.PanelMarkUndiscovered?.Value ?? true) && player != null;
+			var markUndiscovered = (Instance?.PanelMarkUndiscovered?.Value ?? true) && player != null && !isNewSearch;
 
 			// Iterate enum values in declaration order so the panel displays a stable, gameplay-grouped order.
 			var groups = new List<GrabMaterials.MaterialsPanel.InventoryGroup>();
@@ -757,7 +768,9 @@ namespace GrabMaterialsMod
 				});
 			}
 
-			var title = string.IsNullOrEmpty(text) ? "Inventory" : $"Inventory: {text}";
+				var title = string.IsNullOrEmpty(text) ? "Inventory"
+				: isNewSearch ? "New Items"
+				: $"Inventory: {text}";
 			GrabMaterials.MaterialsPanel.ShowCategorizedInventory(title, groups, Instance.InventoryStyle.Value);
 		}
 

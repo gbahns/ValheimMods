@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.2.0 — 2026-09-13
+
+- `/i new` now lists only the items in range this character has never held, instead of searching item names for the word "new". The per-row **(new)** tags are omitted in that view, since every row qualifies.
+
 ## 2.1.0 — 2026-09-12
 
 - The `/inventory` panel now tags items this character has never held with a blue **(new)**. In multiplayer a shared chest is often full of a friend's crafting you have never handled yourself, and this makes those stand out. Turn it off with "Mark Undiscovered Items" under [Panel UI].
