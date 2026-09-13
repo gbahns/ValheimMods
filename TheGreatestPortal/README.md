@@ -15,17 +15,16 @@ without the mod, or with an older version than the server, is refused at connect
 
 ## How it works in play
 
-**Setting up a portal.** Press Use (E) on it. The panel shows:
+**Setting up a portal.** Press Use (E) on it. The panel (drag its title to move it, its bottom-right corner to resize it) shows:
 
 | Field | What it does |
 |---|---|
 | Name | Up to 32 characters (configurable). Names do not have to be unique. |
-| Destination list | Every other portal in the world, favorites first, with distances. The first entry, *Open portal*, means no fixed destination. Up/Down move the selection, Enter confirms; a double-click on a row does both. Right-click a row for Rename, favorites and Show on map; renaming works on any portal, wherever it is. |
+| Destination list | Every other portal in the world, favorites first, each with where it leads and its distance. The first entry, *Open portal*, means no fixed destination. Up/Down move the selection, Enter confirms; a double-click on a row does both. Right-click a row for Rename, Favorite / Un-favorite and Show on map; renaming works on any portal, wherever it is. |
 | Search | Type part of a name (or a biome) to filter the list. |
-| Group by biome | Sections per biome, with a Favorites section first. Click a header to fold or open that group; Expand all / Collapse all do the lot. All of it is remembered between sessions. |
-| Favorite | This portal is listed first everywhere and starred on the map. |
-| Default: new portals lead here | New portals you build lead here automatically. |
-| All portals lead here | Points every portal in the world at this one. Click twice to confirm. Admins only unless the server allows everyone. |
+| Group by biome | Sections per biome, with a Favorites section first; a favorite is listed only there. Click a header to fold or open that group; Expand all / Collapse all do the lot. All of it is remembered between sessions. |
+| Default new portals to point here | New portals you build lead here automatically. |
+| Point all portals to here | Points every portal in the world at this one. Shown only when this portal is your default and some portal does not lead here yet. Click twice to confirm. Admins only unless the server allows everyone. |
 | Pick on map | Saves the name and toggles, then opens the map: click a portal there or in the list. |
 | Show on map | Opens the map centered on the chosen destination, with every portal drawn. |
 
@@ -62,13 +61,15 @@ to mark a favorite.
 | Rules | Max Name Length | 32 | Longest portal name (server-synced) |
 | Rules | Open Portals Show The Map | true | An open portal shows the map when you step in. When false it goes nowhere, like an unpaired vanilla portal (server-synced) |
 | Rules | Adopt Existing Connections | true | Portals this mod has not configured keep their vanilla tag pair (server-synced) |
-| Rules | Anyone Can Redirect All Portals | false | Let any player use "All portals lead here"; otherwise admins only (server-synced) |
+| Rules | Anyone Can Redirect All Portals | false | Let any player use "Point all portals to here"; otherwise admins only (server-synced) |
 | Rules | Anyone Can Rename Remote Portals | true | Let any player rename portals from the list without standing at them; otherwise admins only (server-synced) |
 | Keys | Toggle Portal Pins | P | On the large map: show or hide every portal |
 | Display | Always Show Portal Pins | false | Draw every portal on the large map all the time |
 | Display | Hide Other Pins While Choosing | true | Only portals, death markers, players and pings while choosing a destination |
 | Display | Show Distances | true | Distances in the lists |
 | Display | Group By Biome | false | Group the lists by biome; the switches on the panel and the map change it too |
+| Display | Panel Size | 680,600 | The portal panel's size, saved when you drag its corner |
+| Display | Panel Position | 0,0 | The panel's offset from the screen center, saved when you drag its title |
 | Display | List Scroll Rows | 4 | Rows a list moves per mouse-wheel notch |
 | Display | Show Portal List On Map | true | The list on the left of the map |
 | Display | Auto Close Grace Seconds | 0.5 | Leave the doorway for this long and the destination map closes |

@@ -307,6 +307,7 @@ namespace TheGreatestPortal
             public GameObject Root;
             public Image Background;
             public TextMeshProUGUI Label;
+            public TextMeshProUGUI Middle;
             public TextMeshProUGUI Right;
             public Hover Hover;
             public bool Selected;
@@ -323,7 +324,7 @@ namespace TheGreatestPortal
         /// <summary>Seconds between two clicks on a row for them to count as a double-click.</summary>
         internal const float DoubleClickSeconds = 0.35f;
 
-        internal static RowHandle Row(Transform content, string label, string right, Action onClick, Action onRightClick, float fontSize = 17f, Color? labelColor = null, Action onDoubleClick = null)
+        internal static RowHandle Row(Transform content, string label, string right, Action onClick, Action onRightClick, float fontSize = 17f, Color? labelColor = null, Action onDoubleClick = null, string middle = null)
         {
             var go = new GameObject("Row", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button), typeof(LayoutElement), typeof(Hover));
             go.transform.SetParent(content, false);
@@ -357,13 +358,25 @@ namespace TheGreatestPortal
             }
 
             bool hasRight = !string.IsNullOrEmpty(right);
+            bool hasMiddle = !string.IsNullOrEmpty(middle);
             var lbl = Text(go.transform, "Label", label, fontSize, TextAlignmentOptions.Left, labelColor);
             var lrt = lbl.rectTransform;
             lrt.anchorMin = Vector2.zero;
-            lrt.anchorMax = Vector2.one;
+            lrt.anchorMax = new Vector2(hasMiddle ? 0.5f : 1f, 1f);
             lrt.offsetMin = new Vector2(10f, 0f);
-            lrt.offsetMax = new Vector2(hasRight ? -96f : -10f, 0f);
+            lrt.offsetMax = new Vector2(hasMiddle ? -4f : (hasRight ? -96f : -10f), 0f);
             handle.Label = lbl;
+            if (hasMiddle)
+            {
+                // a second column, e.g. where the portal leads
+                var mid = Text(go.transform, "Middle", middle, fontSize - 1f, TextAlignmentOptions.Left, Dim);
+                var mrt = mid.rectTransform;
+                mrt.anchorMin = new Vector2(0.5f, 0f);
+                mrt.anchorMax = Vector2.one;
+                mrt.offsetMin = new Vector2(4f, 0f);
+                mrt.offsetMax = new Vector2(hasRight ? -96f : -10f, 0f);
+                handle.Middle = mid;
+            }
             if (hasRight)
             {
                 var r = Text(go.transform, "Right", right, fontSize - 2f, TextAlignmentOptions.Right, Dim);
@@ -379,8 +392,49 @@ namespace TheGreatestPortal
             return handle;
         }
 
-        /// <summary>A section title in a list: same height as a row. With <paramref name="onClick"/> it folds its group.</summary>
-        internal static RowHandle SectionHeader(Transform content, string title, Action onClick = null)
+        private static Sprite _triangle;
+
+        /// <summary>A right-pointing triangle, drawn once with soft edges; rotate it for other directions.</summary>
+        internal static Sprite Triangle()
+        {
+            if (_triangle != null) return _triangle;
+            const int n = 32;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+            {
+                for (int x = 0; x < n; x++)
+                {
+                    int hit = 0;
+                    for (int sy = 0; sy < 3; sy++)
+                    {
+                        for (int sx = 0; sx < 3; sx++)
+                        {
+                            float fx = x + (sx + 0.5f) / 3f, fy = y + (sy + 0.5f) / 3f;
+                            float t = (fx - 5f) / (n - 10f);                 // 0 at the base, 1 at the apex
+                            float half = (1f - t) * (n / 2f - 4f);
+                            if (t >= 0f && t <= 1f && Mathf.Abs(fy - n / 2f) <= half) hit++;
+                        }
+                    }
+                    px[y * n + x] = new Color32(255, 255, 255, (byte)(hit * 255 / 9));
+                }
+            }
+            tex.SetPixels32(px);
+            tex.Apply(false, true);
+            tex.filterMode = FilterMode.Bilinear;
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.hideFlags = HideFlags.HideAndDontSave;
+            _triangle = Sprite.Create(tex, new Rect(0f, 0f, n, n), new Vector2(0.5f, 0.5f), 100f);
+            _triangle.hideFlags = HideFlags.HideAndDontSave;
+            return _triangle;
+        }
+
+        /// <summary>
+        /// A section title in a list: same height as a row. With <paramref name="onClick"/> it folds
+        /// its group, and <paramref name="collapsed"/> draws the fold marker: a triangle pointing
+        /// right when folded, down when open.
+        /// </summary>
+        internal static RowHandle SectionHeader(Transform content, string title, Action onClick = null, bool? collapsed = null)
         {
             var go = new GameObject("Header", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(LayoutElement), typeof(Hover));
             go.transform.SetParent(content, false);
@@ -392,12 +446,30 @@ namespace TheGreatestPortal
             var le = go.GetComponent<LayoutElement>();
             le.preferredHeight = RowHeight;
             le.minHeight = RowHeight;
+            float labelLeft = 8f;
+            if (collapsed.HasValue)
+            {
+                var icon = new GameObject("Fold", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                icon.transform.SetParent(go.transform, false);
+                var irt = icon.GetComponent<RectTransform>();
+                irt.anchorMin = new Vector2(0f, 0.5f);
+                irt.anchorMax = new Vector2(0f, 0.5f);
+                irt.pivot = new Vector2(0.5f, 0.5f);
+                irt.anchoredPosition = new Vector2(14f, 0f);
+                irt.sizeDelta = new Vector2(11f, 11f);
+                irt.localRotation = Quaternion.Euler(0f, 0f, collapsed.Value ? 0f : -90f);
+                var ii = icon.GetComponent<Image>();
+                ii.sprite = Triangle();
+                ii.color = Header;
+                ii.raycastTarget = false;
+                labelLeft = 26f;
+            }
             var lbl = Text(go.transform, "Label", title, 16f, TextAlignmentOptions.Left, Header);
             lbl.fontStyle = FontStyles.Bold;
             var lrt = lbl.rectTransform;
             lrt.anchorMin = Vector2.zero;
             lrt.anchorMax = Vector2.one;
-            lrt.offsetMin = new Vector2(8f, 0f);
+            lrt.offsetMin = new Vector2(labelLeft, 0f);
             lrt.offsetMax = new Vector2(-8f, 0f);
             if (onClick != null)
             {
@@ -483,6 +555,41 @@ namespace TheGreatestPortal
                 if (Time.frameCount - _openedFrame <= 1) return;     // the click that opened it
                 if ((ZInput.GetMouseButtonDown(0) || ZInput.GetMouseButtonDown(1)) && !(_hover != null && _hover.Over)) Close();
             }
+        }
+
+        /// <summary>Reports pointer drags in screen pixels, for a resize grip.</summary>
+        internal sealed class DragHandle : MonoBehaviour, IDragHandler, IEndDragHandler
+        {
+            public Action<Vector2> OnDrag;
+            public Action OnEnd;
+            void IDragHandler.OnDrag(PointerEventData eventData) { OnDrag?.Invoke(eventData.delta); }
+            void IEndDragHandler.OnEndDrag(PointerEventData eventData) { OnEnd?.Invoke(); }
+        }
+
+        private static Sprite _grip;
+
+        /// <summary>Three diagonal lines tucked into the lower-right corner: the usual resize grip.</summary>
+        internal static Sprite Grip()
+        {
+            if (_grip != null) return _grip;
+            const int n = 24;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    int k = x + (n - 1 - y);        // grows towards the bottom-right corner
+                    bool on = k >= n - 3 && (k - (n - 3)) % 6 < 2;
+                    px[y * n + x] = new Color32(255, 255, 255, (byte)(on ? 255 : 0));
+                }
+            tex.SetPixels32(px);
+            tex.Apply(false, true);
+            tex.filterMode = FilterMode.Bilinear;
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.hideFlags = HideFlags.HideAndDontSave;
+            _grip = Sprite.Create(tex, new Rect(0f, 0f, n, n), new Vector2(0.5f, 0.5f), 100f);
+            _grip.hideFlags = HideFlags.HideAndDontSave;
+            return _grip;
         }
 
         /// <summary>A small text button for secondary actions such as "Expand all".</summary>

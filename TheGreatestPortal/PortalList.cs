@@ -50,6 +50,14 @@ namespace TheGreatestPortal
             return Localization.instance.Localize("$biome_" + biome.ToString().ToLower());
         }
 
+        /// <summary>Where a portal leads, for a list row: "open", "to Name" or "to (gone)".</summary>
+        internal static string DestinationText(PortalInfo p)
+        {
+            if (p == null || p.TargetId == 0L) return "open";
+            var t = Catalog.Get(p.TargetId);
+            return t != null ? "to " + t.DisplayName : "to (gone)";
+        }
+
         internal static bool Matches(PortalInfo p, string query)
         {
             if (string.IsNullOrEmpty(query)) return true;
@@ -111,8 +119,8 @@ namespace TheGreatestPortal
 
         /// <summary>
         /// The list to show. Flat: favorites first, then the rest, alphabetical with unnamed
-        /// last. Grouped: a Favorites section, then one section per biome (favorites appear in
-        /// their biome too); a collapsed section is just its header. <paramref name="exclude"/>
+        /// last. Grouped: a Favorites section, then one section per biome for the rest (a
+        /// favorite is listed once, under Favorites); a collapsed section is just its header. <paramref name="exclude"/>
         /// and <paramref name="excludeZdo"/> leave out the portal being configured or stood in.
         /// </summary>
         internal static List<ListEntry> Build(long exclude, ZDOID excludeZdo, string query, bool groupByBiome)
@@ -143,8 +151,8 @@ namespace TheGreatestPortal
                 entries.Add(Header($"Favorites ({favs.Count})", FavoritesKey, collapsed));
                 if (!collapsed) foreach (var p in favs) entries.Add(new ListEntry { Portal = p, Favorite = true });
             }
+            // Favorites live only in their own section; the biome sections hold the rest.
             var groups = new Dictionary<Heightmap.Biome, List<PortalInfo>>();
-            foreach (var p in favs) Add(groups, p);
             foreach (var p in rest) Add(groups, p);
             var biomes = new List<Heightmap.Biome>(groups.Keys);
             biomes.Sort((a, b) =>
@@ -161,14 +169,14 @@ namespace TheGreatestPortal
                 bool collapsed = IsCollapsed(key);
                 entries.Add(Header($"{BiomeName(biome)} ({list.Count})", key, collapsed));
                 if (collapsed) continue;
-                foreach (var p in list) entries.Add(new ListEntry { Portal = p, Favorite = Favorites.IsFavorite(p.Id) });
+                foreach (var p in list) entries.Add(new ListEntry { Portal = p });
             }
             return entries;
         }
 
         private static ListEntry Header(string title, string key, bool collapsed)
         {
-            return new ListEntry { IsHeader = true, Title = (collapsed ? "[+] " : "[-] ") + title, GroupKey = key, Collapsed = collapsed };
+            return new ListEntry { IsHeader = true, Title = title, GroupKey = key, Collapsed = collapsed };
         }
 
         private static void Add(Dictionary<Heightmap.Biome, List<PortalInfo>> groups, PortalInfo p)

@@ -6,7 +6,7 @@ schemaVersion = "0.0.1"
 [package]
 namespace = "DeathMonger"
 name = "TheGreatestPortal"
-versionNumber = "0.2.1"
+versionNumber = "0.2.2"
 description = "EARLY ALPHA. Pick each portal's destination from a list or on the map, set a default for new portals, mark favorites, or leave it open and choose where to go when you step in."
 websiteUrl = "https://github.com/gbahns/ValheimMods"
 containsNsfwContent = false

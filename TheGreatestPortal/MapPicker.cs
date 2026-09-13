@@ -386,14 +386,14 @@ namespace TheGreatestPortal
                 if (e.IsHeader)
                 {
                     string key = e.GroupKey;
-                    _rows.Add(UiKit.SectionHeader(_listContent, e.Title, key == null ? null : (Action)(() => { PortalList.ToggleCollapsed(key); RefreshList(map); })));
+                    _rows.Add(UiKit.SectionHeader(_listContent, e.Title, key == null ? null : (Action)(() => { PortalList.ToggleCollapsed(key); RefreshList(map); }), key == null ? (bool?)null : e.Collapsed));
                     _rowIds.Add(long.MinValue);
                     continue;
                 }
                 var captured = e.Portal;
                 string label = e.Favorite ? "★ " + captured.DisplayName : captured.DisplayName;
                 string dist = TgpConfig.ShowDistances.Value && player != null ? UiKit.Distance(from, captured.Pos) : null;
-                var row = UiKit.Row(_listContent, label, dist, () => Select(captured), () => ToggleFavorite(captured), 17f, e.Favorite ? UiKit.Gold : (Color?)null);
+                var row = UiKit.Row(_listContent, label, dist, () => Select(captured), () => ToggleFavorite(captured), 16f, e.Favorite ? UiKit.Gold : (Color?)null, null, PortalList.DestinationText(captured));
                 row.SetSelected(captured.Id == _highlightId && _highlightId != 0L);
                 _rows.Add(row);
                 _rowIds.Add(captured.Id);

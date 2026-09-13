@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.2 — 2026-09-13
+
+Client-side; works with a 0.2.1 server.
+
+- The panel can be moved by dragging its title and resized by dragging its bottom-right corner;
+  both are remembered.
+- Group headers carry a triangle, pointing right when folded and down when open.
+- Every row in the lists shows where that portal leads ("open", "to Name") next to its name.
+- With "Group by biome" on, a favorite is listed once, under Favorites, not again under its biome.
+- The redirect-all button now reads "Point all portals to here" and appears only when the portal
+  is ticked as your default and some other portal does not lead here yet.
+- The default checkbox reads "Default new portals to point here". The Favorite checkbox is gone:
+  favorites are set from a row's right-click menu (Favorite / Un-favorite) or on the map.
+
 ## 0.2.1 — 2026-09-13
 
 Works with a 0.2.0 server except for renaming from the list, which needs the server updated.

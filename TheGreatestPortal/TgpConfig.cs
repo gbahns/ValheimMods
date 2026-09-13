@@ -23,6 +23,8 @@ namespace TheGreatestPortal
         internal static ConfigEntry<bool> ShowDistances;
         internal static ConfigEntry<bool> GroupByBiome;
         internal static ConfigEntry<string> CollapsedGroups;
+        internal static ConfigEntry<string> PanelSize;
+        internal static ConfigEntry<string> PanelPosition;
         internal static ConfigEntry<int> ListScrollRows;
         internal static ConfigEntry<float> AutoCloseGraceSeconds;
         internal static ConfigEntry<bool> ShowPortalListOnMap;
@@ -39,11 +41,11 @@ namespace TheGreatestPortal
                 "is kept as its destination, so a world keeps its portal network when the mod is added. Turn off " +
                 "to start every unconfigured portal as an open portal.");
             AnyoneCanRedirectAll = mod.BindSynced("Rules", "Anyone Can Redirect All Portals", false,
-                "Let any player use the panel's 'All portals lead here' button, which points every portal in the " +
+                "Let any player use the panel's 'Point all portals to here' button, which points every portal in the " +
                 "world at one portal. When false only admins can (the host of a local game counts as an admin).");
             AnyoneCanRenameRemote = mod.BindSynced("Rules", "Anyone Can Rename Remote Portals", true,
-                "Let any player rename a portal from the panel's list without standing at it (the 'edit' button on " +
-                "a row). When false only admins can; renaming the portal you are standing at is always allowed.");
+                "Let any player rename a portal from the panel's list without standing at it (Rename in a " +
+                "row's right-click menu). When false only admins can; renaming the portal you are standing at is always allowed.");
 
             TogglePinsKey = mod.BindLocal("Keys", "Toggle Portal Pins", new KeyboardShortcut(KeyCode.P),
                 "While the large map is open: show or hide every portal on the map, with the portal list on the left. " +
@@ -65,6 +67,11 @@ namespace TheGreatestPortal
             CollapsedGroups = mod.BindLocal("Display", "Collapsed Groups", "",
                 "Which groups are folded away in the destination lists, kept between sessions. Click a group's " +
                 "header, or Expand all / Collapse all, in the lists themselves rather than editing this.");
+            PanelSize = mod.BindLocal("Display", "Panel Size", "680,600",
+                "Width and height of the portal panel, remembered when you drag its bottom-right corner.");
+            PanelPosition = mod.BindLocal("Display", "Panel Position", "0,0",
+                "Where the portal panel sits, as an offset from the screen center, remembered when you drag it by " +
+                "its title. Set to 0,0 to put it back in the middle.");
             ListScrollRows = mod.BindLocalRangeInt("Display", "List Scroll Rows", 4, 1, 20,
                 "How many rows a destination list moves per notch of the mouse wheel.");
             ShowPortalListOnMap = mod.BindLocal("Display", "Show Portal List On Map", true,
