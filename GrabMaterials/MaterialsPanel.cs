@@ -988,7 +988,7 @@ namespace GrabMaterials
 			MakeRowClickable(row, sharedName);
 			MakeCellText(row, countText, TextAnchor.MiddleRight, Color.white, countWidth, 0f);
 			if (ShowItemIcons) MakeIconCell(row, icon);
-			MakeCellText(row, ItemDisplayRich(nameText, inProcess, inProcessLocation, undiscovered), TextAnchor.MiddleLeft, Color.white, 0f, 1f, inProcess > 0);
+			MakeCellText(row, ItemDisplayRich(nameText, inProcess, inProcessLocation, undiscovered), TextAnchor.MiddleLeft, Color.white, 0f, 1f, inProcess > 0 || undiscovered);
 		}
 
 		// Items the player has never held (Valheim tracks this as its "known materials" set).
@@ -1045,7 +1045,7 @@ namespace GrabMaterials
 			MakeRowClickable(row, sharedName);
 			MakeCellText(row, category, TextAnchor.MiddleLeft, Color.white, CategoryColumnWidth, 0f);
 			if (ShowItemIcons) MakeIconCell(row, icon);
-			MakeCellText(row, ItemDisplayRich(itemName, inProcess, inProcessLocation, undiscovered), TextAnchor.MiddleLeft, Color.white, 0f, 1f, inProcess > 0);
+			MakeCellText(row, ItemDisplayRich(itemName, inProcess, inProcessLocation, undiscovered), TextAnchor.MiddleLeft, Color.white, 0f, 1f, inProcess > 0 || undiscovered);
 			MakeCellText(row, countText, TextAnchor.MiddleRight, Color.white, CountColumnWidth, 0f);
 		}
 

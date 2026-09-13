@@ -726,7 +726,8 @@ namespace GrabMaterialsMod
 				foreach (var kvp in byName)
 				{
 					var localizedName = LocalizationManager.Instance.TryTranslate(kvp.Key);
-					Log.LogInfo($"{kvp.Value} {localizedName} [{cat}]");
+					var isNew = markUndiscovered && !player.IsMaterialKnown(kvp.Key);
+					Log.LogInfo($"{kvp.Value} {localizedName} [{cat}]{(isNew ? " (new, never held)" : "")}");
 					iconsByName.TryGetValue(kvp.Key, out var icon);
 
 					// Sum per-station tallies into a total + single label. If the item
@@ -747,7 +748,7 @@ namespace GrabMaterialsMod
 						}
 					}
 
-					items.Add(new GrabMaterials.MaterialsPanel.InventoryItem { Name = localizedName, Count = kvp.Value, InProcess = inProcess, InProcessLocation = locLabel, Icon = icon, SharedName = kvp.Key, Undiscovered = markUndiscovered && !player.IsMaterialKnown(kvp.Key) });
+					items.Add(new GrabMaterials.MaterialsPanel.InventoryItem { Name = localizedName, Count = kvp.Value, InProcess = inProcess, InProcessLocation = locLabel, Icon = icon, SharedName = kvp.Key, Undiscovered = isNew });
 				}
 				groups.Add(new GrabMaterials.MaterialsPanel.InventoryGroup
 				{
