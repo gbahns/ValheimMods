@@ -6,7 +6,11 @@
     <RootNamespace>ForsakenShrines</RootNamespace>
     <AssemblyName>ForsakenShrines</AssemblyName>
     <Deterministic>true</Deterministic>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- On, replacing the hand-written Properties\AssemblyInfo.cs that hardcoded 1.0.0.0 and
+         left the DLL unidentifiable. Directory.Build.props supplies the version from
+         manifest.json; the description below is the one that file used to carry. -->
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Description>Craftable personal shrines that let you swap Forsaken Powers at your base.</Description>
     <NoWarn>$(NoWarn);MSB3277</NoWarn>
     <!-- C# 12 required by ServerSync/ConfigSync.cs (primary constructors, with-expressions). -->
     <LangVersion>12</LangVersion>

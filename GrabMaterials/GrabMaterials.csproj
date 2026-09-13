@@ -6,9 +6,11 @@
     <RootNamespace>GrabMaterials</RootNamespace>
     <AssemblyName>GrabMaterials</AssemblyName>
     <Deterministic>true</Deterministic>
-    <!-- Use the existing Properties\AssemblyInfo.cs instead of letting the SDK
-         generate one, which would conflict on duplicate attributes. -->
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- On, replacing the hand-written Properties\AssemblyInfo.cs that hardcoded 1.0.0.0 and
+         left the DLL unidentifiable. That file's other attributes were Visual Studio
+         boilerplate (empty company/copyright, a COM guid this plugin never uses), so the SDK
+         now generates them and Directory.Build.props supplies the version from manifest.json. -->
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <!-- Suppress the netstandard 2.0 vs 2.1 reference-conflict warning. Valheim's
          Unity assemblies reference netstandard 2.1; net462 ships the 2.0 facade.
          Compile resolves against 2.0 (a subset that covers what we use) and at

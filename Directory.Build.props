@@ -1,0 +1,23 @@
+<Project>
+
+  <!-- Give every mod's assembly its real version.
+
+       A mod's version of record is the version_number in its own manifest.json: the file
+       Thunderstore and Hexium read, and the one package.ps1 publishes from.  None of the
+       projects set a version property, so the compiler defaulted all of them to 1.0.0.0 and
+       every DLL in the repo claimed to be 1.0.0.0 — which meant a DLL sitting on the server or
+       in a mod manager could not be identified at all, and mod-status.ps1 had to fall back on
+       comparing file hashes, which cannot tell a stale deploy from a rebuild of the same code.
+
+       Reading the version out of manifest.json here keeps manifest.json the single source of
+       truth: there is no new place to bump.  The SDK appends the source revision on top, so a
+       built DLL reports something like "0.2.4+f40c6d5...", naming both the release and the exact
+       commit it came from.
+
+       Projects without a manifest.json (the test projects) are left at the default. -->
+  <PropertyGroup Condition="Exists('$(MSBuildProjectDirectory)\manifest.json')">
+    <_ManifestVersion>$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\manifest.json')), '"version_number"\s*:\s*"([0-9]+(\.[0-9]+)*)"').Groups.get_Item(1).Value)</_ManifestVersion>
+    <Version Condition="'$(_ManifestVersion)' != ''">$(_ManifestVersion)</Version>
+  </PropertyGroup>
+
+</Project>

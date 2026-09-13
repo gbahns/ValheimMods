@@ -58,6 +58,42 @@ function Get-Published($repository, $namespace, $name) {
     }
 }
 
+# What the server is actually running, from the DLL itself rather than its hash.
+# Directory.Build.props stamps each mod's manifest version into its assembly and the SDK appends
+# the commit, so a DLL names both its release and the source it was built from.  That separates
+# the three cases a hash cannot: an older version still deployed, the same version rebuilt, and
+# the identical build.  DLLs built before that stamping all claim 1.0.0.0 and cannot be placed.
+function Get-ServerDllState([byte[]]$bytes, [string]$localDll) {
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) ("modstatus-" + [Guid]::NewGuid().ToString("N") + ".dll")
+    try {
+        [IO.File]::WriteAllBytes($tmp, $bytes)
+        $remote = [Diagnostics.FileVersionInfo]::GetVersionInfo($tmp)
+        $local  = [Diagnostics.FileVersionInfo]::GetVersionInfo($localDll)
+        $rv = $remote.FileVersion
+        $lv = $local.FileVersion
+        if ($rv -eq "1.0.0.0" -and $lv -ne "1.0.0.0") { return "unstamped" }
+        $short = $rv -replace '\.0$', ''
+
+        if ($rv -eq $lv) {
+            # Same version. The informational version carries the commit; the hash catches a
+            # recompile of that same commit.
+            if ($remote.ProductVersion -ne $local.ProductVersion) { return "$short other commit" }
+            $sha = [Security.Cryptography.SHA256]::Create()
+            try { $hash = [BitConverter]::ToString($sha.ComputeHash($bytes)) -replace "-", "" }
+            finally { $sha.Dispose() }
+            if ($hash -eq (Get-FileHash $localDll -Algorithm SHA256).Hash) { return "$short exact" }
+            return "$short rebuild"
+        }
+
+        try {
+            if ([version]$rv -lt [version]$lv) { return "$short BEHIND" }
+            return "$short ahead"
+        } catch { return "$short differs" }
+    } finally {
+        if (Test-Path $tmp) { Remove-Item $tmp -Force }
+    }
+}
+
 # A mod is a top-level folder with both a project and a manifest.  Test projects are skipped;
 # the pattern is anchored so that a name like TheGreatestMap ("grea-test") is not caught.
 $dirs = @(Get-ChildItem $repo -Directory | Where-Object {
@@ -180,13 +216,9 @@ if ($Server) {
                 $target = $paths | Where-Object { $_ -match ("(^|/)" + [regex]::Escape("$($r.Folder).dll") + "$") } |
                     Select-Object -First 1
                 if (-not $target) { $r.ServerState = "absent"; continue }
-                if (-not $r.Dll)  { $r.ServerState = "on server (no local build)"; continue }
+                if (-not $r.Dll)  { $r.ServerState = "present (no local build)"; continue }
                 $bytes = $client.GetByteArrayAsync("$base/game-servers/$id/files/" + ($target -replace " ", "%20")).Result
-                $sha = [System.Security.Cryptography.SHA256]::Create()
-                try { $remote = [BitConverter]::ToString($sha.ComputeHash($bytes)) -replace "-", "" }
-                finally { $sha.Dispose() }
-                if ($remote -eq (Get-FileHash $r.Dll -Algorithm SHA256).Hash) { $r.ServerState = "matches build" }
-                else { $r.ServerState = "DIFFERS" }
+                $r.ServerState = Get-ServerDllState $bytes $r.Dll
             }
         } catch {
             Write-Warning "Server check failed: $($_.Exception.Message)"
@@ -233,7 +265,17 @@ foreach ($r in $rows) {
     }
     if ($r.Build -eq "STALE")     { $actions += "$($r.Folder): source is newer than the Release DLL - rebuild before packaging." }
     if ($r.Build -eq "not built") { $actions += "$($r.Folder): no Release build in bin\Release." }
-    if ($r.ServerState -eq "DIFFERS") { $actions += "$($r.Folder): the DatHost server has a different DLL - .\deploy-dathost.ps1 -Mod $($r.Folder)" }
+    if ($r.ServerState -match 'BEHIND') {
+        $actions += ("$($r.Folder): the server is running " + ($r.ServerState -replace ' BEHIND', '') +
+                     " and this repo builds $($r.Local) - .\deploy-dathost.ps1 -Mod $($r.Folder)")
+    }
+    if ($r.ServerState -match 'ahead') {
+        $actions += ("$($r.Folder): the server is running " + ($r.ServerState -replace ' ahead', '') +
+                     ", newer than this repo's $($r.Local) - someone else built it.")
+    }
+    if ($r.ServerState -eq "unstamped") {
+        $actions += "$($r.Folder): the server's DLL was built before versions were stamped, so its version cannot be read. One deploy replaces it with an identifiable build."
+    }
 }
 if ($actions.Count -eq 0) {
     Write-Host "Everything agrees: local versions, both registries, builds and the working tree." -ForegroundColor Green

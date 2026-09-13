@@ -6,7 +6,10 @@
     <RootNamespace>Armory</RootNamespace>
     <AssemblyName>Armory</AssemblyName>
     <Deterministic>true</Deterministic>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- On: this project declares no assembly attributes of its own, and with generation off
+         the DLL carried no version at all (0.0.0.0). Directory.Build.props supplies the
+         version from manifest.json. -->
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <NoWarn>$(NoWarn);MSB3277</NoWarn>
     <LangVersion>12</LangVersion>
   </PropertyGroup>
