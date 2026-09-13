@@ -7,7 +7,7 @@ using BepInEx;
 namespace TheGreatestPortal
 {
     /// <summary>
-    /// The player's own favourites and default portal, kept per world in
+    /// The player's own favorites and default portal, kept per world in
     /// BepInEx/config/TheGreatestPortal/&lt;world&gt;-&lt;seed&gt;.txt. Portals are referred to by
     /// their permanent ids, so the file survives server restarts. Nothing here is shared.
     /// </summary>
@@ -27,7 +27,7 @@ namespace TheGreatestPortal
             return id != 0L && _favs.Contains(id);
         }
 
-        /// <summary>Flips a favourite and returns its new state.</summary>
+        /// <summary>Flips a favorite and returns its new state.</summary>
         internal static bool Toggle(long id)
         {
             Load();
@@ -60,32 +60,7 @@ namespace TheGreatestPortal
             _default = 0L;
             _path = null;
             _loaded = false;
-        }
-
-        /// <summary>Portals for a list: favourites first, then the rest, each alphabetical with unnamed last; <paramref name="exclude"/> left out.</summary>
-        internal static List<PortalInfo> Sorted(long exclude, ZDOID excludeZdo)
-        {
-            Load();
-            var favs = new List<PortalInfo>();
-            var rest = new List<PortalInfo>();
-            foreach (var p in Catalog.All)
-            {
-                if (p.Id == exclude && exclude != 0L) continue;
-                if (excludeZdo != ZDOID.None && p.ZdoId == excludeZdo) continue;
-                (_favs.Contains(p.Id) ? favs : rest).Add(p);
-            }
-            favs.Sort(ByName);
-            rest.Sort(ByName);
-            favs.AddRange(rest);
-            return favs;
-        }
-
-        private static int ByName(PortalInfo a, PortalInfo b)
-        {
-            bool an = string.IsNullOrEmpty(a.Name), bn = string.IsNullOrEmpty(b.Name);
-            if (an != bn) return an ? 1 : -1;
-            int c = string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
-            return c != 0 ? c : a.Id.CompareTo(b.Id);
+            PortalList.Reset();
         }
 
         // ── storage ─────────────────────────────────────────────────────────────────
@@ -124,7 +99,7 @@ namespace TheGreatestPortal
             }
             catch (Exception e)
             {
-                TheGreatestPortalMod.Log.LogWarning($"[TheGreatestPortal] Could not read favourites from {_path}: {e.Message}");
+                TheGreatestPortalMod.Log.LogWarning($"[TheGreatestPortal] Could not read favorites from {_path}: {e.Message}");
             }
         }
 
@@ -135,14 +110,14 @@ namespace TheGreatestPortal
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(_path));
                 var sb = new StringBuilder();
-                sb.AppendLine("# The Greatest Portal: this player's default portal and favourites for one world, by permanent portal id.");
+                sb.AppendLine("# The Greatest Portal: this player's default portal and favorites for one world, by permanent portal id.");
                 if (_default != 0L) sb.AppendLine("default=" + _default);
                 foreach (var id in _favs) sb.AppendLine("favorite=" + id);
                 File.WriteAllText(_path, sb.ToString());
             }
             catch (Exception e)
             {
-                TheGreatestPortalMod.Log.LogWarning($"[TheGreatestPortal] Could not save favourites to {_path}: {e.Message}");
+                TheGreatestPortalMod.Log.LogWarning($"[TheGreatestPortal] Could not save favorites to {_path}: {e.Message}");
             }
         }
     }

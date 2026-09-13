@@ -7,12 +7,12 @@ namespace TheGreatestPortal
     {
         internal static void Register()
         {
-            new Terminal.ConsoleCommand("tgp_status", "The Greatest Portal: portal count, map picker state and favourites",
+            new Terminal.ConsoleCommand("tgp_status", "The Greatest Portal: portal count, map picker state and favorites",
                 (Terminal.ConsoleEvent)(args =>
                 {
                     args.Context?.AddString(PortalNetwork.Status());
                     if (Player.m_localPlayer != null)
-                        args.Context?.AddString($"picker: {MapPicker.Status()} | favourites: {Favorites.Count}, default: {DefaultName()}");
+                        args.Context?.AddString($"picker: {MapPicker.Status()} | favorites: {Favorites.Count}, default: {DefaultName()}");
                 }));
 
             new Terminal.ConsoleCommand("tgp_list", "The Greatest Portal: list every portal the server knows, with destinations",

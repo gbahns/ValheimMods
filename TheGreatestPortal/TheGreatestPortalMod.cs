@@ -13,7 +13,7 @@ namespace TheGreatestPortal
     ///    in the world, or pick the destination by clicking a portal on the map.
     ///  * Mark a portal as the default and every portal you build afterwards connects to it.
     ///  * Leave a portal open (no destination) and stepping in shows the map: click any portal,
-    ///    on the map or in the list on the left, and you are there. Favourites sit at the top.
+    ///    on the map or in the list on the left, and you are there. Favorites sit at the top.
     ///
     /// The server holds the truth: names, destinations and the vanilla portal connections that
     /// carry the actual teleport. Install on the server and on every client.
@@ -26,7 +26,7 @@ namespace TheGreatestPortal
     {
         public const string ModGuid    = "DeathMonger.TheGreatestPortal";
         public const string ModName    = "The Greatest Portal";
-        public const string ModVersion = "0.1.0";
+        public const string ModVersion = "0.2.0";
 
         // Oldest version whose network messages this build still speaks. ServerSync refuses
         // peers below this, so bump it only when a message format changes.
@@ -113,6 +113,12 @@ namespace TheGreatestPortal
         internal ConfigEntry<float> BindLocalRange(string section, string key, float defaultValue, float min, float max, string description)
         {
             return Config.Bind(section, key, defaultValue, new ConfigDescription(description, new AcceptableValueRange<float>(min, max)));
+        }
+
+        /// <summary>Binds a client-only integer entry with an allowed range.</summary>
+        internal ConfigEntry<int> BindLocalRangeInt(string section, string key, int defaultValue, int min, int max, string description)
+        {
+            return Config.Bind(section, key, defaultValue, new ConfigDescription(description, new AcceptableValueRange<int>(min, max)));
         }
 
         /// <summary>Small top-left HUD message. Respects the Show Messages toggle unless <paramref name="always"/>.</summary>

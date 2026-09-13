@@ -21,6 +21,7 @@ namespace TheGreatestPortal
         private const string RpcCatalog = "TGP_Catalog";   // server -> clients: ZPackage (Catalog.Pack)
         private const string RpcRequest = "TGP_Request";   // client -> server: send me the list
         private const string RpcSet     = "TGP_SetPortal"; // client -> server: ZDOID portal, string name, long target
+        private const string RpcSetAll  = "TGP_SetAll";    // client -> server: long target (every portal leads there)
         private const string RpcNotice  = "TGP_Notice";    // server -> client: string message
 
         private const float Interval = 2f;
@@ -44,6 +45,7 @@ namespace TheGreatestPortal
             rpc.Register<ZPackage>(RpcCatalog, RPC_Catalog);
             rpc.Register(RpcRequest, RPC_Request);
             rpc.Register<ZPackage>(RpcSet, RPC_SetPortal);
+            rpc.Register<long>(RpcSetAll, RPC_SetAll);
             rpc.Register<string>(RpcNotice, RPC_Notice);
         }
 
@@ -99,6 +101,13 @@ namespace TheGreatestPortal
             pkg.Write(name ?? "");
             pkg.Write(targetId);
             ZRoutedRpc.instance.InvokeRoutedRPC(RpcSet, pkg);
+        }
+
+        /// <summary>Asks the server to point every portal in the world at one portal.</summary>
+        internal static void SendSetAll(long targetId)
+        {
+            if (ZRoutedRpc.instance == null || targetId == 0L) return;
+            ZRoutedRpc.instance.InvokeRoutedRPC(RpcSetAll, targetId);
         }
 
         private static void RPC_Catalog(long sender, ZPackage pkg)
@@ -165,6 +174,50 @@ namespace TheGreatestPortal
             ZDOMan.instance.ForceSendZDO(zdo.m_uid);
             TheGreatestPortalMod.Log.LogInfo($"[TheGreatestPortal] {PeerName(znet, sender)} set portal '{name}' ({selfId}) -> {(target == 0L ? "none (map)" : target.ToString())}.");
             _dirty = true;
+        }
+
+        private static void RPC_SetAll(long sender, long target)
+        {
+            var znet = ZNet.instance;
+            if (znet == null || !znet.IsServer()) return;
+            string who = PeerName(znet, sender);
+            if (!TgpConfig.AnyoneCanRedirectAll.Value && !IsAdmin(znet, sender))
+            {
+                TheGreatestPortalMod.Log.LogInfo($"[TheGreatestPortal] {who} asked to redirect all portals but is not an admin.");
+                Notice(sender, "Only an admin can point every portal at one place");
+                return;
+            }
+            var targetZdo = FindById(target);
+            if (targetZdo == null)
+            {
+                Notice(sender, "That portal is not known to the server yet. Try again in a moment.");
+                return;
+            }
+            int count = 0;
+            foreach (var zdo in ZDOMan.instance.GetPortalList())
+            {
+                if (zdo == null || !zdo.IsValid() || zdo == targetZdo) continue;
+                if (PortalData.GetTarget(zdo) == target && PortalData.IsConfigured(zdo)) continue;
+                Own(zdo);
+                zdo.Set(PortalData.ToHash, target);
+                zdo.Set(PortalData.SetHash, 1);
+                ZDOMan.instance.ForceSendZDO(zdo.m_uid);
+                count++;
+            }
+            string name = PortalData.GetName(targetZdo);
+            if (string.IsNullOrEmpty(name)) name = "the chosen portal";
+            TheGreatestPortalMod.Log.LogInfo($"[TheGreatestPortal] {who} pointed {count} portal(s) at '{name}' ({target}).");
+            Notice(sender, count == 0 ? "Every portal already leads to " + name : $"{count} portal(s) now lead to {name}");
+            _dirty = true;
+        }
+
+        private static bool IsAdmin(ZNet znet, long sender)
+        {
+            if (sender == ZDOMan.GetSessionID()) return true;     // the hosting player
+            var peer = znet.GetPeer(sender);
+            if (peer == null || peer.m_socket == null) return false;
+            string host = peer.m_socket.GetHostName();
+            return !string.IsNullOrEmpty(host) && znet.IsAdmin(host);
         }
 
         private static void Notice(long peer, string text)

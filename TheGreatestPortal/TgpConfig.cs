@@ -10,6 +10,7 @@ namespace TheGreatestPortal
         internal static ConfigEntry<int> MaxNameLength;
         internal static ConfigEntry<bool> UntargetedOpensMap;
         internal static ConfigEntry<bool> AdoptExistingConnections;
+        internal static ConfigEntry<bool> AnyoneCanRedirectAll;
 
         // ── keys ────────────────────────────────────────────────────────────────────
         internal static ConfigEntry<KeyboardShortcut> TogglePinsKey;
@@ -19,6 +20,8 @@ namespace TheGreatestPortal
         internal static ConfigEntry<bool> ShowPinsOnMap;
         internal static ConfigEntry<bool> HideOtherPinsWhileChoosing;
         internal static ConfigEntry<bool> ShowDistances;
+        internal static ConfigEntry<bool> GroupByBiome;
+        internal static ConfigEntry<int> ListScrollRows;
         internal static ConfigEntry<float> AutoCloseGraceSeconds;
         internal static ConfigEntry<bool> ShowPortalListOnMap;
 
@@ -33,13 +36,16 @@ namespace TheGreatestPortal
                 "The first time the server sees a portal this mod has not configured, an existing vanilla tag pair " +
                 "is kept as its destination, so a world keeps its portal network when the mod is added. Turn off " +
                 "to start every unconfigured portal as an open portal.");
+            AnyoneCanRedirectAll = mod.BindSynced("Rules", "Anyone Can Redirect All Portals", false,
+                "Let any player use the panel's 'All portals lead here' button, which points every portal in the " +
+                "world at one portal. When false only admins can (the host of a local game counts as an admin).");
 
             TogglePinsKey = mod.BindLocal("Keys", "Toggle Portal Pins", new KeyboardShortcut(KeyCode.P),
                 "While the large map is open: show or hide every portal on the map, with the portal list on the left. " +
-                "Click a portal there to centre the map on it; right-click to mark it as a favourite.");
+                "Click a portal there to center the map on it; right-click to mark it as a favorite.");
 
             ShowMessages = mod.BindLocal("Display", "Show Messages", true,
-                "Show small top-left messages when a portal is configured, a favourite is added, and so on.");
+                "Show small top-left messages when a portal is configured, a favorite is added, and so on.");
             ShowPinsOnMap = mod.BindLocal("Display", "Always Show Portal Pins", false,
                 "Draw every portal on the large map all the time, not only after pressing the toggle key or while " +
                 "choosing a destination.");
@@ -48,6 +54,11 @@ namespace TheGreatestPortal
                 "Death markers, players and pings stay visible.");
             ShowDistances = mod.BindLocal("Display", "Show Distances", true,
                 "Show how far away each portal is in the destination lists.");
+            GroupByBiome = mod.BindLocal("Display", "Group By Biome", false,
+                "Group the destination lists by biome, with a Favorites section first. The 'Group by biome' " +
+                "switch on the panel and on the map changes this setting too.");
+            ListScrollRows = mod.BindLocalRangeInt("Display", "List Scroll Rows", 4, 1, 20,
+                "How many rows a destination list moves per notch of the mouse wheel.");
             ShowPortalListOnMap = mod.BindLocal("Display", "Show Portal List On Map", true,
                 "Show the list of portals on the left of the map while choosing a destination. With it off, only " +
                 "the pins are clickable.");

@@ -166,14 +166,15 @@ namespace TheGreatestPortal
     // ── input blocking while the panel is up ──────────────────────────────────────
 
     // Everything vanilla holds back for its own text prompt (movement, hotbar, the map key, the
-    // ESC menu, mouse capture) it holds back for this mod's panel too.
+    // ESC menu, mouse capture) it holds back for this mod's panel, and for the search box on the
+    // map while it has the keyboard, too.
     [HarmonyPatch(typeof(TextInput), nameof(TextInput.IsVisible))]
     internal static class TextInput_IsVisible_Patch
     {
         [HarmonyPostfix]
         private static void Postfix(ref bool __result)
         {
-            if (!__result && PortalPanel.IsOpen) __result = true;
+            if (!__result && (PortalPanel.IsOpen || UiKit.TextFocused())) __result = true;
         }
     }
 

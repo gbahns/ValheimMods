@@ -10,9 +10,10 @@ namespace TheGreatestPortal
     /// Choosing a portal on the large map. Three ways in:
     ///  * Travel: you stepped into an open portal. Click a portal (pin or list) and you go there.
     ///  * Pick: the panel's "Pick on map" button. Click a portal and it becomes the destination.
-    ///  * Browse: the toggle key on the map, or "Show on map". Click a portal to centre on it.
-    /// In all three the map shows every portal as a pin and, on the left, a list with favourites
-    /// on top. Right-clicking a portal (pin or row) marks it as a favourite. Closing the map ends it.
+    ///  * Browse: the toggle key on the map, or "Show on map". Click a portal to center on it.
+    /// In all three the map shows every portal as a pin and, on the left, a searchable list with
+    /// favorites on top, optionally grouped by biome. Right-clicking a portal (pin or row) marks
+    /// it as a favorite. Closing the map ends it.
     /// </summary>
     internal static class MapPicker
     {
@@ -22,6 +23,7 @@ namespace TheGreatestPortal
         internal static bool Active => Current != Mode.None;
         internal static bool IsSelecting => Current == Mode.Travel || Current == Mode.Pick;
         internal static bool ListPointerOver => _list != null && _listHover != null && _listHover.Over;
+        internal static bool SearchFocused => UiKit.IsFocused(_search);
 
         private static TeleportWorld _source;
         private static ZDOID _sourceZdo = ZDOID.None;
@@ -32,13 +34,18 @@ namespace TheGreatestPortal
         private static float _lostAt = -1f;
         private static Action<PortalInfo> _onPicked;
         private static long _highlightId;
+        private static string _query = "";
 
         private static GameObject _list;
         private static UiKit.Hover _listHover;
         private static RectTransform _listContent;
+        private static ScrollRect _scroll;
         private static TextMeshProUGUI _header;
         private static TextMeshProUGUI _hint;
-        private static readonly Dictionary<long, UiKit.RowHandle> _rows = new Dictionary<long, UiKit.RowHandle>();
+        private static TMP_InputField _search;
+        private static Toggle _group;
+        private static readonly List<UiKit.RowHandle> _rows = new List<UiKit.RowHandle>();
+        private static readonly List<long> _rowIds = new List<long>();
         private static readonly List<Minimap.PinData> _hidden = new List<Minimap.PinData>();
         private static bool _catalogDirty;
 
@@ -92,6 +99,7 @@ namespace TheGreatestPortal
             _lostAt = -1f;
             _onPicked = null;
             _highlightId = 0L;
+            _query = "";
             Current = Mode.Travel;
             if (!Catalog.HasSnapshot) PortalNetwork.RequestCatalog();
             OpenMapAt(portal.transform.position);
@@ -109,6 +117,7 @@ namespace TheGreatestPortal
             _sourceAllowAll = false;
             _onPicked = onPicked;
             _highlightId = 0L;
+            _query = "";
             Current = Mode.Pick;
             OpenMapAt(center);
             Refresh();
@@ -124,6 +133,7 @@ namespace TheGreatestPortal
             _sourceId = 0L;
             _onPicked = null;
             _highlightId = 0L;
+            _query = "";
             Current = Mode.Browse;
             if (center.HasValue) OpenMapAt(center.Value);
             else if (map.m_mode != Minimap.MapMode.Large) map.SetMapMode(Minimap.MapMode.Large);
@@ -142,6 +152,7 @@ namespace TheGreatestPortal
             _lostAt = -1f;
             _onPicked = null;
             _highlightId = 0L;
+            _query = "";
             if (!had) return;
             PortalPins.Clear();
             DestroyList();
@@ -169,6 +180,8 @@ namespace TheGreatestPortal
                 End();
                 return;
             }
+            // Escape while typing in the search box only leaves the box; the next Escape closes the map.
+            if (SearchFocused && ZInput.GetKeyDown(KeyCode.Escape)) _search.DeactivateInputField();
             if (_catalogDirty)
             {
                 _catalogDirty = false;
@@ -278,7 +291,7 @@ namespace TheGreatestPortal
                 default:
                     _highlightId = p.Id;
                     OpenMapAt(p.Pos);
-                    foreach (var kv in _rows) kv.Value.SetSelected(kv.Key == p.Id);
+                    for (int i = 0; i < _rows.Count; i++) _rows[i].SetSelected(_rowIds[i] == p.Id);
                     break;
             }
         }
@@ -292,7 +305,7 @@ namespace TheGreatestPortal
                 return;
             }
             bool on = Favorites.Toggle(p.Id);
-            TheGreatestPortalMod.Message(on ? "Favourite: " + p.DisplayName : "No longer a favourite: " + p.DisplayName);
+            TheGreatestPortalMod.Message(on ? "Favorite: " + p.DisplayName : "No longer a favorite: " + p.DisplayName);
             Refresh();
         }
 
@@ -338,37 +351,45 @@ namespace TheGreatestPortal
             {
                 case Mode.Travel:
                     _header.text = "Where to?";
-                    _hint.text = "Click a portal here or on the map to travel. Right-click marks a favourite. Esc stays here.";
+                    _hint.text = "Click a portal here or on the map to travel. Right-click marks a favorite. Esc stays here.";
                     break;
                 case Mode.Pick:
                     _header.text = "Choose the destination";
-                    _hint.text = "Click a portal here or on the map. Right-click marks a favourite. Esc keeps the old destination.";
+                    _hint.text = "Click a portal here or on the map. Right-click marks a favorite. Esc keeps the old destination.";
                     break;
                 default:
                     _header.text = "Portals";
-                    _hint.text = $"Click a portal to centre the map on it. Right-click marks a favourite. {TgpConfig.TogglePinsKey.Value.MainKey} hides them.";
+                    _hint.text = $"Click a portal to center the map on it. Right-click marks a favorite. {TgpConfig.TogglePinsKey.Value.MainKey} hides them.";
                     break;
             }
 
             UiKit.ClearChildren(_listContent);
             _rows.Clear();
+            _rowIds.Clear();
             var player = Player.m_localPlayer;
             Vector3 from = player != null ? player.transform.position : Vector3.zero;
-            var portals = Favorites.Sorted(IsSelecting ? _sourceId : 0L, IsSelecting ? _sourceZdo : ZDOID.None);
-            if (portals.Count == 0)
+            var entries = PortalList.Build(IsSelecting ? _sourceId : 0L, IsSelecting ? _sourceZdo : ZDOID.None, _query, TgpConfig.GroupByBiome.Value);
+            if (entries.Count == 0)
             {
-                UiKit.Row(_listContent, Catalog.HasSnapshot ? "No other portals yet." : "Waiting for the portal list...", null, null, null, 16f, UiKit.Dim);
+                string text = !Catalog.HasSnapshot ? "Waiting for the portal list..." : (string.IsNullOrEmpty(_query) ? "No other portals yet." : $"No portal matches \"{_query}\"");
+                UiKit.Row(_listContent, text, null, null, null, 16f, UiKit.Dim);
                 return;
             }
-            foreach (var p in portals)
+            foreach (var e in entries)
             {
-                var captured = p;
-                bool fav = Favorites.IsFavorite(p.Id);
-                string label = fav ? "★ " + p.DisplayName : p.DisplayName;
-                string dist = TgpConfig.ShowDistances.Value && player != null ? UiKit.Distance(from, p.Pos) : null;
-                var row = UiKit.Row(_listContent, label, dist, () => Select(captured), () => ToggleFavorite(captured), 17f, fav ? UiKit.Gold : (Color?)null);
-                row.SetSelected(p.Id == _highlightId && _highlightId != 0L);
-                _rows[p.Id] = row;
+                if (e.IsHeader)
+                {
+                    _rows.Add(UiKit.SectionHeader(_listContent, e.Title));
+                    _rowIds.Add(long.MinValue);
+                    continue;
+                }
+                var captured = e.Portal;
+                string label = e.Favorite ? "★ " + captured.DisplayName : captured.DisplayName;
+                string dist = TgpConfig.ShowDistances.Value && player != null ? UiKit.Distance(from, captured.Pos) : null;
+                var row = UiKit.Row(_listContent, label, dist, () => Select(captured), () => ToggleFavorite(captured), 17f, e.Favorite ? UiKit.Gold : (Color?)null);
+                row.SetSelected(captured.Id == _highlightId && _highlightId != 0L);
+                _rows.Add(row);
+                _rowIds.Add(captured.Id);
             }
         }
 
@@ -383,26 +404,31 @@ namespace TheGreatestPortal
             rt.anchorMax = new Vector2(0f, 1f);
             rt.pivot = new Vector2(0f, 1f);
             rt.anchoredPosition = new Vector2(20f, -60f);
-            rt.sizeDelta = new Vector2(330f, 640f);
+            rt.sizeDelta = new Vector2(330f, 660f);
             var bg = _list.GetComponent<Image>();
             bg.color = new Color(0f, 0f, 0f, 0.55f);
             bg.raycastTarget = true;
             _listHover = _list.GetComponent<UiKit.Hover>();
 
-            _header = UiKit.Text(_list.transform, "Header", "Portals", 22f, TMPro.TextAlignmentOptions.Left, UiKit.Gold);
+            _header = UiKit.Text(_list.transform, "Header", "Portals", 22f, TextAlignmentOptions.Left, UiKit.Gold);
             UiKit.Place(_header.rectTransform, 12f, 8f, 306f, 30f);
-            _hint = UiKit.Text(_list.transform, "Hint", "", 13f, TMPro.TextAlignmentOptions.TopLeft, UiKit.Dim);
+            _hint = UiKit.Text(_list.transform, "Hint", "", 13f, TextAlignmentOptions.TopLeft, UiKit.Dim);
             _hint.textWrappingMode = TextWrappingModes.Normal;
             _hint.overflowMode = TextOverflowModes.Truncate;
             UiKit.Place(_hint.rectTransform, 12f, 40f, 306f, 54f);
 
-            _listContent = UiKit.ScrollList(_list.transform, "List", out _);
-            var lrt = _listContent.parent.parent as RectTransform;   // the ScrollRect object
+            _search = UiKit.CloneInputField(_list.transform, "Search", "Search...", 40, text => { _query = (text ?? "").Trim(); RefreshList(map); }, null);
+            if (_search != null) UiKit.Place(_search.GetComponent<RectTransform>(), 8f, 98f, 196f, 28f);
+            _group = UiKit.SimpleToggle(_list.transform, "GroupByBiome", "By biome", TgpConfig.GroupByBiome.Value, on => { TgpConfig.GroupByBiome.Value = on; RefreshList(map); });
+            UiKit.Place(_group.GetComponent<RectTransform>(), 212f, 98f, 114f, 28f);
+
+            _listContent = UiKit.ScrollList(_list.transform, "List", out _scroll);
+            var lrt = _scroll.GetComponent<RectTransform>();
             lrt.anchorMin = new Vector2(0f, 0f);
             lrt.anchorMax = new Vector2(1f, 1f);
             lrt.pivot = new Vector2(0.5f, 0.5f);
             lrt.offsetMin = new Vector2(8f, 8f);
-            lrt.offsetMax = new Vector2(-8f, -100f);
+            lrt.offsetMax = new Vector2(-8f, -134f);
         }
 
         private static void DestroyList()
@@ -411,9 +437,13 @@ namespace TheGreatestPortal
             _list = null;
             _listHover = null;
             _listContent = null;
+            _scroll = null;
             _header = null;
             _hint = null;
+            _search = null;
+            _group = null;
             _rows.Clear();
+            _rowIds.Clear();
         }
 
         /// <summary>After vanilla has laid out the pins: hide the ones that would clutter a destination choice.</summary>
