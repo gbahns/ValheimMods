@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.3.0 — 2026-09-13
+
+- **Fixed: a grab could destroy items when your inventory was full.** Items were removed from the container before being added to your inventory, and the add was never checked, so anything that did not fit was lost. Nothing now leaves a container until it is safely in your inventory; whatever does not fit stays where it was.
+- `/g new` grabs one of every item in range this character has never held. Holding an item is what teaches you the recipes that use it, so this is a quick way to learn a batch of recipes from shared storage. Containers only, since you cannot take from a smelter.
+
 ## 2.2.0 — 2026-09-13
 
 - `/i new` now lists only the items in range this character has never held, instead of searching item names for the word "new". The per-row **(new)** tags are omitted in that view, since every row qualifies.

@@ -4,7 +4,7 @@ schemaVersion = "0.0.1"
 [package]
 namespace = "DeathMonger"
 name = "GrabMaterials"
-versionNumber = "2.2.0"
+versionNumber = "2.3.0"
 description = "Grab materials from nearby chests needed to build things out in the world, e.g. grab materials for a workbench, for portal, for a longship, for exploring (workbench, and portal), etc."
 websiteUrl = "https://github.com/gbahns/ValheimMods/tree/main/GrabMaterials"
 containsNsfwContent = false

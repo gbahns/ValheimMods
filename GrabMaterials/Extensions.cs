@@ -226,8 +226,15 @@ namespace GrabMaterials
 					Log.LogInfo($"grabbing {numberToGrab} of {item.Count()} {name} from {container} {container.GetInstanceID()}");
 					var newItem = item.Clone();
 					newItem.m_stack = numberToGrab;
+					// Add to the player FIRST and only empty the container once that succeeded.
+					// Inventory.AddItem returns false when there is no room, and removing first
+					// would destroy the items outright.
+					if (!playerInventory.AddItem(newItem))
+					{
+						Log.LogWarning($"no room in inventory for {numberToGrab} {name}; leaving it in the container");
+						break;
+					}
 					containerInventory.RemoveItem(item, numberToGrab);
-					playerInventory.AddItem(newItem);
 					countGrabbed += numberToGrab;
 					count -= numberToGrab;
 					//Log.LogInfo($"grabbed {numberToGrab} {name} from {container} {container.GetInstanceID()}");

@@ -19,7 +19,7 @@ using UnityEngine;
 namespace GrabMaterialsMod
 {
 
-	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.2.0")]
+	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.3.0")]
 	[BepInProcess("valheim.exe")]
 	public class GrabMaterialsMod : BaseUnityPlugin
 	{
@@ -221,8 +221,8 @@ namespace GrabMaterialsMod
 		private static void InitCommands()
 		{
 			//grab materials from nearby containers
-			new Terminal.ConsoleCommand("grab", "[items] - grab items from nearby containers", (args) => { args.GrabItemsFromNearbyContainers(); });
-			new Terminal.ConsoleCommand("g", "[items] - grab items from nearby containers", (args) => { args.GrabItemsFromNearbyContainers(); });
+			new Terminal.ConsoleCommand("grab", "[items] - grab items from nearby containers. Use a piece name, a pack name, or 'new' for one of every item you have never held.", (args) => { args.GrabItemsFromNearbyContainers(); });
+			new Terminal.ConsoleCommand("g", "[items] - grab items from nearby containers. Use a piece name, a pack name, or 'new' for one of every item you have never held.", (args) => { args.GrabItemsFromNearbyContainers(); });
 			new Terminal.ConsoleCommand("grabselected", "", (args) => { ConsoleCommands.GrabMaterialsForSelectedPiece(); });
 			new Terminal.ConsoleCommand("grabpiece", "grab materials for named build piece, e.g. workbench or portal", (args) => { args.GrabMaterialsForPiece(); });
 

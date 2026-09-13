@@ -179,6 +179,40 @@ namespace GrabMaterials
 		/// /grab <pack name>
 		/// </summary>
 		/// <param name="args"></param>
+		// "/g new" — one of every item in range this character has never held.  Holding an
+		// item is what teaches you the recipes that use it, so this is mainly a way to learn
+		// a batch of recipes from shared storage in one go.  Containers only: you cannot take
+		// from a smelter, so the processors that "/i new" lists are not considered here.
+		public static void GrabUndiscoveredItems(float radius = 50f)
+		{
+			var player = Player.m_localPlayer;
+			if (player == null) return;
+
+			var seen = new HashSet<string>();
+			var itemsToGrab = new List<ItemToGrab>();
+			foreach (var container in Boxes.GetNearbyContainers(radius))
+			{
+				var inventory = container.GetInventory();
+				if (inventory == null) continue;
+				foreach (var item in inventory.GetAllItems())
+				{
+					var sharedName = item.m_shared.m_name;
+					if (player.IsMaterialKnown(sharedName)) continue;
+					if (!seen.Add(sharedName)) continue;
+					itemsToGrab.Add(new ItemToGrab(item.Name(), 1));
+				}
+			}
+
+			if (itemsToGrab.Count == 0)
+			{
+				player.Message(MessageHud.MessageType.Center, "Nothing here you have not held before");
+				return;
+			}
+
+			Log.LogInfo($"grabbing one each of {itemsToGrab.Count} never-held items");
+			GrabItemsFromNearbyContainers(itemsToGrab, radius, "New Items");
+		}
+
 		public static void GrabItemsFromNearbyContainers(this Terminal.ConsoleEventArgs args)
 		{
 			Log.LogInfo($"GrabItemsFromNearbyContainers('{args.FullLine})' args.Length={args.Length}");
@@ -189,6 +223,12 @@ namespace GrabMaterials
 				{
 					int packNumber = int.Parse(args[2]) - 1;
 					GrabMaterialsForPack(GrabMaterialsMod.GrabMaterialsMod.Instance.GrabPacks[packNumber]);
+					return;
+				}
+
+				if (args.Length == 2 && string.Equals(args[1], "new", StringComparison.OrdinalIgnoreCase))
+				{
+					GrabUndiscoveredItems();
 					return;
 				}
 

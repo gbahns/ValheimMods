@@ -7,6 +7,11 @@ Version 2.0.0 released on September 9 2026.
 
 Quickly pull materials from nearby chests into your inventory without having to manually click on each chest.  The concept is similar to mods that let you craft or build directly from containers, but for things that you're not building in your base.  The typical example is workbench and portal when exploring - you're constantly having to grab 10 wood, 20 finewood, 10 greydwarf eyes, and 2 surtling cores.  This mod removes that tedium.
 
+<h3>New in version 2.3.0</h3>
+
+<li>Fixed a bug that could destroy items when your inventory was full — a grab emptied the container before checking that the items fit.  Nothing leaves a container now until it is safely in your inventory.
+<li>'/g new' — grabs one of every item in range you have never held, which is a quick way to learn the recipes they unlock.
+
 <h3>New in version 2.2.0</h3>
 
 <li>'/i new' — lists just the items in range you have never held, instead of searching names for the word "new".
