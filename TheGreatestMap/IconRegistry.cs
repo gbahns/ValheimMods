@@ -58,6 +58,39 @@ namespace TheGreatestMap
 
         internal static string KeyForVanilla(int type) => "pin:" + ((Minimap.PinType)type).ToString();
 
+        /// <summary>A readable name for an icon key: the item's translated name, or what the vanilla pin icon shows.</summary>
+        internal static string DisplayName(string iconKey)
+        {
+            string key = Normalize(iconKey);
+            if (key == null) return "marker";
+            string raw = key.Substring(key.IndexOf(':') + 1);
+            if (key.StartsWith("pin:"))
+            {
+                switch (raw.ToLowerInvariant())
+                {
+                    case "icon0": return "Fire";
+                    case "icon1": return "House";
+                    case "icon2": return "Hammer";
+                    case "icon3": return "Dot";
+                    case "icon4": return "Portal";
+                    default: return raw;
+                }
+            }
+            try
+            {
+                var prefab = ObjectDB.instance != null ? ObjectDB.instance.GetItemPrefab(raw) : null;
+                var drop = prefab != null ? prefab.GetComponent<ItemDrop>() : null;
+                string name = drop != null && drop.m_itemData != null && drop.m_itemData.m_shared != null ? drop.m_itemData.m_shared.m_name : null;
+                if (!string.IsNullOrEmpty(name) && Localization.instance != null)
+                {
+                    string localized = Localization.instance.Localize(name);
+                    if (!string.IsNullOrEmpty(localized) && !localized.StartsWith("[")) return localized;
+                }
+            }
+            catch (Exception) { }
+            return raw;
+        }
+
         internal static string ItemKey(GameObject itemPrefab)
         {
             return itemPrefab == null ? null : "item:" + Utils.GetPrefabName(itemPrefab);

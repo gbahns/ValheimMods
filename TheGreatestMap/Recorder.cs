@@ -8,7 +8,7 @@ namespace TheGreatestMap
     /// record radius as shared markers. A find is skipped, and stays pending, while a marker with
     /// the same icon already stands within the marker spacing or such a marker was erased there;
     /// it is written the moment that is no longer true. Labels follow the per-kind label spacing:
-    /// below zero never, zero always, otherwise one label per that many metres.
+    /// below zero never, zero always, otherwise one label per that many meters.
     /// </summary>
     internal static class Recorder
     {
@@ -47,7 +47,7 @@ namespace TheGreatestMap
                     DiscoveryLedger.MarkRecorded(found.Key);
                     continue;
                 }
-                // Locations de-duplicate over their whole radius around their origin, so a farm
+                // Locations deduplicate over their whole radius around their origin, so a farm
                 // whose marker sits on the house is still one marker.
                 float spacing = TgmConfig.MarkerSpacing.TryGetValue(found.Cat, out var s) ? s.Value : 1f;
                 float dedupeRadius = Mathf.Max(spacing, found.Radius);

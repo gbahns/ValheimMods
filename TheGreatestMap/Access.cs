@@ -36,6 +36,33 @@ namespace TheGreatestMap
             my = (float)args[2];
         }
 
+        private static readonly MethodInfo _screenToWorldPoint = AccessTools.Method(typeof(Minimap), "ScreenToWorldPoint", new[] { typeof(Vector3) });
+
+        /// <summary>The world position under a screen point on the large map.</summary>
+        internal static Vector3 ScreenToWorldPoint(Minimap map, Vector3 screen)
+        {
+            if (map == null || _screenToWorldPoint == null) return Vector3.zero;
+            return (Vector3)_screenToWorldPoint.Invoke(map, new object[] { screen });
+        }
+
+        /// <summary>Vanilla's click radius for pins on the large map, in world meters (Minimap.PinInteractRadius).</summary>
+        internal static float PinInteractRadius(Minimap map)
+        {
+            float r = map.m_removeRadius * (map.LargeZoom * 2f);
+            if (ZInput.IsTouchActive()) r *= 1.3f;
+            return r;
+        }
+
+        private static readonly MethodInfo _hidePinTextInput = AccessTools.Method(typeof(Minimap), "HidePinTextInput");
+
+        /// <summary>Close the pin-name box, as vanilla does on a right-click.</summary>
+        internal static void HidePinTextInput(Minimap map)
+        {
+            if (map == null || _hidePinTextInput == null) return;
+            var ps = _hidePinTextInput.GetParameters();
+            _hidePinTextInput.Invoke(map, ps.Length == 0 ? new object[0] : new object[] { false });
+        }
+
         // ── Character / Humanoid / Player ───────────────────────────────────────────
         internal static readonly AccessTools.FieldRef<Character, ZNetView> NView =
             AccessTools.FieldRefAccess<Character, ZNetView>("m_nview");
@@ -80,7 +107,7 @@ namespace TheGreatestMap
 
         private static readonly MethodInfo _tableWrite = AccessTools.Method(typeof(MapTable), "OnWrite");
 
-        /// <summary>Vanilla write (which reads first): ward check, serialise, RPC to the owner, "map saved" message.</summary>
+        /// <summary>Vanilla write (which reads first): ward check, serialize, RPC to the owner, "map saved" message.</summary>
         internal static bool TableWrite(MapTable table, Humanoid user)
         {
             return (bool)_tableWrite.Invoke(table, new object[] { null, user, null });

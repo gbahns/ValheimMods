@@ -18,7 +18,7 @@ namespace TheGreatestMap
     /// </summary>
     internal static class DiscoveryLedger
     {
-        private const int SaveVersion = 2; // 2: location centre and radius per find
+        private const int SaveVersion = 2; // 2: location center and radius per find
 
         private static readonly Dictionary<string, Found> _pending = new Dictionary<string, Found>();
         private static readonly HashSet<string> _recorded = new HashSet<string>();

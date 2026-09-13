@@ -82,7 +82,17 @@ namespace TheGreatestMap
                     args.Context.AddString($"Removed labels from {n} recorded markers.");
                 }));
 
-            new Terminal.ConsoleCommand("tgm_erase", "Erase recorded markers of one kind near you: tgm_erase Structures [radius, default 50]. Works even when erasing by click is off; carries to everyone at the next merge",
+            new Terminal.ConsoleCommand("tgm_show", "Show every hidden marker again: clears markers hidden one by one, the Hidden Icons list and switches every Show <Kind> back on",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    int single = ViewPrefs.Count, icons = TgmConfig.HiddenIconCount(), kinds = TgmConfig.HiddenKindCount();
+                    ViewPrefs.Clear();
+                    TgmConfig.ShowEverything();
+                    ClientPins.Restyle();
+                    args.Context.AddString($"Showing everything again ({single} single markers, {icons} icons and {kinds} kinds were hidden).");
+                }));
+
+            new Terminal.ConsoleCommand("tgm_erase","Erase recorded markers of one kind near you: tgm_erase Structures [radius, default 50]. Works even when erasing by click is off; carries to everyone at the next merge",
                 (Terminal.ConsoleEvent)(args =>
                 {
                     var player = Player.m_localPlayer;

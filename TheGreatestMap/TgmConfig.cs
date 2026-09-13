@@ -28,10 +28,11 @@ namespace TheGreatestMap
         // ── what to draw ────────────────────────────────────────────────────────────
         internal static readonly Dictionary<Category, ConfigEntry<bool>> ShowKind = new Dictionary<Category, ConfigEntry<bool>>();
         internal static ConfigEntry<string> HiddenIcons;
+        internal static ConfigEntry<bool> PauseWhileMapOpen;
+        internal static ConfigEntry<bool> ShowKindButtons;
         private static HashSet<string> _hiddenIconKeys;
 
-        /// <summary>True if this marker icon is on the player's hidden list (item names or icon keys).</summary>
-        internal static bool IsIconHidden(string icon)
+        private static HashSet<string> HiddenIconKeys()
         {
             if (_hiddenIconKeys == null)
             {
@@ -42,8 +43,40 @@ namespace TheGreatestMap
                     if (key != null) _hiddenIconKeys.Add(key);
                 }
             }
+            return _hiddenIconKeys;
+        }
+
+        /// <summary>True if this marker icon is on the player's hidden list (item names or icon keys).</summary>
+        internal static bool IsIconHidden(string icon)
+        {
             string k = IconRegistry.Normalize(icon);
-            return k != null && _hiddenIconKeys.Contains(k);
+            return k != null && HiddenIconKeys().Contains(k);
+        }
+
+        internal static int HiddenIconCount() => HiddenIconKeys().Count;
+
+        /// <summary>Put an icon on the hidden list (saved to the config file at once).</summary>
+        internal static void AddHiddenIcon(string icon)
+        {
+            string key = IconRegistry.Normalize(icon);
+            if (key == null || IsIconHidden(key)) return;
+            string entry = key.StartsWith("item:") ? key.Substring(5) : key; // the documented forms: Dandelion, pin:Icon1
+            string current = (HiddenIcons.Value ?? "").Trim();
+            HiddenIcons.Value = current.Length == 0 ? entry : current + "," + entry;
+        }
+
+        internal static int HiddenKindCount()
+        {
+            int n = 0;
+            foreach (var entry in ShowKind.Values) if (!entry.Value) n++;
+            return n;
+        }
+
+        /// <summary>Clear the hidden icons and switch every kind back on.</summary>
+        internal static void ShowEverything()
+        {
+            if (!string.IsNullOrEmpty(HiddenIcons.Value)) HiddenIcons.Value = "";
+            foreach (var entry in ShowKind.Values) if (!entry.Value) entry.Value = true;
         }
 
         // ── Cartography table ───────────────────────────────────────────────────────
@@ -110,7 +143,7 @@ namespace TheGreatestMap
                 "cannot be lost to a stray click; vanilla pins are unaffected. An erasure merges like any other change: " +
                 "it wins over older copies of the marker and is itself replaced if someone records the spot again later.");
             ExchangeRadius = mod.BindLocal("Sharing", "Exchange Radius", 5f,
-                "Distance in metres within which two players who both have their maps out compare and merge their maps.");
+                "Distance in meters within which two players who both have their maps out compare and merge their maps.");
             ExchangeCooldown = mod.BindLocal("Sharing", "Exchange Cooldown", 60f,
                 "Seconds before the same two players compare maps again.");
             ExchangeExploration = mod.BindLocal("Sharing", "Exchange Exploration", true,
@@ -118,7 +151,16 @@ namespace TheGreatestMap
             HiddenIcons = mod.BindLocal("Display", "Hidden Icons", "",
                 "Comma-separated marker icons never drawn on your map, as item prefab names or icon keys, e.g. Dandelion,Thistle,pin:Icon1. " +
                 "Hidden markers stay on your map and keep syncing; they are just not shown. Applies at once.");
-            HiddenIcons.SettingChanged += (_, __) => _hiddenIconKeys = null;
+            HiddenIcons.SettingChanged += (_, __) => { _hiddenIconKeys = null; ClientPins.Restyle(); };
+            PauseWhileMapOpen = mod.BindLocal("Display", "Pause While Map Open", false,
+                "Pause the game while the large map screen is open, the way the ESC menu does. Works by itself when " +
+                "playing solo or hosting alone; on a dedicated server it takes the Pause My Server mod, which then " +
+                "pauses only while you are the only player online. Closing the map resumes. Applies at once.");
+            PauseWhileMapOpen.SettingChanged += (_, __) => MapPause.Refresh();
+            ShowKindButtons = mod.BindLocal("Display", "Kind Buttons On Map", true,
+                "Add a button per kind of recorded marker under vanilla's icon buttons on the right edge of the large map, " +
+                "for the kinds that have markers on your map. Clicking one (left or right) hides or shows that kind, " +
+                "the same as its Show <Kind> switch; hidden kinds are drawn gray, like vanilla's filtered icons.");
             RequireMapOutToEdit = mod.BindSynced("Sharing", "Require Map Out To Edit", false,
                 "You must have the pocket map out to place a marker, erase one (yours, someone else's or a recorded one) " +
                 "or cross one off on the map screen. Pings are always allowed. Off by default: the map screen edits like vanilla.");
@@ -132,14 +174,14 @@ namespace TheGreatestMap
                 "When false (recommended) the cartography table only carries map exploration. Player-placed markers " +
                 "(the five standard icons and this mod's icons) are neither written to nor read from the table, and " +
                 "stale copies previously imported from a table are swept away. Boss, Hildir and memorial pins still " +
-                "share through the table as in vanilla. Set true to restore vanilla table behaviour for markers.");
+                "share through the table as in vanilla. Set true to restore vanilla table behavior for markers.");
 
             AutoSyncTable = mod.BindLocal("Cartography Table", "Auto Sync", true,
                 "Automatically read and write the cartography table when you are right at it. Silent unless something " +
                 "is actually exchanged: new areas from the table are read, and the table is written (vanilla's 'map saved') " +
                 "only when it lacks areas you have explored.");
             TableSyncRadius = mod.BindLocal("Cartography Table", "Sync Radius", 1f,
-                "How close to a cartography table you must stand (metres from you to its edge) for auto-sync and the sync key.");
+                "How close to a cartography table you must stand (meters from you to its edge) for auto-sync and the sync key.");
             TableSyncCooldown = mod.BindLocal("Cartography Table", "Auto Sync Cooldown", 60f,
                 "Seconds between automatic syncs of the same table while you stay in reach. The sync key ignores this.");
 
@@ -148,7 +190,7 @@ namespace TheGreatestMap
                 "that you did not look at or interact with yourself.");
             RecordRadius = mod.BindLocal("Recording", "Record Range", 0f,
                 "0 (default): taking the map out writes down everything you have found recently, wherever you are now. " +
-                "Otherwise only finds within this many metres of you are written down.");
+                "Otherwise only finds within this many meters of you are written down.");
             RecordDwell = mod.BindLocal("Recording", "Record Dwell", 3f,
                 "Seconds the map must be out before it starts recording.");
             FoundMemoryMinutes = mod.BindLocal("Recording", "Found Memory Minutes", 30f,
@@ -166,11 +208,11 @@ namespace TheGreatestMap
                     (cat == Category.Structure ? " Off by default: useful if you like to track which ruins and abandoned houses you have already searched (click a marker on the map to cross it off)." : ""));
                 MarkerSpacing[cat] = mod.BindLocal("Recording", label + " Marker Spacing", Categories.DefaultSpacing(cat),
                     "Do not record " + label.ToLowerInvariant() + " if a marker with the same icon already exists within this many " +
-                    "metres. Small values give one icon per plant so a clump shows how many there are. The find stays pending and " +
+                    "meters. Small values give one icon per plant so a clump shows how many there are. The find stays pending and " +
                     "is written once that marker is gone.");
                 LabelSpacing[cat] = mod.BindLocal("Recording", label + " Label Spacing", Categories.DefaultLabelSpacing(cat),
                     "Text labels on recorded " + label.ToLowerInvariant() + " markers: -1 = never (the icon says it all), " +
-                    "0 = always, or a distance in metres so a clump gets one label (a new marker is icon-only when a marker " +
+                    "0 = always, or a distance in meters so a clump gets one label (a new marker is icon-only when a marker " +
                     "with the same icon and name that already has a label lies within that distance).");
                 LookDistance[cat] = mod.BindLocal("Recording", label + " Look Distance", Categories.DefaultLookDistance(cat),
                     "How far away " + label.ToLowerInvariant() + " can be and still count as seen when you look straight at them " +
@@ -182,6 +224,9 @@ namespace TheGreatestMap
                 ShowKind[cat] = mod.BindLocal("Display", "Show " + label, true,
                     "Draw recorded " + label.ToLowerInvariant() + " markers on your map. Off hides them on both the large map and the " +
                     "minimap; they stay on your map and keep syncing. To hide single icons instead (say only dandelions) use Hidden Icons.");
+                ShowKind[cat].SettingChanged += (_, __) => ClientPins.Restyle();
+                ShowOnMinimap[cat].SettingChanged += (_, __) => ClientPins.Restyle();
+                MarkerSize[cat].SettingChanged += (_, __) => ClientPins.Restyle();
                 if (Categories.UsesPrefabList(cat))
                 {
                     CategoryPrefabs[cat] = mod.BindLocal("Catalog", label, Categories.DefaultPrefabs(cat),
@@ -207,7 +252,7 @@ namespace TheGreatestMap
                 "Opening a chest inside a structure crosses its marker off for everyone. If the structure has no marker yet, " +
                 "it is remembered as searched and its marker starts crossed off when it is recorded.");
             foreach (var entry in CategoryPrefabs.Values)
-                entry.SettingChanged += (_, __) => Catalog.Invalidate();
+                entry.SettingChanged += (_, __) => { Catalog.Invalidate(); KindInference.Invalidate(); };
             StructuresExcludePrefixes.SettingChanged += (_, __) => Catalog.Invalidate();
 
             ServerAutosaveMinutes = mod.BindLocal("Server", "Server Autosave Minutes", 0f,

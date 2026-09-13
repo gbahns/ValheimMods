@@ -5,10 +5,10 @@ namespace TheGreatestMap
 {
     /// <summary>
     /// Individual buildings inside a location. The game has no building identity, so one is
-    /// derived: starting from the piece that was seen, flood-fill through neighbouring
+    /// derived: starting from the piece that was seen, flood-fill through neighboring
     /// world-built pieces (walls, floors, roofs, chests, doors; fences and poles are skipped so
     /// they do not chain buildings together). The connected cluster is the building, marked at
-    /// its centre. Results are cached per piece for the session.
+    /// its center. Results are cached per piece for the session.
     /// </summary>
     internal static class Buildings
     {

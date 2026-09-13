@@ -36,6 +36,8 @@ namespace TheGreatestMap
             _pinById.Clear();
             _idByPin.Clear();
             InTableRead = false;
+            KindBar.Reset();
+            MarkerMenu.Close();
         }
 
         private static int LocalType(SharedPin shared)
@@ -167,6 +169,30 @@ namespace TheGreatestMap
             return true;
         }
 
+        /// <summary>Cross a marker off, or uncross it, from the marker menu.</summary>
+        internal static void SetChecked(string id, bool isChecked)
+        {
+            if (id == null || !Store.Pins.TryGetValue(id, out var shared) || shared.Checked == isChecked) return;
+            shared.Checked = isChecked;
+            Store.Upsert(shared);
+            if (_pinById.TryGetValue(id, out var pinData))
+            {
+                pinData.m_checked = isChecked;
+                if (Map != null) Access.PinUpdateRequired(Map) = true;
+            }
+            PersonalMap.Touch();
+        }
+
+        /// <summary>Erase one marker for everyone (a tombstone carries it at the next merge). Not gated: the caller checks the server setting.</summary>
+        internal static bool EraseById(string id)
+        {
+            if (id == null || !Store.Pins.ContainsKey(id)) return false;
+            RemovePinData(id);
+            Store.Delete(id, out _);
+            PersonalMap.Touch();
+            return true;
+        }
+
         /// <summary>Erase recorded markers of one kind within a radius of a point (maintenance; tombstones carry it to everyone).</summary>
         internal static int EraseKindNear(Category kind, Vector3 pos, float radius)
         {
@@ -186,8 +212,14 @@ namespace TheGreatestMap
         internal static Category? KindOf(SharedPin pin)
         {
             if (pin.KindCategory.HasValue) return pin.KindCategory;
-            if (pin.Auto && IconRegistry.SameKey(pin.Icon, "pin:Icon1")) return Category.Structure;
-            return null;
+            if (!pin.Auto) return null;
+            var inferred = KindInference.FromIcon(pin.Icon);
+            if (inferred.HasValue)
+            {
+                pin.SetKind(inferred.Value.ToString()); // remembered locally; Modified untouched so it is not a "change" to others
+                PersonalMap.MarkDirty();
+            }
+            return inferred;
         }
 
         /// <summary>
@@ -232,6 +264,32 @@ namespace TheGreatestMap
         // ── queries ─────────────────────────────────────────────────────────────────
 
         internal static bool IsOurs(Minimap.PinData pin) => pin != null && _idByPin.ContainsKey(pin);
+
+        /// <summary>The marker behind one of our vanilla pins, or null for a pin that is not ours.</summary>
+        internal static SharedPin SharedFor(Minimap.PinData pin)
+        {
+            if (pin == null || !_idByPin.TryGetValue(pin, out var id)) return null;
+            return Store.Pins.TryGetValue(id, out var shared) ? shared : null;
+        }
+
+        /// <summary>
+        /// Vanilla's own lookup for a click on the large map (Minimap.GetClosestPin): the closest
+        /// saved, visible pin within the radius, ours or not, so a vanilla pin that is nearer than
+        /// one of ours still gets vanilla's treatment.
+        /// </summary>
+        internal static Minimap.PinData ClosestPin(Minimap map, Vector3 pos, float radius)
+        {
+            if (map == null) return null;
+            Minimap.PinData best = null;
+            float bestDistance = float.MaxValue;
+            foreach (var pin in Access.Pins(map))
+            {
+                if (!pin.m_save || pin.m_uiElement == null || !pin.m_uiElement.gameObject.activeInHierarchy) continue;
+                float d = Utils.DistanceXZ(pos, pin.m_pos);
+                if (d < radius && d < bestDistance) { best = pin; bestDistance = d; }
+            }
+            return best;
+        }
 
         private static bool SameName(string a, string b)
         {
@@ -377,6 +435,15 @@ namespace TheGreatestMap
         }
 
         /// <summary>
+        /// Vanilla lays pins out again only when the map moved, zoomed or was clicked; ask for a
+        /// layout now so a display change (hide, size) shows at once.
+        /// </summary>
+        internal static void Restyle()
+        {
+            if (Map != null) Access.PinUpdateRequired(Map) = true;
+        }
+
+        /// <summary>
         /// After vanilla has laid out the markers: tint recorded ones, scale each kind to its
         /// configured size, and hide kinds that are switched off on the small map.
         /// </summary>
@@ -388,8 +455,8 @@ namespace TheGreatestMap
                 var pin = kv.Key;
                 if (pin.m_uiElement == null) continue;
                 if (!Store.Pins.TryGetValue(kv.Value, out var shared)) continue;
-                var kind = shared.KindCategory;
-                bool hidden = TgmConfig.IsIconHidden(shared.Icon);
+                var kind = KindOf(shared);
+                bool hidden = ViewPrefs.IsHidden(kv.Value) || TgmConfig.IsIconHidden(shared.Icon);
                 if (!hidden && kind.HasValue)
                 {
                     if (TgmConfig.ShowKind.TryGetValue(kind.Value, out var showKind) && !showKind.Value) hidden = true;
@@ -418,8 +485,9 @@ namespace TheGreatestMap
     // ── Minimap patches ────────────────────────────────────────────────────────────
 
     // Erasing one of our markers is deliberate or not at all: off unless the server allows it,
-    // and then only with Shift held while right-clicking. Our own bookkeeping (merges, label
-    // changes) removes vanilla pins with the remote flag set and is never gated.
+    // and then only from the marker's menu (which erases through the personal map itself) or
+    // with Shift held while right-clicking. Our own bookkeeping (merges, label changes, the menu)
+    // removes vanilla pins with the remote flag set and is never gated.
     [HarmonyPatch(typeof(Minimap), nameof(Minimap.RemovePin), new[] { typeof(Minimap.PinData) })]
     internal static class Minimap_RemovePin_Patch
     {
@@ -433,7 +501,7 @@ namespace TheGreatestMap
             }
             if (!ZInput.GetKey(KeyCode.LeftShift) && !ZInput.GetKey(KeyCode.RightShift))
             {
-                TheGreatestMapMod.Message("Hold Shift and right-click to erase a marker.");
+                TheGreatestMapMod.Message("Right-click the marker for its menu, or hold Shift and right-click to erase it.");
                 return false;
             }
             return true;
@@ -509,12 +577,28 @@ namespace TheGreatestMap
         }
     }
 
+    // Right-click on the large map. On one of our markers it opens the marker menu (hide it,
+    // hide its icon or kind, cross off, erase) instead of vanilla's erase; Shift + right-click
+    // is still the quick erase where the server allows erasing. Vanilla pins behave as always,
+    // subject to the map-out rule.
     [HarmonyPatch(typeof(Minimap), "RemovePinUnderPointer")]
     internal static class Minimap_RemovePinUnderPointer_Patch
     {
-        private static bool Prefix()
+        private static bool Prefix(Minimap __instance)
         {
-            if (!TgmConfig.RequireMapOutToEdit.Value || PocketMap.IsOut) return true;
+            bool canEdit = !TgmConfig.RequireMapOutToEdit.Value || PocketMap.IsOut;
+            var pin = ClientPins.ClosestPin(__instance, Access.ScreenToWorldPoint(__instance, ZInput.pointerPosition), Access.PinInteractRadius(__instance));
+            var shared = ClientPins.SharedFor(pin);
+            if (shared != null)
+            {
+                bool shift = ZInput.GetKey(KeyCode.LeftShift) || ZInput.GetKey(KeyCode.RightShift);
+                if (shift && canEdit && TgmConfig.AllowErasingMarkers.Value) return true; // quick erase, checked again in the RemovePin prefix
+                Access.HidePinTextInput(__instance);
+                Access.NamePin(__instance) = null;
+                MarkerMenu.Open(shared, ZInput.pointerPosition);
+                return false;
+            }
+            if (canEdit) return true;
             TheGreatestMapMod.Message("Take out your map to erase a marker.");
             return false;
         }
@@ -557,7 +641,7 @@ namespace TheGreatestMap
         }
     }
 
-    // Writing to a cartography table: hide player-placed pins from the serialiser by clearing
+    // Writing to a cartography table: hide player-placed pins from the serializer by clearing
     // m_save for the duration of the call, then restore.
     [HarmonyPatch(typeof(Minimap), nameof(Minimap.GetSharedMapData))]
     internal static class Minimap_GetSharedMapData_Patch

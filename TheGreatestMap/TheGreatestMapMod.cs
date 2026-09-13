@@ -16,7 +16,7 @@ namespace TheGreatestMap
     ///  * A "pocket" map with no inventory slot: a keybind takes it out (both hands), and only
     ///    while it is out can you write on the map.
     ///  * While the map is out, things you have actually found (looked at or interacted with)
-    ///    within a few metres are recorded automatically. Never proximity radar.
+    ///    within a few meters are recorded automatically. Never proximity radar.
     ///
     /// Install on the server and on every client.
     /// </summary>
@@ -28,7 +28,7 @@ namespace TheGreatestMap
     {
         public const string ModGuid    = "DeathMonger.TheGreatestMap";
         public const string ModName    = "The Greatest Map";
-        public const string ModVersion = "0.2.1";
+        public const string ModVersion = "0.2.3";
 
         // Oldest version whose shared-marker wire format this build still speaks. ServerSync
         // refuses peers below this, so bump it only when the format or an RPC changes, not on
@@ -80,7 +80,10 @@ namespace TheGreatestMap
             if (!ModEnabled.Value) return;
             PinStore.Update();
             ServerSave.Update();
+            MapPause.Refresh(); // also lets go of the pause when the player is gone
             if (Player.m_localPlayer == null) return;
+            MarkerMenu.Update();
+            KindBar.Update();
             PocketMap.Update();
             DiscoveryLedger.Update();
             Recorder.Update();

@@ -174,7 +174,7 @@ namespace TheGreatestMap
         /// <summary>
         /// The pencil is a vanilla held item's model (default: the Club) scaled down and placed the
         /// way VisEquipment places that item, so it sits in the grip and points the right way. A
-        /// hand-built primitive centred on the wrist bone ends up inside the hand mesh.
+        /// hand-built primitive centered on the wrist bone ends up inside the hand mesh.
         /// </summary>
         private static GameObject BuildPencil(Transform parent)
         {

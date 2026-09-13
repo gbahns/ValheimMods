@@ -127,7 +127,7 @@ namespace TheGreatestMap
             }
         }
 
-        /// <summary>Label rule: below zero never label, zero always, otherwise one label per that many metres.</summary>
+        /// <summary>Label rule: below zero never label, zero always, otherwise one label per that many meters.</summary>
         internal static float DefaultLabelSpacing(Category c)
         {
             switch (c)
@@ -208,7 +208,7 @@ namespace TheGreatestMap
         public string Icon;
         public string Name;
         public Vector3 Pos;      // where the marker goes
-        public Vector3 Center;   // for locations: the location origin (dedupe centre)
+        public Vector3 Center;   // for locations: the location origin (dedupe center)
         public float Radius;     // for locations: exterior radius (dedupe radius); 0 otherwise
         public long FoundAt;     // DateTime.UtcNow.Ticks when first (or last) seen
 
@@ -416,7 +416,7 @@ namespace TheGreatestMap
             return false;
         }
 
-        /// <summary>De-duplication radius around a building's centre.</summary>
+        /// <summary>De-duplication radius around a building's center.</summary>
         internal const float BuildingRadius = 5f;
 
         /// <summary>What marker a spawned location would produce, if any.</summary>
@@ -431,7 +431,7 @@ namespace TheGreatestMap
         /// <summary>
         /// A location's marker: for structures it goes on the piece that was seen (the location
         /// origin of a farm is the middle of the yard, not the house); everything else sits on
-        /// the origin. The location origin and radius are kept for de-duplication either way.
+        /// the origin. The location origin and radius are kept for deduplication either way.
         /// </summary>
         private static bool ClassifyLocation(string prefab, bool hasInterior, Vector3 center, float radius, Vector3 hitPos, out Found found)
         {

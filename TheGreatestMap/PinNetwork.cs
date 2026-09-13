@@ -6,7 +6,7 @@ namespace TheGreatestMap
     /// Routed RPCs. A client sends its personal map to the server and gets the merged shared map
     /// back; in Instant mode (or after an admin wipe) the server also pushes the changes to
     /// everybody. Two clients exchange personal maps directly, routed through the server.
-    /// Every map payload is a serialised MapStore, which starts with its own format version.
+    /// Every map payload is a serialized MapStore, which starts with its own format version.
     /// </summary>
     internal static class PinNetwork
     {
@@ -180,6 +180,7 @@ namespace TheGreatestMap
             LocationIndex.Clear();
             Buildings.Clear();
             Searched.Clear();
+            KindInference.Invalidate();
             PocketMap.ResetState();
             TableSync.Reset();
             if (PinStore.IsServer) PinStore.Load();

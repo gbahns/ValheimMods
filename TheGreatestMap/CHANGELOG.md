@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.3 — 2026-09-13
+
+Client-side; works with a 0.2.x server.
+
+- Right-clicking one of this mod's markers on the map now opens a small menu instead of erasing it: "Hide this marker", "Hide all Dandelion markers" (that icon), "Hide all herbs" (that kind), "Cross off" / "Uncross", "Erase for everyone" (dimmed unless the server allows erasing, as before), and "Show all hidden" once anything is hidden. Shift + right-click is still the quick erase where erasing is allowed. Vanilla pins keep their vanilla right-click.
+- Markers hidden one at a time are remembered with the character; icon and kind choices go straight into the Display settings ("Hidden Icons", "Show <Kind>"). Hidden markers stay on the map and keep syncing.
+- New console command `tgm_show` brings every hidden marker back in one go.
+- Kind buttons on the map: under vanilla's icon buttons on the right edge of the large map there is now one button per kind that has markers on your map (berries, herbs, ore, structures and so on), showing the kind's icon. A click, left or right, hides or shows that kind, and a hidden kind's button turns gray, the same as vanilla's own filter buttons. Config "Kind Buttons On Map" (on by default).
+- New option "Pause While Map Open" (off by default): the game pauses while the large map screen is open, the way the ESC menu does. It uses vanilla's own pause, so it works by itself solo or hosting alone, and on a dedicated server through Pause My Server, which grants it only while you are the only player online. The map screen's own timers (flick scrolling, click and double-click timing, the pin name box) now run on unscaled time, so the map stays usable while the game is paused, by this option or by an admin pause.
+
+## 0.2.2 — 2026-09-13
+
+Client-side; works with a 0.2.x server.
+
+- The "Show <Kind>" switches, per-kind sizes and minimap switches now also cover markers recorded before kinds were stored (anything from before 0.1.4): their kind is worked out from their icon through your catalog settings and remembered on your map. Before this, old berry and herb markers ignored the switches.
+
 ## 0.2.1 — 2026-09-12
 
 Client-side; works with a 0.2.0 server.
@@ -15,7 +31,7 @@ Client-side; works with a 0.2.0 server.
 Early alpha. **Server and all clients must update together** (new map format and network
 messages; compatibility floor 0.2.0).
 
-- **Markers now travel like exploration.** What you record or place goes onto your own map, saved with your character per world. At a cartography table your map and the shared map merge both ways; other players pick it up at their next table visit. "Sharing Mode" (server-synced) switches back to Instant, the old behaviour, if a server prefers it.
+- **Markers now travel like exploration.** What you record or place goes onto your own map, saved with your character per world. At a cartography table your map and the shared map merge both ways; other players pick it up at their next table visit. "Sharing Mode" (server-synced) switches back to Instant, the old behavior, if a server prefers it.
 - **Map to map.** Two players standing within 5 m with both maps out compare and merge their maps directly, no table needed. Once a minute per pair; a message reports what came across.
 - **Erasures stay erased.** Erasing leaves a dated tombstone on your map; when maps merge, a tombstone beats any copy of the marker older than it, and a marker recorded again later beats the tombstone. Later change wins for cross-offs and labels too.
 - **Erasing is off by default** ("Allow Erasing Markers", server-synced). When on, it takes Shift + right-click, so a stray click cannot lose a marker. Vanilla pins are unaffected.
@@ -25,14 +41,14 @@ messages; compatibility floor 0.2.0).
 
 Early alpha, fifth test build. Client-side only; works with a 0.1.4 server.
 
-- Taking the map out writes down everything you have found recently, wherever you are now. The old ten-metre rule is gone by default ("Record Range" = 0; set a distance to bring it back).
+- Taking the map out writes down everything you have found recently, wherever you are now. The old ten-meter rule is gone by default ("Record Range" = 0; set a distance to bring it back).
 - Your character remembers a find for 30 minutes ("Found Memory Minutes"); seeing it again restarts the clock. The memory is saved with the character, so a relog inside the window keeps it.
 - How far away something counts as seen now depends on what it is ("<Kind> Look Distance"): plants 20 m, ore and portals 40 m, runestones 30 m, dungeons, structures, camps, altars and traders 80 m. Looking straight at it with clear line of sight is still required; nothing is ever found for you.
 - The Meadows abandoned farm (WoodFarm1) is a structure with the house icon, not a draugr camp. Only WoodVillage1, the draugr village beyond 2000 m, gets the draugr trophy.
 - New console command `tgm_look`: reports what the crosshair hits and every reason it would or would not be recorded. The look ray's hit buffer is much larger, so the nearest object can no longer be dropped in dense areas.
 - Cartography table auto-sync is silent unless something is exchanged: the table is read first and only new areas count, and it is written (vanilla's "map saved" and effect) only when it lacks areas you have explored. The sync key reports "already up to date" when there is nothing to do. Sync radius default is now 1 m, meaning standing right at the table.
 - Server: a file named `save-now` in `BepInEx/config/TheGreatestMap/` makes the server save the world and all player profiles at once (for hosts whose panel stop kills the server without saving; deploy scripts create it over the host's file API). New "Server Autosave Minutes" setting adds an extra periodic save on top of vanilla's.
-- Each building in a compound (farm, village) gets its own marker, placed at the building's centre, since each may hold a chest or beehive to search. Buildings are told apart by following connected world-built pieces from the one you looked at; fences and poles don't link buildings together. Opening a chest or harvesting a beehive crosses off that building only. Structure marker spacing is now 6 m, and structures carry no text label by default; the house icon says it all. Set "Structures Label Spacing" to 0 to get names back.
+- Each building in a compound (farm, village) gets its own marker, placed at the building's center, since each may hold a chest or beehive to search. Buildings are told apart by following connected world-built pieces from the one you looked at; fences and poles don't link buildings together. Opening a chest or harvesting a beehive crosses off that building only. Structure marker spacing is now 6 m, and structures carry no text label by default; the house icon says it all. Set "Structures Label Spacing" to 0 to get names back.
 - Label rules are applied to recorded markers that already exist, once after each sync (config "Apply Label Rules To Existing Markers") or on demand with `tgm_relabel`: within each kind, the oldest marker of a same-named cluster keeps its label and the rest lose theirs, for everyone. Labels are only ever removed, never added back.
 
 ## 0.1.4 — 2026-09-11

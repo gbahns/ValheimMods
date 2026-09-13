@@ -59,7 +59,7 @@ namespace TheGreatestMap
             }
             lines.Add($"classified: {found.Cat} '{found.Name}' icon {found.Icon} at {found.Pos}");
             var building = found.Cat == Category.Structure ? Buildings.Peek(go) : null;
-            if (building != null) lines.Add($"  building: {building.Pieces} connected pieces, centre {building.Centroid}, id {building.Id}");
+            if (building != null) lines.Add($"  building: {building.Pieces} connected pieces, center {building.Centroid}, id {building.Id}");
             float lookDistance = TgmConfig.LookDistanceFor(found.Cat);
             lines.Add($"  look distance for {found.Cat}: {lookDistance:0} m -> {(bestDistance <= lookDistance ? "in range" : "TOO FAR to count as seen")}");
             lines.Add($"  kind enabled: {(TgmConfig.CategoryEnabled.TryGetValue(found.Cat, out var en) && en.Value)}");

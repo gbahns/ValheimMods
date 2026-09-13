@@ -131,7 +131,7 @@ namespace TheGreatestMap
             return result;
         }
 
-        // ── serialisation ───────────────────────────────────────────────────────────
+        // ── serialization ───────────────────────────────────────────────────────────
 
         public void Write(ZPackage pkg)
         {

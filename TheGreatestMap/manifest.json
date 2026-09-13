@@ -1,6 +1,6 @@
 {
     "name": "TheGreatestMap",
-    "version_number": "0.2.1",
+    "version_number": "0.2.3",
     "website_url": "https://github.com/gbahns/ValheimMods",
     "description": "EARLY ALPHA. Shared markers that stay erased, a table that only carries exploration, and a pocket map that records only what you actually found.",
     "dependencies": [

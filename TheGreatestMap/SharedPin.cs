@@ -38,6 +38,14 @@ namespace TheGreatestMap
 
         public static string NewId() => Guid.NewGuid().ToString("N");
 
+        /// <summary>Set the kind (for markers stored before kinds existed) and forget the cached parse.</summary>
+        public void SetKind(string kind)
+        {
+            Kind = kind ?? "";
+            _kindParsed = false;
+            _kind = null;
+        }
+
         public SharedPin Clone()
         {
             return new SharedPin

@@ -7,7 +7,7 @@
 
 One shared, living map for your server, without the cartography table mess.
 
-- **Markers travel like exploration.** What you record or place goes onto your own map, saved with your character. At a cartography table your map and the shared map merge both ways, and others pick it up at their next table visit. Two players standing together with their maps out compare and merge their maps directly, markers and explored areas alike, no table needed. An erasure is a dated tombstone that wins over older copies of the marker, so erased markers stay erased instead of coming back from someone else's map. Erasing is off unless the server allows it, and then takes Shift + right-click. A server can switch "Sharing Mode" to Instant to have every change go out at once instead.
+- **Markers travel like exploration.** What you record or place goes onto your own map, saved with your character. At a cartography table your map and the shared map merge both ways, and others pick it up at their next table visit. Two players standing together with their maps out compare and merge their maps directly, markers and explored areas alike, no table needed. An erasure is a dated tombstone that wins over older copies of the marker, so erased markers stay erased instead of coming back from someone else's map. Erasing is off unless the server allows it, and then goes through the marker's right-click menu or Shift + right-click. A server can switch "Sharing Mode" to Instant to have every change go out at once instead.
 - **The cartography table only carries exploration.** Stand at it and it syncs the fog of war by itself (or press the sync key), and it stays quiet unless something is actually exchanged. Player-placed markers are no longer written to or read from tables, and old ones imported from tables are swept away.
 - **A map you carry in your pocket.** No inventory slot. Press the map key and your character unfolds a map in the left hand and takes a pencil in the right. Recording happens only while it is out. Attacking, drawing a weapon, getting hit or swimming puts it away. Two server-synced settings control how strict the map is: "Require Map Out To Record" (on by default) and "Require Map Out To Edit" (off by default; when on, placing, erasing and crossing off markers on the map screen also need the map out).
 - **Honest auto-recording.** While the map is out, your character writes down the important things nearby that *you actually found*: berry bushes, mushrooms, herbs, ore, dungeon entrances, runestones, traders, camps, boss altars and portals. Something counts as found only if you looked straight at it, had it under your crosshair, or interacted with it. There is no radar and nothing is ever revealed for you.
@@ -20,7 +20,7 @@ Install on the **server and every client** (BepInEx). The server keeps the share
 player is the server.
 
 A player who does not have the mod can still join a server that has it; they simply see vanilla
-map behaviour and no shared markers. A player whose version of the mod is older than the
+map behavior and no shared markers. A player whose version of the mod is older than the
 server's is refused at connect, so keep everyone on the same version.
 
 ## Keys (configurable)
@@ -40,12 +40,29 @@ lives on your machine and everything works without a dedicated server.
 
 1. Play normally. Things you look at, hover over or interact with are remembered as *found*. Looking counts only with clear line of sight and within a sighting distance that depends on the thing: plants 20 m, ore 40 m, buildings and dungeon entrances 80 m. Your character remembers a find for 30 minutes (seeing it again restarts the clock), and the memory is saved with the character.
 2. Take the map out. After three seconds it writes down everything found recently, wherever you are now. Set "Record Range" if you'd rather only record what is near you.
-3. Every plant gets its own icon (marker spacing 1 m for plants, 5 m for ore and portals, 20 m for locations), so a clump of four dandelions shows four dandelion icons. Only traders and portals get a text label by default; everything else relies on its icon. Each kind's label rule is configurable: never, always, or one label per so many metres. A short message tells you when something was skipped because a marker is already there; the find stays pending and is written if that marker goes away.
+3. Every plant gets its own icon (marker spacing 1 m for plants, 5 m for ore and portals, 20 m for locations), so a clump of four dandelions shows four dandelion icons. Only traders and portals get a text label by default; everything else relies on its icon. Each kind's label rule is configurable: never, always, or one label per so many meters. A short message tells you when something was skipped because a marker is already there; the find stays pending and is written if that marker goes away.
 4. Erase a recorded marker and the map will not record that kind of thing there again. Admins can lift that with `tgm_unsuppress`.
 
-Recorded markers are tinted pale gold on the map so you can tell them from placed ones. Don't want to
-see a kind at all? The Display section has a "Show <Kind>" switch per kind, and "Hidden Icons" hides
-single icons such as `Dandelion`. Hidden markers stay on your map and keep syncing; they are just not drawn.
+Recorded markers are tinted pale gold on the map so you can tell them from placed ones.
+
+**Right-click a marker** from this mod on the map screen for its menu: hide this one marker, hide
+every marker with that icon (say all dandelions), hide the whole kind (all herbs), cross it off or
+uncross it, erase it for everyone (only where the server allows erasing), and, once anything is
+hidden, show all hidden again. Hidden markers stay on your map and keep syncing; they are just not
+drawn. The icon and kind choices are the Display settings "Hidden Icons" and "Show <Kind>", so they
+can also be edited by hand, and `tgm_show` in the console brings everything back. Vanilla pins keep
+their vanilla right-click.
+
+**Kind buttons.** Under vanilla's icon buttons on the right edge of the large map sits one button
+per kind that has markers on your map, showing that kind's icon. Click it, left or right, to hide
+or show the kind; a hidden kind's button turns gray, just like vanilla's filtered icons. Config
+"Kind Buttons On Map" turns the column off.
+
+**Pause while the map is open** ("Pause While Map Open" in the Display section, off by default):
+the game pauses while the large map screen is open, the way the ESC menu does. Solo or hosting
+alone it works by itself. On a dedicated server it takes the Pause My Server mod, which then pauses
+the world only while you are the only player online; with others online nothing pauses. Closing
+the map resumes.
 
 **Structures** (abandoned houses, log cabins, stone tower ruins, swamp huts, stonehenges, dvergr
 towers and so on) are recorded too if you turn on "Record Structures", which is off by default.
@@ -68,6 +85,7 @@ counts as well unless "Structures Include Unlisted" is off or its prefab name is
 | `tgm_forget` | Forget found-but-unrecorded things |
 | `tgm_wipe [auto\|all]` | Admin: erase recorded markers (default) or every shared marker, for everyone |
 | `tgm_unsuppress` | Admin: allow recording again where recorded markers were erased |
+| `tgm_show` | Show every hidden marker again (single markers, hidden icons and hidden kinds) |
 
 ## Configuration
 
