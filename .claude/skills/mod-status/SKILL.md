@@ -1,0 +1,52 @@
+---
+name: mod-status
+description: Check whether every Valheim mod in this repo is up to date — local version numbers agreeing with each other, the versions live on Thunderstore and Hexium, whether the Release builds are current, and whether the DatHost server holds the DLLs that were built here. Use when asked what needs publishing, whether the mods or the server are current, or for an overview of the mods in this repo.
+---
+
+# Are the mods up to date?
+
+Run the board. It is read-only: nothing is built, uploaded, published, or restarted.
+
+```powershell
+.\mod-status.ps1                    # local files + both registries
+.\mod-status.ps1 -Server            # also hash-check the DatHost server
+.\mod-status.ps1 -NoRemote          # local only, no network
+.\mod-status.ps1 -Mod TheGreatestMap
+```
+
+Add `-Server` whenever the question involves the server, or when a release just happened.
+It needs `%USERPROFILE%\.dathost` and takes ~30s longer because each DLL is downloaded to hash.
+
+## Reading the columns
+
+| Column | Means |
+| --- | --- |
+| `Local` | `version_number` from manifest.json. A trailing `(!)` means the version numbers in the mod's own files disagree — the "Needs attention" list names each one. |
+| `Thunderstore` / `Hexium` | the latest version live on that site. `unlisted` = the mod has no `thunderstore.toml` and has never been published. |
+| `Build` | `current`, `STALE` (a .cs or .csproj is newer than the Release DLL), or `not built`. |
+| `Git` | uncommitted changes under that mod's folder. |
+| `Server` | the version the server's own DLL reports, and how it compares to this repo's build. |
+
+Server states, read out of the DLL rather than guessed from a hash (`Directory.Build.props`
+stamps each mod's manifest version into its assembly, and the SDK appends the commit):
+
+- `0.2.4 exact` — the identical build is deployed.
+- `0.2.4 rebuild` — same version, same commit, recompiled. Not a problem; a build that was
+  copied into a Gale profile and pushed from there looks like this.
+- `0.2.4 other commit` — same version number, built from different source. Worth a look.
+- `0.2.3 BEHIND` — the server is running an older version than this repo builds. Deploy.
+- `0.2.5 ahead` — newer than this repo. Someone else built it; don't overwrite it blindly.
+- `unstamped` — the DLL predates version stamping, so it cannot be placed. One deploy fixes it.
+- `absent` — not on the server, which is correct for a client-only mod.
+
+One blind spot: a mod whose real version *is* 1.0.0 cannot be told apart from an unstamped
+build, since both report 1.0.0.0. Those rows fall through to the commit comparison.
+
+The script ends with a "Needs attention" list; if it is empty everything agrees.
+
+## After reading it
+
+- Anything behind on a registry or on the server → offer the `mod-release` skill (`/mod-release <Mod>`), don't start publishing unprompted.
+- `StationExtensionGuard` is unlisted on purpose. Report it as local-only, not as a problem.
+- A `(!)` version disagreement must be fixed before any publish. `package.ps1` blocks on manifest.json vs the tomls, but nothing except this script checks the version in the `BepInPlugin` attribute.
+- The script cannot see the one kind of drift that arrives on its own: a Valheim, BepInEx, or Jotunn update breaking an already-published mod. When Greg asks whether the mods are still *working* (not just current), that is a separate check — game version, the Libs refresh, and the mod pages' comments.
