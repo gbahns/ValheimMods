@@ -1,8 +1,8 @@
 {
     "name": "PauseMyServer",
-    "version_number": "1.1.0",
+    "version_number": "1.2.0",
     "website_url": "https://github.com/gbahns/ValheimMods",
-    "description": "Pause a server-hosted game: the ESC menu pauses when you are the only player online, and an admin can pause the whole server for everyone with a key.",
+    "description": "Pause a server-hosted game: the world pauses when every player online has the ESC menu open (alone, that is just you), and an admin can pause the whole server for everyone with a key.",
     "dependencies": [
         "denikson-BepInExPack_Valheim-5.4.2350"
     ]

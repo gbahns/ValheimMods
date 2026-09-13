@@ -10,8 +10,8 @@ namespace PauseMyServer
     /// Pause My Server: pause a server-hosted game.
     ///
     /// Vanilla refuses to pause as soon as anyone is connected to a server. With this mod:
-    ///  * the one player who is alone on a dedicated server freezes the world with the ESC menu,
-    ///    the way solo does (v1.0);
+    ///  * the world pauses when every player online has the ESC menu open; alone, that is just
+    ///    you, the way solo does (v1.0 for the lone player, v1.2 for everyone);
     ///  * an admin can pause the whole server for everyone with a key (default: Pause), even
     ///    with other players online; players joining meanwhile are frozen too, and any admin
     ///    can resume (v1.1).
@@ -28,7 +28,7 @@ namespace PauseMyServer
     {
         public const string ModGuid    = "DeathMonger.PauseMyServer";
         public const string ModName    = "Pause My Server";
-        public const string ModVersion = "1.1.0";
+        public const string ModVersion = "1.2.0";
 
         internal static ManualLogSource Log { get; private set; }
 
@@ -46,6 +46,7 @@ namespace PauseMyServer
         internal static ConfigEntry<int> PauseMessageSize;
         internal static ConfigEntry<bool> ShowUnpausedWarning;
         internal static ConfigEntry<string> UnpausedText;
+        internal static ConfigEntry<string> UnpausedCountText;
 
         private readonly Harmony _harmony = new Harmony(ModGuid);
 
@@ -81,7 +82,9 @@ namespace PauseMyServer
                 "Show the label in bright red while the ESC menu is up but the game keeps running because " +
                 "other players are online.");
             UnpausedText = Config.Bind("Pause Message", "Unpaused Text", "Game Unpaused",
-                "The label text for that warning.");
+                "The label text for that warning when the server has not reported how many players want to pause.");
+            UnpausedCountText = Config.Bind("Pause Message", "Unpaused Count Text", "Game Unpaused ({0} of {1} players paused)",
+                "The label text for that warning once the server reports the counts: {0} players have their menu open, {1} are online.");
 
             if (!ModEnabled.Value)
             {

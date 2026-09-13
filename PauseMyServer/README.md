@@ -4,22 +4,24 @@ Pause a server-hosted Valheim game.
 
 Vanilla only pauses when you host the world yourself and nobody else is connected. On a dedicated server the menu never pauses anything: the day rolls on, raids fire, your smelter finishes and the boar you were fighting keeps chewing. This mod gives you two ways to pause a server.
 
-## Pause when you are alone
+## Everyone in the menu pauses the game
 
-When you are the **only player online** on a dedicated server, opening the ESC menu pauses the world, exactly like solo:
+When **every player online** has the ESC menu open, the world pauses, exactly like solo:
 
-- Your client freezes (monsters, ships, physics, crafting, everything you see).
+- Every client freezes (monsters, ships, physics, crafting, everything you see).
 - The server freezes its world clock, so day and night, weather, plant growth, fermenters, beehives and respawn timers stop too.
 - Raids and other random events are held.
 - A sleep time-skip in progress waits.
 
-Closing the menu resumes the world instantly. If a second player joins while you are paused, the world resumes on its own (you will see a small message) and stays running until you are alone again and reopen the menu. If you log out while paused, the server resumes.
+Alone on the server, that is just you: open the menu and the world stops. With friends, the game pauses the moment the last of you opens the menu. Anyone closing their menu resumes it instantly, and so does a new player arriving (you will see a small message if your menu is still open).
 
-Nothing changes when two or more players are online, unless an admin pauses. Vanilla behaviour is kept for hosted (non-dedicated) games, where the host already pauses when alone.
+While your menu is open but the game keeps running because others are still playing, the label reads **"Game Unpaused (1 of 3 players paused)"** in bright red, so the menu never looks like a pause it is not.
+
+Vanilla behaviour is kept for hosted (non-dedicated) games, where the host already pauses when alone; with guests online the host's menu counts like everyone else's.
 
 ## Admin pause
 
-An **admin** (listed in the server's adminlist) presses the pause key, by default the keyboard's **Pause** key, to pause the whole server for everyone, even with other players online:
+An **admin** (listed in the server's adminlist) presses the pause key, by default the keyboard's **Pause** key, to pause the whole server for everyone, whatever their menus:
 
 - Every client freezes, whether or not their menu is open.
 - Players who join during the pause are frozen as soon as they spawn.
@@ -31,18 +33,16 @@ Console commands (F5): `pms_pause` toggles the admin pause like the key, and `pm
 
 The admin pause is designed for dedicated servers. On a hosted (non-dedicated) game the host freezes with everyone else, and a player joining during the pause may have to wait until it is lifted.
 
-## The "Game paused" label
+## The on-screen label
 
-A persistent label is shown on screen while the game is paused, in solo games too. Text, position (top or bottom) and size are configurable, and it can be turned off.
-
-When the ESC menu is up but the game keeps running because other players are online, the label instead reads **"Game Unpaused"** in bright red, so the menu never looks like a pause it is not.
+A persistent label is shown while the game is paused, in solo games too: "Game paused", or "Game paused by <admin>". While the ESC menu is up but the game runs on, it turns bright red: "Game Unpaused (1 of 3 players paused)". Texts, position (top or bottom) and size are configurable, and each mode can be turned off.
 
 ## Installation
 
 Install on the **server and on every client** (Gale, r2modman or Thunderstore Mod Manager, or drop `PauseMyServer.dll` into `BepInEx/plugins`). Keep the same version everywhere.
 
 - Server without the mod: clients simply never pause, same as vanilla. Nothing breaks.
-- Client without the mod: that player cannot pause and is not frozen by an admin pause; everyone else is.
+- Client without the mod: that player cannot ask for a pause, so the game never pauses while they are online unless an admin pauses; they are not frozen by an admin pause either.
 
 Works on Windows and Linux dedicated servers. Requires BepInExPack for Valheim.
 
@@ -61,27 +61,29 @@ Works on Windows and Linux dedicated servers. Requires BepInExPack for Valheim.
 | Pause Message | Position | Bottom | Centred at the Top or the Bottom of the screen. |
 | Pause Message | Font Size | 40 | Label size at a 1920x1080 reference; scales with the screen. |
 | Pause Message | Show Unpaused Warning | true | Red label while the menu is up but the game runs on because others are online. |
-| Pause Message | Unpaused Text | Game Unpaused | The text of that warning. |
+| Pause Message | Unpaused Text | Game Unpaused | The warning text when the server has not reported counts. |
+| Pause Message | Unpaused Count Text | Game Unpaused ({0} of {1} players paused) | The warning text with counts: {0} in the menu, {1} online. |
 
-Label settings apply the next time the game is paused, no restart needed. The server needs no configuration.
+Label settings apply the next time the label appears, no restart needed. The server needs no configuration.
 
 ## How it works
 
-The server is the single authority. Clients only ever send wishes: "my menu is open", "my menu is closed", "toggle the admin pause". Every frame the server works out whether the world should be paused, either because exactly one player is connected and wants it or because an admin set the pause, and broadcasts the state to everybody when it changes. A client freezes only after the server confirms, so a server without the mod cannot leave a client frozen while the world runs on without it. A player who spawns asks for the current state, which is how a joiner during an admin pause is frozen too.
+The server is the single authority. Clients only ever send wishes: "my menu is open", "my menu is closed", "toggle the admin pause". Every frame the server works out whether the world should be paused, either because every player online wants it or because an admin set the pause, and broadcasts the state to everybody when it changes, along with how many players want the pause. A client freezes only after the server confirms, so a server without the mod cannot leave a client frozen while the world runs on without it. A player who spawns asks for the current state, which is how a joiner during an admin pause is frozen too.
 
-Client side, a handful of small Harmony patches: postfixes on `Game.Pause` and `Game.Unpause` track the menu, a postfix on `Game.IsPaused` reports "paused" once the server has confirmed and either the menu is still open or the pause is an admin pause, and a postfix on `Player.OnSpawned` requests the state. Vanilla's own `Game.UpdatePause` then sets the time scale to zero, the same code path solo uses. Closing the menu during a lone pause resumes locally at once, without waiting for the round trip.
+Client side, a handful of small Harmony patches: postfixes on `Game.Pause` and `Game.Unpause` track the menu, a postfix on `Game.IsPaused` reports "paused" once the server has confirmed and either the menu is still open or the pause is an admin pause, and a postfix on `Player.OnSpawned` requests the state. Vanilla's own `Game.UpdatePause` then sets the time scale to zero, the same code path solo uses. Closing the menu resumes locally at once, without waiting for the round trip.
 
 Server side, three prefixes hold the parts of the world the server itself runs while its clients are frozen: `ZNet.UpdateNetTime` (the world clock), `RandEventSystem.FixedUpdate` (raids) and `EnvMan.UpdateTimeSkip` (sleeping). The server's own frame time is deliberately left running: at time scale zero the server would stop sending player lists and world data, and a joining player could never load in. Everything near a player is owned and simulated by that player's client, so freezing the clients freezes the rest.
 
 While frozen, a client still answers the server's keep-alive pings (Valheim's receive loop does not depend on frame time), so nobody gets disconnected.
 
-The "Game paused" label is drawn on the mod's own overlay canvas, above the menu, using the font of the game's own HUD messages. It shows whenever the game reports itself paused, which includes a solo host pausing.
+The label is drawn on the mod's own overlay canvas, above the menu, using the font of the game's own HUD messages. It shows whenever the game reports itself paused, which includes a solo host pausing.
 
 ## Compatibility
 
 - Does not touch `Game.CanPause`, so mods that let you pause in debug mode still work.
 - Mods that change `Time.timeScale` themselves (speed-up or slow-motion mods) may fight with the freeze.
 - Autosave keeps running on the server while paused; that is harmless.
+- 1.1.0 and 1.2.0 work together either way round; older clients just do not see the counts in the red label.
 
 ## Source
 
