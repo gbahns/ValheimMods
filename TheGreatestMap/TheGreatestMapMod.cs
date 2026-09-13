@@ -28,13 +28,13 @@ namespace TheGreatestMap
     {
         public const string ModGuid    = "DeathMonger.TheGreatestMap";
         public const string ModName    = "The Greatest Map";
-        public const string ModVersion = "0.1.2";
+        public const string ModVersion = "0.2.1";
 
         // Oldest version whose shared-marker wire format this build still speaks. ServerSync
         // refuses peers below this, so bump it only when the format or an RPC changes, not on
         // every fix; otherwise every patch would force the server and all players to update
-        // at the same moment.
-        public const string MinCompatibleVersion = "0.1.0";
+        // at the same moment. 0.2.0: personal maps, merge-based sync, tombstones, new RPCs.
+        public const string MinCompatibleVersion = "0.2.0";
 
         internal static TheGreatestMapMod Instance { get; private set; }
         internal static ManualLogSource Log { get; private set; }
@@ -79,11 +79,13 @@ namespace TheGreatestMap
         {
             if (!ModEnabled.Value) return;
             PinStore.Update();
+            ServerSave.Update();
             if (Player.m_localPlayer == null) return;
             PocketMap.Update();
             DiscoveryLedger.Update();
             Recorder.Update();
             TableSync.Update();
+            SyncEngine.Update();
         }
 
         private void OnDestroy()
@@ -103,6 +105,12 @@ namespace TheGreatestMap
         internal ConfigEntry<T> BindLocal<T>(string section, string key, T defaultValue, string description)
         {
             return Config.Bind(section, key, defaultValue, new ConfigDescription(description));
+        }
+
+        /// <summary>Binds a client-only integer entry with an allowed range (shown as a slider by config managers).</summary>
+        internal ConfigEntry<int> BindLocalRange(string section, string key, int defaultValue, int min, int max, string description)
+        {
+            return Config.Bind(section, key, defaultValue, new ConfigDescription(description, new AcceptableValueRange<int>(min, max)));
         }
 
         /// <summary>Small top-left HUD message, respecting the ShowMessages toggle.</summary>

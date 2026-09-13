@@ -12,9 +12,9 @@ namespace TheGreatestMap
                 {
                     int auto = 0, manual = 0;
                     foreach (var pin in ClientPins.All) { if (pin.Auto) auto++; else manual++; }
-                    args.Context.AddString($"Shared markers: {ClientPins.Count} ({auto} recorded, {manual} placed), erased spots: {ClientPins.SuppressionCount}, synced: {ClientPins.Synced}");
+                    args.Context.AddString($"Personal map: {ClientPins.Count} markers ({auto} recorded, {manual} placed), {ClientPins.TombstoneCount} erased, {ClientPins.SuppressionCount} erased spots; sharing mode: {TgmConfig.SharingMode.Value}");
                     args.Context.AddString($"Found but not yet recorded: {DiscoveryLedger.PendingCount}, recorded this session: {DiscoveryLedger.RecordedCount}, map out: {PocketMap.IsOut}");
-                    if (PinStore.IsServer) args.Context.AddString($"Server store: {PinStore.Count} markers, {PinStore.SuppressionCount} erased spots");
+                    if (PinStore.IsServer) args.Context.AddString($"Shared map (this is the server): {PinStore.Count} markers, {PinStore.TombstoneCount} erased, {PinStore.SuppressionCount} erased spots");
                 }));
 
             new Terminal.ConsoleCommand("tgm_import", "Share your local map markers (the five standard icons) with everyone",
@@ -31,11 +31,11 @@ namespace TheGreatestMap
                     args.Context.AddString($"Deleted {n} local markers.");
                 }));
 
-            new Terminal.ConsoleCommand("tgm_resync", "Re-download the shared markers from the server",
+            new Terminal.ConsoleCommand("tgm_resync", "Merge your personal map with the shared map now, without a cartography table",
                 (Terminal.ConsoleEvent)(args =>
                 {
-                    PinNetwork.SendRequestSync();
-                    args.Context.AddString("Requested a full sync.");
+                    SyncEngine.SyncWithServer(announceNothing: true);
+                    args.Context.AddString("Merging with the shared map...");
                 }));
 
             new Terminal.ConsoleCommand("tgm_sync", "Read and write the nearest cartography table now",
@@ -67,6 +67,45 @@ namespace TheGreatestMap
                 {
                     PinNetwork.SendUnsuppress();
                     args.Context.AddString("Asked the server to clear erased spots.");
+                }));
+
+            new Terminal.ConsoleCommand("tgm_relabel", "Apply the label rules to existing recorded markers for everyone (tgm_relabel Structures for one kind); labels are only removed, never added",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    Category? only = null;
+                    if (args.Args.Length >= 2)
+                    {
+                        if (System.Enum.TryParse(args.Args[1], true, out Category parsed)) only = parsed;
+                        else { args.Context.AddString("Unknown kind '" + args.Args[1] + "'. Kinds: " + string.Join(", ", System.Array.ConvertAll(Categories.All, c => c.ToString()))); return; }
+                    }
+                    int n = ClientPins.ApplyLabelRules(only);
+                    args.Context.AddString($"Removed labels from {n} recorded markers.");
+                }));
+
+            new Terminal.ConsoleCommand("tgm_erase", "Erase recorded markers of one kind near you: tgm_erase Structures [radius, default 50]. Works even when erasing by click is off; carries to everyone at the next merge",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    var player = Player.m_localPlayer;
+                    if (player == null) { args.Context.AddString("No player."); return; }
+                    if (args.Args.Length < 2 || !System.Enum.TryParse(args.Args[1], true, out Category kind))
+                    {
+                        args.Context.AddString("Usage: tgm_erase <kind> [radius]. Kinds: " + string.Join(", ", System.Array.ConvertAll(Categories.All, c => c.ToString())));
+                        return;
+                    }
+                    float radius = 50f;
+                    if (args.Args.Length >= 3) float.TryParse(args.Args[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out radius);
+                    int n = ClientPins.EraseKindNear(kind, player.transform.position, radius);
+                    args.Context.AddString($"Erased {n} recorded {kind} markers within {radius:0} m.");
+                }));
+
+            new Terminal.ConsoleCommand("tgm_look", "Report what the crosshair hits and every reason it would or would not be recorded (also written to the log)",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    foreach (var line in Diagnostics.Describe())
+                    {
+                        args.Context.AddString(line);
+                        TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_look: " + line);
+                    }
                 }));
 
             new Terminal.ConsoleCommand("tgm_list", "List shared markers, nearest first (tgm_list 40 for more)",

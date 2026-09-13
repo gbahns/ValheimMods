@@ -62,6 +62,20 @@ namespace TheGreatestMap
             return best != null;
         }
 
+        /// <summary>The closest indexed locations to a point, nearest first, whether or not their radius contains it.</summary>
+        internal static List<Entry> Nearest(Vector3 point, int count)
+        {
+            var live = new List<Entry>();
+            for (int i = _entries.Count - 1; i >= 0; i--)
+            {
+                if (_entries[i].Proxy == null) { _entries.RemoveAt(i); continue; }
+                live.Add(_entries[i]);
+            }
+            live.Sort((a, b) => Geo.FlatDistance(point, a.Pos).CompareTo(Geo.FlatDistance(point, b.Pos)));
+            if (live.Count > count) live.RemoveRange(count, live.Count - count);
+            return live;
+        }
+
         internal static void Clear() => _entries.Clear();
     }
 

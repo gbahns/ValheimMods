@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -5,9 +6,10 @@ namespace TheGreatestMap
 {
     /// <summary>
     /// Reads and writes the cartography table automatically while the player is within reach,
-    /// and on demand with the sync key. Uses the vanilla write path (which reads first), so ward
-    /// access and the "map saved" feedback behave as in vanilla; the ClientPins patches keep
-    /// player-placed markers out of the table data.
+    /// and on demand with the sync key. Silent when there is nothing to exchange: the table's
+    /// data is read and applied first (only new areas count), and vanilla's write path, with its
+    /// "map saved" message and effect, runs only when we hold exploration the table lacks. The
+    /// ClientPins patches keep player-placed markers out of the table data.
     /// </summary>
     internal static class TableSync
     {
@@ -50,7 +52,7 @@ namespace TheGreatestMap
             int id = table.GetInstanceID();
             if (_lastSync.TryGetValue(id, out float last) && Time.time - last < TgmConfig.TableSyncCooldown.Value) return;
             _lastSync[id] = Time.time;
-            Access.TableWrite(table, player);
+            Sync(table, player, manual: false);
         }
 
         /// <summary>Sync the nearest table within reach immediately. Returns false when none is in reach.</summary>
@@ -63,8 +65,70 @@ namespace TheGreatestMap
                 return false;
             }
             _lastSync[table.GetInstanceID()] = Time.time;
-            Access.TableWrite(table, player);
+            Sync(table, player, manual: true);
             return true;
+        }
+
+        private static void Sync(MapTable table, Player player, bool manual)
+        {
+            var map = Minimap.instance;
+            if (map == null) return;
+            var nview = Access.TableView(table);
+            if (nview == null || !nview.IsValid()) return;
+            if (!PrivateArea.CheckAccess(table.transform.position, 0f, flash: manual))
+            {
+                if (manual) TheGreatestMapMod.Message("No access to this cartography table.");
+                return;
+            }
+
+            byte[] data = null;
+            try
+            {
+                byte[] raw = nview.GetZDO().GetByteArray(ZDOVars.s_data);
+                if (raw != null) data = Utils.Decompress(raw);
+            }
+            catch (Exception e)
+            {
+                TheGreatestMapMod.Log.LogWarning($"[TheGreatestMap] Could not read the cartography table: {e.Message}");
+            }
+
+            // Read: apply the table's exploration (and vanilla-shared pins) to our map.
+            bool gotNew = data != null && map.AddSharedMapData(data);
+
+            // Write only if the table lacks something we know; vanilla's path shows "map saved".
+            bool haveNew = data == null || HasExplorationNotIn(map, data);
+            if (haveNew) Access.TableWrite(table, player);
+
+            if (gotNew) TheGreatestMapMod.Message(haveNew ? "Map exchanged with the cartography table." : "New map areas read from the cartography table.");
+            else if (manual && !haveNew) TheGreatestMapMod.Message("Cartography table already up to date.");
+
+            // Markers travel the same way: merge the personal map with the shared map on the server.
+            SyncEngine.SyncWithServer(announceNothing: manual);
+        }
+
+        /// <summary>True if any area we have explored (ourselves or via other tables) is missing from this table's data.</summary>
+        private static bool HasExplorationNotIn(Minimap map, byte[] data)
+        {
+            try
+            {
+                var pkg = new ZPackage(data);
+                int version = pkg.ReadInt();
+                var table = Access.ReadExploredArray(map, pkg, version);
+                if (table == null) return true;
+                var mine = Access.Explored(map);
+                var others = Access.ExploredOthers(map);
+                int n = Math.Min(table.Count, mine.Length);
+                for (int i = 0; i < n; i++)
+                {
+                    if (!table[i] && (mine[i] || others[i])) return true;
+                }
+                return mine.Length > table.Count;
+            }
+            catch (Exception e)
+            {
+                TheGreatestMapMod.Log.LogWarning($"[TheGreatestMap] Could not compare with the cartography table, writing anyway: {e.Message}");
+                return true;
+            }
         }
 
         private static MapTable FindNearestTable(Player player)

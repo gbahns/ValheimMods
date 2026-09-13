@@ -53,7 +53,7 @@ namespace TheGreatestMap
             { "SunkenCrypt4", "CryptKey" }, { "MountainCave02", "TrophyUlv" }, { "TrollCave02", "TrophyFrostTroll" },
             { "Mistlands_DvergrTownEntrance1", "TrophySeeker" }, { "Mistlands_DvergrTownEntrance2", "TrophySeeker" },
             { "Vendor_BlackForest", "Coins" }, { "Hildir_camp", "Coins" }, { "BogWitch_Camp", "Coins" },
-            { "GoblinCamp2", "TrophyGoblin" }, { "WoodVillage1", "TrophyDraugr" }, { "WoodFarm1", "TrophyDraugr" },
+            { "GoblinCamp2", "TrophyGoblin" }, { "WoodVillage1", "TrophyDraugr" }, // WoodFarm1 is the abandoned farm: a structure, not a camp
             { "Eikthyrnir", "TrophyEikthyr" }, { "GDKing", "TrophyTheElder" }, { "Bonemass", "TrophyBonemass" },
             { "Dragonqueen", "TrophyDragonQueen" }, { "GoblinKing", "TrophyGoblinKing" },
             { "Mistlands_DvergrBossEntrance1", "TrophySeekerQueen" }, { "FaderLocation", "TrophyFader" },
@@ -94,8 +94,36 @@ namespace TheGreatestMap
                 case Category.Herbs:     return 1f;
                 case Category.Ore:       return 5f;
                 case Category.Portal:    return 5f;
-                case Category.Structure: return 8f;
+                case Category.Structure: return 6f;  // buildings in a farm can stand close together
                 default:                 return 20f;
+            }
+        }
+
+        /// <summary>How far away a thing of this kind can be and still count as seen when looked straight at.</summary>
+        internal static float DefaultLookDistance(Category c)
+        {
+            switch (c)
+            {
+                case Category.Berries:
+                case Category.Mushrooms:
+                case Category.Herbs:     return 20f;
+                case Category.Ore:       return 40f;
+                case Category.Runestone: return 30f;
+                case Category.Portal:    return 40f;
+                default:                 return 80f; // dungeons, structures, camps, altars, traders: big things
+            }
+        }
+
+        /// <summary>Marker size on the map as a percentage; small for the kinds that come in clumps.</summary>
+        internal static int DefaultSize(Category c)
+        {
+            switch (c)
+            {
+                case Category.Berries:
+                case Category.Mushrooms:
+                case Category.Herbs:     return 60;
+                case Category.Ore:       return 80;
+                default:                 return 100;
             }
         }
 
@@ -111,8 +139,9 @@ namespace TheGreatestMap
                 case Category.Runestone:
                 case Category.Dungeon:
                 case Category.Camp:
-                case Category.BossAltar: return -1f;
-                default:                 return 0f; // traders (three share the coin icon), portals (the tag), structures (house vs cabin)
+                case Category.BossAltar:
+                case Category.Structure: return -1f; // the house icon says it all
+                default:                 return 0f;  // traders (three share the coin icon), portals (the tag)
             }
         }
 
@@ -140,13 +169,13 @@ namespace TheGreatestMap
                 case Category.Trader:
                     return "Vendor_BlackForest=Haldor|Coins,Hildir_camp=Hildir|Coins,BogWitch_Camp=Bog Witch|Coins";
                 case Category.Camp:
-                    return "GoblinCamp2=Fuling Village|TrophyGoblin,WoodVillage1=Draugr Village|TrophyDraugr,WoodFarm1=Draugr Farm|TrophyDraugr";
+                    return "GoblinCamp2=Fuling Village|TrophyGoblin,WoodVillage1=Draugr Village|TrophyDraugr";
                 case Category.BossAltar:
                     return "Eikthyrnir=Eikthyr|TrophyEikthyr,GDKing=The Elder|TrophyTheElder,Bonemass=Bonemass|TrophyBonemass," +
                            "Dragonqueen=Moder|TrophyDragonQueen,GoblinKing=Yagluth|TrophyGoblinKing," +
                            "Mistlands_DvergrBossEntrance1=The Queen|TrophySeekerQueen,FaderLocation=Fader|TrophyFader";
                 case Category.Structure:
-                    return "WoodHouse*=Abandoned House,AbandonedLogCabin*=Log Cabin,StoneTowerRuins*=Stone Tower Ruins,StoneHouse*=Stone House," +
+                    return "WoodFarm1=Abandoned Farm,WoodHouse*=Abandoned House,AbandonedLogCabin*=Log Cabin,StoneTowerRuins*=Stone Tower Ruins,StoneHouse*=Stone House," +
                            "Ruin*=Ruins,SwampHut*=Swamp Hut,SwampRuin*=Swamp Ruins,SwampWell*=Swamp Well,StoneHenge*=Stonehenge,StoneTower*=Stone Tower," +
                            "StoneCircle*=Stone Circle,Dolmen*=Dolmen,MountainGrave*=Mountain Grave,MountainWell*=Mountain Well,DrakeNest*=Drake Nest," +
                            "Greydwarf_camp*=Greydwarf Nest,ShipSetting*=Ship Setting,Waymarker*=Waymarker,InfestedTree*=Infested Tree," +
@@ -178,7 +207,12 @@ namespace TheGreatestMap
         public Category Cat;
         public string Icon;
         public string Name;
-        public Vector3 Pos;
+        public Vector3 Pos;      // where the marker goes
+        public Vector3 Center;   // for locations: the location origin (dedupe centre)
+        public float Radius;     // for locations: exterior radius (dedupe radius); 0 otherwise
+        public long FoundAt;     // DateTime.UtcNow.Ticks when first (or last) seen
+
+        public Vector3 DedupeCenter => Radius > 0f ? Center : Pos;
     }
 
     /// <summary>
@@ -355,43 +389,85 @@ namespace TheGreatestMap
             // Non-networked parts of a location (a crypt's rock shell, terrain props) are children
             // of the spawned location root.
             var location = go.GetComponentInParent<Location>();
-            if (location != null && ClassifyLocation(Utils.GetPrefabName(location.gameObject), location.m_hasInterior, location.transform.position, out found))
+            if (location != null && ClassifyLocation(Utils.GetPrefabName(location.gameObject), location.m_hasInterior,
+                    location.transform.position, location.m_exteriorRadius, go.transform.position, out found))
                 return true;
 
             // Networked pieces (walls, floors, chests, doors) are separate world objects with no
             // Location parent: attribute them to the spawned location whose radius contains them.
             if (IsWorldPiece(go) && LocationIndex.TryFind(go.transform.position, out var near)
-                && ClassifyLocation(near.Prefab, near.HasInterior, near.Pos, out found))
+                && ClassifyLocation(near.Prefab, near.HasInterior, near.Pos, near.Radius, go.transform.position, out found))
+            {
+                // A compound (farm, village) holds several buildings, each worth its own marker:
+                // identify the building this piece belongs to and mark that instead. A piece
+                // that is not part of a building (a fence segment, a lone pole) is no find.
+                if (found.Cat == Category.Structure)
+                {
+                    var building = Buildings.Resolve(go, near.Pos, near.Radius);
+                    if (building == null) { found = null; return false; }
+                    found.Key += ":" + building.Id;
+                    found.Pos = building.Centroid;
+                    found.Center = building.Centroid;
+                    found.Radius = BuildingRadius;
+                }
                 return true;
+            }
 
             return false;
         }
 
-        private static bool ClassifyLocation(string prefab, bool hasInterior, Vector3 pos, out Found found)
+        /// <summary>De-duplication radius around a building's centre.</summary>
+        internal const float BuildingRadius = 5f;
+
+        /// <summary>What marker a spawned location would produce, if any.</summary>
+        internal static bool TryClassifyLocation(LocationIndex.Entry entry, out Found found)
+        {
+            found = null;
+            if (entry == null) return false;
+            if (!_built) Rebuild();
+            return ClassifyLocation(entry.Prefab, entry.HasInterior, entry.Pos, entry.Radius, entry.Pos, out found);
+        }
+
+        /// <summary>
+        /// A location's marker: for structures it goes on the piece that was seen (the location
+        /// origin of a farm is the middle of the yard, not the house); everything else sits on
+        /// the origin. The location origin and radius are kept for de-duplication either way.
+        /// </summary>
+        private static bool ClassifyLocation(string prefab, bool hasInterior, Vector3 center, float radius, Vector3 hitPos, out Found found)
         {
             found = null;
             if (string.IsNullOrEmpty(prefab)) return false;
-            string key = "loc:" + prefab + ":" + RoundKey(pos);
+            string key = "loc:" + prefab + ":" + RoundKey(center);
+            Category cat;
+            string name, icon = null;
             if (Lookup(prefab, out var e))
             {
-                found = Make(e.Cat, e.Name ?? Prettify(prefab), e.Icon ?? Categories.KnownIcon(prefab), pos, key);
-                return true;
+                cat = e.Cat;
+                name = e.Name ?? Prettify(prefab);
+                icon = e.Icon ?? Categories.KnownIcon(prefab);
             }
-            if (hasInterior)
+            else if (hasInterior)
             {
-                found = Make(Category.Dungeon, Prettify(prefab), null, pos, key);
-                return true;
+                cat = Category.Dungeon;
+                name = Prettify(prefab);
             }
-            if (TgmConfig.StructuresIncludeUnlisted.Value && !IsExcludedStructure(prefab))
+            else if (TgmConfig.StructuresIncludeUnlisted.Value && !IsExcludedStructure(prefab))
             {
-                found = Make(Category.Structure, Prettify(prefab), null, pos, key);
-                return true;
+                cat = Category.Structure;
+                name = Prettify(prefab);
             }
-            return false;
+            else
+            {
+                return false;
+            }
+            found = Make(cat, name, icon, cat == Category.Structure ? hitPos : center, key);
+            found.Center = center;
+            found.Radius = Mathf.Max(radius, 4f);
+            return true;
         }
 
         /// <summary>A building piece the world generated, as opposed to something a player built.</summary>
-        private static bool IsWorldPiece(GameObject go)
+        internal static bool IsWorldPiece(GameObject go)
         {
             var piece = go.GetComponentInParent<Piece>();
             if (piece != null) return !piece.IsPlacedByPlayer();

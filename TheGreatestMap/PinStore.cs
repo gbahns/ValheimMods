@@ -8,58 +8,53 @@ using UnityEngine;
 namespace TheGreatestMap
 {
     /// <summary>
-    /// Server-side authority for shared markers. Lives on whichever process is the server
-    /// (dedicated server, or the hosting player in a non-dedicated game) and is persisted to
-    /// BepInEx/config/TheGreatestMap/&lt;world&gt;_&lt;seed&gt;.pins.bin. Clients never persist shared
-    /// markers themselves, so a marker erased here cannot be re-uploaded from a stale copy.
+    /// The shared map on the server: a MapStore persisted to
+    /// BepInEx/config/TheGreatestMap/&lt;world&gt;_&lt;seed&gt;.pins.bin. Clients merge their personal
+    /// maps into it at cartography tables (or continuously in Instant mode) and take the result
+    /// back. Lives on whichever process is the server: a dedicated server, or the hosting
+    /// player in a non-dedicated game.
     /// </summary>
     internal static class PinStore
     {
-        // 1: original. 2: icon keys on markers and suppressions.
-        internal const int FileVersion = 2;
-
-        private static readonly Dictionary<string, SharedPin> _pins = new Dictionary<string, SharedPin>();
-        private static readonly List<Suppression> _suppressions = new List<Suppression>();
+        private static MapStore _store = new MapStore();
         private static bool _loaded, _dirty;
         private static float _saveAt;
         private static string _path;
 
         internal static bool IsServer => ZNet.instance != null && ZNet.instance.IsServer();
         internal static bool Loaded => _loaded;
-        internal static int Count => _pins.Count;
-        internal static int SuppressionCount => _suppressions.Count;
+        internal static int Count => _store.Pins.Count;
+        internal static int SuppressionCount => _store.Suppressions.Count;
+        internal static int TombstoneCount => _store.Tombstones.Count;
 
         internal static void Load()
         {
-            _pins.Clear();
-            _suppressions.Clear();
+            _store = new MapStore();
             _dirty = false;
             _path = BuildPath();
             _loaded = true;
             if (_path == null)
             {
-                TheGreatestMapMod.Log.LogWarning("[TheGreatestMap] No world information; shared markers will not be persisted this session.");
+                TheGreatestMapMod.Log.LogWarning("[TheGreatestMap] No world information; the shared map will not be persisted this session.");
                 return;
             }
             try
             {
                 if (File.Exists(_path))
                 {
-                    var pkg = new ZPackage(File.ReadAllBytes(_path));
-                    ReadAll(pkg, _pins, _suppressions);
-                    TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Loaded {_pins.Count} shared markers and {_suppressions.Count} erased spots from {_path}");
+                    _store = MapStore.FromBytes(File.ReadAllBytes(_path));
+                    TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Loaded the shared map: {_store.Pins.Count} markers, {_store.Tombstones.Count} erased, {_store.Suppressions.Count} erased spots, from {_path}");
                 }
                 else
                 {
-                    TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] No shared marker file yet ({_path}); starting empty.");
+                    TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] No shared map file yet ({_path}); starting empty.");
                 }
             }
             catch (Exception e)
             {
                 TheGreatestMapMod.Log.LogError($"[TheGreatestMap] Could not read {_path}: {e}");
                 try { File.Copy(_path, _path + ".corrupt-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"), true); } catch { /* best effort */ }
-                _pins.Clear();
-                _suppressions.Clear();
+                _store = new MapStore();
             }
         }
 
@@ -67,8 +62,7 @@ namespace TheGreatestMap
         {
             SaveIfDirty();
             _loaded = false;
-            _pins.Clear();
-            _suppressions.Clear();
+            _store = new MapStore();
         }
 
         internal static void Update()
@@ -92,11 +86,9 @@ namespace TheGreatestMap
             if (!_loaded || _path == null) return;
             try
             {
-                var pkg = new ZPackage();
-                WriteAll(pkg, _pins.Values, _suppressions);
                 Directory.CreateDirectory(Path.GetDirectoryName(_path));
                 string tmp = _path + ".tmp";
-                File.WriteAllBytes(tmp, pkg.GetArray());
+                File.WriteAllBytes(tmp, _store.ToBytes());
                 if (File.Exists(_path)) File.Replace(tmp, _path, null);
                 else File.Move(tmp, _path);
                 _dirty = false;
@@ -107,91 +99,37 @@ namespace TheGreatestMap
             }
         }
 
-        internal static void WriteAll(ZPackage pkg, IEnumerable<SharedPin> pins, List<Suppression> suppressions)
+        /// <summary>Merge a client's map in; the result lists what was new to the shared map.</summary>
+        internal static MergeResult Merge(MapStore incoming)
         {
-            var list = new List<SharedPin>(pins);
-            pkg.Write(FileVersion);
-            pkg.Write(list.Count);
-            foreach (var p in list) p.Write(pkg);
-            pkg.Write(suppressions.Count);
-            foreach (var s in suppressions) s.Write(pkg);
+            var result = _store.Merge(incoming);
+            if (result.Any) MarkDirty();
+            return result;
         }
 
-        internal static void ReadAll(ZPackage pkg, Dictionary<string, SharedPin> pins, List<Suppression> suppressions)
+        internal static byte[] Snapshot() => _store.ToBytes();
+
+        /// <summary>Erase markers for everyone: they become tombstones so no client can bring them back.</summary>
+        internal static MapStore Wipe(bool autoOnly)
         {
-            int version = pkg.ReadInt();
-            if (version < 1 || version > FileVersion) throw new InvalidDataException("Unsupported shared marker format " + version);
-            int n = pkg.ReadInt();
-            for (int i = 0; i < n; i++)
+            var delta = new MapStore();
+            long now = MapStore.Now;
+            var ids = new List<string>();
+            foreach (var kv in _store.Pins) if (!autoOnly || kv.Value.Auto) ids.Add(kv.Key);
+            foreach (var id in ids)
             {
-                var p = SharedPin.Read(pkg, version);
-                if (!string.IsNullOrEmpty(p.Id)) pins[p.Id] = p;
+                _store.Pins.Remove(id);
+                _store.Tombstones[id] = now;
+                delta.Tombstones[id] = now;
             }
-            int m = pkg.ReadInt();
-            for (int i = 0; i < m; i++) suppressions.Add(Suppression.Read(pkg, version));
-        }
-
-        internal static ZPackage BuildFullSync()
-        {
-            var pkg = new ZPackage();
-            WriteAll(pkg, _pins.Values, _suppressions);
-            return pkg;
-        }
-
-        internal static bool Add(SharedPin pin)
-        {
-            if (pin == null || string.IsNullOrEmpty(pin.Id)) return false;
-            _pins[pin.Id] = pin;
+            _store.Suppressions.Clear();
             MarkDirty();
-            return true;
-        }
-
-        internal static bool Remove(string id, out Suppression suppression)
-        {
-            suppression = null;
-            if (string.IsNullOrEmpty(id) || !_pins.TryGetValue(id, out var pin)) return false;
-            _pins.Remove(id);
-            if (pin.Auto)
-            {
-                suppression = new Suppression { Type = pin.Type, Icon = pin.Icon, Pos = pin.Pos, Name = pin.Name };
-                _suppressions.Add(suppression);
-            }
-            MarkDirty();
-            return true;
-        }
-
-        internal static bool Update(string id, string name, bool isChecked)
-        {
-            if (string.IsNullOrEmpty(id) || !_pins.TryGetValue(id, out var pin)) return false;
-            pin.Name = name ?? "";
-            pin.Checked = isChecked;
-            MarkDirty();
-            return true;
-        }
-
-        internal static int Wipe(bool autoOnly)
-        {
-            int removed;
-            if (autoOnly)
-            {
-                var ids = new List<string>();
-                foreach (var kv in _pins) if (kv.Value.Auto) ids.Add(kv.Key);
-                foreach (var id in ids) _pins.Remove(id);
-                removed = ids.Count;
-            }
-            else
-            {
-                removed = _pins.Count;
-                _pins.Clear();
-            }
-            _suppressions.Clear();
-            MarkDirty();
-            return removed;
+            return delta;
         }
 
         internal static void ClearSuppressions()
         {
-            _suppressions.Clear();
+            _store.Suppressions.Clear();
             MarkDirty();
         }
 

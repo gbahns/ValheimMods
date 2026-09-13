@@ -62,6 +62,22 @@ namespace TheGreatestMap
             AccessTools.FieldRefAccess<ZRoutedRpc, long>("m_id");
 
         // ── cartography table ───────────────────────────────────────────────────────
+        internal static readonly AccessTools.FieldRef<MapTable, ZNetView> TableView =
+            AccessTools.FieldRefAccess<MapTable, ZNetView>("m_nview");
+        internal static readonly AccessTools.FieldRef<Minimap, System.Collections.BitArray> Explored =
+            AccessTools.FieldRefAccess<Minimap, System.Collections.BitArray>("m_explored");
+        internal static readonly AccessTools.FieldRef<Minimap, System.Collections.BitArray> ExploredOthers =
+            AccessTools.FieldRefAccess<Minimap, System.Collections.BitArray>("m_exploredOthers");
+
+        private static readonly MethodInfo _readExploredArray = AccessTools.Method(typeof(Minimap), "ReadExploredArray");
+
+        /// <summary>The explored-area bits stored in a cartography table's data (version already read from the package).</summary>
+        internal static List<bool> ReadExploredArray(Minimap map, ZPackage pkg, int version)
+        {
+            var enumType = _readExploredArray.GetParameters()[1].ParameterType;
+            return (List<bool>)_readExploredArray.Invoke(map, new object[] { pkg, System.Enum.ToObject(enumType, version) });
+        }
+
         private static readonly MethodInfo _tableWrite = AccessTools.Method(typeof(MapTable), "OnWrite");
 
         /// <summary>Vanilla write (which reads first): ward check, serialise, RPC to the owner, "map saved" message.</summary>

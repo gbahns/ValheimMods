@@ -1,5 +1,50 @@
 # Changelog
 
+## 0.2.1 — 2026-09-12
+
+Client-side; works with a 0.2.0 server.
+
+- Fences, poles and similar pieces no longer count as buildings: a structure marker needs a cluster of at least four connected pieces including a floor, wall, roof or door. Round-pole fences around a farm were getting house markers.
+- New console command `tgm_erase <kind> [radius]` erases recorded markers of one kind near you (default 50 m) even when erasing by click is off; the erasure carries to everyone at the next merge. Use it to clean up the fence markers.
+- `tgm_look` now says why a piece was not treated as a building.
+- Comparing maps with another player now shares explored areas too, the way a cartography table does, not just markers ("Exchange Exploration", on by default).
+- Hide what you don't want to see: "Show <Kind>" switches per kind hide a whole kind on both maps, and "Hidden Icons" hides single icons such as Dandelion. Hidden markers stay on your map and keep syncing. Both are in the new Display section and apply at once.
+
+## 0.2.0 — 2026-09-12
+
+Early alpha. **Server and all clients must update together** (new map format and network
+messages; compatibility floor 0.2.0).
+
+- **Markers now travel like exploration.** What you record or place goes onto your own map, saved with your character per world. At a cartography table your map and the shared map merge both ways; other players pick it up at their next table visit. "Sharing Mode" (server-synced) switches back to Instant, the old behaviour, if a server prefers it.
+- **Map to map.** Two players standing within 5 m with both maps out compare and merge their maps directly, no table needed. Once a minute per pair; a message reports what came across.
+- **Erasures stay erased.** Erasing leaves a dated tombstone on your map; when maps merge, a tombstone beats any copy of the marker older than it, and a marker recorded again later beats the tombstone. Later change wins for cross-offs and labels too.
+- **Erasing is off by default** ("Allow Erasing Markers", server-synced). When on, it takes Shift + right-click, so a stray click cannot lose a marker. Vanilla pins are unaffected.
+- Existing shared maps load unchanged; personal maps start empty and fill from the shared map at the first table visit.
+
+## 0.1.5 — 2026-09-12
+
+Early alpha, fifth test build. Client-side only; works with a 0.1.4 server.
+
+- Taking the map out writes down everything you have found recently, wherever you are now. The old ten-metre rule is gone by default ("Record Range" = 0; set a distance to bring it back).
+- Your character remembers a find for 30 minutes ("Found Memory Minutes"); seeing it again restarts the clock. The memory is saved with the character, so a relog inside the window keeps it.
+- How far away something counts as seen now depends on what it is ("<Kind> Look Distance"): plants 20 m, ore and portals 40 m, runestones 30 m, dungeons, structures, camps, altars and traders 80 m. Looking straight at it with clear line of sight is still required; nothing is ever found for you.
+- The Meadows abandoned farm (WoodFarm1) is a structure with the house icon, not a draugr camp. Only WoodVillage1, the draugr village beyond 2000 m, gets the draugr trophy.
+- New console command `tgm_look`: reports what the crosshair hits and every reason it would or would not be recorded. The look ray's hit buffer is much larger, so the nearest object can no longer be dropped in dense areas.
+- Cartography table auto-sync is silent unless something is exchanged: the table is read first and only new areas count, and it is written (vanilla's "map saved" and effect) only when it lacks areas you have explored. The sync key reports "already up to date" when there is nothing to do. Sync radius default is now 1 m, meaning standing right at the table.
+- Server: a file named `save-now` in `BepInEx/config/TheGreatestMap/` makes the server save the world and all player profiles at once (for hosts whose panel stop kills the server without saving; deploy scripts create it over the host's file API). New "Server Autosave Minutes" setting adds an extra periodic save on top of vanilla's.
+- Each building in a compound (farm, village) gets its own marker, placed at the building's centre, since each may hold a chest or beehive to search. Buildings are told apart by following connected world-built pieces from the one you looked at; fences and poles don't link buildings together. Opening a chest or harvesting a beehive crosses off that building only. Structure marker spacing is now 6 m, and structures carry no text label by default; the house icon says it all. Set "Structures Label Spacing" to 0 to get names back.
+- Label rules are applied to recorded markers that already exist, once after each sync (config "Apply Label Rules To Existing Markers") or on demand with `tgm_relabel`: within each kind, the oldest marker of a same-named cluster keeps its label and the rest lose theirs, for everyone. Labels are only ever removed, never added back.
+
+## 0.1.4 — 2026-09-11
+
+Early alpha, fourth test build. **Server and all clients must update together**: markers now
+carry their kind and network packets a format version, so the compatibility floor moves to 0.1.4.
+
+- Opening a chest inside a structure crosses its marker off for everyone, so "have I searched this one" answers itself. A structure with no marker yet is remembered as searched and its marker starts crossed off once recorded. Config: "Cross Off Structures When Searched" (on by default).
+- Recorded markers can be drawn smaller per kind: plants default to 60%, ore to 80%, everything else full size. Config: "<Kind> Marker Size", 20 to 100 percent.
+- Each kind can be hidden on the small minimap while still showing on the large map. Config: "<Kind> On Minimap".
+- Existing marker files and stores load unchanged; older markers simply have no kind and keep full size.
+
 ## 0.1.2 — 2026-09-11
 
 Early alpha, third test build.

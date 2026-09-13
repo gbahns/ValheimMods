@@ -51,6 +51,21 @@ namespace TheGreatestMap
             {
                 _nextRemote = Time.time + 0.5f;
                 UpdateRemotePlayers(player);
+                if (IsOut) OfferMapExchanges(player);
+            }
+        }
+
+        /// <summary>Two players standing together with their maps out compare and merge them.</summary>
+        private static void OfferMapExchanges(Player local)
+        {
+            float radius = TgmConfig.ExchangeRadius.Value;
+            foreach (var p in Player.GetAllPlayers())
+            {
+                if (p == null || p == local) continue;
+                if (Vector3.Distance(p.transform.position, local.transform.position) > radius) continue;
+                var nview = Access.NView(p);
+                if (nview == null || !nview.IsValid() || nview.GetZDO().GetInt(MapOutHash) != 1) continue;
+                SyncEngine.TryExchange(p);
             }
         }
 

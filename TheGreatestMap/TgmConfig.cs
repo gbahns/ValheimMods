@@ -15,10 +15,36 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> ShowMessages;
 
         // ── Sharing rules (server-synced) ───────────────────────────────────────────
+        internal static ConfigEntry<SharingMode> SharingMode;
+        internal static ConfigEntry<bool> AllowErasingMarkers;
         internal static ConfigEntry<bool> RequireMapOutToEdit;
         internal static ConfigEntry<bool> RequireMapOutToRecord;
         internal static ConfigEntry<bool> SharePlacedPins;
         internal static ConfigEntry<bool> TableCarriesPins;
+        internal static ConfigEntry<float> ExchangeRadius;
+        internal static ConfigEntry<float> ExchangeCooldown;
+        internal static ConfigEntry<bool> ExchangeExploration;
+
+        // ── what to draw ────────────────────────────────────────────────────────────
+        internal static readonly Dictionary<Category, ConfigEntry<bool>> ShowKind = new Dictionary<Category, ConfigEntry<bool>>();
+        internal static ConfigEntry<string> HiddenIcons;
+        private static HashSet<string> _hiddenIconKeys;
+
+        /// <summary>True if this marker icon is on the player's hidden list (item names or icon keys).</summary>
+        internal static bool IsIconHidden(string icon)
+        {
+            if (_hiddenIconKeys == null)
+            {
+                _hiddenIconKeys = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+                foreach (var raw in (HiddenIcons.Value ?? "").Split(','))
+                {
+                    string key = IconRegistry.Normalize(raw);
+                    if (key != null) _hiddenIconKeys.Add(key);
+                }
+            }
+            string k = IconRegistry.Normalize(icon);
+            return k != null && _hiddenIconKeys.Contains(k);
+        }
 
         // ── Cartography table ───────────────────────────────────────────────────────
         internal static ConfigEntry<bool> AutoSyncTable;
@@ -29,15 +55,34 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> RecordEnabled;
         internal static ConfigEntry<float> RecordRadius;
         internal static ConfigEntry<float> RecordDwell;
-        internal static ConfigEntry<float> LookDistance;
+        internal static ConfigEntry<float> FoundMemoryMinutes;
         internal static ConfigEntry<float> LookDwell;
+        internal static readonly Dictionary<Category, ConfigEntry<float>> LookDistance = new Dictionary<Category, ConfigEntry<float>>();
+
+        internal static float LookDistanceFor(Category cat)
+        {
+            return LookDistance.TryGetValue(cat, out var entry) ? Mathf.Max(0f, entry.Value) : 30f;
+        }
+
+        /// <summary>The longest sighting distance of any kind: how far the look ray is cast.</summary>
+        internal static float MaxLookDistance()
+        {
+            float max = 5f;
+            foreach (var entry in LookDistance.Values) if (entry.Value > max) max = entry.Value;
+            return max;
+        }
         internal static readonly Dictionary<Category, ConfigEntry<bool>> CategoryEnabled = new Dictionary<Category, ConfigEntry<bool>>();
         internal static readonly Dictionary<Category, ConfigEntry<float>> MarkerSpacing = new Dictionary<Category, ConfigEntry<float>>();
         internal static readonly Dictionary<Category, ConfigEntry<float>> LabelSpacing = new Dictionary<Category, ConfigEntry<float>>();
+        internal static readonly Dictionary<Category, ConfigEntry<int>> MarkerSize = new Dictionary<Category, ConfigEntry<int>>();
+        internal static readonly Dictionary<Category, ConfigEntry<bool>> ShowOnMinimap = new Dictionary<Category, ConfigEntry<bool>>();
         internal static readonly Dictionary<Category, ConfigEntry<string>> CategoryPrefabs = new Dictionary<Category, ConfigEntry<string>>();
         internal static readonly Dictionary<Category, ConfigEntry<string>> CategoryIcon = new Dictionary<Category, ConfigEntry<string>>();
         internal static ConfigEntry<bool> StructuresIncludeUnlisted;
         internal static ConfigEntry<string> StructuresExcludePrefixes;
+        internal static ConfigEntry<bool> CrossOffStructuresOnChest;
+        internal static ConfigEntry<bool> ApplyLabelRulesOnSync;
+        internal static ConfigEntry<float> ServerAutosaveMinutes;
 
         // ── Pocket map visuals ──────────────────────────────────────────────────────
         internal static ConfigEntry<bool> ShowMapInHands;
@@ -56,6 +101,24 @@ namespace TheGreatestMap
             ShowMessages = mod.BindLocal("General", "Show Messages", true,
                 "Show small top-left messages when the map is taken out, a marker is recorded, and so on.");
 
+            SharingMode = mod.BindSynced("Sharing", "Sharing Mode", TheGreatestMap.SharingMode.Table,
+                "Table: markers travel like exploration. What you record or place stays on your own map until you merge " +
+                "it with the shared map at a cartography table, or with another player's map when you both have your maps " +
+                "out standing together. Instant: every change goes to the shared map at once and out to everyone.");
+            AllowErasingMarkers = mod.BindSynced("Sharing", "Allow Erasing Markers", false,
+                "Let players erase this mod's markers (Shift + right-click on the map screen). Off by default so a marker " +
+                "cannot be lost to a stray click; vanilla pins are unaffected. An erasure merges like any other change: " +
+                "it wins over older copies of the marker and is itself replaced if someone records the spot again later.");
+            ExchangeRadius = mod.BindLocal("Sharing", "Exchange Radius", 5f,
+                "Distance in metres within which two players who both have their maps out compare and merge their maps.");
+            ExchangeCooldown = mod.BindLocal("Sharing", "Exchange Cooldown", 60f,
+                "Seconds before the same two players compare maps again.");
+            ExchangeExploration = mod.BindLocal("Sharing", "Exchange Exploration", true,
+                "When comparing maps with another player, also share explored areas (the fog of war), as a cartography table does.");
+            HiddenIcons = mod.BindLocal("Display", "Hidden Icons", "",
+                "Comma-separated marker icons never drawn on your map, as item prefab names or icon keys, e.g. Dandelion,Thistle,pin:Icon1. " +
+                "Hidden markers stay on your map and keep syncing; they are just not shown. Applies at once.");
+            HiddenIcons.SettingChanged += (_, __) => _hiddenIconKeys = null;
             RequireMapOutToEdit = mod.BindSynced("Sharing", "Require Map Out To Edit", false,
                 "You must have the pocket map out to place a marker, erase one (yours, someone else's or a recorded one) " +
                 "or cross one off on the map screen. Pings are always allowed. Off by default: the map screen edits like vanilla.");
@@ -72,21 +135,25 @@ namespace TheGreatestMap
                 "share through the table as in vanilla. Set true to restore vanilla table behaviour for markers.");
 
             AutoSyncTable = mod.BindLocal("Cartography Table", "Auto Sync", true,
-                "Automatically read and write the cartography table when you walk within reach of it.");
-            TableSyncRadius = mod.BindLocal("Cartography Table", "Sync Radius", 4f,
-                "Distance in metres from a cartography table within which auto-sync and the sync key work.");
+                "Automatically read and write the cartography table when you are right at it. Silent unless something " +
+                "is actually exchanged: new areas from the table are read, and the table is written (vanilla's 'map saved') " +
+                "only when it lacks areas you have explored.");
+            TableSyncRadius = mod.BindLocal("Cartography Table", "Sync Radius", 1f,
+                "How close to a cartography table you must stand (metres from you to its edge) for auto-sync and the sync key.");
             TableSyncCooldown = mod.BindLocal("Cartography Table", "Auto Sync Cooldown", 60f,
                 "Seconds between automatic syncs of the same table while you stay in reach. The sync key ignores this.");
 
             RecordEnabled = mod.BindLocal("Recording", "Enabled", true,
                 "While the pocket map is out, automatically record things you have found. Nothing is ever recorded " +
                 "that you did not look at or interact with yourself.");
-            RecordRadius = mod.BindLocal("Recording", "Record Radius", 10f,
-                "Found things within this many metres are written down once the map has been out long enough.");
+            RecordRadius = mod.BindLocal("Recording", "Record Range", 0f,
+                "0 (default): taking the map out writes down everything you have found recently, wherever you are now. " +
+                "Otherwise only finds within this many metres of you are written down.");
             RecordDwell = mod.BindLocal("Recording", "Record Dwell", 3f,
                 "Seconds the map must be out before it starts recording.");
-            LookDistance = mod.BindLocal("Recording", "Look Distance", 30f,
-                "How far away something can be and still count as found when you look straight at it with clear line of sight.");
+            FoundMemoryMinutes = mod.BindLocal("Recording", "Found Memory Minutes", 30f,
+                "How long your character remembers something found but not yet written down. Seeing it again restarts the " +
+                "clock. The memory is saved with the character, so a relog inside the window does not lose it. 0 = never forget.");
             LookDwell = mod.BindLocal("Recording", "Look Dwell", 0.75f,
                 "Seconds you must keep looking at something for it to count as found. Things under the crosshair within " +
                 "interaction range, and anything you interact with, count immediately.");
@@ -105,6 +172,16 @@ namespace TheGreatestMap
                     "Text labels on recorded " + label.ToLowerInvariant() + " markers: -1 = never (the icon says it all), " +
                     "0 = always, or a distance in metres so a clump gets one label (a new marker is icon-only when a marker " +
                     "with the same icon and name that already has a label lies within that distance).");
+                LookDistance[cat] = mod.BindLocal("Recording", label + " Look Distance", Categories.DefaultLookDistance(cat),
+                    "How far away " + label.ToLowerInvariant() + " can be and still count as seen when you look straight at them " +
+                    "with clear line of sight. Interacting, or having them under the crosshair within reach, always counts.");
+                MarkerSize[cat] = mod.BindLocalRange("Recording", label + " Marker Size", Categories.DefaultSize(cat), 20, 100,
+                    "Size of recorded " + label.ToLowerInvariant() + " markers on the map, as a percentage of the normal marker size.");
+                ShowOnMinimap[cat] = mod.BindLocal("Recording", label + " On Minimap", true,
+                    "Show recorded " + label.ToLowerInvariant() + " markers on the small minimap (when they are shown at all).");
+                ShowKind[cat] = mod.BindLocal("Display", "Show " + label, true,
+                    "Draw recorded " + label.ToLowerInvariant() + " markers on your map. Off hides them on both the large map and the " +
+                    "minimap; they stay on your map and keep syncing. To hide single icons instead (say only dandelions) use Hidden Icons.");
                 if (Categories.UsesPrefabList(cat))
                 {
                     CategoryPrefabs[cat] = mod.BindLocal("Catalog", label, Categories.DefaultPrefabs(cat),
@@ -122,9 +199,21 @@ namespace TheGreatestMap
                 "tidied up, becomes the marker text). Turn off to record only the listed structure prefixes.");
             StructuresExcludePrefixes = mod.BindLocal("Catalog", "Structures Exclude Prefixes", "Vegvisir_,Runestone_,Meteorite,TarPit,Rock,Hugin,StartTemple,Pickable,Vegetation,Tree,Bush",
                 "Comma-separated prefab name prefixes never recorded as structures.");
+            ApplyLabelRulesOnSync = mod.BindLocal("Recording", "Apply Label Rules To Existing Markers", true,
+                "After each sync, apply the label rules above to recorded markers that already exist: within each kind, the " +
+                "oldest marker of a same-named cluster keeps its label and the others lose theirs, for everyone. Labels are only " +
+                "ever removed, never added back. The console command tgm_relabel does the same on demand.");
+            CrossOffStructuresOnChest = mod.BindLocal("Recording", "Cross Off Structures When Searched", true,
+                "Opening a chest inside a structure crosses its marker off for everyone. If the structure has no marker yet, " +
+                "it is remembered as searched and its marker starts crossed off when it is recorded.");
             foreach (var entry in CategoryPrefabs.Values)
                 entry.SettingChanged += (_, __) => Catalog.Invalidate();
             StructuresExcludePrefixes.SettingChanged += (_, __) => Catalog.Invalidate();
+
+            ServerAutosaveMinutes = mod.BindLocal("Server", "Server Autosave Minutes", 0f,
+                "Server only. Extra world save every this many minutes on top of vanilla's own autosave (0 = vanilla only). " +
+                "Worth setting on hosts whose panel stop kills the server without saving. A file named save-now in " +
+                "BepInEx/config/TheGreatestMap/ also makes the server save at once (used by deploy scripts).");
 
             ShowMapInHands = mod.BindLocal("Visuals", "Show Map In Hands", true,
                 "Show a parchment map in the left hand and a pencil in the right while the pocket map is out (visible to other players too).");

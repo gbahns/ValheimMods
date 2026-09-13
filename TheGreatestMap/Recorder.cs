@@ -38,30 +38,35 @@ namespace TheGreatestMap
             if (player.InInterior()) return;
 
             Vector3 here = player.transform.position;
-            float radius = TgmConfig.RecordRadius.Value;
+            float range = TgmConfig.RecordRadius.Value; // 0 = anything found recently, wherever you are
             foreach (var found in DiscoveryLedger.Pending())
             {
-                if (Geo.FlatDistance(here, found.Pos) > radius) continue;
+                if (range > 0f && Geo.FlatDistance(here, found.Pos) > range) continue;
                 if (!TgmConfig.CategoryEnabled.TryGetValue(found.Cat, out var enabled) || !enabled.Value)
                 {
                     DiscoveryLedger.MarkRecorded(found.Key);
                     continue;
                 }
+                // Locations de-duplicate over their whole radius around their origin, so a farm
+                // whose marker sits on the house is still one marker.
                 float spacing = TgmConfig.MarkerSpacing.TryGetValue(found.Cat, out var s) ? s.Value : 1f;
-                if (ClientPins.HasPinNear(found.Icon, found.Pos, spacing))
+                float dedupeRadius = Mathf.Max(spacing, found.Radius);
+                Vector3 dedupeAt = found.DedupeCenter;
+                if (ClientPins.HasPinNear(found.Icon, dedupeAt, dedupeRadius))
                 {
-                    Announce(found, $"{found.Name}: already marked within {spacing:0.#} m");
+                    Announce(found, $"{found.Name}: already marked within {dedupeRadius:0.#} m");
                     continue;
                 }
-                if (ClientPins.IsSuppressed(found.Icon, found.Pos, spacing))
+                if (ClientPins.IsSuppressed(found.Icon, dedupeAt, dedupeRadius))
                 {
                     Announce(found, $"{found.Name}: a marker here was erased, not recording");
                     continue;
                 }
                 float labelSpacing = TgmConfig.LabelSpacing.TryGetValue(found.Cat, out var l) ? l.Value : 0f;
-                bool label = labelSpacing >= 0f && !ClientPins.HasLabeledPinNear(found.Icon, found.Name, found.Pos, labelSpacing);
+                float labelRadius = labelSpacing > 0f ? Mathf.Max(labelSpacing, found.Radius) : labelSpacing;
+                bool label = labelSpacing >= 0f && !ClientPins.HasLabeledPinNear(found.Icon, found.Name, dedupeAt, labelRadius);
                 DiscoveryLedger.MarkRecorded(found.Key);
-                ClientPins.CreateShared(label ? found.Name : "", found.Pos, found.Icon, auto: true);
+                ClientPins.CreateShared(label ? found.Name : "", found.Pos, found.Icon, found.Cat.ToString(), auto: true, isChecked: Searched.WasSearched(found.Key));
                 TheGreatestMapMod.Message("Recorded: " + found.Name);
             }
         }
