@@ -7,7 +7,7 @@ using UnityEngine.UI;
 namespace TheGreatestMap
 {
     /// <summary>
-    /// A column of kind buttons under vanilla's icon buttons on the right edge of the large map,
+    /// A column of kind buttons beside vanilla's icon buttons on the right edge of the large map,
     /// one per kind that has markers on your map. A click, left or right, toggles that kind's
     /// "Show &lt;Kind&gt;" switch, and the button grays out while the kind is hidden, the way
     /// vanilla's own filter buttons do. Each button is a clone of vanilla's first icon button
@@ -116,22 +116,27 @@ namespace TheGreatestMap
             if (template == null || present.Count == 0) return;
             var panel = template.transform.parent;
             if (panel == null) return;
-            bool autoLayout = panel.GetComponent<LayoutGroup>() != null;
 
-            // Where vanilla's column ends and how far apart its buttons sit.
-            var buttons = VanillaButtons(map);
             var templateRect = (RectTransform)template.transform;
-            RectTransform lowest = null;
-            var ys = new List<float>();
-            foreach (var rt in buttons)
+            float baseX = templateRect.anchoredPosition.x;
+
+            // Vanilla's column already reaches the bottom of the screen, so anything stacked below
+            // it falls off. Its rows are proof of what fits at this resolution: reuse those row
+            // positions and grow sideways, into the map, one column at a time.
+            var rows = new List<float>();
+            foreach (var rt in VanillaButtons(map))
             {
-                if (rt.parent != panel) continue;
-                if (lowest == null || rt.anchoredPosition.y < lowest.anchoredPosition.y) lowest = rt;
-                if (!ys.Contains(rt.anchoredPosition.y)) ys.Add(rt.anchoredPosition.y);
+                if (rt.parent != panel || Mathf.Abs(rt.anchoredPosition.x - baseX) > 1f) continue;
+                float y = rt.anchoredPosition.y;
+                bool seen = false;
+                foreach (float other in rows) if (Mathf.Abs(other - y) < 1f) { seen = true; break; }
+                if (!seen) rows.Add(y);
             }
-            ys.Sort((a, b) => b.CompareTo(a));
-            float spacing = ys.Count >= 2 ? ys[0] - ys[1] : templateRect.rect.height + 4f;
-            if (spacing <= 0f) spacing = templateRect.rect.height + 4f;
+            rows.Sort((a, b) => b.CompareTo(a));
+            float pitch = rows.Count >= 2 ? rows[0] - rows[1] : 0f;
+            if (pitch <= 0f) pitch = Mathf.Max(templateRect.rect.height, 24f) + 4f;
+            if (rows.Count == 0) rows.Add(templateRect.anchoredPosition.y);
+            float columnStep = templateRect.rect.width > 1f ? templateRect.rect.width + 4f : pitch;
 
             Sprite vanillaIcon = IconRegistry.Resolve(map, "pin:Icon0");
             string framePath = PathBelow(template.transform, map.m_selectedIcon0.transform);
@@ -178,11 +183,14 @@ namespace TheGreatestMap
 
                 go.AddComponent<KindButton>().Kind = kind;
 
-                if (!autoLayout && lowest != null)
-                {
-                    var rt = (RectTransform)go.transform;
-                    rt.anchoredPosition = new Vector2(lowest.anchoredPosition.x, lowest.anchoredPosition.y - spacing * (i + 1));
-                }
+                // Position ourselves even if the panel turns out to have a layout group, which
+                // would otherwise reflow vanilla's own buttons around ours.
+                var element = go.GetComponent<LayoutElement>();
+                if (element == null) element = go.AddComponent<LayoutElement>();
+                element.ignoreLayout = true;
+
+                var rt = (RectTransform)go.transform;
+                rt.anchoredPosition = new Vector2(baseX - columnStep * (i / rows.Count + 1), rows[i % rows.Count]);
                 go.transform.SetAsLastSibling();
 
                 _entries.Add(new Entry { Kind = kind, Root = go, Tinted = tinted, Shown = true });

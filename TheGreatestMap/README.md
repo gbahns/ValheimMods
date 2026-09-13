@@ -53,7 +53,7 @@ drawn. The icon and kind choices are the Display settings "Hidden Icons" and "Sh
 can also be edited by hand, and `tgm_show` in the console brings everything back. Vanilla pins keep
 their vanilla right-click.
 
-**Kind buttons.** Under vanilla's icon buttons on the right edge of the large map sits one button
+**Kind buttons.** Beside vanilla's icon buttons on the right edge of the large map sits one button
 per kind that has markers on your map, showing that kind's icon. Click it, left or right, to hide
 or show the kind; a hidden kind's button turns gray, just like vanilla's filtered icons. Config
 "Kind Buttons On Map" turns the column off.

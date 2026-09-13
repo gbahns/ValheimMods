@@ -158,7 +158,7 @@ namespace TheGreatestMap
                 "pauses only while you are the only player online. Closing the map resumes. Applies at once.");
             PauseWhileMapOpen.SettingChanged += (_, __) => MapPause.Refresh();
             ShowKindButtons = mod.BindLocal("Display", "Kind Buttons On Map", true,
-                "Add a button per kind of recorded marker under vanilla's icon buttons on the right edge of the large map, " +
+                "Add a button per kind of recorded marker beside vanilla's icon buttons on the right edge of the large map, " +
                 "for the kinds that have markers on your map. Clicking one (left or right) hides or shows that kind, " +
                 "the same as its Show <Kind> switch; hidden kinds are drawn gray, like vanilla's filtered icons.");
             RequireMapOutToEdit = mod.BindSynced("Sharing", "Require Map Out To Edit", false,
