@@ -95,7 +95,7 @@ namespace GrabMaterials
 			try
 			{
 				label = piece.m_name.StartsWith("$")
-					? Jotunn.Managers.LocalizationManager.Instance.TryTranslate(piece.m_name)
+					? Localization.instance.Localize(piece.m_name)
 					: piece.m_name;
 			}
 			catch { label = piece.m_name; }

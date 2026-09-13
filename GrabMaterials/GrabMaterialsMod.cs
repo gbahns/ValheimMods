@@ -409,7 +409,7 @@ namespace GrabMaterialsMod
 					{
 						if (piece.m_name.StartsWith("$"))
 						{ // if the name starts with $, it is a localization key
-							localizedName = LocalizationManager.Instance.TryTranslate(piece.m_name);
+							localizedName = Localization.instance.Localize(piece.m_name);
 						}
 						else
 						{

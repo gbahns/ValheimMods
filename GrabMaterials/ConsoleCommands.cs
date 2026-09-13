@@ -611,7 +611,7 @@ namespace GrabMaterials
 			if (!piece.m_name.StartsWith("$")) return piece.m_name;
 			try
 			{
-				var translated = LocalizationManager.Instance.TryTranslate(piece.m_name);
+				var translated = Localization.instance.Localize(piece.m_name);
 				return string.IsNullOrEmpty(translated) || translated == piece.m_name ? piece.m_name : translated;
 			}
 			catch
@@ -771,7 +771,7 @@ namespace GrabMaterials
 					{
 						if (piece.m_name.StartsWith("$"))
 						{ // if the name starts with $, it is a localization key
-							localizedName = LocalizationManager.Instance.TryTranslate(piece.m_name);
+							localizedName = Localization.instance.Localize(piece.m_name);
 						}
 						else
 						{
