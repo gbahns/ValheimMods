@@ -313,6 +313,50 @@ Idea dump from Greg + Marco, 2026-09-10, refined the same day. More to come.
 
 ---
 
+## Mod 9 — Dude, What Are My Stats?
+
+### Concept
+
+**Status (2026-09-13):** built as `DudeWhatAreMyStats/` (v0.1.0, not yet tested in-game or published).
+Grew out of ComfyMods' ReportCard breaking on Valheim 1.0: its stats panel reads the player profile with
+the pre-1.0 field shape, so it throws. By then MyLittleUI already covered the character-select screen and
+AzuExtendedPlayerInventory the in-game list, so a straight replacement was not worth building. What
+neither of them does is the part Greg wanted.
+
+The three things this mod is for:
+
+- **Quick access.** One key (default `I`, free in vanilla and in Greg's profiles) from anywhere. AzuEPI
+  makes you open the inventory and click a clipboard button.
+- **Pause while reading.** Solo and host-alone freeze; a busy server does not. Goes through the game's own
+  `Game.Pause` / `Game.Unpause` so Pause My Server can extend it without this mod knowing.
+- **A scoreboard, for trash-talking.** Every player online who also runs the mod, in a sortable table:
+  kills, deaths, K/D, boss kills, active play time, best skill. A Details tab breaks one player out into
+  foldable sections with skills and most-killed creatures.
+
+### Design notes
+
+- **Client-side only.** Nobody's stats live on the server. A routed RPC asks everyone; each client reads
+  its own profile and answers the asker directly. `ZRoutedRpc.RPC_RoutedRPC` forwards by target peer id
+  without looking at the method hash, so an unmodded server relays it; players without the mod never answer.
+- **`m_playerStats[0]` is the lifetime total.** Valheim 1.0 keeps ten sets per character, one per
+  `DifficultyRequirement`. `IncrementStat` always writes slot 0 (RawStats), then slot 1 and the current
+  difficulty's slot when the run is achievement-eligible, so summing the array counts most events two or
+  three times. `PlayerProfile.GetStat()` is not the answer either: it returns the current difficulty's slot.
+- **"Played" is active play time.** `TimeInBase` + `TimeOutOfBase`, which `Player` only increments when you
+  have moved more than a meter since the last check, so it runs behind wall-clock and AFK adds nothing.
+- The panel clones the game's own text prompt for its frame, font and buttons, reusing `UiKit.cs` from
+  The Greatest Portal. No Jotunn, no asset bundle.
+
+### Possible follow-ups
+
+- Explored map percentage by biome, the one ReportCard feature nothing else replaces. Greg does not need it
+  ("nice to have, no need to base decisions on it"), so it was left out of 0.1.0. ReportCard's approach:
+  walk `Minimap.m_explored` against `WorldGenerator.GetBiome` and tally.
+- A per-session column ("this session" vs lifetime), which needs a baseline captured at login.
+- An external dashboard, the GsValheimStats idea. Greg liked it but did not want to take it on now.
+
+---
+
 ## Technical Stack Reference
 
 - BepInEx 5.x (not 6)
@@ -334,3 +378,4 @@ Idea dump from Greg + Marco, 2026-09-10, refined the same day. More to come.
 6. **D3 Armory** — most ambitious, save for last or parallel track
 7. **Practice Mode** — needs design resolution first
 8. **Shared Map** — design in progress with Marco; resolve the open questions first
+9. **Dude, What Are My Stats?** — built 2026-09-13; needs in-game testing before publishing

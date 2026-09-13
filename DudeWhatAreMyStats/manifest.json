@@ -1,0 +1,9 @@
+{
+    "name": "DudeWhatAreMyStats",
+    "version_number": "0.1.0",
+    "website_url": "https://github.com/gbahns/ValheimMods",
+    "description": "Your stats on one key press, with the game paused while you read. Scoreboard of everyone online: kills, deaths, K/D, bosses, time played and best skill.",
+    "dependencies": [
+        "denikson-BepInExPack_Valheim-5.4.2350"
+    ]
+}
