@@ -66,9 +66,16 @@
   },
 
   "_profileNote": [
-    "Third-party packages in the Gale 'Default SD' profile, audited 2026-09-14 from three signals:",
-    "a [BepInProcess(\"valheim.exe\")] string in the package's DLLs (decisive - BepInEx will not load",
-    "it server-side), the author's Thunderstore categories, and what the mod does.",
+    "Third-party packages in the Gale 'Default SD' profile, audited 2026-09-14 from the author's",
+    "Thunderstore categories, the package README, and what the mod does.",
+    "",
+    "DO NOT classify a third-party mod by scanning its DLL for a \"valheim.exe\" string. That was the",
+    "first method used here and it put Crystal-Pathfinder on the client-only list, which got it",
+    "deleted off the server even though its README says to install it on both. The string and the",
+    "BepInProcess type both appear in DLLs that are not gated at all. Reading the attribute off",
+    "source is reliable, which is why the mods in this repo can be judged that way and these cannot.",
+    "For a package with no Client-side or Server-side category, read its README before deciding -",
+    "Pathfinder had no side category and that absence was the real signal that it needed checking.",
     "",
     "A Thunderstore 'Server-side' category usually means the mod CAN be installed server-side so its",
     "config is authoritative and synced, not that the server needs it. Those are marked 'both' where",
@@ -85,11 +92,11 @@
   ],
 
   "profilePackages": {
-    "Crystal-Pathfinder":                            { "side": "client", "why": "Client gate in the DLL. Map discovery radius." },
-    "Neobotics-GetComfortable":                      { "side": "client", "why": "Client gate in the DLL. Comfort UI." },
-    "Neobotics-HUDCompass":                          { "side": "client", "why": "Client gate in the DLL. HUD compass." },
-    "Neobotics-QuietPortals":                        { "side": "client", "why": "Client gate in the DLL. Portal audio." },
-    "Stonaar-ValheimSkipIntro":                      { "side": "client", "why": "Client gate in the DLL; skips the startup cinematic." },
+    "Crystal-Pathfinder":                            { "side": "both", "why": "CORRECTED 2026-09-14 (was wrongly client): its README says 'This mod should be installed on client and server', and a server running it rejects clients without it unless ConditionalConfigSync's ModRequirements.cfg says otherwise. It was deleted from the server in the 14 Sep sweep on bad evidence and restored the same night." },
+    "Neobotics-GetComfortable":                      { "side": "client", "why": "A comfort HUD overlay. No server install mentioned anywhere in its README." },
+    "Neobotics-HUDCompass":                          { "side": "client", "why": "A heads-up compass drawn on the player's screen. No server install mentioned in its README." },
+    "Neobotics-QuietPortals":                        { "side": "client", "why": "Portal volume and activation distance; Client-side on Thunderstore." },
+    "Stonaar-ValheimSkipIntro":                      { "side": "client", "why": "Skips the startup cinematic. Nothing for a headless server to skip." },
 
     "Advize-PlantEasily":                            { "side": "client", "why": "Client-side only on Thunderstore. Planting grid is a placement UI." },
     "Azumatt-AzuClock":                              { "side": "client", "why": "Client-side only. In-game clock." },
