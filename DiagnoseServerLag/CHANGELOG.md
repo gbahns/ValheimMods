@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.1 — unreleased
+## 0.2.1
 
 - **The report now takes the mouse.** It had no Harmony patches at all, so Valheim never treated it
   as a UI screen: the cursor stayed locked to the camera, mouse movement kept turning the character
