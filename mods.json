@@ -141,6 +141,6 @@
 
     "Shalopay-FoodSorting":                          { "side": "client", "why": "Client-only. Disabled because it does not work on Valheim 1.0; Greg will re-enable it if that is ever fixed." },
 
-    "OdinShipPlus":                                  { "side": "unknown", "why": "NEEDS A DECISION: adds ship prefabs, and a prefab mod missing from the server means ZDOs it cannot instantiate get destroyed, as ForsakenShrines showed. Disabled in the profile pending a download of the current version. Probably 'both'." }
+    "OdinShipPlus":                                  { "side": "both", "why": "Greg: install on client and server. It adds ship prefabs, and a prefab mod missing server-side means Valheim destroys the ZDOs it cannot instantiate, as ForsakenShrines showed. The copy in the profile is 0.7.5, obsolete and hand-disabled, and the server copy was deleted on 2026-09-14 - it had no DLL there anyway, only OSPMusic. Install the current version on both sides; do not deploy the 0.7.5 that is sitting in the profile." }
   }
 }
