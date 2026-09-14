@@ -84,6 +84,16 @@ namespace TheGreatestMap
             return collider.GetComponentInParent<Player>() == player;
         }
 
+        /// <summary>
+        /// You built it, so you have certainly found it. Placing a piece is the one discovery that
+        /// needs no looking at: the portal you just raised goes straight into the ledger, and is
+        /// written to the map under the usual rules, which in practice means the next time you take
+        /// the map out, since both hands are busy while you are building. Only things the catalog
+        /// recognizes are noted, and a house you build is not one of them, because a structure has
+        /// to be part of a location the world generated.
+        /// </summary>
+        internal static void NotePlaced(GameObject go) => NoteInteraction(go);
+
         internal static void NoteInteraction(GameObject go)
         {
             if (!TgmConfig.RecordEnabled.Value) return;
@@ -331,6 +341,20 @@ namespace TheGreatestMap
         private static void Prefix(Door __instance, Humanoid character)
         {
             if (character != null && character == Player.m_localPlayer) DiscoveryLedger.NoteInteraction(__instance.gameObject);
+        }
+    }
+
+    // Building something is a discovery you cannot miss, and it is the only one where nothing has
+    // to be looked at. SetCreator runs once, on the freshly placed piece, and only for a piece a
+    // player put down, which makes it the natural place to notice.
+    [HarmonyPatch(typeof(Piece), nameof(Piece.SetCreator))]
+    internal static class Piece_SetCreator_Patch
+    {
+        private static void Postfix(Piece __instance)
+        {
+            if (__instance == null || Player.m_localPlayer == null) return;
+            if (__instance.GetCreator() != Player.m_localPlayer.GetPlayerID()) return;
+            DiscoveryLedger.NotePlaced(__instance.gameObject);
         }
     }
 }
