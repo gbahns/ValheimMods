@@ -44,6 +44,19 @@ build, since both report 1.0.0.0. Those rows fall through to the commit comparis
 
 The script ends with a "Needs attention" list; if it is empty everything agrees.
 
+Two of those lines catch a trap the version columns cannot, because every column reads green
+while it is happening — the mod's version files agree with each other *and* with both registries,
+while the repo holds work that was never published:
+
+- **"code committed since X went out, with no bump to carry it"** — .cs commits landed after the
+  published version shipped, and none of them bumped manifest.json. That work is not in anyone's
+  game. Publishing without a bump would either be refused by Thunderstore as a duplicate or, on
+  Hexium, put different code under a number players already have.
+- **"the version files say X but CHANGELOG.md's newest entry is Y"** — the notes and the number
+  will ship out of step. This also catches the subtler habit of folding new work into the entry
+  for a version that is already public, which tells anyone already on it that they have fixes
+  they do not.
+
 ## After reading it
 
 - Anything behind on a registry or on the server → offer the `mod-release` skill (`/mod-release <Mod>`), don't start publishing unprompted.

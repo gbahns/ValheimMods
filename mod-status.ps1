@@ -44,17 +44,22 @@ function Get-PluginVersion($dir) {
     return $null
 }
 
-# Thunderstore and Hexium run the same API, so one function serves both.
+# Thunderstore and Hexium run the same API, so one function serves both.  Both edge-cache this
+# endpoint for minutes after a publish -- long enough to report the previous version as current
+# and send you looking for a failure that did not happen -- so every request carries a
+# cache-buster and a no-cache header.
 function Get-Published($repository, $namespace, $name) {
-    if (-not $name) { return "n/a" }
-    $uri = "$repository/api/experimental/package/$namespace/$name/"
+    if (-not $name) { return [pscustomobject]@{ Version = "n/a"; Updated = $null } }
+    $bust = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+    $uri  = "$repository/api/experimental/package/$namespace/$name/?cb=$bust"
     try {
-        return (Invoke-RestMethod -Uri $uri -TimeoutSec 25).latest.version_number
+        $r = Invoke-RestMethod -Uri $uri -TimeoutSec 25 -Headers @{ "Cache-Control" = "no-cache" }
+        return [pscustomobject]@{ Version = $r.latest.version_number; Updated = $r.date_updated }
     } catch {
         $code = 0
         if ($_.Exception.Response) { $code = [int]$_.Exception.Response.StatusCode }
-        if ($code -eq 404) { return "none" }
-        return "error"
+        if ($code -eq 404) { return [pscustomobject]@{ Version = "none"; Updated = $null } }
+        return [pscustomobject]@{ Version = "error"; Updated = $null }
     }
 }
 
@@ -146,6 +151,16 @@ foreach ($d in $dirs) {
 
     $dirty = @(git -C $repo status --porcelain -- $d.Name 2>$null)
 
+    # The newest version the changelog names.  A changelog describing a version the version files
+    # do not have means the notes and the number will ship out of step.
+    $clVersion = $null
+    $changelog = Join-Path $dir "CHANGELOG.md"
+    if (Test-Path $changelog) {
+        $head = Select-String -Path $changelog -Pattern '^##\s+v?([0-9]+(\.[0-9]+)+)' | Select-Object -First 1
+        if ($head) { $clVersion = $head.Matches[0].Groups[1].Value }
+    }
+
+
     $rows += [pscustomobject]@{
         Folder      = $d.Name
         Package     = $pkgName
@@ -157,6 +172,8 @@ foreach ($d in $dirs) {
         HasHexToml  = (Test-Path $hxToml)
         Thunderstore= "-"
         Hexium      = "-"
+        TsUpdated   = $null
+        Changelog   = $clVersion
         Build       = $build
         Dll         = $dll
         Dirty       = $dirty.Count
@@ -167,11 +184,13 @@ foreach ($d in $dirs) {
 if (-not $NoRemote) {
     foreach ($r in $rows) {
         if (-not $r.Listed) { $r.Thunderstore = "unlisted"; $r.Hexium = "unlisted"; continue }
-        $r.Thunderstore = Get-Published "https://thunderstore.io" $r.Namespace $r.Package
+        $ts = Get-Published "https://thunderstore.io" $r.Namespace $r.Package
+        $r.Thunderstore = $ts.Version
+        $r.TsUpdated    = $ts.Updated
         $hexName = $r.Package
         if ($r.HasHexToml) { $hexName = Get-TomlValue (Join-Path $repo "$($r.Folder)\hexium.toml") "name" }
         else { $hexName = $null }
-        $r.Hexium = Get-Published "https://valheim.hexium.gg" $r.Namespace $hexName
+        $r.Hexium = (Get-Published "https://valheim.hexium.gg" $r.Namespace $hexName).Version
     }
 }
 
@@ -263,6 +282,39 @@ foreach ($r in $rows) {
         if ($live -eq "none") { $actions += "$($r.Folder): not on $name yet (local $($r.Local))." ; continue }
         if ($live -ne $r.Local) { $actions += "$($r.Folder): $name has $live, local is $($r.Local)." }
     }
+    # The changelog and the version files have to name the same release, or the notes ship under
+    # the wrong number -- and Thunderstore only refuses a duplicate version, so the two sites can
+    # end up holding different code under one number.
+    if ($r.Changelog -and $r.Changelog -ne $r.Local) {
+        $actions += ("$($r.Folder): the version files say $($r.Local) but CHANGELOG.md's newest entry is " +
+                     "$($r.Changelog). Publishing now ships one release's notes under the other's number.")
+    }
+
+    # Code committed after the published version went out, with no bump to carry it: the state
+    # where a publish would put new code under a number players already have.  Three filters make
+    # this signal rather than noise:
+    #   * only .cs -- a toml or package.ps1 edit sweeping every mod is not a release;
+    #   * git's --since needs a date it can parse, and silently ignores the whole filter on the
+    #     microsecond ISO stamp the registries return, which returns the mod's entire history;
+    #   * commits that also touched manifest.json are the release commits themselves.  Releases
+    #     here are published first and committed second, so a release's own commit always lands
+    #     after its publish; the version bump inside it is what tells it apart from later work,
+    #     whose subject often still carries the old version number.
+    if ($r.Thunderstore -eq $r.Local -and $r.TsUpdated) {
+        $since = ([datetimeoffset]$r.TsUpdated).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+        $bumps = @(git -C $repo log --format=%h --since=$since -- "$($r.Folder)/manifest.json" 2>$null)
+        $code  = @(git -C $repo log --format="%h %s" --since=$since -- ":(glob)$($r.Folder)/**/*.cs" 2>$null |
+                   Where-Object { $bumps -notcontains ($_ -split " ")[0] })
+        if ($code.Count -gt 0) {
+            $shown = $code | Select-Object -First 2 |
+                ForEach-Object { $_.Substring(0, [Math]::Min(64, $_.Length)) }
+            $more = ""
+            if ($code.Count -gt 2) { $more = " (+$($code.Count - 2) more)" }
+            $actions += ("$($r.Folder): code committed since $($r.Local) went out, with no bump to carry it - " +
+                         ($shown -join "; ") + "$more")
+        }
+    }
+
     if ($r.Build -eq "STALE")     { $actions += "$($r.Folder): source is newer than the Release DLL - rebuild before packaging." }
     if ($r.Build -eq "not built") { $actions += "$($r.Folder): no Release build in bin\Release." }
     if ($r.ServerState -match 'BEHIND') {
