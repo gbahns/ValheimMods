@@ -22,6 +22,16 @@ namespace TheGreatestPortal
             return true;
         }
 
+        /// <summary>True while the shortcut's keys are all held down right now.</summary>
+        internal static bool IsHeld(KeyboardShortcut shortcut)
+        {
+            if (shortcut.MainKey == KeyCode.None) return false;
+            if (!ZInput.GetKey(shortcut.MainKey)) return false;
+            foreach (var modifier in shortcut.Modifiers)
+                if (!ZInput.GetKey(modifier)) return false;
+            return true;
+        }
+
         /// <summary>No text box, console or chat has the keyboard.</summary>
         internal static bool CanTakeInput()
         {

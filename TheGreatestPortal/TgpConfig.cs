@@ -15,6 +15,7 @@ namespace TheGreatestPortal
 
         // ── keys ────────────────────────────────────────────────────────────────────
         internal static ConfigEntry<KeyboardShortcut> TogglePinsKey;
+        internal static ConfigEntry<KeyboardShortcut> DetourKey;
 
         // ── client display ──────────────────────────────────────────────────────────
         internal static ConfigEntry<bool> ShowMessages;
@@ -50,6 +51,11 @@ namespace TheGreatestPortal
             TogglePinsKey = mod.BindLocal("Keys", "Toggle Portal Pins", new KeyboardShortcut(KeyCode.P),
                 "While the large map is open: show or hide every portal on the map, with the portal list on the left. " +
                 "Click a portal there to center the map on it; right-click to mark it as a favorite.");
+
+            DetourKey = mod.BindLocal("Keys", "Detour Key", new KeyboardShortcut(KeyCode.LeftAlt),
+                "Hold this as you step into a portal to go somewhere else just this once: the destination map " +
+                "opens instead of the usual trip, and the portal keeps the destination it is set to. Also gets " +
+                "you out of a portal whose destination has gone missing.");
 
             ShowMessages = mod.BindLocal("Display", "Show Messages", true,
                 "Show small top-left messages when a portal is configured, a favorite is added, and so on.");

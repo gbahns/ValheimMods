@@ -122,6 +122,12 @@ namespace TheGreatestPortal
             if (player == null || player != Player.m_localPlayer) return true;
             var portal = __instance.GetComponentInParent<TeleportWorld>();
             if (portal == null) return true;
+            // Holding the detour key turns any portal into an open one for this trip only.
+            if (!MapPicker.IsOpenPortal(portal) && Keys.IsHeld(TgpConfig.DetourKey.Value))
+            {
+                MapPicker.BeginTravel(portal, __instance.GetComponent<Collider>(), colliderIn, detour: true);
+                return false;
+            }
             if (!MapPicker.IsOpenPortal(portal))
             {
                 string blocked = MapPicker.BlockedReason(portal);

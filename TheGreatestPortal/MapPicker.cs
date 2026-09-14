@@ -35,6 +35,8 @@ namespace TheGreatestPortal
         private static Action<PortalInfo> _onPicked;
         private static long _highlightId;
         private static string _query = "";
+        private static bool _detour;
+        private static string _usualDestination = "";
 
         private static GameObject _list;
         private static UiKit.Hover _listHover;
@@ -86,13 +88,25 @@ namespace TheGreatestPortal
 
         // ── entry points ────────────────────────────────────────────────────────────
 
-        internal static void BeginTravel(TeleportWorld portal, Collider trigger, Collider playerCollider)
+        /// <summary>
+        /// The destination map for a trip out of <paramref name="portal"/>. A detour is the same
+        /// trip taken from a portal that already has a destination: it is chosen for this trip
+        /// only and nothing about the portal changes.
+        /// </summary>
+        internal static void BeginTravel(TeleportWorld portal, Collider trigger, Collider playerCollider, bool detour = false)
         {
             var player = Player.m_localPlayer;
             if (player == null || Minimap.instance == null || portal == null) return;
             if (Active) End();
             if (!Travel.CanTeleport(player, portal.m_allowAllItems)) return;
             var zdo = ZdoOf(portal);
+            _detour = detour;
+            _usualDestination = "";
+            if (detour)
+            {
+                var usual = Catalog.Get(PortalData.GetTarget(zdo));
+                _usualDestination = usual != null ? usual.DisplayName : "";
+            }
             _source = portal;
             _sourceZdo = zdo != null ? zdo.m_uid : ZDOID.None;
             _sourceId = PortalData.GetId(zdo);
@@ -121,6 +135,7 @@ namespace TheGreatestPortal
             _onPicked = onPicked;
             _highlightId = 0L;
             _query = "";
+            _detour = false;
             Current = Mode.Pick;
             OpenMapAt(center);
             Refresh();
@@ -137,6 +152,7 @@ namespace TheGreatestPortal
             _onPicked = null;
             _highlightId = 0L;
             _query = "";
+            _detour = false;
             Current = Mode.Browse;
             if (center.HasValue) OpenMapAt(center.Value);
             else if (map.m_mode != Minimap.MapMode.Large) map.SetMapMode(Minimap.MapMode.Large);
@@ -156,6 +172,8 @@ namespace TheGreatestPortal
             _onPicked = null;
             _highlightId = 0L;
             _query = "";
+            _detour = false;
+            _usualDestination = "";
             if (!had) return;
             PortalPins.Clear();
             DestroyList();
@@ -353,8 +371,12 @@ namespace TheGreatestPortal
             switch (Current)
             {
                 case Mode.Travel:
-                    _header.text = "Where to?";
-                    _hint.text = "Click a portal here or on the map to travel. Right-click marks a favorite. Esc stays here.";
+                    _header.text = _detour ? "Where to this time?" : "Where to?";
+                    _hint.text = _detour
+                        ? (string.IsNullOrEmpty(_usualDestination)
+                            ? "This trip only; the portal keeps the destination it is set to. Esc stays here."
+                            : $"This trip only; the portal still leads to {_usualDestination}. Esc stays here.")
+                        : "Click a portal here or on the map to travel. Right-click marks a favorite. Esc stays here.";
                     break;
                 case Mode.Pick:
                     _header.text = "Choose the destination";

@@ -288,6 +288,16 @@ namespace TheGreatestPortal
         {
             if (p == null || row == null || _content == null) return;
             var items = new List<KeyValuePair<string, Action>>();
+            if (_portal != null)
+            {
+                // One trip out of the portal you are standing at; its destination is left alone.
+                bool allowAll = _portal.m_allowAllItems;
+                items.Add(new KeyValuePair<string, Action>("Travel here now", () =>
+                {
+                    Close();
+                    Travel.Go(p, allowAll);
+                }));
+            }
             if (_renameField != null && p.Id != 0L)
                 items.Add(new KeyValuePair<string, Action>("Rename", () => BeginRename(p, row)));
             if (p.Id != 0L)

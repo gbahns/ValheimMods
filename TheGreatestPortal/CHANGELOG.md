@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0 — 2026-09-14
+
+Client-side; works with a 0.2.x server.
+
+- **Go somewhere else just this once.** Hold the detour key (default Alt) as you step into a
+  portal and its destination map opens instead of the usual trip. Pick anywhere and go; the
+  portal keeps the destination it is set to. A remote portal can stay pointed home while you
+  still take the occasional trip elsewhere from it.
+- The same from the panel: right-click a portal in the list and choose "Travel here now".
+- A portal whose destination has gone missing, or is still connecting, can be left this way too.
+
 ## 0.2.2 — 2026-09-13
 
 Client-side; works with a 0.2.1 server.

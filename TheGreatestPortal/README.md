@@ -26,6 +26,7 @@ without the mod, or with an older version than the server, is refused at connect
 | Default new portals to point here | New portals you build lead here automatically. |
 | Point all portals to here | Points every portal in the world at this one. Shown only when this portal is your default and some portal does not lead here yet. Click twice to confirm. Admins only unless the server allows everyone. |
 | Pick on map | Saves the name and toggles, then opens the map: click a portal there or in the list. |
+| Travel here now | In a row's right-click menu: travel to that portal right now. The portal you are standing at keeps its own destination. |
 | Show on map | Opens the map centered on the chosen destination, with every portal drawn. |
 
 Destinations are one-way: `Home -> Swamp` does not make the swamp portal lead home. Set the swamp
@@ -39,6 +40,12 @@ a row to travel there. Right-click marks a favorite. Esc, or stepping out of the
 map and you stay. The usual rules apply: no travelling with ore, or during a boss fight if the world
 forbids it.
 
+**Going somewhere else just this once.** A portal with a destination normally takes you straight
+there. Hold the detour key (default `Alt`) as you step in and the destination map opens instead:
+pick anywhere, travel, and the portal is unchanged for the next person who uses it. Handy when a
+remote portal is set to lead home but you want a different stop this time. The same thing is on the
+panel: press Use, right-click a portal in the list and choose **Travel here now**.
+
 **On the map at other times.** Press `P` while the large map is open to show every portal with the
 list, click a portal to center the map on it, press `P` again to hide them. Right-click a portal
 to mark a favorite.
@@ -51,6 +58,7 @@ to mark a favorite.
 | `Up` / `Down`, `Enter`, `Esc` in the panel | Move the selection, confirm, cancel |
 | Mouse wheel over a list | Scroll by a few rows per notch (configurable) |
 | `P` on the large map | Show or hide every portal and the portal list |
+| `Alt` held while stepping into a portal | Choose a destination for this trip only |
 
 ## Configuration
 
@@ -64,6 +72,7 @@ to mark a favorite.
 | Rules | Anyone Can Redirect All Portals | false | Let any player use "Point all portals to here"; otherwise admins only (server-synced) |
 | Rules | Anyone Can Rename Remote Portals | true | Let any player rename portals from the list without standing at them; otherwise admins only (server-synced) |
 | Keys | Toggle Portal Pins | P | On the large map: show or hide every portal |
+| Keys | Detour Key | LeftAlt | Hold while stepping into a portal to pick a destination for that trip only |
 | Display | Always Show Portal Pins | false | Draw every portal on the large map all the time |
 | Display | Hide Other Pins While Choosing | true | Only portals, death markers, players and pings while choosing a destination |
 | Display | Show Distances | true | Distances in the lists |
