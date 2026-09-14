@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.1 — unreleased
+
+- **The report now takes the mouse.** It had no Harmony patches at all, so Valheim never treated it
+  as a UI screen: the cursor stayed locked to the camera, mouse movement kept turning the character
+  behind the panel, and nothing in it could be clicked — including 0.2.0's new pause button. The
+  panel now reports itself through `TextInput.IsVisible`, which is the flag
+  `GameCamera.UpdateMouseCapture` consults to release the cursor, and the same one vanilla already
+  uses to hold back movement, the hotbar, the map key, the ESC menu and chat. Escape still closes
+  the report without also opening the game menu, because `Menu.Update` gates on that same flag.
+- The mouse wheel no longer zooms the camera behind the panel while you scroll the evidence.
+  GameCamera's zoom check looks at chat, the console, the inventory and several other screens, but
+  not at text prompts.
+- Leaving a world now closes the report, drops any pause and clears the history from
+  `ZNet.Shutdown`, rather than a frame later from the plugin's own Update. A pause is a global flag,
+  so letting a shutdown race it could leave the game frozen behind a panel that no longer exists.
+
 ## 0.2.0
 
 - **Fixed a crash.** The report threw `NullReferenceException` out of TextMeshPro on every layout
