@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.2.0
+
+- **Fixed a crash.** The report threw `NullReferenceException` out of TextMeshPro on every layout
+  pass whenever it showed a wrapped paragraph — including the "the server is not running this mod"
+  notice, so it hit anyone on an unmodded server almost as soon as they opened it. The paragraphs
+  were built by hand and never got a font: adding a TextMeshProUGUI to a live GameObject makes TMP
+  look up Unity's default font, which Valheim does not ship. They now go through the same helper as
+  every other label, which assigns the game's font while the object is still inactive. The corner
+  readout built its label the same way and no longer does.
+- **Pause button**, top-right of the report, matching the ones on the large map and GrabMaterials'
+  inventory panel: gray when off, Valheim orange while the game really is paused, red with a slash
+  when the pause was asked for and refused. Off by default — a diagnostic should not change how the
+  game runs the first time you open it.
+- **Nothing is recorded while the game is paused.** A paused world simulates nothing, so frames get
+  cheap and the link goes quiet; recording those seconds would let the report talk itself round to
+  "nothing wrong right now" while you sat reading it, which is the exact opposite of what pausing
+  to read a diagnosis is for. Pausing now freezes the evidence, and the report says so.
+- The pause survives another mod dropping it. Vanilla keeps a single pause flag rather than a
+  count, so any mod calling `Game.Unpause()` releases everyone's — the sibling mods only act on a
+  transition and quietly believe they still hold a pause that is gone. This re-asserts when a pause
+  it actually had stops being in effect, and stays silent when the request was simply refused.
+
 ## 0.1.1
 
 - Default key moved from **F10 to F8**, and the readout toggle from Shift+F10 to Shift+F8. F10 is

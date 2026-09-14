@@ -61,6 +61,12 @@ Works on Windows and Linux dedicated servers. Requires BepInExPack for Valheim.
 | **F8** | Open and close the report. Escape closes it too. |
 | **Shift+F8** | Turn the small corner readout on and off. |
 
+There is also a **pause toggle** in the report's top-right corner, the same mark used on the large map and GrabMaterials' inventory panel: gray when off, Valheim orange while the game really is paused, red with a slash when the pause was asked for and refused. It is off by default.
+
+Pausing matters more here than on those other panels, because this one reports on the very thing a pause changes. **While the game is paused the mod stops recording.** A paused world simulates nothing, so frames get cheap and the link goes quiet — recording those seconds would let the report work its way round to "nothing wrong right now" while you sat reading it. Instead a pause freezes the evidence, which is what you want when you paused to read why the last minute was bad. The report says so while it is held.
+
+The pause goes through vanilla's own calls, so it works by itself solo or hosting alone; on a dedicated server it takes Pause My Server, and the button tells you whether it actually took.
+
 F8 is free in vanilla Valheim. It replaced F10 in 0.1.1, which clashed with AutomaticFuel's default; if you installed 0.1.0 the mod moves your config over for you, unless you had already chosen a key of your own.
 
 The readout is four lines — your frame time, ping, queue and the server's tick time — with the worst one colored. It is off by default, because watching numbers is the habit this mod exists to replace.
@@ -89,6 +95,8 @@ The ones worth knowing about:
 - **Baseline Seconds** (60) — how much history counts as "normal for this server".
 - **Server Tick Warn / Severe Ms** (33 / 66) — a healthy dedicated server ticks in single-digit milliseconds, so these are deliberately generous.
 - **Queue Warn / Severe Bytes** (16 KB / 64 KB) — queued bytes that have not reached the wire.
+- **Pause While Open** (off) — pause the game while the report is open. The corner toggle changes this.
+- **Show Pause Button** (on) — whether that toggle is drawn.
 - **Churn Factor** (3) — how many times this server's own normal rate of object updates counts as churn.
 
 Server-side only, read by whichever machine runs the server:

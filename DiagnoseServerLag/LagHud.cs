@@ -123,6 +123,10 @@ namespace DiagnoseServerLag
             scaler.matchWidthOrHeight = 0.5f;
 
             var go = new GameObject("DiagnoseServerLag_HudLabel", typeof(RectTransform), typeof(CanvasRenderer));
+            // Inactive while the component is added, for the same reason UiKit.Text does it: TMP's
+            // Awake looks up Unity's default font, which the game does not ship, unless a font is
+            // already there. Assigning one afterwards leaves the warning behind.
+            go.SetActive(false);
             go.transform.SetParent(_root.transform, false);
             var text = go.AddComponent<TextMeshProUGUI>();
             text.font = source.font;
@@ -139,6 +143,7 @@ namespace DiagnoseServerLag
             rt.sizeDelta = new Vector2(260f, 96f);
             rt.anchoredPosition = new Vector2(-18f, -150f);
 
+            go.SetActive(true);
             _label = text;
             return true;
         }

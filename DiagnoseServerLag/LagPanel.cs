@@ -35,12 +35,20 @@ namespace DiagnoseServerLag
         private static readonly Color Bad = new Color(1f, 0.42f, 0.35f);
         private static readonly Color Good = new Color(0.55f, 0.85f, 0.5f);
 
+        // The pause toggle's three states, matching the map and the inventory panel exactly so the
+        // mark means the same thing wherever it appears.
+        private static readonly Color PauseOff = new Color(0.6f, 0.6f, 0.6f, 0.85f);
+        private static readonly Color PausePaused = new Color(1f, 0.63f, 0.24f, 1f);   // Valheim orange
+        private static readonly Color PauseRefused = new Color(1f, 0.45f, 0.4f, 1f);
+
         private static GameObject _root;
         private static RectTransform _list;
         private static ScrollRect _scroll;
         private static TextMeshProUGUI _title, _subtitle, _verdict, _advice;
         private static Button _refreshButton, _dumpButton, _closeButton;
         private static RectTransform _grip, _mover;
+        private static GameObject _pauseToggle;
+        private static Image _pauseLeft, _pauseRight, _pauseSlash;
 
         private static float _w = W, _h = H;
         private static bool _openedThisFrame;
@@ -76,6 +84,7 @@ namespace DiagnoseServerLag
             // usually opened in the middle of the thing it is meant to explain.
             LagNetwork.Ask();
             Populate();
+            LagPause.Refresh();
             _nextRefresh = Time.unscaledTime + 1f;
         }
 
@@ -87,6 +96,9 @@ namespace DiagnoseServerLag
                 _root.SetActive(false);
                 _closedFrame = Time.frameCount;
             }
+            // Let go of the pause on the way out, not on the next frame's Refresh: closing the
+            // report and leaving the world frozen for a moment would be its own small bug.
+            LagPause.Refresh();
         }
 
         // ── per-frame ───────────────────────────────────────────────────────────────
@@ -130,6 +142,12 @@ namespace DiagnoseServerLag
 
             _subtitle.text = Verdict.CoverageNote();
             _subtitle.color = LagNetwork.Module == ServerModule.Absent ? UiKit.Header : UiKit.Dim;
+            // A frozen measurement that looked live would be the one lie this panel must not tell.
+            if (Sampler.Frozen)
+            {
+                _subtitle.text += "   -   paused, so nothing is being recorded";
+                _subtitle.color = PausePaused;
+            }
 
             if (best != null)
             {
@@ -149,6 +167,7 @@ namespace DiagnoseServerLag
             AddPeers();
 
             if (_scroll != null) _scroll.verticalNormalizedPosition = scrollPos;
+            PaintPauseToggle();
             Layout();
         }
 
@@ -204,7 +223,9 @@ namespace DiagnoseServerLag
             Stat("bandwidth", $"{Stats.Bytes(s.InByteSec)}/s in, {Stats.Bytes(s.OutByteSec)}/s out", 0);
             Stat("objects", $"{s.Zdos} known, {s.Instances} built around you", 0);
             Stat("object traffic", $"{s.ZdosRecv}/s received, {s.ZdosSent}/s sent, {s.ChangeQueue} unacknowledged", 0);
-            Stat("history", $"{Sampler.History.Count}s kept of {Sampler.History.Capacity}s", 0);
+            Stat("history", Sampler.Frozen
+                    ? $"{Sampler.History.Count}s kept, held still while paused"
+                    : $"{Sampler.History.Count}s kept of {Sampler.History.Capacity}s", 0);
         }
 
         private static void AddServerSection()
@@ -310,16 +331,17 @@ namespace DiagnoseServerLag
         /// </summary>
         private static void Paragraph(Transform parent, string text, float size, Color color, float indent = 0f)
         {
-            var go = new GameObject("Paragraph", typeof(RectTransform), typeof(CanvasRenderer));
-            go.transform.SetParent(parent, false);
-            var t = go.AddComponent<TextMeshProUGUI>();
-            UiKit.EnsureFont();
-            t.text = text;
-            t.fontSize = size;
-            t.color = color;
-            t.alignment = TextAlignmentOptions.TopLeft;
+            // Built through UiKit.Text rather than by hand. Adding a TextMeshProUGUI to a live
+            // GameObject makes TMP look up Unity's default font in Awake, which Valheim does not
+            // ship: the component ends up with no font asset at all, and the next layout pass
+            // throws NullReferenceException out of TMP_Text.GetPreferredWidth - once per frame,
+            // because this sits inside a layout group. UiKit.Text adds the component while the
+            // object is inactive and assigns the game's font first, which is the whole reason that
+            // dance is in there. Shipped broken in 0.1.0 and 0.1.1, where it fired whenever a
+            // paragraph was shown - including the "the server is not running this mod" notice,
+            // so almost immediately for anyone on an unmodded server.
+            var t = UiKit.Text(parent, "Paragraph", text, size, TextAlignmentOptions.TopLeft, color);
             Wrap(t);
-            t.raycastTarget = false;
             t.margin = new Vector4(indent + 6f, 4f, 6f, 6f);
         }
 
@@ -414,6 +436,8 @@ namespace DiagnoseServerLag
             });
             _closeButton = MakeButton(template, content.transform, "Close", "Close", Close);
 
+            BuildPauseToggle(content.transform);
+
             // The prompt's own labels come with a Localize component that rewrites their text from
             // the language file on enable. Left in place it would overwrite every label here the
             // first time the panel is shown.
@@ -445,9 +469,87 @@ namespace DiagnoseServerLag
             mover.OnDrag = OnMoveDrag;
             mover.OnEnd = SavePlacement;
 
+            // The toggle has to sit above the drag strip, which covers the whole title area and
+            // therefore the corner the toggle lives in. Sibling order is what decides that, so the
+            // toggle goes last however early it was built - otherwise every click on it would be
+            // caught by the mover and turn into a one-pixel drag of the panel.
+            _pauseToggle.transform.SetAsLastSibling();
+
             LoadPlacement();
             Layout();
             return true;
+        }
+
+        /// <summary>
+        /// The pause toggle in the top-right corner, built the same way as the ones on the large map
+        /// and GrabMaterials' inventory panel: two bars drawn from plain rectangles, because the
+        /// game's font has no media-control glyph, plus a diagonal slash when a pause was asked for
+        /// and refused. The mark never claims a pause that is not happening - the request can be
+        /// turned down by a server with other players on it, or one without Pause My Server at all.
+        /// </summary>
+        private static void BuildPauseToggle(Transform parent)
+        {
+            _pauseToggle = new GameObject("DSL_PauseToggle", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+            _pauseToggle.transform.SetParent(parent, false);
+            var rect = (RectTransform)_pauseToggle.transform;
+            rect.anchorMin = rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(1f, 1f);
+            rect.anchoredPosition = new Vector2(-14f, -12f);
+            rect.sizeDelta = new Vector2(28f, 28f);
+
+            var hit = _pauseToggle.GetComponent<Image>();
+            hit.color = new Color(1f, 1f, 1f, 0f);   // invisible, but it is what catches the click
+            hit.raycastTarget = true;
+
+            _pauseLeft = PauseBar(_pauseToggle.transform, new Vector2(6f, 18f), new Vector2(-5f, 0f));
+            _pauseRight = PauseBar(_pauseToggle.transform, new Vector2(6f, 18f), new Vector2(5f, 0f));
+            _pauseSlash = PauseBar(_pauseToggle.transform, new Vector2(30f, 3f), Vector2.zero, 45f);
+            _pauseSlash.gameObject.SetActive(false);
+
+            var button = _pauseToggle.GetComponent<Button>();
+            button.transition = Selectable.Transition.None;
+            button.targetGraphic = hit;
+            button.onClick.AddListener(() =>
+            {
+                if (DslConfig.PauseWhileOpen == null) return;
+                DslConfig.PauseWhileOpen.Value = !DslConfig.PauseWhileOpen.Value;
+                LagPause.Refresh();
+                PaintPauseToggle();
+            });
+        }
+
+        private static Image PauseBar(Transform parent, Vector2 size, Vector2 pos, float rotation = 0f)
+        {
+            var go = new GameObject("Bar", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            go.transform.SetParent(parent, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = size;
+            rt.anchoredPosition = pos;
+            if (rotation != 0f) rt.localRotation = Quaternion.Euler(0f, 0f, rotation);
+            var img = go.GetComponent<Image>();
+            img.raycastTarget = false;
+            return img;
+        }
+
+        /// <summary>Gray when switched off, orange while the game really is paused, red with a slash when the pause was refused.</summary>
+        private static void PaintPauseToggle()
+        {
+            if (_pauseToggle == null) return;
+            bool show = DslConfig.ShowPauseButton == null || DslConfig.ShowPauseButton.Value;
+            if (_pauseToggle.activeSelf != show) _pauseToggle.SetActive(show);
+            if (!show || _pauseLeft == null) return;
+
+            bool on = DslConfig.PauseWhileOpen != null && DslConfig.PauseWhileOpen.Value;
+            bool refused = false;
+            Color color;
+            if (!on) color = PauseOff;
+            else if (Game.IsPaused()) color = PausePaused;
+            else { color = PauseRefused; refused = true; }
+            _pauseLeft.color = color;
+            _pauseRight.color = color;
+            _pauseSlash.color = color;
+            if (_pauseSlash.gameObject.activeSelf != refused) _pauseSlash.gameObject.SetActive(refused);
         }
 
         private static bool IsDecoration(Transform child)

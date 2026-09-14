@@ -47,6 +47,12 @@ namespace DiagnoseServerLag
 
         private static bool _started;
 
+        /// <summary>
+        /// True while the game is paused and the history is deliberately standing still.
+        /// The report says so, because a frozen measurement that looked live would be a lie.
+        /// </summary>
+        internal static bool Frozen { get; private set; }
+
         internal static bool IsServerHere => ZNet.instance != null && ZNet.instance.IsServer();
         internal static bool IsDedicatedHere => ZNet.instance != null && ZNet.instance.IsDedicated();
 
@@ -58,6 +64,7 @@ namespace DiagnoseServerLag
             History.Clear();
             Peers.Clear();
             _started = false;
+            Frozen = false;
             _bucketTotalMs = 0f;
             _bucketMaxMs = 0f;
             _bucketFrames = 0;
@@ -78,6 +85,30 @@ namespace DiagnoseServerLag
                 _bucketStart = now;
                 return;     // the first frame after loading is always long; it measures the load, not the game
             }
+
+            // Nothing is recorded while the game is paused, and this is the most important line in
+            // the file for a mod that offers to pause itself.
+            //
+            // A paused world simulates nothing, so frames get cheap, object traffic stops and the
+            // link goes quiet. Recorded, those seconds would flow into the same window and baseline
+            // the verdict is computed from, and the report would talk itself round to "nothing wrong
+            // right now" while its reader sat looking at it - worst of all for someone who paused
+            // precisely to read why the last minute was bad. Holding the history still instead means
+            // a pause freezes the evidence, which is what makes pausing worth offering here at all.
+            //
+            // The partial second in progress is thrown away rather than committed, so a second that
+            // was half real play and half frozen never becomes a data point.
+            if (Game.IsPaused())
+            {
+                Frozen = true;
+                _bucketStart = now;
+                _bucketTotalMs = 0f;
+                _bucketMaxMs = 0f;
+                _bucketFrames = 0;
+                _bucketStalls = 0;
+                return;
+            }
+            Frozen = false;
 
             float frameMs = Time.unscaledDeltaTime * 1000f;
             _bucketFrames++;

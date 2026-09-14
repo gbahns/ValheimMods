@@ -25,6 +25,8 @@ namespace DiagnoseServerLag
         internal static ConfigEntry<string> PanelSize;
         internal static ConfigEntry<string> PanelPosition;
         internal static ConfigEntry<int> ListScrollRows;
+        internal static ConfigEntry<bool> PauseWhileOpen;
+        internal static ConfigEntry<bool> ShowPauseButton;
 
         // ── what counts as a stall, and over what span ──────────────────────────────
         internal static ConfigEntry<float> StallMs;
@@ -78,6 +80,20 @@ namespace DiagnoseServerLag
                 "its title. Set to 0,0 to put it back in the middle.");
             ListScrollRows = mod.BindRangeInt("Display", "List Scroll Rows", 4, 1, 20,
                 "How many rows a list moves per notch of the mouse wheel.");
+
+            // Off by default, unlike the map's version. A diagnostic should not change how the game
+            // runs the first time somebody opens it, least of all the part of the game it is
+            // measuring - and watching the numbers move during a bad patch is a real use that a
+            // pause would take away. The button in the corner is one click when you do want it.
+            PauseWhileOpen = mod.Bind("Display", "Pause While Open", false,
+                "Pause the game while the report is open, the way the ESC menu does. Toggle it from the button " +
+                "in the report's top-right corner. This works by itself when playing solo or hosting alone; on " +
+                "a dedicated server it takes the Pause My Server mod, and the button shows whether the pause " +
+                "actually took effect. While the game is paused the mod stops recording, so the verdict you are " +
+                "reading stays the verdict for the seconds that were actually played.");
+            ShowPauseButton = mod.Bind("Display", "Show Pause Button", true,
+                "Show the pause toggle in the report's top-right corner. Turning it off leaves the setting above " +
+                "reachable only from this file.");
 
             StallMs = mod.BindRange("Measurement", "Stall Milliseconds", 100f, 20f, 1000f,
                 "A frame longer than this counts as a stall. 100 ms is a single frame at 10 per second, which " +

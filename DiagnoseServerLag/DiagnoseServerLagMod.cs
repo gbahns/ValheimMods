@@ -29,7 +29,7 @@ namespace DiagnoseServerLag
     {
         public const string ModGuid    = "DeathMonger.DiagnoseServerLag";
         public const string ModName    = "Diagnose Server Lag";
-        public const string ModVersion = "0.1.1";
+        public const string ModVersion = "0.2.0";
 
         internal static DiagnoseServerLagMod Instance { get; private set; }
         internal static ManualLogSource Log { get; private set; }
@@ -75,6 +75,7 @@ namespace DiagnoseServerLag
                 Sampler.Reset();
                 LagNetwork.Reset();
                 LagPanel.Close();
+                LagPause.Release();
             }
             _wasInWorld = inWorld;
 
@@ -83,13 +84,17 @@ namespace DiagnoseServerLag
 
             // A dedicated server has no player, no canvas and no keyboard; everything below is the
             // client half and stops here on the server without needing a process check.
-            if (Player.m_localPlayer == null) { LagPanel.Close(); return; }
+            if (Player.m_localPlayer == null) { LagPanel.Close(); LagPause.Release(); return; }
             LagPanel.Update();
             LagHud.Update();
+            // Every frame, not just on open and close: the re-assert that keeps another mod's
+            // Game.Unpause() from silently dropping our pause lives in here. See LagPause.Refresh.
+            LagPause.Refresh();
         }
 
         private void OnDestroy()
         {
+            LagPause.Release();
             _harmony.UnpatchSelf();
         }
 
