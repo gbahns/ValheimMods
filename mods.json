@@ -65,5 +65,65 @@
     }
   },
 
-  "profilePackages": {}
+  "_profileNote": [
+    "Third-party packages in the Gale 'Default SD' profile, audited 2026-09-14 from three signals:",
+    "a [BepInProcess(\"valheim.exe\")] string in the package's DLLs (decisive - BepInEx will not load",
+    "it server-side), the author's Thunderstore categories, and what the mod does.",
+    "",
+    "A Thunderstore 'Server-side' category usually means the mod CAN be installed server-side so its",
+    "config is authoritative and synced, not that the server needs it. Those are marked 'both' where",
+    "the server genuinely participates and 'optional-server' where installing it there only buys",
+    "enforced config - the deploy uploads those, since that is the status quo, but they are the ones",
+    "to prune if the server is ever under load.",
+    "",
+    "'unknown' means it needs a look: the deploy treats it as before (uploaded) and nothing is",
+    "deleted on that basis."
+  ],
+
+  "profilePackages": {
+    "Crystal-Pathfinder":                            { "side": "client", "why": "Client gate in the DLL. Map discovery radius." },
+    "Neobotics-GetComfortable":                      { "side": "client", "why": "Client gate in the DLL. Comfort UI." },
+    "Neobotics-HUDCompass":                          { "side": "client", "why": "Client gate in the DLL. HUD compass." },
+    "Neobotics-QuietPortals":                        { "side": "client", "why": "Client gate in the DLL. Portal audio." },
+    "Stonaar-ValheimSkipIntro":                      { "side": "client", "why": "Client gate in the DLL; skips the startup cinematic." },
+
+    "Advize-PlantEasily":                            { "side": "client", "why": "Client-side only on Thunderstore. Planting grid is a placement UI." },
+    "Azumatt-AzuClock":                              { "side": "client", "why": "Client-side only. In-game clock." },
+    "Azumatt-AzuHoverStats":                         { "side": "client", "why": "Client-side only. Hover tooltips." },
+    "Azumatt-AzuWorkbench_Inventory_Repair":         { "side": "client", "why": "Client-side only. Disabled in the profile." },
+    "Azumatt-Official_BepInEx_ConfigurationManager": { "side": "client", "why": "An in-game settings window; a headless server has no UI. Disabled in the profile." },
+    "Azumatt-Ship_Stats":                            { "side": "client", "why": "Client-side only. Displays ship stats." },
+    "Azumatt-Unshamed":                              { "side": "client", "why": "Client-side only. Unblocks achievements locally." },
+    "blacks7ar-NoTreeStump":                         { "side": "client", "why": "Client-side only." },
+    "ComfyMods-BetterZeeLog":                        { "side": "client", "why": "Client-side on Thunderstore. Worth revisiting if server-side ZLog output is ever wanted." },
+    "ComfyMods-ReportCard":                          { "side": "client", "why": "Client-side only. Disabled in the profile; its stats panel broke on Valheim 1.0." },
+    "JereKuusela-Ruler":                             { "side": "client", "why": "Client-side only. Measuring overlay." },
+    "JereKuusela-Render_Limits":                     { "side": "client", "why": "Rendering limits are a client concern; the Server-side tag is for config sync. Disabled in the profile." },
+    "LTmadness-GumshoeTimerSuite":                   { "side": "client", "why": "Client-side only. Timers drawn on processors." },
+    "MSchmoecker-ContentsWithin":                    { "side": "client", "why": "Client-side only. Disabled in the profile." },
+    "Searica-DodgeShortcut":                         { "side": "client", "why": "Client-side only. A keybind." },
+    "Zenox-ServerConnect":                           { "side": "client", "why": "A main-menu connect button; meaningless on a server." },
+    "shudnal-ConfigurationManager":                  { "side": "client", "why": "An in-game settings window. Tagged Server-side, but a headless server has no UI." },
+    "shudnal-MyLittleUI":                            { "side": "client", "why": "UI tweaks. Tagged Server-side for config sync only." },
+
+    "CW_Jesse-BetterNetworking_Valheim":             { "side": "both", "why": "Compresses and paces the network protocol; both ends must agree." },
+    "shudnal-ConditionalConfigSync":                 { "side": "both", "why": "Config synchronization and server policy library - the server is where policy lives." },
+    "sighsorry-PortalRules":                         { "side": "both", "why": "Server-side rules about portals. On the server but not in the profile." },
+    "ValheimModding-Jotunn":                         { "side": "both", "why": "Library. ForsakenShrines needs it server-side." },
+    "ValheimModding-JsonDotNET":                     { "side": "both", "why": "Shared library a server-side mod may load." },
+    "ValheimModding-YamlDotNet":                     { "side": "both", "why": "Shared library a server-side mod may load." },
+
+    "Azumatt-AzuAutoStore":                          { "side": "optional-server", "why": "Client feature; Server-side tag buys enforced config." },
+    "Azumatt-AzuCraftyBoxes":                        { "side": "optional-server", "why": "Client pulls from containers; server install enforces the config." },
+    "Azumatt-AzuExtendedPlayerInventory":            { "side": "optional-server", "why": "Client inventory UI; server install enforces the config." },
+    "Azumatt-Recycle_N_Reclaim":                     { "side": "optional-server", "why": "Recipes are resolved client-side; server install enforces the config." },
+    "Azumatt-RepairStation":                         { "side": "optional-server", "why": "Check whether it registers a new prefab - if it does, it is 'both'." },
+    "TastyChickenLegs-AutomaticFuel":                { "side": "optional-server", "why": "Fuelling containers; Server-side tagged." },
+    "TastyChickenLegs-BetterCarts":                  { "side": "optional-server", "why": "Cart physics; Server-side tagged." },
+    "potto007-OttoFuel":                             { "side": "optional-server", "why": "Server-side tagged. On the server but not in the profile." },
+
+    "OdinShipPlus":                                  { "side": "unknown", "why": "NEEDS A DECISION: adds ship prefabs, and a prefab mod missing from the server means ZDOs it cannot instantiate get destroyed, as ForsakenShrines showed. Folder carries no namespace so its listing was not checked. Probably 'both'." },
+    "BadgersValheimSkies":                           { "side": "unknown", "why": "Folder carries no namespace; disabled in the profile, so nothing to send either way." },
+    "Shalopay-FoodSorting":                          { "side": "unknown", "why": "No client/server category set. Disabled in the profile." }
+  }
 }

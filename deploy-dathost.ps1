@@ -194,7 +194,11 @@ try {
             if ($top -and -not $disabledPackages.ContainsKey($top) -and -not (Test-PackageActive (Join-Path $root $top))) { $disabledPackages[$top] = $true }
             if ($top -and $disabledPackages.ContainsKey($top)) { continue }
             # Declared client-only in mods.json: the server cannot use it, so don't send it.
-            if ($top -and (Test-ClientOnly $top)) { $clientOnlyPackages[$top] = $true; continue }
+            # This repo's own mods sit in the profile as loose DLLs at the plugins root with no
+            # package folder, so keying only on $top would let every one of them through and undo
+            # a cleanup.  Fall back to the file's own base name, which is how mods.json names them.
+            $unit = if ($top) { $top } else { [IO.Path]::GetFileNameWithoutExtension($f.Name) }
+            if (Test-ClientOnly $unit) { $clientOnlyPackages[$unit] = $true; continue }
             if ($top -and -not $serverPackages.ContainsKey($top) -and -not $IncludeLocalOnly) { $skippedPackages[$top] = $true; continue }
             $target = "BepInEx/plugins/$rel"
             $reason = $null
