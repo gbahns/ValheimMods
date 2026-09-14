@@ -36,8 +36,8 @@
       "why": "No process gate, but stats are answered per-client over a routed RPC; README: 'the server needs nothing'."
     },
     "ForsakenShrines": {
-      "side": "client",
-      "why": "UNRESOLVED: [BepInProcess(\"valheim.exe\")] says client-only, but thunderstore.toml lists the server-side category. The code wins here because the attribute is what BepInEx enforces, so the server copy was dead weight. If custom pieces do need a server install, the attribute is the bug, not this line."
+      "side": "both",
+      "why": "Adds new prefabs (shrine_*). A server without them deletes the ZDOs it cannot instantiate near the world center, and ServerSync has nothing to enforce from. The client gate was the bug and is gone as of 0.8.3."
     },
     "GrabMaterials": {
       "side": "client",

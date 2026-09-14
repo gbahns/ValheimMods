@@ -6,14 +6,32 @@ using ServerSync;
 
 namespace ForsakenShrines
 {
+    // Deliberately no [BepInProcess("valheim.exe")] gate: this mod must load on a dedicated
+    // server as well as on clients, so do not add one back.
+    //
+    // The shrines are new prefabs ("shrine_eikthyr" and friends) that exist only because this
+    // mod clones them; nothing in vanilla knows those names.  A dedicated server that does not
+    // have the mod cannot resolve their prefab hashes, and ZNetScene.CreateObjectsSorted deletes
+    // what it cannot instantiate -- "Destroyed invalid prefab ZDO" -- so a placed shrine is gone
+    // for good.  The server only instantiates around its own reference position, which never
+    // leaves the world center on a dedicated server, so in practice this claims the shrines
+    // built near spawn: silently, permanently, and exactly where people build.
+    //
+    // ServerSync is the second reason: without the plugin on the server there is no
+    // DeathMonger.ForsakenShrines.cfg for an admin to edit and no authoritative values to push,
+    // so every client would quietly run its own placement rules and recipes.
+    //
+    // Running headless is safe.  The Player patches (placement, ghost height, OnSpawned) simply
+    // never fire without a local player, and the two hooks that matter -- ObjectDB.Awake and
+    // ZNetScene.Awake -- are exactly the ones that register the clones into ZNetScene so the
+    // server can spawn them.
     [BepInPlugin(ModGuid, ModName, ModVersion)]
     [BepInDependency(Jotunn.Main.ModGuid)]
-    [BepInProcess("valheim.exe")]
     public class ForsakenShrinesMod : BaseUnityPlugin
     {
         public const string ModGuid    = "DeathMonger.ForsakenShrines";
         public const string ModName    = "Forsaken Shrines";
-        public const string ModVersion = "0.8.2";
+        public const string ModVersion = "0.8.3";
 
         internal static ForsakenShrinesMod Instance { get; private set; }
 

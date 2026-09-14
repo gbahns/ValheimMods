@@ -1,6 +1,6 @@
 # Forsaken Shrines
 
-> **Alpha — Version 0.8.2**
+> **Alpha — Version 0.8.3**
 > This should be considered an early release version of this mod.  It seems to be working but you might encounter issues.  Recipes, placement rules, and balance are subject to change.  I wanted to make it available for people to use and also to get feedback.  If you're using it without issue let me know; that feedback will help me confirm it's working and promote it to v1.0.0. Join [my discord server](https://discord.gg/eH7UfRj5mG) to ask questions, provide feedback, or report issues.
 
 Build a shrine to each Forsaken boss you have defeated, then mount that boss's trophy on it to channel the guardian power remotely — no return trip to the world-center altar required for activation.
@@ -50,7 +50,8 @@ Violating either condition blocks placement and shows a message explaining why.
 
 ## Configuration
 
-All settings except `Mod Enabled` are server-synced — the server's values override clients.
+All settings except `Mod Enabled` are server-synced — the server's values override clients, as
+long as the mod is installed on the server.
 
 The config file is created at `BepInEx/config/DeathMonger.ForsakenShrines.cfg` on first run.
 
@@ -70,11 +71,20 @@ The config file is created at `BepInEx/config/DeathMonger.ForsakenShrines.cfg` o
 - [BepInEx 5](https://valheim.thunderstore.io/package/denikson/BepInExPack_Valheim/)
 - [Jotunn](https://valheim.thunderstore.io/package/ValheimModding/Jotunn/)
 
+## Installing on a dedicated server
+
+**Install on the server as well as on every client.** The shrines are new prefabs, and a server
+that does not have them deletes the ones it cannot recognize — a shrine built within simulation
+range of the world center will vanish for good. The server is also what makes the settings below
+authoritative; without it, every client just runs its own.
+
+Single-player and a player-hosted world need nothing extra.
+
 ---
 
 ## Compatibility
 
-- Multiplayer compatible — uses ServerSync
+- Multiplayer compatible — uses ServerSync; install on the server and on every client
 - Should be compatible with most other mods; no vanilla systems are permanently altered
 - Shrines are build pieces; they persist through world saves and game restarts
 - Built against Valheim 1.0.7 and Jotunn 2.30.0. Jotunn is used only to look up and clone vanilla prefabs; the mod does not use Jotunn's PieceManager, so it also runs on Jotunn 2.29.2
