@@ -199,8 +199,14 @@ namespace DiagnoseServerLag
                 if (socket == null) return;
                 try
                 {
-                    s.SendQueue = socket.GetSendQueueSize();
-                    s.SendRate = socket.GetCurrentSendRate();
+                    // Clamped, because the game hands back negative queue sizes. ZSteamSocket's
+                    // GetSendQueueSize sums its own queued byte arrays and Steam's pending counters,
+                    // none of which can be negative on their own, yet a real session reported
+                    // "-21294 B queued". Whatever Steam is reporting through that struct, a negative
+                    // backlog is not a measurement, and letting it through both printed nonsense and
+                    // fed the saturation rule a number it would silently read as healthy.
+                    s.SendQueue = Mathf.Max(0, socket.GetSendQueueSize());
+                    s.SendRate = Mathf.Max(0, socket.GetCurrentSendRate());
                 }
                 catch (Exception e)
                 {
@@ -224,8 +230,8 @@ namespace DiagnoseServerLag
                         Ping = ping,
                         HasPing = ping > 0 || localQ > 0f,
                         Quality = localQ,
-                        SendQueue = peer.m_socket.GetSendQueueSize(),
-                        SendRate = peer.m_socket.GetCurrentSendRate(),
+                        SendQueue = Mathf.Max(0, peer.m_socket.GetSendQueueSize()),
+                        SendRate = Mathf.Max(0, peer.m_socket.GetCurrentSendRate()),
                         DistanceFromCenter = peer.m_refPos.magnitude,
                     };
                     if (ps.SendQueue > worstQueue) worstQueue = ps.SendQueue;

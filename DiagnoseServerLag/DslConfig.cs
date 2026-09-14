@@ -44,6 +44,7 @@ namespace DiagnoseServerLag
         // ── thresholds ──────────────────────────────────────────────────────────────
         internal static ConfigEntry<float> ServerTickWarnMs;
         internal static ConfigEntry<float> ServerTickSevereMs;
+        internal static ConfigEntry<float> SteadyTickRatio;
         internal static ConfigEntry<float> ClientFrameWarnMs;
         internal static ConfigEntry<float> QueueWarnBytes;
         internal static ConfigEntry<float> QueueSevereBytes;
@@ -125,14 +126,22 @@ namespace DiagnoseServerLag
                 "aggregate numbers that diagnose the server always go to everyone; this is the part that names " +
                 "who is on a bad line. Admins receive it either way.");
 
-            ServerTickWarnMs = mod.BindRange("Thresholds", "Server Tick Warn Ms", 33f, 5f, 500f,
-                "Server milliseconds per tick above which the server is called slow. A healthy dedicated " +
-                "server ticks in single-digit milliseconds - it draws nothing and its loop is uncapped - so " +
-                "33 ms, which is 30 ticks a second, is already far outside normal and is set generously on " +
-                "purpose.");
-            ServerTickSevereMs = mod.BindRange("Thresholds", "Server Tick Severe Ms", 66f, 10f, 1000f,
-                "Server milliseconds per tick above which the server is called badly starved: roughly 15 ticks " +
-                "a second, where position updates arrive too late to hide and everyone online rubber-bands.");
+            ServerTickWarnMs = mod.BindRange("Thresholds", "Server Tick Warn Ms", 50f, 5f, 500f,
+                "Server milliseconds per tick above which the server is called slow - but only when the tick " +
+                "time is also uneven; see Steady Tick Ratio. This was 33 ms until a real server turned out to " +
+                "run a rock-steady 33.3 ms frame cap, which is exactly 30 ticks a second, so the threshold sat " +
+                "on top of a perfectly healthy server and accused it permanently. 50 ms is 20 ticks a second.");
+            ServerTickSevereMs = mod.BindRange("Thresholds", "Server Tick Severe Ms", 100f, 10f, 1000f,
+                "Server milliseconds per tick above which the server is called badly starved whatever the " +
+                "shape of the measurement: 10 ticks a second, where position updates arrive too late to hide " +
+                "and everyone online rubber-bands. A steady tick is forgiven below this and not above it, " +
+                "because a server holding a metronomic 200 ms is still far too slow to run the game.");
+            SteadyTickRatio = mod.BindRange("Thresholds", "Steady Tick Ratio", 1.5f, 1f, 10f,
+                "How close the server's worst tick has to be to its median before the tick rate is read as a " +
+                "deliberate frame cap rather than a struggle. A frame limiter holds every tick to nearly the " +
+                "same length; a machine that genuinely cannot keep up produces variance, because the work that " +
+                "overruns is not the same work every tick. Below this ratio, with no stalls, the server is " +
+                "left alone however slow the number looks. Raise it to forgive more, lower it to accuse more.");
             ClientFrameWarnMs = mod.BindRange("Thresholds", "Client Frame Warn Ms", 33f, 8f, 500f,
                 "Your own milliseconds per frame above which your machine is called the bottleneck. 33 ms is " +
                 "30 frames a second.");

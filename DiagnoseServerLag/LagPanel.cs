@@ -10,7 +10,7 @@ namespace DiagnoseServerLag
     /// The report: the verdict, what it was decided from, and the live numbers behind it.
     ///
     /// Built to be read while annoyed. The conclusion and what to do about it are at the top in
-    /// full sentences, and everything underneath exists to let a sceptical reader check the
+    /// full sentences, and everything underneath exists to let a skeptical reader check the
     /// accusation rather than to be read in order. That ordering is the entire design: a panel
     /// that opened on a grid of counters would be one more thing to interpret at exactly the
     /// moment nobody wants to interpret anything.
@@ -209,21 +209,21 @@ namespace DiagnoseServerLag
             int stalls = 0;
             foreach (var w in window) stalls += w.Stalls;
 
-            Stat("frame time", $"{s.FrameMsAvg:0.0} ms  ({Verdict.Fps(s.FrameMsAvg)})",
+            StatRow("frame time", $"{s.FrameMsAvg:0.0} ms  ({Verdict.Fps(s.FrameMsAvg)})",
                 Rank(s.FrameMsAvg, DslConfig.ClientFrameWarnMs.Value, DslConfig.ClientFrameWarnMs.Value * 2f));
-            Stat("worst frame", $"{Stats.Max(window, x => x.FrameMsMax):0} ms in the last {window.Count}s", 0);
-            Stat("stalls", $"{stalls} over {window.Count}s (a stall is a frame past {DslConfig.StallMs.Value:0} ms)",
+            StatRow("worst frame", $"{Stats.Max(window, x => x.FrameMsMax):0} ms in the last {window.Count}s", 0);
+            StatRow("stalls", $"{stalls} over {window.Count}s, counting frames past {DslConfig.StallMs.Value:0} ms",
                 stalls > 0 ? 1 : 0);
-            Stat("ping", s.HasPing ? $"{s.Ping} ms, {Stats.Jitter(window, x => x.Ping):0} ms jitter" : "not measurable on this socket",
+            StatRow("ping", s.HasPing ? $"{s.Ping} ms, {Stats.Jitter(window, x => x.Ping):0} ms jitter" : "not measurable on this socket",
                 s.HasPing ? Rank(Stats.Jitter(window, x => x.Ping), DslConfig.PingJitterWarnMs.Value, DslConfig.PingJitterWarnMs.Value * 2f) : 0);
-            Stat("quality", s.HasPing ? $"{s.LocalQuality * 100f:0.0}% local, {s.RemoteQuality * 100f:0.0}% remote" : "not measurable on this socket",
+            StatRow("quality", s.HasPing ? $"{s.LocalQuality * 100f:0.0}% local, {s.RemoteQuality * 100f:0.0}% remote" : "not measurable on this socket",
                 s.HasPing ? RankLow(s.LocalQuality, DslConfig.QualityWarn.Value, DslConfig.QualitySevere.Value) : 0);
-            Stat("upload queue", $"{Stats.Bytes(s.SendQueue)} queued, {Stats.Bytes(Stats.Slope(window, x => x.SendQueue))}/s trend",
+            StatRow("upload queue", $"{Stats.Bytes(s.SendQueue)}, {Stats.Bytes(Stats.Slope(window, x => x.SendQueue))}/s trend",
                 Rank(s.SendQueue, DslConfig.QueueWarnBytes.Value, DslConfig.QueueSevereBytes.Value));
-            Stat("bandwidth", $"{Stats.Bytes(s.InByteSec)}/s in, {Stats.Bytes(s.OutByteSec)}/s out", 0);
-            Stat("objects", $"{s.Zdos} known, {s.Instances} built around you", 0);
-            Stat("object traffic", $"{s.ZdosRecv}/s received, {s.ZdosSent}/s sent, {s.ChangeQueue} unacknowledged", 0);
-            Stat("history", Sampler.Frozen
+            StatRow("bandwidth", $"{Stats.Bytes(s.InByteSec)}/s in, {Stats.Bytes(s.OutByteSec)}/s out", 0);
+            StatRow("objects", $"{s.Zdos} known, {s.Instances} built nearby", 0);
+            StatRow("object traffic", $"{s.ZdosRecv}/s in, {s.ZdosSent}/s out, {s.ChangeQueue} unacknowledged", 0);
+            StatRow("history", Sampler.Frozen
                     ? $"{Sampler.History.Count}s kept, held still while paused"
                     : $"{Sampler.History.Count}s kept of {Sampler.History.Capacity}s", 0);
         }
@@ -248,16 +248,22 @@ namespace DiagnoseServerLag
             }
 
             float tick = Mathf.Max(r.TickMsAvg, r.BaselineTickMs);
-            Stat("tick time", $"{r.TickMsAvg:0.0} ms now, {r.BaselineTickMs:0.0} ms median over {r.WindowSeconds}s  ({Verdict.Fps(tick)})",
-                Rank(tick, DslConfig.ServerTickWarnMs.Value, DslConfig.ServerTickSevereMs.Value));
-            Stat("worst tick", $"{r.WorstTickMs:0} ms, {r.StallsInWindow} stalls in that window", r.StallsInWindow > 0 ? 1 : 0);
-            Stat("world", $"{r.Zdos} networked objects", 0);
-            Stat("object traffic", $"{r.ZdosSent}/s sent, {r.ZdosRecv}/s received", 0);
-            Stat("players", $"{r.PeerCount} connected", 0);
-            Stat("worst queue", $"{Stats.Bytes(r.WorstSendQueue)} to one player, {Stats.Bytes(r.TotalSendRate)}/s total",
+            // A server sitting on its frame cap is not slow, and the row must not be painted as if
+            // it were: the number is identical either way, and only the spread tells them apart.
+            bool paced = Verdict.ServerPaced(r);
+            StatRow("tick time", $"{r.TickMsAvg:0.0} ms now, {r.BaselineTickMs:0.0} ms median  ({Verdict.Fps(tick)})",
+                paced ? 0 : Rank(tick, DslConfig.ServerTickWarnMs.Value, DslConfig.ServerTickSevereMs.Value));
+            StatRow("steadiness", paced
+                    ? $"worst {r.WorstTickMs:0} ms against a {r.BaselineTickMs:0.0} ms median - a frame cap, not a struggle"
+                    : $"worst {r.WorstTickMs:0} ms over {r.WindowSeconds}s, {r.StallsInWindow} stalls",
+                paced ? 0 : (r.StallsInWindow > 0 ? 1 : 0));
+            StatRow("world", $"{r.Zdos} networked objects", 0);
+            StatRow("object traffic", $"{r.ZdosSent}/s out, {r.ZdosRecv}/s in", 0);
+            StatRow("players", $"{r.PeerCount} connected", 0);
+            StatRow("worst queue", $"{Stats.Bytes(r.WorstSendQueue)} to one player, {Stats.Bytes(r.TotalSendRate)}/s sent in total",
                 Rank(r.WorstSendQueue, DslConfig.QueueWarnBytes.Value, DslConfig.QueueSevereBytes.Value));
-            Stat("kind", r.Dedicated ? "dedicated server" : "a player's game, also drawing their screen", 0);
-            Stat("report age", $"{LagNetwork.ReportAge:0.0}s", LagNetwork.ReportAge > 10f ? 1 : 0);
+            StatRow("kind", r.Dedicated ? "dedicated server" : "a player's game, also drawing their screen", 0);
+            StatRow("report age", $"{LagNetwork.ReportAge:0.0}s", LagNetwork.ReportAge > 10f ? 1 : 0);
         }
 
         private static void AddPeers()
@@ -296,11 +302,46 @@ namespace DiagnoseServerLag
             }
         }
 
-        /// <summary>One measurement row: name on the left, value on the right, colored by how bad it is.</summary>
-        private static void Stat(string label, string value, int rank)
+        /// <summary>
+        /// One measurement row: a short label on the left, the value filling everything to its right.
+        ///
+        /// Built here rather than through UiKit.Row because Row's right-hand column is a fixed
+        /// 96-pixel box - the right shape for the short numbers a scoreboard puts in it, and the
+        /// wrong one for these. The values here are sentences: "42 ms over 10s", "0 B, 1.2 KB/s
+        /// trend". In a 96-pixel box every one of them ellipsized down to a few characters, so the
+        /// panel showed "9.7 ms (103...", "-21294 B qu..." and so on - a report built to be read at
+        /// a glance, in which nothing could be read at all.
+        ///
+        /// The label keeps a fixed narrow column so the values line up with each other, and the
+        /// value takes the rest of the width, which is what grows when the panel is dragged wider.
+        /// </summary>
+        private static void StatRow(string label, string value, int rank)
         {
+            const float LabelWidth = 180f;
+            const float Gap = 8f;
+
+            var go = new GameObject("Stat", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(LayoutElement));
+            go.transform.SetParent(_list, false);
+            go.GetComponent<Image>().color = UiKit.RowColor;
+            var le = go.GetComponent<LayoutElement>();
+            le.preferredHeight = UiKit.RowHeight;
+            le.minHeight = UiKit.RowHeight;
+
+            var lbl = UiKit.Text(go.transform, "Label", label, 16f, TextAlignmentOptions.Left, UiKit.Dim);
+            var lrt = lbl.rectTransform;
+            lrt.anchorMin = new Vector2(0f, 0f);
+            lrt.anchorMax = new Vector2(0f, 1f);
+            lrt.offsetMin = new Vector2(10f, 0f);
+            lrt.offsetMax = new Vector2(10f + LabelWidth, 0f);
+
+            // The value carries the color: it is the part that says whether anything is wrong.
             Color c = rank >= 2 ? Bad : rank == 1 ? UiKit.Header : UiKit.Body;
-            UiKit.Row(_list, label, value, null, null, 16f, c);
+            var val = UiKit.Text(go.transform, "Value", value, 16f, TextAlignmentOptions.Left, c);
+            var vrt = val.rectTransform;
+            vrt.anchorMin = new Vector2(0f, 0f);
+            vrt.anchorMax = new Vector2(1f, 1f);
+            vrt.offsetMin = new Vector2(10f + LabelWidth + Gap, 0f);
+            vrt.offsetMax = new Vector2(-10f, 0f);
         }
 
         private static int Rank(float value, float warn, float severe) =>

@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.2.2 — unreleased
+
+- **Stopped accusing a healthy server.** A real server reported 33.3 ms per tick now, 33.3 ms
+  median and a 34 ms worst tick, with no stalls — and the verdict called it starved. That is not a
+  server in trouble; it is a server pinned to exactly 30 ticks a second by a frame limiter, and the
+  old 33 ms threshold sat precisely on top of that cap. The rule now looks at the *spread* rather
+  than the level: a frame limiter holds every tick to nearly the same length, while a machine that
+  genuinely cannot keep up produces variance, because the work that overruns is not the same work
+  every tick. A worst tick close to the median, with no stalls, is read as a cap and left alone.
+  This is not a list of known cap values — a server capped at 20 or 60 is recognized the same way,
+  with nobody having to enumerate them.
+- Above the severe threshold a steady tick no longer earns the benefit of the doubt: a server
+  holding a metronomic 200 ms is still far too slow to run the game, however even it is.
+- Thresholds raised accordingly — warn 33 → 50 ms, severe 66 → 100 ms — with a new **Steady Tick
+  Ratio** setting controlling how close the worst tick must be to the median to read as a cap.
+- The server section now shows a **steadiness** row explaining which of the two it is, so the
+  number that caused the confusion carries its own explanation.
+- **The value column was unreadable.** It used the shared row helper, whose right-hand column is a
+  fixed 96 pixels — right for a scoreboard's short numbers, hopeless for these, so every value
+  ellipsized to a few characters: "9.7 ms (103…", "42 ms in th…". Measurement rows now use a layout
+  built for them, with a narrow fixed label column and the value taking all the remaining width.
+- **Negative queue sizes are clamped.** A real session reported "-21294 B queued". The game's own
+  `GetSendQueueSize` only ever sums non-negative values, so whatever Steam is reporting through
+  that struct, a negative backlog is not a measurement — and it was being fed to the saturation
+  rule as well as printed.
+
 ## 0.2.1
 
 - **The report now takes the mouse.** It had no Harmony patches at all, so Valheim never treated it

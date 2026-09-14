@@ -97,7 +97,13 @@ namespace DiagnoseServerLag
             foreach (var s in window) stalls += s.Stalls;
 
             bool serverKnown = report != null && LagNetwork.Module != ServerModule.Absent;
-            bool serverHealthy = serverKnown && ServerTickMs(report) < DslConfig.ServerTickWarnMs.Value;
+            // Healthy means the server rule did not fire, which now includes a server sitting
+            // steadily on its frame cap. Comparing the raw tick time against the warning threshold
+            // here would have gone on calling a capped server unhealthy after the rule itself
+            // stopped, and quietly held down the confidence of every client-side finding.
+            bool serverHealthy = serverKnown
+                && (ServerPaced(report) || ServerTickMs(report) < DslConfig.ServerTickWarnMs.Value)
+                && ServerTickMs(report) < DslConfig.ServerTickSevereMs.Value;
 
             AddServerStarved(findings, report, serverKnown);
             AddLinkSaturated(findings, window, report);
@@ -124,7 +130,10 @@ namespace DiagnoseServerLag
                         "Leave this open and come back to it after the next bad patch; the last " +
                         $"{Sampler.History.Count}s are kept and the verdict is recalculated every second.");
                     healthy.With($"frames {Stats.Median(window, x => x.FrameMsAvg):0} ms ({Fps(Stats.Median(window, x => x.FrameMsAvg))}), no stalls");
-                    if (serverKnown) healthy.With($"server tick {ServerTickMs(report):0.0} ms, {report.Zdos} objects in the world");
+                    if (serverKnown)
+                        healthy.With(ServerPaced(report)
+                            ? $"server ticking steadily at {ServerTickMs(report):0.0} ms ({Fps(ServerTickMs(report))}), which is its cap rather than a limit it is straining against; {report.Zdos} objects in the world"
+                            : $"server tick {ServerTickMs(report):0.0} ms, {report.Zdos} objects in the world");
                     findings.Add(healthy);
                 }
             }
@@ -165,6 +174,12 @@ namespace DiagnoseServerLag
             float warn = DslConfig.ServerTickWarnMs.Value;
             float severe = DslConfig.ServerTickSevereMs.Value;
 
+            // A steady tick is a frame cap, not a struggle - checked before the thresholds, and
+            // the reason this rule stopped accusing a perfectly healthy server. See ServerPaced.
+            // Above the severe threshold it no longer earns the benefit of the doubt: a server
+            // holding a metronomic 200 ms is still far too slow to run the game, however even it is.
+            if (sustained < severe && ServerPaced(report)) return;
+
             int confidence;
             string headline;
             if (sustained >= severe)
@@ -196,7 +211,7 @@ namespace DiagnoseServerLag
                 "the object count below is normal and the tick time is still bad, it is the host.");
 
             f.With($"tick {now:0.0} ms now, {sustained:0.0} ms median over the server's last {report.WindowSeconds}s");
-            if (report.WorstTickMs > 0f) f.With($"worst single tick in that window {report.WorstTickMs:0} ms");
+            if (report.WorstTickMs > 0f) f.With($"worst single tick in that window {report.WorstTickMs:0} ms, against a {sustained:0.0} ms median - the spread is what says this is not simply a frame cap");
             if (report.StallsInWindow > 0) f.With($"{report.StallsInWindow} server stalls over the window");
             f.With($"{report.Zdos} networked objects in the world, {report.ZdosSent}/s sent to {report.PeerCount} player{(report.PeerCount == 1 ? "" : "s")}");
             if (!report.Dedicated) f.With("the server is a player's game, not a dedicated one, so it is also drawing the host's screen");
@@ -446,6 +461,35 @@ namespace DiagnoseServerLag
         }
 
         // ── helpers ─────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Whether the server is holding a deliberate, steady tick rate rather than failing to keep up.
+        ///
+        /// This rule exists because the first version of the mod accused a healthy server on sight.
+        /// bahnsheim reported 33.3 ms now, 33.3 ms median and a 34 ms worst tick, with no stalls -
+        /// which is not a server in trouble, it is a server pinned to exactly 30 ticks a second by a
+        /// frame limiter. The old 33 ms warning threshold sat precisely on that cap, so the verdict
+        /// read "the server is not keeping up" permanently, about a server that was keeping up
+        /// perfectly.
+        ///
+        /// The discriminator is spread, not level. A frame limiter holds every tick to nearly the
+        /// same length; a machine that genuinely cannot keep up produces variance, because the work
+        /// that overruns is not the same work every tick. So a worst tick barely above the median,
+        /// with no stalls at all, means the number you are looking at is a cap - and a cap tells you
+        /// nothing except which rate the server was configured for.
+        ///
+        /// Deliberately not a fixed list of known cap values. 30 Hz is what this server runs, but
+        /// another host may cap at 20 or 60, and the shape of the evidence identifies all of them
+        /// without anyone having to enumerate them.
+        /// </summary>
+        internal static bool ServerPaced(ServerReport report)
+        {
+            if (report == null || report.BaselineTickMs <= 0f || report.WorstTickMs <= 0f) return false;
+            if (report.StallsInWindow > 0) return false;
+            // The small constant keeps a very fast server - where a fraction of a millisecond of
+            // jitter is a large ratio - from failing the test for no reason.
+            return report.WorstTickMs <= report.BaselineTickMs * DslConfig.SteadyTickRatio.Value + 2f;
+        }
 
         /// <summary>The server's worst honest tick figure: sustained if it has one, otherwise the latest.</summary>
         private static float ServerTickMs(ServerReport report)

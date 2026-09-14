@@ -93,7 +93,8 @@ The ones worth knowing about:
 - **Stall Milliseconds** (100) — a frame longer than this counts as a stall.
 - **Window Seconds** (10) — how many recent seconds the verdict is made from.
 - **Baseline Seconds** (60) — how much history counts as "normal for this server".
-- **Server Tick Warn / Severe Ms** (33 / 66) — a healthy dedicated server ticks in single-digit milliseconds, so these are deliberately generous.
+- **Server Tick Warn / Severe Ms** (50 / 100) — how slow the server's tick has to get before it is called slow, and then badly starved.
+- **Steady Tick Ratio** (1.5) — how close the server's worst tick must be to its median before the tick rate is read as a deliberate frame cap rather than a struggle. Many dedicated servers run a limiter (30 ticks a second is 33.3 ms), and a capped server is not a slow one: a limiter holds every tick to nearly the same length, while a machine that cannot keep up produces variance. Below this ratio, with no stalls, the server is left alone however slow the number looks — up to the severe threshold, above which nothing is forgiven.
 - **Queue Warn / Severe Bytes** (16 KB / 64 KB) — queued bytes that have not reached the wire.
 - **Pause While Open** (off) — pause the game while the report is open. The corner toggle changes this.
 - **Show Pause Button** (on) — whether that toggle is drawn.
