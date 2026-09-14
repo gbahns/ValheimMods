@@ -1,0 +1,35 @@
+<Project>
+
+  <!-- Where a local build goes.
+
+       Every mod project used to carry its own copy of this target, and every copy deployed to
+       EVERY Gale profile it could find. That made "Default SD" - the profile actually played on -
+       a place where unreleased builds appeared automatically, which is how a test build and a
+       published release became impossible to tell apart while playing.
+
+       Now there is one list, here:
+
+         Default SD Test   dev and test. Builds land here.
+         Default SD        production. Gets these mods from Gale, the way players do.
+         Default           production with the Wallybach/Badger HD set; otherwise the same as
+                           "Default SD", which loads faster and is the one to test in.
+
+       Override per build when you need to, without editing this file:
+         dotnet build -c Release -p:DeployProfiles="Default SD Test;Limited Mods"
+         dotnet build -c Release -p:DeployProfiles=none      (build only, copy nowhere) -->
+
+  <PropertyGroup>
+    <GaleProfiles>$(APPDATA)\com.kesomannen.gale\valheim\profiles</GaleProfiles>
+    <DeployProfiles Condition="'$(DeployProfiles)' == ''">Default SD Test</DeployProfiles>
+  </PropertyGroup>
+
+  <!-- Only for mods: a project with a manifest.json is one, the test projects are not. -->
+  <Target Name="DeployToProfiles" AfterTargets="Build"
+          Condition="'$(DeployProfiles)' != 'none'
+                     And Exists('$(GaleProfiles)')
+                     And Exists('$(MSBuildProjectDirectory)\manifest.json')">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)deploy-to-profile.ps1&quot; -TargetName &quot;$(TargetName)&quot; -TargetPath &quot;$(TargetPath)&quot; -Profiles &quot;$(DeployProfiles)&quot;"
+          ContinueOnError="true" />
+  </Target>
+
+</Project>
