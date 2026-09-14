@@ -376,8 +376,10 @@ namespace TheGreatestMap
     {
         private static void Postfix(Player __instance, HitData hit)
         {
-            if (!PocketMap.IsOut || PocketMap.Busy || __instance != Player.m_localPlayer) return;
-            if (hit != null && hit.GetTotalDamage() > 0f) PocketMap.PutAway(__instance);
+            if (__instance != Player.m_localPlayer || hit == null || hit.GetTotalDamage() <= 0f) return;
+            Recorder.NoteHit(); // writing pauses for a moment whether or not the map was out
+            if (!PocketMap.IsOut || PocketMap.Busy) return;
+            PocketMap.PutAway(__instance);
         }
     }
 

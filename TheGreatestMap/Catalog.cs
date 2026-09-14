@@ -5,6 +5,14 @@ using UnityEngine;
 
 namespace TheGreatestMap
 {
+    /// <summary>How much movement stops you writing on the map.</summary>
+    internal enum Movement
+    {
+        Never,
+        Running,
+        Moving,
+    }
+
     internal enum Category
     {
         Berries,
@@ -338,7 +346,7 @@ namespace TheGreatestMap
             }
 
             var pickable = go.GetComponentInParent<Pickable>();
-            if (pickable != null)
+            if (pickable != null && !HarvestedForGood(pickable))
             {
                 string prefab = Utils.GetPrefabName(pickable.gameObject);
                 if (Lookup(prefab, out var e))
@@ -464,6 +472,20 @@ namespace TheGreatestMap
             found.Center = center;
             found.Radius = Mathf.Max(radius, 4f);
             return true;
+        }
+
+        /// <summary>
+        /// Picked, and it never grows back: carrot, turnip and onion seeds are like this, and the
+        /// game itself treats the case as final, destroying the object once it has been picked.
+        /// There is nothing there to find any more, so it must not be recorded, and a marker
+        /// already written for it is wrong.
+        /// </summary>
+        internal static bool HarvestedForGood(Pickable pickable)
+        {
+            if (pickable == null || pickable.m_respawnTimeMinutes > 0f) return false;
+            var view = pickable.GetComponent<ZNetView>();
+            var zdo = view != null && view.IsValid() ? view.GetZDO() : null;
+            return zdo != null && zdo.GetBool(ZDOVars.s_picked, false);
         }
 
         /// <summary>A building piece the world generated, as opposed to something a player built.</summary>

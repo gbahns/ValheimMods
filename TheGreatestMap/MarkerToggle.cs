@@ -195,6 +195,18 @@ namespace TheGreatestMap
             return Mathf.Min(_corners[0].y, _corners[3].y);
         }
 
+        /// <summary>The world x of this button's left edge, so other things can keep clear of it.</summary>
+        internal static bool TryGetWorldLeft(out float x)
+        {
+            x = 0f;
+            if (_button == null) return false;
+            var rt = _button.transform as RectTransform;
+            if (rt == null) return false;
+            rt.GetWorldCorners(_corners);
+            x = Mathf.Min(_corners[0].x, _corners[1].x);
+            return true;
+        }
+
         private static float WorldCenterX(RectTransform rt)
         {
             rt.GetWorldCorners(_corners);

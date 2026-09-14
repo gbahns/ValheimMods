@@ -15,6 +15,7 @@ namespace TheGreatestMap
             var cam = GameCamera.instance;
             if (player == null || cam == null) { lines.Add("No player or camera."); return lines; }
 
+            lines.Add("can write now: " + (Recorder.CanWrite(player, out string blocked) ? "yes" : "NO - " + blocked));
             lines.Add($"map out: {PocketMap.IsOut}, recording enabled: {TgmConfig.RecordEnabled.Value}, interior: {player.InInterior()}, indexed locations: {LocationIndex.Count}");
 
             var hover = player.GetHoverObject();
@@ -44,6 +45,20 @@ namespace TheGreatestMap
             var location = go.GetComponentInParent<Location>();
             lines.Add($"  piece: {(piece != null ? (piece.IsPlacedByPlayer() ? "player-built" : "world") : "none")}, wearntear: {(wear != null)}, container: {(go.GetComponentInParent<Container>() != null)}, door: {(go.GetComponentInParent<Door>() != null)}, location parent: {(location != null ? Utils.GetPrefabName(location.gameObject) : "none")}");
             lines.Add($"  world piece: {Catalog.IsWorldPiece(go)}");
+
+            // Whether a plant grows back decides whether its marker stays true after harvesting.
+            // The respawn time is set per prefab in the game's own assets, so the only way to know
+            // is to ask the thing in front of you.
+            var pickable = go.GetComponentInParent<Pickable>();
+            if (pickable != null)
+            {
+                string gives = pickable.m_itemPrefab != null ? Utils.GetPrefabName(pickable.m_itemPrefab) : "nothing";
+                float respawn = pickable.m_respawnTimeMinutes;
+                string regrows = respawn <= 0f
+                    ? "never regrows once picked"
+                    : $"regrows after {respawn:0} minutes ({respawn / 60f:0.0} hours)";
+                lines.Add($"  pickable: gives {gives} x{pickable.m_amount}, {regrows}");
+            }
 
             foreach (var near in LocationIndex.Nearest(best.point, 3))
             {

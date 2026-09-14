@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace TheGreatestMap
 {
@@ -35,6 +36,133 @@ namespace TheGreatestMap
             if (!_holding) return;
             _holding = false;
             Game.Unpause();
+        }
+    }
+
+    /// <summary>
+    /// The pause toggle in the top-right corner of the large map, built the same way as the one on
+    /// GrabMaterials' inventory panel: two bars drawn from plain rectangles, because the game's
+    /// font has no media-control glyph, plus a diagonal slash when a pause was asked for and
+    /// refused. The mark never claims a pause that is not happening, since the request can be
+    /// turned down by a server with other players on it, or one without Pause My Server at all.
+    /// </summary>
+    internal static class PauseButton
+    {
+        private static readonly Color Off = new Color(0.6f, 0.6f, 0.6f, 0.85f);
+        private static readonly Color Paused = new Color(1f, 0.63f, 0.24f, 1f); // Valheim orange
+        private static readonly Color Refused = new Color(1f, 0.45f, 0.4f, 1f);
+
+        private static GameObject _root;
+        private static Image _left, _right, _slash;
+
+        internal static void Reset()
+        {
+            if (_root != null) Object.Destroy(_root);
+            _root = null;
+            _left = _right = _slash = null;
+        }
+
+        internal static void Update()
+        {
+            var map = Minimap.instance;
+            if (map == null || map.m_largeRoot == null) { if (_root != null) Reset(); return; }
+            if (TgmConfig.ShowPauseButton == null || !TgmConfig.ShowPauseButton.Value)
+            {
+                if (_root != null) Reset();
+                return;
+            }
+            if (_root == null) Build(map);
+            Position();
+            Paint();
+        }
+
+        private static void Build(Minimap map)
+        {
+            var parent = map.m_largeRoot.transform as RectTransform;
+            if (parent == null) return;
+
+            _root = new GameObject("TGM_PauseToggle", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+            _root.transform.SetParent(parent, false);
+            var rect = (RectTransform)_root.transform;
+            rect.anchorMin = rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(1f, 1f);
+            rect.anchoredPosition = new Vector2(-16f, -16f);
+            rect.sizeDelta = new Vector2(28f, 28f);
+
+            var hit = _root.GetComponent<Image>();
+            hit.color = new Color(1f, 1f, 1f, 0f); // invisible, but it is what catches the click
+            hit.raycastTarget = true;
+
+            _left = Bar(_root.transform, new Vector2(6f, 18f), new Vector2(-5f, 0f));
+            _right = Bar(_root.transform, new Vector2(6f, 18f), new Vector2(5f, 0f));
+            _slash = Bar(_root.transform, new Vector2(30f, 3f), Vector2.zero, 45f);
+            _slash.gameObject.SetActive(false);
+
+            var button = _root.GetComponent<Button>();
+            button.transition = Selectable.Transition.None;
+            button.targetGraphic = hit;
+            button.onClick.AddListener(() =>
+            {
+                if (TgmConfig.PauseWhileMapOpen == null) return;
+                TgmConfig.PauseWhileMapOpen.Value = !TgmConfig.PauseWhileMapOpen.Value;
+                MapPause.Refresh();
+                Paint();
+            });
+            _root.transform.SetAsLastSibling();
+            Paint();
+        }
+
+        /// <summary>
+        /// Sit in the top-right corner, but left of the map-pin button rather than up against it.
+        /// Measured from where that button actually is, so the gap holds at any UI scale, and
+        /// falling back to the plain corner when the pin button is switched off.
+        /// </summary>
+        private static void Position()
+        {
+            if (_root == null) return;
+            var rect = (RectTransform)_root.transform;
+            var parent = rect.parent as RectTransform;
+            if (parent == null) return;
+            const float margin = 16f;
+            const float gap = 14f;
+            float x = -margin;
+            if (MarkerToggle.TryGetWorldLeft(out float worldLeft))
+            {
+                float local = parent.InverseTransformPoint(new Vector3(worldLeft, 0f, 0f)).x;
+                x = Mathf.Min(-margin, local - gap - parent.rect.xMax);
+            }
+            if (!Mathf.Approximately(rect.anchoredPosition.x, x))
+                rect.anchoredPosition = new Vector2(x, rect.anchoredPosition.y);
+        }
+
+        private static Image Bar(Transform parent, Vector2 size, Vector2 pos, float rotation = 0f)
+        {
+            var go = new GameObject("Bar", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            go.transform.SetParent(parent, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = size;
+            rt.anchoredPosition = pos;
+            if (rotation != 0f) rt.localRotation = Quaternion.Euler(0f, 0f, rotation);
+            var img = go.GetComponent<Image>();
+            img.raycastTarget = false;
+            return img;
+        }
+
+        /// <summary>Gray when switched off, orange while the game really is paused, red with a slash when the pause was refused.</summary>
+        private static void Paint()
+        {
+            if (_left == null) return;
+            bool on = TgmConfig.PauseWhileMapOpen != null && TgmConfig.PauseWhileMapOpen.Value;
+            bool refused = false;
+            Color color;
+            if (!on) color = Off;
+            else if (Game.IsPaused()) color = Paused;
+            else { color = Refused; refused = true; }
+            _left.color = color;
+            _right.color = color;
+            _slash.color = color;
+            if (_slash.gameObject.activeSelf != refused) _slash.gameObject.SetActive(refused);
         }
     }
 

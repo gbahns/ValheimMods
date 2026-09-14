@@ -29,6 +29,7 @@ namespace TheGreatestMap
         internal static readonly Dictionary<Category, ConfigEntry<bool>> ShowKind = new Dictionary<Category, ConfigEntry<bool>>();
         internal static ConfigEntry<string> HiddenIcons;
         internal static ConfigEntry<bool> PauseWhileMapOpen;
+        internal static ConfigEntry<bool> ShowPauseButton;
         internal static ConfigEntry<bool> MarkerButton;
         internal static ConfigEntry<bool> ShowAllMarkers;
         internal static ConfigEntry<float> RevealNewMarkers;
@@ -102,6 +103,9 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> RecordEnabled;
         internal static ConfigEntry<float> RecordRadius;
         internal static ConfigEntry<float> RecordDwell;
+        internal static ConfigEntry<bool> BlockWhileAttacked;
+        internal static ConfigEntry<float> AttackedSeconds;
+        internal static ConfigEntry<Movement> BlockWhileMoving;
         internal static ConfigEntry<float> FoundMemoryMinutes;
         internal static ConfigEntry<float> LookDwell;
         internal static readonly Dictionary<Category, ConfigEntry<float>> LookDistance = new Dictionary<Category, ConfigEntry<float>>();
@@ -171,6 +175,11 @@ namespace TheGreatestMap
                 "playing solo or hosting alone; on a dedicated server it takes the Pause My Server mod, which then " +
                 "pauses only while you are the only player online. Closing the map resumes. Applies at once.");
             PauseWhileMapOpen.SettingChanged += (_, __) => MapPause.Refresh();
+            ShowPauseButton = mod.BindLocal("Display", "Pause Button On Map", true,
+                "Show a pause toggle in the top-right corner of the large map, the same mark GrabMaterials puts on its " +
+                "inventory panel. Gray when pausing is switched off, orange while the game really is paused, and red " +
+                "with a slash through it when the pause was asked for but refused, which happens on a server with other " +
+                "players online or one without the Pause My Server mod.");
             MarkerButton = mod.BindLocal("Display", "Marker Button On Map", true,
                 "Add a map-pin button above vanilla's icon buttons on the right edge of the large map. Right-clicking it hides " +
                 "or shows every marker from this mod at once, as right-clicking a vanilla icon does for that icon; " +
@@ -235,8 +244,18 @@ namespace TheGreatestMap
             RecordRadius = mod.BindLocal("Recording", "Record Range", 0f,
                 "0 (default): taking the map out writes down everything you have found recently, wherever you are now. " +
                 "Otherwise only finds within this many meters of you are written down.");
-            RecordDwell = mod.BindLocal("Recording", "Record Dwell", 3f,
-                "Seconds the map must be out before it starts recording.");
+            RecordDwell = mod.BindLocal("Recording", "Record Dwell", 0f,
+                "Seconds the map must be out before it starts recording. Zero writes as soon as it is out, which is " +
+                "the deliberate act already. A delay here reads as nothing happening, so set it only if you want the " +
+                "map to feel slow to write.");
+            BlockWhileAttacked = mod.BindLocal("Recording", "Cannot Write Under Attack", true,
+                "You cannot write on the map while something is hitting you. Enemies merely being nearby do not stop " +
+                "you, unlike resting: you can stand your ground and write if you choose, but not while taking hits.");
+            AttackedSeconds = mod.BindLocal("Recording", "Under Attack Seconds", 5f,
+                "How long after being hit you still count as under attack.");
+            BlockWhileMoving = mod.BindLocal("Recording", "Cannot Write While", Movement.Never,
+                "Writing needs you to hold still: Never means movement is no obstacle, Running blocks writing only " +
+                "while you run, and Moving means you must stop for a moment, walking included.");
             FoundMemoryMinutes = mod.BindLocal("Recording", "Found Memory Minutes", 30f,
                 "How long your character remembers something found but not yet written down. Seeing it again restarts the " +
                 "clock. The memory is saved with the character, so a relog inside the window does not lose it. 0 = never forget.");

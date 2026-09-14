@@ -33,6 +33,8 @@ namespace TheGreatestMap
             }
             if (_outSince < 0f) _outSince = Time.time;
             if (Time.time - _outSince < TgmConfig.RecordDwell.Value) return;
+            if (!CanWrite(player, out string blocked)) { Blocked(blocked); return; }
+            _blockedNote = null;
             if (Time.time < _next) return;
             _next = Time.time + 0.5f;
             if (player.InInterior()) return;
@@ -75,6 +77,49 @@ namespace TheGreatestMap
         {
             if (!_announced.Add(found.Key)) return;
             TheGreatestMapMod.Message(text);
+        }
+
+        // ── writing needs a steady hand ──────────────────────────────────────────────
+
+        private static float _lastHit = -999f;
+        private static string _blockedNote;
+        private static float _nextBlockedNote;
+
+        /// <summary>Something hit the local player. Recorded here so writing can pause for a moment.</summary>
+        internal static void NoteHit() => _lastHit = Time.time;
+
+        internal static bool UnderAttack =>
+            TgmConfig.BlockWhileAttacked != null && TgmConfig.BlockWhileAttacked.Value
+            && Time.time - _lastHit < TgmConfig.AttackedSeconds.Value;
+
+        /// <summary>
+        /// You can write on the map while enemies are about, unlike resting, which asks you not to
+        /// know of any. What you cannot do is write while they are landing blows, and, if asked
+        /// for, while on the move.
+        /// </summary>
+        internal static bool CanWrite(Player player, out string why)
+        {
+            why = null;
+            if (UnderAttack) { why = "You cannot write on your map while under attack."; return false; }
+            var mode = TgmConfig.BlockWhileMoving != null ? TgmConfig.BlockWhileMoving.Value : Movement.Never;
+            if (mode == Movement.Never || player == null) return true;
+            if (mode == Movement.Running && player.IsRunning()) { why = "You cannot write on your map while running."; return false; }
+            if (mode == Movement.Moving)
+            {
+                var v = player.GetVelocity();
+                if (new Vector2(v.x, v.z).magnitude > 0.5f) { why = "Stand still for a moment to write on your map."; return false; }
+            }
+            return true;
+        }
+
+        /// <summary>Say why nothing is being written, but only when the reason changes, and not more than every few seconds.</summary>
+        private static void Blocked(string why)
+        {
+            if (why == null) return;
+            if (why == _blockedNote && Time.time < _nextBlockedNote) return;
+            _blockedNote = why;
+            _nextBlockedNote = Time.time + 5f;
+            TheGreatestMapMod.Message(why);
         }
     }
 }

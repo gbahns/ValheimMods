@@ -83,6 +83,7 @@ namespace TheGreatestMap
             Portals.Update(); // also runs on the dedicated server, which is the source of the list
             Portals.Paint();
             MapPause.Refresh(); // also lets go of the pause when the player is gone
+            PauseButton.Update();
             if (Player.m_localPlayer == null) return;
             MarkerMenu.Update();
             MarkerToggle.Update();

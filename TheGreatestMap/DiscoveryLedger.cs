@@ -132,6 +132,12 @@ namespace TheGreatestMap
             foreach (var key in expired) _pending.Remove(key);
         }
 
+        /// <summary>Drop a pending find without recording it: the thing is gone for good.</summary>
+        internal static void Forget(string key)
+        {
+            if (key != null) _pending.Remove(key);
+        }
+
         internal static void MarkRecorded(string key)
         {
             _pending.Remove(key);
@@ -242,9 +248,28 @@ namespace TheGreatestMap
     [HarmonyPatch(typeof(Pickable), nameof(Pickable.Interact))]
     internal static class Pickable_Interact_Patch
     {
-        private static void Prefix(Pickable __instance, Humanoid character)
+        // Classified before the pick, because afterwards a plant that never grows back no longer
+        // counts as anything findable, which is the whole point.
+        private static void Prefix(Pickable __instance, Humanoid character, ref Found __state)
         {
-            if (character != null && character == Player.m_localPlayer) DiscoveryLedger.NoteInteraction(__instance.gameObject);
+            __state = null;
+            if (__instance == null || character == null || character != Player.m_localPlayer) return;
+            DiscoveryLedger.NoteInteraction(__instance.gameObject);
+            if (__instance.m_respawnTimeMinutes <= 0f && Catalog.TryClassify(__instance.gameObject, out var found))
+                __state = found;
+        }
+
+        /// <summary>
+        /// Picking the last of something that never grows back makes its marker a lie, so the
+        /// marker goes, for everyone. The spot is not suppressed: nothing is being rejected here,
+        /// and if the world ever puts something there again it deserves recording.
+        /// </summary>
+        private static void Postfix(bool __result, Found __state)
+        {
+            if (!__result || __state == null) return;
+            DiscoveryLedger.Forget(__state.Key);
+            if (ClientPins.RemoveHarvested(__state.Icon, __state.Pos, 2f))
+                TheGreatestMapMod.Message($"Picked the last of the {__state.Name}; marker removed.");
         }
     }
 

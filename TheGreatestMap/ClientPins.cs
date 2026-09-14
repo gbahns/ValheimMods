@@ -211,6 +211,26 @@ namespace TheGreatestMap
             PersonalMap.Touch();
         }
 
+        /// <summary>
+        /// Erase the recorded marker for a plant that has just been picked and never grows back.
+        /// Like the portal reconciler this corrects the map rather than rejecting a marker, so the
+        /// spot is not suppressed. Returns whether anything was erased.
+        /// </summary>
+        internal static bool RemoveHarvested(string icon, Vector3 pos, float radius)
+        {
+            string id = null;
+            float best = radius;
+            foreach (var pin in Store.Pins.Values)
+            {
+                if (!pin.Auto || !IconRegistry.SameKey(pin.Icon, icon)) continue;
+                float d = Geo.FlatDistance(pin.Pos, pos);
+                if (d <= best) { best = d; id = pin.Id; }
+            }
+            if (id == null) return false;
+            RemoveStale(id);
+            return true;
+        }
+
         /// <summary>Erase one marker for everyone (a tombstone carries it at the next merge). Not gated: the caller checks the server setting.</summary>
         internal static bool EraseById(string id)
         {
