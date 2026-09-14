@@ -28,7 +28,7 @@ namespace PauseMyServer
     {
         public const string ModGuid    = "DeathMonger.PauseMyServer";
         public const string ModName    = "Pause My Server";
-        public const string ModVersion = "1.3.0";
+        public const string ModVersion = "1.4.0";
 
         internal static ManualLogSource Log { get; private set; }
 
@@ -69,10 +69,10 @@ namespace PauseMyServer
             ShowPauseMessage = Config.Bind("Pause Message", "Show Pause Message", true,
                 "Show a persistent on-screen label while the game is paused. Also shown when pausing a " +
                 "solo game. Client-side only.");
-            PauseMessage = Config.Bind("Pause Message", "Text", "Game paused",
-                "The label text.");
-            AdminText = Config.Bind("Pause Message", "Admin Text", "Game paused by {0}",
-                "The label text during an admin pause; {0} is replaced by the admin's name.");
+            PauseMessage = BindText("Text", "Paused",
+                "The label text.", "Game paused");
+            AdminText = BindText("Admin Text", "Paused by {0}",
+                "The label text during an admin pause; {0} is replaced by the admin's name.", "Game paused by {0}");
             PauseMessagePosition = Config.Bind("Pause Message", "Position", PauseOverlay.Position.Bottom,
                 "Where the label sits, centred at the Top or the Bottom of the screen.");
             PauseMessageSize = Config.Bind("Pause Message", "Font Size", 40,
@@ -81,10 +81,12 @@ namespace PauseMyServer
             ShowUnpausedWarning = Config.Bind("Pause Message", "Show Unpaused Warning", true,
                 "Show the label in bright red while something has asked for a pause and the game is still " +
                 "running: the ESC menu, or any mod that pauses for an open map or inventory panel.");
-            UnpausedText = Config.Bind("Pause Message", "Unpaused Text", "Game Unpaused",
-                "The label text for that warning when the server has not reported how many players want to pause.");
-            UnpausedCountText = Config.Bind("Pause Message", "Unpaused Count Text", "Game Unpaused ({0} of {1} players paused)",
-                "The label text for that warning once the server reports the counts: {0} players have their menu open, {1} are online.");
+            UnpausedText = BindText("Unpaused Text", "Unpaused",
+                "The first line of that warning.", "Game Unpaused");
+            UnpausedCountText = BindText("Unpaused Count Text", "{0}/{1} want to pause",
+                "The second line of that warning, in a smaller font, shown once the server reports the counts: " +
+                "{0} players have asked for a pause, {1} are online. Leave it empty for no second line.",
+                "Game Unpaused ({0} of {1} players paused)");
 
             if (!ModEnabled.Value)
             {
@@ -108,6 +110,25 @@ namespace PauseMyServer
         private void OnDestroy()
         {
             _harmony.UnpatchSelf();
+        }
+
+        /// <summary>
+        /// Binds one of the label texts, and replaces a stored value that is still an old release's
+        /// default with the current one. BepInEx writes every default into the .cfg file, so without
+        /// this the old wording would stick for everyone who already has a config. A text the player
+        /// actually chose is never touched.
+        /// </summary>
+        private ConfigEntry<string> BindText(string key, string defaultValue, string description, params string[] supersededDefaults)
+        {
+            var entry = Config.Bind("Pause Message", key, defaultValue, description);
+            foreach (var superseded in supersededDefaults)
+            {
+                if (entry.Value != superseded) continue;
+                entry.Value = defaultValue;
+                Log.LogInfo($"[PauseMyServer] Config '{key}' still held the old default; updated it to \"{defaultValue}\".");
+                break;
+            }
+            return entry;
         }
 
         /// <summary>Small top-left HUD message. Respects the Show Messages toggle unless <paramref name="always"/>.</summary>

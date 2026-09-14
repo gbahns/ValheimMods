@@ -15,7 +15,7 @@ When **every player online** has asked for a pause, the world pauses, exactly li
 
 Alone on the server, that is just you: open the menu and the world stops. With friends, the game pauses the moment the last of you asks. Anyone closing their menu resumes it instantly, and so does a new player arriving (you will see a small message if your menu is still open).
 
-While you have asked for a pause but the game keeps running because others are still playing, the label reads **"Game Unpaused (1 of 3 players paused)"** in bright red, so a pause you asked for and did not get is never silent.
+While you have asked for a pause but the game keeps running because others are still playing, the label reads **"Unpaused"** in bright red, with **"1/3 want to pause"** underneath, so a pause you asked for and did not get is never silent.
 
 Vanilla behaviour is kept for hosted (non-dedicated) games, where the host already pauses when alone; with guests online the host's request counts like everyone else's.
 
@@ -34,7 +34,7 @@ An **admin** (listed in the server's adminlist) presses the pause key, by defaul
 - Every client freezes, whether or not their menu is open.
 - Players who join during the pause are frozen as soon as they spawn.
 - The pause stays until **any** admin presses the key again. A non-admin who presses it gets a notice.
-- The label reads "Game paused by <admin>", and everyone gets a "Game resumed by <admin>" message afterwards.
+- The label reads "Paused by <admin>", and everyone gets a "Game resumed by <admin>" message afterwards.
 - Safety net: when the last player leaves, an admin pause is dropped, so the next player to log in is not frozen with nobody online to resume.
 
 Console commands (F5): `pms_pause` toggles the admin pause like the key, and `pms_status` prints the state. On the dedicated server's own console `pms_pause` toggles directly, which is the way out if no admin is online.
@@ -43,7 +43,7 @@ The admin pause is designed for dedicated servers. On a hosted (non-dedicated) g
 
 ## The on-screen label
 
-A persistent label is shown while the game is paused, in solo games too: "Game paused", or "Game paused by <admin>". When a pause has been asked for and the game is still running, it turns bright red: "Game Unpaused (1 of 3 players paused)". It waits half a second first, so the trip to the server and back never flashes red, and it stays quiet during the intro and cinematics. Texts, position (top or bottom) and size are configurable, and each mode can be turned off.
+A persistent label is shown while the game is paused, in solo games too: "Paused", or "Paused by <admin>". When a pause has been asked for and the game is still running, it turns bright red and reads "Unpaused", with "1/3 want to pause" on a second line in a smaller font. It waits half a second first, so the trip to the server and back never flashes red, and it stays quiet during the intro and cinematics. Texts, position (top or bottom) and size are configurable, and each mode can be turned off.
 
 ## Installation
 
@@ -64,13 +64,13 @@ Works on Windows and Linux dedicated servers. Requires BepInExPack for Valheim.
 | General | Show Messages | true | Top-left HUD message when the game resumes for a reason other than you closing your menu. |
 | Admin | Pause Key | Pause | Admins only: toggle the server-wide pause. Ignored while typing in chat, the console or a text box. |
 | Pause Message | Show Pause Message | true | Show the persistent on-screen label while paused. |
-| Pause Message | Text | Game paused | The label text. |
-| Pause Message | Admin Text | Game paused by {0} | The label text during an admin pause; {0} is the admin's name. |
+| Pause Message | Text | Paused | The label text. |
+| Pause Message | Admin Text | Paused by {0} | The label text during an admin pause; {0} is the admin's name. |
 | Pause Message | Position | Bottom | Centred at the Top or the Bottom of the screen. |
 | Pause Message | Font Size | 40 | Label size at a 1920x1080 reference; scales with the screen. |
 | Pause Message | Show Unpaused Warning | true | Red label while a pause has been asked for and the game is still running. |
-| Pause Message | Unpaused Text | Game Unpaused | The warning text when the server has not reported counts. |
-| Pause Message | Unpaused Count Text | Game Unpaused ({0} of {1} players paused) | The warning text with counts: {0} in the menu, {1} online. |
+| Pause Message | Unpaused Text | Unpaused | The warning's first line. |
+| Pause Message | Unpaused Count Text | {0}/{1} want to pause | The warning's second line, smaller: {0} have asked for a pause, {1} are online. Empty for no second line. |
 
 Label settings apply the next time the label appears, no restart needed. The server needs no configuration.
 

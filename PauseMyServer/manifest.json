@@ -1,6 +1,6 @@
 {
     "name": "PauseMyServer",
-    "version_number": "1.3.0",
+    "version_number": "1.4.0",
     "website_url": "https://github.com/gbahns/ValheimMods",
     "description": "Pause a server-hosted game: the world pauses when every player online has asked for a pause (the ESC menu, or a mod that pauses for an open map or panel), and an admin can pause the whole server for everyone with a key.",
     "dependencies": [

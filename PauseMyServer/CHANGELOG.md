@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.0 — 2026-09-14
+
+- **Shorter labels.** "Game paused" becomes "Paused", and "Game Unpaused (1 of 2 players paused)" becomes "Unpaused" with "1/2 want to pause" on a second line in a smaller font.
+- Existing config files are updated in place, so the new wording appears without editing anything. A text you chose yourself is left alone.
+- Clear the second line's setting to have no second line at all.
+
 ## 1.3.0 — 2026-09-13
 
 - **Any mod can ask for a pause.** A mod that calls `Game.Pause()` for its own reason, an open map or an open inventory panel, now counts as that player asking for a pause, exactly like the ESC menu. Nothing to add on their side.

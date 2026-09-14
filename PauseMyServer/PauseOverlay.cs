@@ -33,6 +33,9 @@ namespace PauseMyServer
         private const float DefaultBottomOffset = 90f;
         private const float MinEdgeOffset       = 4f;
 
+        // The warning's second line ("2/3 want to pause") is drawn at this fraction of the main size.
+        private const float DetailScale = 0.55f;
+
         // A pause request travels to the server and back before it can be granted. Only call it
         // refused once it has gone unanswered for this long, so the round trip never flashes red.
         private const float RefusedGraceSeconds = 0.5f;
@@ -93,7 +96,7 @@ namespace PauseMyServer
             }
             if (_mode != mode || _label.text != text)
             {
-                _label.text = text;
+                SetText(text);
                 _label.color = mode == Mode.Paused ? _baseColor : Color.red;
             }
             _mode = mode;
@@ -118,14 +121,29 @@ namespace PauseMyServer
             return PauseMyServerMod.PauseMessage.Value;
         }
 
+        /// <summary>"Unpaused", with the count on a second line in a smaller font once the server reports it.</summary>
         private static string UnpausedText()
         {
-            if (PauseSync.PlayerCount > 0)
-            {
-                try { return string.Format(PauseMyServerMod.UnpausedCountText.Value, PauseSync.WantCount, PauseSync.PlayerCount); }
-                catch (FormatException) { }
-            }
-            return PauseMyServerMod.UnpausedText.Value;
+            string head = PauseMyServerMod.UnpausedText.Value;
+            if (PauseSync.PlayerCount <= 0) return head;
+
+            string detail;
+            try { detail = string.Format(PauseMyServerMod.UnpausedCountText.Value, PauseSync.WantCount, PauseSync.PlayerCount); }
+            catch (FormatException) { return head; }
+            if (string.IsNullOrEmpty(detail)) return head;
+
+            return head + "\n<size=" + Mathf.RoundToInt(DetailScale * 100f) + "%>" + detail + "</size>";
+        }
+
+        /// <summary>Sets the text and sizes the box to the lines it needs, so the map-gap fit stays honest.</summary>
+        private static void SetText(string text)
+        {
+            _label.text = text;
+            float size = PauseMyServerMod.PauseMessageSize.Value;
+            float height = size * 1.25f;
+            if (text.IndexOf('\n') >= 0) height += size * DetailScale * 1.25f;
+            _label.rectTransform.sizeDelta = new Vector2(1600f, height);
+            _lastY = float.NaN;   // the box changed height; let UpdatePosition place it again
         }
 
         /// <summary>Re-reads the layout config every time the label appears, so edits apply without a restart.</summary>
@@ -134,7 +152,6 @@ namespace PauseMyServer
             _label.fontSize = PauseMyServerMod.PauseMessageSize.Value;
             bool top = PauseMyServerMod.PauseMessagePosition.Value == Position.Top;
             var rt = _label.rectTransform;
-            rt.sizeDelta = new Vector2(1600f, PauseMyServerMod.PauseMessageSize.Value * 1.25f);
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, top ? 1f : 0f);
             rt.pivot = new Vector2(0.5f, top ? 1f : 0f);
             _lastY = float.NaN;
@@ -210,6 +227,7 @@ namespace PauseMyServer
             _baseColor = source.color;
             text.color = _baseColor;
             text.alignment = TextAlignmentOptions.Center;
+            text.richText = true;   // the warning's second line is sized with a <size> tag
             text.raycastTarget = false;
             text.rectTransform.sizeDelta = new Vector2(1600f, 50f);
             _label = text;
