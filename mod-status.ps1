@@ -23,6 +23,14 @@ param(
 $repo = $PSScriptRoot
 $skipDirs = @("bin", "obj", ".claude")
 
+# Which side of a dedicated-server setup each mod belongs on; see mods.json.
+$sides = @{}
+$sidesPath = Join-Path $repo "mods.json"
+if (Test-Path $sidesPath) {
+    $sidesDoc = Get-Content $sidesPath -Raw | ConvertFrom-Json
+    foreach ($p in $sidesDoc.mods.PSObject.Properties) { $sides[$p.Name] = $p.Value.side }
+}
+
 function Get-TomlValue($path, $key) {
     if (-not (Test-Path $path)) { return $null }
     $line = Select-String -Path $path -Pattern "^$key\s*=" | Select-Object -First 1
@@ -151,6 +159,13 @@ foreach ($d in $dirs) {
 
     $dirty = @(git -C $repo status --porcelain -- $d.Name 2>$null)
 
+    # [BepInProcess("valheim.exe")] makes BepInEx skip the plugin under valheim_server.exe, so a
+    # mod carrying it cannot run on a dedicated server whatever mods.json claims.
+    $clientGated = $false
+    foreach ($f in Get-ChildItem $dir -Filter *.cs -File) {
+        if ((Get-Content $f.FullName -Raw) -match 'BepInProcess\(\s*"valheim\.exe"\s*\)') { $clientGated = $true; break }
+    }
+
     # The newest version the changelog names.  A changelog describing a version the version files
     # do not have means the notes and the number will ship out of step.
     $clVersion = $null
@@ -174,6 +189,9 @@ foreach ($d in $dirs) {
         Hexium      = "-"
         TsUpdated   = $null
         Changelog   = $clVersion
+        Side        = $(if ($sides.ContainsKey($d.Name)) { $sides[$d.Name] } else { $null })
+        ClientGated = $clientGated
+        Categories  = Get-TomlValue $tsToml "valheim"
         Build       = $build
         Dll         = $dll
         Dirty       = $dirty.Count
@@ -234,6 +252,13 @@ if ($Server) {
             foreach ($r in $rows) {
                 $target = $paths | Where-Object { $_ -match ("(^|/)" + [regex]::Escape("$($r.Folder).dll") + "$") } |
                     Select-Object -First 1
+                # A client-only mod is not meant to be there. Say so instead of downloading and
+                # comparing a DLL the server would never load -- and if a copy is still sitting
+                # there from before, that is worth naming.
+                if ($r.Side -eq "client") {
+                    $r.ServerState = if ($target) { "client-only, still there" } else { "client-only" }
+                    continue
+                }
                 if (-not $target) { $r.ServerState = "absent"; continue }
                 if (-not $r.Dll)  { $r.ServerState = "present (no local build)"; continue }
                 $bytes = $client.GetByteArrayAsync("$base/game-servers/$id/files/" + ($target -replace " ", "%20")).Result
@@ -313,6 +338,26 @@ foreach ($r in $rows) {
             $actions += ("$($r.Folder): code committed since $($r.Local) went out, with no bump to carry it - " +
                          ($shown -join "; ") + "$more")
         }
+    }
+
+    # mods.json against the mod's own code. The attribute is what BepInEx enforces, so a mod
+    # declared server-side while carrying the client gate would be deployed and never load.
+    if ($r.Side -and $r.Side -ne "client" -and $r.ClientGated) {
+        $actions += ("$($r.Folder): mods.json says '$($r.Side)' but the code carries " +
+                     "[BepInProcess(`"valheim.exe`")], so BepInEx will not load it on the server. " +
+                     "One of the two is wrong.")
+    }
+    if (-not $r.Side) {
+        $actions += "$($r.Folder): no entry in mods.json, so deploys cannot tell whether the server needs it."
+    }
+    # The store page is a promise to other people: a server-side category on a client-gated mod
+    # tells strangers to install it on their server, where it will never load.
+    if ($r.ClientGated -and $r.Categories -and $r.Categories -match 'server-side') {
+        $actions += ("$($r.Folder): thunderstore.toml lists the server-side category, but the code carries " +
+                     "[BepInProcess(`"valheim.exe`")] and cannot load on a server. The listing tells people wrong.")
+    }
+    if ($r.ServerState -eq "client-only, still there") {
+        $actions += "$($r.Folder): client-only, but a copy is still on the server doing nothing. Safe to delete there."
     }
 
     if ($r.Build -eq "STALE")     { $actions += "$($r.Folder): source is newer than the Release DLL - rebuild before packaging." }

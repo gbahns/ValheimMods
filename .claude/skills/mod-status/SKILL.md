@@ -37,7 +37,15 @@ stamps each mod's manifest version into its assembly, and the SDK appends the co
 - `0.2.3 BEHIND` — the server is running an older version than this repo builds. Deploy.
 - `0.2.5 ahead` — newer than this repo. Someone else built it; don't overwrite it blindly.
 - `unstamped` — the DLL predates version stamping, so it cannot be placed. One deploy fixes it.
-- `absent` — not on the server, which is correct for a client-only mod.
+- `client-only` — `mods.json` says the server has no use for it, so nothing is compared.
+- `client-only, still there` — as above, but a copy is sitting on the server doing nothing.
+- `absent` — not on the server, and not declared client-only either.
+
+`mods.json` is what makes those first two possible: it records whether each mod is `client`,
+`server` or `both`, `deploy-dathost.ps1` skips the client ones, and this script cross-checks the
+file against each mod's own `[BepInProcess("valheim.exe")]` attribute — the thing BepInEx actually
+enforces — so a mod declared server-side that cannot load on a server gets called out, as does a
+store listing that promises the same.
 
 One blind spot: a mod whose real version *is* 1.0.0 cannot be told apart from an unstamped
 build, since both report 1.0.0.0. Those rows fall through to the commit comparison.

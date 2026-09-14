@@ -1,0 +1,69 @@
+{
+  "_about": [
+    "Which side of a dedicated-server setup each mod belongs on, so deploy-dathost.ps1 only",
+    "uploads what can actually run there and mod-status.ps1 stops reporting a client-only mod as",
+    "missing from the server.",
+    "",
+    "  client  - never upload. The server has no use for it.",
+    "  server  - upload; the server needs it and clients do not.",
+    "  both    - upload, and clients need it too.",
+    "",
+    "The authority for 'client' is usually the code itself: [BepInProcess(\"valheim.exe\")] on the",
+    "plugin class makes BepInEx skip the plugin entirely under valheim_server.exe, so such a DLL",
+    "cannot run on the server no matter where it is copied. mod-status.ps1 cross-checks this file",
+    "against that attribute and reports any mod whose declared side contradicts its own code.",
+    "",
+    "'profilePackages' covers the third-party packages mirrored by deploy-dathost.ps1 -Profile,",
+    "keyed by the package folder name as it appears in the Gale profile's BepInEx/plugins. Only",
+    "list one when it should be skipped or forced; anything absent is mirrored as before."
+  ],
+
+  "mods": {
+    "Armory": {
+      "side": "client",
+      "why": "[BepInProcess(\"valheim.exe\")] - cannot load on the dedicated server."
+    },
+    "CaptainsLog": {
+      "side": "client",
+      "why": "[BepInProcess(\"valheim.exe\")]; README says client-side only."
+    },
+    "DistanceFromWorldCenter": {
+      "side": "client",
+      "why": "[BepInProcess(\"valheim.exe\")]; README says client-side only."
+    },
+    "DudeWhatAreMyStats": {
+      "side": "client",
+      "why": "No process gate, but stats are answered per-client over a routed RPC; README: 'the server needs nothing'."
+    },
+    "ForsakenShrines": {
+      "side": "client",
+      "why": "UNRESOLVED: [BepInProcess(\"valheim.exe\")] says client-only, but thunderstore.toml lists the server-side category. The code wins here because the attribute is what BepInEx enforces, so the server copy was dead weight. If custom pieces do need a server install, the attribute is the bug, not this line."
+    },
+    "GrabMaterials": {
+      "side": "client",
+      "why": "[BepInProcess(\"valheim.exe\")] - reads and moves the local player's inventory."
+    },
+    "HungryViking": {
+      "side": "client",
+      "why": "[BepInProcess(\"valheim.exe\")]; README says client-side only."
+    },
+    "PauseMyServer": {
+      "side": "both",
+      "why": "Server-authoritative: the server decides whether a pause is granted and broadcasts it; the client freezes."
+    },
+    "StationExtensionGuard": {
+      "side": "client",
+      "why": "[BepInProcess(\"valheim.exe\")]. Never published; kept local."
+    },
+    "TheGreatestMap": {
+      "side": "both",
+      "why": "The shared marker store and the live portal list come from the server, and deploy-dathost.ps1's pre-stop world save depends on this mod's save-now trigger running there."
+    },
+    "TheGreatestPortal": {
+      "side": "both",
+      "why": "README: install on the server and on every client."
+    }
+  },
+
+  "profilePackages": {}
+}

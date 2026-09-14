@@ -6,6 +6,11 @@
 #                     deleted on the server. Packages that exist only locally are skipped and
 #                     listed unless -IncludeLocalOnly is given.
 #
+# Both modes skip anything mods.json marks as client-only, and say which ones they skipped. Most
+# of those carry [BepInProcess("valheim.exe")], which makes BepInEx skip the plugin entirely under
+# valheim_server.exe, so the upload would only cost time and add one more thing to rule out when
+# the server misbehaves. Add an entry to mods.json for any new mod.
+#
 # DatHost's stop is a hard kill: the server console never shows a shutdown save, and the
 # Valheim dedicated server ignores console input, so the world cannot be saved through DatHost
 # itself. TheGreatestMap (0.1.5+) running on the server saves the world when a file named
@@ -48,6 +53,25 @@ $saveTrigger = "BepInEx/config/TheGreatestMap/save-now"
 # Files never worth sending to a server: debug symbols, build sidecars, store metadata and docs.
 $skipNames = @("manifest.json", "README.md", "CHANGELOG.md", "icon.png", "LICENSE", "LICENSE.md", "LICENSE.txt")
 $skipPatterns = @('\.pdb$', '\.old-\d+$', '\.old$', '-disabled$', '\.cs$', '^Placeholder')
+
+# ── which side each mod belongs on ──────────────────────────────────────────────
+# mods.json says which mods the server can actually use.  A mod marked "client" is never
+# uploaded: most of them carry [BepInProcess("valheim.exe")], which makes BepInEx skip the
+# plugin under valheim_server.exe, so the file would sit there unloaded -- extra upload time,
+# extra restart risk and one more thing to rule out when the server misbehaves.
+$sides = @{}
+$sidesPath = Join-Path $repo "mods.json"
+if (Test-Path $sidesPath) {
+    $sidesDoc = Get-Content $sidesPath -Raw | ConvertFrom-Json
+    foreach ($p in $sidesDoc.mods.PSObject.Properties)            { $sides[$p.Name] = $p.Value.side }
+    foreach ($p in $sidesDoc.profilePackages.PSObject.Properties) { $sides[$p.Name] = $p.Value.side }
+} else {
+    Write-Warning "mods.json not found; uploading everything named, including client-only mods."
+}
+
+function Test-ClientOnly([string]$name) {
+    return ($sides.ContainsKey($name) -and $sides[$name] -eq "client")
+}
 
 # ── secrets ─────────────────────────────────────────────────────────────────────
 if (-not (Test-Path $SecretsPath)) { Write-Error "Secrets file not found: $SecretsPath"; exit 1 }
@@ -158,6 +182,7 @@ try {
         }
         $skippedPackages = @{}
         $disabledPackages = @{}
+        $clientOnlyPackages = @{}
         $checked = 0
         foreach ($f in Get-ChildItem $root -Recurse -File) {
             if ($skipNames -contains $f.Name) { continue }
@@ -168,6 +193,8 @@ try {
             $top = if ($rel -match '^([^/]+)/') { $Matches[1] } else { $null }
             if ($top -and -not $disabledPackages.ContainsKey($top) -and -not (Test-PackageActive (Join-Path $root $top))) { $disabledPackages[$top] = $true }
             if ($top -and $disabledPackages.ContainsKey($top)) { continue }
+            # Declared client-only in mods.json: the server cannot use it, so don't send it.
+            if ($top -and (Test-ClientOnly $top)) { $clientOnlyPackages[$top] = $true; continue }
             if ($top -and -not $serverPackages.ContainsKey($top) -and -not $IncludeLocalOnly) { $skippedPackages[$top] = $true; continue }
             $target = "BepInEx/plugins/$rel"
             $reason = $null
@@ -184,12 +211,22 @@ try {
         }
         Write-Host ("Profile '{0}': {1} files compared by hash, {2} to upload." -f $Profile, $checked, $plan.Count)
         if ($disabledPackages.Count -gt 0) { Write-Host ("Disabled locally, not sent: " + (($disabledPackages.Keys | Sort-Object) -join ", ")) -ForegroundColor Yellow }
+        if ($clientOnlyPackages.Count -gt 0) { Write-Host ("Client-only per mods.json, not sent: " + (($clientOnlyPackages.Keys | Sort-Object) -join ", ")) -ForegroundColor DarkGray }
         if ($skippedPackages.Count -gt 0) { Write-Host ("Local-only packages skipped (add -IncludeLocalOnly to send them): " + (($skippedPackages.Keys | Sort-Object) -join ", ")) -ForegroundColor Yellow }
         $localPackages = @{}
         Get-ChildItem $root -Directory | ForEach-Object { $localPackages[$_.Name] = $true }
         $serverOnly = @($serverPackages.Keys | Where-Object { -not $localPackages.ContainsKey($_) } | Sort-Object)
         if ($serverOnly.Count -gt 0) { Write-Host ("Server-only packages left untouched: " + ($serverOnly -join ", ")) -ForegroundColor Yellow }
     } else {
+        $clientOnly = @($Mod | Where-Object { Test-ClientOnly $_ })
+        if ($clientOnly.Count -gt 0) {
+            # Named explicitly, so say so rather than dropping them silently: a mod asked for by
+            # name and then skipped is confusing unless the reason is on screen.
+            Write-Host ("Client-only per mods.json, not sent: " + ($clientOnly -join ", ")) -ForegroundColor DarkGray
+        }
+        $Mod = @($Mod | Where-Object { -not (Test-ClientOnly $_) })
+        if ($Mod.Count -eq 0) { Write-Host "Every mod named is client-only; nothing to deploy."; exit 0 }
+
         foreach ($m in $Mod) {
             $candidates = @("net48", "net462") | ForEach-Object { Join-Path $repo "$m\bin\Release\$_\$m.dll" }
             $dll = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1

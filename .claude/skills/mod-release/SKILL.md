@@ -69,11 +69,18 @@ Then, **after Greg confirms**, publish to both sites:
 `-Publish` needs `TCLI_AUTH_TOKEN` in the environment; `-Hexium` reads the token from
 `%USERPROFILE%\.hexium_token`. Never print either token.
 
-Afterwards, tell Greg that the Hexium upload lands **Private** and he has to flip it to Public
-on valheim.hexium.gg — the API gives no way to do it, so a successful publish is not yet a
-visible listing.
+Hexium used to hide every version uploaded through the API until Greg unhid it on the site, so a
+successful publish was not yet a visible listing. He found the setting that turns that off and
+enabled it on 2026-09-14, so new versions should now appear by themselves. Don't assume either
+way — `.\mod-status.ps1` reads each site's live `latest`, so let it confirm, and only send him to
+valheim.hexium.gg if Hexium is still a version behind.
 
 ## 6. The server
+
+Only if the server needs this mod at all. `mods.json` records which side each mod belongs on, and
+`deploy-dathost.ps1` skips anything marked `client` — seven of the eleven mods here carry
+`[BepInProcess("valheim.exe")]`, which makes BepInEx skip the plugin under `valheim_server.exe`,
+so uploading them achieves nothing. If a new mod has no `mods.json` entry, add one.
 
 **After Greg confirms** (it stops the server):
 
