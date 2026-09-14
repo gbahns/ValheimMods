@@ -45,6 +45,7 @@ param(
     [switch]$NoRestart,
     [switch]$SkipSave,
     [switch]$Published,
+    [switch]$RestartOnly,
     [switch]$WhatIf
 )
 
@@ -71,8 +72,10 @@ if (Test-Path $sidesPath) {
     Write-Warning "mods.json not found; uploading everything named, including client-only mods."
 }
 
+# "client" cannot run on a server; "excluded" could but is deliberately not wanted there. Both are
+# skipped, so an excluded mod does not quietly return on the next profile mirror.
 function Test-ClientOnly([string]$name) {
-    return ($sides.ContainsKey($name) -and $sides[$name] -eq "client")
+    return ($sides.ContainsKey($name) -and $sides[$name] -in @("client", "excluded"))
 }
 
 function Get-TomlValue($path, $key) {
@@ -213,7 +216,12 @@ try {
 
     # ── plan ────────────────────────────────────────────────────────────────────
     $plan = @()
-    if ($Profile) {
+    if ($RestartOnly) {
+        # Files deleted on the server stay loaded in the running process until it restarts, and
+        # BepInEx only reads config at startup. This gives that restart the same verified world
+        # save the uploads get, instead of re-uploading a file just to trigger one.
+        Write-Host "Restart only: nothing will be uploaded."
+    } elseif ($Profile) {
         $root = Join-Path $env:APPDATA "com.kesomannen.gale\valheim\profiles\$Profile\BepInEx\plugins"
         if (-not (Test-Path $root)) { Write-Error "Profile plugins folder not found: $root"; exit 1 }
         $serverPackages = @{}
@@ -296,7 +304,7 @@ try {
     if ($plan.Count -eq 0) { Write-Host "  nothing to upload; the server already matches." }
     $plan | ForEach-Object { Write-Host ("  {0} {1} -> {2}  ({3})" -f $_.Mod, $_.Version, $_.Target, $_.Reason) }
     if ($WhatIf) { Write-Host "WhatIf: nothing changed."; exit 0 }
-    if ($plan.Count -eq 0) { exit 0 }
+    if ($plan.Count -eq 0 -and -not $RestartOnly) { exit 0 }
 
     $wasOn = [bool]$server.on
 
