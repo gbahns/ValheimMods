@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.5 — 2026-09-13
+
+Client-side, but the server must run this version too for portals to be corrected: the server is
+where the list of portals comes from. Works with a 0.2.x server otherwise.
+
+- **Portals are no longer remembered, they are known.** Every other kind of marker is a memory of something that stays put, but a portal gets renamed, torn down and rebuilt, so a marker written once goes wrong within days. The server now reads the game's own list of every portal and tells the clients, and each client corrects the portal markers it holds: renamed when the portal is renamed, erased when it is gone. The erasure travels like any other, so stale portals disappear for everyone, and the spot is not suppressed, so a portal rebuilt there is recorded again. Requires the server to run this version; single player and hosted games are their own server.
+- New option "Map All Portals" (on by default) also draws every other portal that currently exists, not only the ones someone has seen. Portals are built by the players, so on a server where everyone is in the same group this just keeps the map honest; turn it off on a public server and portals are learned like everything else. Those extra pins are drawn only, never written to your map and never shared, so turning it off leaves nothing behind.
+- TheGreatestMap's markers now stand down while TheGreatestPortal's portal picker is open over the map. That overlay hides the saved pins for itself, but this mod's styling pass ran afterwards and switched its own back on, which is why portals appeared twice there, in white and in gold.
+
 ## 0.2.4 — 2026-09-13
 
 Client-side; works with a 0.2.x server.

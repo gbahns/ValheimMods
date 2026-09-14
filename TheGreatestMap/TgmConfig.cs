@@ -32,6 +32,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> MarkerButton;
         internal static ConfigEntry<bool> ShowAllMarkers;
         internal static ConfigEntry<float> RevealNewMarkers;
+        internal static ConfigEntry<bool> MapAllPortals;
         private static HashSet<string> _hiddenIconKeys;
 
         private static HashSet<string> HiddenIconKeys()
@@ -177,6 +178,14 @@ namespace TheGreatestMap
                 "say, including markers that have no kind; they stay on your map and keep syncing. This is what the " +
                 "map-pin button on the map screen toggles.");
             ShowAllMarkers.SettingChanged += (_, __) => ClientPins.Restyle();
+            MapAllPortals = mod.BindLocal("Display", "Map All Portals", true,
+                "Draw every portal that currently exists in the world, not only the ones you or someone who shared their " +
+                "map with you has seen. Portals are built by the players, so on a server where everyone is in the same " +
+                "group this simply keeps the map honest; turn it off on a public server, or if you would rather learn a " +
+                "portal the way you learn everything else. The extra portals are drawn only: they are never written to " +
+                "your map and never shared, so turning this off leaves nothing behind. Either way the portal markers you " +
+                "do have are kept current, renamed when the portal is renamed and erased when it is torn down.");
+            MapAllPortals.SettingChanged += (_, __) => Portals.Redraw();
             RevealNewMarkers = mod.BindLocal("Display", "Reveal New Markers Seconds", 30f,
                 "How long a marker you have just recorded is drawn on both maps even though its kind or its icon is " +
                 "hidden, so writing something down always shows you what you wrote. 0 turns it off. It does not " +

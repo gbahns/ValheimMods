@@ -39,6 +39,7 @@ namespace TheGreatestMap
             MarkerToggle.Reset();
             MarkerMenu.Close();
             Reveals.Reset();
+            Portals.Reset();
         }
 
         private static int LocalType(SharedPin shared)
@@ -185,6 +186,28 @@ namespace TheGreatestMap
             PersonalMap.Touch();
         }
 
+        /// <summary>Rename a marker on the personal map (the portal reconciler; the change merges like any other).</summary>
+        internal static void RenameMarker(string id, string name)
+        {
+            if (id == null || !Store.Pins.TryGetValue(id, out var shared) || shared.Name == name) return;
+            shared.Name = name ?? "";
+            Store.Upsert(shared);
+            ReplacePinData(shared);
+            PersonalMap.Touch();
+        }
+
+        /// <summary>
+        /// Erase a marker that no longer matches the world, without suppressing the spot: the
+        /// thing may come back (a portal rebuilt where one stood) and should be recorded again.
+        /// </summary>
+        internal static void RemoveStale(string id)
+        {
+            if (id == null || !Store.Pins.ContainsKey(id)) return;
+            RemovePinData(id);
+            Store.Delete(id, out _, suppress: false);
+            PersonalMap.Touch();
+        }
+
         /// <summary>Erase one marker for everyone (a tombstone carries it at the next merge). Not gated: the caller checks the server setting.</summary>
         internal static bool EraseById(string id)
         {
@@ -321,10 +344,11 @@ namespace TheGreatestMap
             return false;
         }
 
+        /// <summary>A marker of ours near here; a null icon matches any icon.</summary>
         internal static bool HasOwnPinNear(string icon, Vector3 pos, float radius)
         {
             foreach (var pin in Store.Pins.Values)
-                if (IconRegistry.SameKey(pin.Icon, icon) && Geo.FlatDistance(pin.Pos, pos) <= radius) return true;
+                if ((icon == null || IconRegistry.SameKey(pin.Icon, icon)) && Geo.FlatDistance(pin.Pos, pos) <= radius) return true;
             return false;
         }
 
@@ -398,6 +422,7 @@ namespace TheGreatestMap
         {
             _pinById.Clear();
             _idByPin.Clear();
+            Portals.OnPinsCleared();
         }
 
         /// <summary>A new pin got its name on the map screen: put it on the personal map if configured.</summary>
@@ -452,7 +477,10 @@ namespace TheGreatestMap
         internal static void StylePins(Minimap map)
         {
             bool smallMap = map != null && map.m_mode != Minimap.MapMode.Large;
-            bool hideEverything = TgmConfig.ShowAllMarkers != null && !TgmConfig.ShowAllMarkers.Value;
+            // TheGreatestPortal's picker overlay wants a clean map and hides the saved pins for
+            // itself; ours are re-shown by this very pass, so they have to stand down here.
+            bool hideEverything = (TgmConfig.ShowAllMarkers != null && !TgmConfig.ShowAllMarkers.Value)
+                || Portals.PortalPickerOpen();
             foreach (var kv in _idByPin)
             {
                 var pin = kv.Key;
@@ -479,6 +507,7 @@ namespace TheGreatestMap
                 if (pin.m_iconElement != null && shared.Auto)
                     pin.m_iconElement.color = AutoTint;
             }
+            Portals.Style(AutoTint);
         }
 
         private static void SetMarkerActive(Minimap.PinData pin, bool active)

@@ -66,13 +66,19 @@ namespace TheGreatestMap
             Tombstones.Remove(pin.Id);
         }
 
-        public bool Delete(string id, out SharedPin removed)
+        /// <summary>
+        /// Erase a marker, leaving a dated tombstone so the erasure travels. Erasing a recorded
+        /// marker by hand also suppresses recording there again, since the player is saying they
+        /// do not want it; pass suppress false where the marker is being corrected rather than
+        /// rejected, such as a portal marker whose portal is gone and might be rebuilt.
+        /// </summary>
+        public bool Delete(string id, out SharedPin removed, bool suppress = true)
         {
             removed = null;
             if (string.IsNullOrEmpty(id) || !Pins.TryGetValue(id, out removed)) return false;
             Pins.Remove(id);
             Tombstones[id] = Now;
-            if (removed.Auto) AddSuppression(new Suppression { Type = removed.Type, Icon = removed.Icon, Pos = removed.Pos, Name = removed.Name });
+            if (suppress && removed.Auto) AddSuppression(new Suppression { Type = removed.Type, Icon = removed.Icon, Pos = removed.Pos, Name = removed.Name });
             return true;
         }
 

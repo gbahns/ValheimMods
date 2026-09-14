@@ -73,6 +73,15 @@ map icons (house, portal, campfire, boss). Vanilla's icon buttons on the right e
 show them, and those buttons cover the pins you placed by hand with the same icon, which a switch of
 ours never could. The other kinds have icons of their own and are ours to control.
 
+**Portals are kept current, not remembered.** Everything else the mod records stays where you
+found it, so writing it down once is enough. A portal is built by players and gets renamed and torn
+down, so instead the server reads the game's own list of portals and the markers follow it: a
+renamed portal's marker is renamed, and a portal that is gone has its marker erased for everyone.
+"Map All Portals" (on by default) goes further and draws every portal that currently exists, not
+only the ones someone has seen, which suits a server where everyone is in the same group. Turn it
+off and portals are learned the way everything else is, by seeing one yourself or by someone
+sharing their map with you. The extra portals are drawn only, never saved and never shared.
+
 **Pause while the map is open** ("Pause While Map Open" in the Display section, off by default):
 the game pauses while the large map screen is open, the way the ESC menu does. Solo or hosting
 alone it works by itself. On a dedicated server it takes the Pause My Server mod, which then pauses
