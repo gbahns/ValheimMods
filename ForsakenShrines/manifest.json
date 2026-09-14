@@ -1,6 +1,6 @@
 {
     "name": "ForsakenShrines",
-    "version_number": "0.8.4",
+    "version_number": "0.8.3",
     "website_url": "https://github.com/gbahns/ValheimMods/tree/main/ForsakenShrines",
     "description": "Build shrines to the Forsaken bosses. Each shrine remotely channels its boss's guardian power once you mount the boss's trophy on it, to switch forsaken powers without having to return to the sacrificial stones at the world center.",
     "dependencies": [

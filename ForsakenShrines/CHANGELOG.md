@@ -1,7 +1,5 @@
 # Changelog
 
-## 0.8.4 — unreleased
-
 ## 0.8.3 — 2026-09-13
 
 **Server and clients update together.** The version check in this mod has never been enforced,

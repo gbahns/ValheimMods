@@ -118,20 +118,33 @@ attribution line this session was given.
 
 Registries can take a minute to report the new version.
 
-## Bump the version straight after publishing, not before
+## Bump when a change needs it, not on a schedule
 
-The last step of a release is to open the next one: raise the version in all four files, add a
-`## <next> — unreleased` heading to the changelog, and commit that on its own. Then the version
-in the tree always names the release being prepared, never the one that shipped.
+The version moves with the **first change that will ship**, not at publish time and not straight
+after a release. Making a change to a mod whose version already equals its published version:
+raise all four version files and open a `## <next> — unreleased` changelog heading in the same
+commit as the work. Making a change to a mod that is already ahead: add to the existing heading,
+and raise the number further if the work outgrew it — 0.8.4 becoming 0.9.0 is free until it is
+published.
 
-That is what makes the tree readable by a session that was not there. "Local version equals the
-version live on the sites" becomes an error worth stopping for, rather than the normal state
-right after a release, and `mod-status.ps1` already computes that comparison. Bump only at
-release time and the healthy tree and a tree full of unpublished edits look identical, which has
-already caused unreleased code to sit under a published number more than once.
+So `local == published` means nothing is pending, and `local > published` means something is.
+Both statements are true, which is what makes them worth reading.
 
-At release time, replace `— unreleased` with the date. If the work turned out bigger than the
-number you guessed, raise it again then; that is free, and publishing over a live number is not.
+This replaces an earlier rule that bumped immediately after publishing. That rule failed twice in
+one day:
+
+- It bumped ForsakenShrines to 0.8.4 with nothing in it, and because that mod pins
+  `MinimumRequiredVersion` to `ModVersion`, the empty version locked the test client out of the
+  server — an outage for a release that contained no code.
+- It made every deploy from the tree carry a version that existed nowhere else, which is why
+  `deploy-dathost.ps1` needed `-Published` at all.
+
+It also asked for a guess nobody could make: whether the next release is a patch, a minor or a
+major is knowable only once there is a change to look at.
+
+Unreleased work is still visible without a pre-emptive bump, and more precisely: `mod-status.ps1`
+lists .cs commits made since the published version went out, by name, ignoring the commits that
+bumped a version. A number in a file cannot be checked against reality; that comparison can.
 
 ## TheGreatestMap needs three extra checks
 
