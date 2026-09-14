@@ -26,6 +26,9 @@
 #   .\deploy-dathost.ps1 -Profile "Default SD"            # mirror the whole profile's plugins
 #   .\deploy-dathost.ps1 -Profile "Default SD" -IncludeLocalOnly
 #   .\deploy-dathost.ps1 -Mod TheGreatestMap -Published   # deploy the version players downloaded
+#   .\deploy-dathost.ps1 -Package Azumatt-AzuCraftyBoxes  # update one third-party package from the
+#                                                         # profile (defaults to "Default SD")
+#   .\deploy-dathost.ps1 -RestartOnly                     # restart with a verified save, no upload
 #   .\deploy-dathost.ps1 ... -WhatIf                      # show the plan, change nothing
 #   .\deploy-dathost.ps1 ... -NoRestart                   # upload only (server should be stopped)
 #   .\deploy-dathost.ps1 ... -SkipSave                    # do not wait for the pre-stop save
@@ -40,6 +43,7 @@
 param(
     [string[]]$Mod = @("TheGreatestMap"),
     [string]$Profile,
+    [string[]]$Package,
     [switch]$IncludeLocalOnly,
     [string]$SecretsPath = (Join-Path $env:USERPROFILE ".dathost"),
     [switch]$NoRestart,
@@ -52,6 +56,12 @@ param(
 $ErrorActionPreference = "Stop"
 $base = "https://dathost.net/api/0.1"
 $repo = $PSScriptRoot
+
+# -Package names third-party packages by their Gale folder, e.g. Azumatt-AzuCraftyBoxes. It is the
+# profile mirror scoped to those packages, so they are compared and uploaded exactly as a full
+# mirror would, and the profile copy came from Gale -- which for a third-party mod is the same
+# thing -Published gets for ours: the artifact its author actually released.
+if ($Package -and -not $Profile) { $Profile = "Default SD" }
 $saveTrigger = "BepInEx/config/TheGreatestMap/save-now"
 # Files never worth sending to a server: debug symbols, build sidecars, store metadata and docs.
 $skipNames = @("manifest.json", "README.md", "CHANGELOG.md", "icon.png", "LICENSE", "LICENSE.md", "LICENSE.txt")
@@ -224,6 +234,11 @@ try {
     } elseif ($Profile) {
         $root = Join-Path $env:APPDATA "com.kesomannen.gale\valheim\profiles\$Profile\BepInEx\plugins"
         if (-not (Test-Path $root)) { Write-Error "Profile plugins folder not found: $root"; exit 1 }
+        foreach ($wanted in @($Package)) {
+            if ($wanted -and -not (Test-Path (Join-Path $root $wanted))) {
+                Write-Error "Package '$wanted' is not installed in profile '$Profile'."; exit 1
+            }
+        }
         $serverPackages = @{}
         foreach ($p in $serverFiles.Keys) {
             $rel = $p -replace '^BepInEx/plugins/', ''
@@ -240,6 +255,9 @@ try {
             if ($f.Extension -eq ".xml" -and (Test-Path (Join-Path $f.DirectoryName ($f.BaseName + ".dll")))) { continue }
             $rel = $f.FullName.Substring($root.Length + 1) -replace '\\', '/'
             $top = if ($rel -match '^([^/]+)/') { $Matches[1] } else { $null }
+            # Scoped to named packages: filter before every other rule, so the notices below
+            # describe only what was asked for rather than the whole profile.
+            if ($Package -and (-not $top -or $Package -notcontains $top)) { continue }
             if ($top -and -not $disabledPackages.ContainsKey($top) -and -not (Test-PackageActive (Join-Path $root $top))) { $disabledPackages[$top] = $true }
             if ($top -and $disabledPackages.ContainsKey($top)) { continue }
             # Declared client-only in mods.json: the server cannot use it, so don't send it.
