@@ -1,0 +1,121 @@
+using BepInEx;
+using BepInEx.Configuration;
+using BepInEx.Logging;
+using HarmonyLib;
+using UnityEngine;
+
+namespace DiagnoseServerLag
+{
+    /// <summary>
+    /// Diagnose Server Lag — says which of the six unrelated things called "lag" is actually
+    /// happening, and shows the numbers it decided on.
+    ///
+    /// A starved server, a saturated link, a lossy connection, an overloaded base, a world still
+    /// loading and a computer that cannot keep up all feel identical while playing: the game goes
+    /// sticky. The fixes are unrelated, so guessing wrong costs an evening. This mod measures both
+    /// ends once a second and names the cause.
+    ///
+    /// Install on the server and on every client. The server half is the point: a client watching
+    /// its own frame times can tell that the game feels bad, and only the server's own tick times
+    /// can tell it whether the server was keeping up at the time — which is the one question that
+    /// decides whether anything on your machine is worth changing. A server without the mod simply
+    /// never answers, and clients say so and fall back to diagnosing their own end alone.
+    /// </summary>
+    // No [BepInProcess] filter on purpose: the mod must load in the client, the Windows dedicated
+    // server (valheim_server.exe) and the Linux one (valheim_server.x86_64), and BepInEx matches
+    // that attribute against the bare process name.
+    [BepInPlugin(ModGuid, ModName, ModVersion)]
+    public class DiagnoseServerLagMod : BaseUnityPlugin
+    {
+        public const string ModGuid    = "DeathMonger.DiagnoseServerLag";
+        public const string ModName    = "Diagnose Server Lag";
+        public const string ModVersion = "0.1.0";
+
+        internal static DiagnoseServerLagMod Instance { get; private set; }
+        internal static ManualLogSource Log { get; private set; }
+
+        // Master toggle, bound first, so a player who runs into a problem can switch the mod off in
+        // BepInEx/config/DeathMonger.DiagnoseServerLag.cfg without removing the DLL.
+        internal static ConfigEntry<bool> ModEnabled;
+
+        private readonly Harmony _harmony = new Harmony(ModGuid);
+
+        /// <summary>Whether a world was live last frame, so leaving one can be noticed and cleared.</summary>
+        private bool _wasInWorld;
+
+        private void Awake()
+        {
+            Instance = this;
+            Log = Logger;
+
+            ModEnabled = Config.Bind("General", "Mod Enabled", true,
+                "Master toggle for the entire mod. Set to false to disable the measurements, the report and " +
+                "the console commands without removing the DLL. Requires a game restart to take effect.");
+            if (!ModEnabled.Value)
+            {
+                Log.LogInfo("[DiagnoseServerLag] Mod Enabled = false in config; measuring nothing.");
+                return;
+            }
+
+            DslConfig.Bind(this);
+            Commands.Register();
+            _harmony.PatchAll();
+            Log.LogInfo($"[DiagnoseServerLag] {ModVersion} loaded.");
+        }
+
+        private void Update()
+        {
+            if (!ModEnabled.Value) return;
+
+            bool inWorld = ZNet.instance != null;
+            if (_wasInWorld && !inWorld)
+            {
+                // The measurements describe a world and a connection, both of which have just gone.
+                // Keeping them would let the next session open onto the last one's verdict.
+                Sampler.Reset();
+                LagNetwork.Reset();
+                LagPanel.Close();
+            }
+            _wasInWorld = inWorld;
+
+            Sampler.Tick();
+            LagNetwork.Update();
+
+            // A dedicated server has no player, no canvas and no keyboard; everything below is the
+            // client half and stops here on the server without needing a process check.
+            if (Player.m_localPlayer == null) { LagPanel.Close(); return; }
+            LagPanel.Update();
+            LagHud.Update();
+        }
+
+        private void OnDestroy()
+        {
+            _harmony.UnpatchSelf();
+        }
+
+        /// <summary>Binds a config entry.</summary>
+        internal ConfigEntry<T> Bind<T>(string section, string key, T defaultValue, string description)
+        {
+            return Config.Bind(section, key, defaultValue, new ConfigDescription(description));
+        }
+
+        /// <summary>Binds a float entry with an allowed range (shown as a slider by config managers).</summary>
+        internal ConfigEntry<float> BindRange(string section, string key, float defaultValue, float min, float max, string description)
+        {
+            return Config.Bind(section, key, defaultValue, new ConfigDescription(description, new AcceptableValueRange<float>(min, max)));
+        }
+
+        /// <summary>Binds an integer entry with an allowed range.</summary>
+        internal ConfigEntry<int> BindRangeInt(string section, string key, int defaultValue, int min, int max, string description)
+        {
+            return Config.Bind(section, key, defaultValue, new ConfigDescription(description, new AcceptableValueRange<int>(min, max)));
+        }
+
+        /// <summary>Small top-left HUD message.</summary>
+        internal static void Message(string text)
+        {
+            if (MessageHud.instance == null) return;
+            MessageHud.instance.ShowMessage(MessageHud.MessageType.TopLeft, text);
+        }
+    }
+}

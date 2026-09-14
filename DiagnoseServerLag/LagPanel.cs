@@ -1,0 +1,610 @@
+using System;
+using System.Collections.Generic;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace DiagnoseServerLag
+{
+    /// <summary>
+    /// The report: the verdict, what it was decided from, and the live numbers behind it.
+    ///
+    /// Built to be read while annoyed. The conclusion and what to do about it are at the top in
+    /// full sentences, and everything underneath exists to let a sceptical reader check the
+    /// accusation rather than to be read in order. That ordering is the entire design: a panel
+    /// that opened on a grid of counters would be one more thing to interpret at exactly the
+    /// moment nobody wants to interpret anything.
+    ///
+    /// The frame is the game's own text prompt, cloned and stripped, so it matches Valheim without
+    /// shipping any art. Built lazily on first use; the scene unload on logout destroys it and it
+    /// is rebuilt on the next open.
+    /// </summary>
+    internal static class LagPanel
+    {
+        private const float W = 860f, H = 640f;
+        private const float MinW = 560f, MinH = 400f, MaxW = 1800f, MaxH = 1400f;
+
+        // Distances from the panel's top-left corner, matching UiKit.Place's convention: x runs
+        // right from the left edge, y runs down from the top edge.
+        private const float TitleY = 14f, SubtitleY = 48f;
+        private const float VerdictTop = 78f;
+        private const float SidePad = 30f;
+        private const float ButtonH = 34f;
+
+        /// <summary>UiKit has no color for "this is the problem"; the other panels never needed one.</summary>
+        private static readonly Color Bad = new Color(1f, 0.42f, 0.35f);
+        private static readonly Color Good = new Color(0.55f, 0.85f, 0.5f);
+
+        private static GameObject _root;
+        private static RectTransform _list;
+        private static ScrollRect _scroll;
+        private static TextMeshProUGUI _title, _subtitle, _verdict, _advice;
+        private static Button _refreshButton, _dumpButton, _closeButton;
+        private static RectTransform _grip, _mover;
+
+        private static float _w = W, _h = H;
+        private static bool _openedThisFrame;
+        private static bool _buildFailed;
+        private static int _closedFrame;
+        private static float _nextRefresh;
+
+        internal static bool IsOpen => _root != null && _root.activeSelf;
+        internal static bool JustClosed => Time.frameCount - _closedFrame <= 1;
+
+        // ── open / close ────────────────────────────────────────────────────────────
+
+        internal static void Toggle()
+        {
+            if (IsOpen) Close();
+            else Open();
+        }
+
+        internal static void Open()
+        {
+            if (Player.m_localPlayer == null) return;
+            if (_root == null && !Build())
+            {
+                DiagnoseServerLagMod.Message("Report unavailable; try dsl_why in the console.");
+                return;
+            }
+            LoadPlacement();
+            _root.SetActive(true);
+            _root.transform.SetAsLastSibling();
+            _openedThisFrame = true;
+            Layout();
+            // Ask straight away rather than waiting for the next scheduled round: the panel is
+            // usually opened in the middle of the thing it is meant to explain.
+            LagNetwork.Ask();
+            Populate();
+            _nextRefresh = Time.unscaledTime + 1f;
+        }
+
+        internal static void Close()
+        {
+            if (_root != null && _root.activeSelf)
+            {
+                SavePlacement();
+                _root.SetActive(false);
+                _closedFrame = Time.frameCount;
+            }
+        }
+
+        // ── per-frame ───────────────────────────────────────────────────────────────
+
+        internal static void Update()
+        {
+            if (!IsOpen)
+            {
+                if (DslConfig.OpenKey != null && Keys.IsDown(DslConfig.OpenKey.Value) && Keys.CanTakeInput()) Open();
+                return;
+            }
+
+            if (_openedThisFrame) { _openedThisFrame = false; return; }
+
+            // The console opens over the panel and `dsl` in the console is itself a way to get
+            // here, so while the console or chat owns the keyboard the panel must keep its hands
+            // off it or every keystroke does two things at once.
+            if (Console.IsVisible() || (Chat.instance != null && Chat.instance.HasFocus())) return;
+
+            if (ZInput.GetKeyDown(KeyCode.Escape) || (DslConfig.OpenKey != null && Keys.IsDown(DslConfig.OpenKey.Value)))
+            {
+                Close();
+                return;
+            }
+
+            // Once a second, in step with the sampler. Rebuilding faster would show the same
+            // numbers and throw away the reader's scroll position while they were reading them.
+            if (Time.unscaledTime < _nextRefresh) return;
+            _nextRefresh = Time.unscaledTime + 1f;
+            Populate();
+        }
+
+        // ── contents ────────────────────────────────────────────────────────────────
+
+        private static void Populate()
+        {
+            if (_list == null) return;
+
+            var findings = Verdict.Diagnose();
+            var best = findings.Count > 0 ? findings[0] : null;
+
+            _subtitle.text = Verdict.CoverageNote();
+            _subtitle.color = LagNetwork.Module == ServerModule.Absent ? UiKit.Header : UiKit.Dim;
+
+            if (best != null)
+            {
+                _verdict.text = best.Headline;
+                _verdict.color = SeverityColor(best);
+                _advice.text = best.Advice;
+            }
+
+            // The scroll position is kept: the panel rebuilds every second and a reader halfway
+            // down the evidence must not be thrown back to the top each time.
+            float scrollPos = _scroll != null ? _scroll.verticalNormalizedPosition : 1f;
+            UiKit.ClearChildren(_list);
+
+            AddOtherFindings(findings);
+            AddThisMachine();
+            AddServerSection();
+            AddPeers();
+
+            if (_scroll != null) _scroll.verticalNormalizedPosition = scrollPos;
+            Layout();
+        }
+
+        /// <summary>
+        /// Everything the evidence supports besides the headline.
+        ///
+        /// Kept rather than discarded because these causes genuinely co-occur: a saturated link and
+        /// heavy object churn are usually one event seen from two ends, and showing only the
+        /// strongest would hide the half that explains the other.
+        /// </summary>
+        private static void AddOtherFindings(List<Finding> findings)
+        {
+            UiKit.SectionHeader(_list, "Why");
+            if (findings.Count == 0) return;
+
+            for (int i = 0; i < findings.Count; i++)
+            {
+                var f = findings[i];
+                string prefix = i == 0 ? "verdict" : "also";
+                UiKit.Row(_list, $"{prefix}  {f.Headline}", f.Cause == Cause.Measuring || f.Cause == Cause.Healthy ? "" : $"{f.Confidence}%",
+                    null, null, 17f, SeverityColor(f));
+                foreach (var e in f.Evidence)
+                    UiKit.Row(_list, $"      {e}", "", null, null, 15f, UiKit.Dim);
+                if (i > 0 && !string.IsNullOrEmpty(f.Advice))
+                    Paragraph(_list, f.Advice, 14f, UiKit.Body, indent: 24f);
+            }
+        }
+
+        private static void AddThisMachine()
+        {
+            UiKit.SectionHeader(_list, "This machine");
+            if (!Sampler.TryNewest(out var s))
+            {
+                UiKit.Row(_list, "nothing measured yet", "", null, null, 15f, UiKit.Dim);
+                return;
+            }
+
+            var window = Sampler.History.Recent(DslConfig.WindowSeconds.Value);
+            int stalls = 0;
+            foreach (var w in window) stalls += w.Stalls;
+
+            Stat("frame time", $"{s.FrameMsAvg:0.0} ms  ({Verdict.Fps(s.FrameMsAvg)})",
+                Rank(s.FrameMsAvg, DslConfig.ClientFrameWarnMs.Value, DslConfig.ClientFrameWarnMs.Value * 2f));
+            Stat("worst frame", $"{Stats.Max(window, x => x.FrameMsMax):0} ms in the last {window.Count}s", 0);
+            Stat("stalls", $"{stalls} over {window.Count}s (a stall is a frame past {DslConfig.StallMs.Value:0} ms)",
+                stalls > 0 ? 1 : 0);
+            Stat("ping", s.HasPing ? $"{s.Ping} ms, {Stats.Jitter(window, x => x.Ping):0} ms jitter" : "not measurable on this socket",
+                s.HasPing ? Rank(Stats.Jitter(window, x => x.Ping), DslConfig.PingJitterWarnMs.Value, DslConfig.PingJitterWarnMs.Value * 2f) : 0);
+            Stat("quality", s.HasPing ? $"{s.LocalQuality * 100f:0.0}% local, {s.RemoteQuality * 100f:0.0}% remote" : "not measurable on this socket",
+                s.HasPing ? RankLow(s.LocalQuality, DslConfig.QualityWarn.Value, DslConfig.QualitySevere.Value) : 0);
+            Stat("upload queue", $"{Stats.Bytes(s.SendQueue)} queued, {Stats.Bytes(Stats.Slope(window, x => x.SendQueue))}/s trend",
+                Rank(s.SendQueue, DslConfig.QueueWarnBytes.Value, DslConfig.QueueSevereBytes.Value));
+            Stat("bandwidth", $"{Stats.Bytes(s.InByteSec)}/s in, {Stats.Bytes(s.OutByteSec)}/s out", 0);
+            Stat("objects", $"{s.Zdos} known, {s.Instances} built around you", 0);
+            Stat("object traffic", $"{s.ZdosRecv}/s received, {s.ZdosSent}/s sent, {s.ChangeQueue} unacknowledged", 0);
+            Stat("history", $"{Sampler.History.Count}s kept of {Sampler.History.Capacity}s", 0);
+        }
+
+        private static void AddServerSection()
+        {
+            UiKit.SectionHeader(_list, "The server");
+            var r = LagNetwork.Latest;
+            if (r == null)
+            {
+                // The single most useful thing the panel can say when half the diagnosis is
+                // missing: say which half, and why it is missing.
+                Paragraph(_list,
+                    LagNetwork.Module == ServerModule.Absent
+                        ? "The server is not running this mod, so its tick times cannot be measured. That is the one " +
+                          "measurement a client cannot make for itself, and without it the mod can tell you your own " +
+                          "end is healthy but never that the server's is. Installing the same DLL server-side is what " +
+                          "closes the gap."
+                        : "Waiting for the server's first answer.",
+                    15f, UiKit.Dim);
+                return;
+            }
+
+            float tick = Mathf.Max(r.TickMsAvg, r.BaselineTickMs);
+            Stat("tick time", $"{r.TickMsAvg:0.0} ms now, {r.BaselineTickMs:0.0} ms median over {r.WindowSeconds}s  ({Verdict.Fps(tick)})",
+                Rank(tick, DslConfig.ServerTickWarnMs.Value, DslConfig.ServerTickSevereMs.Value));
+            Stat("worst tick", $"{r.WorstTickMs:0} ms, {r.StallsInWindow} stalls in that window", r.StallsInWindow > 0 ? 1 : 0);
+            Stat("world", $"{r.Zdos} networked objects", 0);
+            Stat("object traffic", $"{r.ZdosSent}/s sent, {r.ZdosRecv}/s received", 0);
+            Stat("players", $"{r.PeerCount} connected", 0);
+            Stat("worst queue", $"{Stats.Bytes(r.WorstSendQueue)} to one player, {Stats.Bytes(r.TotalSendRate)}/s total",
+                Rank(r.WorstSendQueue, DslConfig.QueueWarnBytes.Value, DslConfig.QueueSevereBytes.Value));
+            Stat("kind", r.Dedicated ? "dedicated server" : "a player's game, also drawing their screen", 0);
+            Stat("report age", $"{LagNetwork.ReportAge:0.0}s", LagNetwork.ReportAge > 10f ? 1 : 0);
+        }
+
+        private static void AddPeers()
+        {
+            var r = LagNetwork.Latest;
+            if (r == null) return;
+
+            UiKit.SectionHeader(_list, "Players");
+            if (r.PeerDetailWithheld)
+            {
+                Paragraph(_list,
+                    "The server is set to share the per-player table with admins only. The numbers above still " +
+                    "diagnose the server itself; this section is the part that would name which player is on a " +
+                    "bad line.", 15f, UiKit.Dim);
+                return;
+            }
+            if (r.Peers.Count == 0)
+            {
+                UiKit.Row(_list, "nobody connected", "", null, null, 15f, UiKit.Dim);
+                return;
+            }
+
+            long me = ZDOMan.GetSessionID();
+            foreach (var p in r.Peers)
+            {
+                bool isMe = p.Uid == me;
+                int rank = Mathf.Max(
+                    Rank(p.SendQueue, DslConfig.QueueWarnBytes.Value, DslConfig.QueueSevereBytes.Value),
+                    RankLow(p.Quality, DslConfig.QualityWarn.Value, DslConfig.QualitySevere.Value));
+                UiKit.Row(_list,
+                    isMe ? $"{p.Name}  (you)" : p.Name,
+                    $"{Stats.Bytes(p.SendQueue)} queued",
+                    null, null, 16f, rank >= 2 ? Bad : rank == 1 ? UiKit.Header : (isMe ? UiKit.Gold : UiKit.Body),
+                    null,
+                    $"{(p.HasPing ? p.Ping + " ms" : "? ms")}   q {p.Quality * 100f:0}%   {p.DistanceFromCenter:0} m out");
+            }
+        }
+
+        /// <summary>One measurement row: name on the left, value on the right, colored by how bad it is.</summary>
+        private static void Stat(string label, string value, int rank)
+        {
+            Color c = rank >= 2 ? Bad : rank == 1 ? UiKit.Header : UiKit.Body;
+            UiKit.Row(_list, label, value, null, null, 16f, c);
+        }
+
+        private static int Rank(float value, float warn, float severe) =>
+            value >= severe ? 2 : value >= warn ? 1 : 0;
+
+        /// <summary>The same, for measurements where smaller is worse. Zero means "not measurable", not "broken".</summary>
+        private static int RankLow(float value, float warn, float severe)
+        {
+            if (value <= 0f) return 0;
+            return value <= severe ? 2 : value <= warn ? 1 : 0;
+        }
+
+        private static Color SeverityColor(Finding f)
+        {
+            if (f.Cause == Cause.Healthy) return Good;
+            if (f.Cause == Cause.Measuring) return UiKit.Dim;
+            if (f.Confidence >= 80) return Bad;
+            if (f.Confidence >= 60) return UiKit.Header;
+            return UiKit.Dim;
+        }
+
+        /// <summary>
+        /// A wrapped paragraph inside the scroll list.
+        ///
+        /// The list's layout group controls child heights from their preferred height, and TMP
+        /// reports one for the width it is given, so a paragraph sizes itself to however many lines
+        /// it needs without anyone counting them.
+        /// </summary>
+        private static void Paragraph(Transform parent, string text, float size, Color color, float indent = 0f)
+        {
+            var go = new GameObject("Paragraph", typeof(RectTransform), typeof(CanvasRenderer));
+            go.transform.SetParent(parent, false);
+            var t = go.AddComponent<TextMeshProUGUI>();
+            UiKit.EnsureFont();
+            t.text = text;
+            t.fontSize = size;
+            t.color = color;
+            t.alignment = TextAlignmentOptions.TopLeft;
+            Wrap(t);
+            t.raycastTarget = false;
+            t.margin = new Vector4(indent + 6f, 4f, 6f, 6f);
+        }
+
+        // ── construction ────────────────────────────────────────────────────────────
+
+        private static bool Build()
+        {
+            if (_buildFailed) return false;
+            try
+            {
+                if (BuildInner()) return true;
+                // The game's text prompt was not there to clone. That happens during a scene
+                // change and fixes itself, so this is not latched: the next keypress tries again.
+            }
+            catch (Exception e)
+            {
+                // A real fault. Latch it, or every keypress repeats the same exception.
+                DiagnoseServerLagMod.Log.LogError($"[DiagnoseServerLag] Building the report failed: {e}");
+                _buildFailed = true;
+            }
+            if (_root != null) UnityEngine.Object.Destroy(_root);
+            _root = null;
+            return false;
+        }
+
+        private static bool BuildInner()
+        {
+            var src = TextInput.instance;
+            if (src == null || src.m_panel == null)
+            {
+                DiagnoseServerLagMod.Log.LogWarning("[DiagnoseServerLag] The game's text prompt is not available; cannot build the report.");
+                return false;
+            }
+            UiKit.EnsureFont();
+
+            _root = UnityEngine.Object.Instantiate(src.m_panel, src.m_panel.transform.parent);
+            _root.name = "DSL_Report";
+            _root.SetActive(false);
+
+            foreach (var c in _root.GetComponents<LayoutGroup>()) UnityEngine.Object.Destroy(c);
+            foreach (var c in _root.GetComponents<ContentSizeFitter>()) UnityEngine.Object.Destroy(c);
+
+            Button template = null;
+            foreach (var b in _root.GetComponentsInChildren<Button>(true)) { template = b; break; }
+
+            var content = new GameObject("DSL_Content", typeof(RectTransform));
+            content.transform.SetParent(_root.transform, false);
+            UiKit.Stretch(content.GetComponent<RectTransform>());
+
+            if (template != null)
+            {
+                template = UnityEngine.Object.Instantiate(template, content.transform);
+                template.gameObject.SetActive(false);
+                template.name = "ButtonTemplate";
+            }
+
+            // Of what the prompt came with, keep only flat background art; everything else goes.
+            for (int i = _root.transform.childCount - 1; i >= 0; i--)
+            {
+                var child = _root.transform.GetChild(i);
+                if (child == content.transform) continue;
+                if (IsDecoration(child))
+                {
+                    child.SetParent(content.transform, false);
+                    child.SetAsFirstSibling();
+                    UiKit.Stretch(child.GetComponent<RectTransform>());
+                }
+                else UnityEngine.Object.Destroy(child.gameObject);
+            }
+
+            var rt = _root.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta = new Vector2(W, H);
+
+            _title = UiKit.Text(content.transform, "Title", "Diagnose Server Lag", 26f, TextAlignmentOptions.Center, UiKit.Gold);
+            _subtitle = UiKit.Text(content.transform, "Subtitle", "", 15f, TextAlignmentOptions.Center, UiKit.Dim);
+            // UiKit.Text builds labels that never wrap and ellipsize, which is right for table rows
+            // and wrong for both of these: a verdict is a sentence and must be readable in full.
+            _verdict = UiKit.Text(content.transform, "Verdict", "", 20f, TextAlignmentOptions.TopLeft, UiKit.Header);
+            Wrap(_verdict);
+            _advice = UiKit.Text(content.transform, "Advice", "", 15f, TextAlignmentOptions.TopLeft, UiKit.Body);
+            Wrap(_advice);
+
+            _list = UiKit.ScrollList(content.transform, "List", out _scroll);
+
+            _refreshButton = MakeButton(template, content.transform, "Refresh", "Refresh", () => { LagNetwork.Ask(); Populate(); });
+            _dumpButton = MakeButton(template, content.transform, "Dump", "Write CSV", () =>
+            {
+                string path = Commands.Dump();
+                DiagnoseServerLagMod.Message(path == null ? "Could not write the CSV" : "Wrote " + System.IO.Path.GetFileName(path));
+            });
+            _closeButton = MakeButton(template, content.transform, "Close", "Close", Close);
+
+            // The prompt's own labels come with a Localize component that rewrites their text from
+            // the language file on enable. Left in place it would overwrite every label here the
+            // first time the panel is shown.
+            foreach (var l in _root.GetComponentsInChildren<Localize>(true)) UnityEngine.Object.Destroy(l);
+
+            // Resize grip in the bottom-right corner; the size is remembered in the config.
+            var gripGo = new GameObject("Grip", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(UiKit.DragHandle));
+            gripGo.transform.SetParent(content.transform, false);
+            _grip = gripGo.GetComponent<RectTransform>();
+            var gripImg = gripGo.GetComponent<Image>();
+            gripImg.sprite = UiKit.Grip();
+            gripImg.color = new Color(1f, 0.85f, 0.45f, 0.75f);
+            gripImg.raycastTarget = true;
+            var gripHandle = gripGo.GetComponent<UiKit.DragHandle>();
+            gripHandle.OnDrag = OnGripDrag;
+            gripHandle.OnEnd = SavePlacement;
+
+            // The title strip drags the whole panel; the position is remembered too. This is an
+            // invisible image rather than the title text itself, because the panel's background art
+            // is a plain graphic that would swallow the pointer without handling the drag, and only
+            // something above it can catch one. Left as the last sibling for the same reason.
+            var moveGo = new GameObject("Mover", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(UiKit.DragHandle));
+            moveGo.transform.SetParent(content.transform, false);
+            _mover = moveGo.GetComponent<RectTransform>();
+            var moveImg = moveGo.GetComponent<Image>();
+            moveImg.color = new Color(0f, 0f, 0f, 0f);
+            moveImg.raycastTarget = true;
+            var mover = moveGo.GetComponent<UiKit.DragHandle>();
+            mover.OnDrag = OnMoveDrag;
+            mover.OnEnd = SavePlacement;
+
+            LoadPlacement();
+            Layout();
+            return true;
+        }
+
+        private static bool IsDecoration(Transform child)
+        {
+            if (child.GetComponentInChildren<TMP_Text>(true) != null) return false;
+            if (child.GetComponentInChildren<Selectable>(true) != null) return false;
+            return child.GetComponentInChildren<Graphic>(true) != null && child.GetComponent<RectTransform>() != null;
+        }
+
+        private static Button MakeButton(Button template, Transform parent, string name, string label, Action onClick)
+        {
+            return template != null
+                ? UiKit.CloneButton(template, parent, name, label, onClick)
+                : UiKit.SimpleButton(parent, name, label, onClick);
+        }
+
+        // ── layout ──────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Places everything for the current panel size.
+        ///
+        /// The verdict block is measured rather than given a fixed height: its headline can be one
+        /// line or three depending on the cause, and a fixed box would either clip the long ones or
+        /// leave a hole under the short ones.
+        /// </summary>
+        private static void Layout()
+        {
+            if (_root == null) return;
+            _root.GetComponent<RectTransform>().sizeDelta = new Vector2(_w, _h);
+
+            float inner = _w - SidePad * 2f;
+            UiKit.Place(_title.rectTransform, 0f, TitleY, _w, 34f);
+            UiKit.Place(_subtitle.rectTransform, 0f, SubtitleY, _w, 22f);
+
+            // Measured rather than given a fixed height: a headline can be one line or three
+            // depending on the cause, and a fixed box would clip the long ones or leave a hole
+            // under the short ones. GetPreferredValues asks for the height at a stated width, so
+            // this does not depend on Unity having already laid the label out at the new size.
+            float verdictH = Mathf.Max(26f, _verdict.GetPreferredValues(_verdict.text, inner, 0f).y);
+            UiKit.Place(_verdict.rectTransform, SidePad, VerdictTop, inner, verdictH);
+
+            float adviceY = VerdictTop + verdictH + 6f;
+            float adviceH = string.IsNullOrEmpty(_advice.text)
+                ? 0f
+                : _advice.GetPreferredValues(_advice.text, inner, 0f).y;
+            UiKit.Place(_advice.rectTransform, SidePad, adviceY, inner, adviceH);
+
+            float listY = adviceY + adviceH + 12f;
+            float buttonY = _h - ButtonH - 14f;
+            float listH = Mathf.Max(80f, buttonY - listY - 12f);
+            UiKit.Place(_scroll.GetComponent<RectTransform>(), SidePad, listY, inner, listH);
+
+            UiKit.Place(_refreshButton.GetComponent<RectTransform>(), SidePad, buttonY, 130f, ButtonH);
+            UiKit.Place(_dumpButton.GetComponent<RectTransform>(), SidePad + 138f, buttonY, 130f, ButtonH);
+            UiKit.Place(_closeButton.GetComponent<RectTransform>(), _w - SidePad - 130f, buttonY, 130f, ButtonH);
+
+            // The drag strip covers the title and subtitle and nothing else, so it can never sit
+            // over a control and eat its clicks.
+            UiKit.Place(_mover, 0f, 0f, _w, 70f);
+
+            _grip.anchorMin = _grip.anchorMax = _grip.pivot = new Vector2(1f, 0f);
+            _grip.anchoredPosition = new Vector2(-5f, 5f);
+            _grip.sizeDelta = new Vector2(18f, 18f);
+        }
+
+        /// <summary>
+        /// Makes a UiKit label wrap instead of ellipsizing.
+        ///
+        /// UiKit builds labels for table rows, where a long value should be cut off rather than
+        /// push the row's neighbors around. The verdict and its advice are prose and need the
+        /// opposite, so they are switched over one at a time rather than by changing UiKit for
+        /// every panel that shares it.
+        /// </summary>
+        private static void Wrap(TMP_Text t)
+        {
+            t.textWrappingMode = TextWrappingModes.Normal;
+            t.overflowMode = TextOverflowModes.Overflow;
+        }
+
+        /// <summary>The grip follows the pointer: the bottom-right corner moves, the top-left corner stays.</summary>
+        private static void OnGripDrag(Vector2 screenDelta)
+        {
+            if (_root == null) return;
+            float scale = CanvasScale();
+            float nw = Mathf.Clamp(_w + screenDelta.x / scale, MinW, MaxW);
+            float nh = Mathf.Clamp(_h - screenDelta.y / scale, MinH, MaxH);
+            var rt = _root.GetComponent<RectTransform>();
+            rt.anchoredPosition += new Vector2((nw - _w) / 2f, -(nh - _h) / 2f);
+            _w = nw;
+            _h = nh;
+            Layout();
+        }
+
+        private static void OnMoveDrag(Vector2 screenDelta)
+        {
+            if (_root == null) return;
+            var rt = _root.GetComponent<RectTransform>();
+            rt.anchoredPosition += screenDelta / CanvasScale();
+            ClampToScreen(rt);
+        }
+
+        private static float CanvasScale()
+        {
+            var canvas = _root != null ? _root.GetComponentInParent<Canvas>() : null;
+            float scale = canvas != null ? canvas.rootCanvas.scaleFactor : 1f;
+            return scale <= 0f ? 1f : scale;
+        }
+
+        /// <summary>Keeps at least a corner of the panel on screen, so it can always be dragged back.</summary>
+        private static void ClampToScreen(RectTransform rt)
+        {
+            var parent = rt.parent as RectTransform;
+            if (parent == null) return;
+            float halfW = parent.rect.width / 2f, halfH = parent.rect.height / 2f;
+            var p = rt.anchoredPosition;
+            p.x = Mathf.Clamp(p.x, -halfW, halfW);
+            p.y = Mathf.Clamp(p.y, -halfH, halfH);
+            rt.anchoredPosition = p;
+        }
+
+        private static void LoadPlacement()
+        {
+            _w = W;
+            _h = H;
+            if (TryPair(DslConfig.PanelSize != null ? DslConfig.PanelSize.Value : "", out float w, out float h))
+            {
+                _w = Mathf.Clamp(w, MinW, MaxW);
+                _h = Mathf.Clamp(h, MinH, MaxH);
+            }
+            if (_root != null)
+            {
+                var rt = _root.GetComponent<RectTransform>();
+                rt.anchoredPosition = TryPair(DslConfig.PanelPosition != null ? DslConfig.PanelPosition.Value : "", out float x, out float y)
+                    ? new Vector2(x, y) : Vector2.zero;
+                ClampToScreen(rt);
+            }
+        }
+
+        private static void SavePlacement()
+        {
+            if (DslConfig.PanelSize != null) DslConfig.PanelSize.Value = $"{Mathf.RoundToInt(_w)},{Mathf.RoundToInt(_h)}";
+            if (DslConfig.PanelPosition != null && _root != null)
+            {
+                var p = _root.GetComponent<RectTransform>().anchoredPosition;
+                DslConfig.PanelPosition.Value = $"{Mathf.RoundToInt(p.x)},{Mathf.RoundToInt(p.y)}";
+            }
+        }
+
+        private static bool TryPair(string text, out float a, out float b)
+        {
+            a = 0f;
+            b = 0f;
+            if (string.IsNullOrEmpty(text)) return false;
+            var parts = text.Split(',');
+            return parts.Length == 2
+                && float.TryParse(parts[0].Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out a)
+                && float.TryParse(parts[1].Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out b);
+        }
+    }
+}

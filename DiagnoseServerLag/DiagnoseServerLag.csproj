@@ -1,0 +1,91 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <OutputType>Library</OutputType>
+    <RootNamespace>DiagnoseServerLag</RootNamespace>
+    <AssemblyName>DiagnoseServerLag</AssemblyName>
+    <Deterministic>true</Deterministic>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <NoWarn>$(NoWarn);MSB3277</NoWarn>
+    <LangVersion>12</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="HarmonyX" Version="2.9.0" />
+  </ItemGroup>
+
+  <!-- Local Valheim / Unity assemblies not on NuGet.
+
+       DELIBERATELY the plain assemblies, not the _publicized ones some of the sibling mods use.
+       Publicized assemblies exist only at build time; the game loads the real ones, where Mono
+       does enforce access, so every private member they let you compile against becomes a
+       FieldAccessException at runtime instead of an error here.  That cost DudeWhatAreMyStats a
+       release.  Everything this mod measures is public API and was checked against the 1.0
+       assembly before a line was written:
+
+         ZNet.GetNetStats / GetPeers / GetConnectedPeers / GetServerPeer / IsServer / IsDedicated
+         ZNetPeer.m_socket (public field) and the whole ISocket interface
+         ISocket.GetSendQueueSize / GetCurrentSendRate / GetConnectionQuality
+         ZDOMan.NrOfObjects / GetSentZDOs / GetRecvZDOs / GetClientChangeQueue
+         ZNetScene.NrOfInstances
+
+       so referencing the real assemblies turns that whole class of bug into a compile error.
+       If a private member is ever genuinely needed, reach it with reflection rather than
+       switching these back, so the rest of the file keeps its compile-time guarantee. -->
+  <ItemGroup>
+    <Reference Include="assembly_valheim">
+      <HintPath>..\Libs\assembly_valheim.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="assembly_utils">
+      <HintPath>..\Libs\assembly_utils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- Localize, which the cloned text prompt carries on its labels and which has to be removed
+         or it rewrites every label in the panel from the language file the first time it shows. -->
+    <Reference Include="assembly_guiutils">
+      <HintPath>..\Libs\assembly_guiutils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>..\Libs\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- The UnityEngine facade is needed alongside CoreModule or BaseUnityPlugin fails with CS0012. -->
+    <Reference Include="UnityEngine">
+      <HintPath>..\Libs\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>..\Libs\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- KeyCode for keybinds. -->
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>..\Libs\UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- The report panel and the HUD readout: Canvas/RectTransform (UIModule),
+         Button/ScrollRect/Toggle (UI), TextMeshProUGUI (TMP). None of this runs on a dedicated
+         server, but the references still resolve there because the server ships the same Unity
+         modules. -->
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>..\Libs\UnityEngine.UIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>..\Libs\UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>..\Libs\UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>..\Libs\Unity.TextMeshPro.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>
