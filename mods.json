@@ -88,7 +88,15 @@
     "",
     "'excluded' is a decision rather than a capability: the mod could run on the server, but it is",
     "deliberately not wanted there. Deploys skip it exactly as they skip 'client', so it does not",
-    "come back on the next profile mirror."
+    "come back on the next profile mirror. Nothing carries it at the moment.",
+    "",
+    "A package disabled in the Gale profile is disabled for one of two reasons: something replaced",
+    "it, or it has not been updated for Valheim 1.0 yet. Neither is a reason to send it to the",
+    "server. Two that are not coming back on their own: BadgersValheimSkies, part of the Wallybach",
+    "and Badger HD set, client-only and dropped from this file entirely; and PortalRules and",
+    "OttoFuel, both replaced by alternatives and removed from the server on 2026-09-14 - their",
+    "orphaned config still sits under BepInEx/config there, including PortalRules' player-identities",
+    "and cooldown data, which is why it was not deleted with the plugins."
   ],
 
   "profilePackages": {
@@ -119,7 +127,6 @@
 
     "CW_Jesse-BetterNetworking_Valheim":             { "side": "both", "why": "Compresses and paces the network protocol; both ends must agree." },
     "shudnal-ConditionalConfigSync":                 { "side": "both", "why": "Config synchronization and server policy library - the server is where policy lives." },
-    "sighsorry-PortalRules":                         { "side": "excluded", "why": "Removed from the server 2026-09-14 by Greg's decision. It was on the server but not in his profile, and it overlaps TheGreatestPortal, which previously had to be tested with PortalRules disabled." },
     "ValheimModding-Jotunn":                         { "side": "both", "why": "Library. ForsakenShrines needs it server-side." },
     "ValheimModding-JsonDotNET":                     { "side": "both", "why": "Shared library a server-side mod may load." },
     "ValheimModding-YamlDotNet":                     { "side": "both", "why": "Shared library a server-side mod may load." },
@@ -131,10 +138,9 @@
     "Azumatt-RepairStation":                         { "side": "optional-server", "why": "Check whether it registers a new prefab - if it does, it is 'both'." },
     "TastyChickenLegs-AutomaticFuel":                { "side": "optional-server", "why": "Fuelling containers; Server-side tagged." },
     "TastyChickenLegs-BetterCarts":                  { "side": "optional-server", "why": "Cart physics; Server-side tagged." },
-    "potto007-OttoFuel":                             { "side": "excluded", "why": "Removed from the server 2026-09-14 by Greg's decision. It was on the server but not in his profile, and TastyChickenLegs-AutomaticFuel already does the same job." },
 
-    "OdinShipPlus":                                  { "side": "unknown", "why": "NEEDS A DECISION: adds ship prefabs, and a prefab mod missing from the server means ZDOs it cannot instantiate get destroyed, as ForsakenShrines showed. Folder carries no namespace so its listing was not checked. Probably 'both'." },
-    "BadgersValheimSkies":                           { "side": "unknown", "why": "Folder carries no namespace; disabled in the profile, so nothing to send either way." },
-    "Shalopay-FoodSorting":                          { "side": "unknown", "why": "No client/server category set. Disabled in the profile." }
+    "Shalopay-FoodSorting":                          { "side": "client", "why": "Client-only. Disabled because it does not work on Valheim 1.0; Greg will re-enable it if that is ever fixed." },
+
+    "OdinShipPlus":                                  { "side": "unknown", "why": "NEEDS A DECISION: adds ship prefabs, and a prefab mod missing from the server means ZDOs it cannot instantiate get destroyed, as ForsakenShrines showed. Disabled in the profile pending a download of the current version. Probably 'both'." }
   }
 }
