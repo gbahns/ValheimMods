@@ -161,9 +161,13 @@ foreach ($d in $dirs) {
 
     # [BepInProcess("valheim.exe")] makes BepInEx skip the plugin under valheim_server.exe, so a
     # mod carrying it cannot run on a dedicated server whatever mods.json claims.
+    #
+    # Line comments are stripped first: a mod that removed the gate is likely to explain why in a
+    # comment naming the attribute, and matching that text would report the gate as still there.
     $clientGated = $false
     foreach ($f in Get-ChildItem $dir -Filter *.cs -File) {
-        if ((Get-Content $f.FullName -Raw) -match 'BepInProcess\(\s*"valheim\.exe"\s*\)') { $clientGated = $true; break }
+        $code = (Get-Content $f.FullName) -replace '//.*$', '' -join "`n"
+        if ($code -match 'BepInProcess\(\s*"valheim\.exe"\s*\)') { $clientGated = $true; break }
     }
 
     # The newest version the changelog names.  A changelog describing a version the version files
