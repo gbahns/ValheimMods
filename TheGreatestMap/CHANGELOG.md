@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.2.7 — unreleased
+
 ## 0.2.6 — 2026-09-13
 
 Client-side; works with a 0.2.x server.
