@@ -25,6 +25,7 @@
 #   .\deploy-dathost.ps1 -Mod TheGreatestMap,Armory       # several mods in one restart
 #   .\deploy-dathost.ps1 -Profile "Default SD"            # mirror the whole profile's plugins
 #   .\deploy-dathost.ps1 -Profile "Default SD" -IncludeLocalOnly
+#   .\deploy-dathost.ps1 -Mod TheGreatestMap -Published   # deploy the version players downloaded
 #   .\deploy-dathost.ps1 ... -WhatIf                      # show the plan, change nothing
 #   .\deploy-dathost.ps1 ... -NoRestart                   # upload only (server should be stopped)
 #   .\deploy-dathost.ps1 ... -SkipSave                    # do not wait for the pre-stop save
@@ -43,6 +44,7 @@ param(
     [string]$SecretsPath = (Join-Path $env:USERPROFILE ".dathost"),
     [switch]$NoRestart,
     [switch]$SkipSave,
+    [switch]$Published,
     [switch]$WhatIf
 )
 
@@ -71,6 +73,45 @@ if (Test-Path $sidesPath) {
 
 function Test-ClientOnly([string]$name) {
     return ($sides.ContainsKey($name) -and $sides[$name] -eq "client")
+}
+
+function Get-TomlValue($path, $key) {
+    if (-not (Test-Path $path)) { return $null }
+    $line = Select-String -Path $path -Pattern "^$key\s*=" | Select-Object -First 1
+    if (-not $line) { return $null }
+    return ($line.Line -replace "^$key\s*=\s*", "").Trim().Trim('"')
+}
+
+# -Published: deploy the artifact players actually download, by fetching the newest published
+# version's zip from Thunderstore and taking the DLL out of it.
+#
+# bin\Release holds whatever the tree last built, and the release convention bumps all four
+# version files immediately after publishing, so the tree normally builds a version that exists
+# nowhere but this disk.  Deploying that puts unreleased code on a server whose players are all on
+# the released version.  Fetching the published zip removes the question: the server runs the same
+# bytes as every client, whatever state the working tree is in.
+$tempDownloads = @()
+function Get-PublishedDll([string]$mod) {
+    $tsToml = Join-Path $repo "$mod\thunderstore.toml"
+    $ns   = Get-TomlValue $tsToml "namespace"
+    $name = Get-TomlValue $tsToml "name"
+    if (-not $ns -or -not $name) { return $null }
+
+    $bust = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+    $info = Invoke-RestMethod -TimeoutSec 30 -Headers @{ "Cache-Control" = "no-cache" } `
+        -Uri "https://thunderstore.io/api/experimental/package/$ns/$name/?cb=$bust"
+    if (-not $info.latest.download_url) { return $null }
+
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) ("deploy-" + [Guid]::NewGuid().ToString("N"))
+    New-Item -ItemType Directory -Path $tmp | Out-Null
+    $script:tempDownloads += $tmp
+    $zip = Join-Path $tmp "package.zip"
+    Invoke-WebRequest -Uri $info.latest.download_url -OutFile $zip -TimeoutSec 180
+    Expand-Archive -Path $zip -DestinationPath (Join-Path $tmp "x") -Force
+
+    $dll = Join-Path $tmp "x\BepInEx\plugins\$mod.dll"
+    if (-not (Test-Path $dll)) { return $null }
+    return [pscustomobject]@{ Dll = $dll; Version = $info.latest.version_number }
 }
 
 # ── secrets ─────────────────────────────────────────────────────────────────────
@@ -232,11 +273,19 @@ try {
         if ($Mod.Count -eq 0) { Write-Host "Every mod named is client-only; nothing to deploy."; exit 0 }
 
         foreach ($m in $Mod) {
+            if ($Published) {
+                $pub = Get-PublishedDll $m
+                if (-not $pub) { Write-Error "Could not fetch a published package for $m. Is it on Thunderstore?"; exit 1 }
+                $dll = $pub.Dll
+                $ver = $pub.Version
+                Write-Host ("Using the published $m $ver from Thunderstore, not bin\Release.") -ForegroundColor DarkGray
+            } else {
             $candidates = @("net48", "net462") | ForEach-Object { Join-Path $repo "$m\bin\Release\$_\$m.dll" }
             $dll = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
             if (-not $dll) { Write-Error "No Release build found for $m (looked in $($candidates -join ', ')). Build it first."; exit 1 }
             $manifest = Join-Path $repo "$m\manifest.json"
             $ver = if (Test-Path $manifest) { (Get-Content $manifest -Raw | ConvertFrom-Json).version_number } else { (Get-Item $dll).VersionInfo.FileVersion }
+            }
             $existing = $serverFiles.Keys | Where-Object { $_ -match ("(^|/)" + [regex]::Escape("$m.dll") + "$") } | Select-Object -First 1
             $target = if ($existing) { $existing } else { "BepInEx/plugins/$m.dll" }
             $plan += [pscustomobject]@{ Mod = $m; Version = $ver; Local = $dll; Target = $target; New = (-not $existing); Reason = $(if ($existing) { "update" } else { "new" }) }
@@ -290,6 +339,8 @@ try {
     }
 } finally {
     $client.Dispose()
+    # Downloaded packages are scratch; don't leave them in %TEMP%.
+    foreach ($t in $tempDownloads) { if (Test-Path $t) { Remove-Item $t -Recurse -Force -ErrorAction SilentlyContinue } }
 }
 
 if ($wasOn -and -not $NoRestart) {

@@ -85,9 +85,17 @@ so uploading them achieves nothing. If a new mod has no `mods.json` entry, add o
 **After Greg confirms** (it stops the server):
 
 ```powershell
-.\deploy-dathost.ps1 -Mod <Folder>
-.\deploy-dathost.ps1 -Mod <Folder> -WhatIf     # plan only, changes nothing
+.\deploy-dathost.ps1 -Mod <Folder> -Published   # the version players downloaded
+.\deploy-dathost.ps1 -Mod <Folder>              # whatever bin\Release holds
+.\deploy-dathost.ps1 -Mod <Folder> -WhatIf      # plan only, changes nothing
 ```
+
+Prefer `-Published`. It fetches the newest published version's zip from Thunderstore and deploys
+the DLL out of it, so the server runs the same bytes as every client no matter what state the tree
+is in. Without it the upload comes from `bin\Release`, and since the version is bumped straight
+after publishing, that is normally a version nobody can download — deploying it puts unreleased
+code on a server full of players on the released one. Use the plain form only to put a test build
+on the server deliberately, and say so when you do.
 
 It triggers a world save through TheGreatestMap's `save-now` file and waits for the save to
 complete before stopping, then uploads, starts, and waits until DatHost reports it running.
