@@ -50,6 +50,7 @@ param(
     [switch]$SkipSave,
     [switch]$Published,
     [switch]$RestartOnly,
+    [switch]$TestBuild,
     [switch]$WhatIf
 )
 
@@ -103,17 +104,22 @@ function Get-TomlValue($path, $key) {
 # nowhere but this disk.  Deploying that puts unreleased code on a server whose players are all on
 # the released version.  Fetching the published zip removes the question: the server runs the same
 # bytes as every client, whatever state the working tree is in.
-$tempDownloads = @()
-function Get-PublishedDll([string]$mod) {
+function Get-PublishedInfo([string]$mod) {
     $tsToml = Join-Path $repo "$mod\thunderstore.toml"
     $ns   = Get-TomlValue $tsToml "namespace"
     $name = Get-TomlValue $tsToml "name"
     if (-not $ns -or -not $name) { return $null }
-
     $bust = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
-    $info = Invoke-RestMethod -TimeoutSec 30 -Headers @{ "Cache-Control" = "no-cache" } `
-        -Uri "https://thunderstore.io/api/experimental/package/$ns/$name/?cb=$bust"
-    if (-not $info.latest.download_url) { return $null }
+    try {
+        return (Invoke-RestMethod -TimeoutSec 30 -Headers @{ "Cache-Control" = "no-cache" } `
+            -Uri "https://thunderstore.io/api/experimental/package/$ns/$name/?cb=$bust").latest
+    } catch { return $null }
+}
+
+$tempDownloads = @()
+function Get-PublishedDll([string]$mod) {
+    $info = [pscustomobject]@{ latest = (Get-PublishedInfo $mod) }
+    if (-not $info.latest -or -not $info.latest.download_url) { return $null }
 
     $tmp = Join-Path ([IO.Path]::GetTempPath()) ("deploy-" + [Guid]::NewGuid().ToString("N"))
     New-Item -ItemType Directory -Path $tmp | Out-Null
@@ -311,6 +317,27 @@ try {
             if (-not $dll) { Write-Error "No Release build found for $m (looked in $($candidates -join ', ')). Build it first."; exit 1 }
             $manifest = Join-Path $repo "$m\manifest.json"
             $ver = if (Test-Path $manifest) { (Get-Content $manifest -Raw | ConvertFrom-Json).version_number } else { (Get-Item $dll).VersionInfo.FileVersion }
+
+            # A local build that is ahead of what is published is an unreleased version, and
+            # putting one on a shared server locks out every player who can only get the released
+            # one -- their mod refuses the connection over the version difference, and stays
+            # refused until the new version is published. That is an outage for other people, not
+            # a private test, so it takes -TestBuild to say it is wanted.
+            if (-not $TestBuild) {
+                $live = (Get-PublishedInfo $m).version_number
+                if ($live) {
+                    $ahead = $false
+                    try { $ahead = ([version]$ver -gt [version]$live) } catch { $ahead = ($ver -ne $live) }
+                    if ($ahead) {
+                        Write-Error ("$m $ver is not published (Thunderstore has $live). Deploying it would lock " +
+                                     "every other player out of the server until $ver is published.`n" +
+                                     "  Publish first, then:  .\deploy-dathost.ps1 -Mod $m -Published`n" +
+                                     "  Or test it locally instead of on the shared server.`n" +
+                                     "  -TestBuild overrides this when nobody else is playing.")
+                        exit 1
+                    }
+                }
+            }
             }
             $existing = $serverFiles.Keys | Where-Object { $_ -match ("(^|/)" + [regex]::Escape("$m.dll") + "$") } | Select-Object -First 1
             $target = if ($existing) { $existing } else { "BepInEx/plugins/$m.dll" }

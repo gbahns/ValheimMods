@@ -146,20 +146,39 @@ Unreleased work is still visible without a pre-emptive bump, and more precisely:
 lists .cs commits made since the published version went out, by name, ignoring the commits that
 bumped a version. A number in a file cannot be checked against reality; that comparison can.
 
-## TheGreatestMap needs three extra checks
+## Is this change breaking? Decide per release
 
-It is the one mod here that genuinely runs on the server, so the usual "client-only, the server
-can wait" assumption does not hold.
+Every mod that syncs config declares a floor, and the floor is a property of **the change**, not
+a habit of the mod. Assess each release:
 
-**Is the compatibility floor moving?** `MinCompatibleVersion` in `TheGreatestMapMod.cs` is what
-ServerSync uses to refuse older clients. Compare it against the last released version before
-publishing:
+- **Not breaking** — the floor stays where it is. Older clients keep connecting, the server can
+  lag behind a client-only release, and players update when they feel like it.
+- **Breaking** — new network messages, a changed save format, a changed config contract. Raise
+  the floor to this version. Then say so in bold at the top of the changelog entry, deploy the
+  server when nobody is playing, and tell Greg his players cannot connect until they update.
 
-- unchanged (it has been `0.2.0` since that release) — a client-only release is fine and the
-  server can lag behind.
-- changed — the update is no longer optional for anyone. Say so at the top of the changelog
-  entry in bold, deploy the server when nobody is playing, and tell Greg his players are locked
-  out until they update, because they are kicked at the next connect.
+Neither mod should assume its answer. `TheGreatestMap` keeps `MinCompatibleVersion` separate from
+`ModVersion` and has held it at `0.2.0` since that release — right for its client-only releases,
+wrong the moment it changes the sync contract without raising it. `ForsakenShrines` pins
+`MinimumRequiredVersion = ModVersion`, which declares every release breaking, including the ones
+that are not: that is what refused a 0.8.4 client against a 0.8.3 server for a version containing
+no code at all.
+
+Note ServerSync refuses a mismatch in **both** directions when the floor is pinned to the current
+version — a client ahead of the server is rejected just as a client behind it is
+("may not be higher than version 0.8.3").
+
+## Never put an unpublished version on the shared server
+
+Players can only install what is published. A server running a version that is not yet on
+Thunderstore refuses everyone whose mod enforces a floor, and keeps refusing them until that
+version is published — an outage for other people caused by a local test.
+
+So: test breaking changes locally, in single player or a local host, and update the server only
+as part of publishing. `deploy-dathost.ps1` enforces this for this repo's mods: deploying a
+version ahead of Thunderstore fails with the lockout explained, and takes `-TestBuild` to
+override, which is only appropriate when nobody else is playing. `-Published` is the ordinary
+path and cannot hit the problem, since it deploys what players already have.
 
 **Does the server actually need this release?** The shared marker store lives on the server, and
 the server is also the source of the live portal list. A release that touches either needs a
