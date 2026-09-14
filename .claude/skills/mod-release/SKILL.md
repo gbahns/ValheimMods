@@ -110,6 +110,21 @@ attribution line this session was given.
 
 Registries can take a minute to report the new version.
 
+## Bump the version straight after publishing, not before
+
+The last step of a release is to open the next one: raise the version in all four files, add a
+`## <next> — unreleased` heading to the changelog, and commit that on its own. Then the version
+in the tree always names the release being prepared, never the one that shipped.
+
+That is what makes the tree readable by a session that was not there. "Local version equals the
+version live on the sites" becomes an error worth stopping for, rather than the normal state
+right after a release, and `mod-status.ps1` already computes that comparison. Bump only at
+release time and the healthy tree and a tree full of unpublished edits look identical, which has
+already caused unreleased code to sit under a published number more than once.
+
+At release time, replace `— unreleased` with the date. If the work turned out bigger than the
+number you guessed, raise it again then; that is free, and publishing over a live number is not.
+
 ## TheGreatestMap needs three extra checks
 
 It is the one mod here that genuinely runs on the server, so the usual "client-only, the server

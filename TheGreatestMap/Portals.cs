@@ -233,15 +233,64 @@ namespace TheGreatestMap
             _redrawWanted = true;
         }
 
+        // ── color ───────────────────────────────────────────────────────────────────
+
+        private static Color _parsedColor = new Color(1f, 0.93f, 0.72f, 1f);
+        private static Color _parsedPulse = Color.clear;
+        private static string _colorText, _pulseText;
+        private static bool _pulses;
+
         /// <summary>
-        /// Tint these the same pale gold as recorded markers, so every portal this mod draws
-        /// looks alike whether you have been to it or not. Called from the styling pass, after
-        /// vanilla has built the icons.
+        /// Portal markers get their own color, because they are the points you travel between and
+        /// are worth finding at a glance. With a pulse color set they fade back and forth, which
+        /// picks them out of a map full of gold plants.
         /// </summary>
-        internal static void Style(Color tint)
+        private static Color CurrentColor()
         {
+            string text = TgmConfig.PortalColor != null ? TgmConfig.PortalColor.Value : null;
+            if (text != _colorText)
+            {
+                _colorText = text;
+                _parsedColor = Parse(text, new Color(1f, 0.93f, 0.72f, 1f));
+            }
+            string pulseText = TgmConfig.PortalPulseColor != null ? TgmConfig.PortalPulseColor.Value : null;
+            if (pulseText != _pulseText)
+            {
+                _pulseText = pulseText;
+                _pulses = !string.IsNullOrEmpty(pulseText != null ? pulseText.Trim() : null);
+                _parsedPulse = _pulses ? Parse(pulseText, _parsedColor) : _parsedColor;
+            }
+            float period = TgmConfig.PortalPulseSeconds != null ? TgmConfig.PortalPulseSeconds.Value : 0f;
+            if (!_pulses || period <= 0.01f) return _parsedColor;
+            // Unscaled, so the fade carries on while the map is open with the game paused.
+            float t = (Mathf.Sin(Time.unscaledTime * 2f * Mathf.PI / period) + 1f) * 0.5f;
+            return Color.Lerp(_parsedColor, _parsedPulse, t);
+        }
+
+        private static Color Parse(string text, Color fallback)
+        {
+            if (string.IsNullOrEmpty(text)) return fallback;
+            text = text.Trim();
+            if (text.Length > 0 && text[0] != '#' && System.Text.RegularExpressions.Regex.IsMatch(text, "^[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$"))
+                text = "#" + text;
+            if (ColorUtility.TryParseHtmlString(text, out var parsed)) return parsed;
+            TheGreatestMapMod.Log.LogWarning($"[TheGreatestMap] '{text}' is not a color this understands; using the default. Try a hex value such as #B07CFF.");
+            return fallback;
+        }
+
+        /// <summary>
+        /// Paint every portal marker, the ones on your map and the draw-only ones alike, so they
+        /// all look the same whether you have been to that portal or not. Runs every frame rather
+        /// than in the styling pass, because the styling pass only runs when the map is laid out
+        /// again and a fade has to keep moving between those.
+        /// </summary>
+        internal static void Paint()
+        {
+            if (Minimap.instance == null) return;
+            var color = CurrentColor();
+            ClientPins.TintPortals(color);
             foreach (var pin in _drawn)
-                if (pin != null && pin.m_iconElement != null) pin.m_iconElement.color = tint;
+                if (pin != null && pin.m_iconElement != null) pin.m_iconElement.color = color;
         }
 
         // ── TheGreatestPortal, if it happens to be installed ────────────────────────

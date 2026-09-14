@@ -82,6 +82,11 @@ only the ones someone has seen, which suits a server where everyone is in the sa
 off and portals are learned the way everything else is, by seeing one yourself or by someone
 sharing their map with you. The extra portals are drawn only, never saved and never shared.
 
+Portals get their own color, since they are the points you travel between and are worth spotting at
+a glance. By default they fade slowly between pale gold and violet; set "Portal Marker Color" and
+"Portal Pulse Color" to any hex value or color name, clear the pulse color for a steady one, and
+use "Portal Pulse Seconds" for the speed.
+
 **Pause while the map is open** ("Pause While Map Open" in the Display section, off by default):
 the game pauses while the large map screen is open, the way the ESC menu does. Solo or hosting
 alone it works by itself. On a dedicated server it takes the Pause My Server mod, which then pauses

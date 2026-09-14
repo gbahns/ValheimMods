@@ -18,6 +18,9 @@ namespace TheGreatestMap
         private static readonly Dictionary<string, Minimap.PinData> _pinById = new Dictionary<string, Minimap.PinData>();
         private static readonly Dictionary<Minimap.PinData, string> _idByPin = new Dictionary<Minimap.PinData, string>();
         private static readonly Color AutoTint = new Color(1f, 0.93f, 0.72f, 1f);
+        // The portal markers currently drawn, rebuilt by each styling pass. Portals are painted
+        // every frame instead of here, because their color can fade over time.
+        private static readonly List<Minimap.PinData> _portalPins = new List<Minimap.PinData>();
         private static bool _applyingRemote;
 
         internal static bool InTableRead;
@@ -481,6 +484,7 @@ namespace TheGreatestMap
             // itself; ours are re-shown by this very pass, so they have to stand down here.
             bool hideEverything = (TgmConfig.ShowAllMarkers != null && !TgmConfig.ShowAllMarkers.Value)
                 || Portals.PortalPickerOpen();
+            _portalPins.Clear();
             foreach (var kv in _idByPin)
             {
                 var pin = kv.Key;
@@ -504,10 +508,17 @@ namespace TheGreatestMap
                 if (kind.HasValue && TgmConfig.MarkerSize.TryGetValue(kind.Value, out var size))
                     scale = Mathf.Clamp(size.Value, 20, 100) / 100f;
                 pin.m_uiElement.localScale = new Vector3(scale, scale, 1f);
+                if (kind == Category.Portal) { _portalPins.Add(pin); continue; }
                 if (pin.m_iconElement != null && shared.Auto)
                     pin.m_iconElement.color = AutoTint;
             }
-            Portals.Style(AutoTint);
+        }
+
+        /// <summary>Paint the portal markers on this map; called every frame so their color can fade.</summary>
+        internal static void TintPortals(Color color)
+        {
+            foreach (var pin in _portalPins)
+                if (pin != null && pin.m_iconElement != null) pin.m_iconElement.color = color;
         }
 
         private static void SetMarkerActive(Minimap.PinData pin, bool active)

@@ -33,6 +33,9 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> ShowAllMarkers;
         internal static ConfigEntry<float> RevealNewMarkers;
         internal static ConfigEntry<bool> MapAllPortals;
+        internal static ConfigEntry<string> PortalColor;
+        internal static ConfigEntry<string> PortalPulseColor;
+        internal static ConfigEntry<float> PortalPulseSeconds;
         private static HashSet<string> _hiddenIconKeys;
 
         private static HashSet<string> HiddenIconKeys()
@@ -186,6 +189,16 @@ namespace TheGreatestMap
                 "your map and never shared, so turning this off leaves nothing behind. Either way the portal markers you " +
                 "do have are kept current, renamed when the portal is renamed and erased when it is torn down.");
             MapAllPortals.SettingChanged += (_, __) => Portals.Redraw();
+            PortalColor = mod.BindLocal("Display", "Portal Marker Color", "#FFEDB8",
+                "Color of portal markers, which are worth picking out of the crowd because they are how you travel. " +
+                "A hex color such as #B07CFF, or a name such as violet. The default is the same pale gold as every " +
+                "other recorded marker.");
+            PortalPulseColor = mod.BindLocal("Display", "Portal Pulse Color", "#B07CFF",
+                "Portal markers fade back and forth between their color and this one, so they catch the eye on a busy " +
+                "map. Leave it empty for a steady color.");
+            PortalPulseSeconds = mod.BindLocal("Display", "Portal Pulse Seconds", 2f,
+                "How long one fade from the portal color to the pulse color and back takes. Lower is faster; " +
+                "0 stops the fade.");
             RevealNewMarkers = mod.BindLocal("Display", "Reveal New Markers Seconds", 30f,
                 "How long a marker you have just recorded is drawn on both maps even though its kind or its icon is " +
                 "hidden, so writing something down always shows you what you wrote. 0 turns it off. It does not " +

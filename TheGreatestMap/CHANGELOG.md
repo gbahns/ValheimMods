@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.6 — unreleased
+
+- Portal markers have their own color, and by default fade slowly between pale gold and violet so they stand out on a map crowded with plants. Both colors and the speed are configurable ("Portal Marker Color", "Portal Pulse Color", "Portal Pulse Seconds"); clear the pulse color for a steady one, and either accepts a hex value such as #B07CFF or a name such as violet.
+
 ## 0.2.5 — 2026-09-13
 
 Client-side, but the server must run this version too for portals to be corrected: the server is
