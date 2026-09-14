@@ -21,7 +21,7 @@ It needs `%USERPROFILE%\.dathost` and takes ~30s longer because each DLL is down
 
 | Column | Means |
 | --- | --- |
-| `Local` | `version_number` from manifest.json. A trailing `(!)` means the version numbers in the mod's own files disagree — the "Needs attention" list names each one. |
+| `Local` | `version_number` from manifest.json. A trailing `(!)` means the version numbers in the mod's own files disagree — the "Needs attention" list names each one. A trailing `*` means CHANGELOG.md marks it unreleased, so it is the release being prepared (see below). |
 | `Thunderstore` / `Hexium` | the latest version live on that site. `unlisted` = the mod has no `thunderstore.toml` and has never been published. |
 | `Build` | `current`, `STALE` (a .cs or .csproj is newer than the Release DLL), or `not built`. |
 | `Git` | uncommitted changes under that mod's folder. |
@@ -49,6 +49,17 @@ store listing that promises the same.
 
 One blind spot: a mod whose real version *is* 1.0.0 cannot be told apart from an unstamped
 build, since both report 1.0.0.0. Those rows fall through to the commit comparison.
+
+## Versions being prepared
+
+The convention in `mod-release` is to bump all four version files straight after publishing, so a
+healthy tree normally carries a version the sites have never seen. Where CHANGELOG.md marks the
+newest heading `unreleased`, the script compares the registries and the server against the newest
+heading *below* it — the last version actually released — and marks the row with `*`. A server
+holding that released version reads `0.2.5 released`, not `BEHIND`.
+
+So `Local 0.2.6* / Thunderstore 0.2.5 / Server 0.2.5 released` is the steady state mid-development,
+not three things to fix. Drop the `unreleased` marker at release time and the comparison moves.
 
 The script ends with a "Needs attention" list; if it is empty everything agrees.
 

@@ -168,11 +168,23 @@ foreach ($d in $dirs) {
 
     # The newest version the changelog names.  A changelog describing a version the version files
     # do not have means the notes and the number will ship out of step.
+    #
+    # A heading marked "unreleased" is the release being prepared, not one that shipped: the
+    # convention here is to bump all four version files immediately after publishing, so the tree
+    # normally carries a version the sites have never seen.  The version to compare the registries
+    # and the server against is therefore the newest heading NOT marked unreleased.
     $clVersion = $null
+    $clUnreleased = $false
+    $clReleased = $null
     $changelog = Join-Path $dir "CHANGELOG.md"
     if (Test-Path $changelog) {
-        $head = Select-String -Path $changelog -Pattern '^##\s+v?([0-9]+(\.[0-9]+)+)' | Select-Object -First 1
-        if ($head) { $clVersion = $head.Matches[0].Groups[1].Value }
+        foreach ($line in Get-Content $changelog) {
+            if ($line -notmatch '^##\s+v?([0-9]+(\.[0-9]+)+)') { continue }
+            $v = $Matches[1]
+            $isUnreleased = $line -match '(?i)unreleased'
+            if (-not $clVersion) { $clVersion = $v; $clUnreleased = $isUnreleased }
+            if (-not $isUnreleased) { $clReleased = $v; break }
+        }
     }
 
 
@@ -189,6 +201,9 @@ foreach ($d in $dirs) {
         Hexium      = "-"
         TsUpdated   = $null
         Changelog   = $clVersion
+        Unreleased  = $clUnreleased
+        # What the sites and the server are expected to be holding right now.
+        Expected    = $(if ($clUnreleased -and $clReleased) { $clReleased } else { $sources."manifest.json" })
         Side        = $(if ($sides.ContainsKey($d.Name)) { $sides[$d.Name] } else { $null })
         ClientGated = $clientGated
         Categories  = Get-TomlValue $tsToml "valheim"
@@ -270,9 +285,19 @@ if ($Server) {
     }
 }
 
+# A server holding the newest released version while the tree prepares the next one is correct,
+# not behind.  Relabel before reporting so neither the table nor the action list cries wolf.
+foreach ($r in $rows) {
+    if ($r.Unreleased -and $r.ServerState -match 'BEHIND') {
+        $srvVer = ($r.ServerState -split ' ')[0]
+        if ($srvVer -eq $r.Expected) { $r.ServerState = "$srvVer released" }
+    }
+}
+
 # ── report ──────────────────────────────────────────────────────────────────────
 $table = $rows | ForEach-Object {
     $local = $_.Local
+    if ($_.Unreleased) { $local = "$local*" }
     if (-not $_.Agreed) { $local = "$local (!)" }
     $out = [ordered]@{
         Mod          = $_.Folder
@@ -287,6 +312,10 @@ $table = $rows | ForEach-Object {
 }
 Write-Host ""
 $table | Format-Table -AutoSize
+if ($rows | Where-Object { $_.Unreleased }) {
+    Write-Host ("* CHANGELOG.md marks this version unreleased, so it is the one being prepared. " +
+                "The sites and the server are compared against the newest released version instead.")
+}
 
 # ── what to do about it ─────────────────────────────────────────────────────────
 $actions = @()
@@ -305,7 +334,9 @@ foreach ($r in $rows) {
         $name = $site[0]; $live = $site[1]
         if ($live -in @("-", "n/a", "error", "unlisted")) { continue }
         if ($live -eq "none") { $actions += "$($r.Folder): not on $name yet (local $($r.Local))." ; continue }
-        if ($live -ne $r.Local) { $actions += "$($r.Folder): $name has $live, local is $($r.Local)." }
+        if ($live -ne $r.Expected) {
+            $actions += "$($r.Folder): $name has $live, and $($r.Expected) is the newest released version."
+        }
     }
     # The changelog and the version files have to name the same release, or the notes ship under
     # the wrong number -- and Thunderstore only refuses a duplicate version, so the two sites can
@@ -365,6 +396,10 @@ foreach ($r in $rows) {
     if ($r.ServerState -match 'BEHIND') {
         $actions += ("$($r.Folder): the server is running " + ($r.ServerState -replace ' BEHIND', '') +
                      " and this repo builds $($r.Local) - .\deploy-dathost.ps1 -Mod $($r.Folder)")
+    }
+    if ($r.Unreleased -and $r.Expected -eq $r.Local) {
+        $actions += ("$($r.Folder): CHANGELOG.md marks $($r.Local) unreleased but there is no released " +
+                     "heading under it to compare the sites against.")
     }
     if ($r.ServerState -match 'ahead') {
         $actions += ("$($r.Folder): the server is running " + ($r.ServerState -replace ' ahead', '') +
