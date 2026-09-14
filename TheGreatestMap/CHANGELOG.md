@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.2.6 — unreleased
+## 0.2.6 — 2026-09-13
+
+Client-side; works with a 0.2.x server.
 
 - Building something now counts as finding it, so a portal you raise goes on your map without you having to look at it afterwards. It is written under the usual rules, which in practice means the next time you take the map out, since both hands are busy while you are building. Only things the mod already records are noted this way; a house you build is not one, because a structure has to belong to a location the world generated.
 - Portal markers have their own color, and by default fade slowly between pale gold and violet so they stand out on a map crowded with plants. Both colors and the speed are configurable ("Portal Marker Color", "Portal Pulse Color", "Portal Pulse Seconds"); clear the pulse color for a steady one, and either accepts a hex value such as #B07CFF or a name such as violet.
