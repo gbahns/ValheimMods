@@ -8,7 +8,7 @@ This mod measures **both ends** once a second, and names the cause.
 
 ## What it tells you
 
-Press **F10** and the report opens with a verdict in plain language, the evidence it was decided from, and what is actually worth doing about it. For example:
+Press **F8** and the report opens with a verdict in plain language, the evidence it was decided from, and what is actually worth doing about it. For example:
 
 > **The server is badly starved: 84 ms per tick sustained (12 per second).**
 > Nothing on your machine will change this, and it is happening to everyone online at the same time.
@@ -58,8 +58,10 @@ Works on Windows and Linux dedicated servers. Requires BepInExPack for Valheim.
 
 | Key | Does |
 |---|---|
-| **F10** | Open and close the report. Escape closes it too. |
-| **Shift+F10** | Turn the small corner readout on and off. |
+| **F8** | Open and close the report. Escape closes it too. |
+| **Shift+F8** | Turn the small corner readout on and off. |
+
+F8 is free in vanilla Valheim. It replaced F10 in 0.1.1, which clashed with AutomaticFuel's default; if you installed 0.1.0 the mod moves your config over for you, unless you had already chosen a key of your own.
 
 The readout is four lines — your frame time, ping, queue and the server's tick time — with the worst one colored. It is off by default, because watching numbers is the habit this mod exists to replace.
 

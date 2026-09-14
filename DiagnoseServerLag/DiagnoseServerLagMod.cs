@@ -29,7 +29,7 @@ namespace DiagnoseServerLag
     {
         public const string ModGuid    = "DeathMonger.DiagnoseServerLag";
         public const string ModName    = "Diagnose Server Lag";
-        public const string ModVersion = "0.1.0";
+        public const string ModVersion = "0.1.1";
 
         internal static DiagnoseServerLagMod Instance { get; private set; }
         internal static ManualLogSource Log { get; private set; }
@@ -97,6 +97,33 @@ namespace DiagnoseServerLag
         internal ConfigEntry<T> Bind<T>(string section, string key, T defaultValue, string description)
         {
             return Config.Bind(section, key, defaultValue, new ConfigDescription(description));
+        }
+
+        /// <summary>
+        /// Binds a keybind, and replaces a stored value that is still an old release's default with
+        /// the current one.
+        ///
+        /// BepInEx writes every default into the .cfg the first time a mod runs, so once a player
+        /// has launched the game the old default is a value in their config file and a new default
+        /// in the code reaches nobody who already installed the mod - which is everyone who has it.
+        /// That is the whole reason 0.1.0's clashing F10 needed this rather than a one-line edit.
+        /// A key the player actually chose is never touched.
+        ///
+        /// KeyboardShortcut implements Equals but defines no == operator, so the comparison has to
+        /// be the method.
+        /// </summary>
+        internal ConfigEntry<KeyboardShortcut> BindKey(string section, string key, KeyboardShortcut defaultValue,
+                                                       string description, params KeyboardShortcut[] supersededDefaults)
+        {
+            var entry = Config.Bind(section, key, defaultValue, new ConfigDescription(description));
+            foreach (var superseded in supersededDefaults)
+            {
+                if (!entry.Value.Equals(superseded)) continue;
+                entry.Value = defaultValue;
+                Log.LogInfo($"[DiagnoseServerLag] Config '{key}' still held the old default {superseded}; moved it to {defaultValue}.");
+                break;
+            }
+            return entry;
         }
 
         /// <summary>Binds a float entry with an allowed range (shown as a slider by config managers).</summary>

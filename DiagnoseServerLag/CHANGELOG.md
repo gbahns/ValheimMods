@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.1
+
+- Default key moved from **F10 to F8**, and the readout toggle from Shift+F10 to Shift+F8. F10 is
+  AutomaticFuel's default and F9 cycles the controller layout, so 0.1.0 shipped into a conflict
+  with a neighbor that was no escape either. F8 is free in vanilla and unused by every other mod
+  in this repo.
+- A config still holding 0.1.0's F10 is moved to F8 automatically. BepInEx writes every default
+  into the .cfg on first run, so without this the new default would have reached nobody who
+  already had the mod. A key you chose yourself is never touched.
+
 ## 0.1.0
 
 Early alpha, first release. Not yet tested against a real lag event on the DatHost server.

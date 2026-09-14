@@ -54,12 +54,19 @@ namespace DiagnoseServerLag
 
         internal static void Bind(DiagnoseServerLagMod mod)
         {
-            // F10 is unbound in vanilla Valheim. Check your other mods before changing it.
-            OpenKey = mod.Bind("Keys", "Open Report", new KeyboardShortcut(KeyCode.F10),
+            // F8, after 0.1.0 shipped on F10 and hit two conflicts at once: AutomaticFuel binds F10
+            // by default, and F9 cycles the controller layout, so the neighboring key was no escape
+            // either. F8 is free in vanilla and unused by every other mod in this repo. Check your
+            // own before changing it.
+            //
+            // The superseded default migrates anyone still on 0.1.0's F10; see BindKey.
+            OpenKey = mod.BindKey("Keys", "Open Report", new KeyboardShortcut(KeyCode.F8),
                 "Opens and closes the lag report. Escape closes it too. Ignored while typing in chat, the " +
-                "console or a text box.");
-            HudKey = mod.Bind("Keys", "Toggle Readout", new KeyboardShortcut(KeyCode.F10, KeyCode.LeftShift),
-                "Turns the small corner readout on and off without opening the full report.");
+                "console or a text box.",
+                new KeyboardShortcut(KeyCode.F10));
+            HudKey = mod.BindKey("Keys", "Toggle Readout", new KeyboardShortcut(KeyCode.F8, KeyCode.LeftShift),
+                "Turns the small corner readout on and off without opening the full report.",
+                new KeyboardShortcut(KeyCode.F10, KeyCode.LeftShift));
 
             ShowHud = mod.Bind("Display", "Show Readout", false,
                 "A small always-on corner readout: your frame time, ping, queue and the server's tick time. " +
