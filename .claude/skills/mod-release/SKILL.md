@@ -103,6 +103,33 @@ attribution line this session was given.
 
 Registries can take a minute to report the new version.
 
+## TheGreatestMap needs three extra checks
+
+It is the one mod here that genuinely runs on the server, so the usual "client-only, the server
+can wait" assumption does not hold.
+
+**Is the compatibility floor moving?** `MinCompatibleVersion` in `TheGreatestMapMod.cs` is what
+ServerSync uses to refuse older clients. Compare it against the last released version before
+publishing:
+
+- unchanged (it has been `0.2.0` since that release) — a client-only release is fine and the
+  server can lag behind.
+- changed — the update is no longer optional for anyone. Say so at the top of the changelog
+  entry in bold, deploy the server when nobody is playing, and tell Greg his players are locked
+  out until they update, because they are kicked at the next connect.
+
+**Does the server actually need this release?** The shared marker store lives on the server, and
+the server is also the source of the live portal list. A release that touches either needs a
+deploy, not just a publish. `.\mod-status.ps1 -Mod TheGreatestMap -Server` says whether the
+server holds the current DLL.
+
+**Every other mod's deploy depends on this one.** `deploy-dathost.ps1` gets its verified
+pre-stop save from the `save-now` trigger file, and that trigger is implemented inside
+TheGreatestMap (`ServerSave.cs`), watching `BepInEx/config/TheGreatestMap/`. DatHost's stop is a
+hard kill, so without it a restart loses whatever the world had not autosaved. If a deploy of any
+mod ever fails its save check, look first at whether the server's TheGreatestMap is present,
+current and loading.
+
 ## Gotchas
 
 - Folder name ≠ package name: `HungryViking` publishes as `Hungry_Viking`. Read `namespace` and
