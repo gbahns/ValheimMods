@@ -144,7 +144,6 @@ your hands.
 - Pings work as always and never need the map out.
 - The parchment shows the real world map around you; its position in the hand may need a tweak
   in the Visuals section for your taste.
-- Version 0.1.0 is the first playable build. Expect rough edges, and please report them.
 
 ## Source
 
