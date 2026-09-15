@@ -17,9 +17,11 @@ namespace DudeWhatAreMyStats
     ///  * The Details tab breaks one player's stats out by section, with their skills and the
     ///    creatures they have killed most.
     ///
-    /// Client-side only. Nothing is sent to the server and nothing is stored in the world: each
-    /// player's own game answers for them over a routed RPC, which an unmodded server forwards
-    /// without needing the mod itself.
+    /// The server is optional. Players who are online answer for themselves over a routed RPC,
+    /// which an unmodded server forwards without needing the mod, so the client alone is enough to
+    /// compare everyone currently playing. Install it on the server as well and it also remembers
+    /// each character's last known stats, which is what puts players who are not online on the
+    /// board. Without it they simply do not appear.
     /// </summary>
     [BepInPlugin(ModGuid, ModName, ModVersion)]
     public class DudeWhatAreMyStatsMod : BaseUnityPlugin
@@ -61,6 +63,7 @@ namespace DudeWhatAreMyStats
         {
             if (!ModEnabled.Value) return;
             StatsNetwork.Update();
+            StatsStore.Update();
             if (Player.m_localPlayer == null)
             {
                 // Logged out with the panel up: drop the pause and the roster with the world.

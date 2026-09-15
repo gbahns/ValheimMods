@@ -106,7 +106,10 @@ namespace DudeWhatAreMyStats
             _root.transform.SetAsLastSibling();
             _openedThisFrame = true;
             StatsPause.Refresh();
-            StatsNetwork.Request();
+            StatsNetwork.RequestNow();
+            // Opening the board is a good moment to leave the server a fresh copy of our own
+            // numbers, so they are current for whoever looks after we have logged off.
+            StatsNetwork.PushLocal();
             _scrollReset = true;
             Populate();
             _dirty = false;   // Populate just ran; do not rebuild the whole list again next frame
@@ -132,6 +135,12 @@ namespace DudeWhatAreMyStats
             if (IsOpen && _tab == Tab.Details && identity != _detailPlayer) return;
             _dirty = true;
         }
+
+        /// <summary>
+        /// The whole stored roster arrived from the server, so who is on the board may have changed
+        /// rather than just one player's numbers. Always worth a rebuild.
+        /// </summary>
+        internal static void OnRosterRebuilt() => _dirty = true;
 
         // ── per-frame ───────────────────────────────────────────────────────────────
 
@@ -231,7 +240,11 @@ namespace DudeWhatAreMyStats
                 var captured = snap;
                 bool offline = !snap.IsLocal && !snap.Online;
                 Color color = snap.IsLocal ? UiKit.Gold : (offline ? UiKit.Dim : UiKit.Body);
-                string name = snap.Name + (snap.IsLocal ? "  (you)" : offline ? "  (offline)" : "");
+                // An offline row says when it was last true rather than just "offline", so nobody
+                // argues over numbers that turn out to be a fortnight old.
+                string age = snap.LastSeenText;
+                string mark = snap.IsLocal ? "  (you)" : offline ? "  (" + (age.Length > 0 ? age : "offline") + ")" : "";
+                string name = snap.Name + mark;
                 TableRow(name, captured, color, () => ShowDetails(captured.Identity));
             }
         }
@@ -564,7 +577,7 @@ namespace DudeWhatAreMyStats
 
             _tabScore = MakeButton(template, content.transform, "TabScoreboard", "Scoreboard", () => SetTab(Tab.Scoreboard));
             _tabDetails = MakeButton(template, content.transform, "TabDetails", "Details", () => SetTab(Tab.Details));
-            _refreshButton = MakeButton(template, content.transform, "Refresh", "Refresh", () => { StatsNetwork.Request(); _dirty = true; });
+            _refreshButton = MakeButton(template, content.transform, "Refresh", "Refresh", () => { StatsNetwork.RequestNow(); _dirty = true; });
             _closeButton = MakeButton(template, content.transform, "Close", "Close", Close);
 
             _prevPlayer = MakeButton(template, content.transform, "PrevPlayer", "<", () => StepPlayer(-1));

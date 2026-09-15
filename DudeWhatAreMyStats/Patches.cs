@@ -15,6 +15,9 @@ namespace DudeWhatAreMyStats
             // world would list the last one's players.
             StatsNetwork.Reset();
             StatsNetwork.Register();
+            // Server only; a client's call is a no-op. Loading here rather than on the first push
+            // means the file is read once per world, before anyone can ask for it.
+            StatsStore.Load();
         }
     }
 
@@ -25,6 +28,10 @@ namespace DudeWhatAreMyStats
         private static void Prefix()
         {
             StatsPanel.Close();
+            // One last push on the way out, so the store holds the numbers we finished with rather
+            // than whatever the timer last caught. Best effort: the connection may already be gone.
+            StatsNetwork.PushLocal(force: true);
+            StatsStore.Unload();
             StatsNetwork.Reset();
         }
     }

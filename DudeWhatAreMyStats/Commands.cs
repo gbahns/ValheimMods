@@ -17,18 +17,26 @@ namespace DudeWhatAreMyStats
             new Terminal.ConsoleCommand("dwams_refresh", "Dude What Are My Stats: ask the other players for their stats again",
                 (Terminal.ConsoleEvent)(args =>
                 {
-                    StatsNetwork.Request();
-                    args.Context?.AddString("Asked everyone online for their stats.");
+                    StatsNetwork.RequestNow();
+                    args.Context?.AddString("Asked everyone online, and the server, for stats.");
                 }));
 
             new Terminal.ConsoleCommand("dwams_status", "Dude What Are My Stats: what the scoreboard currently knows",
                 (Terminal.ConsoleEvent)(args =>
                 {
                     var sb = new StringBuilder();
-                    sb.AppendLine($"panel: {(StatsPanel.IsOpen ? "open" : "closed")} | holding pause: {StatsPause.Holding} | players known: {StatsNetwork.KnownCount + 1}");
+                    sb.AppendLine($"panel: {(StatsPanel.IsOpen ? "open" : "closed")} | holding pause: {StatsPause.Holding} | answered live: {StatsNetwork.KnownCount + 1}");
+                    sb.AppendLine(StatsNetwork.ServerHasStore
+                        ? $"server store: answering, {StatsNetwork.StoredCount} character(s) remembered"
+                        : "server store: no answer yet (the server may not run this mod, which only costs you offline players)");
+                    if (StatsStore.IsServer)
+                        sb.AppendLine(StatsStore.Loaded
+                            ? $"this game is the server: {StatsStore.Count} character(s) in {StatsStore.Path}"
+                            : "this game is the server, but the store is off or has no world yet");
                     foreach (var snap in StatsNetwork.Roster())
                     {
-                        string who = snap.IsLocal ? "you" : (snap.Online ? "online" : "offline");
+                        string age = snap.LastSeenText;
+                        string who = snap.IsLocal ? "you" : snap.Online ? "online" : age.Length > 0 ? "last seen " + age : "offline";
                         sb.AppendLine($"{snap.Name} ({who}): {StatGroups.Count(snap.Kills)} kills, {StatGroups.Count(snap.Deaths)} deaths, " +
                                       $"{StatGroups.Count(snap.Bosses)} bosses, {StatGroups.Duration(snap.Played)} played, best {snap.BestSkillText}");
                     }

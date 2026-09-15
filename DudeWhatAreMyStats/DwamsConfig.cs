@@ -14,6 +14,12 @@ namespace DudeWhatAreMyStats
         internal static ConfigEntry<bool> AskOtherPlayers;
         internal static ConfigEntry<float> RefreshSeconds;
         internal static ConfigEntry<bool> RememberOfflinePlayers;
+        internal static ConfigEntry<float> PushMinutes;
+
+        // ── the server's store ──────────────────────────────────────────────────────
+        internal static ConfigEntry<bool> ServerStoreEnabled;
+        internal static ConfigEntry<float> ServerKeepDays;
+        internal static ConfigEntry<int> ServerMaxCharacters;
 
         // ── display ─────────────────────────────────────────────────────────────────
         internal static ConfigEntry<bool> ShowZeroStats;
@@ -43,15 +49,34 @@ namespace DudeWhatAreMyStats
             AskOtherPlayers = mod.BindLocal("Behaviour", "Ask Other Players", true,
                 "Ask everyone else online for their stats so the scoreboard can compare you. Each player's own " +
                 "game answers for them, so only players who also run this mod appear. Turning this off works both " +
-                "ways: you stop asking, and you also stop answering, so your stats leave everyone else's " +
-                "scoreboard too and the panel shows only yourself.");
+                "ways: you stop asking, you stop answering, and the server is told to forget the record it " +
+                "already holds, so you leave everyone else's scoreboard as well as emptying your own.");
             RefreshSeconds = mod.BindLocalRange("Behaviour", "Refresh Seconds", 10f, 0f, 120f,
                 "How often to ask the other players again while the panel is open. 0 asks only when the panel opens " +
                 "and when you press Refresh.");
-            RememberOfflinePlayers = mod.BindLocal("Behaviour", "Remember Offline Players", true,
-                "Keep the last stats received from a player on the scoreboard after they log out, marked as offline. " +
-                "Only for the rest of the session: nothing is stored, so leaving the world forgets everyone and the " +
-                "board is rebuilt from whoever answers next time. Turn off to list only players online right now.");
+            RememberOfflinePlayers = mod.BindLocal("Behaviour", "Show Offline Players", true,
+                "List players who are not online, as well as those who are. That covers anyone who logs out while " +
+                "you are still playing, and, if the server also runs this mod, everyone it remembers from before you " +
+                "logged in, each marked with how long ago they were last seen. Without the mod on the server there is " +
+                "nowhere to remember anyone, so only the first case applies. Turn off to list only players online now.");
+            PushMinutes = mod.BindLocalRange("Behaviour", "Push Minutes", 5f, 0f, 60f,
+                "How often to hand your own stats to the server, so it can show them to others once you have logged " +
+                "off. It also happens when you open the panel and when you leave the world. 0 stops sending them at " +
+                "all, which keeps you off the board for anyone who was not online at the same time as you. A server " +
+                "without this mod ignores them either way.");
+
+            ServerStoreEnabled = mod.BindLocal("Server", "Server Store Enabled", true,
+                "Server-side setting, ignored on a client. Keep a record of each character's last known stats so the " +
+                "scoreboard can show players who are not online. The file lives in BepInEx/config/DudeWhatAreMyStats/, " +
+                "one per world. Turn off to keep nothing, which leaves every client showing only the players online.");
+            ServerKeepDays = mod.BindLocalRange("Server", "Server Keep Days", 30f, 0f, 365f,
+                "Server-side setting, ignored on a client. Forget a character the server has not heard from in this " +
+                "many days, so a world does not accumulate one-time visitors forever. 0 keeps every character for good.");
+            ServerMaxCharacters = mod.BindLocalRangeInt("Server", "Server Max Characters", 100, 10, 200,
+                "Server-side setting, ignored on a client. The most characters to remember; past this the least " +
+                "recently seen are dropped. The whole set travels to a client in one message, and an oversized one " +
+                "would jam that player's connection rather than merely fail, so this is a real ceiling and not just " +
+                "housekeeping. 100 is far more than a group of friends will ever need.");
 
             ShowZeroStats = mod.BindLocal("Display", "Show Zero Stats", false,
                 "Show stats that are still zero in the Details tab. Off hides them, which is most of the 200-odd " +

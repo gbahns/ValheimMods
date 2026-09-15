@@ -20,3 +20,9 @@ Early alpha, first release.
 - Fixes a bug in Valheim itself: a treasure chest counted as newly found every time it was
   opened, because the game marks it discovered over a message it never registered a handler
   for. That also stops the `Failed to find rpc method 327122920` warnings in the log.
+- Players who are not online can appear on the scoreboard, marked with how long ago they were
+  last seen. Clients hand the server their own stats every few minutes, on opening the panel and
+  on leaving the world; the server keeps the newest record per character in
+  `BepInEx/config/DudeWhatAreMyStats/`, one file per world, and hands them out on request. A live
+  answer always beats the stored copy. This is the one thing the mod wants on the server, and
+  without it nothing breaks: the board just shows whoever is online to answer for themselves.

@@ -12,7 +12,7 @@ namespace DudeWhatAreMyStats
     internal sealed class Snapshot
     {
         /// <summary>Bumped when the fields below change shape. Mismatched versions are dropped, not guessed at.</summary>
-        internal const int Schema = 1;
+        internal const int Schema = 2;
 
         internal string Name = "";
         internal long ProfileId;
@@ -20,6 +20,17 @@ namespace DudeWhatAreMyStats
         internal bool IsLocal;
         internal bool Online = true;
         internal float ReceivedAt;
+
+        /// <summary>
+        /// When the server last heard from this character, as Unix seconds, stamped by the server on
+        /// arrival rather than taken from the sender. Every stored row is therefore measured against
+        /// the same clock, though the age is worked out on the reader's, so a badly wrong clock at
+        /// either end skews what is shown. Zero means nobody stamped it, as with a live answer.
+        /// </summary>
+        internal long LastSeenUtc;
+
+        /// <summary>True when this came out of the server's store rather than from the player just now.</summary>
+        internal bool FromStore;
 
         internal readonly Dictionary<PlayerStatType, float> Stats = new Dictionary<PlayerStatType, float>();
         internal readonly List<KeyValuePair<Skills.SkillType, float>> Skills = new List<KeyValuePair<Skills.SkillType, float>>();
@@ -57,6 +68,29 @@ namespace DudeWhatAreMyStats
         }
 
         internal float BestSkillLevel => BestSkill.Value;
+
+        /// <summary>"2d ago" for a stored row; empty while the player is online to answer for themselves.</summary>
+        internal string LastSeenText
+        {
+            get
+            {
+                if (Online || LastSeenUtc <= 0L) return "";
+                // Negative means the stamping clock is ahead of this one. Saying "just now" is
+                // closer to the truth than saying nothing and falling back to a bare "offline".
+                long seconds = NowUtc() - LastSeenUtc;
+                if (seconds < 0L) return "just now";
+                if (seconds < 90L) return "just now";
+                if (seconds < 3600L) return (seconds / 60L) + "m ago";
+                if (seconds < 86400L) return (seconds / 3600L) + "h ago";
+                return (seconds / 86400L) + "d ago";
+            }
+        }
+
+        /// <summary>Unix seconds. One clock for every age this mod shows, wherever it is computed.</summary>
+        internal static long NowUtc()
+        {
+            return (long)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
+        }
 
         internal string BestSkillText
         {
@@ -112,6 +146,7 @@ namespace DudeWhatAreMyStats
             pkg.Write(Schema);
             pkg.Write(Name ?? "");
             pkg.Write(ProfileId);
+            pkg.Write(LastSeenUtc);
 
             pkg.Write(Stats.Count);
             foreach (var kv in Stats)
@@ -150,6 +185,7 @@ namespace DudeWhatAreMyStats
                 {
                     Name = pkg.ReadString(),
                     ProfileId = pkg.ReadLong(),
+                    LastSeenUtc = pkg.ReadLong(),
                 };
 
                 int stats = pkg.ReadInt();

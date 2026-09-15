@@ -1,21 +1,22 @@
 # Dude, What Are My Stats?
 
-**Early alpha.** Your stats on one key press, and a scoreboard of everyone else online.
+**Early alpha.** Your stats on one key press, and a scoreboard of everyone you play with.
 
 - Press **I** anywhere to open the panel. No inventory, no menus, no clicking through a compendium.
 - The **game pauses while you read**, exactly as far as the ESC menu would.
-- The **Scoreboard** tab ranks every player online who also runs this mod. Click a column to sort by it.
+- The **Scoreboard** tab ranks everyone who runs this mod, online now or not. Click a column to sort by it.
 - The **Details** tab breaks one player's stats into sections, with their skills and the creatures
   they have killed most.
 
-Client-side only. Install it on your own game; the server needs nothing. Players without the mod
-simply do not appear on the scoreboard.
+Install it on your own game and the server needs nothing: everyone online who also runs the mod
+shows up. Install it on the server as well and the board also remembers players who are **not**
+online, each marked with how long ago they were last seen. Players without the mod never appear.
 
 ## The scoreboard
 
 | Column | What it is |
 |---|---|
-| Player | Your own row is gold and marked *(you)*. A player who logs out while you are still playing keeps their last known row, marked *(offline)*. |
+| Player | Your own row is gold and marked *(you)*. Anyone not online is marked with how long ago they were last seen, such as *(2d ago)*. |
 | Kills | Every creature you have killed. |
 | Deaths | Every death. |
 | K/D | Kills per death. With no deaths yet this is simply your kill count, the way scoreboards usually show it. |
@@ -26,11 +27,11 @@ simply do not appear on the scoreboard.
 Click any row to open that player's Details. Click a column header to sort by it, and again to
 flip the direction. The sort is remembered between sessions.
 
-**The scoreboard only knows who has answered you.** Nothing is stored anywhere, so the board is
-built fresh each time you load a world: it starts with just you and fills in as people reply. A
-player who logs out mid-session stays on it until you leave the world, but someone who is offline
-when you start, or who never plays at the same time as you, does not appear at all. Comparing
-numbers works while you are both online.
+**Offline rows say how old they are.** A player who is online answers for themselves, so their
+numbers are current. Anyone else is shown from the server's last record of them, marked *(2d ago)*
+or similar, so nobody argues over a number that turns out to be a fortnight stale. If the server
+does not run the mod there is nowhere to keep those records, and the board shows only the players
+online to answer.
 
 ## The details tab
 
@@ -69,31 +70,56 @@ Turn the whole thing off with *Pause While Open* if you would rather the world k
 
 ## How other players' stats get here
 
-Nobody's stats are stored on the server. When you open the panel it asks everyone online, and each
-player's own game reads its own profile and answers straight back to you. Valheim forwards those
-messages whether or not the server knows what they are, which is why no server install is needed.
+**Players who are online answer for themselves.** When you open the panel it asks everyone, and
+each player's own game reads its own profile and replies straight back to you. Valheim forwards
+those messages whether or not the server knows what they are, which is why this half needs no
+server install at all.
 
 While the panel is open it asks again every 10 seconds, or press **Refresh**. Set *Refresh Seconds*
 to 0 to ask only when you open the panel and when you press the button.
 
+**Players who are not online are remembered by the server.** Your game hands the server your own
+stats every few minutes, when you open the panel, and as you leave the world. The server keeps the
+newest record per character and hands the lot to anyone who asks, which is what puts people on the
+board who were not playing when you were. A live answer always wins over the stored copy, so
+someone standing next to you is never shown from an old record.
+
+This half needs the mod on the server, which is the only thing it is needed for. Without it,
+nothing breaks: the request goes unanswered and you see the players who are online. Run
+`dwams_status` in the console to see whether your server is answering.
+
+Server settings live in the same config file under `[Server]` and are ignored on a client.
+*Server Store Enabled* turns the record keeping off entirely. *Server Keep Days* forgets a
+character nobody has seen in that long, so a public world does not collect one-time visitors
+forever. The file sits in `BepInEx/config/DudeWhatAreMyStats/`, one per world.
+
+*Server Max Characters* bounds how many the server remembers, dropping the least recently seen
+past that. The whole set travels to a client in one message, so this is a real ceiling rather than
+housekeeping.
+
+*Push Minutes* is the client side of that. Set it to 0 and you stop handing over your own stats,
+which keeps you off the board for anyone who was not online at the same time as you.
+
 *Ask Other Players* works both ways. Turn it off and you stop asking, and you also stop answering,
 so you drop off everyone else's scoreboard as well as emptying your own. It is an opt-out, not a
-quiet way to watch without being watched.
+quiet way to watch without being watched. Turning it off also tells the server to forget the
+record it already holds, so you come off other people's boards rather than lingering there until
+the keep window runs out.
 
 ## Console commands
 
 | Command | What it does |
 |---|---|
 | `dwams` | Open or close the panel. |
-| `dwams_refresh` | Ask everyone online for their stats again. |
-| `dwams_status` | Print the scoreboard to the console. |
+| `dwams_refresh` | Ask everyone online, and the server, for stats again. |
+| `dwams_status` | Print the scoreboard, and say whether the server is keeping records. |
 
 ## Configuration
 
 `BepInEx/config/DeathMonger.DudeWhatAreMyStats.cfg`, or press F1 in game if you have a
 configuration manager. Notable settings: the open key, *Pause While Open*, *Ask Other Players*,
-*Refresh Seconds*, *Remember Offline Players*, *Show Zero Stats*, *Top Creature Count* and
-*Fix Treasure Discovery Count*.
+*Refresh Seconds*, *Show Offline Players*, *Push Minutes*, *Show Zero Stats*, *Top Creature Count*
+and *Fix Treasure Discovery Count*, plus *Server Store Enabled* and *Server Keep Days* on a server.
 
 ## A vanilla bug it fixes
 
@@ -110,8 +136,13 @@ Count* to leave the game exactly as it ships.
 
 ## Known limits
 
-- Only players running this mod appear on the scoreboard, and only while they are online to answer.
-  There is no stored history, so you cannot look up someone who is not playing when you are.
+- Only players running this mod appear on the scoreboard.
+- Seeing players who are not online needs the mod on the server too. Without it the board shows
+  only whoever is online to answer for themselves.
+- The server records what each player's own game tells it about itself, the same as the live
+  answers, so it is a scoreboard among friends rather than an audited one.
+- A character is only remembered once they have played with the mod installed on both ends, so the
+  board fills in over the first few sessions rather than arriving complete.
 - Valheim keeps ten sets of stats per character, one per difficulty. This mod reads the raw
   lifetime set, so the numbers include every run regardless of difficulty, and cheated runs too.
 - `Food Eaten` is bugged in vanilla and does not count up.

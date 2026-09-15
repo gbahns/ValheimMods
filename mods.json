@@ -36,8 +36,8 @@
       "why": "[BepInProcess(\"valheim.exe\")]; README says client-side only."
     },
     "DudeWhatAreMyStats": {
-      "side": "client",
-      "why": "No process gate, but stats are answered per-client over a routed RPC; README: 'the server needs nothing'."
+      "side": "both",
+      "why": "Was client, changed 2026-09-15. Players who are online still answer for themselves over a routed RPC, which needs nothing on the server. The server half is what remembers players who are NOT online: it keeps each character's last known stats under BepInEx/config/DudeWhatAreMyStats/ and hands them out on request. Without it on the server that feature is simply absent, so uploading is optional but the scoreboard is half a scoreboard otherwise."
     },
     "ForsakenShrines": {
       "side": "both",
