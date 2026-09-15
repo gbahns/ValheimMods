@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace HungryViking
 {
-    [BepInPlugin(ModGuid, "Hungry Viking", "1.2.0")]
+    [BepInPlugin(ModGuid, "Hungry Viking", "1.2.1")]
     [BepInProcess("valheim.exe")]
     public class HungryVikingMod : BaseUnityPlugin
     {
