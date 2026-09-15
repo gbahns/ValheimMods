@@ -25,6 +25,9 @@ namespace DudeWhatAreMyStats
         internal static ConfigEntry<int> ListScrollRows;
         internal static ConfigEntry<int> TopCreatureCount;
 
+        // ── fixes ───────────────────────────────────────────────────────────────────
+        internal static ConfigEntry<bool> FixTreasureDiscoveryCount;
+
         internal static void Bind(DudeWhatAreMyStatsMod mod)
         {
             // I is free in vanilla Valheim (which leaves B H I J K L N O P U Y Z unbound) and is
@@ -70,6 +73,15 @@ namespace DudeWhatAreMyStats
                 "How many rows a list moves per notch of the mouse wheel.");
             TopCreatureCount = mod.BindLocalRangeInt("Display", "Top Creature Count", 15, 0, 100,
                 "How many creatures to list in the Details tab's Creatures killed section, most killed first. 0 hides it.");
+
+            FixTreasureDiscoveryCount = mod.BindLocal("Fixes", "Fix Treasure Discovery Count", true,
+                "Correct a bug in Valheim itself that counts a treasure chest as newly found every time it is " +
+                "opened. The game marks a chest discovered over a message it never registered a handler for, so " +
+                "the mark is never written and the treasure numbers on the stats panel read high. This registers " +
+                "the missing handler on chests that keep a discovery stat, which also stops the repeated \"Failed " +
+                "to find rpc method 327122920\" warnings in the log. It works while your own game owns the chest, " +
+                "which in a dungeon it usually does; a chest held by a player without the mod still miscounts for " +
+                "them. Turn off to leave the game exactly as it ships.");
         }
     }
 }

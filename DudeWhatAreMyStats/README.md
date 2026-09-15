@@ -92,7 +92,21 @@ quiet way to watch without being watched.
 
 `BepInEx/config/DeathMonger.DudeWhatAreMyStats.cfg`, or press F1 in game if you have a
 configuration manager. Notable settings: the open key, *Pause While Open*, *Ask Other Players*,
-*Refresh Seconds*, *Remember Offline Players*, *Show Zero Stats* and *Top Creature Count*.
+*Refresh Seconds*, *Remember Offline Players*, *Show Zero Stats*, *Top Creature Count* and
+*Fix Treasure Discovery Count*.
+
+## A vanilla bug it fixes
+
+Valheim counts a treasure chest as newly found every single time you open it. The chest tells its
+owner it has been discovered over a message the game never registered a handler for, so the mark
+that would keep it from counting twice is never written, and `Failed to find rpc method 327122920`
+goes in the log instead. This mod registers the missing handler, so a chest counts once and the
+treasure numbers on the panel mean the number of chests you have actually found.
+
+It works while your own game owns the chest, which in a dungeon it usually does; a chest held by a
+player without the mod still miscounts for them. Counts already inflated stay inflated, since
+nothing here rewrites stats the game has already recorded. Turn it off with *Fix Treasure Discovery
+Count* to leave the game exactly as it ships.
 
 ## Known limits
 

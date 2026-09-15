@@ -17,3 +17,6 @@ Early alpha, first release.
   Adding the ten slots together would count most events two or three times.
 - Movable and resizable panel, remembered between sessions. Console commands `dwams`,
   `dwams_refresh` and `dwams_status`.
+- Fixes a bug in Valheim itself: a treasure chest counted as newly found every time it was
+  opened, because the game marks it discovered over a message it never registered a handler
+  for. That also stops the `Failed to find rpc method 327122920` warnings in the log.
