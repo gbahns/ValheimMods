@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1 — 2026-09-15
+
+Client-side; works with a 0.2.x server.
+
+- Portals on the map answer the pointer: the one you are about to click grows, turns gold and
+  shows its name whatever the zoom, so it is clear what a click will do. Hovering a row in the
+  list lights up that portal's pin the same way, which is how you find a name on the map.
+
 ## 0.3.0 — 2026-09-14
 
 Client-side; works with a 0.2.x server.
@@ -9,8 +17,6 @@ Client-side; works with a 0.2.x server.
   portal keeps the destination it is set to. A remote portal can stay pointed home while you
   still take the occasional trip elsewhere from it.
 - The same from the panel: right-click a portal in the list and choose "Travel here now".
-- Portals on the map answer the pointer: the one you are about to click grows, turns gold and
-  shows its name whatever the zoom. Hovering a row in the list lights up its pin the same way.
 - A portal whose destination has gone missing, or is still connecting, can be left this way too.
 
 ## 0.2.2 — 2026-09-13
