@@ -45,6 +45,7 @@ namespace TheGreatestMap
         private static float _nextRequest;
         private static bool _redrawWanted;
         private static bool _drawnWanted;
+        private static bool _reconcileWanted;
 
         internal static bool HaveList => _haveList;
         internal static int Count => _live.Count;
@@ -54,6 +55,7 @@ namespace TheGreatestMap
             _live.Clear();
             _drawn.Clear();
             _haveList = false;
+            _reconcileWanted = false;
             _lastServerSignature = "";
             _nextScan = 0f;
             _nextRequest = 0f;
@@ -123,7 +125,8 @@ namespace TheGreatestMap
             for (int i = 0; i < n; i++)
             {
                 var pos = pkg.ReadVector3();
-                _live.Add(new Live { Pos = pos, Name = pkg.ReadString() });
+                string name = pkg.ReadString();
+                _live.Add(new Live { Pos = pos, Name = name });
             }
             _haveList = true;
             _redrawWanted = true;
@@ -151,6 +154,7 @@ namespace TheGreatestMap
                 ZRoutedRpc.instance.InvokeRoutedRPC(RpcWant);
             }
 
+            if (_reconcileWanted && PersonalMap.Loaded) Reconcile();
             if (_redrawWanted || DrawingWanted() != _drawnWanted) Redraw();
         }
 
@@ -162,7 +166,12 @@ namespace TheGreatestMap
         /// </summary>
         private static void Reconcile()
         {
-            if (!_haveList || !PersonalMap.Loaded) return;
+            // The list can arrive before the character's map has loaded, and the server only sends
+            // another when something changes, so a stale marker would have waited for an unrelated
+            // portal to be built or removed. Remember that the work is owed and do it on load.
+            if (!_haveList) return;
+            if (!PersonalMap.Loaded) { _reconcileWanted = true; return; }
+            _reconcileWanted = false;
             var stale = new List<string>();
             var renamed = new List<KeyValuePair<string, string>>();
             foreach (var pin in ClientPins.All)
@@ -298,11 +307,63 @@ namespace TheGreatestMap
         /// of seconds and tells everyone, but the person swinging the hammer should not watch a
         /// marker for something they just demolished, so their own map is corrected at once.
         /// </summary>
+        /// <summary>What the portal system currently believes, for tgm_portals.</summary>
+        internal static List<string> Describe(Vector3 near)
+        {
+            var lines = new List<string>
+            {
+                $"have a list from the server: {_haveList} ({_live.Count} portals)",
+                $"this is the server: {IsServer}; next sweep in {Mathf.Max(0f, _nextScan - Time.time):0.0}s",
+                $"Map All Portals: {(TgmConfig.MapAllPortals != null && TgmConfig.MapAllPortals.Value)}, " +
+                $"Show Markers: {(TgmConfig.ShowAllMarkers == null || TgmConfig.ShowAllMarkers.Value)}, " +
+                $"picker open: {PortalPickerOpen()}",
+                $"drawing extra pins: wanted {DrawingWanted()}, currently drawn {_drawn.Count}",
+            };
+            var live = Nearest(near);
+            lines.Add(live != null
+                ? $"nearest portal in the list: '{live.Name}' {Geo.FlatDistance(live.Pos, near):0.#} m away"
+                : "no portal in the list within 4 m of you");
+            lines.Add($"a marker of ours within 4 m: {ClientPins.HasOwnPinNear(null, near, MatchRadius)} (one there means no extra pin is drawn)");
+            return lines;
+        }
+
+        /// <summary>Ask the server for the portal list now rather than waiting for its next sweep.</summary>
+        internal static void AskForList()
+        {
+            if (!IsServer && ZRoutedRpc.instance != null) ZRoutedRpc.instance.InvokeRoutedRPC(RpcWant);
+            else if (IsServer) _nextScan = 0f;
+        }
+
+        /// <summary>A portal was just raised: have the list refreshed so it appears without delay.</summary>
+        internal static void NoteBuilt(Vector3 pos)
+        {
+            _redrawWanted = true;
+            AskForList();
+        }
+
+        /// <summary>The name the world currently gives the portal at this spot, if there is one.</summary>
+        internal static string LiveNameAt(Vector3 pos)
+        {
+            var live = Nearest(pos);
+            return live == null ? null : (string.IsNullOrEmpty(live.Name) ? "Portal" : live.Name);
+        }
+
+        /// <summary>A piece is coming down: if it is a portal, treat it as gone from this moment.</summary>
+        internal static void NoteDestroyedPiece(WearNTear wear)
+        {
+            if (wear == null || Player.m_localPlayer == null) return;
+            if (wear.GetComponent<TeleportWorld>() == null) return;
+            NoteDestroyed(wear.transform.position);
+        }
+
         internal static void NoteDestroyed(Vector3 pos)
         {
             for (int i = _live.Count - 1; i >= 0; i--)
                 if (Geo.FlatDistance(_live[i].Pos, pos) <= MatchRadius) _live.RemoveAt(i);
             _redrawWanted = true;
+            Redraw();                 // now, not at the next tick: the player is watching
+            ClientPins.Restyle();
+            AskForList();             // the server's sweep may not have noticed yet
             if (!PersonalMap.Loaded) return;
             foreach (var pin in ClientPins.All)
             {
@@ -356,11 +417,14 @@ namespace TheGreatestMap
     [HarmonyPatch(typeof(WearNTear), "Destroy")]
     internal static class WearNTear_Destroy_Portal_Patch
     {
-        private static void Prefix(WearNTear __instance)
-        {
-            if (__instance == null || Player.m_localPlayer == null) return;
-            if (__instance.GetComponent<TeleportWorld>() == null) return;
-            Portals.NoteDestroyed(__instance.transform.position);
-        }
+        private static void Prefix(WearNTear __instance) => Portals.NoteDestroyedPiece(__instance);
+    }
+
+    // Removing a piece with the hammer only runs Destroy on whoever owns it, which need not be the
+    // player holding the hammer, so the intent is caught here as well.
+    [HarmonyPatch(typeof(WearNTear), nameof(WearNTear.Remove))]
+    internal static class WearNTear_Remove_Portal_Patch
+    {
+        private static void Prefix(WearNTear __instance) => Portals.NoteDestroyedPiece(__instance);
     }
 }

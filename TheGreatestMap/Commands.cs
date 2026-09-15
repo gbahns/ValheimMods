@@ -123,6 +123,20 @@ namespace TheGreatestMap
                     args.Context.AddString("Asked the server; the answer appears on screen and in the log.");
                 }));
 
+            new Terminal.ConsoleCommand("tgm_portals", "What the portal system believes right now, and why a portal near you is or is not drawn",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    var player = Player.m_localPlayer;
+                    if (player == null) { args.Context.AddString("No player."); return; }
+                    foreach (var line in Portals.Describe(player.transform.position))
+                    {
+                        args.Context.AddString(line);
+                        TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_portals: " + line);
+                    }
+                    Portals.AskForList();
+                    args.Context.AddString("Asked the server for a fresh list; run it again to see what came back.");
+                }));
+
             new Terminal.ConsoleCommand("tgm_deposits", "List every deposit prefab in the game, what it yields, and whether the catalog knows it (also written to the log)",
                 (Terminal.ConsoleEvent)(args =>
                 {

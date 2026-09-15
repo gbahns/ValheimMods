@@ -44,6 +44,20 @@ namespace TheGreatestMap
             foreach (var found in DiscoveryLedger.Pending())
             {
                 if (range > 0f && Geo.FlatDistance(here, found.Pos) > range) continue;
+                // Portals are the one kind the world keeps a live list of, so a pending find for one
+                // is checked against that list before it is written. Without this, a portal you had
+                // seen but not yet written down came back minutes after being destroyed: the marker
+                // was removed, the memory of having seen it was not, and the next write restored it.
+                if (found.Cat == Category.Portal && Portals.HaveList)
+                {
+                    string live = Portals.LiveNameAt(found.Pos);
+                    if (live == null)
+                    {
+                        DiscoveryLedger.Forget(found.Key);   // no portal there any more
+                        continue;
+                    }
+                    found.Name = live;                        // and its name is whatever it is now
+                }
                 if (!TgmConfig.CategoryEnabled.TryGetValue(found.Cat, out var enabled) || !enabled.Value)
                 {
                     DiscoveryLedger.MarkRecorded(found.Key);

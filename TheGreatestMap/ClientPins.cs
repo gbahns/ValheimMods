@@ -627,6 +627,10 @@ namespace TheGreatestMap
                 {
                     if (TgmConfig.ShowKind.TryGetValue(kind.Value, out var showKind) && !showKind.Value) hidden = true;
                     else if (smallMap && TgmConfig.ShowOnMinimap.TryGetValue(kind.Value, out var show) && !show.Value) hidden = true;
+                    // TheGreatestPortal's picker draws a pin for every portal itself, so ours would
+                    // sit on top of its, two labels over one place. Only portals stand down; the
+                    // rest of the map stays, which is the point of showing it there at all.
+                    else if (kind.Value == Category.Portal && Portals.PortalPickerOpen()) hidden = true;
                 }
                 // Just recorded: show it for a while anyway, so writing something down always
                 // shows you what you wrote. Not against the master switch or a marker hidden by

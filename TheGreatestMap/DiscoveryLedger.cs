@@ -112,7 +112,15 @@ namespace TheGreatestMap
             if (_recorded.Contains(found.Key)) return;
             if (_pending.TryGetValue(found.Key, out var existing))
             {
-                existing.FoundAt = DateTime.UtcNow.Ticks; // seen again: the memory starts over
+                // Seen again: the memory starts over, and what was seen is taken afresh. A portal
+                // torn down and rebuilt under a new name keeps its place, so the pending find would
+                // otherwise be written later under the name it had the first time.
+                existing.FoundAt = DateTime.UtcNow.Ticks;
+                existing.Name = found.Name;
+                existing.Icon = found.Icon;
+                existing.Pos = found.Pos;
+                existing.Center = found.Center;
+                existing.Radius = found.Radius;
                 return;
             }
             found.FoundAt = DateTime.UtcNow.Ticks;
@@ -431,6 +439,9 @@ namespace TheGreatestMap
         {
             if (__instance == null || Player.m_localPlayer == null) return;
             if (__instance.GetCreator() != Player.m_localPlayer.GetPlayerID()) return;
+            // Raising a portal where one was just taken down has to undo that memory, or the new
+            // one is mistaken for the old one's ghost and hidden.
+            if (__instance.GetComponent<TeleportWorld>() != null) Portals.NoteBuilt(__instance.transform.position);
             DiscoveryLedger.NotePlaced(__instance.gameObject);
         }
     }
