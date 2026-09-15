@@ -8,10 +8,14 @@
 - Leave a portal **open** (no destination) and stepping into it shows the map: click any portal,
   on the map or in the list on the left, and you are there.
 - Mark **favorites**: they sit at the top of every list and carry a star on the map.
+- Take a **detour**: hold a key as you step in to go somewhere else just this once, leaving the
+  portal's own destination alone.
 - Lists can be searched and grouped by biome.
 
-Install on the server and on every client. All players must run the same version; a player
-without the mod, or with an older version than the server, is refused at connect.
+Install on the server and on every client: a player without it is refused at connect, and so is a
+server without it. Versions do not have to match. Each side declares the oldest version it can
+still talk to, which has been 0.1.0 for every release so far; a release that changes what the two
+sides say to each other raises that floor and says so in the changelog.
 
 ## How it works in play
 
@@ -20,12 +24,12 @@ without the mod, or with an older version than the server, is refused at connect
 | Field | What it does |
 |---|---|
 | Name | Up to 32 characters (configurable). Names do not have to be unique. |
-| Destination list | Every other portal in the world, favorites first, each with where it leads and its distance. The first entry, *Open portal*, means no fixed destination. Up/Down move the selection, Enter confirms; a double-click on a row does both. Right-click a row for Rename, Favorite / Un-favorite and Show on map; renaming works on any portal, wherever it is. |
+| Destination list | Every other portal in the world, favorites first, each with where it leads and its distance. The first entry, *Open portal*, means no fixed destination. Up/Down move the selection, Enter confirms; a double-click on a row does both. Right-click a row for Travel here now, Rename, Favorite / Un-favorite and Show on map; renaming works on any portal, wherever it is. |
 | Search | Type part of a name (or a biome) to filter the list. |
 | Group by biome | Sections per biome, with a Favorites section first; a favorite is listed only there. Click a header to fold or open that group; Expand all / Collapse all do the lot. All of it is remembered between sessions. |
 | Default new portals to point here | New portals you build lead here automatically. |
 | Point all portals to here | Points every portal in the world at this one. Shown only when this portal is your default and some portal does not lead here yet. Click twice to confirm. Admins only unless the server allows everyone. |
-| Pick on map | Saves the name and toggles, then opens the map: click a portal there or in the list. |
+| Pick on map | Saves the name and the default setting, then opens the map: click a portal there or in the list. |
 | Travel here now | In a row's right-click menu: travel to that portal right now. The portal you are standing at keeps its own destination. |
 | Show on map | Opens the map centered on the chosen destination, with every portal drawn. |
 
@@ -33,11 +37,14 @@ Destinations are one-way: `Home -> Swamp` does not make the swamp portal lead ho
 portal's destination too, or leave it open. A portal with a destination behaves exactly like a
 paired vanilla portal, including the usual item restrictions.
 
-**Traveling through an open portal.** Step in and the map opens on your position with every portal
-drawn as a portal pin. The portal under the pointer grows and turns gold and shows its name, so you
-can see what a click will do; hovering a row in the list lights up that portal's pin too. The list on the left shows favorites first, then the rest alphabetically,
-each with its distance; it has the same search box and biome grouping as the panel. Click a pin or
-a row to travel there. Right-click marks a favorite. Esc, or stepping out of the doorway, closes the
+**Traveling through an open portal.** Step in and the map opens on your position. It is the map you
+already know, with everything you normally see on it, and every portal drawn on top as a pin. The
+portal under the pointer grows and lights up with a halo in its own color and shows its name, so you
+can see what a click will do; hovering a row in the list lights up that portal's pin too. With
+TheGreatestMap installed the pins wear the color it gives portals, pulse and all; without it they
+are white, as vanilla pins are. The list on the left shows favorites first, then the rest
+alphabetically, each with where it leads and its distance; it has the same search box and biome
+grouping as the panel. Click a pin or a row to travel there. Right-click marks a favorite. Esc, or stepping out of the doorway, closes the
 map and you stay. The usual rules apply: no traveling with ore, or during a boss fight if the world
 forbids it.
 
@@ -67,6 +74,7 @@ to mark a favorite.
 
 | Section | Setting | Default | Meaning |
 |---|---|---|---|
+| General | Mod Enabled | true | Turn the whole mod off without removing the DLL; portals go back to pairing by name. Not server-synced, and read once at startup |
 | Rules | Max Name Length | 32 | Longest portal name (server-synced) |
 | Rules | Open Portals Show The Map | true | An open portal shows the map when you step in. When false it goes nowhere, like an unpaired vanilla portal (server-synced) |
 | Rules | Adopt Existing Connections | true | Portals this mod has not configured keep their vanilla tag pair (server-synced) |
@@ -80,6 +88,7 @@ to mark a favorite.
 | Display | Panel Size | 680,600 | The portal panel's size, saved when you drag its corner |
 | Display | Panel Position | 0,0 | The panel's offset from the screen center, saved when you drag its title |
 | Display | List Scroll Rows | 4 | Rows a list moves per mouse-wheel notch |
+| Display | Collapsed Groups | empty | Which biome groups are folded away, written for you as you fold them |
 | Display | Show Portal List On Map | true | The list on the left of the map |
 | Display | Auto Close Grace Seconds | 0.5 | Leave the doorway for this long and the destination map closes |
 | Display | Show Messages | true | Small top-left messages |
