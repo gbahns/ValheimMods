@@ -14,7 +14,7 @@ The rack is also a real storage container. Drop your alternate gear in, walk up,
 - **In-place swap** — when Load equips a new item, whatever was in that slot gets stored back at the exact grid position the new item came from. Nothing ends up on the action bar unless that's where it was sitting.
 - **Live status** — a green ● on the Load button means you're already wearing this loadout. Missing items show red in the summary text and red in the icon strip.
 - **Compare window** — side-by-side view of your current gear vs. the saved set, with color-coded availability.
-- **Optional in-game pause** — config flag pauses the game while the panel is open (singleplayer-friendly; in multiplayer this only pauses your local clock).
+- **Optional in-game pause** — config flag pauses the game while the panel is open, the way the ESC menu does. Works by itself solo or hosting alone; on a dedicated server it takes [Pause My Server](https://valheim.thunderstore.io/package/DeathMonger/PauseMyServer/).
 
 ---
 
@@ -47,7 +47,7 @@ Buildable at the Workbench. Black Forest tier.
 The config file is created at `BepInEx/config/GBahns.Armory.cfg` on first run.
 
 **\[General\]**
-- `Pause Game While Armory Open` (default: false) — pauses the game while the rack panel is open. Intended for singleplayer; in multiplayer this only pauses your local clock, which can desync you from the server.
+- `Pause Game While Armory Open` (default: false) — pauses the game while the rack panel is open, the way the ESC menu does. It asks the game for the pause rather than stopping your own clock, so it works by itself when you are playing solo or hosting alone, and on a dedicated server it takes [Pause My Server](https://valheim.thunderstore.io/package/DeathMonger/PauseMyServer/) to grant it. Without that mod the request is refused on a server, which is the point — your clock stopping while the server runs on would only desync you. While the pause is in effect, a craft started from the inventory screen cannot finish until you close the rack; the craft timer counts game time.
 
 **\[UI\]**
 - `Show Summary Text` (default: true) — show the textual list of items below each loadout's name (`Helm:..., Chest:...`, etc.).
@@ -67,7 +67,8 @@ The config file is created at `BepInEx/config/GBahns.Armory.cfg` on first run.
 
 ## Compatibility
 
-- **Multiplayer compatible** — loadout data is stored in the rack's ZDO, so it persists through world saves and is visible to other players.
+- **Multiplayer compatible** — loadout data is stored in the rack's ZDO, so it persists through world saves and is visible to other players. Opening the rack goes through the same ownership handshake vanilla uses for chests, so the storage grid draws and saves correctly whoever walks up to it, and a rack someone else already has open tells you so instead of letting you both edit it.
+- **Wards and privacy** — the rack respects guard stones and the container privacy setting exactly as the chest it is built from does.
 - **AzuExtendedPlayerInventory** — supported. Items sitting in Azu's extra equipment slots are detected and swapped correctly.
 - Should be compatible with most other mods; no vanilla systems are permanently altered.
 

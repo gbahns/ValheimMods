@@ -296,6 +296,11 @@ namespace Armory
                 {
                     storage.m_bkg                = refContainer.m_bkg;
                     storage.m_destroyedLootPrefab = refContainer.m_destroyedLootPrefab;
+                    // Carry the chest's access rules over too.  AddComponent leaves these at the
+                    // field defaults (Public / no guard-stone check), which quietly made the rack
+                    // the one container on the map a ward does not protect.
+                    storage.m_privacy            = refContainer.m_privacy;
+                    storage.m_checkGuardStone    = refContainer.m_checkGuardStone;
                 }
                 storage.m_name   = "$armory_rack_name";
                 // 8×4 = 32 slots — matches the black metal chest layout exactly.  The vanilla
@@ -305,6 +310,10 @@ namespace Armory
                 // chest next to the rack.
                 storage.m_width  = 8;
                 storage.m_height = 4;
+                // Logged rather than assumed: these come out of the chest prefab's asset data,
+                // which is not readable from the assemblies, so the run itself is the record of
+                // what the rack inherited.
+                Jotunn.Logger.LogInfo($"[Armory] Container access copied from {BasePrefab}: privacy={storage.m_privacy}, checkGuardStone={storage.m_checkGuardStone}");
             }
 
             var pieceConfig = new PieceConfig

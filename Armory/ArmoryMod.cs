@@ -5,7 +5,7 @@ using Jotunn.Managers;
 
 namespace Armory
 {
-    [BepInPlugin(ModGuid, "Armory", "1.0.0")]
+    [BepInPlugin(ModGuid, "Armory", "1.1.0")]
     [BepInProcess("valheim.exe")]
     [BepInDependency("com.jotunn.jotunn")]
     public class ArmoryMod : BaseUnityPlugin
@@ -52,9 +52,11 @@ namespace Armory
                 section:     "General",
                 key:         "Pause Game While Armory Open",
                 defaultValue: false,
-                description: "Pause the game (Time.timeScale = 0) while the Armory Rack panel is open. " +
-                             "Intended for singleplayer — in multiplayer this only pauses your local clock, " +
-                             "which can desync you from the server.");
+                description: "Pause the game while the Armory Rack panel is open, the way the ESC menu does. " +
+                             "This works by itself when playing solo or hosting alone; on a dedicated server " +
+                             "it takes the Pause My Server mod, and without it the request is simply refused " +
+                             "rather than stopping your own clock while the server runs on.");
+            PauseGameWhileOpen.SettingChanged += (_, __) => ArmoryPause.Refresh();
 
             ShowSummaryText = Config.Bind(
                 section:     "UI",
@@ -105,11 +107,15 @@ namespace Armory
         {
             if (!_initialized) return;
             ArmoryUI.Tick();
+            // After Tick, so a panel it just closed is already reflected. Runs whether or not the
+            // panel is open — that is how the pause gets let go of when the player dies or logs out.
+            ArmoryPause.Refresh();
         }
 
         private void OnDestroy()
         {
             if (!_initialized) return;
+            ArmoryPause.Release();
             _harmony.UnpatchSelf();
         }
     }

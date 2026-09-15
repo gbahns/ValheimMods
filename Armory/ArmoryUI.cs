@@ -30,9 +30,14 @@ namespace Armory
         private static Vector2? _savedMainPos;
         private static Vector2? _savedComparePos;
 
-        // Track whether WE set Time.timeScale = 0 so Close() only restores it if we did.
-        private static bool  _pausedGame;
-        private static float _previousTimeScale;
+        // Vanilla slides the inventory + container panels into place with an Animator on the
+        // InventoryGui object (the "visible" bool it sets in Show/Hide).  An Animator left on
+        // its default update mode advances on Time.deltaTime, so pausing freezes that slide on
+        // its first frame: the player grid stays parked off the top of the screen and the
+        // container panel lands on top of it.  While we hold the pause, run that one Animator
+        // on unscaled time so the panels still reach their resting position.
+        private static Animator           _invAnimator;
+        private static AnimatorUpdateMode _invAnimatorMode;
 
         // Throttle icon-availability re-checks (rebuilding the strip on every frame is wasteful).
         private static float _lastIconRefresh;
@@ -126,16 +131,9 @@ namespace Armory
             if (InventoryGui.instance != null)
                 InventoryGui.instance.Show(rack.GetStorage());
 
-            // Optionally pause the game while the panel is open (config-gated, default off).
-            bool shouldPause = ArmoryMod.PauseGameWhileOpen != null && ArmoryMod.PauseGameWhileOpen.Value;
-            Jotunn.Logger.LogInfo($"[Armory] Open: PauseGameWhileOpen={shouldPause}, currentTimeScale={Time.timeScale}");
-            if (shouldPause)
-            {
-                _previousTimeScale = Time.timeScale > 0f ? Time.timeScale : 1f;
-                Time.timeScale     = 0f;
-                _pausedGame        = true;
-                Jotunn.Logger.LogInfo($"[Armory] Open: paused — previousTimeScale={_previousTimeScale}, newTimeScale={Time.timeScale}");
-            }
+            // The optional pause (config-gated, default off) is ArmoryPause's business: the mod's
+            // Update calls its Refresh, which picks the panel up on the next frame and asks
+            // vanilla for the pause rather than writing Time.timeScale behind its back.
         }
 
         public static void Close()
@@ -177,12 +175,36 @@ namespace Armory
             if (InventoryGui.instance != null)
                 InventoryGui.instance.Hide();
 
-            // Restore the time scale we changed in Open() (only if WE were the one who paused).
-            if (_pausedGame)
+            // Let go of the pause here rather than waiting for the next Refresh, so the world
+            // resumes on the same frame the panel goes away.
+            ArmoryPause.Release();
+        }
+
+        /// <summary>
+        /// Switch InventoryGui's Animator between unscaled and normal time.  Vanilla caches it
+        /// with GetComponent&lt;Animator&gt;() on the same object, so we can reach it the same way
+        /// rather than through the private m_animator field.  Restores the mode we found rather
+        /// than assuming Normal, in case another mod got there first.
+        /// </summary>
+        internal static void SetInventoryGuiUnscaled(bool unscaled)
+        {
+            if (unscaled)
             {
-                Time.timeScale = _previousTimeScale > 0f ? _previousTimeScale : 1f;
-                _pausedGame    = false;
-                Jotunn.Logger.LogInfo($"[Armory] Close: restored timeScale={Time.timeScale}");
+                _invAnimator = InventoryGui.instance != null
+                    ? InventoryGui.instance.GetComponent<Animator>()
+                    : null;
+                if (_invAnimator == null)
+                {
+                    Jotunn.Logger.LogWarning("[Armory] No Animator on InventoryGui — the inventory panels may sit in the wrong place while paused.");
+                    return;
+                }
+                _invAnimatorMode          = _invAnimator.updateMode;
+                _invAnimator.updateMode   = AnimatorUpdateMode.UnscaledTime;
+            }
+            else if (_invAnimator != null)
+            {
+                _invAnimator.updateMode = _invAnimatorMode;
+                _invAnimator            = null;
             }
         }
 
@@ -268,12 +290,6 @@ namespace Armory
                 for (int i = 0; i < _rows.Count && i < _data.Slots.Count; i++)
                     RebuildIcons(_rows[i], _data.Slots[i]);
             }
-
-            // Re-assert Time.timeScale = 0 each frame.  Some Valheim code (or other mods) may
-            // reset timeScale during their own Update loop, undoing our pause.  Holding it at
-            // 0 every frame defeats that.
-            if (_pausedGame && Time.timeScale != 0f)
-                Time.timeScale = 0f;
         }
 
         // ── UI construction ────────────────────────────────────────────────────────
