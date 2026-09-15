@@ -324,7 +324,30 @@ try {
             # refused until the new version is published. That is an outage for other people, not
             # a private test, so it takes -TestBuild to say it is wanted.
             if (-not $TestBuild) {
-                $live = (Get-PublishedInfo $m).version_number
+                $pub  = Get-PublishedInfo $m
+                $live = $pub.version_number
+
+                # Matching version numbers are not proof the build matches the release. Work that
+                # shipped without a version bump leaves the tree ahead of the published artifact
+                # while both read the same, so compare against the release date as well -- the
+                # same comparison mod-status.ps1 reports, and the case that put an unreleased
+                # server half into DudeWhatAreMyStats under a published 0.1.0.
+                if ($live -and $live -eq $ver -and $pub.date_created) {
+                    $since = ([datetimeoffset]$pub.date_created).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+                    $bumps = @(git -C $repo log --format=%h --since=$since -- "$m/manifest.json" 2>$null)
+                    $newer = @(git -C $repo log --format="%h %s" --since=$since -- ":(glob)$m/**/*.cs" 2>$null |
+                        Where-Object { $bumps -notcontains ($_ -split " ")[0] })
+                    if ($newer.Count -gt 0) {
+                        Write-Error ("$m $ver is published, but the build here has code that is not in it:`n" +
+                                     "  " + (($newer | Select-Object -First 3) -join "`n  ") + "`n" +
+                                     "Deploying it would put unreleased code on the server under a published`n" +
+                                     "version number, where nobody can install the matching client.`n" +
+                                     "  Release it first, then:  .\deploy-dathost.ps1 -Mod $m -Published`n" +
+                                     "  -TestBuild overrides this when nobody else is playing.")
+                        exit 1
+                    }
+                }
+
                 if ($live) {
                     $ahead = $false
                     try { $ahead = ([version]$ver -gt [version]$live) } catch { $ahead = ($ver -ne $live) }
