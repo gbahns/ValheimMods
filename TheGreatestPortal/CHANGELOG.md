@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.2 — 2026-09-15
+
+- The plugin reports its own version again. 0.3.1's DLL still announced itself to BepInEx as
+  0.3.0, so a log line named the wrong release. Nothing else changed.
+
 ## 0.3.1 — 2026-09-15
 
 Client-side; works with a 0.2.x server.
