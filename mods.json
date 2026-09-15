@@ -90,6 +90,12 @@
     "'unknown' means it needs a look: the deploy treats it as before (uploaded) and nothing is",
     "deleted on that basis.",
     "",
+    "A package on the server that is in no Gale profile is NOT automatically stale. Some are there",
+    "on purpose because the server is the only place they do anything, and they have no local copy",
+    "to re-upload. Check this file before deleting anything off the server, and if a package is not",
+    "listed here, ask rather than assume - that shape got PortalRules and OttoFuel deleted, and",
+    "those were only meant to go because Greg said so.",
+    "",
     "'excluded' is a decision rather than a capability: the mod could run on the server, but it is",
     "deliberately not wanted there. Deploys skip it exactly as they skip 'client', so it does not",
     "come back on the next profile mirror. Nothing carries it at the moment.",
@@ -104,6 +110,8 @@
   ],
 
   "profilePackages": {
+    "Sfantul-PortalGhostFix":                        { "side": "server", "why": "SERVER ONLY - DO NOT DELETE. Installed straight onto the server on 2026-09-15 and deliberately in no Gale profile, which makes it look exactly like the server-only leftovers (PortalRules, OttoFuel) deleted on 2026-09-14 for being in no profile. It is not a leftover. Nothing here can put it back either: there is no local copy, and the only source is https://thunderstore.io/c/valheim/p/Sfantul/PortalGhostFix/. Its DLL is PortalObserverFix.dll, which does not match the package name, so a check keyed on either name will miss the other." },
+
     "Crystal-Pathfinder":                            { "side": "both", "why": "CORRECTED 2026-09-14 (was wrongly client): its README says 'This mod should be installed on client and server', and a server running it rejects clients without it unless ConditionalConfigSync's ModRequirements.cfg says otherwise. It was deleted from the server in the 14 Sep sweep on bad evidence and restored the same night." },
     "Neobotics-GetComfortable":                      { "side": "client", "why": "A comfort HUD overlay. No server install mentioned anywhere in its README." },
     "Neobotics-HUDCompass":                          { "side": "client", "why": "A heads-up compass drawn on the player's screen. No server install mentioned in its README." },

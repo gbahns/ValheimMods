@@ -25,11 +25,14 @@ $skipDirs = @("bin", "obj", ".claude")
 
 # Which side of a dedicated-server setup each mod belongs on; see mods.json.
 $sides = @{}
+$packageSides = @{}
 $sidesPath = Join-Path $repo "mods.json"
 if (Test-Path $sidesPath) {
     $sidesDoc = Get-Content $sidesPath -Raw | ConvertFrom-Json
-    foreach ($p in $sidesDoc.mods.PSObject.Properties) { $sides[$p.Name] = $p.Value.side }
+    foreach ($p in $sidesDoc.mods.PSObject.Properties)            { $sides[$p.Name] = $p.Value.side }
+    foreach ($p in $sidesDoc.profilePackages.PSObject.Properties) { $packageSides[$p.Name] = $p.Value.side }
 }
+$serverPackages = $null
 
 function Get-TomlValue($path, $key) {
     if (-not (Test-Path $path)) { return $null }
@@ -268,6 +271,14 @@ if ($Server) {
                 $paths += $p
             }
 
+            # The third-party packages the server holds, so the report can say which of them
+            # nothing here accounts for. A package on the server and in no Gale profile is not
+            # automatically stale -- some are installed straight onto the server because that is
+            # the only place they do anything, and they have no local copy to put back.
+            $serverPackages = @($paths | Where-Object { $_ -match '^BepInEx/plugins/[^/]+/' } |
+                ForEach-Object { ($_ -replace '^BepInEx/plugins/', '') -replace '/.*$', '' } |
+                Sort-Object -Unique)
+
             foreach ($r in $rows) {
                 $target = $paths | Where-Object { $_ -match ("(^|/)" + [regex]::Escape("$($r.Folder).dll") + "$") } |
                     Select-Object -First 1
@@ -413,6 +424,23 @@ foreach ($r in $rows) {
         $actions += "$($r.Folder): the server's DLL was built before versions were stamped, so its version cannot be read. One deploy replaces it with an identifiable build."
     }
 }
+# The server's own third-party packages, checked against mods.json. A package declared to belong
+# on the server and then missing from it is the failure this check exists for: some have no local
+# copy, so losing one means fetching it from Thunderstore again rather than redeploying.
+if ($null -ne $serverPackages -and -not $Mod) {
+    foreach ($p in $packageSides.Keys) {
+        if ($packageSides[$p] -in @("server", "both") -and $serverPackages -notcontains $p) {
+            $actions += "$p is declared '$($packageSides[$p])' in mods.json but is NOT on the server."
+        }
+    }
+    foreach ($p in $serverPackages) {
+        if (-not $packageSides.ContainsKey($p)) {
+            $actions += ("$p is on the server and not declared in mods.json. Decide what it is before " +
+                         "any cleanup - being in no Gale profile does not make it stale.")
+        }
+    }
+}
+
 if ($actions.Count -eq 0) {
     Write-Host "Everything agrees: local versions, both registries, builds and the working tree." -ForegroundColor Green
 } else {
