@@ -613,10 +613,7 @@ namespace TheGreatestMap
         internal static void StylePins(Minimap map)
         {
             bool smallMap = map != null && map.m_mode != Minimap.MapMode.Large;
-            // TheGreatestPortal's picker overlay wants a clean map and hides the saved pins for
-            // itself; ours are re-shown by this very pass, so they have to stand down here.
-            bool hideEverything = (TgmConfig.ShowAllMarkers != null && !TgmConfig.ShowAllMarkers.Value)
-                || Portals.PortalPickerOpen();
+            bool hideEverything = TgmConfig.ShowAllMarkers != null && !TgmConfig.ShowAllMarkers.Value;
             _portalPins.Clear();
             foreach (var kv in _idByPin)
             {

@@ -299,10 +299,11 @@ namespace TheGreatestMap
         private static bool _probed;
 
         /// <summary>
-        /// True while TheGreatestPortal is showing its own portal picker over the map. That
-        /// overlay wants a clean map and hides the saved pins itself, so this mod stands down
-        /// rather than drawing a second set of portals over its first. Found by name, so there is
-        /// no reference to that mod and no need for it to be installed.
+        /// True while TheGreatestPortal is showing its own portal picker over the map. It draws a
+        /// pin for every portal itself, so the draw-only pins from "Map All Portals" stand down
+        /// while it is up rather than showing every portal twice. Only those stand down: the
+        /// picker shows the map as it normally looks, recorded markers and all. Found by name, so
+        /// there is no reference to that mod and no need for it to be installed.
         /// </summary>
         internal static bool PortalPickerOpen()
         {

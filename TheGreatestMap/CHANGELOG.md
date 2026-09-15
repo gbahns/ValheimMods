@@ -2,6 +2,12 @@
 
 ## 0.3.0 — unreleased
 
+- Walking into a portal shows the map you already know. While TheGreatestPortal's destination
+  picker was up, this mod hid every marker it had drawn, because that picker used to clear the
+  map for itself. It no longer does, so hiding them only made the picker's map look like a
+  different map. The draw-only pins from "Map All Portals" still stand down while the picker is
+  up, since it draws a pin for every portal itself and they would otherwise be doubled.
+
 - Portal markers no longer flash white while you walk. The game lays its pins out again whenever the map moves, which on the minimap is every step, and a freshly built icon starts at plain white. The color was being applied once a frame, which won or lost depending on which ran first, so it held while standing still and lost while moving. It is now applied immediately after each rebuild as well.
 
 - Portal markers default to two shades of orange (#FF6600 fading to #FF8800) rather than gold fading to violet. Two shades of one color read as a gentle pulse; two different colors were far too loud. #A05BDD with #B07CFF is a good violet alternative, and the config help now says so.
