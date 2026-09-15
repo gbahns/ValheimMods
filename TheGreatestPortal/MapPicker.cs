@@ -177,6 +177,7 @@ namespace TheGreatestPortal
             _detour = false;
             _usualDestination = "";
             ClearHover();
+            DestroyGlow();
             if (!had) return;
             PortalPins.Clear();
             DestroyList();
@@ -251,6 +252,8 @@ namespace TheGreatestPortal
         // ── hover feedback ──────────────────────────────────────────────────────────
 
         private const float HoverScale = 1.6f;
+        private static GameObject _glow;
+        private static Image _glowImage;
 
         /// <summary>
         /// The portal under the pointer grows, brightens and shows its name, so it is obvious
@@ -270,8 +273,10 @@ namespace TheGreatestPortal
             }
             // Vanilla repaints the pins whenever it feels like it, so both the portal color and
             // the highlight are reapplied every frame.
-            PortalPins.Tint(Access.PortalPinColor(), _hoverId);
-            if (_hoverId != 0L) Decorate(map, _hoverId, true);
+            var color = Access.PortalPinColor();
+            PortalPins.Tint(color);
+            if (_hoverId != 0L) Decorate(map, _hoverId, true, color);
+            else HideGlow();
         }
 
         private static void SetHover(Minimap map, long id, bool fromRow)
@@ -288,20 +293,70 @@ namespace TheGreatestPortal
         {
             _hoverId = 0L;
             _hoverFromRow = false;
+            HideGlow();
         }
 
-        private static void Decorate(Minimap map, long id, bool on)
+        private static void Decorate(Minimap map, long id, bool on, Color? tint = null)
         {
             if (id == 0L || map == null) return;
             var pin = PortalPins.PinFor(id);
-            if (pin == null || pin.m_uiElement == null) return;
+            if (pin == null || pin.m_uiElement == null) { if (on) HideGlow(); return; }
+            Color color = tint ?? Access.PortalPinColor();
             pin.m_uiElement.localScale = on ? Vector3.one * HoverScale : Vector3.one;
-            if (pin.m_iconElement != null) pin.m_iconElement.color = on ? UiKit.Gold : Access.PortalPinColor();
+            if (pin.m_iconElement != null) pin.m_iconElement.color = color;
+            if (on) ShowGlow(map, pin, color); else HideGlow();
             var namePin = pin.m_NamePinData;
             if (namePin == null || namePin.PinNameGameObject == null) return;
             if (namePin.PinNameText != null) namePin.PinNameText.color = on ? UiKit.Gold : Color.white;
             // Hovering always names the portal; otherwise vanilla shows names only when zoomed in.
             namePin.PinNameGameObject.SetActive(on || (!string.IsNullOrEmpty(pin.m_name) && map.LargeZoom < map.m_showNamesZoom));
+        }
+
+        /// <summary>
+        /// The halo behind the hovered portal. One object, moved to whichever pin is hovered and
+        /// tinted to that portal's own color, pulsing gently so it reads as lit rather than
+        /// painted. It sits first among the pins so every pin draws over it.
+        /// </summary>
+        private static void ShowGlow(Minimap map, Minimap.PinData pin, Color color)
+        {
+            var parent = pin.m_uiElement.parent as RectTransform;
+            if (parent == null) { HideGlow(); return; }
+            if (_glow == null)
+            {
+                _glow = new GameObject("TGP_PinGlow", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                _glowImage = _glow.GetComponent<Image>();
+                _glowImage.sprite = UiKit.Glow();
+                _glowImage.raycastTarget = false;
+            }
+            var rt = (RectTransform)_glow.transform;
+            if (rt.parent != parent)
+            {
+                rt.SetParent(parent, false);
+                rt.SetAsFirstSibling();
+            }
+            rt.anchorMin = pin.m_uiElement.anchorMin;
+            rt.anchorMax = pin.m_uiElement.anchorMax;
+            rt.pivot = pin.m_uiElement.pivot;
+            rt.anchoredPosition = pin.m_uiElement.anchoredPosition;
+            float size = map.m_pinSizeLarge * 2.6f;
+            rt.sizeDelta = new Vector2(size, size);
+            // Unscaled, so it keeps breathing while the map is up with the game paused.
+            float t = (Mathf.Sin(Time.unscaledTime * 3.2f) + 1f) * 0.5f;
+            color.a = Mathf.Lerp(0.32f, 0.62f, t);
+            _glowImage.color = color;
+            if (!_glow.activeSelf) _glow.SetActive(true);
+        }
+
+        private static void HideGlow()
+        {
+            if (_glow != null && _glow.activeSelf) _glow.SetActive(false);
+        }
+
+        private static void DestroyGlow()
+        {
+            if (_glow != null) UnityEngine.Object.Destroy(_glow);
+            _glow = null;
+            _glowImage = null;
         }
 
         // ── clicks on the map ───────────────────────────────────────────────────────

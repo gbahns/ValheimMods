@@ -576,6 +576,38 @@ namespace TheGreatestPortal
             void IEndDragHandler.OnEndDrag(PointerEventData eventData) { OnEnd?.Invoke(); }
         }
 
+        private static Sprite _glow;
+
+        /// <summary>
+        /// A soft round halo: brightest in the middle, fading to nothing at the rim. Drawn white
+        /// so it can be tinted to whatever color the thing it sits behind happens to be.
+        /// </summary>
+        internal static Sprite Glow()
+        {
+            if (_glow != null) return _glow;
+            const int n = 64;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            var px = new Color32[n * n];
+            const float half = n / 2f;
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    float dx = (x + 0.5f - half) / half;
+                    float dy = (y + 0.5f - half) / half;
+                    float a = Mathf.Clamp01(1f - Mathf.Sqrt(dx * dx + dy * dy));
+                    a *= a;   // falls off quickly, so the middle reads as the source of the light
+                    px[y * n + x] = new Color32(255, 255, 255, (byte)(a * 255f));
+                }
+            tex.SetPixels32(px);
+            tex.Apply(false, true);
+            tex.filterMode = FilterMode.Bilinear;
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.hideFlags = HideFlags.HideAndDontSave;
+            _glow = Sprite.Create(tex, new Rect(0f, 0f, n, n), new Vector2(0.5f, 0.5f), 100f);
+            _glow.hideFlags = HideFlags.HideAndDontSave;
+            return _glow;
+        }
+
         private static Sprite _grip;
 
         /// <summary>Three diagonal lines tucked into the lower-right corner: the usual resize grip.</summary>

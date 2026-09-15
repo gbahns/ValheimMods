@@ -5,6 +5,9 @@
 - Portal pins wear the color TheGreatestMap paints portals, pulse and all, instead of plain white,
   so the picker's pins match the portal markers already on the map. Without that mod they stay
   white, as every vanilla pin is.
+- The portal under the pointer keeps its own color and lights up instead: a halo in that same
+  color, breathing gently, behind a pin grown half again as large. It used to turn pale gold,
+  which threw away the color you had chosen for portals at the moment you were looking hardest.
 - The destination map is the map you already know. It used to hide your own markers while you
   picked a portal, which made it look like a different map; now everything the M key shows is
   still there, portals included. The "Hide Other Pins While Choosing" setting is gone with it.
