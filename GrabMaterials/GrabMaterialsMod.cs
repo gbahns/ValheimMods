@@ -238,8 +238,8 @@ namespace GrabMaterialsMod
 				GrabMaterials.ConsoleCommands.ResetPendingLedger();
 				Player.m_localPlayer?.Message(MessageHud.MessageType.Center, "Grab delta ledger cleared.");
 			});
-			new Terminal.ConsoleCommand("inventory", "[filter] - counts of items in nearby containers. Filter by item name, by category, or with 'new' for items you have never held.", (args) => { ListLocalInventory(args); });
-			new Terminal.ConsoleCommand("i", "[filter] - counts of items in nearby containers. Filter by item name, by category, or with 'new' for items you have never held.", (args) => { ListLocalInventory(args); });
+			new Terminal.ConsoleCommand("inventory", "[filter] - counts of items in nearby containers. Filter by item name, by category, with 'new' for items you have never held, or with 'empty' to find and highlight empty containers.", (args) => { ListLocalInventory(args); });
+			new Terminal.ConsoleCommand("i", "[filter] - counts of items in nearby containers. Filter by item name, by category, with 'new' for items you have never held, or with 'empty' to find and highlight empty containers.", (args) => { ListLocalInventory(args); });
 			new Terminal.ConsoleCommand("istyle", "[1-2] - cycle inventory display style (1=List, 2=Table)", (args) => { SetInventoryStyle(args); });
 
 			//for testing/learning
@@ -603,6 +603,14 @@ namespace GrabMaterialsMod
 			var player = Player.m_localPlayer;
 			var isNewSearch = text == "new";
 
+			// "/i empty" asks about the containers themselves rather than their contents,
+			// so it skips the item and processor walk entirely.
+			if (text == "empty")
+			{
+				ListEmptyContainers(Boxes.GetNearbyContainers(radius));
+				return;
+			}
+
 			var nearbyContainers = Boxes.GetNearbyContainers(radius);
 			var nearbySmelters = Boxes.GetNearbySmelters(radius);
 			Log.LogInfo($"searching {nearbyContainers.Count} containers and {nearbySmelters.Count} processors within {radius} meters");
@@ -778,6 +786,59 @@ namespace GrabMaterialsMod
 				: isNewSearch ? "New Items"
 				: $"Inventory: {text}";
 			GrabMaterials.MaterialsPanel.ShowCategorizedInventory(title, groups, Instance.InventoryStyle.Value);
+		}
+
+		// "/i empty" — find every nearby container holding nothing, highlight them all, and
+		// list them by type with a count.  This asks about the containers themselves rather
+		// than their contents, so it does not walk items or processors at all.
+		//
+		// No access check: Container.CheckAccess is public in the publicized build but private
+		// at runtime, so calling it would throw MethodAccessException.  Listing a chest you
+		// cannot open matches what the rest of /i already does anyway.
+		private static void ListEmptyContainers(List<Container> nearbyContainers)
+		{
+			Log.LogInfo($"checking {nearbyContainers.Count} nearby containers for empty ones");
+
+			var byName = new SortedDictionary<string, int>();
+			var total = 0;
+
+			foreach (var container in nearbyContainers)
+			{
+				if (container == null) continue;
+				var inventory = container.GetInventory();
+				if (inventory == null || inventory.NrOfItems() > 0) continue;
+
+				var name = GrabMaterials.Extensions.Localize(container.m_name);
+				if (string.IsNullOrEmpty(name)) name = container.name;
+				if (byName.ContainsKey(name)) byName[name]++;
+				else byName[name] = 1;
+				total++;
+
+				container.Highlight();
+			}
+
+			if (total == 0)
+			{
+				if (Player.m_localPlayer != null)
+					Player.m_localPlayer.Message(MessageHud.MessageType.Center, "No empty containers nearby");
+				return;
+			}
+
+			// One row per container type.  No SharedName: these rows are containers, not items,
+			// so there is nothing for click-to-highlight to match against, and the panel leaves
+			// a row without one unclickable.
+			var items = new List<GrabMaterials.MaterialsPanel.InventoryItem>(byName.Count);
+			foreach (var kvp in byName)
+			{
+				Log.LogInfo($"{kvp.Value} empty {kvp.Key}");
+				items.Add(new GrabMaterials.MaterialsPanel.InventoryItem { Name = kvp.Key, Count = kvp.Value });
+			}
+
+			var groups = new List<GrabMaterials.MaterialsPanel.InventoryGroup>
+			{
+				new GrabMaterials.MaterialsPanel.InventoryGroup { CategoryName = "Empty Containers", Items = items },
+			};
+			GrabMaterials.MaterialsPanel.ShowCategorizedInventory("Empty Containers", groups, Instance.InventoryStyle.Value);
 		}
 
 		// Format a BepInEx KeyboardShortcut as e.g. "Shift + G" / "Ctrl + Alt + Y" / "G".

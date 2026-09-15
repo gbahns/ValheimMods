@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- `/i empty` lists every nearby container that has nothing in it and highlights them all, grouped by container type with a count. Handy when you are looking for somewhere to put a haul, or hunting for that chest you emptied and forgot about.
+
 ## 2.3.1 — 2026-09-13
 
 - The inventory and grab-pack panels now take the mouse cursor while they are open, so you can point at rows and click them directly. Previously the only way to get a cursor was to open the ESC menu, which Escape no longer does. Transient grab results still do not take the cursor.
