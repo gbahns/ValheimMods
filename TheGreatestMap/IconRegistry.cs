@@ -115,6 +115,28 @@ namespace TheGreatestMap
             return raw;
         }
 
+        /// <summary>
+        /// The first of these item prefabs the game actually has, as an icon key. Valheim adds
+        /// items between updates and not every creature has a trophy, so a guess like the bear's
+        /// is written as a preference with a fallback rather than a single name that may resolve
+        /// to nothing and leave a plain dot.
+        /// </summary>
+        internal static string PickItem(params string[] names)
+        {
+            if (ObjectDB.instance == null || names == null) return null;
+            foreach (var name in names)
+            {
+                if (string.IsNullOrEmpty(name)) continue;
+                try
+                {
+                    var prefab = ObjectDB.instance.GetItemPrefab(name);
+                    if (prefab != null && prefab.GetComponent<ItemDrop>() != null) return "item:" + name;
+                }
+                catch (Exception) { }
+            }
+            return null;
+        }
+
         internal static string ItemKey(GameObject itemPrefab)
         {
             return itemPrefab == null ? null : "item:" + Utils.GetPrefabName(itemPrefab);

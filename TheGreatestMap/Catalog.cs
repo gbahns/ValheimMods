@@ -50,6 +50,16 @@ namespace TheGreatestMap
             }
         }
 
+        /// <summary>
+        /// Kinds that are a supply of something rather than a place: they run out. A crossed-off
+        /// marker means "cleared" for these, and "already searched" for a structure, which is why
+        /// the two are shown and hidden separately.
+        /// </summary>
+        internal static bool IsResource(Category c)
+        {
+            return c == Category.Berries || c == Category.Mushrooms || c == Category.Herbs || c == Category.Ore;
+        }
+
         /// <summary>Structures are a personal habit (tracking which ruins you have searched); off unless asked for.</summary>
         internal static bool DefaultEnabled(Category c) => c != Category.Structure;
 
@@ -173,7 +183,8 @@ namespace TheGreatestMap
                 case Category.Dungeon:
                     return "Crypt2=Burial Chambers|TrophySkeleton,Crypt3=Burial Chambers|TrophySkeleton,Crypt4=Burial Chambers|TrophySkeleton," +
                            "SunkenCrypt4=Sunken Crypt|CryptKey,MountainCave02=Frost Cave|TrophyUlv,TrollCave02=Troll Cave|TrophyFrostTroll," +
-                           "Mistlands_DvergrTownEntrance1=Infested Mine|TrophySeeker,Mistlands_DvergrTownEntrance2=Infested Mine|TrophySeeker";
+                           "Mistlands_DvergrTownEntrance1=Infested Mine|TrophySeeker,Mistlands_DvergrTownEntrance2=Infested Mine|TrophySeeker," +
+                           "BearCave=Bear Cave";
                 case Category.Trader:
                     return "Vendor_BlackForest=Haldor|Coins,Hildir_camp=Hildir|Coins,BogWitch_Camp=Bog Witch|Coins";
                 case Category.Camp:
@@ -453,11 +464,15 @@ namespace TheGreatestMap
                 cat = e.Cat;
                 name = e.Name ?? Prettify(prefab);
                 icon = e.Icon ?? Categories.KnownIcon(prefab);
+                // Listed, but with no icon of its own: guess from the name rather than let it fall
+                // through to the kind's icon, which for dungeons is the swamp crypt key.
+                if (icon == null && e.Cat == Category.Dungeon) icon = IconFromDungeonName(prefab);
             }
             else if (hasInterior)
             {
                 cat = Category.Dungeon;
                 name = Prettify(prefab);
+                icon = GuessDungeonIcon(prefab);
             }
             else if (TgmConfig.StructuresIncludeUnlisted.Value && !IsExcludedStructure(prefab))
             {
@@ -486,6 +501,43 @@ namespace TheGreatestMap
             var view = pickable.GetComponent<ZNetView>();
             var zdo = view != null && view.IsValid() ? view.GetZDO() : null;
             return zdo != null && zdo.GetBool(ZDOVars.s_picked, false);
+        }
+
+
+        private static readonly HashSet<string> _unlistedSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// An icon for a dungeon the catalog does not list. Without this the marker fell back to
+        /// the kind's icon, which is the swamp crypt key, so every unlisted cave claimed to be a
+        /// burial chamber. Guessing from the name is crude but never says "crypt" about a troll
+        /// cave, and anything still unrecognized gets a plain dot rather than a wrong picture.
+        /// The prefab is logged once so it can be added to the catalog properly.
+        /// </summary>
+        /// <summary>The icon a dungeon name suggests, for repairing markers already written. Null when nothing fits.</summary>
+        internal static string IconFromDungeonName(string name)
+        {
+            string p = (name ?? "").ToLowerInvariant();
+            if (p.Contains("bear")) return IconRegistry.PickItem("TrophyBear", "BearPaw", "BearHide");
+            if (p.Contains("troll")) return "TrophyFrostTroll";
+            if (p.Contains("sunken")) return "CryptKey";
+            if (p.Contains("crypt") || p.Contains("burial")) return "TrophySkeleton";
+            if (p.Contains("frost") || p.Contains("mountain")) return "TrophyUlv";
+            if (p.Contains("dvergr") || p.Contains("infested")) return "TrophySeeker";
+            if (p.Contains("goblin") || p.Contains("fuling")) return "TrophyGoblin";
+            if (p.Contains("draugr")) return "TrophyDraugr";
+            return null;
+        }
+
+        private static string GuessDungeonIcon(string prefab)
+        {
+            string icon = IconFromDungeonName(prefab);
+            if (_unlistedSeen.Add(prefab ?? ""))
+            {
+                TheGreatestMapMod.Log.LogWarning(
+                    $"[TheGreatestMap] Dungeon '{prefab}' is not in the Dungeons catalog; using " +
+                    (icon ?? "a plain dot") + ". Add it to the Catalog section to give it a proper name and icon.");
+            }
+            return icon ?? "pin:Icon3";
         }
 
         /// <summary>A building piece the world generated, as opposed to something a player built.</summary>

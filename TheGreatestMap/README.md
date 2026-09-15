@@ -73,6 +73,13 @@ map icons (house, portal, campfire, boss). Vanilla's icon buttons on the right e
 show them, and those buttons cover the pins you placed by hand with the same icon, which a switch of
 ours never could. The other kinds have icons of their own and are ours to control.
 
+**Things that run out get crossed off, not forgotten.** Mining a deposit to nothing, or picking a
+plant that never grows back, crosses its marker off for everyone instead of erasing it, so you can
+see which ground has already been worked rather than walking back to an empty spot. "Show Cleared
+Deposits" hides them once cleared if you would rather have a clean map; the record is kept either
+way. Structures are separate, since their cross-off means you have searched them, not that they
+are gone.
+
 **Portals are kept current, not remembered.** Everything else the mod records stays where you
 found it, so writing it down once is enough. A portal is built by players and gets renamed and torn
 down, so instead the server reads the game's own list of portals and the markers follow it: a
@@ -114,6 +121,7 @@ counts as well unless "Structures Include Unlisted" is off or its prefab name is
 | `tgm_forget` | Forget found-but-unrecorded things |
 | `tgm_wipe [auto\|all]` | Admin: erase recorded markers (default) or every shared marker, for everyone |
 | `tgm_unsuppress` | Admin: allow recording again where recorded markers were erased |
+| `tgm_reicon` | Repair dungeon markers that took the swamp crypt key because their cave was not in the catalog |
 | `tgm_show` | Show every hidden marker again (single markers, hidden icons and hidden kinds) |
 
 ## Configuration

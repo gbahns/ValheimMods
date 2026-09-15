@@ -189,6 +189,31 @@ namespace TheGreatestMap
             PersonalMap.Touch();
         }
 
+        /// <summary>
+        /// Repair dungeon markers that took the kind's fallback icon, the swamp crypt key, because
+        /// their location was not in the catalog. Only markers currently wearing that icon are
+        /// touched, and only when the name suggests something else, so a real sunken crypt keeps
+        /// it. The change merges like any other, so one player fixing them fixes them for all.
+        /// </summary>
+        internal static int RepairDungeonIcons()
+        {
+            int changed = 0;
+            foreach (var pin in new List<SharedPin>(Store.Pins.Values))
+            {
+                if (!pin.Auto || KindOf(pin) != Category.Dungeon) continue;
+                if (!IconRegistry.SameKey(pin.Icon, "CryptKey")) continue;
+                string better = Catalog.IconFromDungeonName(pin.Name);
+                if (better == null || IconRegistry.SameKey(better, pin.Icon)) continue;
+                pin.Icon = IconRegistry.Normalize(better);
+                pin.Type = IconRegistry.TypeFor(pin.Icon);
+                Store.Upsert(pin);
+                ReplacePinData(pin);
+                changed++;
+            }
+            if (changed > 0) PersonalMap.Touch();
+            return changed;
+        }
+
         /// <summary>Rename a marker on the personal map (the portal reconciler; the change merges like any other).</summary>
         internal static void RenameMarker(string id, string name)
         {
@@ -212,22 +237,23 @@ namespace TheGreatestMap
         }
 
         /// <summary>
-        /// Erase the recorded marker for a plant that has just been picked and never grows back.
-        /// Like the portal reconciler this corrects the map rather than rejecting a marker, so the
-        /// spot is not suppressed. Returns whether anything was erased.
+        /// Cross off the marker for something that has just been used up: a deposit mined out, or
+        /// a plant picked that never grows back. The marker stays, because where a place has been
+        /// cleared is worth knowing, and "Show Cleared Deposits" decides whether it is drawn.
+        /// Returns whether anything was crossed off.
         /// </summary>
-        internal static bool RemoveHarvested(string icon, Vector3 pos, float radius)
+        internal static bool MarkCleared(string icon, Vector3 pos, float radius)
         {
-            string id = null;
-            float best = radius;
+            SharedPin best = null;
+            float bestDistance = radius;
             foreach (var pin in Store.Pins.Values)
             {
-                if (!pin.Auto || !IconRegistry.SameKey(pin.Icon, icon)) continue;
+                if (!pin.Auto || pin.Checked || !IconRegistry.SameKey(pin.Icon, icon)) continue;
                 float d = Geo.FlatDistance(pin.Pos, pos);
-                if (d <= best) { best = d; id = pin.Id; }
+                if (d <= bestDistance) { bestDistance = d; best = pin; }
             }
-            if (id == null) return false;
-            RemoveStale(id);
+            if (best == null) return false;
+            SetChecked(best.Id, true);
             return true;
         }
 
@@ -522,6 +548,10 @@ namespace TheGreatestMap
                 // shows you what you wrote. Not against the master switch or a marker hidden by
                 // hand, which both mean "not this one".
                 if (hidden && !hideEverything && !hiddenByHand && Reveals.IsRevealed(kv.Value)) hidden = false;
+                // Used up and the player would rather not see it any more. Structures are left
+                // alone: their cross-off means searched, not gone.
+                if (!hidden && shared.Checked && kind.HasValue && Categories.IsResource(kind.Value)
+                    && TgmConfig.ShowClearedDeposits != null && !TgmConfig.ShowClearedDeposits.Value) hidden = true;
                 SetMarkerActive(pin, !hidden);
                 if (hidden) continue;
                 float scale = 1f;

@@ -268,26 +268,74 @@ namespace TheGreatestMap
         {
             if (!__result || __state == null) return;
             DiscoveryLedger.Forget(__state.Key);
-            if (ClientPins.RemoveHarvested(__state.Icon, __state.Pos, 2f))
-                TheGreatestMapMod.Message($"Picked the last of the {__state.Name}; marker removed.");
+            if (ClientPins.MarkCleared(__state.Icon, __state.Pos, 2f))
+                TheGreatestMapMod.Message($"Picked the last of the {__state.Name}; marked as cleared.");
+        }
+    }
+
+    // Mining a deposit out removes it from the world, which makes its marker a lie. The same
+    // shape as picking a plant that never grows back: the map is corrected, not a marker
+    // rejected, so the spot is not suppressed and an ore vein that reappears is recorded again.
+    internal static class Mined
+    {
+        internal static void Gone(GameObject go)
+        {
+            if (Player.m_localPlayer == null || go == null) return;
+            if (!Catalog.TryClassify(go, out var found)) return;
+            DiscoveryLedger.Forget(found.Key);
+            if (ClientPins.MarkCleared(found.Icon, found.Pos, 6f))
+                TheGreatestMapMod.Message($"Mined out the {found.Name}; marked as cleared.");
         }
     }
 
     [HarmonyPatch(typeof(MineRock5), nameof(MineRock5.Damage))]
     internal static class MineRock5_Damage_Patch
     {
-        private static void Prefix(MineRock5 __instance, HitData hit)
+        // One prefix only: Harmony finds patch methods by name, so an overload would be ambiguous.
+        // The deposit is noted as found on the way in, and remembered so the postfix can tell
+        // whether this blow was the one that finished it.
+        private static void Prefix(MineRock5 __instance, HitData hit, ref GameObject __state)
         {
-            if (DiscoveryLedger.IsLocalAttacker(hit)) DiscoveryLedger.NoteInteraction(__instance.gameObject);
+            __state = null;
+            if (__instance == null || !DiscoveryLedger.IsLocalAttacker(hit)) return;
+            DiscoveryLedger.NoteInteraction(__instance.gameObject);
+            __state = __instance.gameObject;
+        }
+
+        private static void Postfix(MineRock5 __instance, GameObject __state)
+        {
+            if (__state == null || __instance == null) return;
+            if (Access.RockAllDestroyed(__instance)) Mined.Gone(__state);
         }
     }
 
     [HarmonyPatch(typeof(MineRock), nameof(MineRock.Damage))]
     internal static class MineRock_Damage_Patch
     {
-        private static void Prefix(MineRock __instance, HitData hit)
+        private static void Prefix(MineRock __instance, HitData hit, ref GameObject __state)
         {
-            if (DiscoveryLedger.IsLocalAttacker(hit)) DiscoveryLedger.NoteInteraction(__instance.gameObject);
+            __state = null;
+            if (__instance == null || !DiscoveryLedger.IsLocalAttacker(hit)) return;
+            DiscoveryLedger.NoteInteraction(__instance.gameObject);
+            __state = __instance.gameObject;
+        }
+
+        // Old-style deposits mine out the same way, and whichever kind tin turns out to be is
+        // covered. The damage runs through an RPC on the owner, so the check is a moment late
+        // on someone else's deposit; it still lands before the next blow.
+        private static void Postfix(MineRock __instance, GameObject __state)
+        {
+            if (__state == null || __instance == null) return;
+            if (Access.MineRockAllDestroyed(__instance)) Mined.Gone(__state);
+        }
+    }
+
+    [HarmonyPatch(typeof(Destructible), nameof(Destructible.Destroy))]
+    internal static class Destructible_Destroy_Patch
+    {
+        private static void Prefix(Destructible __instance, HitData hit)
+        {
+            if (DiscoveryLedger.IsLocalAttacker(hit) && __instance != null) Mined.Gone(__instance.gameObject);
         }
     }
 

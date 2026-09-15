@@ -80,6 +80,20 @@ namespace TheGreatestMap
             _showHandItems.Invoke(humanoid, new object[] { false, true });
         }
 
+        // ── ore deposits ────────────────────────────────────────────────────────────
+        internal static readonly AccessTools.FieldRef<MineRock5, bool> RockAllDestroyed =
+            AccessTools.FieldRefAccess<MineRock5, bool>("m_allDestroyed");
+
+        private static readonly MethodInfo _mineRockAllDestroyed = AccessTools.Method(typeof(MineRock), "AllDestroyed");
+
+        /// <summary>Whether every area of an old-style deposit has been mined out.</summary>
+        internal static bool MineRockAllDestroyed(MineRock rock)
+        {
+            if (rock == null || _mineRockAllDestroyed == null) return false;
+            try { return (bool)_mineRockAllDestroyed.Invoke(rock, new object[0]); }
+            catch { return false; }
+        }
+
         // ── locations ───────────────────────────────────────────────────────────────
         internal static readonly AccessTools.FieldRef<LocationProxy, GameObject> ProxyInstance =
             AccessTools.FieldRefAccess<LocationProxy, GameObject>("m_instance");

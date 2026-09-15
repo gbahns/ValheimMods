@@ -32,6 +32,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> ShowPauseButton;
         internal static ConfigEntry<bool> MarkerButton;
         internal static ConfigEntry<bool> ShowAllMarkers;
+        internal static ConfigEntry<bool> ShowClearedDeposits;
         internal static ConfigEntry<float> RevealNewMarkers;
         internal static ConfigEntry<bool> MapAllPortals;
         internal static ConfigEntry<string> PortalColor;
@@ -190,6 +191,11 @@ namespace TheGreatestMap
                 "say, including markers that have no kind; they stay on your map and keep syncing. This is what the " +
                 "map-pin button on the map screen toggles.");
             ShowAllMarkers.SettingChanged += (_, __) => ClientPins.Restyle();
+            ShowClearedDeposits = mod.BindLocal("Display", "Show Cleared Deposits", true,
+                "Keep drawing berry bushes, mushrooms, herbs and ore deposits after they have been used up, crossed " +
+                "off, so you can see which ground has already been worked. Off hides them once cleared. The record is " +
+                "kept either way, and this does not touch structures, whose cross-off means searched rather than gone.");
+            ShowClearedDeposits.SettingChanged += (_, __) => ClientPins.Restyle();
             MapAllPortals = mod.BindLocal("Display", "Map All Portals", true,
                 "Draw every portal that currently exists in the world, not only the ones you or someone who shared their " +
                 "map with you has seen. Portals are built by the players, so on a server where everyone is in the same " +

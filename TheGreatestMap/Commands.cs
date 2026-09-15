@@ -82,6 +82,14 @@ namespace TheGreatestMap
                     args.Context.AddString($"Removed labels from {n} recorded markers.");
                 }));
 
+            new Terminal.ConsoleCommand("tgm_reicon", "Repair dungeon markers that got the swamp crypt key because their cave was not in the catalog; a real sunken crypt keeps it. Carries to everyone at the next merge",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    int n = ClientPins.RepairDungeonIcons();
+                    ClientPins.Restyle();
+                    args.Context.AddString(n == 0 ? "No dungeon markers needed repairing." : $"Repaired {n} dungeon marker(s).");
+                }));
+
             new Terminal.ConsoleCommand("tgm_show", "Show every hidden marker again: clears markers hidden one by one, the Hidden Icons list and switches every Show <Kind> back on",
                 (Terminal.ConsoleEvent)(args =>
                 {
