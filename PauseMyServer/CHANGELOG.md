@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.1 — unreleased
+
+- The label no longer writes a TextMeshPro warning about a missing LiberationSans font asset into the log every time it is built. It now takes the HUD's font before the component starts up rather than just after.
+- American spelling in the config descriptions and the README.
+
 ## 1.4.0 — 2026-09-14
 
 - **Shorter labels.** "Game paused" becomes "Paused", and "Game Unpaused (1 of 2 players paused)" becomes "Unpaused" with "1/2 want to pause" on a second line in a smaller font.

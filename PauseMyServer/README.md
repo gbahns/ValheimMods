@@ -17,7 +17,7 @@ Alone on the server, that is just you: open the menu and the world stops. With f
 
 While you have asked for a pause but the game keeps running because others are still playing, the label reads **"Unpaused"** in bright red, with **"1/3 want to pause"** underneath, so a pause you asked for and did not get is never silent.
 
-Vanilla behaviour is kept for hosted (non-dedicated) games, where the host already pauses when alone; with guests online the host's request counts like everyone else's.
+Vanilla behavior is kept for hosted (non-dedicated) games, where the host already pauses when alone; with guests online the host's request counts like everyone else's.
 
 ## Other mods can ask for a pause
 
@@ -66,7 +66,7 @@ Works on Windows and Linux dedicated servers. Requires BepInExPack for Valheim.
 | Pause Message | Show Pause Message | true | Show the persistent on-screen label while paused. |
 | Pause Message | Text | Paused | The label text. |
 | Pause Message | Admin Text | Paused by {0} | The label text during an admin pause; {0} is the admin's name. |
-| Pause Message | Position | Bottom | Centred at the Top or the Bottom of the screen. |
+| Pause Message | Position | Bottom | Centered at the Top or the Bottom of the screen. |
 | Pause Message | Font Size | 40 | Label size at a 1920x1080 reference; scales with the screen. |
 | Pause Message | Show Unpaused Warning | true | Red label while a pause has been asked for and the game is still running. |
 | Pause Message | Unpaused Text | Unpaused | The warning's first line. |

@@ -16,7 +16,7 @@ namespace PauseMyServer
     ///    with other players online; players joining meanwhile are frozen too, and any admin
     ///    can resume (v1.1).
     /// The server keeps its clock, raids and sleep time-skips frozen in step, and a persistent
-    /// "Game paused" label is shown on screen while paused.
+    /// "Paused" label is shown on screen while paused.
     ///
     /// Install on the server and on every client.
     /// </summary>
@@ -28,7 +28,7 @@ namespace PauseMyServer
     {
         public const string ModGuid    = "DeathMonger.PauseMyServer";
         public const string ModName    = "Pause My Server";
-        public const string ModVersion = "1.4.0";
+        public const string ModVersion = "1.4.1";
 
         internal static ManualLogSource Log { get; private set; }
 
@@ -74,7 +74,7 @@ namespace PauseMyServer
             AdminText = BindText("Admin Text", "Paused by {0}",
                 "The label text during an admin pause; {0} is replaced by the admin's name.", "Game paused by {0}");
             PauseMessagePosition = Config.Bind("Pause Message", "Position", PauseOverlay.Position.Bottom,
-                "Where the label sits, centred at the Top or the Bottom of the screen.");
+                "Where the label sits, centered at the Top or the Bottom of the screen.");
             PauseMessageSize = Config.Bind("Pause Message", "Font Size", 40,
                 new ConfigDescription("Label font size (at a 1920x1080 reference; scales with the screen).",
                     new AcceptableValueRange<int>(12, 120)));

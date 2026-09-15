@@ -8,7 +8,7 @@ namespace PauseMyServer
     /// <summary>
     /// The persistent on-screen label. It lives on its own screen-space overlay canvas, so it
     /// sits above the ESC menu and ignores the HUD-hidden setting, and it borrows the font and
-    /// material of the HUD's centre message so it reads as the game's own text. Created lazily the
+    /// material of the HUD's center message so it reads as the game's own text. Created lazily the
     /// first time it is needed; the scene unload on logout destroys it and it is rebuilt on the
     /// next use.
     ///
@@ -159,7 +159,7 @@ namespace PauseMyServer
 
         /// <summary>
         /// Distance from the chosen screen edge to the label box. Normally the default offset;
-        /// with the large map open, the box is centred in the strip between the map's edge and
+        /// with the large map open, the box is centered in the strip between the map's edge and
         /// the screen edge (never off-screen, never further in than the default).
         /// </summary>
         private static void UpdatePosition()
@@ -209,8 +209,16 @@ namespace PauseMyServer
             var hud = MessageHud.instance;
             if (hud == null || hud.m_messageCenterText == null) return false;
             var source = hud.m_messageCenterText;
+            // No point building a label with no font; wait and try again on a later frame.
+            if (source.font == null) return false;
 
             _root = new GameObject("PauseMyServer_Overlay");
+            // Build the overlay inactive. Unity runs a component's Awake the instant it is added
+            // to an active object, and TextMeshPro's Awake goes looking for its default font asset
+            // (LiberationSans SDF), which Valheim does not ship, and warns when it cannot find it.
+            // While the object is inactive that Awake is deferred, so by the time the label is
+            // first shown it already carries the HUD's font and never looks for a default.
+            _root.SetActive(false);
             _canvas = _root.AddComponent<Canvas>();
             _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             _canvas.sortingOrder = 1000;
@@ -232,7 +240,7 @@ namespace PauseMyServer
             text.rectTransform.sizeDelta = new Vector2(1600f, 50f);
             _label = text;
 
-            _root.SetActive(false);
+            // Stays inactive until Update shows it for the first time.
             return true;
         }
     }
