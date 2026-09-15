@@ -1,8 +1,6 @@
 # Changelog
 
-## 0.2.7 — unreleased
-
-## 0.2.6 — 2026-09-13
+## 0.2.7 — 2026-09-15
 
 Client-side; works with a 0.2.x server.
 
@@ -14,6 +12,11 @@ Client-side; works with a 0.2.x server.
 - A pause toggle in the top-right corner of the large map, the same mark GrabMaterials puts on its inventory panel: two bars, gray when pausing is switched off, orange while the game really is paused, and red with a slash when the pause was asked for but refused, which is what happens on a server with other players online or one without Pause My Server. Config "Pause Button On Map".
 - Mining a deposit out crosses its marker off, for everyone, rather than erasing it: tin, copper, silver and the rest leave nothing behind, but which ground has already been worked is worth knowing. New option "Show Cleared Deposits" (on) keeps them drawn with their cross; off hides them once cleared, and the record is kept either way. Structures are untouched by that switch, since their cross-off means searched rather than gone.
 - Picking something that never grows back crosses its marker off the same way. Carrot, turnip and onion seeds do not respawn, so a marker that still promised one was wrong, and they are no longer recorded once picked. Berries, mushrooms, thistle and the rest do respawn and keep their markers as before. `tgm_look` reports which is which for whatever you are pointing at, straight from the object in front of you.
+
+## 0.2.6 — 2026-09-13
+
+Client-side; works with a 0.2.x server.
+
 - Building something now counts as finding it, so a portal you raise goes on your map without you having to look at it afterwards. It is written under the usual rules, which in practice means the next time you take the map out, since both hands are busy while you are building. Only things the mod already records are noted this way; a house you build is not one, because a structure has to belong to a location the world generated.
 - Portal markers have their own color, and by default fade slowly between pale gold and violet so they stand out on a map crowded with plants. Both colors and the speed are configurable ("Portal Marker Color", "Portal Pulse Color", "Portal Pulse Seconds"); clear the pulse color for a steady one, and either accepts a hex value such as #B07CFF or a name such as violet.
 
