@@ -53,7 +53,12 @@ namespace Armory
             if (namedPrefabs != null)
                 namedPrefabs[_clone.name.GetStableHashCode()] = _clone;
 
-            // Strip the vanilla Container — it implements Interactable and would intercept [Use].
+            // Strip the vanilla Container so it can be put back AFTER ArmoryRack in Phase 2.
+            // This is purely about component order now, not about [Use]: Container is both
+            // Hoverable and Interactable, and Player resolves those with two separate
+            // GetComponentInParent calls that each take the FIRST match.  ArmoryRack first
+            // means the rack's own hover text wins, while Container — the only Interactable
+            // on the object — still answers the keypress, which is what we want it to do.
             var container = _clone.GetComponent<Container>();
             if (container != null)
                 UnityEngine.Object.DestroyImmediate(container);
@@ -281,12 +286,10 @@ namespace Armory
             if (refPiece != null)
                 piece.m_placeEffect = refPiece.m_placeEffect;
 
-            // Re-add a Container so the rack can physically store items.  We stripped the
-            // vanilla chest's Container in Phase 1 to prevent it intercepting [Use]; now we
-            // attach a fresh one AFTER ArmoryRack so ArmoryRack stays first in the Hoverable /
-            // Interactable lookup order (the player presses E and gets our UI, not the chest UI —
-            // but our UI does call InventoryGui.Show(this container) so the chest grid still
-            // shows alongside the loadout panel).  Container.Awake builds the Inventory from
+            // Put the Container back, after ArmoryRack, so the rack is first in the Hoverable
+            // lookup and the Container is the object's only Interactable.  Pressing [Use] is
+            // therefore an ordinary chest open, and the loadout panel comes up off the back of it
+            // in ArmoryOpenPatch.  Container.Awake builds the Inventory from
             // m_width/m_height/m_name/m_bkg, so we set those here and let Awake run on spawn.
             if (_clone.GetComponent<Container>() == null)
             {

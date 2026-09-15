@@ -63,12 +63,17 @@ The config file is created at `BepInEx/config/GBahns.Armory.cfg` on first run.
 - [BepInEx 5](https://valheim.thunderstore.io/package/denikson/BepInExPack_Valheim/)
 - [Jotunn](https://valheim.thunderstore.io/package/ValheimModding/Jotunn/)
 
+**Install it on the dedicated server as well as on every client.** The rack is a new prefab, and
+a server that does not have it deletes racks built near the world spawn — permanently, with the
+gear and the saved loadouts inside them. That is Valheim's own handling of a prefab it cannot
+resolve, not something this mod can guard against from the client.
+
 ---
 
 ## Compatibility
 
-- **Multiplayer compatible** — loadout data is stored in the rack's ZDO, so it persists through world saves and is visible to other players. Opening the rack goes through the same ownership handshake vanilla uses for chests, so the storage grid draws and saves correctly whoever walks up to it, and a rack someone else already has open tells you so instead of letting you both edit it.
-- **Wards and privacy** — the rack respects guard stones and the container privacy setting exactly as the chest it is built from does.
+- **Multiplayer compatible** — loadout data is stored in the rack's ZDO, so it persists through world saves and is visible to other players. The rack opens as an ordinary container, so everything vanilla does for a chest it does here: the ownership hand-off that makes the storage grid draw and save, the refusal when someone else already has it open, wards, and the privacy setting.
+- **Container mods** — AzuAutoStore, AzuCraftyBoxes, Grab Materials and anything else that scans for containers treat the rack as the chest it is, because that is exactly what it is.
 - **AzuExtendedPlayerInventory** — supported. Items sitting in Azu's extra equipment slots are detected and swapped correctly.
 - Should be compatible with most other mods; no vanilla systems are permanently altered.
 

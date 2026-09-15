@@ -4,11 +4,19 @@ using UnityEngine;
 namespace Armory
 {
     /// <summary>
-    /// Attached to the Armory Rack prefab clone. Implements Hoverable + Interactable so the
-    /// player can open the loadout management UI by pressing [Use] on the rack.
-    /// Loadout data is persisted in the ZDO so it survives world saves and multiplayer.
+    /// Attached to the Armory Rack prefab clone.  Holds the loadout data in the ZDO, so it
+    /// survives world saves and is the same for everyone, and draws the rack's hover text and
+    /// door animation.
+    ///
+    /// Deliberately Hoverable but NOT Interactable.  The rack is a real Container, and pressing
+    /// [Use] is the vanilla Container's job: it owns the request-and-grant exchange with the ZDO's
+    /// owner, the ownership transfer, the in-use refusal and the guard-stone and privacy checks.
+    /// Taking [Use] for ourselves meant re-implementing all of that, and getting it wrong.  The
+    /// loadout panel opens off the back of InventoryGui.Show instead — see ArmoryOpenPatch.
+    /// Player resolves Hoverable and Interactable in two separate GetComponentInParent calls, so
+    /// this keeps the rack's own hover text while the Container answers the keypress.
     /// </summary>
-    public class ArmoryRack : MonoBehaviour, Hoverable, Interactable
+    public class ArmoryRack : MonoBehaviour, Hoverable
     {
         private ZNetView m_nview;
 
@@ -26,8 +34,6 @@ namespace Armory
             if (m_nview != null)
             {
                 m_nview.Register<string>("ArmoryRPC_SetData", RPC_SetData);
-                m_nview.Register<long>("ArmoryRPC_RequestOpen", RPC_RequestOpen);
-                m_nview.Register<bool>("ArmoryRPC_OpenResponse", RPC_OpenResponse);
             }
 
             _leftHinge  = transform.Find("ArmoryDoorLeft");
@@ -42,9 +48,6 @@ namespace Armory
 
         private void Update()
         {
-            if (_requestSentAt >= 0f && Time.unscaledTime - _requestSentAt > OpenResponseTimeout)
-                TakeOwnershipAndOpen();
-
             if (_leftHinge == null || _rightHinge == null) return;
 
             float target = (ArmoryUI.IsOpen && ArmoryUI.CurrentRack == this) ? 1f : 0f;
@@ -89,138 +92,6 @@ namespace Armory
             }
             catch { return text; }
         }
-
-        // ── Opening the rack ───────────────────────────────────────────────────────────
-        //
-        // Vanilla never opens a container straight out of Interact.  Container.Interact asks the
-        // ZDO's owner for it, the owner hands the ZDO over and answers, and only that answer calls
-        // InventoryGui.Show.  The handshake is not ceremony: InventoryGui.UpdateContainer draws
-        // the container panel only while m_currentContainer.IsOwner(), and Container.OnContainerChanged
-        // saves the inventory only if (IsOwner()).  Opening the rack directly therefore gave a
-        // player who did not happen to own the ZDO a loadout panel with no storage grid beside it,
-        // and quietly dropped anything moved into the rack — including gear Load swapped back in.
-        // So we mirror the vanilla exchange with our own RPC pair.
-
-        // The catch: this mod is [BepInProcess("valheim.exe")] and so can never load on a dedicated
-        // server, which owns every persisted ZDO after a restart.  A request addressed to the
-        // server is relayed to a machine with no armory_rack prefab, no ZNetView and therefore no
-        // handler, and is dropped in silence — the rack would simply never open.  So the request
-        // is given a deadline, and when it runs out we claim the ZDO ourselves and open anyway.
-        // ClaimOwnership is vanilla's own public call for this; what it gives up against the full
-        // exchange is the owner's ForceSendZDO, so it is the fallback and not the first move.
-        private const float OpenResponseTimeout = 0.6f;
-        private float _requestSentAt = -1f;
-
-        public bool Interact(Humanoid user, bool hold, bool alt)
-        {
-            if (hold || user is not Player) return false;
-            if (m_nview == null || !m_nview.IsValid()) return false;
-
-            var storage = GetStorage();
-            if (storage != null && storage.m_checkGuardStone && !PrivateArea.CheckAccess(transform.position))
-                return true;
-
-            long playerID = Game.instance.GetPlayerProfile().GetPlayerID();
-            if (!CheckContainerAccess(playerID))
-            {
-                user.Message(MessageHud.MessageType.Center, "$msg_cantopen");
-                return true;
-            }
-
-            // Already ours: nothing to ask for, and no round trip to wait through.
-            if (m_nview.IsOwner())
-            {
-                ArmoryUI.Open(this);
-                return true;
-            }
-
-            // Someone else has it open.  Read the ZDO rather than Container.IsInUse(), which
-            // returns a local field the owner alone keeps current — a non-owner's copy is always
-            // false.  The owner publishes the flag to the ZDO (it is what draws the open-chest
-            // visual for everyone else), so this is the one form of the answer we can trust here,
-            // and it still holds when the owner is in no position to answer for itself.
-            if (m_nview.GetZDO().GetInt(ZDOVars.s_inUse) == 1)
-            {
-                user.Message(MessageHud.MessageType.Center, "$msg_inuse");
-                return true;
-            }
-
-            _requestSentAt = Time.unscaledTime;
-            m_nview.InvokeRPC("ArmoryRPC_RequestOpen", playerID);
-            return true;
-        }
-
-        /// <summary>Nobody answered — almost certainly a dedicated server holding the ZDO. Take it and open.</summary>
-        private void TakeOwnershipAndOpen()
-        {
-            _requestSentAt = -1f;
-            if (m_nview == null || !m_nview.IsValid()) return;
-            Jotunn.Logger.LogInfo("[Armory] No answer to RequestOpen — claiming the ZDO and opening anyway.");
-            m_nview.ClaimOwnership();
-            ArmoryUI.Open(this);
-        }
-
-        /// <summary>Owner side: grant or refuse, and hand the ZDO over before answering yes.</summary>
-        private void RPC_RequestOpen(long uid, long playerID)
-        {
-            if (m_nview == null || !m_nview.IsValid() || !m_nview.IsOwner()) return;
-
-            var storage = GetStorage();
-            if (storage != null && storage.IsInUse() && uid != ZNet.GetUID())
-            {
-                Jotunn.Logger.LogInfo($"[Armory] RequestOpen from {uid}: refused, rack in use");
-                m_nview.InvokeRPC(uid, "ArmoryRPC_OpenResponse", false);
-                return;
-            }
-            if (!CheckContainerAccess(playerID))
-            {
-                Jotunn.Logger.LogInfo($"[Armory] RequestOpen from {uid}: refused, not theirs");
-                m_nview.InvokeRPC(uid, "ArmoryRPC_OpenResponse", false);
-                return;
-            }
-
-            ZDOMan.instance.ForceSendZDO(uid, m_nview.GetZDO().m_uid);
-            m_nview.GetZDO().SetOwner(uid);
-            m_nview.InvokeRPC(uid, "ArmoryRPC_OpenResponse", true);
-            Jotunn.Logger.LogInfo($"[Armory] RequestOpen from {uid}: granted, ZDO handed over");
-        }
-
-        /// <summary>Requester side: we own the ZDO now, so the storage grid will draw and save.</summary>
-        private void RPC_OpenResponse(long uid, bool granted)
-        {
-            bool waiting = _requestSentAt >= 0f;
-            _requestSentAt = -1f;
-
-            // An answer that arrives after the deadline has already been acted on.  Re-opening
-            // would tear the panel down and rebuild it under the player's cursor.
-            if (!waiting) return;
-            if (Player.m_localPlayer == null) return;
-
-            if (granted) ArmoryUI.Open(this);
-            else Player.m_localPlayer.Message(MessageHud.MessageType.Center, "$msg_inuse");
-        }
-
-        /// <summary>
-        /// Container.CheckAccess is private, so this repeats its rule: public is open to all,
-        /// private is the builder's alone, and group is refused the same way vanilla refuses it.
-        /// </summary>
-        private bool CheckContainerAccess(long playerID)
-        {
-            var storage = GetStorage();
-            if (storage == null) return true;
-            switch (storage.m_privacy)
-            {
-                case Container.PrivacySetting.Public:
-                    return true;
-                case Container.PrivacySetting.Private:
-                    var piece = GetComponent<Piece>();
-                    return piece != null && piece.GetCreator() == playerID;
-                default:
-                    return false;
-            }
-        }
-
-        public bool UseItem(Humanoid user, ItemDrop.ItemData item) => false;
 
         public ArmoryData GetData()
         {

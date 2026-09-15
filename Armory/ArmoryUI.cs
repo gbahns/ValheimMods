@@ -102,9 +102,15 @@ namespace Armory
 
         // ── Public API ─────────────────────────────────────────────────────────────
 
+        /// <summary>
+        /// Called from ArmoryOpenPatch once vanilla has opened the rack's container, never from
+        /// the keypress.  By this point the ownership exchange has happened and InventoryGui is
+        /// already up; all that is left is to put the loadout panel beside it.
+        /// </summary>
         public static void Open(ArmoryRack rack)
         {
-            if (_isOpen) Close();
+            // Tear our own panel down without hiding the inventory — vanilla has just shown it.
+            if (_isOpen) CloseInternal(hideInventory: false);
 
             _rack = rack;
             _data = rack.GetData();
@@ -120,23 +126,20 @@ namespace Armory
 
             // Migrate items left out-of-bounds by a previous container size (e.g. the brief
             // 8×5 layout — anything at y=4 is now outside our 10×4 grid and would be hidden
-            // from the vanilla chest UI).  Move them into the first empty in-bounds slot
-            // before InventoryGui.Show so the player sees a clean grid with all their items.
+            // from the vanilla chest UI).  Move them into the first empty in-bounds slot.  The
+            // grid is rebuilt from the inventory every frame in InventoryGui.UpdateContainer,
+            // which has not run yet this frame, so the player still sees a clean grid.
             LoadoutManager.MigrateOutOfBoundsItems(rack.GetStorageInventory());
-
-            // Show vanilla inventory + the rack's storage container alongside our window.
-            // Passing the Container makes the standard chest-style two-panel layout appear:
-            // player inv on the left, rack storage on the right.  Items can be drag/dropped
-            // between them normally, and Load will pull from either.
-            if (InventoryGui.instance != null)
-                InventoryGui.instance.Show(rack.GetStorage());
 
             // The optional pause (config-gated, default off) is ArmoryPause's business: the mod's
             // Update calls its Refresh, which picks the panel up on the next frame and asks
             // vanilla for the pause rather than writing Time.timeScale behind its back.
         }
 
-        public static void Close()
+        /// <summary>Close the panel and the inventory with it — the close button and Tick.</summary>
+        public static void Close() => CloseInternal(hideInventory: true);
+
+        private static void CloseInternal(bool hideInventory)
         {
             _isOpen      = false;
             _editingSlot = -1;
@@ -172,7 +175,7 @@ namespace Armory
 
             _rack = null;
 
-            if (InventoryGui.instance != null)
+            if (hideInventory && InventoryGui.instance != null)
                 InventoryGui.instance.Hide();
 
             // Let go of the pause here rather than waiting for the next Refresh, so the world

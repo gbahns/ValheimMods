@@ -5,8 +5,27 @@ using Jotunn.Managers;
 
 namespace Armory
 {
-    [BepInPlugin(ModGuid, "Armory", "1.1.0")]
-    [BepInProcess("valheim.exe")]
+    // Deliberately no [BepInProcess("valheim.exe")] gate: this mod must load on a dedicated
+    // server as well as on clients, so do not add one back.
+    //
+    // The rack is a new prefab ("armory_rack") that exists only because this mod clones it.
+    // A server without the mod cannot resolve that hash, and ZNetScene.CreateObjectsSorted does
+    // not merely skip what it cannot instantiate — on the server it takes ownership and calls
+    // ZDOMan.DestroyZDO, logging "Destroyed invalid prefab ZDO".  The server instantiates around
+    // its own reference position, which never leaves the world center without a local player, so
+    // this claims exactly the racks built near spawn: silently, permanently, and with the stored
+    // gear and every saved loadout inside them.
+    //
+    // The second reason is ownership.  A rack near spawn belongs to the server, and a rack is
+    // unowned for a moment after a restart; with the mod there, the server can instantiate it,
+    // answer Container's open request and run the rack's own ArmoryRPC_SetData.  Without it,
+    // neither the container nor the loadouts have anyone to answer for them.
+    //
+    // Running headless is safe.  The Player and Chat patches never fire without a local player,
+    // ArmoryUI is only ever reached from InventoryGui.Show, and ArmoryPause returns immediately
+    // while Player.m_localPlayer is null.  What does run is the part the server needs: the clone,
+    // its registration into ZNetScene, and the ArmoryRack component on the spawned object.
+    [BepInPlugin(ModGuid, "Armory", "1.2.0")]
     [BepInDependency("com.jotunn.jotunn")]
     public class ArmoryMod : BaseUnityPlugin
     {
@@ -91,13 +110,25 @@ namespace Armory
 
             _harmony.PatchAll();
 
-            // Register English localization tokens via Jotunn.
-            var loc = LocalizationManager.Instance.GetLocalization();
-            loc.AddTranslation("English", new System.Collections.Generic.Dictionary<string, string>
+            // Register English localization tokens via Jotunn.  Guarded because this is the one
+            // Jotunn manager used here with no headless precedent in this repo — ForsakenShrines
+            // proves PrefabManager and PieceManager are fine on a dedicated server, but nothing
+            // has exercised LocalizationManager there.  The tokens are display text and so are a
+            // client's concern anyway; a headless surprise must not be allowed to stop the clone
+            // and its ZNetScene registration below, which is the whole reason the server has this.
+            try
             {
-                ["armory_rack_name"] = "Armory Rack",
-                ["armory_rack_desc"] = "A masterwork rack for storing and instantly recalling named equipment sets.",
-            });
+                var loc = LocalizationManager.Instance.GetLocalization();
+                loc.AddTranslation("English", new System.Collections.Generic.Dictionary<string, string>
+                {
+                    ["armory_rack_name"] = "Armory Rack",
+                    ["armory_rack_desc"] = "A masterwork rack for storing and instantly recalling named equipment sets.",
+                });
+            }
+            catch (System.Exception e)
+            {
+                Jotunn.Logger.LogWarning($"[Armory] Localization registration skipped: {e.Message}");
+            }
 
             PrefabManager.OnVanillaPrefabsAvailable += ArmoryPieces.CreatePiece;
             PieceManager.OnPiecesRegistered         += ArmoryPieces.ConfigureAndRegister;

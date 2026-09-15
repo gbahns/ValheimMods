@@ -20,8 +20,8 @@
 
   "mods": {
     "Armory": {
-      "side": "client",
-      "why": "[BepInProcess(\"valheim.exe\")] - cannot load on the dedicated server."
+      "side": "both",
+      "why": "Was client, changed 2026-09-15. Adds a new prefab (armory_rack). ZNetScene.CreateObjectsSorted does not merely skip a ZDO it cannot instantiate - on the server it takes ownership and calls ZDOMan.DestroyZDO - so a server without the mod permanently deletes racks built inside its own active area, which never leaves the world center, along with their contents and saved loadouts. Same failure ForsakenShrines had. The server also needs it to answer the container's open request and the rack's ArmoryRPC_SetData for racks it owns. The [BepInProcess(\"valheim.exe\")] gate is gone as of 1.2.0."
     },
     "CaptainsLog": {
       "side": "client",
