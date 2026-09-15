@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.3.1 — unreleased
+
 ## 0.3.0 — 2026-09-15
 
 - A destroyed portal's marker goes at once, and stays gone. Two things were keeping it: taking a piece down with the hammer only runs the game's destroy step on whoever owns it, which need not be the player holding the hammer, so the moment was often missed entirely; and the server's own portal list can still hold one briefly, so its next sweep put the marker straight back. A portal this client watched come down is now remembered as gone for a minute, and any list arriving in the meantime is read with that in mind. The map is also redrawn there and then rather than on the next tick.
