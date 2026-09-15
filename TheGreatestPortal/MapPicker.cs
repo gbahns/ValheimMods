@@ -11,7 +11,8 @@ namespace TheGreatestPortal
     ///  * Travel: you stepped into an open portal. Click a portal (pin or list) and you go there.
     ///  * Pick: the panel's "Pick on map" button. Click a portal and it becomes the destination.
     ///  * Browse: the toggle key on the map, or "Show on map". Click a portal to center on it.
-    /// In all three the map shows every portal as a pin and, on the left, a searchable list with
+    /// The map is the one the M key gives: every marker you normally see is still there, with the
+    /// portals added on top as pins and, on the left, a searchable list with
     /// favorites on top, optionally grouped by biome. Right-clicking a portal (pin or row) marks
     /// it as a favorite. Closing the map ends it.
     /// </summary>
@@ -53,7 +54,6 @@ namespace TheGreatestPortal
         private static List<ListEntry> _entries = new List<ListEntry>();
         private static readonly List<UiKit.RowHandle> _rows = new List<UiKit.RowHandle>();
         private static readonly List<long> _rowIds = new List<long>();
-        private static readonly List<Minimap.PinData> _hidden = new List<Minimap.PinData>();
         private static bool _catalogDirty;
 
         static MapPicker()
@@ -163,7 +163,7 @@ namespace TheGreatestPortal
 
         internal static void End()
         {
-            bool had = Active || _list != null || PortalPins.Count > 0 || _hidden.Count > 0;
+            bool had = Active || _list != null || PortalPins.Count > 0;
             Current = Mode.None;
             _source = null;
             _sourceZdo = ZDOID.None;
@@ -180,7 +180,6 @@ namespace TheGreatestPortal
             if (!had) return;
             PortalPins.Clear();
             DestroyList();
-            RestoreHiddenPins();
         }
 
         // ── per frame ───────────────────────────────────────────────────────────────
@@ -269,7 +268,9 @@ namespace TheGreatestPortal
                 var p = PortalUnderPointer(map);
                 SetHover(map, p != null ? p.Id : 0L, false);
             }
-            // Vanilla repaints the pins whenever it feels like it, so the highlight is reapplied.
+            // Vanilla repaints the pins whenever it feels like it, so both the portal color and
+            // the highlight are reapplied every frame.
+            PortalPins.Tint(Access.PortalPinColor(), _hoverId);
             if (_hoverId != 0L) Decorate(map, _hoverId, true);
         }
 
@@ -295,7 +296,7 @@ namespace TheGreatestPortal
             var pin = PortalPins.PinFor(id);
             if (pin == null || pin.m_uiElement == null) return;
             pin.m_uiElement.localScale = on ? Vector3.one * HoverScale : Vector3.one;
-            if (pin.m_iconElement != null) pin.m_iconElement.color = on ? UiKit.Gold : Color.white;
+            if (pin.m_iconElement != null) pin.m_iconElement.color = on ? UiKit.Gold : Access.PortalPinColor();
             var namePin = pin.m_NamePinData;
             if (namePin == null || namePin.PinNameGameObject == null) return;
             if (namePin.PinNameText != null) namePin.PinNameText.color = on ? UiKit.Gold : Color.white;
@@ -546,44 +547,6 @@ namespace TheGreatestPortal
             _collapseAll = null;
             _rows.Clear();
             _rowIds.Clear();
-        }
-
-        /// <summary>After vanilla has laid out the pins: hide the ones that would clutter a destination choice.</summary>
-        internal static void OnPinsUpdated(Minimap map)
-        {
-            if (!IsSelecting || map == null) return;
-            if (TgpConfig.HideOtherPinsWhileChoosing == null || !TgpConfig.HideOtherPinsWhileChoosing.Value) return;
-            var pins = Access.Pins(map);
-            if (pins == null) return;
-            foreach (var pin in pins)
-            {
-                if (PortalPins.IsOurs(pin) || !pin.m_save || pin.m_type == Minimap.PinType.Death) continue;
-                bool any = false;
-                if (pin.m_uiElement != null && pin.m_uiElement.gameObject.activeSelf)
-                {
-                    pin.m_uiElement.gameObject.SetActive(false);
-                    any = true;
-                }
-                var nameObj = pin.m_NamePinData != null ? pin.m_NamePinData.PinNameGameObject : null;
-                if (nameObj != null && nameObj.activeSelf)
-                {
-                    nameObj.SetActive(false);
-                    any = true;
-                }
-                if (any && !_hidden.Contains(pin)) _hidden.Add(pin);
-            }
-        }
-
-        private static void RestoreHiddenPins()
-        {
-            foreach (var pin in _hidden)
-            {
-                if (pin.m_uiElement != null) pin.m_uiElement.gameObject.SetActive(true);
-                var nameObj = pin.m_NamePinData != null ? pin.m_NamePinData.PinNameGameObject : null;
-                if (nameObj != null) nameObj.SetActive(true);
-            }
-            _hidden.Clear();
-            if (Minimap.instance != null) Access.PinUpdateRequired(Minimap.instance) = true;
         }
 
         internal static string Status()

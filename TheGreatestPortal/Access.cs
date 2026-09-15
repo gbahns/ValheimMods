@@ -47,6 +47,41 @@ namespace TheGreatestPortal
             return _screenToWorldPoint(map, screen);
         }
 
+        // ── TheGreatestMap, if it happens to be installed ───────────────────────────
+
+        private static Func<Color> _tgmPortalColor;
+        private static bool _probedTgm;
+
+        /// <summary>
+        /// The color TheGreatestMap paints portal markers, so this mod's portal pins match the
+        /// ones already on the map rather than sitting next to them in plain white. That color
+        /// can fade between two shades, so it is asked for every frame. Found by name: there is
+        /// no reference to that mod and no need for it to be installed, in which case portal pins
+        /// stay white, the color vanilla gives every pin.
+        /// </summary>
+        internal static Color PortalPinColor()
+        {
+            if (!_probedTgm)
+            {
+                _probedTgm = true;
+                var type = AccessTools.TypeByName("TheGreatestMap.Portals");
+                if (type != null)
+                {
+                    var method = AccessTools.Method(type, "CurrentColor");
+                    if (method != null && method.ReturnType == typeof(Color) && method.GetParameters().Length == 0)
+                    {
+                        try { _tgmPortalColor = AccessTools.MethodDelegate<Func<Color>>(method); }
+                        catch (Exception e) { TheGreatestPortalMod.Log.LogWarning($"[TheGreatestPortal] Could not read TheGreatestMap's portal color; pins stay white: {e.Message}"); }
+                    }
+                    // An older TheGreatestMap has no portal color of its own. Not a fault, just white pins.
+                    else TheGreatestPortalMod.Log.LogInfo("[TheGreatestPortal] TheGreatestMap is installed but has no portal color; pins stay white.");
+                }
+            }
+            if (_tgmPortalColor == null) return Color.white;
+            try { return _tgmPortalColor(); }
+            catch { _tgmPortalColor = null; return Color.white; }
+        }
+
         /// <summary>Vanilla's click radius for pins on the large map, in world metres.</summary>
         internal static float PinInteractRadius(Minimap map)
         {

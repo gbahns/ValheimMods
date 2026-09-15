@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.3 — 2026-09-15
+
+- Portal pins wear the color TheGreatestMap paints portals, pulse and all, instead of plain white,
+  so the picker's pins match the portal markers already on the map. Without that mod they stay
+  white, as every vanilla pin is.
+- The destination map is the map you already know. It used to hide your own markers while you
+  picked a portal, which made it look like a different map; now everything the M key shows is
+  still there, portals included. The "Hide Other Pins While Choosing" setting is gone with it.
+
 ## 0.3.2 — 2026-09-15
 
 - The plugin reports its own version again. 0.3.1's DLL still announced itself to BepInEx as

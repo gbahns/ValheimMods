@@ -230,9 +230,6 @@ namespace TheGreatestPortal
     {
         [HarmonyPrefix]
         private static void Prefix(Minimap __instance) => PortalPins.EnsureArrays(__instance);
-
-        [HarmonyPostfix]
-        private static void Postfix(Minimap __instance) => MapPicker.OnPinsUpdated(__instance);
     }
 
     // The mouse wheel is for the lists: while the panel is open it must not zoom the camera

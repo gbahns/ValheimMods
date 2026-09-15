@@ -113,5 +113,19 @@ namespace TheGreatestPortal
         }
 
         internal static Minimap.PinData PinFor(long id) => _pins.TryGetValue(id, out var pin) ? pin : null;
+
+        /// <summary>
+        /// Paints every portal pin. Vanilla repaints its markers white whenever it lays the map
+        /// out again, so this runs each frame; the hovered pin is left to the hover highlight.
+        /// </summary>
+        internal static void Tint(Color color, long except)
+        {
+            foreach (var kv in _pins)
+            {
+                if (kv.Key == except) continue;
+                var icon = kv.Value.m_iconElement;
+                if (icon != null && icon.color != color) icon.color = color;
+            }
+        }
     }
 }

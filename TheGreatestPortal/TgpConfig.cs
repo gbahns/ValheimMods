@@ -20,7 +20,6 @@ namespace TheGreatestPortal
         // ── client display ──────────────────────────────────────────────────────────
         internal static ConfigEntry<bool> ShowMessages;
         internal static ConfigEntry<bool> ShowPinsOnMap;
-        internal static ConfigEntry<bool> HideOtherPinsWhileChoosing;
         internal static ConfigEntry<bool> ShowDistances;
         internal static ConfigEntry<bool> GroupByBiome;
         internal static ConfigEntry<string> CollapsedGroups;
@@ -62,9 +61,6 @@ namespace TheGreatestPortal
             ShowPinsOnMap = mod.BindLocal("Display", "Always Show Portal Pins", false,
                 "Draw every portal on the large map all the time, not only after pressing the toggle key or while " +
                 "choosing a destination.");
-            HideOtherPinsWhileChoosing = mod.BindLocal("Display", "Hide Other Pins While Choosing", true,
-                "While you are choosing a destination, hide the map's other saved pins so the portals stand out. " +
-                "Death markers, players and pings stay visible.");
             ShowDistances = mod.BindLocal("Display", "Show Distances", true,
                 "Show how far away each portal is in the destination lists.");
             GroupByBiome = mod.BindLocal("Display", "Group By Biome", false,

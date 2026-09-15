@@ -75,7 +75,6 @@ to mark a favorite.
 | Keys | Toggle Portal Pins | P | On the large map: show or hide every portal |
 | Keys | Detour Key | LeftAlt | Hold while stepping into a portal to pick a destination for that trip only |
 | Display | Always Show Portal Pins | false | Draw every portal on the large map all the time |
-| Display | Hide Other Pins While Choosing | true | Only portals, death markers, players and pings while choosing a destination |
 | Display | Show Distances | true | Distances in the lists |
 | Display | Group By Biome | false | Group the lists by biome; the switches on the panel and the map change it too |
 | Display | Panel Size | 680,600 | The portal panel's size, saved when you drag its corner |
