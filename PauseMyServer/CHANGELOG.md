@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.4.1 — unreleased
+## 1.4.1 — 2026-09-15
 
 - The label no longer writes a TextMeshPro warning about a missing LiberationSans font asset into the log every time it is built. It now takes the HUD's font before the component starts up rather than just after.
 - American spelling in the config descriptions and the README.
