@@ -2,6 +2,8 @@
 
 ## 0.3.0 — unreleased
 
+- A destroyed portal's marker goes at once for whoever took it down, rather than waiting on the server. Everyone else still learns from the server, which now sweeps every two seconds instead of five. The person swinging the hammer is the one who notices a marker outliving the thing it stands for, so that is the case worth making immediate.
+
 - Walking into a portal shows the map you already know. While TheGreatestPortal's destination
   picker was up, this mod hid every marker it had drawn, because that picker used to clear the
   map for itself. It no longer does, so hiding them only made the picker's map look like a

@@ -28,7 +28,7 @@ namespace TheGreatestMap
 
         /// <summary>How close a marker must be to a portal to be that portal. Portals never move.</summary>
         private const float MatchRadius = 4f;
-        private const float ServerScanSeconds = 5f;
+        private const float ServerScanSeconds = 2f;
         private const float RequestSeconds = 10f;
 
         private sealed class Live
@@ -293,6 +293,27 @@ namespace TheGreatestMap
                 if (pin != null && pin.m_iconElement != null) pin.m_iconElement.color = color;
         }
 
+        /// <summary>
+        /// A portal was just taken down in front of this player. The server notices within a couple
+        /// of seconds and tells everyone, but the person swinging the hammer should not watch a
+        /// marker for something they just demolished, so their own map is corrected at once.
+        /// </summary>
+        internal static void NoteDestroyed(Vector3 pos)
+        {
+            for (int i = _live.Count - 1; i >= 0; i--)
+                if (Geo.FlatDistance(_live[i].Pos, pos) <= MatchRadius) _live.RemoveAt(i);
+            _redrawWanted = true;
+            if (!PersonalMap.Loaded) return;
+            foreach (var pin in ClientPins.All)
+            {
+                if (!pin.Auto || ClientPins.KindOf(pin) != Category.Portal) continue;
+                if (Geo.FlatDistance(pin.Pos, pos) > MatchRadius) continue;
+                ClientPins.RemoveStale(pin.Id);
+                TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] A portal was destroyed here; its marker is gone.");
+                break;
+            }
+        }
+
         // ── TheGreatestPortal, if it happens to be installed ────────────────────────
 
         private static PropertyInfo _pickerOpen;
@@ -326,6 +347,20 @@ namespace TheGreatestMap
         {
             Portals.Reset();
             Portals.Register();
+        }
+    }
+
+    // Taking a piece down is the one moment the player can see a marker outlive the thing it
+    // stands for, so the portal they just removed is dropped from their own map immediately
+    // rather than waiting for the server's next sweep.
+    [HarmonyPatch(typeof(WearNTear), "Destroy")]
+    internal static class WearNTear_Destroy_Portal_Patch
+    {
+        private static void Prefix(WearNTear __instance)
+        {
+            if (__instance == null || Player.m_localPlayer == null) return;
+            if (__instance.GetComponent<TeleportWorld>() == null) return;
+            Portals.NoteDestroyed(__instance.transform.position);
         }
     }
 }
