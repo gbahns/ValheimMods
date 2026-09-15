@@ -33,11 +33,12 @@ Destinations are one-way: `Home -> Swamp` does not make the swamp portal lead ho
 portal's destination too, or leave it open. A portal with a destination behaves exactly like a
 paired vanilla portal, including the usual item restrictions.
 
-**Travelling through an open portal.** Step in and the map opens on your position with every portal
-drawn as a portal pin. The list on the left shows favorites first, then the rest alphabetically,
+**Traveling through an open portal.** Step in and the map opens on your position with every portal
+drawn as a portal pin. The portal under the pointer grows and turns gold and shows its name, so you
+can see what a click will do; hovering a row in the list lights up that portal's pin too. The list on the left shows favorites first, then the rest alphabetically,
 each with its distance; it has the same search box and biome grouping as the panel. Click a pin or
 a row to travel there. Right-click marks a favorite. Esc, or stepping out of the doorway, closes the
-map and you stay. The usual rules apply: no travelling with ore, or during a boss fight if the world
+map and you stay. The usual rules apply: no traveling with ore, or during a boss fight if the world
 forbids it.
 
 **Going somewhere else just this once.** A portal with a destination normally takes you straight

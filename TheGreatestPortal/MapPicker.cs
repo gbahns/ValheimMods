@@ -36,6 +36,8 @@ namespace TheGreatestPortal
         private static long _highlightId;
         private static string _query = "";
         private static bool _detour;
+        private static long _hoverId;
+        private static bool _hoverFromRow;
         private static string _usualDestination = "";
 
         private static GameObject _list;
@@ -174,6 +176,7 @@ namespace TheGreatestPortal
             _query = "";
             _detour = false;
             _usualDestination = "";
+            ClearHover();
             if (!had) return;
             PortalPins.Clear();
             DestroyList();
@@ -208,6 +211,7 @@ namespace TheGreatestPortal
                 _catalogDirty = false;
                 Refresh();
             }
+            UpdateHover(map);
             if (Current == Mode.Travel) UpdateAutoClose(map);
         }
 
@@ -243,6 +247,60 @@ namespace TheGreatestPortal
                 return;
             }
             End();
+        }
+
+        // ── hover feedback ──────────────────────────────────────────────────────────
+
+        private const float HoverScale = 1.6f;
+
+        /// <summary>
+        /// The portal under the pointer grows, brightens and shows its name, so it is obvious
+        /// which one a click would take. Hovering a row in the list lights up its pin the same way.
+        /// </summary>
+        private static void UpdateHover(Minimap map)
+        {
+            if (ListPointerOver)
+            {
+                // The pointer is over the list, not the map: only a row can say what is hovered.
+                if (!_hoverFromRow) SetHover(map, 0L, false);
+            }
+            else
+            {
+                var p = PortalUnderPointer(map);
+                SetHover(map, p != null ? p.Id : 0L, false);
+            }
+            // Vanilla repaints the pins whenever it feels like it, so the highlight is reapplied.
+            if (_hoverId != 0L) Decorate(map, _hoverId, true);
+        }
+
+        private static void SetHover(Minimap map, long id, bool fromRow)
+        {
+            if (_hoverId != id)
+            {
+                Decorate(map, _hoverId, false);
+                _hoverId = id;
+            }
+            _hoverFromRow = id != 0L && fromRow;
+        }
+
+        private static void ClearHover()
+        {
+            _hoverId = 0L;
+            _hoverFromRow = false;
+        }
+
+        private static void Decorate(Minimap map, long id, bool on)
+        {
+            if (id == 0L || map == null) return;
+            var pin = PortalPins.PinFor(id);
+            if (pin == null || pin.m_uiElement == null) return;
+            pin.m_uiElement.localScale = on ? Vector3.one * HoverScale : Vector3.one;
+            if (pin.m_iconElement != null) pin.m_iconElement.color = on ? UiKit.Gold : Color.white;
+            var namePin = pin.m_NamePinData;
+            if (namePin == null || namePin.PinNameGameObject == null) return;
+            if (namePin.PinNameText != null) namePin.PinNameText.color = on ? UiKit.Gold : Color.white;
+            // Hovering always names the portal; otherwise vanilla shows names only when zoomed in.
+            namePin.PinNameGameObject.SetActive(on || (!string.IsNullOrEmpty(pin.m_name) && map.LargeZoom < map.m_showNamesZoom));
         }
 
         // ── clicks on the map ───────────────────────────────────────────────────────
@@ -346,6 +404,7 @@ namespace TheGreatestPortal
         {
             var map = Minimap.instance;
             if (map == null || !Active) return;
+            ClearHover();
             PortalPins.Show(PinLabel);
             RefreshList(map);
             Access.PinUpdateRequired(map) = true;
@@ -417,6 +476,14 @@ namespace TheGreatestPortal
                 string dist = TgpConfig.ShowDistances.Value && player != null ? UiKit.Distance(from, captured.Pos) : null;
                 var row = UiKit.Row(_listContent, label, dist, () => Select(captured), () => ToggleFavorite(captured), 16f, e.Favorite ? UiKit.Gold : (Color?)null, null, PortalList.DestinationText(captured));
                 row.SetSelected(captured.Id == _highlightId && _highlightId != 0L);
+                long rowId = captured.Id;
+                var rowHover = row.Hover.OnHoverChanged;
+                row.Hover.OnHoverChanged = over =>
+                {
+                    rowHover?.Invoke(over);
+                    if (over) SetHover(Minimap.instance, rowId, true);
+                    else if (_hoverId == rowId) SetHover(Minimap.instance, 0L, false);
+                };
                 _rows.Add(row);
                 _rowIds.Add(captured.Id);
             }

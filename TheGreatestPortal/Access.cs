@@ -1,5 +1,5 @@
+using System;
 using System.Collections.Generic;
-using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
 
@@ -20,13 +20,31 @@ namespace TheGreatestPortal
         internal static readonly AccessTools.FieldRef<Minimap, bool> PinUpdateRequired =
             AccessTools.FieldRefAccess<Minimap, bool>("m_pinUpdateRequired");
 
-        private static readonly MethodInfo _screenToWorldPoint = AccessTools.Method(typeof(Minimap), "ScreenToWorldPoint", new[] { typeof(Vector3) });
+        // Bound as a delegate rather than called through reflection: the hover highlight asks for
+        // the world position under the pointer every frame, and Invoke would allocate every time.
+        private delegate Vector3 ScreenToWorld(Minimap map, Vector3 screen);
+        private static readonly ScreenToWorld _screenToWorldPoint = BindScreenToWorldPoint();
+
+        private static ScreenToWorld BindScreenToWorldPoint()
+        {
+            try
+            {
+                var method = AccessTools.Method(typeof(Minimap), "ScreenToWorldPoint", new[] { typeof(Vector3) });
+                if (method != null) return AccessTools.MethodDelegate<ScreenToWorld>(method, null, virtualCall: false);
+                TheGreatestPortalMod.Log.LogWarning("[TheGreatestPortal] Minimap.ScreenToWorldPoint was not found; clicking portals on the map is disabled.");
+            }
+            catch (Exception e)
+            {
+                TheGreatestPortalMod.Log.LogWarning($"[TheGreatestPortal] Could not bind Minimap.ScreenToWorldPoint; clicking portals on the map is disabled: {e.Message}");
+            }
+            return null;
+        }
 
         /// <summary>The world position under a screen point on the large map.</summary>
         internal static Vector3 ScreenToWorldPoint(Minimap map, Vector3 screen)
         {
             if (map == null || _screenToWorldPoint == null) return Vector3.zero;
-            return (Vector3)_screenToWorldPoint.Invoke(map, new object[] { screen });
+            return _screenToWorldPoint(map, screen);
         }
 
         /// <summary>Vanilla's click radius for pins on the large map, in world metres.</summary>

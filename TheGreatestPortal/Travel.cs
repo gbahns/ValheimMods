@@ -53,7 +53,7 @@ namespace TheGreatestPortal
                 return false;
             }
             if (Game.instance != null) Game.instance.IncrementPlayerStat(PlayerStatType.PortalsUsed);
-            TheGreatestPortalMod.Message("Travelling to " + target.DisplayName);
+            TheGreatestPortalMod.Message("Traveling to " + target.DisplayName);
             return true;
         }
     }
