@@ -78,6 +78,41 @@ namespace TheGreatestMap
             return img;
         }
 
+        /// <summary>Reports pointer drags in screen pixels, for moving a panel or a resize grip.</summary>
+        internal sealed class DragHandle : MonoBehaviour, IDragHandler, IEndDragHandler
+        {
+            public Action<Vector2> OnDrag;
+            public Action OnEnd;
+            void IDragHandler.OnDrag(PointerEventData e) { OnDrag?.Invoke(e.delta); }
+            void IEndDragHandler.OnEndDrag(PointerEventData e) { OnEnd?.Invoke(); }
+        }
+
+        private static Sprite _grip;
+
+        /// <summary>Three diagonal lines in the corner: the usual resize grip, drawn rather than shipped.</summary>
+        internal static Sprite Grip()
+        {
+            if (_grip != null) return _grip;
+            const int n = 24;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    int k = x + (n - 1 - y);
+                    bool on = k >= n - 3 && (k - (n - 3)) % 6 < 2;
+                    px[y * n + x] = new Color32(255, 255, 255, (byte)(on ? 255 : 0));
+                }
+            tex.SetPixels32(px);
+            tex.Apply(false, true);
+            tex.filterMode = FilterMode.Bilinear;
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.hideFlags = HideFlags.HideAndDontSave;
+            _grip = Sprite.Create(tex, new Rect(0f, 0f, n, n), new Vector2(0.5f, 0.5f), 100f);
+            _grip.hideFlags = HideFlags.HideAndDontSave;
+            return _grip;
+        }
+
         internal sealed class Hover : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
         {
             public Image Background;
@@ -236,10 +271,14 @@ namespace TheGreatestMap
             bool isChecked = pin.Checked;
             items.Add(Item(isChecked ? "Uncross" : "Cross off", canEdit ? () => ClientPins.SetChecked(id, !isChecked) : (Action)null, "take out your map"));
 
-            if (!TgmConfig.AllowErasingMarkers.Value)
-                items.Add(Item("Erase (off on this server)", null));
-            else
-                items.Add(Item("Erase for everyone", canEdit ? () => { if (ClientPins.EraseById(id)) Note("Marker erased."); } : (Action)null, "take out your map"));
+            // A note you wrote is yours to take back; a recorded marker stands for something real,
+            // so removing it is a repair rather than an everyday action.
+            bool mayDelete = ClientPins.CanDelete(pin, out string whyNot);
+            string label = pin.Auto ? "Erase for everyone" : "Delete this marker";
+            if (!mayDelete) items.Add(Item($"{label} ({whyNot})", null));
+            else items.Add(Item(label, canEdit
+                ? () => { if (ClientPins.EraseById(id)) Note(pin.Auto ? "Marker erased." : "Marker deleted."); }
+                : (Action)null, "take out your map"));
 
             if (ViewPrefs.Count > 0 || TgmConfig.AnythingHidden())
                 items.Add(Item("Show all hidden", () =>

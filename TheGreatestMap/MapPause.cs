@@ -23,8 +23,9 @@ namespace TheGreatestMap
         internal static void Refresh()
         {
             var map = Minimap.instance;
+            bool onAScreen = (map != null && map.m_mode == Minimap.MapMode.Large) || LegendPanel.IsOpen;
             bool want = TgmConfig.PauseWhileMapOpen != null && TgmConfig.PauseWhileMapOpen.Value
-                && map != null && map.m_mode == Minimap.MapMode.Large && Player.m_localPlayer != null;
+                && onAScreen && Player.m_localPlayer != null;
             if (want == _holding) return;
             _holding = want;
             if (want) Game.Pause();
@@ -48,68 +49,23 @@ namespace TheGreatestMap
     /// </summary>
     internal static class PauseButton
     {
-        private static readonly Color Off = new Color(0.6f, 0.6f, 0.6f, 0.85f);
-        private static readonly Color Paused = new Color(1f, 0.63f, 0.24f, 1f); // Valheim orange
-        private static readonly Color Refused = new Color(1f, 0.45f, 0.4f, 1f);
+        private static PauseToggle _map;
 
-        private static GameObject _root;
-        private static Image _left, _right, _slash;
-
-        internal static void Reset()
-        {
-            if (_root != null) Object.Destroy(_root);
-            _root = null;
-            _left = _right = _slash = null;
-        }
+        internal static void Reset() => _map?.Destroy();
 
         internal static void Update()
         {
             var map = Minimap.instance;
-            if (map == null || map.m_largeRoot == null) { if (_root != null) Reset(); return; }
-            if (TgmConfig.ShowPauseButton == null || !TgmConfig.ShowPauseButton.Value)
+            if (map == null || map.m_largeRoot == null
+                || TgmConfig.ShowPauseButton == null || !TgmConfig.ShowPauseButton.Value)
             {
-                if (_root != null) Reset();
+                _map?.Destroy();
                 return;
             }
-            if (_root == null) Build(map);
-            Position();
-            Paint();
-        }
-
-        private static void Build(Minimap map)
-        {
-            var parent = map.m_largeRoot.transform as RectTransform;
-            if (parent == null) return;
-
-            _root = new GameObject("TGM_PauseToggle", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
-            _root.transform.SetParent(parent, false);
-            var rect = (RectTransform)_root.transform;
-            rect.anchorMin = rect.anchorMax = new Vector2(1f, 1f);
-            rect.pivot = new Vector2(1f, 1f);
-            rect.anchoredPosition = new Vector2(-16f, -16f);
-            rect.sizeDelta = new Vector2(28f, 28f);
-
-            var hit = _root.GetComponent<Image>();
-            hit.color = new Color(1f, 1f, 1f, 0f); // invisible, but it is what catches the click
-            hit.raycastTarget = true;
-
-            _left = Bar(_root.transform, new Vector2(6f, 18f), new Vector2(-5f, 0f));
-            _right = Bar(_root.transform, new Vector2(6f, 18f), new Vector2(5f, 0f));
-            _slash = Bar(_root.transform, new Vector2(30f, 3f), Vector2.zero, 45f);
-            _slash.gameObject.SetActive(false);
-
-            var button = _root.GetComponent<Button>();
-            button.transition = Selectable.Transition.None;
-            button.targetGraphic = hit;
-            button.onClick.AddListener(() =>
-            {
-                if (TgmConfig.PauseWhileMapOpen == null) return;
-                TgmConfig.PauseWhileMapOpen.Value = !TgmConfig.PauseWhileMapOpen.Value;
-                MapPause.Refresh();
-                Paint();
-            });
-            _root.transform.SetAsLastSibling();
-            Paint();
+            if (_map == null || !_map.Alive) _map = PauseToggle.Build(map.m_largeRoot.transform as RectTransform, new Vector2(-16f, -16f));
+            if (_map == null) return;
+            Position(_map);
+            _map.Paint();
         }
 
         /// <summary>
@@ -117,11 +73,10 @@ namespace TheGreatestMap
         /// Measured from where that button actually is, so the gap holds at any UI scale, and
         /// falling back to the plain corner when the pin button is switched off.
         /// </summary>
-        private static void Position()
+        private static void Position(PauseToggle toggle)
         {
-            if (_root == null) return;
-            var rect = (RectTransform)_root.transform;
-            var parent = rect.parent as RectTransform;
+            var rect = toggle.Rect;
+            var parent = rect != null ? rect.parent as RectTransform : null;
             if (parent == null) return;
             const float margin = 16f;
             const float gap = 14f;
@@ -133,6 +88,67 @@ namespace TheGreatestMap
             }
             if (!Mathf.Approximately(rect.anchoredPosition.x, x))
                 rect.anchoredPosition = new Vector2(x, rect.anchoredPosition.y);
+        }
+    }
+
+    /// <summary>
+    /// The pause mark itself, so the map and the legend can each have one: two bars drawn from
+    /// plain rectangles, because the game's font has no media-control glyph, plus a diagonal slash
+    /// when a pause was asked for and refused. It never claims a pause that is not happening.
+    /// </summary>
+    internal sealed class PauseToggle
+    {
+        private static readonly Color Off = new Color(0.6f, 0.6f, 0.6f, 0.85f);
+        private static readonly Color Paused = new Color(1f, 0.63f, 0.24f, 1f); // Valheim orange
+        private static readonly Color Refused = new Color(1f, 0.45f, 0.4f, 1f);
+
+        private GameObject _root;
+        private Image _left, _right, _slash;
+
+        internal bool Alive => _root != null;
+        internal RectTransform Rect => _root != null ? (RectTransform)_root.transform : null;
+
+        internal void Destroy()
+        {
+            if (_root != null) Object.Destroy(_root);
+            _root = null;
+            _left = _right = _slash = null;
+        }
+
+        internal static PauseToggle Build(RectTransform parent, Vector2 anchoredPosition)
+        {
+            if (parent == null) return null;
+            var t = new PauseToggle();
+            t._root = new GameObject("TGM_PauseToggle", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+            t._root.transform.SetParent(parent, false);
+            var rect = (RectTransform)t._root.transform;
+            rect.anchorMin = rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(1f, 1f);
+            rect.anchoredPosition = anchoredPosition;
+            rect.sizeDelta = new Vector2(28f, 28f);
+
+            var hit = t._root.GetComponent<Image>();
+            hit.color = new Color(1f, 1f, 1f, 0f); // invisible, but it is what catches the click
+            hit.raycastTarget = true;
+
+            t._left = Bar(t._root.transform, new Vector2(6f, 18f), new Vector2(-5f, 0f));
+            t._right = Bar(t._root.transform, new Vector2(6f, 18f), new Vector2(5f, 0f));
+            t._slash = Bar(t._root.transform, new Vector2(30f, 3f), Vector2.zero, 45f);
+            t._slash.gameObject.SetActive(false);
+
+            var button = t._root.GetComponent<Button>();
+            button.transition = Selectable.Transition.None;
+            button.targetGraphic = hit;
+            button.onClick.AddListener(() =>
+            {
+                if (TgmConfig.PauseWhileMapOpen == null) return;
+                TgmConfig.PauseWhileMapOpen.Value = !TgmConfig.PauseWhileMapOpen.Value;
+                MapPause.Refresh();
+                t.Paint();
+            });
+            t._root.transform.SetAsLastSibling();
+            t.Paint();
+            return t;
         }
 
         private static Image Bar(Transform parent, Vector2 size, Vector2 pos, float rotation = 0f)
@@ -150,7 +166,7 @@ namespace TheGreatestMap
         }
 
         /// <summary>Gray when switched off, orange while the game really is paused, red with a slash when the pause was refused.</summary>
-        private static void Paint()
+        internal void Paint()
         {
             if (_left == null) return;
             bool on = TgmConfig.PauseWhileMapOpen != null && TgmConfig.PauseWhileMapOpen.Value;

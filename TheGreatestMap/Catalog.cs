@@ -26,6 +26,8 @@ namespace TheGreatestMap
         BossAltar,
         Portal,
         Structure,
+        Seeds,
+        Plants,
     }
 
     /// <summary>Static facts about each category: defaults, labels.</summary>
@@ -57,21 +59,27 @@ namespace TheGreatestMap
         /// </summary>
         internal static bool IsResource(Category c)
         {
-            return c == Category.Berries || c == Category.Mushrooms || c == Category.Herbs || c == Category.Ore;
+            return c == Category.Berries || c == Category.Mushrooms || c == Category.Herbs
+                || c == Category.Ore || c == Category.Seeds || c == Category.Plants;
         }
 
-        /// <summary>Structures are a personal habit (tracking which ruins you have searched); off unless asked for.</summary>
-        internal static bool DefaultEnabled(Category c) => c != Category.Structure;
+        internal static bool DefaultEnabled(Category c)
+        {
+            // Structures are a personal habit. Traders and boss altars the game marks by itself the
+            // moment you find them, so recording our own on top would be a second pin saying the
+            // same thing.
+            return c != Category.Structure && c != Category.Trader && c != Category.BossAltar;
+        }
 
         // Icons for well-known locations, kept in code so that a catalog line saved by an older
         // version (without |Icon overrides) still gets the right picture.
         private static readonly Dictionary<string, string> KnownIcons = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             { "Crypt2", "TrophySkeleton" }, { "Crypt3", "TrophySkeleton" }, { "Crypt4", "TrophySkeleton" },
-            { "SunkenCrypt4", "CryptKey" }, { "MountainCave02", "TrophyUlv" }, { "TrollCave02", "TrophyFrostTroll" },
-            { "Mistlands_DvergrTownEntrance1", "TrophySeeker" }, { "Mistlands_DvergrTownEntrance2", "TrophySeeker" },
+            { "SunkenCrypt4", "TrophyDraugr" }, { "MountainCave02", "TrophyCultist" }, { "TrollCave02", "TrophyFrostTroll" },
+            { "BearCave", "TrophyBjorn" }, { "Mistlands_DvergrTownEntrance1", "TrophySeeker" }, { "Mistlands_DvergrTownEntrance2", "TrophySeeker" },
             { "Vendor_BlackForest", "Coins" }, { "Hildir_camp", "Coins" }, { "BogWitch_Camp", "Coins" },
-            { "GoblinCamp2", "TrophyGoblin" }, { "WoodVillage1", "TrophyDraugr" }, // WoodFarm1 is the abandoned farm: a structure, not a camp
+            { "GoblinCamp2", "TrophyGoblin" }, { "Spawner_GreydwarfNest", "TrophyGreydwarfBrute" }, { "WoodVillage1", "TrophyDraugr" }, // WoodFarm1 is the abandoned farm: a structure, not a camp
             { "Eikthyrnir", "TrophyEikthyr" }, { "GDKing", "TrophyTheElder" }, { "Bonemass", "TrophyBonemass" },
             { "Dragonqueen", "TrophyDragonQueen" }, { "GoblinKing", "TrophyGoblinKing" },
             { "Mistlands_DvergrBossEntrance1", "TrophySeekerQueen" }, { "FaderLocation", "TrophyFader" },
@@ -90,8 +98,10 @@ namespace TheGreatestMap
                 case Category.Berries:   return "Raspberry";
                 case Category.Mushrooms: return "Mushroom";
                 case Category.Herbs:     return "Dandelion";
+                case Category.Seeds:     return "CarrotSeeds";
+                case Category.Plants:    return "Flax";
                 case Category.Ore:       return "CopperOre";
-                case Category.Dungeon:   return "CryptKey";
+                case Category.Dungeon:   return "pin:Icon3"; // nothing is "a crypt in general": a wrong picture is worse than a plain one
                 case Category.Runestone: return "pin:Memorial";
                 case Category.Trader:    return "Coins";
                 case Category.Camp:      return "pin:Icon0";
@@ -109,6 +119,8 @@ namespace TheGreatestMap
             {
                 case Category.Berries:
                 case Category.Mushrooms:
+                case Category.Seeds:
+                case Category.Plants:
                 case Category.Herbs:     return 1f;
                 case Category.Ore:       return 5f;
                 case Category.Portal:    return 5f;
@@ -124,6 +136,8 @@ namespace TheGreatestMap
             {
                 case Category.Berries:
                 case Category.Mushrooms:
+                case Category.Seeds:
+                case Category.Plants:
                 case Category.Herbs:     return 20f;
                 case Category.Ore:       return 40f;
                 case Category.Runestone: return 30f;
@@ -139,6 +153,8 @@ namespace TheGreatestMap
             {
                 case Category.Berries:
                 case Category.Mushrooms:
+                case Category.Seeds:
+                case Category.Plants:
                 case Category.Herbs:     return 60;
                 case Category.Ore:       return 80;
                 default:                 return 100;
@@ -153,6 +169,8 @@ namespace TheGreatestMap
                 case Category.Berries:
                 case Category.Mushrooms:
                 case Category.Herbs:
+                case Category.Seeds:
+                case Category.Plants:
                 case Category.Ore:
                 case Category.Runestone:
                 case Category.Dungeon:
@@ -173,22 +191,26 @@ namespace TheGreatestMap
                     return "Pickable_Mushroom=Mushrooms,Pickable_Mushroom_yellow=Yellow Mushrooms,Pickable_Mushroom_blue=Blue Mushrooms," +
                            "Pickable_Mushroom_Magecap=Magecap,Pickable_Mushroom_JotunPuffs=Jotun Puffs,Pickable_SmokePuff=Smoke Puffs";
                 case Category.Herbs:
-                    return "Pickable_Thistle=Thistle,Pickable_Dandelion=Dandelion,Pickable_Flax_Wild=Wild Flax,Pickable_Barley_Wild=Wild Barley," +
-                           "Pickable_SeedCarrot=Carrot Seeds,Pickable_SeedTurnip=Turnip Seeds,Pickable_SeedOnion=Onion Seeds,Pickable_Fiddlehead=Fiddlehead";
+                    return "Pickable_Thistle=Thistle,Pickable_Dandelion=Dandelion";
+                case Category.Seeds:
+                    return "Pickable_SeedCarrot=Carrot Seeds,Pickable_SeedTurnip=Turnip Seeds,Pickable_SeedOnion=Onion Seeds";
+                case Category.Plants:
+                    return "Pickable_Flax_Wild=Wild Flax,Pickable_Barley_Wild=Wild Barley,Pickable_Fiddlehead=Fiddlehead";
                 case Category.Ore:
-                    return "rock4_copper=Copper,MineRock_Tin=Tin,silvervein=Silver,MineRock_Obsidian=Obsidian,MineRock_Meteorite=Meteorite," +
-                           "mudpile_beacon=Scrap Pile,mudpile2=Scrap Pile,mudpile=Scrap Pile,Pickable_Tar=Tar Pit," +
+                    return "rock4_copper=Copper,MineRock_Tin=Tin,silvervein=Silver|SilverOre,MineRock_Obsidian=Obsidian,MineRock_Meteorite=Meteorite," +
+                           "mudpile_beacon=Scrap Pile|IronScrap,mudpile2=Scrap Pile|IronScrap,mudpile=Scrap Pile|IronScrap,Pickable_Tar=Tar Pit," +
                            "giant_brain=Petrified Bone,giant_helmet1=Petrified Bone,giant_helmet2=Petrified Bone,giant_ribs=Petrified Bone," +
                            "giant_skull=Petrified Bone,giant_sword1=Petrified Bone,giant_sword2=Petrified Bone";
                 case Category.Dungeon:
                     return "Crypt2=Burial Chambers|TrophySkeleton,Crypt3=Burial Chambers|TrophySkeleton,Crypt4=Burial Chambers|TrophySkeleton," +
-                           "SunkenCrypt4=Sunken Crypt|CryptKey,MountainCave02=Frost Cave|TrophyUlv,TrollCave02=Troll Cave|TrophyFrostTroll," +
+                           "SunkenCrypt4=Sunken Crypt|TrophyDraugr,MountainCave02=Frost Cave|TrophyCultist,TrollCave02=Troll Cave|TrophyFrostTroll," +
                            "Mistlands_DvergrTownEntrance1=Infested Mine|TrophySeeker,Mistlands_DvergrTownEntrance2=Infested Mine|TrophySeeker," +
-                           "BearCave=Bear Cave";
+                           "BearCave=Bear Cave|TrophyBjorn";
                 case Category.Trader:
                     return "Vendor_BlackForest=Haldor|Coins,Hildir_camp=Hildir|Coins,BogWitch_Camp=Bog Witch|Coins";
                 case Category.Camp:
-                    return "GoblinCamp2=Fuling Village|TrophyGoblin,WoodVillage1=Draugr Village|TrophyDraugr";
+                    return "GoblinCamp2=Fuling Village|TrophyGoblin,WoodVillage1=Draugr Village|TrophyDraugr," +
+                           "Spawner_GreydwarfNest=Greydwarf Nest|TrophyGreydwarfBrute";
                 case Category.BossAltar:
                     return "Eikthyrnir=Eikthyr|TrophyEikthyr,GDKing=The Elder|TrophyTheElder,Bonemass=Bonemass|TrophyBonemass," +
                            "Dragonqueen=Moder|TrophyDragonQueen,GoblinKing=Yagluth|TrophyGoblinKing," +
@@ -249,8 +271,13 @@ namespace TheGreatestMap
             public string Icon;
         }
 
-        private static readonly Dictionary<string, Entry> _byPrefab = new Dictionary<string, Entry>();
+        // Case-insensitive, like the prefix match below and the icon table above. The game's own
+        // naming is inconsistent (rock4_copper beside Rock4_cell), and a catalog line that differs
+        // only in case looked exactly like no catalog line at all.
+        private static readonly Dictionary<string, Entry> _byPrefab = new Dictionary<string, Entry>(StringComparer.OrdinalIgnoreCase);
         private static readonly List<KeyValuePair<string, Entry>> _byPrefix = new List<KeyValuePair<string, Entry>>();
+        private static readonly Dictionary<string, Entry> _builtInByPrefab = new Dictionary<string, Entry>(StringComparer.OrdinalIgnoreCase);
+        private static readonly List<KeyValuePair<string, Entry>> _builtInByPrefix = new List<KeyValuePair<string, Entry>>();
         private static string[] _structureExclusions = new string[0];
         private static bool _built;
 
@@ -260,38 +287,20 @@ namespace TheGreatestMap
         {
             _byPrefab.Clear();
             _byPrefix.Clear();
+            _builtInByPrefab.Clear();
+            _builtInByPrefix.Clear();
             foreach (var cat in Categories.All)
             {
-                if (!TgmConfig.CategoryPrefabs.TryGetValue(cat, out var entry)) continue;
-                foreach (var raw in (entry.Value ?? "").Split(','))
-                {
-                    string item = raw.Trim();
-                    if (item.Length == 0) continue;
-                    string prefab = item, name = null, icon = null;
-                    int bar = item.IndexOf('|');
-                    if (bar >= 0) { icon = item.Substring(bar + 1).Trim(); item = item.Substring(0, bar); prefab = item; }
-                    int eq = item.IndexOf('=');
-                    if (eq > 0) { prefab = item.Substring(0, eq).Trim(); name = item.Substring(eq + 1).Trim(); }
-                    if (prefab.Length == 0) continue;
-                    var e = new Entry
-                    {
-                        Cat = cat,
-                        Name = string.IsNullOrEmpty(name) ? null : name,
-                        Icon = string.IsNullOrEmpty(icon) ? null : icon,
-                    };
-                    if (prefab.EndsWith("*"))
-                    {
-                        string prefix = prefab.Substring(0, prefab.Length - 1);
-                        if (prefix.Length > 0) _byPrefix.Add(new KeyValuePair<string, Entry>(prefix, e));
-                    }
-                    else
-                    {
-                        _byPrefab[prefab] = e;
-                    }
-                }
+                if (TgmConfig.CategoryPrefabs.TryGetValue(cat, out var entry))
+                    Parse(cat, entry.Value, _byPrefab, _byPrefix);
+                // The same list as this version ships it. A config file written by an older build
+                // keeps its old line, which is how a newly catalogued location (bear caves, and
+                // burial chambers before them) stayed unknown to everyone who had played before.
+                Parse(cat, Categories.DefaultPrefabs(cat), _builtInByPrefab, _builtInByPrefix);
             }
             // Longest prefix wins when several match.
             _byPrefix.Sort((a, b) => b.Key.Length.CompareTo(a.Key.Length));
+            _builtInByPrefix.Sort((a, b) => b.Key.Length.CompareTo(a.Key.Length));
             var exclusions = new List<string>();
             foreach (var raw in (TgmConfig.StructuresExcludePrefixes.Value ?? "").Split(','))
             {
@@ -300,6 +309,254 @@ namespace TheGreatestMap
             }
             _structureExclusions = exclusions.ToArray();
             _built = true;
+        }
+
+        private static void Parse(Category cat, string list, Dictionary<string, Entry> byPrefab, List<KeyValuePair<string, Entry>> byPrefix)
+        {
+            foreach (var raw in (list ?? "").Split(','))
+            {
+                string item = raw.Trim();
+                if (item.Length == 0) continue;
+                string prefab = item, name = null, icon = null;
+                int bar = item.IndexOf('|');
+                if (bar >= 0) { icon = item.Substring(bar + 1).Trim(); item = item.Substring(0, bar); prefab = item; }
+                int eq = item.IndexOf('=');
+                if (eq > 0) { prefab = item.Substring(0, eq).Trim(); name = item.Substring(eq + 1).Trim(); }
+                if (prefab.Length == 0) continue;
+                var e = new Entry
+                {
+                    Cat = cat,
+                    Name = string.IsNullOrEmpty(name) ? null : name,
+                    Icon = string.IsNullOrEmpty(icon) ? null : icon,
+                };
+                if (prefab.EndsWith("*"))
+                {
+                    string prefix = prefab.Substring(0, prefab.Length - 1);
+                    if (prefix.Length > 0) byPrefix.Add(new KeyValuePair<string, Entry>(prefix, e));
+                }
+                else
+                {
+                    byPrefab[prefab] = e;
+                }
+            }
+        }
+
+        /// <summary>One catalog line, with the icon it will actually draw and where that came from.</summary>
+        internal sealed class LegendRow
+        {
+            public Category Cat;
+            public string Prefab;
+            public string Name;
+            public string Icon;
+            public string Source;
+            public bool Missing;    // the icon key names an item this game does not have
+            public bool NoPrefab;   // nothing by that name exists in this game at all
+        }
+
+        /// <summary>
+        /// Every catalog line, resolved the way recording resolves it, so the picture in the legend
+        /// is the picture you will get. Most icons are not written in the catalog at all: a plant
+        /// borrows the icon of the item it gives and a deposit the icon of what it drops, which is
+        /// only knowable by looking the prefab up in the loaded world. That is the point of showing
+        /// this in game rather than as a table in the readme.
+        /// </summary>
+        internal static List<LegendRow> Legend()
+        {
+            if (!_built) Rebuild();
+            var rows = new List<LegendRow>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            void Add(string prefab, Entry e)
+            {
+                if (prefab == null || !seen.Add(prefab + "/" + e.Cat)) return;
+                string source;
+                string icon = ResolveLegendIcon(prefab, e, out source);
+                rows.Add(new LegendRow
+                {
+                    Cat = e.Cat,
+                    Prefab = prefab,
+                    Name = e.Name ?? Prettify(prefab.TrimEnd('*')),
+                    Icon = icon,
+                    Source = source,
+                    Missing = icon != null && icon.StartsWith("item:") && !ItemExists(icon.Substring(5)),
+                    // A catalog line for something the game does not have is dead weight, and is
+                    // invisible otherwise: onion seeds, for instance, come out of chests rather
+                    // than the ground, so there may be nothing in the world to ever mark.
+                    NoPrefab = !prefab.EndsWith("*") && ZNetScene.instance != null && ZNetScene.instance.GetPrefab(prefab) == null,
+                });
+            }
+            foreach (var kv in _byPrefab) Add(kv.Key, kv.Value);
+            foreach (var kv in _byPrefix) Add(kv.Key + "*", kv.Value);
+            foreach (var kv in _builtInByPrefab) Add(kv.Key, kv.Value);
+            foreach (var kv in _builtInByPrefix) Add(kv.Key + "*", kv.Value);
+            rows.Sort((a, b) => a.Cat != b.Cat ? a.Cat.CompareTo(b.Cat) : string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
+            return rows;
+        }
+
+        private static bool ItemExists(string name)
+        {
+            try { return ObjectDB.instance != null && ObjectDB.instance.GetItemPrefab(name) != null; }
+            catch (Exception) { return false; }
+        }
+
+        private static string ResolveLegendIcon(string prefab, Entry e, out string source)
+        {
+            string bare = prefab.TrimEnd('*');
+            if (!string.IsNullOrEmpty(e.Icon)) { source = "catalog"; return IconRegistry.Normalize(e.Icon); }
+            string known = Categories.KnownIcon(bare);
+            if (known != null) { source = "built in"; return IconRegistry.Normalize(known); }
+
+            // The same sources recording uses, read off the prefab in the loaded world.
+            var scene = ZNetScene.instance;
+            var go = scene != null ? scene.GetPrefab(bare) : null;
+            if (go != null)
+            {
+                var pickable = go.GetComponent<Pickable>();
+                if (pickable != null && pickable.m_itemPrefab != null) { source = "what it gives"; return IconRegistry.ItemKey(pickable.m_itemPrefab); }
+                var rock5 = go.GetComponent<MineRock5>();
+                if (rock5 != null) { string d = FirstDrop(rock5.m_dropItems); if (d != null) { source = "what it drops"; return d; } }
+                var rock = go.GetComponent<MineRock>();
+                if (rock != null) { string d = FirstDrop(rock.m_dropItems); if (d != null) { source = "what it drops"; return d; } }
+                var destructible = go.GetComponent<Destructible>();
+                var drops = destructible != null ? go.GetComponent<DropOnDestroyed>() : null;
+                if (drops != null) { string d = FirstDrop(drops.m_dropWhenDestroyed); if (d != null) { source = "what it drops"; return d; } }
+            }
+            if (e.Cat == Category.Dungeon)
+            {
+                string guess = IconFromDungeonName(bare);
+                if (guess != null) { source = "guessed from the name"; return IconRegistry.Normalize(guess); }
+            }
+            source = "the kind's fallback";
+            string fallback = TgmConfig.CategoryIcon.TryGetValue(e.Cat, out var cfg) ? cfg.Value : Categories.DefaultIcon(e.Cat);
+            return IconRegistry.Normalize(fallback);
+        }
+
+        /// <summary>
+        /// Why classification did or did not recognize this object, for the look report. Finding
+        /// the component is only half the job: its prefab name still has to match a catalog line,
+        /// and a mismatch there looks exactly like finding nothing at all.
+        /// </summary>
+        internal static string Explain(GameObject go)
+        {
+            if (go == null) return "no object";
+            if (!_built) Rebuild();
+            string Check(string what, GameObject owner)
+            {
+                if (owner == null) return null;
+                string prefab = PrefabName(owner);
+                bool known = Lookup(prefab, out var e);
+                return $"{what} on '{prefab}': " + (known
+                    ? $"catalogued as {e.Cat}" + (e.Name != null ? $" '{e.Name}'" : "") + (e.Icon != null ? $", icon {e.Icon}" : "")
+                    : "NOT in the catalog, so nothing is recorded for it");
+            }
+            var rock5 = go.GetComponentInParent<MineRock5>();
+            if (rock5 != null) return Check("MineRock5", rock5.gameObject);
+            var rock = go.GetComponentInParent<MineRock>();
+            if (rock != null) return Check("MineRock", rock.gameObject);
+            var pickable = go.GetComponentInParent<Pickable>();
+            if (pickable != null) return Check("Pickable", pickable.gameObject);
+            var destructible = go.GetComponentInParent<Destructible>();
+            if (destructible != null) return Check("Destructible", destructible.gameObject);
+            return "no deposit, plant or destructible component on this object or any parent";
+        }
+
+        /// <summary>
+        /// The prefab an object came from, asked of the network object rather than read off the
+        /// GameObject's name. Valheim renames things at runtime: a mined deposit's own object ends
+        /// up called "___MineRock5 m_meshFilter", because MineRock5 sets a name on its MeshFilter
+        /// component and in Unity that renames the GameObject. Anything trusting the name then sees
+        /// a deposit it has never heard of, which is how a copper vein beside a marked one went
+        /// unrecorded. The ZDO keeps the prefab it was spawned from, and that cannot drift.
+        /// </summary>
+        internal static string PrefabName(GameObject go)
+        {
+            if (go == null) return null;
+            try
+            {
+                var view = go.GetComponent<ZNetView>();
+                if (view != null && view.IsValid() && ZNetScene.instance != null)
+                {
+                    var prefab = ZNetScene.instance.GetPrefab(view.GetZDO().GetPrefab());
+                    if (prefab != null) return Utils.GetPrefabName(prefab);
+                }
+            }
+            catch (Exception) { }
+            return Utils.GetPrefabName(go);
+        }
+
+        /// <summary>
+        /// Every deposit prefab the game has, what it yields, and whether the catalog knows it.
+        /// This exists to answer one question with facts: if recording a deposit were decided by
+        /// what it drops rather than by a list of names, what would start or stop being recorded?
+        /// </summary>
+        internal static List<string> Deposits()
+        {
+            var lines = new List<string>();
+            var scene = ZNetScene.instance;
+            if (scene == null) { lines.Add("No world loaded."); return lines; }
+            if (!_built) Rebuild();
+            int wouldChange = 0;
+            var seen = new List<string>();
+            foreach (var prefab in scene.m_prefabs)
+            {
+                if (prefab == null) continue;
+                bool isRock = prefab.GetComponent<MineRock5>() != null || prefab.GetComponent<MineRock>() != null;
+                if (!isRock) continue;
+                string name = Utils.GetPrefabName(prefab);
+                var rock5 = prefab.GetComponent<MineRock5>();
+                var rock = prefab.GetComponent<MineRock>();
+                string drop = rock5 != null ? FirstDrop(rock5.m_dropItems) : FirstDrop(rock.m_dropItems);
+                bool rubbleOnly = drop == null || Rubble.Contains(drop.StartsWith("item:") ? drop.Substring(5) : drop);
+                bool known = Lookup(name, out var e);
+                bool wouldRecord = !rubbleOnly;
+                if (wouldRecord != known) wouldChange++;
+                seen.Add($"  {name}: yields {(drop ?? "nothing")}{(rubbleOnly ? " (rubble only)" : "")}, " +
+                         $"catalog says {(known ? e.Cat.ToString() : "unknown")}" +
+                         (wouldRecord != known ? (wouldRecord ? "  <- WOULD START being recorded" : "  <- WOULD STOP being recorded") : ""));
+            }
+            seen.Sort(StringComparer.OrdinalIgnoreCase);
+            lines.Add($"{seen.Count} deposit prefabs; {wouldChange} would change if what it drops decided rather than the catalog.");
+            lines.AddRange(seen);
+            return lines;
+        }
+
+        private static readonly HashSet<string> _unlistedDeposits = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// A deposit is worth marking because of what it yields, not because its name is on a list.
+        /// The object already carries both facts: the display name the HUD shows when you point at
+        /// it, and the table of what mining it gives you. Asking those two questions is simpler than
+        /// keeping a list of every prefab in the game, and it cannot fall out of step with the game
+        /// the way a list does: a renamed object, a fractured twin, a capital letter or an ore added
+        /// in a later update all used to read as "not a deposit at all".
+        ///
+        /// A plain boulder yields only rubble, so it is not marked. The catalog still decides what a
+        /// deposit is called and which icon it wears, where we want something better than the
+        /// defaults, and it can still put a deposit in some other category.
+        /// </summary>
+        private static bool ClassifyDeposit(GameObject owner, string displayName, DropTable drops, out Found found)
+        {
+            found = null;
+            string prefab = PrefabName(owner);
+            string drop = FirstDrop(drops);
+            if (Lookup(prefab, out var e))
+            {
+                string icon = e.Icon ?? Categories.KnownIcon(prefab) ?? drop;
+                found = Make(e.Cat, e.Name ?? Loc(displayName, Prettify(prefab)), icon, owner.transform.position, KeyOf(owner, prefab));
+                return true;
+            }
+            if (!WorthMining(drop)) return false;
+            if (_unlistedDeposits.Add(prefab ?? ""))
+                TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Deposit '{prefab}' is not in the catalog; marking it anyway because it yields {drop}.");
+            found = Make(Category.Ore, Loc(displayName, Prettify(prefab)), drop, owner.transform.position, KeyOf(owner, prefab));
+            return true;
+        }
+
+        /// <summary>True when a deposit gives something you would go there for, rather than rubble.</summary>
+        private static bool WorthMining(string dropKey)
+        {
+            if (string.IsNullOrEmpty(dropKey)) return false;
+            string name = dropKey.StartsWith("item:") ? dropKey.Substring(5) : dropKey;
+            return !Rubble.Contains(name);
         }
 
         private static bool Lookup(string prefab, out Entry entry)
@@ -312,7 +569,32 @@ namespace TheGreatestMap
             {
                 if (prefab.StartsWith(kv.Key, StringComparison.OrdinalIgnoreCase)) { entry = kv.Value; return true; }
             }
+            // Not in the player's own list: fall back to the one this version ships, so a config
+            // file saved by an older build does not hide entries added since. Anything the player
+            // has written wins, including a deletion of a line we ship.
+            if (_builtInByPrefab.TryGetValue(prefab, out entry)) return true;
+            foreach (var kv in _builtInByPrefix)
+            {
+                if (prefab.StartsWith(kv.Key, StringComparison.OrdinalIgnoreCase)) { entry = kv.Value; return true; }
+            }
+            // Valheim ships a fractured twin of many breakables, named with a "_frac" suffix, and
+            // the world uses one or the other: rock4_copper and rock4_copper_frac are both copper
+            // and a player cannot tell them apart. Catalogue the base name and both are covered.
+            string bare = StripVariant(prefab);
+            if (bare != null) return Lookup(bare, out entry);
+            entry = null;
             return false;
+        }
+
+        private static readonly string[] Variants = { "_frac", "_broken", "_destroyed" };
+
+        /// <summary>The base name behind a runtime variant, or null when this is already the base.</summary>
+        private static string StripVariant(string prefab)
+        {
+            foreach (var suffix in Variants)
+                if (prefab.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                    return prefab.Substring(0, prefab.Length - suffix.Length);
+            return null;
         }
 
         private static bool IsExcludedStructure(string prefab)
@@ -359,7 +641,7 @@ namespace TheGreatestMap
             var pickable = go.GetComponentInParent<Pickable>();
             if (pickable != null && !HarvestedForGood(pickable))
             {
-                string prefab = Utils.GetPrefabName(pickable.gameObject);
+                string prefab = PrefabName(pickable.gameObject);
                 if (Lookup(prefab, out var e))
                 {
                     string icon = e.Icon ?? Categories.KnownIcon(prefab) ?? IconRegistry.ItemKey(pickable.m_itemPrefab);
@@ -369,33 +651,15 @@ namespace TheGreatestMap
             }
 
             var rock5 = go.GetComponentInParent<MineRock5>();
-            if (rock5 != null)
-            {
-                string prefab = Utils.GetPrefabName(rock5.gameObject);
-                if (Lookup(prefab, out var e))
-                {
-                    string icon = e.Icon ?? Categories.KnownIcon(prefab) ?? FirstDrop(rock5.m_dropItems);
-                    found = Make(e.Cat, e.Name ?? Loc(rock5.m_name, Prettify(prefab)), icon, rock5.transform.position, KeyOf(rock5.gameObject, prefab));
-                    return true;
-                }
-            }
+            if (rock5 != null) return ClassifyDeposit(rock5.gameObject, rock5.m_name, rock5.m_dropItems, out found);
 
             var rock = go.GetComponentInParent<MineRock>();
-            if (rock != null)
-            {
-                string prefab = Utils.GetPrefabName(rock.gameObject);
-                if (Lookup(prefab, out var e))
-                {
-                    string icon = e.Icon ?? Categories.KnownIcon(prefab) ?? FirstDrop(rock.m_dropItems);
-                    found = Make(e.Cat, e.Name ?? Loc(rock.m_name, Prettify(prefab)), icon, rock.transform.position, KeyOf(rock.gameObject, prefab));
-                    return true;
-                }
-            }
+            if (rock != null) return ClassifyDeposit(rock.gameObject, rock.m_name, rock.m_dropItems, out found);
 
             var destructible = go.GetComponentInParent<Destructible>();
             if (destructible != null)
             {
-                string prefab = Utils.GetPrefabName(destructible.gameObject);
+                string prefab = PrefabName(destructible.gameObject);
                 if (Lookup(prefab, out var e))
                 {
                     var drops = destructible.GetComponent<DropOnDestroyed>();
@@ -408,7 +672,7 @@ namespace TheGreatestMap
             // Non-networked parts of a location (a crypt's rock shell, terrain props) are children
             // of the spawned location root.
             var location = go.GetComponentInParent<Location>();
-            if (location != null && ClassifyLocation(Utils.GetPrefabName(location.gameObject), location.m_hasInterior,
+            if (location != null && ClassifyLocation(PrefabName(location.gameObject), location.m_hasInterior,
                     location.transform.position, location.m_exteriorRadius, go.transform.position, out found))
                 return true;
 
@@ -517,9 +781,12 @@ namespace TheGreatestMap
         internal static string IconFromDungeonName(string name)
         {
             string p = (name ?? "").ToLowerInvariant();
-            if (p.Contains("bear")) return IconRegistry.PickItem("TrophyBear", "BearPaw", "BearHide");
+            // The bear's own name is Bjorn, so no amount of searching for "bear" would ever have
+            // found its trophy; the only match was PulledBear, a meal. Creatures are not always
+            // named after the English word, which is why a known id beats any search.
+            if (p.Contains("bear")) return IconRegistry.PickItem("TrophyBjorn") ?? IconRegistry.PickItemLike("bjorn") ?? IconRegistry.PickItemLike("bear");
             if (p.Contains("troll")) return "TrophyFrostTroll";
-            if (p.Contains("sunken")) return "CryptKey";
+            if (p.Contains("sunken")) return "TrophyDraugr";
             if (p.Contains("crypt") || p.Contains("burial")) return "TrophySkeleton";
             if (p.Contains("frost") || p.Contains("mountain")) return "TrophyUlv";
             if (p.Contains("dvergr") || p.Contains("infested")) return "TrophySeeker";
@@ -556,12 +823,31 @@ namespace TheGreatestMap
             return new Found { Key = key, Cat = cat, Icon = resolved, Name = name ?? "", Pos = pos };
         }
 
+        // What a deposit yields besides the thing you went there for. A copper vein drops stone as
+        // well as ore, and the stone tends to come first in its table, so taking the first drop
+        // labelled a copper deposit with a lump of stone.
+        private static readonly HashSet<string> Rubble = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Stone", "Wood", "RoundLog", "FineWood", "Resin", "Flint",
+        };
+
+        /// <summary>
+        /// The drop worth putting on the map: the one you would go there for, which is whatever is
+        /// not rubble. Falls back to the first drop when a thing yields nothing else, so a plain
+        /// boulder still shows stone.
+        /// </summary>
         private static string FirstDrop(DropTable table)
         {
             if (table == null || table.m_drops == null) return null;
+            string fallback = null;
             foreach (var drop in table.m_drops)
-                if (drop.m_item != null) return IconRegistry.ItemKey(drop.m_item);
-            return null;
+            {
+                if (drop.m_item == null) continue;
+                string name = Utils.GetPrefabName(drop.m_item);
+                if (fallback == null) fallback = IconRegistry.ItemKey(drop.m_item);
+                if (!Rubble.Contains(name)) return IconRegistry.ItemKey(drop.m_item);
+            }
+            return fallback;
         }
 
         private static string KeyOf(GameObject go, string prefix)

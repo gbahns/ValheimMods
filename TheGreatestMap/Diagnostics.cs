@@ -8,6 +8,22 @@ namespace TheGreatestMap
     {
         private static readonly RaycastHit[] _hits = new RaycastHit[256];
 
+        /// <summary>The components classification cares about, if this object carries any.</summary>
+        private static string Components(GameObject go)
+        {
+            var parts = new List<string>();
+            if (go.GetComponent<MineRock5>() != null) parts.Add("MineRock5");
+            if (go.GetComponent<MineRock>() != null) parts.Add("MineRock");
+            if (go.GetComponent<Pickable>() != null) parts.Add("Pickable");
+            if (go.GetComponent<Destructible>() != null) parts.Add("Destructible");
+            if (go.GetComponent<DropOnDestroyed>() != null) parts.Add("DropOnDestroyed");
+            if (go.GetComponent<Piece>() != null) parts.Add("Piece");
+            if (go.GetComponent<Location>() != null) parts.Add("Location");
+            if (go.GetComponent<LocationProxy>() != null) parts.Add("LocationProxy");
+            if (go.GetComponent<ZNetView>() != null) parts.Add("ZNetView");
+            return parts.Count == 0 ? " — no components of interest" : " — " + string.Join(", ", parts.ToArray());
+        }
+
         internal static List<string> Describe()
         {
             var lines = new List<string>();
@@ -39,12 +55,19 @@ namespace TheGreatestMap
             if (!any) { lines.Add("nearest hit: nothing"); return lines; }
 
             var go = best.collider.gameObject;
-            lines.Add($"nearest hit: '{go.name}' at {bestDistance:0.0} m, layer {LayerMask.LayerToName(go.layer)}, prefab '{Utils.GetPrefabName(go)}'");
+            lines.Add($"nearest hit: '{go.name}' at {bestDistance:0.0} m, layer {LayerMask.LayerToName(go.layer)}, prefab '{Catalog.PrefabName(go)}'");
             var piece = go.GetComponentInParent<Piece>();
             var wear = go.GetComponentInParent<WearNTear>();
             var location = go.GetComponentInParent<Location>();
             lines.Add($"  piece: {(piece != null ? (piece.IsPlacedByPlayer() ? "player-built" : "world") : "none")}, wearntear: {(wear != null)}, container: {(go.GetComponentInParent<Container>() != null)}, door: {(go.GetComponentInParent<Door>() != null)}, location parent: {(location != null ? Utils.GetPrefabName(location.gameObject) : "none")}");
             lines.Add($"  world piece: {Catalog.IsWorldPiece(go)}");
+
+            // Classification looks for a component on the object or any of its parents, so when it
+            // finds nothing the useful question is what the chain actually holds. A collider that
+            // belongs to scenery rather than to a deposit looks identical until you see this.
+            var t = go.transform;
+            for (int depth = 0; t != null && depth < 8; depth++, t = t.parent)
+                lines.Add($"    {(depth == 0 ? "hit" : "parent " + depth)}: '{t.name}'{Components(t.gameObject)}");
 
             // Whether a plant grows back decides whether its marker stays true after harvesting.
             // The respawn time is set per prefab in the game's own assets, so the only way to know
@@ -67,6 +90,8 @@ namespace TheGreatestMap
             }
             if (LocationIndex.Count == 0) lines.Add("  no indexed locations at all (LocationProxy hook not firing?)");
 
+            lines.Add("  what the catalog makes of it: " + Catalog.Explain(go));
+
             if (!Catalog.TryClassify(go, out var found))
             {
                 lines.Add("classified: no (nothing recordable)" + (Buildings.LastRejectReason != null ? ": " + Buildings.LastRejectReason : ""));
@@ -79,8 +104,15 @@ namespace TheGreatestMap
             lines.Add($"  look distance for {found.Cat}: {lookDistance:0} m -> {(bestDistance <= lookDistance ? "in range" : "TOO FAR to count as seen")}");
             lines.Add($"  kind enabled: {(TgmConfig.CategoryEnabled.TryGetValue(found.Cat, out var en) && en.Value)}");
             lines.Add($"  pending (found, not yet recorded): {DiscoveryLedger.IsPending(found.Key)}, recorded this session: {DiscoveryLedger.IsRecorded(found.Key)}");
+            // The same center and radius the recorder uses, so this reports what would actually
+            // happen rather than something close to it. Locations dedupe over their whole radius.
             float spacing = TgmConfig.MarkerSpacing.TryGetValue(found.Cat, out var s) ? s.Value : 1f;
-            lines.Add($"  marker with this icon within {spacing:0.#} m: {ClientPins.HasPinNear(found.Icon, found.Pos, spacing)}, erased spot here: {ClientPins.IsSuppressed(found.Icon, found.Pos, spacing)}");
+            float dedupeRadius = Mathf.Max(spacing, found.Radius);
+            Vector3 dedupeAt = found.DedupeCenter;
+            lines.Add($"  dedupe: {dedupeRadius:0.#} m around {dedupeAt}");
+            lines.Add($"  marker with this icon already there: {ClientPins.HasPinNear(found.Icon, dedupeAt, dedupeRadius)}");
+            lines.Add($"  erased spot here (blocks recording): {ClientPins.IsSuppressed(found.Icon, dedupeAt, dedupeRadius)}");
+            lines.Add($"  any marker of this kind nearby: {ClientPins.DescribeNear(found.Cat, dedupeAt, Mathf.Max(dedupeRadius, 30f))}");
             return lines;
         }
     }

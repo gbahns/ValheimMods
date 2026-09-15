@@ -1,9 +1,8 @@
 # The Greatest Map
 
-> **EARLY ALPHA / TEST BUILD.** Version 0.1.x is being tested by its authors on their own
-> server. Expect rough edges, missing polish and changes between versions. Back up your world
-> before trying it, and please report anything odd. Do not install it on a server whose players
-> are not in on the test.
+> **ALPHA.** In steady use on its authors' own server, and open to anyone who wants it. Expect
+> changes between versions and the occasional rough edge, and please report anything odd. Back up
+> your world before trying it, as you would with any mod that writes to your save.
 
 One shared, living map for your server, without the cartography table mess.
 
@@ -29,6 +28,7 @@ server's is refused at connect, so keep everyone on the same version.
 |---|---|
 | `Y` | Take the map out of your pocket / put it away |
 | `U` | Read and write the nearest cartography table right now |
+| `L` | Open the legend: every marker and the thing it stands for |
 
 Pick keys no other mod acts on. If another mod equips an item on the same key as the map, the
 map folds straight back up (equipping a hand item always puts it away).
@@ -95,7 +95,8 @@ off and portals are learned the way everything else is, by seeing one yourself o
 sharing their map with you. The extra portals are drawn only, never saved and never shared.
 
 Portals get their own color, since they are the points you travel between and are worth spotting at
-a glance. By default they fade slowly between pale gold and violet; set "Portal Marker Color" and
+a glance. By default they fade slowly between two shades of orange, which reads as a gentle pulse rather
+than a colour change; set "Portal Marker Color" and
 "Portal Pulse Color" to any hex value or color name, clear the pulse color for a steady one, and
 use "Portal Pulse Seconds" for the speed.
 
@@ -127,6 +128,10 @@ counts as well unless "Structures Include Unlisted" is off or its prefab name is
 | `tgm_wipe [auto\|all]` | Admin: erase recorded markers (default) or every shared marker, for everyone |
 | `tgm_unsuppress` | Admin: allow recording again where recorded markers were erased |
 | `tgm_reicon` | Repair dungeon markers that took the swamp crypt key because their cave was not in the catalog |
+| `tgm_deposits` | Every deposit in the game, what it yields, and whether the catalog knows it |
+| `tgm_admin` | Ask the server whether it treats you as an admin, and what player id it sees |
+| `tgm_items <word>` | List the game's items matching a word, for choosing a marker icon |
+| `tgm_legend` | Open the legend (same as the legend key) |
 | `tgm_show` | Show every hidden marker again (single markers, hidden icons and hidden kinds) |
 
 ## Configuration

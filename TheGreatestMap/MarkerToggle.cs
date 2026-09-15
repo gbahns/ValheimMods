@@ -405,7 +405,7 @@ namespace TheGreatestMap
             }
             if (present.Count > 0)
             {
-                var showAll = MenuKit.Row(_root.transform, "Show every kind", true, () =>
+                var showAll = MenuKit.Row(_root.transform, "Show all", true, () =>
                 {
                     foreach (var k in Categories.All)
                         if (TgmConfig.ShowKind.TryGetValue(k, out var e) && !e.Value) e.Value = true;

@@ -17,6 +17,8 @@ namespace TheGreatestMap
         private const string Wipe        = "TGM_Wipe";        // client (admin) -> server
         private const string Unsuppress  = "TGM_Unsuppress";  // client (admin) -> server
         private const string BUnsuppress = "TGM_BUnsuppress"; // server -> everybody
+        private const string WhoAmI      = "TGM_WhoAmI";      // client -> server: am I an admin?
+        private const string YouAre      = "TGM_YouAre";      // server -> that client: the answer
 
         internal static void Register()
         {
@@ -29,6 +31,8 @@ namespace TheGreatestMap
             rpc.Register<int>(Wipe, RPC_Wipe);
             rpc.Register(Unsuppress, RPC_Unsuppress);
             rpc.Register(BUnsuppress, RPC_BUnsuppress);
+            rpc.Register(WhoAmI, RPC_WhoAmI);
+            rpc.Register<bool, string>(YouAre, RPC_YouAre);
         }
 
         private static bool Ready => ZRoutedRpc.instance != null && ZNet.instance != null;
@@ -71,6 +75,41 @@ namespace TheGreatestMap
         private static void Broadcast(string method, params object[] args)
         {
             ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.Everybody, method, args);
+        }
+
+        /// <summary>
+        /// Ask the server whether it treats this player as an admin. Only the server can answer:
+        /// admin status is a line in its adminlist.txt matched against the id on the connection, so
+        /// nothing a client believes about itself counts. The answer carries that id back too,
+        /// since "which id should I add to the file" is the next question.
+        /// </summary>
+        internal static void AskAmIAdmin()
+        {
+            if (!Ready) { TheGreatestMapMod.Message("Not connected to a world."); return; }
+            ZRoutedRpc.instance.InvokeRoutedRPC(WhoAmI);
+        }
+
+        private static void RPC_WhoAmI(long sender)
+        {
+            if (!PinStore.IsServer) return;
+            string id = "";
+            var znet = ZNet.instance;
+            if (znet != null)
+            {
+                var peer = znet.GetPeer(sender);
+                if (peer != null && peer.m_socket != null) id = peer.m_socket.GetHostName() ?? "";
+            }
+            if (string.IsNullOrEmpty(id)) id = "this player is hosting, so the id is not on a connection";
+            ZRoutedRpc.instance.InvokeRoutedRPC(sender, YouAre, IsAdmin(sender), id);
+        }
+
+        private static void RPC_YouAre(long sender, bool admin, string id)
+        {
+            string text = admin
+                ? "The server treats you as an admin."
+                : "The server does not treat you as an admin.";
+            TheGreatestMapMod.Message(text);
+            TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] {text} The id it sees for you: {id}. Admins are the ids listed in the server's adminlist.txt, one per line.");
         }
 
         private static bool IsAdmin(long sender)

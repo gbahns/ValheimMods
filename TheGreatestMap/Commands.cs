@@ -116,6 +116,40 @@ namespace TheGreatestMap
                     args.Context.AddString($"Erased {n} recorded {kind} markers within {radius:0} m.");
                 }));
 
+            new Terminal.ConsoleCommand("tgm_admin", "Ask the server whether it treats you as an admin, and what player id it sees for you",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    PinNetwork.AskAmIAdmin();
+                    args.Context.AddString("Asked the server; the answer appears on screen and in the log.");
+                }));
+
+            new Terminal.ConsoleCommand("tgm_deposits", "List every deposit prefab in the game, what it yields, and whether the catalog knows it (also written to the log)",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    foreach (var line in Catalog.Deposits())
+                    {
+                        args.Context.AddString(line);
+                        TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_deposits: " + line);
+                    }
+                }));
+
+            new Terminal.ConsoleCommand("tgm_items", "List the game's items whose name contains a word, for choosing a marker icon: tgm_items bear",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    if (args.Args.Length < 2) { args.Context.AddString("Usage: tgm_items <word>"); return; }
+                    var found = IconRegistry.ItemsLike(args.Args[1]);
+                    if (found.Count == 0) { args.Context.AddString($"No item name contains '{args.Args[1]}'."); return; }
+                    args.Context.AddString($"{found.Count} item(s) matching '{args.Args[1]}':");
+                    foreach (var name in found) args.Context.AddString("  " + name);
+                }));
+
+            new Terminal.ConsoleCommand("tgm_legend", "Open the legend: every marker this mod can draw and the thing it stands for",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    LegendPanel.Toggle();
+                    args.Context.AddString(LegendPanel.IsOpen ? "Legend opened." : "Legend closed.");
+                }));
+
             new Terminal.ConsoleCommand("tgm_look", "Report what the crosshair hits and every reason it would or would not be recorded (also written to the log)",
                 (Terminal.ConsoleEvent)(args =>
                 {

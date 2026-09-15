@@ -137,6 +137,120 @@ namespace TheGreatestMap
             return null;
         }
 
+        private static readonly Dictionary<string, string> _likeCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Ask the game which item it actually has, instead of guessing its name. Valheim's naming
+        /// is not predictable enough to hard-code: the bear has no "TrophyBear", and the strings
+        /// that look like drops in the asset files turn out to be sounds and meshes. So the item
+        /// database is searched for one whose prefab name contains the word, preferring a trophy
+        /// and then the shortest name, which is usually the plain item rather than a variant.
+        /// What it settles on is logged once, so the right name can be written into the catalog.
+        /// </summary>
+        internal static string PickItemLike(string contains)
+        {
+            if (string.IsNullOrEmpty(contains) || ObjectDB.instance == null) return null;
+            if (_likeCache.TryGetValue(contains, out var cached)) return cached;
+            string best = null;
+            int bestRank = -1;
+            try
+            {
+                foreach (var prefab in ObjectDB.instance.m_items)
+                {
+                    if (prefab == null) continue;
+                    var drop = prefab.GetComponent<ItemDrop>();
+                    if (drop == null || drop.m_itemData == null || drop.m_itemData.m_shared == null) continue;
+                    // Beards and hair are items too, and a beard is not a bear.
+                    if (drop.m_itemData.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Customization) continue;
+                    string name = Utils.GetPrefabName(prefab);
+                    if (!NameContainsWord(name, contains)) continue;
+                    if (!HasIcon(drop)) continue;   // an item with no usable icon would draw as a dot
+                    int rank = Rank(name, contains);
+                    if (best == null || rank > bestRank
+                        || (rank == bestRank && name.Length < best.Length))
+                    {
+                        best = name;
+                        bestRank = rank;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                TheGreatestMapMod.Log.LogWarning($"[TheGreatestMap] Could not search the item database for '{contains}': {e.Message}");
+            }
+            string key = best != null ? "item:" + best : null;
+            _likeCache[contains] = key;
+            TheGreatestMapMod.Log.LogInfo(best != null
+                ? $"[TheGreatestMap] Icon for '{contains}': using the item '{best}'."
+                : $"[TheGreatestMap] No item matching '{contains}' in the game; that marker gets a plain dot.");
+            return key;
+        }
+
+        /// <summary>
+        /// A trophy of the creature beats one of its drops, and a drop named after it ("BearHide")
+        /// beats something that merely mentions it ("PulledBear", a meal). Ties go to the shorter
+        /// name, which is usually the plain item rather than a variant.
+        /// </summary>
+        private static int Rank(string name, string word)
+        {
+            if (name.StartsWith("Trophy", StringComparison.OrdinalIgnoreCase)) return 2;
+            if (name.StartsWith(word, StringComparison.OrdinalIgnoreCase)) return 1;
+            return 0;
+        }
+
+        /// <summary>
+        /// "Bear" is in "BearHide" and "TrophyBear" but not in "Beard1". Prefab names are written
+        /// in PascalCase, so a match counts only where the word starts one (or starts the name) and
+        /// is not run on by more lowercase letters.
+        /// </summary>
+        private static bool NameContainsWord(string name, string word)
+        {
+            if (string.IsNullOrEmpty(name)) return false;
+            int at = 0;
+            while ((at = name.IndexOf(word, at, StringComparison.OrdinalIgnoreCase)) >= 0)
+            {
+                bool startsWord = at == 0 || char.IsUpper(name[at]);
+                int after = at + word.Length;
+                bool endsWord = after >= name.Length || !char.IsLower(name[after]);
+                if (startsWord && endsWord) return true;
+                at++;
+            }
+            return false;
+        }
+
+        /// <summary>An item whose icon cannot be read is no use: it would draw as a plain dot anyway.</summary>
+        private static bool HasIcon(ItemDrop drop)
+        {
+            try { return drop.m_itemData.GetIcon() != null; }
+            catch (Exception) { return false; }
+        }
+
+        /// <summary>Every item whose name contains the word, for choosing an icon by eye.</summary>
+        internal static List<string> ItemsLike(string contains)
+        {
+            var found = new List<string>();
+            if (string.IsNullOrEmpty(contains) || ObjectDB.instance == null) return found;
+            try
+            {
+                foreach (var prefab in ObjectDB.instance.m_items)
+                {
+                    if (prefab == null) continue;
+                    var drop = prefab.GetComponent<ItemDrop>();
+                    if (drop == null || drop.m_itemData == null || drop.m_itemData.m_shared == null) continue;
+                    string name = Utils.GetPrefabName(prefab);
+                    if (name == null || name.IndexOf(contains, StringComparison.OrdinalIgnoreCase) < 0) continue;
+                    string note = drop.m_itemData.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Customization ? " (customization, skipped)"
+                        : HasIcon(drop) ? "" : " (no icon, skipped)";
+                    found.Add(name + note);
+                }
+            }
+            catch (Exception) { }
+            found.Sort(StringComparer.OrdinalIgnoreCase);
+            return found;
+        }
+
+        internal static void ForgetPicks() => _likeCache.Clear();
+
         internal static string ItemKey(GameObject itemPrefab)
         {
             return itemPrefab == null ? null : "item:" + Utils.GetPrefabName(itemPrefab);

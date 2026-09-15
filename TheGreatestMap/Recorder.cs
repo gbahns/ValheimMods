@@ -54,14 +54,8 @@ namespace TheGreatestMap
                 float spacing = TgmConfig.MarkerSpacing.TryGetValue(found.Cat, out var s) ? s.Value : 1f;
                 float dedupeRadius = Mathf.Max(spacing, found.Radius);
                 Vector3 dedupeAt = found.DedupeCenter;
-                // Already marked, but with the wrong picture: correct it rather than adding a
-                // second marker beside it. Only dungeons, and only from seeing the place.
-                if (ClientPins.CorrectDungeonIconNear(found, dedupeRadius))
-                {
-                    DiscoveryLedger.MarkRecorded(found.Key);
-                    Announce(found, $"{found.Name}: marker icon corrected");
-                    continue;
-                }
+                // The icon was already corrected when the place was seen, so a marker that exists
+                // here now matches and the ordinary duplicate check below catches it.
                 if (ClientPins.HasPinNear(found.Icon, dedupeAt, dedupeRadius))
                 {
                     Announce(found, $"{found.Name}: already marked within {dedupeRadius:0.#} m");

@@ -12,6 +12,7 @@ namespace TheGreatestMap
         // ── Keys ────────────────────────────────────────────────────────────────────
         internal static ConfigEntry<KeyboardShortcut> TakeOutMapKey;
         internal static ConfigEntry<KeyboardShortcut> SyncTableKey;
+        internal static ConfigEntry<KeyboardShortcut> LegendKey;
         internal static ConfigEntry<bool> ShowMessages;
 
         // ── Sharing rules (server-synced) ───────────────────────────────────────────
@@ -32,6 +33,8 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> ShowPauseButton;
         internal static ConfigEntry<bool> MarkerButton;
         internal static ConfigEntry<bool> MarkerTooltips;
+        internal static ConfigEntry<string> LegendSize;
+        internal static ConfigEntry<string> LegendPosition;
         internal static ConfigEntry<bool> ShowAllMarkers;
         internal static ConfigEntry<bool> ShowClearedDeposits;
         internal static ConfigEntry<float> RevealNewMarkers;
@@ -152,6 +155,9 @@ namespace TheGreatestMap
                 "Use a key no other mod acts on: a mod that equips something on the same key folds the map straight back up.");
             SyncTableKey = mod.BindLocal("Keys", "Sync Cartography Table", new KeyboardShortcut(KeyCode.U),
                 "Reads and writes the nearest cartography table within reach right now, ignoring the auto-sync cooldown.");
+            LegendKey = mod.BindLocal("Keys", "Legend", new KeyboardShortcut(KeyCode.L),
+                "Opens the legend: every marker this mod can draw and the thing it stands for, with the icon resolved " +
+                "the way recording resolves it. The console command tgm_legend does the same.");
             ShowMessages = mod.BindLocal("General", "Show Messages", true,
                 "Show small top-left messages when the map is taken out, a marker is recorded, and so on.");
 
@@ -160,9 +166,11 @@ namespace TheGreatestMap
                 "it with the shared map at a cartography table, or with another player's map when you both have your maps " +
                 "out standing together. Instant: every change goes to the shared map at once and out to everyone.");
             AllowErasingMarkers = mod.BindSynced("Sharing", "Allow Erasing Markers", false,
-                "Let players erase this mod's markers (Shift + right-click on the map screen). Off by default so a marker " +
-                "cannot be lost to a stray click; vanilla pins are unaffected. An erasure merges like any other change: " +
-                "it wins over older copies of the marker and is itself replaced if someone records the spot again later.");
+                "Let players erase recorded markers, the ones this mod wrote for something really in the world. Off by " +
+                "default, because the world does not forget: erase the marker and the next player to walk past records it " +
+                "again, so removing one is a repair for a marker that is wrong rather than an everyday action. Hiding is " +
+                "what you want for markers you simply do not care to see. A marker somebody placed by hand is not covered: " +
+                "whoever placed it can always take it back, and this switch decides whether anyone else may.");
             ExchangeRadius = mod.BindLocal("Sharing", "Exchange Radius", 5f,
                 "Distance in meters within which two players who both have their maps out compare and merge their maps.");
             ExchangeCooldown = mod.BindLocal("Sharing", "Exchange Cooldown", 60f,
@@ -197,6 +205,10 @@ namespace TheGreatestMap
                 "Hovering a marker on the large map names it: what it is, its icon, whether it has been cleared or " +
                 "searched, and who recorded it and when. Most markers carry no label on purpose, which is what keeps a " +
                 "crowded map readable, so this is where that information lives.");
+            LegendSize = mod.BindLocal("Display", "Legend Size", "560,620",
+                "Width and height of the legend panel, in pixels. Dragging its corner grip changes this.");
+            LegendPosition = mod.BindLocal("Display", "Legend Position", "0,0",
+                "Where the legend sits, measured from the middle of the screen. Dragging its title bar changes this.");
             ShowClearedDeposits = mod.BindLocal("Display", "Show Cleared Deposits", true,
                 "Keep drawing berry bushes, mushrooms, herbs and ore deposits after they have been used up, crossed " +
                 "off, so you can see which ground has already been worked. Off hides them once cleared. The record is " +
@@ -210,13 +222,14 @@ namespace TheGreatestMap
                 "your map and never shared, so turning this off leaves nothing behind. Either way the portal markers you " +
                 "do have are kept current, renamed when the portal is renamed and erased when it is torn down.");
             MapAllPortals.SettingChanged += (_, __) => Portals.Redraw();
-            PortalColor = mod.BindLocal("Display", "Portal Marker Color", "#FFEDB8",
+            PortalColor = mod.BindLocal("Display", "Portal Marker Color", "#FF6600",
                 "Color of portal markers, which are worth picking out of the crowd because they are how you travel. " +
-                "A hex color such as #B07CFF, or a name such as violet. The default is the same pale gold as every " +
-                "other recorded marker.");
-            PortalPulseColor = mod.BindLocal("Display", "Portal Pulse Color", "#B07CFF",
+                "A hex color such as #A05BDD, or a name such as violet. The default pair is two shades of orange; " +
+                "#A05BDD with #B07CFF as the pulse is a good violet alternative.");
+            PortalPulseColor = mod.BindLocal("Display", "Portal Pulse Color", "#FF8800",
                 "Portal markers fade back and forth between their color and this one, so they catch the eye on a busy " +
-                "map. Leave it empty for a steady color.");
+                "map. Two shades of the same color read as a gentle pulse; two different colors are far louder. Leave " +
+                "it empty for a steady color.");
             PortalPulseSeconds = mod.BindLocal("Display", "Portal Pulse Seconds", 2f,
                 "How long one fade from the portal color to the pulse color and back takes. Lower is faster; " +
                 "0 stops the fade.");

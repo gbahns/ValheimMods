@@ -235,7 +235,7 @@ namespace TheGreatestMap
 
         // ── color ───────────────────────────────────────────────────────────────────
 
-        private static Color _parsedColor = new Color(1f, 0.93f, 0.72f, 1f);
+        private static Color _parsedColor = new Color(1f, 0.4f, 0f, 1f); // #FF6600, the default
         private static Color _parsedPulse = Color.clear;
         private static string _colorText, _pulseText;
         private static bool _pulses;
@@ -251,7 +251,7 @@ namespace TheGreatestMap
             if (text != _colorText)
             {
                 _colorText = text;
-                _parsedColor = Parse(text, new Color(1f, 0.93f, 0.72f, 1f));
+                _parsedColor = Parse(text, new Color(1f, 0.4f, 0f, 1f));
             }
             string pulseText = TgmConfig.PortalPulseColor != null ? TgmConfig.PortalPulseColor.Value : null;
             if (pulseText != _pulseText)

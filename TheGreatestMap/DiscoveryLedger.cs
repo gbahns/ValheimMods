@@ -105,6 +105,10 @@ namespace TheGreatestMap
         internal static void MarkFound(Found found)
         {
             if (found == null || string.IsNullOrEmpty(found.Key)) return;
+            // Correcting a marker that is already on the map is not recording a discovery, so it
+            // does not wait for the pocket map to come out: the moment the place is seen, what the
+            // map says about it can be made true. Writing a new marker still waits, as it should.
+            ClientPins.CorrectDungeonIconNear(found, Mathf.Max(found.Radius, 20f));
             if (_recorded.Contains(found.Key)) return;
             if (_pending.TryGetValue(found.Key, out var existing))
             {

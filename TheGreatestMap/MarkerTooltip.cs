@@ -101,6 +101,12 @@ namespace TheGreatestMap
             if (shared.Checked)
                 lines.Add(kind.HasValue && Categories.IsResource(kind.Value) ? "Cleared" : "Searched");
 
+            // The raw icon key, which is the field that goes wrong: a marker showing a plain dot
+            // is usually one whose key names an item this game does not have, and nothing else on
+            // screen says so. The prefab it came from is not stored on a marker, so that level of
+            // detail lives in the legend rather than here.
+            lines.Add(shared.Icon);
+
             string who = !string.IsNullOrEmpty(shared.Author) ? shared.Author : null;
             string when = When(shared.Created);
             if (who != null && when != null) lines.Add($"{who}, {when}");
@@ -146,7 +152,7 @@ namespace TheGreatestMap
             Stretch(_title.rectTransform, -Pad, TitleHeight);
             _title.alignment = TextAlignmentOptions.MidlineLeft;
 
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 4; i++)
             {
                 var line = MenuKit.Text(_root.transform, "Line" + i, "", 13f, MenuKit.Dim);
                 Stretch(line.rectTransform, -(Pad + TitleHeight + i * LineHeight), LineHeight);

@@ -42,6 +42,7 @@ namespace TheGreatestMap
             MarkerToggle.Reset();
             MarkerMenu.Close();
             MarkerTooltip.Reset();
+            IconRegistry.ForgetPicks();
             Reveals.Reset();
             Portals.Reset();
         }
@@ -294,6 +295,36 @@ namespace TheGreatestMap
             return true;
         }
 
+        /// <summary>
+        /// Who may remove a marker, which depends on what kind of thing it is.
+        ///
+        /// A recorded marker stands for something really in the world, and the world does not
+        /// forget: erase the marker and the next player to walk past records it again. Removing one
+        /// is therefore a repair, for a marker that is wrong, rather than an everyday action, and it
+        /// stays behind the server's "Allow Erasing Markers" switch.
+        ///
+        /// A marker somebody placed by hand stands for nothing but their own note, so the person who
+        /// wrote it can always take it back. Anyone else needs the server to allow erasing, since to
+        /// them it is somebody else's writing.
+        /// </summary>
+        internal static bool CanDelete(SharedPin pin, out string why)
+        {
+            why = null;
+            if (pin == null) return false;
+            bool allowed = TgmConfig.AllowErasingMarkers.Value;
+            if (!pin.Auto)
+            {
+                var player = Player.m_localPlayer;
+                if (player != null && pin.OwnerId == player.GetPlayerID()) return true;
+                if (allowed) return true;
+                why = "only whoever placed it can remove it";
+                return false;
+            }
+            if (allowed) return true;
+            why = "erasing recorded markers is off on this server";
+            return false;
+        }
+
         /// <summary>Erase one marker for everyone (a tombstone carries it at the next merge). Not gated: the caller checks the server setting.</summary>
         internal static bool EraseById(string id)
         {
@@ -436,6 +467,25 @@ namespace TheGreatestMap
             foreach (var pin in Store.Pins.Values)
                 if ((icon == null || IconRegistry.SameKey(pin.Icon, icon)) && Geo.FlatDistance(pin.Pos, pos) <= radius) return true;
             return false;
+        }
+
+        /// <summary>
+        /// What markers of this kind are near a point, for the look report: the icon each one
+        /// carries, how far off it is, and whether it is crossed off. A marker that is present but
+        /// wearing a different icon, or crossed off as cleared, looks exactly like a missing marker
+        /// on screen, and neither shows up in a yes-or-no duplicate check.
+        /// </summary>
+        internal static string DescribeNear(Category kind, Vector3 pos, float radius)
+        {
+            var parts = new List<string>();
+            foreach (var pin in Store.Pins.Values)
+            {
+                if (KindOf(pin) != kind) continue;
+                float d = Geo.FlatDistance(pin.Pos, pos);
+                if (d > radius) continue;
+                parts.Add($"{pin.Icon} at {d:0.#} m{(pin.Checked ? ", crossed off" : "")}{(pin.Auto ? "" : ", placed by hand")}");
+            }
+            return parts.Count == 0 ? "none" : string.Join("; ", parts.ToArray());
         }
 
         /// <summary>A recorded marker with this icon was erased near here, so do not put it back.</summary>
@@ -599,6 +649,11 @@ namespace TheGreatestMap
                 if (pin.m_iconElement != null && shared.Auto)
                     pin.m_iconElement.color = AutoTint;
             }
+            // Vanilla lays the pins out again whenever the map moves, which on the minimap is every
+            // step the player takes, and a freshly built icon starts at the prefab's plain white.
+            // Painting here, right after that rebuild, is what stops portals flashing white while
+            // walking; the per-frame pass carries the fade on while standing still.
+            Portals.Paint();
         }
 
         /// <summary>Paint the portal markers on this map; called every frame so their color can fade.</summary>
@@ -629,9 +684,9 @@ namespace TheGreatestMap
         private static bool Prefix(Minimap.PinData pin)
         {
             if (!ClientPins.IsOurs(pin) || ClientPins.ApplyingRemote) return true;
-            if (!TgmConfig.AllowErasingMarkers.Value)
+            if (!ClientPins.CanDelete(ClientPins.SharedFor(pin), out string whyNot))
             {
-                TheGreatestMapMod.Message("Erasing map markers is switched off on this server.");
+                TheGreatestMapMod.Message("Cannot remove this marker: " + whyNot + ".");
                 return false;
             }
             if (!ZInput.GetKey(KeyCode.LeftShift) && !ZInput.GetKey(KeyCode.RightShift))
