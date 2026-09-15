@@ -4,7 +4,7 @@ schemaVersion = "0.0.1"
 [package]
 namespace = "DeathMonger"
 name = "DudeWhatAreMyStats"
-versionNumber = "0.1.0"
+versionNumber = "0.2.0"
 description = "Your stats on one key press, with the game paused while you read. Scoreboard of every player, including ones who are offline: kills, deaths, K/D, bosses, time played and best skill."
 websiteUrl = "https://github.com/gbahns/ValheimMods"
 containsNsfwContent = false
