@@ -216,6 +216,9 @@ foreach ($d in $dirs) {
         Categories  = Get-TomlValue $tsToml "valheim"
         Build       = $build
         Dll         = $dll
+        # The server comparison is DLL against DLL, so the report has to quote this rather than
+        # the manifest: a stale build can carry a version the tree has since moved off.
+        DllVersion  = $(if ($dll) { ([Diagnostics.FileVersionInfo]::GetVersionInfo($dll).FileVersion -replace '\.0$', '') } else { $null })
         Dirty       = $dirty.Count
         ServerState = ""
     }
@@ -408,17 +411,27 @@ foreach ($r in $rows) {
 
     if ($r.Build -eq "STALE")     { $actions += "$($r.Folder): source is newer than the Release DLL - rebuild before packaging." }
     if ($r.Build -eq "not built") { $actions += "$($r.Folder): no Release build in bin\Release." }
+    # Quote the local DLL, not the manifest: the comparison is DLL against DLL, and a stale build
+    # can carry a version the tree has moved off -- which once produced "the server is running
+    # 0.3.0 and this repo builds 0.3.0", demanding a deploy for a server that was already right.
     if ($r.ServerState -match 'BEHIND') {
-        $actions += ("$($r.Folder): the server is running " + ($r.ServerState -replace ' BEHIND', '') +
-                     " and this repo builds $($r.Local) - .\deploy-dathost.ps1 -Mod $($r.Folder)")
+        $srvVer = ($r.ServerState -split ' ')[0]
+        if ($r.Build -eq "STALE") {
+            $actions += ("$($r.Folder): the server has $srvVer against a local build of $($r.DllVersion), " +
+                         "but that build is stale and the tree says $($r.Local). Rebuild before reading this.")
+        } else {
+            $actions += ("$($r.Folder): the server has $srvVer and the local build is $($r.DllVersion) - " +
+                         ".\deploy-dathost.ps1 -Mod $($r.Folder) -Published")
+        }
     }
     if ($r.Unreleased -and $r.Expected -eq $r.Local) {
         $actions += ("$($r.Folder): CHANGELOG.md marks $($r.Local) unreleased but there is no released " +
                      "heading under it to compare the sites against.")
     }
     if ($r.ServerState -match 'ahead') {
-        $actions += ("$($r.Folder): the server is running " + ($r.ServerState -replace ' ahead', '') +
-                     ", newer than this repo's $($r.Local) - someone else built it.")
+        $srvVer = ($r.ServerState -split ' ')[0]
+        $actions += ("$($r.Folder): the server has $srvVer, newer than the local build's $($r.DllVersion) - " +
+                     "someone else built it; don't overwrite it blindly.")
     }
     if ($r.ServerState -eq "unstamped") {
         $actions += "$($r.Folder): the server's DLL was built before versions were stamped, so its version cannot be read. One deploy replaces it with an identifiable build."

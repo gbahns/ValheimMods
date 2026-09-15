@@ -52,14 +52,20 @@ build, since both report 1.0.0.0. Those rows fall through to the commit comparis
 
 ## Versions being prepared
 
-The convention in `mod-release` is to bump all four version files straight after publishing, so a
-healthy tree normally carries a version the sites have never seen. Where CHANGELOG.md marks the
-newest heading `unreleased`, the script compares the registries and the server against the newest
-heading *below* it — the last version actually released — and marks the row with `*`. A server
-holding that released version reads `0.2.5 released`, not `BEHIND`.
+The convention in `mod-release` is to bump when a change needs it, in the same commit as the work,
+so a mod level with its published version has nothing pending and one above it does. While a
+release is being prepared, CHANGELOG.md marks the newest heading `unreleased`; the script then
+compares the registries and the server against the newest heading *below* it — the last version
+actually released — and marks the row with `*`. A server holding that released version reads
+`0.2.5 released`, not `BEHIND`.
 
-So `Local 0.2.6* / Thunderstore 0.2.5 / Server 0.2.5 released` is the steady state mid-development,
-not three things to fix. Drop the `unreleased` marker at release time and the comparison moves.
+So `Local 0.2.6* / Thunderstore 0.2.5 / Server 0.2.5 released` is a release in progress, not three
+things to fix. Drop the `unreleased` marker at release time and the comparison moves.
+
+The `Server` comparison is DLL against DLL, so a **stale build** makes it meaningless: the DLL can
+still carry a version the tree has moved off, and the row will claim the server is behind something
+that was never released. Those lines say so and ask for a rebuild rather than a deploy — treat
+`Build: STALE` as "this row is not evidence yet".
 
 The script ends with a "Needs attention" list; if it is empty everything agrees.
 
