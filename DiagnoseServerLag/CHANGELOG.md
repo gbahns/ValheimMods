@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.2 — unreleased
+## 0.2.2
 
 - **Stopped accusing a healthy server.** A real server reported 33.3 ms per tick now, 33.3 ms
   median and a 34 ms worst tick, with no stalls — and the verdict called it starved. That is not a
