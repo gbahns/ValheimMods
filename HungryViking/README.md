@@ -27,7 +27,7 @@ Warnings only track food you've actually eaten this session: a fresh character w
 - **On-screen label** — "You can't breathe in the smoke!" The text oscillates from grey toward red.
 - No extra HUD icon — the game already shows one.
 
-### Poison *(coming soon — not yet implemented)*
+### Poison
 
 - **Center vignette** — a green haze appears from the center of the screen outward when you are poisoned. Same fade behavior as smoke.
 - **On-screen label** — "You are poisoned." The text oscillates from green toward red.

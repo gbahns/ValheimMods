@@ -34,9 +34,10 @@ namespace HungryViking
         private StatusEffect       _activeStatusEffect;
         private Player             _statusEffectPlayer;
 
-        // Hashes confirmed via hv_selist against a live game instance.
-        private const int SmokedHash   = -1612278721; // "$se_smoked_name"
-        private const int PoisonedHash = 0;           // TODO: run hv_selist while poisoned to confirm
+        // The game keeps these as public statics (SEMan hashes the ScriptableObject's asset
+        // name, not m_name), so read them from it rather than hardcoding the numbers.
+        private static int SmokedHash   => SEMan.s_statusEffectSmoked;
+        private static int PoisonedHash => SEMan.s_statusEffectPoison;
 
         // Hunger acknowledgment: the player can press DismissKey to clear the vignette and
         // label while still hungry. The warning re-arms automatically if hunger worsens (a
@@ -427,7 +428,7 @@ namespace HungryViking
         {
             if (_poisonedPreviewTimer > 0f) _poisonedPreviewTimer -= Time.deltaTime;
             bool isPoisoned = _poisonedTestActive || _poisonedPreviewTimer > 0f
-                           || (PoisonedHash != 0 && player.GetSEMan().HaveStatusEffect(PoisonedHash));
+                           || player.GetSEMan().HaveStatusEffect(PoisonedHash);
 
             _poisonedOverlay.SetOuterBoundary(PoisonedVignetteExtent.Value);
 

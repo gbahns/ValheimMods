@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1 — unreleased
+
+- The poison overlay now actually appears when you are poisoned. The status effect it watched for was never filled in, so only the test command and the config preview could show it. It reads the hash from the game now instead of a hardcoded number, which also keeps the smoke overlay working if those ever change.
+
 ## 1.2.0 — 2026-09-09
 
 - Rebuilt for Valheim 1.0.7 (Unity 6).
