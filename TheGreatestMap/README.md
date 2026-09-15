@@ -45,6 +45,11 @@ lives on your machine and everything works without a dedicated server.
 
 Recorded markers are tinted pale gold on the map so you can tell them from placed ones.
 
+**Hover a marker** on the large map and it tells you what it is: its name where it has one, what
+kind it is and which icon it carries, whether it has been cleared or searched, and who recorded it
+and when. Most markers carry no text label on purpose, since that is what keeps a map with hundreds
+of them readable, so hovering is where the detail lives. "Marker Tooltips" turns it off.
+
 **Right-click a marker** from this mod on the map screen for its menu: hide this one marker, hide
 every marker with that icon (say all dandelions), hide the whole kind (all herbs), cross it off or
 uncross it, erase it for everyone (only where the server allows erasing), and, once anything is

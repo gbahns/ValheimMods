@@ -2,6 +2,13 @@
 
 ## 0.2.8 — unreleased
 
+- Hovering a marker on the large map names it: what it is, its icon, whether it has been cleared or searched, and who recorded it and when. Most markers carry no label on purpose, which is what keeps a map with hundreds of them readable, so this is where that information lives now. Config "Marker Tooltips".
+
+- Every kind that has markers is back in the map's kind list and in a marker's right-click menu, structures, portals, camps and boss altars included. Vanilla's icon buttons also hide those, so it is redundant, but looking for the switch and not finding it with the rest was worse. The two differ in a useful way: vanilla's button hides every pin with that icon, ours hides only the markers this mod recorded.
+
+- A dungeon marker with the wrong icon is corrected when you next see the place: the classifier knows what the cave is, so the marker is fixed rather than a second one written beside it. This is what actually repairs bear and troll caves already on your map, because the name-based repair below cannot reach them. Dungeons carry no label by default and the label rules blank the name, so a marker written before its cave was in the catalog has nothing left to identify it from the map alone.
+- Dungeon markers wearing the swamp crypt key because their cave was not in the catalog when they were written, bear caves above all, are now corrected automatically: when your map loads and after each merge, so markers arriving from players still on an older version are caught too. Only markers with that icon whose name says otherwise are touched, so a real sunken crypt keeps it. Config "Repair Dungeon Icons"; `tgm_reicon` still does it on demand.
+
 ## 0.2.7 — 2026-09-15
 
 Client-side; works with a 0.2.x server.

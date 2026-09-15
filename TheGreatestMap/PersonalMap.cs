@@ -98,6 +98,11 @@ namespace TheGreatestMap
         {
             PersonalMap.LoadFrom(__instance);
             ClientPins.RebuildPins();
+            if (TgmConfig.RepairDungeonIcons.Value && PersonalMap.Store.Pins.Count > 0)
+            {
+                int fixedUp = ClientPins.RepairDungeonIcons();
+                if (fixedUp > 0) TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Corrected the icon on {fixedUp} dungeon marker(s) on the personal map that had the crypt key.");
+            }
             if (TgmConfig.ApplyLabelRulesOnSync.Value && PersonalMap.Store.Pins.Count > 0)
             {
                 int stripped = ClientPins.ApplyLabelRules(null);

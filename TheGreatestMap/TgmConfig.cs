@@ -31,6 +31,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> PauseWhileMapOpen;
         internal static ConfigEntry<bool> ShowPauseButton;
         internal static ConfigEntry<bool> MarkerButton;
+        internal static ConfigEntry<bool> MarkerTooltips;
         internal static ConfigEntry<bool> ShowAllMarkers;
         internal static ConfigEntry<bool> ShowClearedDeposits;
         internal static ConfigEntry<float> RevealNewMarkers;
@@ -134,6 +135,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<string> StructuresExcludePrefixes;
         internal static ConfigEntry<bool> CrossOffStructuresOnChest;
         internal static ConfigEntry<bool> ApplyLabelRulesOnSync;
+        internal static ConfigEntry<bool> RepairDungeonIcons;
         internal static ConfigEntry<float> ServerAutosaveMinutes;
 
         // ── Pocket map visuals ──────────────────────────────────────────────────────
@@ -191,6 +193,10 @@ namespace TheGreatestMap
                 "say, including markers that have no kind; they stay on your map and keep syncing. This is what the " +
                 "map-pin button on the map screen toggles.");
             ShowAllMarkers.SettingChanged += (_, __) => ClientPins.Restyle();
+            MarkerTooltips = mod.BindLocal("Display", "Marker Tooltips", true,
+                "Hovering a marker on the large map names it: what it is, its icon, whether it has been cleared or " +
+                "searched, and who recorded it and when. Most markers carry no label on purpose, which is what keeps a " +
+                "crowded map readable, so this is where that information lives.");
             ShowClearedDeposits = mod.BindLocal("Display", "Show Cleared Deposits", true,
                 "Keep drawing berry bushes, mushrooms, herbs and ore deposits after they have been used up, crossed " +
                 "off, so you can see which ground has already been worked. Off hides them once cleared. The record is " +
@@ -321,6 +327,11 @@ namespace TheGreatestMap
                 "After each sync, apply the label rules above to recorded markers that already exist: within each kind, the " +
                 "oldest marker of a same-named cluster keeps its label and the others lose theirs, for everyone. Labels are only " +
                 "ever removed, never added back. The console command tgm_relabel does the same on demand.");
+            RepairDungeonIcons = mod.BindLocal("Recording", "Repair Dungeon Icons", true,
+                "Correct dungeon markers wearing the swamp crypt key because their cave was not in the catalog when they " +
+                "were written, such as bear caves. Only markers with that icon whose name says otherwise are touched, so a " +
+                "real sunken crypt keeps it. Runs when your map loads and after each merge, which also catches markers " +
+                "arriving from players still on an older version. The console command tgm_reicon does the same on demand.");
             CrossOffStructuresOnChest = mod.BindLocal("Recording", "Cross Off Structures When Searched", true,
                 "Opening a chest inside a structure crosses its marker off for everyone. If the structure has no marker yet, " +
                 "it is remembered as searched and its marker starts crossed off when it is recorded.");

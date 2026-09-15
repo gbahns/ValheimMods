@@ -87,6 +87,7 @@ namespace TheGreatestMap
             if (Player.m_localPlayer == null) return;
             MarkerMenu.Update();
             MarkerToggle.Update();
+            MarkerTooltip.Update();
             Reveals.Update();
             PocketMap.Update();
             DiscoveryLedger.Update();

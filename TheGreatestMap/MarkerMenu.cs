@@ -204,8 +204,10 @@ namespace TheGreatestMap
             // A marker drawn with one of vanilla's own filterable pin icons is already hidden and
             // shown by that icon's button on the map, which also covers pins the player placed by
             // hand with it. Offering our own switch beside it only splits one job in two.
-            bool vanillaHides = IconRegistry.VanillaFilters(icon);
-            if (!vanillaHides)
+            // The per-icon switch is skipped for markers drawn on one of vanilla's own icons,
+            // because every structure, portal, camp or boss altar shares that one picture, so it
+            // would say exactly what the kind switch below says.
+            if (!IconRegistry.VanillaFilters(icon))
             {
                 items.Add(Item($"Hide all {iconName} markers", () =>
                 {
@@ -213,17 +215,22 @@ namespace TheGreatestMap
                     ClientPins.Restyle();
                     Note($"Hiding all {iconName} markers (Display > Hidden Icons).");
                 }));
-                if (kind.HasValue)
+            }
+            // The kind switch is always offered, vanilla-icon kinds included. Vanilla's own icon
+            // button covers those too, so it is redundant, but a player looking for the switch
+            // expects it here with the rest and should not have to know which mod owns the
+            // picture. They are not the same thing either: vanilla's button hides every pin with
+            // that icon, this one only the markers this mod recorded.
+            if (kind.HasValue)
+            {
+                var k = kind.Value;
+                string kindLabel = Categories.Label(k).ToLowerInvariant();
+                items.Add(Item($"Hide all {kindLabel}", () =>
                 {
-                    var k = kind.Value;
-                    string kindLabel = Categories.Label(k).ToLowerInvariant();
-                    items.Add(Item($"Hide all {kindLabel}", () =>
-                    {
-                        if (TgmConfig.ShowKind.TryGetValue(k, out var entry)) entry.Value = false;
-                        ClientPins.Restyle();
-                        Note($"Hiding all {kindLabel} (Display > Show {Categories.Label(k)}).");
-                    }));
-                }
+                    if (TgmConfig.ShowKind.TryGetValue(k, out var entry)) entry.Value = false;
+                    ClientPins.Restyle();
+                    Note($"Hiding all {kindLabel} (Display > Show {Categories.Label(k)}).");
+                }));
             }
 
             bool isChecked = pin.Checked;

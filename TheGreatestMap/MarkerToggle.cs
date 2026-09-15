@@ -362,17 +362,14 @@ namespace TheGreatestMap
                 var kind = ClientPins.KindOf(pin);
                 if (kind.HasValue) seen.Add(kind.Value);
             }
-            // Kinds drawn with one of vanilla's own filterable pin icons (structures on the house,
-            // portals on the portal, camps on the fire, boss altars on the boss) are left out:
-            // vanilla's icon button already hides and shows them, and it covers the pins the player
-            // placed by hand with that icon as well, which ours never could. A row does appear if
-            // our own switch has that kind hidden, so a leftover can always be undone here.
+            // Every kind that has markers, vanilla-icon ones included. Structures, portals, camps
+            // and boss altars are also hidden and shown by vanilla's own icon buttons, so listing
+            // them here is redundant, but leaving them out was worse: a player looking for the
+            // switch expects to find it with the rest, and does not care which mod owns the icon.
+            // The two are not identical, and the difference is in our favor: vanilla's button hides
+            // every pin with that icon, while this one covers only the markers this mod recorded.
             foreach (var kind in Categories.All)
-            {
-                if (!seen.Contains(kind)) continue;
-                if (IconRegistry.VanillaFilters(IconKeyFor(kind)) && IsShown(kind)) continue;
-                present.Add(kind);
-            }
+                if (seen.Contains(kind)) present.Add(kind);
 
             var panel = MenuKit.Panel(parent, "TGM_KindMenu");
             _root = panel.gameObject;

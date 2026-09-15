@@ -77,7 +77,14 @@ namespace TheGreatestMap
         /// <summary>Markers that arrived from elsewhere follow this player's label rules too.</summary>
         internal static void AfterMerge(MergeResult result)
         {
-            if (!TgmConfig.ApplyLabelRulesOnSync.Value || result.Added + result.Updated == 0) return;
+            if (result.Added + result.Updated == 0) return;
+            // Markers can still arrive with the old wrong icon from players on an older version.
+            if (TgmConfig.RepairDungeonIcons.Value)
+            {
+                int fixedUp = ClientPins.RepairDungeonIcons();
+                if (fixedUp > 0) TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Corrected the icon on {fixedUp} dungeon marker(s) that had the crypt key.");
+            }
+            if (!TgmConfig.ApplyLabelRulesOnSync.Value) return;
             int stripped = ClientPins.ApplyLabelRules(null);
             if (stripped > 0) TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Removed labels from {stripped} markers to match the label rules.");
         }

@@ -41,6 +41,7 @@ namespace TheGreatestMap
             InTableRead = false;
             MarkerToggle.Reset();
             MarkerMenu.Close();
+            MarkerTooltip.Reset();
             Reveals.Reset();
             Portals.Reset();
         }
@@ -190,6 +191,10 @@ namespace TheGreatestMap
         }
 
         /// <summary>
+        /// TEMPORARY, added 2026-09-15: delete this and its two automatic call sites once every
+        /// player's map has been through it (Greg expects a couple of days). New markers are
+        /// written with the right icon, so this only exists for ones already out there.
+        ///
         /// Repair dungeon markers that took the kind's fallback icon, the swamp crypt key, because
         /// their location was not in the catalog. Only markers currently wearing that icon are
         /// touched, and only when the name suggests something else, so a real sunken crypt keeps
@@ -212,6 +217,38 @@ namespace TheGreatestMap
             }
             if (changed > 0) PersonalMap.Touch();
             return changed;
+        }
+
+        /// <summary>
+        /// Correct a dungeon marker's icon from the place itself, while the player is looking at
+        /// it. The repair that works from the marker's name cannot help here, because dungeons
+        /// carry no label by default and the label rules blank the name, so a marker written
+        /// before its cave was in the catalog has nothing left to identify it. Standing in front
+        /// of the thing does: the classifier knows the prefab, so the marker is simply corrected.
+        /// Scoped to dungeons on purpose. Within a kind like herbs the icons legitimately differ
+        /// from one marker to the next, and "correcting" a dandelion into a thistle would be a
+        /// bug, whereas one dungeon entrance has exactly one right picture.
+        /// Returns true when a marker was corrected, meaning no new one should be written.
+        /// </summary>
+        internal static bool CorrectDungeonIconNear(Found found, float radius)
+        {
+            if (found == null || found.Cat != Category.Dungeon) return false;
+            SharedPin best = null;
+            float bestDistance = radius;
+            foreach (var pin in Store.Pins.Values)
+            {
+                if (!pin.Auto || KindOf(pin) != Category.Dungeon) continue;
+                float d = Geo.FlatDistance(pin.Pos, found.DedupeCenter);
+                if (d <= bestDistance) { bestDistance = d; best = pin; }
+            }
+            if (best == null || IconRegistry.SameKey(best.Icon, found.Icon)) return false;
+            TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Correcting a dungeon marker's icon from {best.Icon} to {found.Icon} ({found.Name}).");
+            best.Icon = IconRegistry.Normalize(found.Icon);
+            best.Type = IconRegistry.TypeFor(best.Icon);
+            Store.Upsert(best);
+            ReplacePinData(best);
+            PersonalMap.Touch();
+            return true;
         }
 
         /// <summary>Rename a marker on the personal map (the portal reconciler; the change merges like any other).</summary>
