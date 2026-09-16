@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.0 — unreleased
+## 0.5.0 — 2026-09-16
 
 - A **Recents** section tops the lists in the panel and on the map: the portals you most recently
   traveled to or from, newest first, so the way back is always one click away. They keep their
