@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.4.0 — 2026-09-16
+
 ## 0.3.3 — 2026-09-15
 
 - Portal pins wear the color TheGreatestMap paints portals, pulse and all, instead of plain white,

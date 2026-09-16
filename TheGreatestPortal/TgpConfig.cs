@@ -12,6 +12,7 @@ namespace TheGreatestPortal
         internal static ConfigEntry<bool> AdoptExistingConnections;
         internal static ConfigEntry<bool> AnyoneCanRedirectAll;
         internal static ConfigEntry<bool> AnyoneCanRenameRemote;
+        internal static ConfigEntry<bool> AltarSpellingIsFatal;
 
         // ── keys ────────────────────────────────────────────────────────────────────
         internal static ConfigEntry<KeyboardShortcut> TogglePinsKey;
@@ -46,6 +47,12 @@ namespace TheGreatestPortal
             AnyoneCanRenameRemote = mod.BindSynced("Rules", "Anyone Can Rename Remote Portals", true,
                 "Let any player rename a portal from the panel's list without standing at it (Rename in a " +
                 "row's right-click menu). When false only admins can; renaming the portal you are standing at is always allowed.");
+
+            AltarSpellingIsFatal = mod.BindSynced("Rules", "Altar Spelling Is Fatal", false,
+                "A portal within 50 m of the sacrificial stones in the middle of the world, named \"alter\", " +
+                "kills whoever named it. There is a word for that place and the word is altar. Off by default, " +
+                "because a server should choose to be like this on purpose. Renaming that portal from anywhere " +
+                "counts; you do not have to be standing at it.");
 
             TogglePinsKey = mod.BindLocal("Keys", "Toggle Portal Pins", new KeyboardShortcut(KeyCode.P),
                 "While the large map is open: show or hide every portal on the map, with the portal list on the left. " +

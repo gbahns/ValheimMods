@@ -355,6 +355,7 @@ namespace TheGreatestPortal
             p.Name = name;   // shown at once; the server's next portal list confirms it
             TheGreatestPortalMod.Message((string.IsNullOrEmpty(old) ? "Portal" : old) + " renamed to " + (string.IsNullOrEmpty(name) ? "(no name)" : name));
             Populate();
+            Spelling.Judge(name, p.Pos);
         }
 
         private static void CancelRename()
@@ -432,7 +433,9 @@ namespace TheGreatestPortal
             var t = Catalog.Get(target);
             string shown = string.IsNullOrEmpty(name) ? "Portal" : name;
             TheGreatestPortalMod.Message(target == 0L ? shown + " is an open portal" : (t != null ? shown + " leads to " + t.DisplayName : shown + " saved"));
+            Vector3 namedAt = _pos;
             Close();
+            Spelling.Judge(name, namedAt);
         }
 
         private static void ApplyToggles()
