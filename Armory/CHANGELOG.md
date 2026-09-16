@@ -1,7 +1,8 @@
 # Changelog
 
-## 1.3.0 — unreleased
+## 1.3.0 — 2026-09-16
 
+- **Racks can be named.** Point at one and press **Shift+[Use]** — the same modifier that renames a portal or edits a sign — and type a name. It replaces "Armory" on the hover text, heads the loadout panel, and heads the storage panel beside it, so a row of racks along a wall tells you which is which without opening any of them. Leave the name empty to go back to "Armory".
 - **A rack can be yours alone.** A Personal/Shared button in the top-left of the panel decides whether anyone may open the rack or only the player who built it. Personal is how you keep your own loadouts without sharing a rack's ten slots with everyone on the server — and since a rack is also its own storage, the gear each set needs comes with it. Only the builder can flip the switch; everyone else sees which it is.
 - The enforcement is Valheim's own, not this mod's: a personal rack refuses with the same message a personal chest does, and the game will not let anyone hammer one down while it still holds items. If you want to remove a personal rack, empty it first or set it back to Shared.
 - The setting lives on the rack rather than in your config, because the game checks access on both the player asking and the machine that owns the rack — a per-player setting would let those two disagree about who may open what.

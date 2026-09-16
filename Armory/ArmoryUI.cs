@@ -330,7 +330,7 @@ namespace Armory
         {
             // Title text.
             GUIManager.Instance.CreateText(
-                text: "Armory Rack",
+                text: _rack != null ? _rack.RackName : ArmoryRack.DefaultName,
                 parent: panel,
                 anchorMin: new Vector2(0.5f, 1f),
                 anchorMax: new Vector2(0.5f, 1f),

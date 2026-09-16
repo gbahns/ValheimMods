@@ -123,6 +123,7 @@ namespace Armory
                 {
                     ["armory_rack_name"] = "Armory Rack",
                     ["armory_rack_desc"] = "A masterwork rack for storing and instantly recalling named equipment sets.",
+                    ["armory_rename_topic"] = "Armory Name",
                 });
             }
             catch (System.Exception e)

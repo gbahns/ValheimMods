@@ -1,3 +1,4 @@
+using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
 
@@ -16,7 +17,7 @@ namespace Armory
     /// Player resolves Hoverable and Interactable in two separate GetComponentInParent calls, so
     /// this keeps the rack's own hover text while the Container answers the keypress.
     /// </summary>
-    public class ArmoryRack : MonoBehaviour, Hoverable
+    public class ArmoryRack : MonoBehaviour, Hoverable, TextReceiver
     {
         private ZNetView m_nview;
 
@@ -35,6 +36,7 @@ namespace Armory
             {
                 m_nview.Register<string>("ArmoryRPC_SetData", RPC_SetData);
                 m_nview.Register<bool>("ArmoryRPC_SetPrivate", RPC_SetPrivate);
+                m_nview.Register<string>("ArmoryRPC_SetName", RPC_SetName);
             }
 
             _leftHinge  = transform.Find("ArmoryDoorLeft");
@@ -50,6 +52,7 @@ namespace Armory
         private void Update()
         {
             ApplyPrivacy();
+            ApplyName();
 
             if (_leftHinge == null || _rightHinge == null) return;
 
@@ -59,6 +62,73 @@ namespace Armory
             float angle = _doorAngle01 * DoorOpenDegrees;
             _leftHinge.localRotation  = Quaternion.Euler(0, -angle, 0);
             _rightHinge.localRotation = Quaternion.Euler(0,  angle, 0);
+        }
+
+        // ── Naming ─────────────────────────────────────────────────────────────────────
+        //
+        // Shift+[Use] renames the rack, the way Shift is the modifier for portals and signs.
+        // ArmoryRack is not the Interactable any more (the Container is, deliberately), so the
+        // keypress is caught in a prefix on Container.Interact — see ArmoryRenamePatch.
+        //
+        // TextReceiver is vanilla's own interface for this: TextInput.RequestText hands the
+        // player the same dialog a portal tag uses, and calls SetText when they confirm.
+        private const string NameKey     = "armory_name";
+        public  const string DefaultName = "Armory";
+
+        // Inventory.m_name is private and set only in the constructor, so the name the vanilla
+        // container panel shows has to be written through reflection.  Compiling against the
+        // publicized assembly would build fine and then throw at runtime.
+        private static readonly FieldInfo _inventoryName = AccessTools.Field(typeof(Inventory), "m_name");
+
+        /// <summary>The rack's name, or "Armory" when it has not been given one.</summary>
+        public string RackName
+        {
+            get
+            {
+                if (m_nview == null || !m_nview.IsValid()) return DefaultName;
+                var stored = m_nview.GetZDO().GetString(NameKey, "");
+                return string.IsNullOrEmpty(stored) ? DefaultName : stored;
+            }
+        }
+
+        /// <summary>TextReceiver: what the rename box starts with. Empty for an unnamed rack.</summary>
+        public string GetText() => m_nview != null && m_nview.IsValid()
+            ? m_nview.GetZDO().GetString(NameKey, "")
+            : "";
+
+        /// <summary>TextReceiver: the player confirmed a new name.</summary>
+        public void SetText(string text)
+        {
+            if (m_nview == null || !m_nview.IsValid()) return;
+            var clean = (text ?? "").Trim();
+            if (m_nview.IsOwner()) m_nview.GetZDO().Set(NameKey, clean);
+            else                   m_nview.InvokeRPC("ArmoryRPC_SetName", clean);
+            ApplyName();
+            Jotunn.Logger.LogInfo($"[Armory] Renamed to '{clean}' — isOwner={m_nview.IsOwner()}");
+        }
+
+        private void RPC_SetName(long sender, string text)
+        {
+            if (!m_nview.IsOwner()) return;
+            m_nview.GetZDO().Set(NameKey, text ?? "");
+        }
+
+        /// <summary>
+        /// Push the name onto the Container and its Inventory, so the vanilla storage panel is
+        /// headed with it too.  Kept in sync here rather than at Awake because Unity does not
+        /// promise component Awake order, and because the name can change while we are stood
+        /// in front of it — someone else renaming it, or the ZDO arriving late.
+        /// </summary>
+        private void ApplyName()
+        {
+            var storage = GetStorage();
+            if (storage == null) return;
+            string want = RackName;
+            if (storage.m_name != want) storage.m_name = want;
+
+            var inv = storage.GetInventory();
+            if (inv != null && _inventoryName != null && (inv.GetName() ?? "") != want)
+                _inventoryName.SetValue(inv, want);
         }
 
         // ── Personal or shared ─────────────────────────────────────────────────────────
@@ -150,7 +220,7 @@ namespace Armory
             if (storage.m_privacy != want) storage.m_privacy = want;
         }
 
-        public string GetHoverName() => "Armory";
+        public string GetHoverName() => RackName;
         public float  GetHoverOffset() => 0f; // Valheim 1.0: new Hoverable member (vertical hover-text offset)
 
         public string GetHoverText()
@@ -162,8 +232,9 @@ namespace Armory
             // glyph (e.g. "[E]").  Jotunn's LocalizationManager only handles the former, which
             // is why $KEY_Use stayed raw through it.
             return LocalizeText(
-                "Armory\n" +
+                RackName + "\n" +
                 "[<color=yellow><b>$KEY_Use</b></color>] Manage Loadouts\n" +
+                "[<color=yellow><b>$KEY_AltPlace</b> + <b>$KEY_Use</b></color>] Rename\n" +
                 (IsPrivate
                     ? "<color=#ffb14e>Personal</color> <color=#aaaaaa>— only you can open it</color>"
                     : "<color=#aaaaaa>Shared — anyone can open it</color>"));
