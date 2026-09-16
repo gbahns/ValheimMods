@@ -92,6 +92,7 @@ namespace TheGreatestMap
             MarkerTooltip.Update();
             Reveals.Update();
             PocketMap.Update();
+            MapOutStatus.Update();
             DiscoveryLedger.Update();
             Recorder.Update();
             TableSync.Update();

@@ -1,12 +1,14 @@
 # Changelog
 
-## 0.3.2 — unreleased
+## 0.3.2 — 2026-09-16
 
 Client-side; works with a 0.2.x server.
 
 - Copper deposits and silver veins are no longer crossed off when mined out, unless the new settings "Cross Off Mined Copper" or "Cross Off Mined Silver" (Recording) are turned on. Much of either can be out of sight underground, so a player cannot always tell whether they have got all of it, and crossing it off for them told them something they could not know. Tin and plants are still crossed off, since there is no doubt when those are done. The two are told apart by what the deposit yields, so a renamed or fractured copy still counts.
 - Hitting a fresh copper deposit or silver vein no longer counts as mining it out, for anyone who turns those settings on. The whole rock is destroyed by its first blow and the game puts a fractured copy in its place, which is the part you actually mine, and that first blow was being read as the deposit running out. Something replaced by a mineable copy of itself now counts as breaking open, and the fractured copy crosses the marker off when it is finished. Markers already crossed off this way stay crossed off; right-click one and choose Uncross.
 - Searched places are hidden by type rather than all together. The marker button's list now has two columns, the kinds on the left and crossed-off markers on the right: cleared deposits, Structures, a switch for all searched dungeons, one per dungeon type (Burial Chambers, Sunken Crypts, Frost Caves, Troll Caves, Infested Mines, Bear Caves, Other Dungeons), and any other kind crossed off, each with a count. A dungeon's type is read from its icon, since the marker does not store it. A crossed-off marker's right-click menu offers its own type's switch, and "Hide all searched dungeons" on a dungeon.
+- Mining a deposit out or picking the last of a plant that never grows back, before it is on your map, no longer makes your character forget it. It stays in memory like anything else found, and the next time the map comes out it is written down already crossed off, or, if a marker is already there, that marker is crossed off. Copper and silver are remembered and written down like any other find, and crossed off only if their settings say so. Finds remembered by this version are saved in a newer format, which an older version ignores.
+- A folded-map icon shows among your status effects, beside Rested and Wet, while your pocket map is out, so a glance tells you whether what you find is being written down. "Map Out Status Icon" (Display) turns it off.
 - "Show Searched Places", added in 0.3.1, is replaced by "Hidden Searched Places", the list of hidden types. If you had turned it off, searched places show again until you hide them in the new list.
 
 ## 0.3.1 — 2026-09-16

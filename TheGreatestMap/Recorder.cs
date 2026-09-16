@@ -72,6 +72,15 @@ namespace TheGreatestMap
                 // here now matches and the ordinary duplicate check below catches it.
                 if (ClientPins.HasPinNear(found.Icon, dedupeAt, dedupeRadius))
                 {
+                    // Used up before it was written down, and a marker is already here, likely
+                    // someone else's: that is the marker to cross off, and then nothing is left to write.
+                    if (found.Cleared)
+                    {
+                        if (ClientPins.MarkCleared(found.Icon, dedupeAt, dedupeRadius))
+                            TheGreatestMapMod.Message($"Cleared: {found.Name}");
+                        DiscoveryLedger.MarkRecorded(found.Key);
+                        continue;
+                    }
                     Announce(found, $"{found.Name}: already marked within {dedupeRadius:0.#} m");
                     continue;
                 }
@@ -84,8 +93,9 @@ namespace TheGreatestMap
                 float labelRadius = labelSpacing > 0f ? Mathf.Max(labelSpacing, found.Radius) : labelSpacing;
                 bool label = labelSpacing >= 0f && !ClientPins.HasLabeledPinNear(found.Icon, found.Name, dedupeAt, labelRadius);
                 DiscoveryLedger.MarkRecorded(found.Key);
-                ClientPins.CreateShared(label ? found.Name : "", found.Pos, found.Icon, found.Cat.ToString(), auto: true, isChecked: Searched.WasSearched(found.Key));
-                TheGreatestMapMod.Message("Recorded: " + found.Name);
+                ClientPins.CreateShared(label ? found.Name : "", found.Pos, found.Icon, found.Cat.ToString(), auto: true,
+                    isChecked: found.Cleared || Searched.WasSearched(found.Key));
+                TheGreatestMapMod.Message((found.Cleared ? "Recorded, cleared: " : "Recorded: ") + found.Name);
             }
         }
 

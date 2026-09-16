@@ -252,6 +252,7 @@ namespace TheGreatestMap
         public Vector3 Center;   // for locations: the location origin (dedupe center)
         public float Radius;     // for locations: exterior radius (dedupe radius); 0 otherwise
         public long FoundAt;     // DateTime.UtcNow.Ticks when first (or last) seen
+        public bool Cleared;     // used up before it was written down, so it is written crossed off
 
         public Vector3 DedupeCenter => Radius > 0f ? Center : Pos;
     }

@@ -18,7 +18,7 @@ namespace TheGreatestMap
     /// </summary>
     internal static class DiscoveryLedger
     {
-        private const int SaveVersion = 2; // 2: location center and radius per find
+        private const int SaveVersion = 3; // 2: location center and radius per find; 3: cleared flag
 
         private static readonly Dictionary<string, Found> _pending = new Dictionary<string, Found>();
         private static readonly HashSet<string> _recorded = new HashSet<string>();
@@ -144,6 +144,21 @@ namespace TheGreatestMap
             foreach (var key in expired) _pending.Remove(key);
         }
 
+        /// <summary>
+        /// The thing was used up: mined to nothing, or picked and never growing back. Using it up
+        /// is finding it, so it stays in memory like anything else found and is written down the
+        /// next time the map comes out, crossed off when <paramref name="crossOff"/> says so. The
+        /// same guards as any other interaction apply.
+        /// </summary>
+        internal static void NoteUsedUp(Found found, bool crossOff)
+        {
+            if (found == null || !TgmConfig.RecordEnabled.Value) return;
+            var player = Player.m_localPlayer;
+            if (player == null || player.InInterior()) return;
+            MarkFound(found);
+            if (crossOff && _pending.TryGetValue(found.Key, out var pending)) pending.Cleared = true;
+        }
+
         /// <summary>Drop a pending find without recording it: the thing is gone for good.</summary>
         internal static void Forget(string key)
         {
@@ -186,6 +201,7 @@ namespace TheGreatestMap
                 pkg.Write(f.FoundAt);
                 pkg.Write(f.Center);
                 pkg.Write(f.Radius);
+                pkg.Write(f.Cleared);
             }
             return pkg.GetBase64();
         }
@@ -219,6 +235,7 @@ namespace TheGreatestMap
                     {
                         f.Center = f.Pos;
                     }
+                    if (version >= 3) f.Cleared = pkg.ReadBool();
                     if (!string.IsNullOrEmpty(f.Key) && !_pending.ContainsKey(f.Key)) _pending[f.Key] = f;
                 }
                 Prune();
@@ -272,32 +289,42 @@ namespace TheGreatestMap
         }
 
         /// <summary>
-        /// Picking the last of something that never grows back makes its marker a lie, so the
-        /// marker goes, for everyone. The spot is not suppressed: nothing is being rejected here,
-        /// and if the world ever puts something there again it deserves recording.
+        /// Picking the last of something that never grows back crosses its marker off, for
+        /// everyone. With no marker yet, the find is kept and written down crossed off the next
+        /// time the map comes out, so the record of where it was is not lost.
         /// </summary>
         private static void Postfix(bool __result, Found __state)
         {
             if (!__result || __state == null) return;
-            DiscoveryLedger.Forget(__state.Key);
             if (ClientPins.MarkCleared(__state.Icon, __state.Pos, 2f))
+            {
+                DiscoveryLedger.Forget(__state.Key);
                 TheGreatestMapMod.Message($"Picked the last of the {__state.Name}; marked as cleared.");
+                return;
+            }
+            DiscoveryLedger.NoteUsedUp(__state, crossOff: true);
         }
     }
 
-    // Mining a deposit out removes it from the world, which makes its marker a lie. The same
-    // shape as picking a plant that never grows back: the map is corrected, not a marker
-    // rejected, so the spot is not suppressed and an ore vein that reappears is recorded again.
+    // Mining a deposit out removes it from the world. The same shape as picking a plant that never
+    // grows back: its marker is crossed off rather than erased, so the record of where it was is
+    // kept, and nothing is suppressed, so an ore vein that reappears is recorded again.
     internal static class Mined
     {
         internal static void Gone(GameObject go)
         {
             if (Player.m_localPlayer == null || go == null) return;
             if (!Catalog.TryClassify(go, out var found)) return;
-            DiscoveryLedger.Forget(found.Key);
-            if (!CrossesOff(go)) return;
-            if (ClientPins.MarkCleared(found.Icon, found.Pos, 6f))
+            bool crossOff = CrossesOff(go);
+            if (crossOff && ClientPins.MarkCleared(found.Icon, found.Pos, 6f))
+            {
+                DiscoveryLedger.Forget(found.Key); // its marker is already there, now crossed off
                 TheGreatestMapMod.Message($"Mined out the {found.Name}; marked as cleared.");
+                return;
+            }
+            // Not on the map yet: remembered, and written down (crossed off where that applies)
+            // the next time the map comes out, rather than forgotten because it is gone.
+            DiscoveryLedger.NoteUsedUp(found, crossOff);
         }
 
         /// <summary>

@@ -33,6 +33,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> ShowPauseButton;
         internal static ConfigEntry<bool> MarkerButton;
         internal static ConfigEntry<bool> MarkerTooltips;
+        internal static ConfigEntry<bool> MapOutStatusIcon;
         internal static ConfigEntry<string> LegendSize;
         internal static ConfigEntry<string> LegendPosition;
         internal static ConfigEntry<bool> ShowAllMarkers;
@@ -211,6 +212,9 @@ namespace TheGreatestMap
                 "Hovering a marker on the large map names it: what it is, its icon, whether it has been cleared or " +
                 "searched, and who recorded it and when. Most markers carry no label on purpose, which is what keeps a " +
                 "crowded map readable, so this is where that information lives.");
+            MapOutStatusIcon = mod.BindLocal("Display", "Map Out Status Icon", true,
+                "Show a folded-map icon among your status effects, beside Rested and Wet, while your pocket map is out, " +
+                "so a glance tells you whether what you find is being written down. Applies at once.");
             LegendSize = mod.BindLocal("Display", "Legend Size", "560,620",
                 "Width and height of the legend panel, in pixels. Dragging its corner grip changes this.");
             LegendPosition = mod.BindLocal("Display", "Legend Position", "0,0",
