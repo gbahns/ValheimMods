@@ -70,8 +70,10 @@ on its own icon buttons, so right-click means the same thing everywhere in that 
 per-kind switches, it also covers markers that have no kind, such as ones you placed yourself.
 **Left-click** it for the list of kinds that have markers on your map, each with its icon. Click any
 of them to hide or show that kind without leaving the map, and the list stays open so you can change
-several. It also carries the hide-all row and a "Show all" row. Config "Marker
-Button On Map" turns the button off.
+several. Below the kinds are the two switches for crossed-off markers, "Hide cleared deposits" and
+"Hide searched places", each with how many markers it covers. The list also carries the hide-all row
+and a "Show all" row that turns everything in the list back on. Config "Marker Button On Map" turns
+the button off.
 
 A marker you have just recorded is drawn on both maps for thirty seconds even when its kind or its
 icon is hidden, so writing something down always shows you what you wrote ("Reveal New Markers
@@ -88,7 +90,8 @@ plant that never grows back, crosses its marker off for everyone instead of eras
 see which ground has already been worked rather than walking back to an empty spot. "Show Cleared
 Deposits" hides them once cleared if you would rather have a clean map, and "Show Searched Places"
 does the same for everything else you have crossed off, chiefly structures you have searched, so
-the map can show only the places you have not been to yet. The two are separate because they mean
+the map can show only the places you have not been to yet. Both switches are in the marker button's
+list on the map, and a crossed-off marker's right-click menu offers the one that covers it. The two are separate because they mean
 different things: a cleared deposit is gone, a searched ruin is still standing and merely done
 with. The record is kept either way.
 

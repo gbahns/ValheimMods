@@ -1,10 +1,11 @@
 # Changelog
 
-## 0.3.1 — unreleased
+## 0.3.1 — 2026-09-16
 
 Client-side; works with a 0.2.x server.
 
 - Markers you have crossed off can be hidden. "Show Cleared Deposits" already covered ore and plants that are used up; "Show Searched Places" now covers everything else, chiefly structures you have searched, so you can leave only the places you have not been to yet. The two are separate because they mean different things: a cleared deposit is gone, while a searched ruin is still standing and merely done with. The record is kept either way, and "Show all hidden" and `tgm_show` bring both back.
+- Both switches are on the map screen, not only in the config: the marker button's list has a "Crossed off" section with "Hide cleared deposits" and "Hide searched places", each showing how many markers it covers, and that list's "Show all" turns them back on too. A crossed-off marker's right-click menu offers whichever of the two covers it.
 
 ## 0.3.0 — 2026-09-15
 

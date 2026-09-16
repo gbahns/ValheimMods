@@ -8,8 +8,8 @@ namespace TheGreatestMap
 {
     /// <summary>
     /// One button above vanilla's icon buttons on the right edge of the large map, drawn as a map
-    /// pin in the same pale gold as recorded markers. A left click hides or shows every marker this
-    /// mod put on the map at once; a right click opens a list of the kinds, for hiding them one at
+    /// pin in the same pale gold as recorded markers. A right click hides or shows every marker this
+    /// mod put on the map at once; a left click opens a list of the kinds, for hiding them one at
     /// a time. The button is a clone of vanilla's first icon button with the picture swapped, so it
     /// keeps the game's frame and follows the UI scale, and nothing on the clone takes pointer
     /// events except a transparent surface of ours, so vanilla's own handlers can never fire.
@@ -309,9 +309,10 @@ namespace TheGreatestMap
     }
 
     /// <summary>
-    /// The kind list behind a right click on the marker button: one row per kind that has markers
-    /// on your map, showing its icon. Clicking a row hides or shows that kind and leaves the list
-    /// open, so several can be changed at once.
+    /// The kind list behind a left click on the marker button: one row per kind that has markers
+    /// on your map, showing its icon, then the two switches for markers that have been crossed
+    /// off. Clicking a row changes that one thing and leaves the list open, so several can be
+    /// changed at once.
     /// </summary>
     internal static class KindMenu
     {
@@ -332,7 +333,8 @@ namespace TheGreatestMap
         private static GameObject _root;
         private static RectTransform _rect;
         private static Camera _camera;
-        private static TextMeshProUGUI _masterLabel;
+        private static TextMeshProUGUI _masterLabel, _clearedLabel, _searchedLabel;
+        private static int _clearedCount, _searchedCount;
         private static int _openedFrame = -10;
         private static int _closedFrame = -10;
 
@@ -357,10 +359,14 @@ namespace TheGreatestMap
 
             var present = new List<Category>();
             var seen = new HashSet<Category>();
+            _clearedCount = _searchedCount = 0;
             foreach (var pin in ClientPins.All)
             {
                 var kind = ClientPins.KindOf(pin);
                 if (kind.HasValue) seen.Add(kind.Value);
+                if (!pin.Checked) continue;
+                if (ClientPins.IsCleared(pin)) _clearedCount++;
+                else _searchedCount++;
             }
             // Every kind that has markers, vanilla-icon ones included. Structures, portals, camps
             // and boss altars are also hidden and shown by vanilla's own icon buttons, so listing
@@ -376,23 +382,16 @@ namespace TheGreatestMap
             _rect = panel.rectTransform;
             _rect.anchorMin = _rect.anchorMax = new Vector2(0f, 1f);
             _rect.pivot = new Vector2(0f, 1f);
-            int rowCount = 1 + present.Count + (present.Count > 0 ? 1 : 0); // master, the kinds, "show every kind"
-            float height = Pad + HeaderHeight + rowCount * RowHeight + Pad;
+            int rowCount = 1 + present.Count + 2 + 1; // master, the kinds, the two crossed-off switches, "show all"
+            float height = Pad + 2f * HeaderHeight + rowCount * RowHeight + Pad;
             _rect.sizeDelta = new Vector2(Width, height);
 
-            var header = MenuKit.Text(_root.transform, "Header", "Marker kinds", 15f, MenuKit.Header);
-            var hrt = header.rectTransform;
-            hrt.anchorMin = new Vector2(0f, 1f);
-            hrt.anchorMax = new Vector2(1f, 1f);
-            hrt.pivot = new Vector2(0f, 1f);
-            hrt.anchoredPosition = new Vector2(10f, -Pad);
-            hrt.sizeDelta = new Vector2(-20f, HeaderHeight);
-            header.alignment = TextAlignmentOptions.MidlineLeft;
-
             _entries.Clear();
-            float y = -(Pad + HeaderHeight);
+            float y = -Pad;
+            Header("Marker kinds", y);
+            y -= HeaderHeight;
 
-            // The master, so it is reachable from this list too, not only from a right click.
+            // The master, so it is reachable from this list too, not only from a right click on the button.
             var master = MenuKit.Row(_root.transform, "", true, () => { MarkerToggle.ToggleAll(); Refresh(); });
             Place(master, y);
             _masterLabel = master.GetComponentInChildren<TextMeshProUGUI>();
@@ -403,18 +402,28 @@ namespace TheGreatestMap
                 AddRow(map, kind, y);
                 y -= RowHeight;
             }
-            if (present.Count > 0)
+
+            // Crossed-off markers cut across the kinds, so they get their own switches rather than
+            // a row each. Listed even when nothing is crossed off yet, so the choice can be made
+            // before it matters and the player finds it where they would look.
+            Header("Crossed off", y);
+            y -= HeaderHeight;
+            _clearedLabel = SwitchRow(TgmConfig.ShowClearedDeposits, y);
+            y -= RowHeight;
+            _searchedLabel = SwitchRow(TgmConfig.ShowSearchedPlaces, y);
+            y -= RowHeight;
+
+            var showAll = MenuKit.Row(_root.transform, "Show all", true, () =>
             {
-                var showAll = MenuKit.Row(_root.transform, "Show all", true, () =>
-                {
-                    foreach (var k in Categories.All)
-                        if (TgmConfig.ShowKind.TryGetValue(k, out var e) && !e.Value) e.Value = true;
-                    if (TgmConfig.ShowAllMarkers != null) TgmConfig.ShowAllMarkers.Value = true;
-                    ClientPins.Restyle();
-                    Refresh();
-                });
-                Place(showAll, y);
-            }
+                foreach (var k in Categories.All)
+                    if (TgmConfig.ShowKind.TryGetValue(k, out var e) && !e.Value) e.Value = true;
+                if (TgmConfig.ShowAllMarkers != null) TgmConfig.ShowAllMarkers.Value = true;
+                if (TgmConfig.ShowClearedDeposits != null) TgmConfig.ShowClearedDeposits.Value = true;
+                if (TgmConfig.ShowSearchedPlaces != null) TgmConfig.ShowSearchedPlaces.Value = true;
+                ClientPins.Restyle();
+                Refresh();
+            });
+            Place(showAll, y);
 
             var canvas = parent.GetComponentInParent<Canvas>();
             _camera = canvas != null && canvas.rootCanvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.rootCanvas.worldCamera : null;
@@ -428,6 +437,32 @@ namespace TheGreatestMap
             _root.transform.SetAsLastSibling();
             _openedFrame = Time.frameCount;
             Refresh();
+        }
+
+        private static void Header(string text, float y)
+        {
+            var header = MenuKit.Text(_root.transform, "Header", text, 15f, MenuKit.Header);
+            var hrt = header.rectTransform;
+            hrt.anchorMin = new Vector2(0f, 1f);
+            hrt.anchorMax = new Vector2(1f, 1f);
+            hrt.pivot = new Vector2(0f, 1f);
+            hrt.anchoredPosition = new Vector2(10f, y);
+            hrt.sizeDelta = new Vector2(-20f, HeaderHeight);
+            header.alignment = TextAlignmentOptions.MidlineLeft;
+        }
+
+        private static TextMeshProUGUI SwitchRow(BepInEx.Configuration.ConfigEntry<bool> entry, float y)
+        {
+            var row = MenuKit.Row(_root.transform, "", true, () =>
+            {
+                if (entry != null) entry.Value = !entry.Value;
+                ClientPins.Restyle();
+                Refresh();
+            });
+            Place(row, y);
+            var label = row.GetComponentInChildren<TextMeshProUGUI>();
+            if (label != null) label.alignment = TextAlignmentOptions.MidlineLeft;
+            return label;
         }
 
         private static string IconKeyFor(Category kind)
@@ -496,6 +531,8 @@ namespace TheGreatestMap
                 _masterLabel.text = all ? "Hide all markers" : "Show all markers";
                 _masterLabel.color = MenuKit.Header;
             }
+            Paint(_clearedLabel, TgmConfig.ShowClearedDeposits, "cleared deposits", _clearedCount);
+            Paint(_searchedLabel, TgmConfig.ShowSearchedPlaces, "searched places", _searchedCount);
             foreach (var entry in _entries)
             {
                 bool shown = all && (!TgmConfig.ShowKind.TryGetValue(entry.Kind, out var e) || e.Value);
@@ -504,12 +541,21 @@ namespace TheGreatestMap
             }
         }
 
+        /// <summary>Says what a click will do, as the master row does, with how many markers it covers.</summary>
+        private static void Paint(TextMeshProUGUI label, BepInEx.Configuration.ConfigEntry<bool> entry, string what, int count)
+        {
+            if (label == null) return;
+            bool shown = entry == null || entry.Value;
+            label.text = $"{(shown ? "Hide" : "Show")} {what} ({count})";
+            label.color = count > 0 ? MenuKit.Header : MenuKit.Dim;
+        }
+
         internal static void Close()
         {
             if (_root != null) Object.Destroy(_root);
             _root = null;
             _rect = null;
-            _masterLabel = null;
+            _masterLabel = _clearedLabel = _searchedLabel = null;
             _entries.Clear();
             _closedFrame = Time.frameCount;
         }

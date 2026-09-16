@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using BepInEx.Configuration;
 using HarmonyLib;
 using UnityEngine;
 
@@ -365,6 +366,22 @@ namespace TheGreatestMap
         }
 
         /// <summary>
+        /// Whether a crossed-off marker means the thing is gone (a used-up deposit or plant) rather
+        /// than merely done with (a searched ruin). That decides which of the two display switches
+        /// covers it, so the map and the menus ask here rather than each deciding for themselves.
+        /// </summary>
+        internal static bool IsCleared(SharedPin pin)
+        {
+            var kind = KindOf(pin);
+            return kind.HasValue && Categories.IsResource(kind.Value);
+        }
+
+        internal static ConfigEntry<bool> CrossedOffSwitch(SharedPin pin)
+        {
+            return IsCleared(pin) ? TgmConfig.ShowClearedDeposits : TgmConfig.ShowSearchedPlaces;
+        }
+
+        /// <summary>
         /// Apply the current label rules to recorded markers that already exist: within each
         /// kind, the oldest marker of a same-named cluster keeps its label and the others lose
         /// theirs. Labels are only ever removed, never added. Returns the count changed.
@@ -641,8 +658,7 @@ namespace TheGreatestMap
                 // searched ruin is still standing and only done with.
                 if (!hidden && shared.Checked)
                 {
-                    bool cleared = kind.HasValue && Categories.IsResource(kind.Value);
-                    var switchedOn = cleared ? TgmConfig.ShowClearedDeposits : TgmConfig.ShowSearchedPlaces;
+                    var switchedOn = CrossedOffSwitch(shared);
                     if (switchedOn != null && !switchedOn.Value) hidden = true;
                 }
                 SetMarkerActive(pin, !hidden);

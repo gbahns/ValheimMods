@@ -270,6 +270,20 @@ namespace TheGreatestMap
 
             bool isChecked = pin.Checked;
             items.Add(Item(isChecked ? "Uncross" : "Cross off", canEdit ? () => ClientPins.SetChecked(id, !isChecked) : (Action)null, "take out your map"));
+            // A crossed-off marker is where a player is most likely to want the rest of them gone,
+            // so the switch that covers it is offered right here.
+            if (isChecked)
+            {
+                var crossedOff = ClientPins.CrossedOffSwitch(pin);
+                string done = ClientPins.IsCleared(pin) ? "cleared deposits" : "searched places";
+                if (crossedOff != null && crossedOff.Value)
+                    items.Add(Item($"Hide all {done}", () =>
+                    {
+                        crossedOff.Value = false;
+                        ClientPins.Restyle();
+                        Note($"Hiding {done} (Display > {crossedOff.Definition.Key}).");
+                    }));
+            }
 
             // A note you wrote is yours to take back; a recorded marker stands for something real,
             // so removing it is a repair rather than an everyday action.
