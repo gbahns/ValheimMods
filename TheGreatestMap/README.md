@@ -68,12 +68,12 @@ pin in the same pale gold as recorded markers. **Right-click** it to hide or sho
 this mod at once, the pin turning gray while they are hidden. That is the same gesture vanilla uses
 on its own icon buttons, so right-click means the same thing everywhere in that column. Unlike the
 per-kind switches, it also covers markers that have no kind, such as ones you placed yourself.
-**Left-click** it for the list of kinds that have markers on your map, each with its icon. Click any
-of them to hide or show that kind without leaving the map, and the list stays open so you can change
-several. Below the kinds are the two switches for crossed-off markers, "Hide cleared deposits" and
-"Hide searched places", each with how many markers it covers. The list also carries the hide-all row
-and a "Show all" row that turns everything in the list back on. Config "Marker Button On Map" turns
-the button off.
+**Left-click** it for a list in two columns. On the left are the kinds that have markers on your
+map, each with its icon; click any of them to hide or show that kind without leaving the map, and the
+list stays open so you can change several. On the right are the markers that have been crossed off,
+described below: cleared deposits as one switch, then searched places by type, with a count on each.
+The list also carries the hide-all row and a "Show all" row that turns everything in both columns
+back on. Config "Marker Button On Map" turns the button off.
 
 A marker you have just recorded is drawn on both maps for thirty seconds even when its kind or its
 icon is hidden, so writing something down always shows you what you wrote ("Reveal New Markers
@@ -87,13 +87,28 @@ while ours hides only the markers this mod recorded.
 
 **Things that run out get crossed off, not forgotten.** Mining a deposit to nothing, or picking a
 plant that never grows back, crosses its marker off for everyone instead of erasing it, so you can
-see which ground has already been worked rather than walking back to an empty spot. "Show Cleared
-Deposits" hides them once cleared if you would rather have a clean map, and "Show Searched Places"
-does the same for everything else you have crossed off, chiefly structures you have searched, so
-the map can show only the places you have not been to yet. Both switches are in the marker button's
-list on the map, and a crossed-off marker's right-click menu offers the one that covers it. The two are separate because they mean
-different things: a cleared deposit is gone, a searched ruin is still standing and merely done
-with. The record is kept either way.
+see which ground has already been worked rather than walking back to an empty spot. Copper and
+silver are the exception, and are left alone unless "Cross Off Mined Copper" or "Cross Off Mined
+Silver" is turned on. Much of a copper deposit or silver vein can be out of sight underground, so a
+player cannot always tell whether they have got all of it, and a map that crossed it off for them
+would be telling them something they could not know. Tin and plants are different: there is no
+doubt when those are done. You can always cross one off by hand.
+
+**Hiding what you are done with.** Crossed-off markers stay on the map, and the right-hand column of
+the marker button's list decides which of them are drawn:
+
+- **Cleared deposits**: every used-up deposit and plant, as one switch ("Show Cleared Deposits").
+- **Searched places**, by type: Structures on their own, then dungeons with one switch for all of
+  them ("Hide searched dungeons") and one per type (Burial Chambers, Sunken Crypts, Frost Caves,
+  Troll Caves, Infested Mines, Bear Caves, Other Dungeons), then any other kind you have crossed
+  off, and your own placed markers. A type appears once something of that type has been crossed
+  off. The dungeon switch leaves Structures alone.
+
+A dungeon marker does not store which dungeon it is, so its type is read from its icon, the same way
+you tell them apart on the map. Structures all share the vanilla house icon, so abandoned houses,
+log cabins and stone towers are one group. A crossed-off marker's right-click menu offers the
+switch that covers it, plus "Hide all searched dungeons" on a dungeon. The choices are kept in
+"Hidden Searched Places" in the Display section, and the record is kept either way.
 
 **Portals are kept current, not remembered.** Everything else the mod records stays where you
 found it, so writing it down once is enough. A portal is built by players and gets renamed and torn
@@ -146,14 +161,15 @@ counts as well unless "Structures Include Unlisted" is off or its prefab name is
 | `tgm_admin` | Ask the server whether it treats you as an admin, and what player id it sees |
 | `tgm_items <word>` | List the game's items matching a word, for choosing a marker icon |
 | `tgm_legend` | Open the legend (same as the legend key) |
-| `tgm_show` | Show every hidden marker again (single markers, hidden icons and hidden kinds) |
+| `tgm_show` | Show every hidden marker again (single markers, hidden icons, hidden kinds and hidden crossed-off markers) |
 
 ## Configuration
 
 `BepInEx/config/DeathMonger.TheGreatestMap.cfg`. The sharing rules (require the map to record,
 require the map to edit, share placed markers, whether the table carries player markers) are server-synced. Everything
 else is per player: keys, auto-sync radius and cooldown, the record radius, what stops you writing
-(under attack, and optionally while moving), which kinds of things to record, marker and label
+(under attack, and optionally while moving), which kinds of things to record, whether mined-out
+copper and silver are crossed off, marker and label
 spacing, marker size per kind (plants draw at 60% by default), whether each kind shows on the small
 minimap, the prefab lists behind each kind, the fallback icon for each kind, the legend's size and
 position, and the position, rotation and scale of the parchment and pencil in your hands.

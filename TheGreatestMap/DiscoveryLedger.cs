@@ -295,8 +295,24 @@ namespace TheGreatestMap
             if (Player.m_localPlayer == null || go == null) return;
             if (!Catalog.TryClassify(go, out var found)) return;
             DiscoveryLedger.Forget(found.Key);
+            if (!CrossesOff(go)) return;
             if (ClientPins.MarkCleared(found.Icon, found.Pos, 6f))
                 TheGreatestMapMod.Message($"Mined out the {found.Name}; marked as cleared.");
+        }
+
+        /// <summary>
+        /// Copper and silver each have a switch of their own, off by default; everything else that
+        /// runs out is crossed off. Told apart by what the deposit yields, as deposits are everywhere
+        /// else, so a renamed or fractured copy is still copper.
+        /// </summary>
+        private static bool CrossesOff(GameObject go)
+        {
+            string yield = Catalog.DepositYield(go);
+            if (string.Equals(yield, "CopperOre", StringComparison.OrdinalIgnoreCase))
+                return TgmConfig.CrossOffMinedCopper != null && TgmConfig.CrossOffMinedCopper.Value;
+            if (string.Equals(yield, "SilverOre", StringComparison.OrdinalIgnoreCase))
+                return TgmConfig.CrossOffMinedSilver != null && TgmConfig.CrossOffMinedSilver.Value;
+            return true;
         }
     }
 
@@ -347,7 +363,24 @@ namespace TheGreatestMap
     {
         private static void Prefix(Destructible __instance, HitData hit)
         {
-            if (DiscoveryLedger.IsLocalAttacker(hit) && __instance != null) Mined.Gone(__instance.gameObject);
+            if (__instance == null || !DiscoveryLedger.IsLocalAttacker(hit)) return;
+            if (BreaksOpen(__instance)) return;
+            Mined.Gone(__instance.gameObject);
+        }
+
+        /// <summary>
+        /// A whole copper deposit or silver vein is destroyed by its first blow, and the game puts a
+        /// fractured copy in its place, which is the part you actually mine. That is the deposit
+        /// breaking open, not running out, so it must not cross the marker off; the fractured copy
+        /// does that when it is finished. Anything replaced by something mineable counts.
+        /// </summary>
+        private static bool BreaksOpen(Destructible destructible)
+        {
+            var next = destructible.m_spawnWhenDestroyed;
+            if (next == null) return false;
+            return next.GetComponentInChildren<MineRock5>(true) != null
+                || next.GetComponentInChildren<MineRock>(true) != null
+                || next.GetComponentInChildren<Destructible>(true) != null;
         }
     }
 

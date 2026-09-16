@@ -37,7 +37,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<string> LegendPosition;
         internal static ConfigEntry<bool> ShowAllMarkers;
         internal static ConfigEntry<bool> ShowClearedDeposits;
-        internal static ConfigEntry<bool> ShowSearchedPlaces;
+        internal static ConfigEntry<string> HiddenSearched;
         internal static ConfigEntry<float> RevealNewMarkers;
         internal static ConfigEntry<bool> MapAllPortals;
         internal static ConfigEntry<string> PortalColor;
@@ -91,8 +91,7 @@ namespace TheGreatestMap
             if (!string.IsNullOrEmpty(HiddenIcons.Value)) HiddenIcons.Value = "";
             foreach (var entry in ShowKind.Values) if (!entry.Value) entry.Value = true;
             if (ShowAllMarkers != null && !ShowAllMarkers.Value) ShowAllMarkers.Value = true;
-            if (ShowClearedDeposits != null && !ShowClearedDeposits.Value) ShowClearedDeposits.Value = true;
-            if (ShowSearchedPlaces != null && !ShowSearchedPlaces.Value) ShowSearchedPlaces.Value = true;
+            CrossedOff.ShowAll();
         }
 
         /// <summary>True when anything at all is being hidden, by any of the switches.</summary>
@@ -100,7 +99,7 @@ namespace TheGreatestMap
         {
             if (ShowAllMarkers != null && !ShowAllMarkers.Value) return true;
             if (ShowClearedDeposits != null && !ShowClearedDeposits.Value) return true;
-            if (ShowSearchedPlaces != null && !ShowSearchedPlaces.Value) return true;
+            if (CrossedOff.HiddenGroupCount() > 0) return true;
             return HiddenIconCount() > 0 || HiddenKindCount() > 0;
         }
 
@@ -142,6 +141,8 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> StructuresIncludeUnlisted;
         internal static ConfigEntry<string> StructuresExcludePrefixes;
         internal static ConfigEntry<bool> CrossOffStructuresOnChest;
+        internal static ConfigEntry<bool> CrossOffMinedCopper;
+        internal static ConfigEntry<bool> CrossOffMinedSilver;
         internal static ConfigEntry<bool> ApplyLabelRulesOnSync;
         internal static ConfigEntry<bool> RepairDungeonIcons;
         internal static ConfigEntry<float> ServerAutosaveMinutes;
@@ -217,13 +218,15 @@ namespace TheGreatestMap
             ShowClearedDeposits = mod.BindLocal("Display", "Show Cleared Deposits", true,
                 "Keep drawing berry bushes, mushrooms, herbs and ore deposits after they have been used up, crossed " +
                 "off, so you can see which ground has already been worked. Off hides them once cleared. The record is " +
-                "kept either way, and this does not touch structures, whose cross-off means searched rather than gone.");
+                "kept either way, and this does not touch places you have searched, which Hidden Searched Places covers.");
             ShowClearedDeposits.SettingChanged += (_, __) => ClientPins.Restyle();
-            ShowSearchedPlaces = mod.BindLocal("Display", "Show Searched Places", true,
-                "Keep drawing everything else you have crossed off, chiefly structures you have searched. Off hides " +
-                "them, leaving the places you have not been to yet. The record is kept either way, and crossing one " +
-                "off again by hand brings it back into view when this is on.");
-            ShowSearchedPlaces.SettingChanged += (_, __) => ClientPins.Restyle();
+            HiddenSearched = mod.BindLocal("Display", "Hidden Searched Places", "",
+                "Comma-separated kinds of place whose markers are not drawn once crossed off. Dungeons go by type " +
+                "(Burial Chambers, Sunken Crypts, Frost Caves, Troll Caves, Infested Mines, Bear Caves, Other Dungeons, " +
+                "named as in the Dungeons catalog with an s added); everything else by kind (Structures, Camps, Runestones, " +
+                "Traders, Boss Altars, Portals), plus Placed Markers for the ones you put down yourself. The marker button's " +
+                "list on the map edits this. The record is kept either way; used-up deposits have their own switch above.");
+            HiddenSearched.SettingChanged += (_, __) => { CrossedOff.ForgetHidden(); ClientPins.Restyle(); };
             MapAllPortals = mod.BindLocal("Display", "Map All Portals", true,
                 "Draw every portal that currently exists in the world, not only the ones you or someone who shared their " +
                 "map with you has seen. Portals are built by the players, so on a server where everyone is in the same " +
@@ -358,6 +361,15 @@ namespace TheGreatestMap
             CrossOffStructuresOnChest = mod.BindLocal("Recording", "Cross Off Structures When Searched", true,
                 "Opening a chest inside a structure crosses its marker off for everyone. If the structure has no marker yet, " +
                 "it is remembered as searched and its marker starts crossed off when it is recorded.");
+            CrossOffMinedCopper = mod.BindLocal("Recording", "Cross Off Mined Copper", false,
+                "Cross a copper deposit's marker off for everyone once it has been mined to nothing. Off by default, because " +
+                "a copper deposit runs on underground and a player cannot always tell whether they have got all of it, so " +
+                "crossing it off for them would tell them something they could not know. Tin and plants are always crossed " +
+                "off, since there is no doubt when those are done. You can still cross one off by hand.");
+            CrossOffMinedSilver = mod.BindLocal("Recording", "Cross Off Mined Silver", false,
+                "Cross a silver vein's marker off for everyone once it has been mined to nothing. Off by default for the " +
+                "same reason as copper: part of a vein can be out of sight, and the map should not know more than the " +
+                "player does. You can still cross one off by hand.");
             foreach (var entry in CategoryPrefabs.Values)
                 entry.SettingChanged += (_, __) => { Catalog.Invalidate(); KindInference.Invalidate(); };
             StructuresExcludePrefixes.SettingChanged += (_, __) => Catalog.Invalidate();

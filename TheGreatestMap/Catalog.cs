@@ -281,7 +281,11 @@ namespace TheGreatestMap
         private static string[] _structureExclusions = new string[0];
         private static bool _built;
 
-        internal static void Invalidate() => _built = false;
+        internal static void Invalidate()
+        {
+            _built = false;
+            CrossedOff.Forget();
+        }
 
         private static void Rebuild()
         {
@@ -390,6 +394,30 @@ namespace TheGreatestMap
             foreach (var kv in _builtInByPrefix) Add(kv.Key + "*", kv.Value);
             rows.Sort((a, b) => a.Cat != b.Cat ? a.Cat.CompareTo(b.Cat) : string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
             return rows;
+        }
+
+        /// <summary>
+        /// Each dungeon type the catalog knows, as (icon key, name), in catalog order, with the icon
+        /// resolved the way recording resolves it. The icon is the only thing on a stored dungeon
+        /// marker that says which dungeon it is.
+        /// </summary>
+        internal static List<KeyValuePair<string, string>> DungeonTypes()
+        {
+            if (!_built) Rebuild();
+            var list = new List<KeyValuePair<string, string>>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            void Add(string prefab, Entry e)
+            {
+                if (e.Cat != Category.Dungeon || string.IsNullOrEmpty(prefab)) return;
+                string icon = IconRegistry.Normalize(e.Icon ?? Categories.KnownIcon(prefab) ?? IconFromDungeonName(prefab));
+                if (icon == null || !seen.Add(icon)) return;
+                list.Add(new KeyValuePair<string, string>(icon, e.Name ?? Prettify(prefab)));
+            }
+            foreach (var kv in _byPrefab) Add(kv.Key, kv.Value);
+            foreach (var kv in _byPrefix) Add(kv.Key, kv.Value);
+            foreach (var kv in _builtInByPrefab) Add(kv.Key, kv.Value);
+            foreach (var kv in _builtInByPrefix) Add(kv.Key, kv.Value);
+            return list;
         }
 
         private static bool ItemExists(string name)
@@ -848,6 +876,23 @@ namespace TheGreatestMap
                 if (!Rubble.Contains(name)) return IconRegistry.ItemKey(drop.m_item);
             }
             return fallback;
+        }
+
+        /// <summary>
+        /// The item a deposit is mined for, as a bare prefab name (CopperOre), or null when the
+        /// object is not a deposit. The same reading that picks a deposit's icon.
+        /// </summary>
+        internal static string DepositYield(GameObject go)
+        {
+            if (go == null) return null;
+            string key = null;
+            var rock5 = go.GetComponentInParent<MineRock5>();
+            if (rock5 != null) key = FirstDrop(rock5.m_dropItems);
+            var rock = key == null ? go.GetComponentInParent<MineRock>() : null;
+            if (rock != null) key = FirstDrop(rock.m_dropItems);
+            var drops = key == null ? go.GetComponentInParent<DropOnDestroyed>() : null;
+            if (drops != null) key = FirstDrop(drops.m_dropWhenDestroyed);
+            return key != null && key.StartsWith("item:") ? key.Substring(5) : key;
         }
 
         private static string KeyOf(GameObject go, string prefix)

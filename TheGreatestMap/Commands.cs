@@ -90,7 +90,7 @@ namespace TheGreatestMap
                     args.Context.AddString(n == 0 ? "No dungeon markers needed repairing." : $"Repaired {n} dungeon marker(s).");
                 }));
 
-            new Terminal.ConsoleCommand("tgm_show", "Show every hidden marker again: clears markers hidden one by one, the Hidden Icons list and switches every Show <Kind> back on",
+            new Terminal.ConsoleCommand("tgm_show", "Show every hidden marker again: clears markers hidden one by one, the Hidden Icons list and the hidden crossed-off markers, and switches every Show <Kind> back on",
                 (Terminal.ConsoleEvent)(args =>
                 {
                     int single = ViewPrefs.Count, icons = TgmConfig.HiddenIconCount(), kinds = TgmConfig.HiddenKindCount();
