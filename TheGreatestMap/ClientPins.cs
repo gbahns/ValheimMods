@@ -636,10 +636,15 @@ namespace TheGreatestMap
                 // shows you what you wrote. Not against the master switch or a marker hidden by
                 // hand, which both mean "not this one".
                 if (hidden && !hideEverything && !hiddenByHand && Reveals.IsRevealed(kv.Value)) hidden = false;
-                // Used up and the player would rather not see it any more. Structures are left
-                // alone: their cross-off means searched, not gone.
-                if (!hidden && shared.Checked && kind.HasValue && Categories.IsResource(kind.Value)
-                    && TgmConfig.ShowClearedDeposits != null && !TgmConfig.ShowClearedDeposits.Value) hidden = true;
+                // Crossed off, and the player would rather not see it any more. The two cases are
+                // kept apart because they mean different things: a cleared deposit is gone, while a
+                // searched ruin is still standing and only done with.
+                if (!hidden && shared.Checked)
+                {
+                    bool cleared = kind.HasValue && Categories.IsResource(kind.Value);
+                    var switchedOn = cleared ? TgmConfig.ShowClearedDeposits : TgmConfig.ShowSearchedPlaces;
+                    if (switchedOn != null && !switchedOn.Value) hidden = true;
+                }
                 SetMarkerActive(pin, !hidden);
                 if (hidden) continue;
                 float scale = 1f;

@@ -86,9 +86,11 @@ while ours hides only the markers this mod recorded.
 **Things that run out get crossed off, not forgotten.** Mining a deposit to nothing, or picking a
 plant that never grows back, crosses its marker off for everyone instead of erasing it, so you can
 see which ground has already been worked rather than walking back to an empty spot. "Show Cleared
-Deposits" hides them once cleared if you would rather have a clean map; the record is kept either
-way. Structures are separate, since their cross-off means you have searched them, not that they
-are gone.
+Deposits" hides them once cleared if you would rather have a clean map, and "Show Searched Places"
+does the same for everything else you have crossed off, chiefly structures you have searched, so
+the map can show only the places you have not been to yet. The two are separate because they mean
+different things: a cleared deposit is gone, a searched ruin is still standing and merely done
+with. The record is kept either way.
 
 **Portals are kept current, not remembered.** Everything else the mod records stays where you
 found it, so writing it down once is enough. A portal is built by players and gets renamed and torn

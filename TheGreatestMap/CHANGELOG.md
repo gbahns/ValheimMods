@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1 — unreleased
+
+Client-side; works with a 0.2.x server.
+
+- Markers you have crossed off can be hidden. "Show Cleared Deposits" already covered ore and plants that are used up; "Show Searched Places" now covers everything else, chiefly structures you have searched, so you can leave only the places you have not been to yet. The two are separate because they mean different things: a cleared deposit is gone, while a searched ruin is still standing and merely done with. The record is kept either way, and "Show all hidden" and `tgm_show` bring both back.
+
 ## 0.3.0 — 2026-09-15
 
 - A destroyed portal's marker goes at once, and stays gone. Two things were keeping it: taking a piece down with the hammer only runs the game's destroy step on whoever owns it, which need not be the player holding the hammer, so the moment was often missed entirely; and the server's own portal list can still hold one briefly, so its next sweep put the marker straight back. A portal this client watched come down is now remembered as gone for a minute, and any list arriving in the meantime is read with that in mind. The map is also redrawn there and then rather than on the next tick.

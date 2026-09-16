@@ -37,6 +37,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<string> LegendPosition;
         internal static ConfigEntry<bool> ShowAllMarkers;
         internal static ConfigEntry<bool> ShowClearedDeposits;
+        internal static ConfigEntry<bool> ShowSearchedPlaces;
         internal static ConfigEntry<float> RevealNewMarkers;
         internal static ConfigEntry<bool> MapAllPortals;
         internal static ConfigEntry<string> PortalColor;
@@ -90,12 +91,16 @@ namespace TheGreatestMap
             if (!string.IsNullOrEmpty(HiddenIcons.Value)) HiddenIcons.Value = "";
             foreach (var entry in ShowKind.Values) if (!entry.Value) entry.Value = true;
             if (ShowAllMarkers != null && !ShowAllMarkers.Value) ShowAllMarkers.Value = true;
+            if (ShowClearedDeposits != null && !ShowClearedDeposits.Value) ShowClearedDeposits.Value = true;
+            if (ShowSearchedPlaces != null && !ShowSearchedPlaces.Value) ShowSearchedPlaces.Value = true;
         }
 
         /// <summary>True when anything at all is being hidden, by any of the switches.</summary>
         internal static bool AnythingHidden()
         {
             if (ShowAllMarkers != null && !ShowAllMarkers.Value) return true;
+            if (ShowClearedDeposits != null && !ShowClearedDeposits.Value) return true;
+            if (ShowSearchedPlaces != null && !ShowSearchedPlaces.Value) return true;
             return HiddenIconCount() > 0 || HiddenKindCount() > 0;
         }
 
@@ -214,6 +219,11 @@ namespace TheGreatestMap
                 "off, so you can see which ground has already been worked. Off hides them once cleared. The record is " +
                 "kept either way, and this does not touch structures, whose cross-off means searched rather than gone.");
             ShowClearedDeposits.SettingChanged += (_, __) => ClientPins.Restyle();
+            ShowSearchedPlaces = mod.BindLocal("Display", "Show Searched Places", true,
+                "Keep drawing everything else you have crossed off, chiefly structures you have searched. Off hides " +
+                "them, leaving the places you have not been to yet. The record is kept either way, and crossing one " +
+                "off again by hand brings it back into view when this is on.");
+            ShowSearchedPlaces.SettingChanged += (_, __) => ClientPins.Restyle();
             MapAllPortals = mod.BindLocal("Display", "Map All Portals", true,
                 "Draw every portal that currently exists in the world, not only the ones you or someone who shared their " +
                 "map with you has seen. Portals are built by the players, so on a server where everyone is in the same " +
