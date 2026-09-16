@@ -133,9 +133,8 @@ namespace GrabMaterials
 		// to a transient grab result. Only those get the pause toggle.
 		private static bool _pausable;
 		// True while the current showing is one you point at and click (inventory, packs,
-		// pack editor). Those take the cursor; a transient grab result must not.
+		// pack editor). Those get the cursor through PanelInput; a transient grab result must not.
 		private static bool _interactive;
-		private static bool _inputBlocked;
 		private static GameObject _pauseButton;
 		private static Image _pauseBarLeft;
 		private static Image _pauseBarRight;
@@ -927,29 +926,25 @@ namespace GrabMaterials
 			if (_pauseSlash.gameObject.activeSelf != refused) _pauseSlash.gameObject.SetActive(refused);
 		}
 
-		// Valheim only frees the cursor for its own screens (GameCamera.UpdateMouseCapture), so a
-		// custom panel gets no pointer of its own. Jotunn's BlockInput is the supported way in: it
-		// makes TextInput.IsVisible report true, which is one of the cases that releases the cursor,
-		// and stops the click reaching the player as an attack. It is reference counted, so every
-		// true must be matched by exactly one false.
-		private static void SetInputBlock(bool on)
+		// True while the player is typing into one of this panel's text fields (the pack editor).
+		// PanelInput uses it to keep those keystrokes away from the game; otherwise a panel
+		// leaves the keyboard alone.
+		public static bool TypingInPanel
 		{
-			if (on == _inputBlocked) return;
-			_inputBlocked = on;
-			GUIManager.BlockInput(on);
-		}
-
-		// Called every frame by the mod so the block is let go if the panel goes away for any
-		// reason, including the player logging out with it open.
-		public static void RefreshInputBlock()
-		{
-			SetInputBlock(InteractivePanelVisible && Player.m_localPlayer != null);
+			get
+			{
+				if (!IsVisible) return false;
+				var events = EventSystem.current;
+				var selected = events != null ? events.currentSelectedGameObject : null;
+				if (selected == null || !selected.transform.IsChildOf(_panel.transform)) return false;
+				var field = selected.GetComponent<InputField>();
+				return field != null && field.isFocused;
+			}
 		}
 
 		public static void Hide()
 		{
 			PanelPause.Release();
-			SetInputBlock(false);
 			if (_panel != null) _panel.SetActive(false);
 			if (_canvasGroup != null) _canvasGroup.alpha = 1f;
 			_fadeStart = -1f;

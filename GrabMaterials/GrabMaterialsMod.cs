@@ -333,8 +333,6 @@ namespace GrabMaterialsMod
 
 		private void Update()
 		{
-			// First, so that being unable to move never depends on anything below succeeding.
-			GrabMaterials.MaterialsPanel.RefreshInputBlock();
 			GrabMaterials.MaterialsPanel.Tick();
 			GrabMaterials.DistanceHud.Tick();
 			GrabMaterials.PackHud.Tick();

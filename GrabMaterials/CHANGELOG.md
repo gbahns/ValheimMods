@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Fixed: an open inventory or packs panel blocked the whole keyboard.** Only Escape worked, so you could not walk, use a hotkey, or open anything else while a panel was up. Panels now behave like the game's own inventory: the cursor is free and the mouse no longer turns the camera, while movement and hotkeys keep working. Scrolling a panel still does not zoom the camera, and typing in the pack editor is still kept out of the game.
 - `/i empty` lists every nearby container that has nothing in it and highlights them all, grouped by container type with a count. Handy when you are looking for somewhere to put a haul, or hunting for that chest you emptied and forgot about.
 
 ## 2.3.1 — 2026-09-13
