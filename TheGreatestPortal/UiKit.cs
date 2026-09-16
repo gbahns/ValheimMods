@@ -405,6 +405,57 @@ namespace TheGreatestPortal
         private static Sprite _triangle;
 
         /// <summary>A right-pointing triangle, drawn once with soft edges; rotate it for other directions.</summary>
+        private static Sprite _star;
+
+        /// <summary>
+        /// A five-pointed star, point up, with soft edges. Drawn rather than typed: a button should
+        /// not depend on whether the game's font happens to carry a star glyph.
+        /// </summary>
+        internal static Sprite Star()
+        {
+            if (_star != null) return _star;
+            const int n = 48;
+            var poly = new Vector2[10];
+            float outer = n * 0.48f, inner = outer * 0.42f;
+            for (int i = 0; i < poly.Length; i++)
+            {
+                float r = i % 2 == 0 ? outer : inner;
+                float a = Mathf.PI / 2f + i * Mathf.PI / 5f;
+                poly[i] = new Vector2(n / 2f + r * Mathf.Cos(a), n / 2f + r * Mathf.Sin(a));
+            }
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    int hit = 0;
+                    for (int sy = 0; sy < 3; sy++)
+                        for (int sx = 0; sx < 3; sx++)
+                            if (InsidePolygon(poly, x + (sx + 0.5f) / 3f, y + (sy + 0.5f) / 3f)) hit++;
+                    px[y * n + x] = new Color32(255, 255, 255, (byte)(hit * 255 / 9));
+                }
+            tex.SetPixels32(px);
+            tex.Apply(false, true);
+            tex.filterMode = FilterMode.Bilinear;
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.hideFlags = HideFlags.HideAndDontSave;
+            _star = Sprite.Create(tex, new Rect(0f, 0f, n, n), new Vector2(0.5f, 0.5f), 100f);
+            _star.hideFlags = HideFlags.HideAndDontSave;
+            return _star;
+        }
+
+        private static bool InsidePolygon(Vector2[] poly, float x, float y)
+        {
+            bool inside = false;
+            for (int i = 0, j = poly.Length - 1; i < poly.Length; j = i++)
+            {
+                if ((poly[i].y > y) != (poly[j].y > y)
+                    && x < (poly[j].x - poly[i].x) * (y - poly[i].y) / (poly[j].y - poly[i].y) + poly[i].x)
+                    inside = !inside;
+            }
+            return inside;
+        }
+
         internal static Sprite Triangle()
         {
             if (_triangle != null) return _triangle;

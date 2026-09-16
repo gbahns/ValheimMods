@@ -24,6 +24,7 @@ namespace TheGreatestPortal
         internal static ConfigEntry<bool> ShowDistances;
         internal static ConfigEntry<bool> GroupByBiome;
         internal static ConfigEntry<string> CollapsedGroups;
+        internal static ConfigEntry<int> RecentPortals;
         internal static ConfigEntry<string> PanelSize;
         internal static ConfigEntry<string> PanelPosition;
         internal static ConfigEntry<int> ListScrollRows;
@@ -49,7 +50,8 @@ namespace TheGreatestPortal
                 "row's right-click menu). When false only admins can; renaming the portal you are standing at is always allowed.");
 
             AltarSpellingIsFatal = mod.BindSynced("Rules", "Altar Spelling Is Fatal", false,
-                "A portal within 50 m of the sacrificial stones in the middle of the world, named \"alter\", " +
+                "A portal within 50 m of the sacrificial stones in the middle of the world, named \"alter\" " +
+                "(only the letters count, so spaces, digits and punctuation do not help), " +
                 "kills whoever named it. There is a word for that place and the word is altar. Off by default, " +
                 "because a server should choose to be like this on purpose. Renaming that portal from anywhere " +
                 "counts; you do not have to be standing at it.");
@@ -76,6 +78,9 @@ namespace TheGreatestPortal
             CollapsedGroups = mod.BindLocal("Display", "Collapsed Groups", "",
                 "Which groups are folded away in the destination lists, kept between sessions. Click a group's " +
                 "header, or Expand all / Collapse all, in the lists themselves rather than editing this.");
+            RecentPortals = mod.BindLocalRangeInt("Display", "Recent Portals", 5, 0, 20,
+                "How many portals the Recents section at the top of the lists shows: the ones you most recently " +
+                "traveled to or from, newest first. They keep their usual place in the list as well. 0 hides the section.");
             PanelSize = mod.BindLocal("Display", "Panel Size", "680,600",
                 "Width and height of the portal panel, remembered when you drag its bottom-right corner.");
             PanelPosition = mod.BindLocal("Display", "Panel Position", "0,0",

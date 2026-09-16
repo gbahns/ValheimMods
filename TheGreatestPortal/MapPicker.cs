@@ -404,7 +404,7 @@ namespace TheGreatestPortal
                         TheGreatestPortalMod.Message("You are standing in that portal", always: true);
                         return;
                     }
-                    if (Travel.Go(p, _sourceAllowAll))
+                    if (Travel.Go(p, _sourceAllowAll, _sourceId))
                     {
                         map.SetMapMode(Minimap.MapMode.Small);
                         End();

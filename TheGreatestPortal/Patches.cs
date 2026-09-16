@@ -143,6 +143,30 @@ namespace TheGreatestPortal
         }
     }
 
+    // A trip through a portal with a set destination is the game's own teleport. It is recorded
+    // with both of its ends, and only once it has really begun: the game refuses some trips (ore,
+    // a boss fight) without telling the caller, so the teleport state is compared before and after.
+    [HarmonyPatch(typeof(TeleportWorld), nameof(TeleportWorld.Teleport))]
+    internal static class TeleportWorld_Teleport_Patch
+    {
+        [HarmonyPrefix]
+        private static void Prefix(Player player, out bool __state)
+        {
+            __state = player != null && player.IsTeleporting();
+        }
+
+        [HarmonyPostfix]
+        private static void Postfix(TeleportWorld __instance, Player player, bool __state)
+        {
+            if (player == null || player != Player.m_localPlayer || __state || !player.IsTeleporting()) return;
+            var nview = __instance.GetComponent<ZNetView>();
+            var zdo = nview != null && nview.IsValid() ? nview.GetZDO() : null;
+            if (zdo == null) return;
+            var to = Catalog.ByZdo(PortalData.Connection(zdo));
+            Favorites.RecordTrip(PortalData.GetId(zdo), to != null ? to.Id : PortalData.GetTarget(zdo));
+        }
+    }
+
     // A portal you build gets its permanent id at once and, if you have a default portal, its destination.
     [HarmonyPatch(typeof(Piece), nameof(Piece.SetCreator))]
     internal static class Piece_SetCreator_Patch

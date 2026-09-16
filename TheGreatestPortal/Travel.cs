@@ -38,7 +38,7 @@ namespace TheGreatestPortal
         }
 
         /// <summary>Teleports the local player to a portal. Returns false (with a message) when refused.</summary>
-        internal static bool Go(PortalInfo target, bool sourceAllowsAllItems)
+        internal static bool Go(PortalInfo target, bool sourceAllowsAllItems, long sourceId = 0L)
         {
             var player = Player.m_localPlayer;
             if (player == null || target == null) return false;
@@ -53,6 +53,7 @@ namespace TheGreatestPortal
                 return false;
             }
             if (Game.instance != null) Game.instance.IncrementPlayerStat(PlayerStatType.PortalsUsed);
+            Favorites.RecordTrip(sourceId, target.Id);
             TheGreatestPortalMod.Message("Traveling to " + target.DisplayName);
             return true;
         }

@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using UnityEngine;
 
 namespace TheGreatestPortal
@@ -16,11 +17,16 @@ namespace TheGreatestPortal
         private const string Misspelling = "alter";
         internal const float Radius = 50f;
 
-        /// <summary>Called once a portal has been named. Any other name, or a portal elsewhere, passes.</summary>
+        /// <summary>
+        /// Called once a portal has been named. Only the letters count, in any case, so dressing
+        /// the word up with spaces, digits or punctuation ("Alter!", "a l t e r", "Alter 2") does
+        /// not save anyone, while a longer word that merely starts the same way ("Alternate") is
+        /// fine. Any other name, or a portal elsewhere, passes.
+        /// </summary>
         internal static void Judge(string name, Vector3 portalPos)
         {
             if (TgpConfig.AltarSpellingIsFatal == null || !TgpConfig.AltarSpellingIsFatal.Value) return;
-            if (!string.Equals((name ?? "").Trim(), Misspelling, StringComparison.OrdinalIgnoreCase)) return;
+            if (!string.Equals(LettersOnly(name), Misspelling, StringComparison.OrdinalIgnoreCase)) return;
             var player = Player.m_localPlayer;
             if (player == null || player.IsDead()) return;
             if (Utils.DistanceXZ(Stones(), portalPos) > Radius) return;
@@ -35,6 +41,15 @@ namespace TheGreatestPortal
             hit.m_point = player.transform.position + Vector3.up;
             hit.m_dir = Vector3.down;
             player.Damage(hit);
+        }
+
+        private static string LettersOnly(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return "";
+            var letters = new StringBuilder(text.Length);
+            foreach (char c in text)
+                if (char.IsLetter(c)) letters.Append(c);
+            return letters.ToString();
         }
 
         /// <summary>

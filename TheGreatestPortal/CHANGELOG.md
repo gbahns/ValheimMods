@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0 — unreleased
+
+- A **Recents** section tops the lists in the panel and on the map: the portals you most recently
+  traveled to or from, newest first, so the way back is always one click away. They keep their
+  usual place below as well. "Recent Portals" sets how many it shows (default 5; 0 hides it). The
+  list is yours alone and is kept per world with your favorites.
+- Favorite the portal you are standing at: a star beside the name in the panel. Click it to add
+  the portal to your favorites and again to take it off. A portal never appears in its own list,
+  so until now it could only be favorited from another portal's panel or on the map.
+
 ## 0.4.0 — 2026-09-16
 
 ## 0.3.3 — 2026-09-15

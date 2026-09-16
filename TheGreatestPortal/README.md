@@ -24,7 +24,8 @@ sides say to each other raises that floor and says so in the changelog.
 | Field | What it does |
 |---|---|
 | Name | Up to 32 characters (configurable). Names do not have to be unique. |
-| Destination list | Every other portal in the world, favorites first, each with where it leads and its distance. The first entry, *Open portal*, means no fixed destination. Up/Down move the selection, Enter confirms; a double-click on a row does both. Right-click a row for Travel here now, Rename, Favorite / Un-favorite and Show on map; renaming works on any portal, wherever it is. |
+| Star beside the name | Marks the portal you are standing at as a favorite; click again to take it off. Takes effect at once. |
+| Destination list | Every other portal in the world, favorites first, each with where it leads and its distance. A **Recents** section at the top repeats the portals you most recently traveled to or from (5 by default). The first entry, *Open portal*, means no fixed destination. Up/Down move the selection, Enter confirms; a double-click on a row does both. Right-click a row for Travel here now, Rename, Favorite / Un-favorite and Show on map; renaming works on any portal, wherever it is. |
 | Search | Type part of a name (or a biome) to filter the list. |
 | Group by biome | Sections per biome, with a Favorites section first; a favorite is listed only there. Click a header to fold or open that group; Expand all / Collapse all do the lot. All of it is remembered between sessions. |
 | Default new portals to point here | New portals you build lead here automatically. |
@@ -42,7 +43,7 @@ already know, with everything you normally see on it, and every portal drawn on 
 portal under the pointer grows and lights up with a halo in its own color and shows its name, so you
 can see what a click will do; hovering a row in the list lights up that portal's pin too. With
 TheGreatestMap installed the pins wear the color it gives portals, pulse and all; without it they
-are white, as vanilla pins are. The list on the left shows favorites first, then the rest
+are white, as vanilla pins are. The list on the left starts with your recent portals, then favorites, then the rest
 alphabetically, each with where it leads and its distance; it has the same search box and biome
 grouping as the panel. Click a pin or a row to travel there. Right-click marks a favorite. Esc, or stepping out of the doorway, closes the
 map and you stay. The usual rules apply: no traveling with ore, or during a boss fight if the world
@@ -84,6 +85,7 @@ to mark a favorite.
 | Keys | Detour Key | LeftAlt | Hold while stepping into a portal to pick a destination for that trip only |
 | Display | Always Show Portal Pins | false | Draw every portal on the large map all the time |
 | Display | Show Distances | true | Distances in the lists |
+| Display | Recent Portals | 5 | How many recent portals the Recents section shows; 0 hides it |
 | Display | Group By Biome | false | Group the lists by biome; the switches on the panel and the map change it too |
 | Display | Panel Size | 680,600 | The portal panel's size, saved when you drag its corner |
 | Display | Panel Position | 0,0 | The panel's offset from the screen center, saved when you drag its title |
@@ -93,7 +95,7 @@ to mark a favorite.
 | Display | Auto Close Grace Seconds | 0.5 | Leave the doorway for this long and the destination map closes |
 | Display | Show Messages | true | Small top-left messages |
 
-Favorites and the default portal are yours alone and are kept per world in
+Favorites, recent portals and the default portal are yours alone and are kept per world in
 `BepInEx/config/TheGreatestPortal/<world>-<seed>.txt`.
 
 ## Adding the mod to an existing world

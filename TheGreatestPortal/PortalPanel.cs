@@ -33,6 +33,9 @@ namespace TheGreatestPortal
         private static RectTransform _listContent;
         private static ScrollRect _scroll;
         private static Toggle _default;
+        private static Button _star;
+        private static Image _starImage;
+        private static bool _starHover;
         private static Button _redirectAll;
         private const string RedirectLabel = "Point all portals to here";
         private static Button _expandAll;
@@ -63,6 +66,7 @@ namespace TheGreatestPortal
         private static ZDOID _zdo = ZDOID.None;
         private static long _id;
         private static long _selected;
+        private static int _cursor = -1;   // the row the selection was last made on; a portal can be listed twice
         private static Vector3 _pos;
         private static string _query = "";
         private static float _confirmUntil = -1f;
@@ -139,6 +143,7 @@ namespace TheGreatestPortal
             UiKit.SetToggle(_group, TgpConfig.GroupByBiome.Value);
             UiKit.SetToggle(_default, _id != 0L && Favorites.DefaultId == _id);
             _default.interactable = _id != 0L;
+            UpdateStar();
             _redirectAll.interactable = _id != 0L;
             UiKit.SetLabel(_redirectAll.gameObject, RedirectLabel);
             Populate();
@@ -222,9 +227,10 @@ namespace TheGreatestPortal
             UiKit.ClearChildren(_listContent);
             _rows.Clear();
             _rowIds.Clear();
+            _cursor = -1;
 
             AddRow(0L, UiKit.Row(_listContent, "Open portal: choose where to go each time you step in", null,
-                () => Choose(0L), null, 16f, null, () => { Choose(0L); Apply(); }));
+                () => Choose(0L, 0), null, 16f, null, () => { Choose(0L, 0); Apply(); }));
 
             bool grouped = TgpConfig.GroupByBiome.Value;
             _entries = PortalList.Build(_id, _zdo, _query, grouped);
@@ -274,11 +280,12 @@ namespace TheGreatestPortal
             string label = fav ? "★ " + p.DisplayName : p.DisplayName;
             string dist = TgpConfig.ShowDistances.Value ? UiKit.Distance(_pos, p.Pos) : null;
             UiKit.RowHandle row = null;
+            int index = _rows.Count;
             row = UiKit.Row(_listContent, label, dist,
-                () => Choose(captured.Id),
+                () => Choose(captured.Id, index),
                 () => ShowRowMenu(captured, row),
                 16f, fav ? UiKit.Gold : (Color?)null,
-                () => { Choose(captured.Id); Apply(); },    // double-click: choose and confirm
+                () => { Choose(captured.Id, index); Apply(); },    // double-click: choose and confirm
                 PortalList.DestinationText(p));
             AddRow(p.Id, row);
         }
@@ -292,10 +299,11 @@ namespace TheGreatestPortal
             {
                 // One trip out of the portal you are standing at; its destination is left alone.
                 bool allowAll = _portal.m_allowAllItems;
+                long sourceId = _id;
                 items.Add(new KeyValuePair<string, Action>("Travel here now", () =>
                 {
                     Close();
-                    Travel.Go(p, allowAll);
+                    Travel.Go(p, allowAll, sourceId);
                 }));
             }
             if (_renameField != null && p.Id != 0L)
@@ -385,9 +393,10 @@ namespace TheGreatestPortal
             _rowIds.Add(id);
         }
 
-        private static void Choose(long id)
+        private static void Choose(long id, int index = -1)
         {
             _selected = id;
+            _cursor = index;
             UpdateSelection();
         }
 
@@ -400,11 +409,13 @@ namespace TheGreatestPortal
         private static void MoveSelection(int delta)
         {
             if (_rowIds.Count == 0) return;
-            int cur = _rowIds.IndexOf(_selected);
+            // A recent portal is listed twice; carry on from the copy the selection was made on.
+            int cur = _cursor >= 0 && _cursor < _rowIds.Count && _rowIds[_cursor] == _selected ? _cursor : _rowIds.IndexOf(_selected);
             int i = cur < 0 ? (delta > 0 ? -1 : _rowIds.Count) : cur;
             do { i += delta; } while (i >= 0 && i < _rowIds.Count && _rowIds[i] == HeaderId);
             if (i < 0 || i >= _rowIds.Count) return;
             _selected = _rowIds[i];
+            _cursor = i;
             UpdateSelection();
             UiKit.ScrollToRow(_scroll, i, _rowIds.Count);
         }
@@ -436,6 +447,32 @@ namespace TheGreatestPortal
             Vector3 namedAt = _pos;
             Close();
             Spelling.Judge(name, namedAt);
+        }
+
+        /// <summary>
+        /// Stars or unstars the portal you are standing at, at once, the same as the row menu does
+        /// for any other portal: a favorite is yours alone and Cancel does not take it back.
+        /// </summary>
+        private static void ToggleFavorite()
+        {
+            if (!IsOpen || _id == 0L) return;
+            bool on = Favorites.Toggle(_id);
+            string shown = PortalData.CleanName(_name.text, TgpConfig.MaxNameLength.Value);
+            if (string.IsNullOrEmpty(shown)) shown = "This portal";
+            TheGreatestPortalMod.Message(on ? "Favorite: " + shown : "No longer a favorite: " + shown);
+            UpdateStar();
+        }
+
+        /// <summary>Gold when this portal is a favorite, a dim outline of the idea when it is not.</summary>
+        private static void UpdateStar()
+        {
+            if (_star == null || _starImage == null) return;
+            bool usable = _id != 0L;
+            _star.interactable = usable;
+            bool on = usable && Favorites.IsFavorite(_id);
+            Color color = on ? UiKit.Gold : new Color(0.62f, 0.58f, 0.52f, usable ? 0.55f : 0.2f);
+            if (usable && _starHover) color = on ? Color.Lerp(UiKit.Gold, Color.white, 0.35f) : new Color(0.85f, 0.8f, 0.7f, 0.85f);
+            _starImage.color = color;
         }
 
         private static void ApplyToggles()
@@ -630,6 +667,20 @@ namespace TheGreatestPortal
             UiKit.Place(_nameLabel.rectTransform, 30f, 72f, 100f, 36f);
             _name = input;
             UiKit.PrepareInput(input, "", TgpConfig.MaxNameLength.Value, null, _ => Apply());
+
+            // A star beside the name favorites the portal you are standing at, which never
+            // appears in its own list and so cannot be starred from a row.
+            var starGo = new GameObject("Favorite", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button), typeof(UiKit.Hover));
+            starGo.transform.SetParent(content.transform, false);
+            _starImage = starGo.GetComponent<Image>();
+            _starImage.sprite = UiKit.Star();
+            _starImage.preserveAspect = true;
+            _starImage.raycastTarget = true;
+            _star = starGo.GetComponent<Button>();
+            _star.transition = Selectable.Transition.None;
+            _star.targetGraphic = _starImage;
+            _star.onClick.AddListener(ToggleFavorite);
+            starGo.GetComponent<UiKit.Hover>().OnHoverChanged = over => { _starHover = over; UpdateStar(); };
             UiKit.Place(input.GetComponent<RectTransform>(), 130f, 72f, 420f, 36f);
 
             // Destination: label, search box, biome grouping
@@ -731,7 +782,8 @@ namespace TheGreatestPortal
             _root.GetComponent<RectTransform>().sizeDelta = new Vector2(w, h);
             if (_title != null) UiKit.Place(_title.rectTransform, 0f, 16f, w, 40f);
             if (_nameLabel != null) UiKit.Place(_nameLabel.rectTransform, 30f, 72f, 100f, 36f);
-            if (_name != null) UiKit.Place(_name.GetComponent<RectTransform>(), 130f, 72f, w - 160f, 36f);
+            if (_name != null) UiKit.Place(_name.GetComponent<RectTransform>(), 130f, 72f, w - 206f, 36f);
+            if (_star != null) UiKit.Place(_star.GetComponent<RectTransform>(), w - 66f, 72f, 36f, 36f);
             if (_destLabel != null) UiKit.Place(_destLabel.rectTransform, 30f, 120f, 140f, 30f);
             if (_search != null && _search != _name) UiKit.Place(_search.GetComponent<RectTransform>(), 175f, 120f, w - 460f, 30f);
             if (_group != null) UiKit.Place(_group.GetComponent<RectTransform>(), w - 270f, 120f, 240f, 30f);

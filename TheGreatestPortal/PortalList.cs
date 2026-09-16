@@ -23,6 +23,7 @@ namespace TheGreatestPortal
     internal static class PortalList
     {
         internal const string FavoritesKey = "favorites";
+        internal const string RecentsKey = "recents";
 
         private static readonly Dictionary<long, Heightmap.Biome> _biomes = new Dictionary<long, Heightmap.Biome>();
         private static HashSet<string> _collapsed;
@@ -118,7 +119,8 @@ namespace TheGreatestPortal
         // ── the list ────────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// The list to show. Flat: favorites first, then the rest, alphabetical with unnamed
+        /// The list to show. Either way a Recents section comes first: the portals traveled to or
+        /// from most recently, which keep their usual place below as well. Flat: favorites first, then the rest, alphabetical with unnamed
         /// last. Grouped: a Favorites section, then one section per biome for the rest (a
         /// favorite is listed once, under Favorites); a collapsed section is just its header. <paramref name="exclude"/>
         /// and <paramref name="excludeZdo"/> leave out the portal being configured or stood in.
@@ -136,10 +138,15 @@ namespace TheGreatestPortal
             }
             favs.Sort(ByName);
             var entries = new List<ListEntry>();
+            AddRecents(entries, exclude, excludeZdo, query);
+            bool haveRecents = entries.Count > 0;
 
             if (!groupByBiome)
             {
                 rest.Sort(ByName);
+                // With Recents above it, the list proper needs a heading of its own too, or it reads
+                // as more of the same section.
+                if (haveRecents && favs.Count + rest.Count > 0) entries.Add(new ListEntry { IsHeader = true, Title = "All portals" });
                 foreach (var p in favs) entries.Add(new ListEntry { Portal = p, Favorite = true });
                 foreach (var p in rest) entries.Add(new ListEntry { Portal = p });
                 return entries;
@@ -172,6 +179,32 @@ namespace TheGreatestPortal
                 foreach (var p in list) entries.Add(new ListEntry { Portal = p });
             }
             return entries;
+        }
+
+        /// <summary>
+        /// The Recents section: newest first, as many as the setting asks for, counted after the
+        /// portal you are standing at and any gone or filtered-out ones are skipped.
+        /// </summary>
+        private static void AddRecents(List<ListEntry> entries, long exclude, ZDOID excludeZdo, string query)
+        {
+            int limit = TgpConfig.RecentPortals != null ? TgpConfig.RecentPortals.Value : 0;
+            if (limit <= 0) return;
+            var shown = new List<PortalInfo>();
+            foreach (long id in Favorites.Recents)
+            {
+                if (shown.Count >= limit) break;
+                if (exclude != 0L && id == exclude) continue;
+                var p = Catalog.Get(id);
+                if (p == null) continue;
+                if (excludeZdo != ZDOID.None && p.ZdoId == excludeZdo) continue;
+                if (!Matches(p, query)) continue;
+                shown.Add(p);
+            }
+            if (shown.Count == 0) return;
+            bool collapsed = IsCollapsed(RecentsKey);
+            entries.Add(Header($"Recents ({shown.Count})", RecentsKey, collapsed));
+            if (collapsed) return;
+            foreach (var p in shown) entries.Add(new ListEntry { Portal = p, Favorite = Favorites.IsFavorite(p.Id) });
         }
 
         private static ListEntry Header(string title, string key, bool collapsed)
