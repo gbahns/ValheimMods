@@ -34,6 +34,7 @@ namespace Armory
             if (m_nview != null)
             {
                 m_nview.Register<string>("ArmoryRPC_SetData", RPC_SetData);
+                m_nview.Register<bool>("ArmoryRPC_SetPrivate", RPC_SetPrivate);
             }
 
             _leftHinge  = transform.Find("ArmoryDoorLeft");
@@ -48,6 +49,8 @@ namespace Armory
 
         private void Update()
         {
+            ApplyPrivacy();
+
             if (_leftHinge == null || _rightHinge == null) return;
 
             float target = (ArmoryUI.IsOpen && ArmoryUI.CurrentRack == this) ? 1f : 0f;
@@ -56,6 +59,95 @@ namespace Armory
             float angle = _doorAngle01 * DoorOpenDegrees;
             _leftHinge.localRotation  = Quaternion.Euler(0, -angle, 0);
             _rightHinge.localRotation = Quaternion.Euler(0,  angle, 0);
+        }
+
+        // ── Personal or shared ─────────────────────────────────────────────────────────
+        //
+        // Vanilla already enforces this: Container.CheckAccess gates both Container.Interact and
+        // RPC_RequestOpen, and CanBeRemoved stops anyone hammering down a private container that
+        // still holds items.  What vanilla has no answer for is letting a player *choose* —
+        // m_privacy is a prefab field that nothing in the game ever writes, which is why the
+        // Personal Chest is a separate piece rather than a setting.
+        //
+        // The choice lives on the rack rather than in config on purpose.  CheckAccess runs on the
+        // requester AND again on the ZDO's owner, so a value held per-client would let the two
+        // ends disagree about who may open what.  In the ZDO, everyone reads the same answer.
+        private const string PrivateKey = "armory_private";
+
+        /// <summary>True when the rack answers only to whoever built it.</summary>
+        public bool IsPrivate =>
+            m_nview != null && m_nview.IsValid() && m_nview.GetZDO().GetBool(PrivateKey, false);
+
+        /// <summary>
+        /// Who built this rack, as Valheim records it — 0 when the game never stamped anyone,
+        /// which happens for pieces spawned by console or admin tools rather than placed.
+        /// </summary>
+        public long CreatorId
+        {
+            get
+            {
+                var piece = GetComponent<Piece>();
+                return piece == null ? 0L : piece.GetCreator();
+            }
+        }
+
+        /// <summary>The id vanilla compares the creator against in Container.CheckAccess.</summary>
+        public static long LocalPlayerId =>
+            Game.instance == null ? 0L : Game.instance.GetPlayerProfile().GetPlayerID();
+
+        /// <summary>True when the local player is the one who built this rack.</summary>
+        public bool IsBuilder
+        {
+            get
+            {
+                long creator = CreatorId;
+                return creator != 0L && creator == LocalPlayerId;
+            }
+        }
+
+        /// <summary>
+        /// A rack nobody is recorded as having built must never be made personal.  Vanilla's rule
+        /// is creator == playerID, and with a creator of 0 that is false for everyone — the rack
+        /// would refuse the whole server for good, and vanilla will not let a private container
+        /// holding items be removed either.  Better to refuse the switch than to brick the rack.
+        /// </summary>
+        public bool CanChangePrivacy => CreatorId != 0L && IsBuilder;
+
+        public void SetPrivate(bool value)
+        {
+            if (m_nview == null || !m_nview.IsValid())
+            {
+                Jotunn.Logger.LogWarning("[Armory] SetPrivate: ZNetView not valid, ignoring");
+                return;
+            }
+            if (value && !CanChangePrivacy)
+            {
+                Jotunn.Logger.LogWarning($"[Armory] SetPrivate refused: creator={CreatorId}, me={LocalPlayerId}");
+                return;
+            }
+            if (m_nview.IsOwner()) m_nview.GetZDO().Set(PrivateKey, value);
+            else                   m_nview.InvokeRPC("ArmoryRPC_SetPrivate", value);
+            ApplyPrivacy();
+            Jotunn.Logger.LogInfo($"[Armory] SetPrivate({value}) — isOwner={m_nview.IsOwner()}");
+        }
+
+        private void RPC_SetPrivate(long sender, bool value)
+        {
+            if (!m_nview.IsOwner()) return;
+            m_nview.GetZDO().Set(PrivateKey, value);
+        }
+
+        /// <summary>
+        /// Mirror the ZDO onto the Container field vanilla actually reads.  Done every frame
+        /// rather than once, because the value can change under us — the builder toggling it on
+        /// another client, or simply the ZDO arriving after Awake has already run.
+        /// </summary>
+        private void ApplyPrivacy()
+        {
+            var storage = GetStorage();
+            if (storage == null) return;
+            var want = IsPrivate ? Container.PrivacySetting.Private : Container.PrivacySetting.Public;
+            if (storage.m_privacy != want) storage.m_privacy = want;
         }
 
         public string GetHoverName() => "Armory";
@@ -72,7 +164,9 @@ namespace Armory
             return LocalizeText(
                 "Armory\n" +
                 "[<color=yellow><b>$KEY_Use</b></color>] Manage Loadouts\n" +
-                "<color=#aaaaaa>Save and recall named equipment sets.</color>");
+                (IsPrivate
+                    ? "<color=#ffb14e>Personal</color> <color=#aaaaaa>— only you can open it</color>"
+                    : "<color=#aaaaaa>Shared — anyone can open it</color>"));
         }
 
         // The vanilla Localization class isn't in any of the assemblies we reference at compile

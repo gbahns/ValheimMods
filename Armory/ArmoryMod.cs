@@ -25,7 +25,7 @@ namespace Armory
     // ArmoryUI is only ever reached from InventoryGui.Show, and ArmoryPause returns immediately
     // while Player.m_localPlayer is null.  What does run is the part the server needs: the clone,
     // its registration into ZNetScene, and the ArmoryRack component on the spawned object.
-    [BepInPlugin(ModGuid, "Armory", "1.2.0")]
+    [BepInPlugin(ModGuid, "Armory", "1.3.0")]
     [BepInDependency("com.jotunn.jotunn")]
     public class ArmoryMod : BaseUnityPlugin
     {

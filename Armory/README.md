@@ -14,6 +14,7 @@ The rack is also a real storage container. Drop your alternate gear in, walk up,
 - **In-place swap** — when Load equips a new item, whatever was in that slot gets stored back at the exact grid position the new item came from. Nothing ends up on the action bar unless that's where it was sitting.
 - **Live status** — a green ● on the Load button means you're already wearing this loadout. Missing items show red in the summary text and red in the icon strip.
 - **Compare window** — side-by-side view of your current gear vs. the saved set, with color-coded availability.
+- **Personal or shared** — a button in the panel decides whether anyone may open the rack or only the player who built it. Build your own rack, set it to Personal, and your loadouts and the gear behind them are yours.
 - **Optional in-game pause** — config flag pauses the game while the panel is open, the way the ESC menu does. Works by itself solo or hosting alone; on a dedicated server it takes [Pause My Server](https://valheim.thunderstore.io/package/DeathMonger/PauseMyServer/).
 
 ---
@@ -25,6 +26,13 @@ The rack is also a real storage container. Drop your alternate gear in, walk up,
 3. Click **Save** (↓) on a slot to capture what you're currently wearing and the items in hotbar slots 1–8.
 4. Click **Load** (↑) on a saved slot to equip that loadout. Items come from the rack first, then your inventory. Whatever you were wearing gets stored in the slot the loaded item came from.
 5. Click the slot name to rename it. Click the red **x** to delete the slot (empty slots and duplicates delete without confirmation; non-empty unique slots prompt first).
+6. Click **Shared / Personal** in the top-left to choose who may open the rack. Only the player who built it can change this.
+
+### Personal racks
+
+A rack set to **Personal** can only be opened by the player who built it — loadouts, storage and all. That is how each player keeps their own sets: build a rack, make it personal, and the gear those loadouts need lives inside it. A **Shared** rack is open to everyone, which is what you want for a communal armory.
+
+Valheim enforces this itself, with the same rule it applies to a personal chest, and the same consequence: **nobody can hammer down a personal rack while it still holds items.** To remove one, empty it first or set it back to Shared.
 
 ---
 

@@ -100,6 +100,10 @@ namespace Armory
         // Tracked so ResizeMainPanel can update the scroll view too.
         private static RectTransform _scrollRT;
 
+        // Personal/Shared toggle in the title bar; label and interactability follow the rack.
+        private static Button _privacyButton;
+        private static Text   _privacyLabel;
+
         // ── Public API ─────────────────────────────────────────────────────────────
 
         /// <summary>
@@ -168,7 +172,9 @@ namespace Armory
                 Object.Destroy(_comparePanel);
                 _comparePanel = null;
             }
-            _slotsContent = null;
+            _slotsContent  = null;
+            _privacyButton = null;
+            _privacyLabel  = null;
             _rows.Clear();
             _lastShowSummary = null;
             _lastShowIcons   = null;
@@ -349,6 +355,22 @@ namespace Armory
                 height:    36f);
             closeBtn.GetComponent<Button>().onClick.AddListener(Close);
 
+            // Personal/Shared toggle — top-left, mirroring the close button.  Only the player who
+            // built the rack may change it; everyone else sees which it is and cannot flip it.
+            var privacyBtn = GUIManager.Instance.CreateButton(
+                text:      "Shared",
+                parent:    panel,
+                anchorMin: new Vector2(0f, 1f),
+                anchorMax: new Vector2(0f, 1f),
+                position:  new Vector2(90f, -32f),
+                width:     140f,
+                height:    36f);
+            _privacyButton = privacyBtn.GetComponent<Button>();
+            _privacyLabel  = privacyBtn.GetComponentInChildren<Text>();
+            _privacyButton.onClick.AddListener(OnPrivacyClicked);
+            AttachTooltip(privacyBtn, PrivacyTooltip);
+            RefreshPrivacyButton();
+
             // Scrollable slot-list area.
             var scrollGo = GUIManager.Instance.CreateScrollView(
                 parent:                      panel,
@@ -416,6 +438,50 @@ namespace Armory
             addBtn.GetComponent<Button>().onClick.AddListener(OnAddSlotClicked);
 
             RebuildSlotRows();
+        }
+
+        private static string PrivacyTooltip()
+        {
+            if (_rack == null) return string.Empty;
+            if (_rack.CreatorId == 0L)
+                return "Valheim has no record of who built this rack, and its personal setting " +
+                       "is enforced by comparing against the builder — so it cannot be made " +
+                       "personal without locking everyone out. Build a new rack to use this.";
+            if (!_rack.IsBuilder) return "Only the player who built this rack can change this.";
+            return _rack.IsPrivate
+                ? "Only you can open this rack. Click to share it with everyone."
+                : "Anyone can open this rack. Click to make it yours alone.";
+        }
+
+        private static void OnPrivacyClicked()
+        {
+            if (_rack == null) return;
+            // Logged unconditionally: a refused click used to leave no trace at all, which is
+            // exactly the case that needed explaining when the switch appeared to do nothing.
+            Jotunn.Logger.LogInfo($"[Armory] Privacy click: creator={_rack.CreatorId}, me={ArmoryRack.LocalPlayerId}, " +
+                                  $"isBuilder={_rack.IsBuilder}, canChange={_rack.CanChangePrivacy}, isPrivate={_rack.IsPrivate}");
+            if (!_rack.CanChangePrivacy) return;
+            _rack.SetPrivate(!_rack.IsPrivate);
+            RefreshPrivacyButton();
+        }
+
+        /// <summary>
+        /// Label and interactability both come off the rack, so a rack someone else built reads
+        /// as what it is rather than offering a control that would be refused.
+        /// </summary>
+        private static void RefreshPrivacyButton()
+        {
+            if (_privacyButton == null || _rack == null) return;
+            Jotunn.Logger.LogInfo($"[Armory] Privacy state: private={_rack.IsPrivate}, creator={_rack.CreatorId}, me={ArmoryRack.LocalPlayerId}, canChange={_rack.CanChangePrivacy}");
+            bool isPrivate = _rack.IsPrivate;
+            bool mine      = _rack.CanChangePrivacy;
+
+            if (_privacyLabel != null)
+            {
+                _privacyLabel.text  = isPrivate ? "Personal" : "Shared";
+                _privacyLabel.color = isPrivate ? GUIManager.Instance.ValheimOrange : Color.white;
+            }
+            _privacyButton.interactable = mine;
         }
 
         private static void RebuildSlotRows()
@@ -715,11 +781,19 @@ namespace Armory
             if (_tooltipGo != null) _tooltipGo.SetActive(false);
         }
 
-        private static void AttachTooltip(GameObject host, string text)
+        private static void AttachTooltip(GameObject host, string text) =>
+            AttachTooltip(host, () => text);
+
+        /// <summary>
+        /// Deferred variant, for a tooltip whose wording depends on state that changes while the
+        /// panel is up.  Attaching once and reading the text on hover keeps a single EventTrigger
+        /// on the host; re-attaching on every refresh would stack them.
+        /// </summary>
+        private static void AttachTooltip(GameObject host, System.Func<string> text)
         {
             var trigger = host.AddComponent<UnityEngine.EventSystems.EventTrigger>();
             var enter = new UnityEngine.EventSystems.EventTrigger.Entry { eventID = UnityEngine.EventSystems.EventTriggerType.PointerEnter };
-            enter.callback.AddListener(_ => ShowTooltip(text, Input.mousePosition));
+            enter.callback.AddListener(_ => ShowTooltip(text(), Input.mousePosition));
             trigger.triggers.Add(enter);
             var exit = new UnityEngine.EventSystems.EventTrigger.Entry { eventID = UnityEngine.EventSystems.EventTriggerType.PointerExit };
             exit.callback.AddListener(_ => HideTooltip());

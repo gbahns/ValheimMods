@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.0 — unreleased
+
+- **A rack can be yours alone.** A Personal/Shared button in the top-left of the panel decides whether anyone may open the rack or only the player who built it. Personal is how you keep your own loadouts without sharing a rack's ten slots with everyone on the server — and since a rack is also its own storage, the gear each set needs comes with it. Only the builder can flip the switch; everyone else sees which it is.
+- The enforcement is Valheim's own, not this mod's: a personal rack refuses with the same message a personal chest does, and the game will not let anyone hammer one down while it still holds items. If you want to remove a personal rack, empty it first or set it back to Shared.
+- The setting lives on the rack rather than in your config, because the game checks access on both the player asking and the machine that owns the rack — a per-player setting would let those two disagree about who may open what.
+- **Everyone needs this version for Personal to hold.** That same pair of checks runs on the machine of whoever is asking and on whoever owns the rack — usually the player standing at it, not you. A player still on an older version leaves the rack public as far as their game is concerned and walks straight in, and once in, nothing stops them saving over your loadouts either. Update the server and every player together. This is no different from vanilla's personal chest, which is only enforced by the copy of the game doing the asking.
+- A rack the game never recorded a builder for cannot be made personal, and says so. Access is enforced by comparing against the builder, so a rack with no builder on record would refuse everyone permanently — and a private container holding items cannot be hammered down either.
+
 ## 1.2.0 — 2026-09-15
 
 **Install this version on your dedicated server as well as on every client.** Earlier versions were client-only.
