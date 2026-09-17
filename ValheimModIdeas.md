@@ -393,6 +393,19 @@ The Fast Karve sail tint first did nothing because the Karve leaves `Ship.m_sail
 material name. Hull paint multiplies the tint into bands of a GPU read-back copy of the hull
 texture; width scales the whole ship on X, which skews the sail and rudder slightly when they turn.
 
+### 0.10.0 rebalance (2026-09-17)
+
+The 8.8 / 9.5 / 12.2 speeds that 0.9.0 was tuned against came from the ValheimGuides ships page, and
+the page had never measured them. Greg's CaptainsLog CSVs gave real numbers: steady full-sail rows
+fit speed² = k × drive within ±2%. Results: Karve 7.3, Odin Cargo Ship 8.7, Fast Skuldelev 12.2,
+Longship about 9.4 (estimated). Also compared against the real prefab stats of vanilla ships and
+OdinShipPlus, read from their asset bundles.
+
+- Fast Karve x1.37 (about 10), health 400.
+- Fast Longship 12 slots (4×3), health 800.
+- Cargo Longship health 1500, rudder 0.8, 180 Iron Nails.
+- New synced Health and Rudder Speed settings; the floor was raised to 0.10.0 for the hold resize.
+
 ### Possible next ships
 
 - War Drakkar (more health).

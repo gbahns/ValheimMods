@@ -95,7 +95,7 @@ namespace TheGreatestShips
             SetWidth(def, clone, cfg.Width.Value);
 
             _built[def] = new Built { Clone = clone, BaseSailForceFactor = ship.m_sailForceFactor };
-            ApplySpeed(def);
+            ApplyHandling(def);
             Jotunn.Logger.LogInfo($"[TheGreatestShips] Cloned {def.BasePrefab} as {def.PrefabName} ({def.BaseName} sail force {ship.m_sailForceFactor}).");
         }
 
@@ -217,31 +217,44 @@ namespace TheGreatestShips
             Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: width x{width}.");
         }
 
+        // Speed, rudder and health, on the prefab and on every ship already in the world (they
+        // keep the values they were spawned with, so a config change, including the server's
+        // values arriving after login, is pushed to them too).
+        //
         // Top speed is where the sail's push balances forward drag.  Ship.CustomFixedUpdate
         // applies m_sailForceFactor * wind as the push and speed² * m_dampingForward as the drag
         // on every physics step, so top speed ∝ √(m_sailForceFactor / m_dampingForward): the
         // multiplier is squared to scale the push.
-        internal static void ApplySpeed(ShipDefinition def)
+        internal static void ApplyHandling(ShipDefinition def)
         {
             if (!_built.TryGetValue(def, out var built) || built.BaseSailForceFactor <= 0f) return;
 
-            float multiplier = Mathf.Clamp(ShipConfig.For(def).Speed.Value, 0.1f, 5f);
+            var cfg          = ShipConfig.For(def);
+            float multiplier = Mathf.Clamp(cfg.Speed.Value, 0.1f, 5f);
             float factor     = built.BaseSailForceFactor * multiplier * multiplier;
+            float rudder     = Mathf.Clamp(cfg.RudderSpeed.Value, 0.1f, 5f);
+            float health     = Mathf.Max(1f, cfg.Health.Value);
 
-            built.Clone.GetComponent<Ship>().m_sailForceFactor = factor;
+            Apply(built.Clone.GetComponent<Ship>());
 
-            // Ships already in the world keep the value they were spawned with, so a config
-            // change (including the server's values arriving after login) is pushed to them too.
             int updated = 0;
             foreach (var updater in Ship.Instances)
             {
                 if (updater is Ship ship && Utils.GetPrefabName(ship.gameObject) == def.PrefabName)
                 {
-                    ship.m_sailForceFactor = factor;
+                    Apply(ship);
                     updated++;
                 }
             }
-            Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName} sail force {factor} (x{multiplier} top speed); {updated} ship(s) in the world updated.");
+            Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: sail force {factor} (x{multiplier} top speed), rudder {rudder}, health {health}; {updated} ship(s) in the world updated.");
+
+            void Apply(Ship ship)
+            {
+                ship.m_sailForceFactor = factor;
+                ship.m_rudderSpeed     = rudder;
+                var wnt = ship.GetComponent<WearNTear>() ?? ship.GetComponentInChildren<WearNTear>();
+                if (wnt != null) wnt.m_health = health;
+            }
         }
 
         // ── Every world load: ObjectDB.Awake / ZNetScene.Awake postfixes ───────────

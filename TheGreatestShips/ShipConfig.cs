@@ -14,6 +14,8 @@ namespace TheGreatestShips
         {
             public ConfigEntry<string> Recipe;
             public ConfigEntry<float>  Speed;
+            public ConfigEntry<float>  Health;
+            public ConfigEntry<float>  RudderSpeed;
             public ConfigEntry<Color>  SailColor;
             public ConfigEntry<Color>  HullColor;
             public ConfigEntry<int>    HullStripes;
@@ -25,8 +27,17 @@ namespace TheGreatestShips
 
         internal static Entries For(ShipDefinition def) => _entries[def];
 
+        // Raised when a release changes defaults that saved configs should follow.
+        //   2 (0.10.0): speeds rebased on logged top speeds, Cargo Longship recipe.
+        private const int CurrentConfigVersion = 2;
+
         internal static void Bind(TheGreatestShipsMod mod)
         {
+            // Not synced: it records what this machine's file has been migrated to.  0.9.0 did not
+            // write it, so a file without it is from 0.9.0 (or new, where migration is a no-op).
+            var configVersion = mod.Config.Bind("General", "Config Version", 1,
+                "Used by the mod to update old defaults. Do not change.");
+
             foreach (var def in ShipDefinitions.All)
             {
                 string section = def.DisplayName;
@@ -36,12 +47,19 @@ namespace TheGreatestShips
                     "Comma-separated ItemName:Amount pairs (prefab names). Everything is returned when " +
                     "the ship is deconstructed, as with the vanilla ships.");
 
-                // Top speed goes with the square root of the sail force (see ShipPrefabs.ApplySpeed),
+                // Top speed goes with the square root of the sail force (see ShipPrefabs.ApplyHandling),
                 // so the multiplier is squared before it is applied.
                 float about = def.BaseTopSpeed * def.DefaultSpeed;
                 e.Speed = mod.BindSynced(section, "Top Speed Multiplier", def.DefaultSpeed,
-                    $"Top speed relative to the vanilla {def.BaseName} ({def.BaseTopSpeed}). " +
+                    $"Top speed relative to the vanilla {def.BaseName} ({def.BaseTopSpeed} in full wind). " +
                     $"{def.DefaultSpeed} makes it about {about:0.#}. Acceleration under sail changes with it.");
+
+                e.Health = mod.BindSynced(section, "Health", def.DefaultHealth,
+                    $"Hull health (the vanilla {def.BaseName} has {(def.BasePrefab == "Karve" ? 500 : 1000)}). " +
+                    "Ships already built keep their damage; this is the maximum.");
+
+                e.RudderSpeed = mod.BindSynced(section, "Rudder Speed", def.DefaultRudderSpeed,
+                    $"How quickly the rudder swings (the vanilla {def.BaseName} has 1). Lower turns more slowly.");
 
                 // Cosmetic and read once when the ship is created, so not synced.
                 e.SailColor = mod.Config.Bind(section, "Sail Color", def.DefaultSailColor,
@@ -64,9 +82,33 @@ namespace TheGreatestShips
 
                 var captured = def;
                 e.Recipe.SettingChanged += (_, __) => ShipPrefabs.ApplyRecipe(captured);
-                e.Speed.SettingChanged  += (_, __) => ShipPrefabs.ApplySpeed(captured);
+                e.Speed.SettingChanged  += (_, __) => ShipPrefabs.ApplyHandling(captured);
+                e.Health.SettingChanged += (_, __) => ShipPrefabs.ApplyHandling(captured);
+                e.RudderSpeed.SettingChanged += (_, __) => ShipPrefabs.ApplyHandling(captured);
+
+                if (configVersion.Value < 2)
+                    Migrate(def, e);
 
                 _entries[def] = e;
+            }
+
+            if (configVersion.Value < CurrentConfigVersion)
+                configVersion.Value = CurrentConfigVersion;
+        }
+
+        // Moves values still at an old release's default to the current default.  A value that
+        // differs from the old default was set by hand and is left alone.
+        private static void Migrate(ShipDefinition def, Entries e)
+        {
+            if (!float.IsNaN(def.OldDefaultSpeed) && Mathf.Approximately(e.Speed.Value, def.OldDefaultSpeed))
+            {
+                e.Speed.Value = def.DefaultSpeed;
+                Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: Top Speed Multiplier {def.OldDefaultSpeed} -> {def.DefaultSpeed} (new default).");
+            }
+            if (def.OldDefaultRecipe != null && e.Recipe.Value == def.OldDefaultRecipe)
+            {
+                e.Recipe.Value = def.DefaultRecipe;
+                Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: recipe updated to the new default.");
             }
         }
 

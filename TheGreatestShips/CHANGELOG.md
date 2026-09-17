@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.10.0 — unreleased
+
+**Breaking: the server and every player need 0.10.0. The Fast Longship's hold changed size, so
+0.9.0 and 0.10.0 cannot share a server.**
+
+Rebalanced against real top speeds, worked out from logged sailing: the Karve reaches about 7.3,
+not the 8.8 that 0.9.0 was tuned against, and the Longship about 9.4.
+
+- Fast Karve: top speed multiplier 1.14 → 1.37, so it reaches about 10 and outruns a longship as
+  intended (at 1.14 it topped out at 8.4). Health 500 → 400.
+- Fast Longship: 12 storage slots (4×3) instead of 9. Health 1000 → 800. Top speed about 12.
+- Cargo Longship: health 1000 → 1500, and its rudder swings at 0.8 of a longship's speed, so it
+  turns more slowly. Its recipe takes 180 Iron Nails instead of 150. Top speed about 8.4.
+- New per-ship settings "Health" and "Rudder Speed", synced with the server.
+- A config from 0.9.0 still holding the old Fast Karve speed or the old Cargo Longship recipe is
+  moved to the new defaults. Values changed by hand are kept.
+
 ## 0.9.0 — 2026-09-16
 
 First release.
