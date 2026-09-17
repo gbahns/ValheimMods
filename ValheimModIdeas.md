@@ -357,6 +357,48 @@ The three things this mod is for:
 
 ---
 
+## Mod 10 — The Greatest Ships
+
+### Concept
+
+**Status (2026-09-16):** built as `TheGreatestShips/` and published as 0.9.0 the same day (Thunderstore and Hexium).
+Started when OdinShipPlus 0.8.3 refused to run on the DatHost server: its KeyManager V2 license check
+reported the server as "Pending" and shut it down. Rather than depend on a licensed mod, build our own
+ships, one at a time.
+
+Ships are clones of the vanilla hulls with retuned stats, so no Unity project or asset bundle is needed
+yet. A custom model is a later step (Unity editor + asset bundle; nothing in the repo does that today).
+
+### Fast Karve (first ship)
+
+- Clone of `Karve`, prefab `DM_FastKarve`. Bronze-age hybrid: needs a trip to the Swamp for Ancient Bark
+  but no iron.
+- Top speed about 10: Karve 8.8, Longship 9.5, OdinShipPlus's Fast Ship Skuldelev 12.2 (the ceiling).
+- 2 storage slots, blue sail, red-striped hull, 0.85× width.
+- Recipe: Fine Wood 30, Ancient Bark 20, Bronze Nails 60, Troll Hide 8, Resin 20 (Workbench).
+
+**Speed physics.** `Ship.CustomFixedUpdate` pushes with `m_sailForceFactor × wind` and drags with
+`speed² × m_dampingForward` every physics step, so top speed ∝ √(m_sailForceFactor / m_dampingForward).
+The speed multiplier is squared and applied to the sail force.
+
+### Longship variants (added the same day)
+
+- **Fast Longship** (`DM_FastLongship`): top speed 12.2, matching the Skuldelev; 9 slots (3×3); blue
+  sail, red-striped hull, 0.85× width; Plains-era recipe (Linen Thread sail).
+- **Cargo Longship** (`DM_CargoLongship`): top speed about 8.5; 32 slots (8×4); amber sail, green-striped hull, 1.25× width; Iron-age
+  recipe with Core Wood.
+
+The Fast Karve sail tint first did nothing because the Karve leaves `Ship.m_sailObject` unset; the sail
+(`ship/mast/Karve_Sail/Karve_Sail`, material `sail_white`, shader `Custom/Vegetation`) is now found by
+material name. Hull paint multiplies the tint into bands of a GPU read-back copy of the hull
+texture; width scales the whole ship on X, which skews the sail and rudder slightly when they turn.
+
+### Possible next ships
+
+- War Drakkar (more health).
+
+---
+
 ## Technical Stack Reference
 
 - BepInEx 5.x (not 6)
@@ -379,3 +421,4 @@ The three things this mod is for:
 7. **Practice Mode** — needs design resolution first
 8. **Shared Map** — design in progress with Marco; resolve the open questions first
 9. **Dude, What Are My Stats?** — built 2026-09-13; needs in-game testing before publishing
+10. **The Greatest Ships** — published 0.9.0 on 2026-09-16 with three ships; speeds not yet raced against the targets

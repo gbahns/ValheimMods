@@ -1,0 +1,10 @@
+{
+    "name": "TheGreatestShips",
+    "version_number": "0.9.0",
+    "website_url": "https://github.com/gbahns/ValheimMods/tree/main/TheGreatestShips",
+    "description": "Three new ships built on the vanilla hulls: a Fast Karve, a Fast Longship and a Cargo Longship, each with its own speed, hold, width and paint.",
+    "dependencies": [
+        "denikson-BepInExPack_Valheim-5.4.2350",
+        "ValheimModding-Jotunn-2.30.0"
+    ]
+}

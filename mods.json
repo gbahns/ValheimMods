@@ -66,6 +66,10 @@
     "TheGreatestPortal": {
       "side": "both",
       "why": "README: install on the server and on every client."
+    },
+    "TheGreatestShips": {
+      "side": "both",
+      "why": "Adds new ship prefabs (DM_FastKarve, DM_FastLongship, DM_CargoLongship). A server without them deletes the ZDOs it cannot instantiate near the world center, and the sail force and recipe are server-synced config."
     }
   },
 

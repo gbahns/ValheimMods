@@ -1,0 +1,32 @@
+# Hexium (valheim.hexium.gg) publish config: same package, Hexium repository URL and category slugs.
+# Used by package.ps1 -Hexium.  Keep versionNumber/description in step with thunderstore.toml.
+[config]
+schemaVersion = "0.0.1"
+
+[package]
+namespace = "DeathMonger"
+name = "TheGreatestShips"
+versionNumber = "0.9.0"
+description = "Three new ships built on the vanilla hulls: a Fast Karve, a Fast Longship and a Cargo Longship, each with its own speed, hold, width and paint."
+websiteUrl = "https://github.com/gbahns/ValheimMods/tree/main/TheGreatestShips"
+containsNsfwContent = false
+
+[package.dependencies]
+"denikson-BepInExPack_Valheim" = "5.4.2350"
+"ValheimModding-Jotunn" = "2.30.0"
+
+[build]
+icon = "./icon.png"
+readme = "./README.md"
+outdir = "./build"
+
+[[build.copy]]
+source = "./bin/Release/net48/TheGreatestShips.dll"
+target = "BepInEx/plugins/"
+
+[publish]
+repository = "https://valheim.hexium.gg"
+communities = ["valheim"]
+
+[publish.categories]
+valheim = ["Pieces", "Open Source", "Valheim 1.0"]

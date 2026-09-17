@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <OutputType>Library</OutputType>
+    <RootNamespace>TheGreatestShips</RootNamespace>
+    <AssemblyName>TheGreatestShips</AssemblyName>
+    <Deterministic>true</Deterministic>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Description>New ships built from the vanilla hulls, starting with the Fast Karve.</Description>
+    <!-- CS0436/CS8632 come from the vendored ServerSync/ConfigSync.cs (annotation type clash, nullable syntax). -->
+    <NoWarn>$(NoWarn);MSB3277;CS0436;CS8632</NoWarn>
+    <!-- C# 12 required by ServerSync/ConfigSync.cs (primary constructors, with-expressions). -->
+    <LangVersion>12</LangVersion>
+  </PropertyGroup>
+
+  <!-- HarmonyX pulls in Mono.Cecil and MonoMod transitively.
+       ServerSync is not on NuGet; ConfigSync.cs is bundled under ServerSync/. -->
+  <ItemGroup>
+    <PackageReference Include="HarmonyX" Version="2.9.0" />
+  </ItemGroup>
+
+  <!-- Local Valheim / Jotunn / Unity assemblies not on NuGet. -->
+  <ItemGroup>
+    <Reference Include="assembly_utils_publicized">
+      <HintPath>..\Libs\assembly_utils_publicized.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="assembly_valheim_publicized">
+      <HintPath>..\Libs\assembly_valheim_publicized.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>..\Libs\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Jotunn">
+      <HintPath>..\Libs\Jotunn.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>..\Libs\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>..\Libs\UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine_publicized">
+      <HintPath>..\Libs\UnityEngine_publicized.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>
