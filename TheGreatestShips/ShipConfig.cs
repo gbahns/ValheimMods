@@ -42,7 +42,7 @@ namespace TheGreatestShips
 
             // Cosmetic and applied at the main menu, so not synced.
             NameVanillaShips = mod.Config.Bind("General", "Name Vanilla Ships", true,
-                "Label the vanilla ships' rudders and holds with the ship's name (\"Karve Rudder\", \"Longship\"), " +
+                "Label the vanilla ships' rudders and holds with the ship's name (\"Use rudder (Karve)\", \"Longship Storage\"), " +
                 "as this mod's own ships are, so you can tell which ship you are looking at. Requires a game restart.");
 
             foreach (var def in ShipDefinitions.All)

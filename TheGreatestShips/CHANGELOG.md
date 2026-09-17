@@ -14,9 +14,9 @@ not the 8.8 that 0.9.0 was tuned against, and the Longship about 9.4.
 - Cargo Longship: health 1000 → 1500, and its rudder swings at 0.8 of a longship's speed, so it
   turns more slowly. Its recipe takes 180 Iron Nails instead of 150. Top speed about 8.4.
 - New per-ship settings "Health" and "Rudder Speed", synced with the server.
-- Every ship names itself: its rudder reads "Fast Longship Rudder" and its hold is called "Fast
-  Longship". The vanilla ships get the same ("Karve Rudder", a hold called "Longship", and the
-  Drakkar and Raft), so you can tell which ship you are looking at. "Name Vanilla Ships" turns
+- Every ship names itself: its rudder reads "Use rudder (Fast Longship)" and its hold "Fast Longship
+  Storage". The vanilla ships get the same ("Use rudder (Karve)", "Longship Storage", and the
+  Drakkar and Raft), in the player's language, so you can tell which ship you are looking at. "Name Vanilla Ships" turns
   that off for the vanilla ones.
 - A config from 0.9.0 still holding the old Fast Karve speed or the old Cargo Longship recipe is
   moved to the new defaults. Values changed by hand are kept.

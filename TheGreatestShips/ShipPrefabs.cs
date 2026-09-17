@@ -65,21 +65,24 @@ namespace TheGreatestShips
         // labels follow the player's language.
         private static readonly string[] VanillaShips = { "Raft", "Karve", "VikingShip", "VikingShip_Ashlands" };
         private static bool _vanillaLabeled;
-        private const string RudderToken = "$piece_ship_rudder";
+        private const string RudderToken  = "$piece_ship_rudder";   // "Use rudder"
+        private const string StorageToken = "$msg_cart_storage";    // "Storage" (the cart's)
 
-        // Hold: "Karve" instead of the vanilla "Storage".  Rudder: "Karve Rudder".  The hold's name
-        // is also the title of its inventory panel.
+        // Hold: "Karve Storage" (vanilla says just "Storage", and not even translated).
+        // Rudder: "Use rudder (Karve)" -- the game has no translated plain "Rudder", only the
+        // "Use rudder" prompt, so the name goes after it.  Tokens keep both in the player's
+        // language; the hold's name is also the title of its inventory panel, which is localized.
         private static void LabelShip(GameObject prefab, string shipName)
         {
             foreach (var container in prefab.GetComponentsInChildren<Container>(true))
-                container.m_name = shipName;
+                container.m_name = $"{shipName} {StorageToken}";
             foreach (var controls in prefab.GetComponentsInChildren<ShipControlls>(true))
             {
                 // Rebuilt from the vanilla token, not appended, so a prefab copied from an
                 // already-labeled vanilla ship does not end up with both names.
                 controls.m_hoverText = controls.m_hoverText.Contains(RudderToken)
-                    ? $"{shipName} {RudderToken}"
-                    : $"{shipName} {controls.m_hoverText}";
+                    ? $"{RudderToken} ({shipName})"
+                    : $"{controls.m_hoverText} ({shipName})";
             }
         }
 
