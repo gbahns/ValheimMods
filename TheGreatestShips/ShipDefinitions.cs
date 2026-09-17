@@ -15,6 +15,10 @@ namespace TheGreatestShips
         public float  BaseTopSpeed;   // the base hull's top speed (see the note on All)
         public string DisplayName;
         public string Description;
+        // The config section a saved .cfg file has this ship's settings under is named after
+        // DisplayName (see ShipConfig.Bind).  Set this to the previous DisplayName when renaming
+        // a ship so ShipConfig can move a saved section across instead of orphaning it.
+        public string OldDisplayName;
         public int    StorageWidth;
         public int    StorageHeight;
         public string DefaultRecipe;
@@ -90,23 +94,62 @@ namespace TheGreatestShips
             },
             new ShipDefinition
             {
-                PrefabName         = "DM_CargoLongship",
+                PrefabName         = "DM_CargoLongship",   // saved hash: keep even though it's now the Knarr
                 BasePrefab         = "VikingShip",
                 BaseName           = "Longship",
                 BaseTopSpeed       = 9.65f,
-                DisplayName        = "Cargo Longship",
-                Description        = "A deep, heavy longship built to haul. Slower and clumsier than a longship, but sturdier, with nearly twice its hold.",
+                DisplayName        = "Knarr",
+                OldDisplayName     = "Cargo Longship",
+                Description        = "A deep, heavy longship built to haul. Slower and clumsier than a longship, but sturdier, with nearly twice its hold. The smallest of three cargo tiers -- see also the Busse and the Big Busse.",
                 StorageWidth       = 8,
                 StorageHeight      = 4,
                 DefaultRecipe      = "FineWood:40,ElderBark:60,IronNails:180,DeerHide:10,RoundLog:30",
                 OldDefaultRecipe   = "FineWood:40,ElderBark:60,IronNails:150,DeerHide:10,RoundLog:30",
-                DefaultSpeed       = 0.87f,   // about 8.4
+                DefaultSpeed       = 0.87f,   // about 8.6, measured 8.58
                 DefaultHealth      = 1500f,   // Longship 1000
                 DefaultRudderSpeed = 0.8f,    // Longship 1.0, as OdinShipPlus's cargo ships
                 DefaultSailColor   = Amber,
                 DefaultHullColor   = Green,
                 DefaultHullStripes = 6,
                 DefaultWidth       = 1.25f,
+            },
+            new ShipDefinition
+            {
+                PrefabName         = "DM_Busse",
+                BasePrefab         = "VikingShip",
+                BaseName           = "Longship",
+                BaseTopSpeed       = 9.65f,
+                DisplayName        = "Busse",
+                Description        = "A longship built out further than the Knarr. Slower still and even clumsier, but holds more and shrugs off more damage.",
+                StorageWidth       = 9,
+                StorageHeight      = 4,
+                DefaultRecipe      = "FineWood:55,ElderBark:85,IronNails:250,DeerHide:15,RoundLog:45",
+                DefaultSpeed       = 0.83f,   // about 8.0
+                DefaultHealth      = 1800f,
+                DefaultRudderSpeed = 0.7f,
+                DefaultSailColor   = Amber,
+                DefaultHullColor   = Green,
+                DefaultHullStripes = 6,
+                DefaultWidth       = 1.3f,
+            },
+            new ShipDefinition
+            {
+                PrefabName         = "DM_BigBusse",
+                BasePrefab         = "VikingShip",
+                BaseName           = "Longship",
+                BaseTopSpeed       = 9.65f,
+                DisplayName        = "Big Busse",
+                Description        = "The largest hold of the three cargo tiers. Slow and hard to turn, but tougher than the Busse and hauls far more.",
+                StorageWidth       = 8,
+                StorageHeight      = 8,
+                DefaultRecipe      = "FineWood:80,ElderBark:130,IronNails:350,DeerHide:25,RoundLog:70",
+                DefaultSpeed       = 0.78f,   // about 7.5
+                DefaultHealth      = 2200f,
+                DefaultRudderSpeed = 0.6f,
+                DefaultSailColor   = Amber,
+                DefaultHullColor   = Green,
+                DefaultHullStripes = 6,
+                DefaultWidth       = 1.4f,
             },
         };
     }

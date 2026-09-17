@@ -24,6 +24,12 @@ the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was 
   HUDCompass decides what counts as a ship once, at the main menu, before this mod's ships exist
   yet -- so it never saw them. If HUDCompass is installed, this mod now asks it to look again
   once its own ships are ready.
+- The Cargo Longship is renamed **Knarr**, after the real Norse cargo ship -- same stats, same
+  hold, same recipe, nothing else changes. Its saved config moves across to the new section name
+  automatically.
+- Two new, bigger cargo tiers above the Knarr, both slower and clumsier than the one before but
+  tougher and roomier: the **Busse** (36 slots, 1800 health) and the **Big Busse** (64 slots, 2200
+  health).
 
 ## 0.9.0 — 2026-09-16
 

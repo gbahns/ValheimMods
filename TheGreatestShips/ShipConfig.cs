@@ -31,7 +31,8 @@ namespace TheGreatestShips
 
         // Raised when a release changes defaults that saved configs should follow.
         //   2 (0.9.1): speeds rebased on logged top speeds, Cargo Longship recipe.
-        private const int CurrentConfigVersion = 2;
+        //   3 (0.9.1): Cargo Longship renamed Knarr, its config section moved to match.
+        private const int CurrentConfigVersion = 3;
 
         internal static void Bind(TheGreatestShipsMod mod)
         {
@@ -50,40 +51,40 @@ namespace TheGreatestShips
                 string section = def.DisplayName;
                 var e = new Entries();
 
-                e.Recipe = mod.BindSynced(section, "Recipe", def.DefaultRecipe,
+                e.Recipe = mod.BindSynced(section, "Recipe", Migrated(mod, def, "Recipe", def.DefaultRecipe),
                     "Comma-separated ItemName:Amount pairs (prefab names). Everything is returned when " +
                     "the ship is deconstructed, as with the vanilla ships.");
 
                 // Top speed goes with the square root of the sail force (see ShipPrefabs.ApplyHandling),
                 // so the multiplier is squared before it is applied.
                 float about = def.BaseTopSpeed * def.DefaultSpeed;
-                e.Speed = mod.BindSynced(section, "Top Speed Multiplier", def.DefaultSpeed,
+                e.Speed = mod.BindSynced(section, "Top Speed Multiplier", Migrated(mod, def, "Top Speed Multiplier", def.DefaultSpeed),
                     $"Top speed relative to the vanilla {def.BaseName} ({def.BaseTopSpeed} in full wind). " +
                     $"{def.DefaultSpeed} makes it about {about:0.#}. Acceleration under sail changes with it.");
 
-                e.Health = mod.BindSynced(section, "Health", def.DefaultHealth,
+                e.Health = mod.BindSynced(section, "Health", Migrated(mod, def, "Health", def.DefaultHealth),
                     $"Hull health (the vanilla {def.BaseName} has {(def.BasePrefab == "Karve" ? 500 : 1000)}). " +
                     "Ships already built keep their damage; this is the maximum.");
 
-                e.RudderSpeed = mod.BindSynced(section, "Rudder Speed", def.DefaultRudderSpeed,
+                e.RudderSpeed = mod.BindSynced(section, "Rudder Speed", Migrated(mod, def, "Rudder Speed", def.DefaultRudderSpeed),
                     $"How quickly the rudder swings (the vanilla {def.BaseName} has 1). Lower turns more slowly.");
 
                 // Cosmetic and read once when the ship is created, so not synced.
-                e.SailColor = mod.Config.Bind(section, "Sail Color", def.DefaultSailColor,
+                e.SailColor = mod.Config.Bind(section, "Sail Color", Migrated(mod, def, "Sail Color", def.DefaultSailColor),
                     $"Tint multiplied into the sail so the {def.DisplayName} can be told apart from a {def.BaseName}. " +
                     "White leaves the sail as it is. Requires a game restart.");
 
-                e.HullColor = mod.Config.Bind(section, "Hull Color", def.DefaultHullColor,
+                e.HullColor = mod.Config.Bind(section, "Hull Color", Migrated(mod, def, "Hull Color", def.DefaultHullColor),
                     "Paint multiplied into the hull planks (not the mast or rudder). " +
                     "White leaves the wood as it is. Requires a game restart.");
 
-                e.HullStripes = mod.Config.Bind(section, "Hull Stripes", def.DefaultHullStripes,
+                e.HullStripes = mod.Config.Bind(section, "Hull Stripes", Migrated(mod, def, "Hull Stripes", def.DefaultHullStripes),
                     "Paint the hull color in this many bands with bare wood between them. 0 paints the hull " +
                     "solid. The bands follow the hull texture's layout. Requires a game restart.");
 
                 // Not synced: the shape is fixed when the ship is created at the main menu, before
                 // the server's values arrive.  Players should keep the same value.
-                e.Width = mod.Config.Bind(section, "Hull Width", def.DefaultWidth,
+                e.Width = mod.Config.Bind(section, "Hull Width", Migrated(mod, def, "Hull Width", def.DefaultWidth),
                     $"Width relative to the vanilla {def.BaseName}; below 1 is narrower, above 1 wider. " +
                     "Everyone on a server should use the same value. Requires a game restart.");
 
@@ -101,6 +102,21 @@ namespace TheGreatestShips
 
             if (configVersion.Value < CurrentConfigVersion)
                 configVersion.Value = CurrentConfigVersion;
+        }
+
+        // A renamed ship's saved config would otherwise be orphaned: nothing binds its old
+        // section name again, so a hand-tuned value would be silently lost the moment the
+        // section header no longer matches any ship. If this ship was renamed (OldDisplayName
+        // set), recover the value saved under the old section -- if there isn't one, this is
+        // just `fallback` again, so an un-renamed or never-customized ship is unaffected -- then
+        // remove the old entry so it does not also linger in the file under its old name.
+        private static T Migrated<T>(TheGreatestShipsMod mod, ShipDefinition def, string key, T fallback)
+        {
+            if (def.OldDisplayName == null) return fallback;
+            var oldDef = new ConfigDefinition(def.OldDisplayName, key);
+            T value = mod.Config.Bind(oldDef, fallback).Value;
+            mod.Config.Remove(oldDef);
+            return value;
         }
 
         // Moves values still at an old release's default to the current default.  A value that

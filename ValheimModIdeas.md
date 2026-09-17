@@ -406,6 +406,26 @@ OdinShipPlus, read from their asset bundles.
 - Cargo Longship health 1500, rudder 0.8, 180 Iron Nails.
 - New synced Health and Rudder Speed settings; the floor was raised to 0.9.1 for the hold resize.
 
+Every ship's real top speed at its shipped default got logged eventually: Karve 7.3, Longship
+9.65, Fast Karve 10.09, Fast Longship 12.35, Cargo Longship (now Knarr) 8.58 -- all close to the
+sail-force-scaling formula's prediction. Greg decided against tuning against OdinShip at all
+("we don't need to compete with OdinShip... our main comps [are] the vanilla ships") after
+noticing even the *free* OdinShip mod has 64-slot cargo ships; the ValheimGuides Ships page grew a
+"Show Vanilla Equivalent" toggle plus Resin/Wood/Skin/Nails/Other columns (from decompiling
+OdinShip.dll's Carpenter's Table recipes) specifically to make that kind of material comparison
+possible without chasing Odin's numbers.
+
+### Knarr, Busse and Big Busse (2026-09-17)
+
+The Cargo Longship is renamed **Knarr** (same stats, same recipe -- just the real Norse cargo-ship
+name) and gets two bigger siblings, all Longship-hulled: **Busse** (36 slots/9x4, 1800 health,
+~8.0 speed, rudder 0.7, recipe scaled ~35% over the Knarr's) and **Big Busse** (64 slots/8x8, 2200
+health, ~7.5 speed, rudder 0.6, recipe scaled further, still Iron-tier -- Greg declined an
+Ashlands-tier Ceramic Plate flourish for it). Renaming a shipped ship required a real config
+migration, not just a new default: `ShipDefinition.OldDisplayName` plus `ShipConfig.Migrated()`
+recovers a saved value from the old section name (`[Cargo Longship]`) before the new section binds,
+so a hand-tuned Knarr setting survives the rename instead of silently reverting to default.
+
 ### Possible next ships
 
 - War Drakkar (more health).
