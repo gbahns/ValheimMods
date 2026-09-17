@@ -405,6 +405,14 @@ foreach ($r in $rows) {
         $actions += ("$($r.Folder): thunderstore.toml lists the server-side category, but the code carries " +
                      "[BepInProcess(`"valheim.exe`")] and cannot load on a server. The listing tells people wrong.")
     }
+    # A mod the server is supposed to run, and doesn't. For one that adds prefabs this is not a
+    # lag but a loss: the server takes ownership of every ZDO it cannot instantiate and destroys
+    # it. That is how TheGreatestShips sat published and absent while the table said only
+    # "absent" and the list said nothing.
+    if ($r.Side -in @("server", "both") -and $r.ServerState -eq "absent") {
+        $actions += ("$($r.Folder): declared '$($r.Side)' but NOT on the server. If it adds prefabs, " +
+                     "the server is destroying them - .\deploy-dathost.ps1 -Mod $($r.Folder) -Published")
+    }
     if ($r.ServerState -eq "client-only, still there") {
         $actions += "$($r.Folder): client-only, but a copy is still on the server doing nothing. Safe to delete there."
     }
