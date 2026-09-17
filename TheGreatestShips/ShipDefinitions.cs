@@ -40,8 +40,9 @@ namespace TheGreatestShips
         private static readonly Color Green = new Color(0.6f, 0.85f, 0.6f, 1f);
 
         // Top speeds in full wind at the best angle (64° off the stern), from Greg's CaptainsLog
-        // sailing logs: Karve 7.3, OdinShipPlus Cargo Ship 8.7, Fast Ship Skuldelev 12.2. The
-        // Longship has no full-sail log; 9.4 follows from its sail force and the logged hulls.
+        // sailing logs: Karve 7.3, Longship 9.65, OdinShipPlus Cargo Ship 8.7, Fast Ship
+        // Skuldelev 12.2 -- all measured (260+ steady full-sail samples for the Longship, fit
+        // to within 1.1% average error).
         // (0.9.0 used 8.8 and 9.5 from the ValheimGuides page, which were never measured.)
         //
         // Vanilla prefab values for reference: Karve health 500, rudder 1.0; Longship 1000, 1.0;
@@ -73,13 +74,13 @@ namespace TheGreatestShips
                 PrefabName         = "DM_FastLongship",
                 BasePrefab         = "VikingShip",
                 BaseName           = "Longship",
-                BaseTopSpeed       = 9.4f,
+                BaseTopSpeed       = 9.65f,
                 DisplayName        = "Fast Longship",
                 Description        = "A lean longship under a linen sail, the fastest hull on the water. Two thirds of a longship's hold.",
                 StorageWidth       = 4,
                 StorageHeight      = 3,
                 DefaultRecipe      = "FineWood:40,ElderBark:40,IronNails:100,LinenThread:20,Resin:30",
-                DefaultSpeed       = 1.28f,   // about 12, just under the Fast Ship Skuldelev's 12.2
+                DefaultSpeed       = 1.243f,  // about 12, just under the Fast Ship Skuldelev's 12.2
                 DefaultHealth      = 800f,    // Longship 1000: a lighter hull
                 DefaultRudderSpeed = 1f,
                 DefaultSailColor   = Blue,
@@ -92,14 +93,14 @@ namespace TheGreatestShips
                 PrefabName         = "DM_CargoLongship",
                 BasePrefab         = "VikingShip",
                 BaseName           = "Longship",
-                BaseTopSpeed       = 9.4f,
+                BaseTopSpeed       = 9.65f,
                 DisplayName        = "Cargo Longship",
                 Description        = "A deep, heavy longship built to haul. Slower and clumsier than a longship, but sturdier, with nearly twice its hold.",
                 StorageWidth       = 8,
                 StorageHeight      = 4,
                 DefaultRecipe      = "FineWood:40,ElderBark:60,IronNails:180,DeerHide:10,RoundLog:30",
                 OldDefaultRecipe   = "FineWood:40,ElderBark:60,IronNails:150,DeerHide:10,RoundLog:30",
-                DefaultSpeed       = 0.89f,   // about 8.4
+                DefaultSpeed       = 0.87f,   // about 8.4
                 DefaultHealth      = 1500f,   // Longship 1000
                 DefaultRudderSpeed = 0.8f,    // Longship 1.0, as OdinShipPlus's cargo ships
                 DefaultSailColor   = Amber,

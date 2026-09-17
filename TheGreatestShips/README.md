@@ -6,12 +6,12 @@ New ships built on Valheim's own hulls. Install on the server and on every clien
 |---|---|---|---|---|---|---|---|---|---|
 | Karve *(vanilla)* | | 7.3 | 500 | normal | 4 | | | | |
 | **Fast Karve** | Karve | about 10 | 400 | normal | 2 | 0.85× | blue | red stripes | Fine Wood 30, Ancient Bark 20, Bronze Nails 60, Troll Hide 8, Resin 20 |
-| Longship *(vanilla)* | | about 9.4 | 1000 | normal | 18 | | | | |
+| Longship *(vanilla)* | | 9.65 | 1000 | normal | 18 | | | | |
 | **Fast Longship** | Longship | about 12 | 800 | normal | 12 | 0.85× | blue | red stripes | Fine Wood 40, Ancient Bark 40, Iron Nails 100, Linen Thread 20, Resin 30 |
 | **Cargo Longship** | Longship | about 8.4 | 1500 | slower | 32 | 1.25× | amber | green stripes | Fine Wood 40, Ancient Bark 60, Iron Nails 180, Deer Hide 10, Core Wood 30 |
 
 Top speeds are in m/s, in full wind about 64° off the stern. They were worked out from logged
-sailing with the Captain's Log mod; the Longship's is estimated from its sail force.
+sailing with the Captain's Log mod.
 
 Every ship names itself on its rudder ("Use rudder (Fast Longship)") and its hold ("Fast Longship
 Storage"), and so do the vanilla ships ("Use rudder (Karve)", "Karve Storage"), so you can always tell which ship you are looking at.

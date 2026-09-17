@@ -5,8 +5,8 @@
 **Breaking: the server and every player need 0.9.1. The Fast Longship's hold changed size, so
 0.9.0 and 0.9.1 cannot share a server.**
 
-Rebalanced against real top speeds, worked out from logged sailing: the Karve reaches about 7.3,
-not the 8.8 that 0.9.0 was tuned against, and the Longship about 9.4.
+Rebalanced against real top speeds, worked out from logged sailing: the Karve reaches 7.3, not
+the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was tuned against.
 
 - Fast Karve: top speed multiplier 1.14 → 1.37, so it reaches about 10 and outruns a longship as
   intended (at 1.14 it topped out at 8.4). Health 500 → 400.
