@@ -1,6 +1,6 @@
 {
     "name": "CaptainsLog",
-    "version_number": "1.0.0",
+    "version_number": "1.1.0",
     "website_url": "https://github.com/gbahns/ValheimMods/tree/main/CaptainsLog",
     "description": "Logs ship speed, wind, and heading to CSV while you sail, plus a live HUD - empirical data for comparing ship speeds instead of guesswork.",
     "dependencies": [

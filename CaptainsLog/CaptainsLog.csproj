@@ -19,6 +19,14 @@
       <HintPath>..\Libs\assembly_valheim_publicized.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="assembly_guiutils">
+      <HintPath>..\Libs\assembly_guiutils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="assembly_utils">
+      <HintPath>..\Libs\assembly_utils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="BepInEx">
       <HintPath>..\Libs\BepInEx.dll</HintPath>
       <Private>false</Private>

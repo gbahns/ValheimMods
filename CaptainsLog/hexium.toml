@@ -6,7 +6,7 @@ schemaVersion = "0.0.1"
 [package]
 namespace = "DeathMonger"
 name = "CaptainsLog"
-versionNumber = "1.0.0"
+versionNumber = "1.1.0"
 description = "Logs ship speed, wind, and heading to CSV while you sail, plus a live HUD - empirical data for comparing ship speeds instead of guesswork."
 websiteUrl = "https://github.com/gbahns/ValheimMods/tree/main/CaptainsLog"
 containsNsfwContent = false
