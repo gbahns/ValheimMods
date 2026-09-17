@@ -1,6 +1,6 @@
 # The Greatest Portal
 
-**Early alpha.** Choose where each portal goes.
+Choose where each portal goes.
 
 - Press **Use** on a portal to name it and pick its destination from a list of every portal in
   the world, or click **Pick on map** and choose it on the map. No tag pairing, no portal hubs.
@@ -123,7 +123,7 @@ Replaces XPortal, TargetPortal, AnyPortal and PortalRules; do not run it alongsi
 Works with mods that add new portal pieces as long as they register them as portals with the game
 (most do). Custom portals' item rules are respected.
 
-## Known limitations of this alpha
+## Known limitations
 
 - Gamepad: the panel and the map list are mouse and keyboard only for now.
 - Portal pins on the map use vanilla's portal icon; no icon of their own yet.

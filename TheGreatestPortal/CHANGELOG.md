@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.0 — unreleased
+
+- First stable release: no longer an early alpha. Nothing changes in play from 0.5.0, and any
+  version from 0.1.0 up still connects to any other.
+
 ## 0.5.0 — 2026-09-16
 
 - A **Recents** section tops the lists in the panel and on the map: the portals you most recently
