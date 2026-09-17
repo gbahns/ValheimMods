@@ -27,6 +27,8 @@ namespace TheGreatestShips
 
         internal static Entries For(ShipDefinition def) => _entries[def];
 
+        internal static ConfigEntry<bool> NameVanillaShips;
+
         // Raised when a release changes defaults that saved configs should follow.
         //   2 (0.9.1): speeds rebased on logged top speeds, Cargo Longship recipe.
         private const int CurrentConfigVersion = 2;
@@ -37,6 +39,11 @@ namespace TheGreatestShips
             // write it, so a file without it is from 0.9.0 (or new, where migration is a no-op).
             var configVersion = mod.Config.Bind("General", "Config Version", 1,
                 "Used by the mod to update old defaults. Do not change.");
+
+            // Cosmetic and applied at the main menu, so not synced.
+            NameVanillaShips = mod.Config.Bind("General", "Name Vanilla Ships", true,
+                "Label the vanilla ships' rudders and holds with the ship's name (\"Karve Rudder\", \"Longship\"), " +
+                "as this mod's own ships are, so you can tell which ship you are looking at. Requires a game restart.");
 
             foreach (var def in ShipDefinitions.All)
             {

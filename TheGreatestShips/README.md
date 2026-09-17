@@ -13,6 +13,9 @@ New ships built on Valheim's own hulls. Install on the server and on every clien
 Top speeds are in m/s, in full wind about 64° off the stern. They were worked out from logged
 sailing with the Captain's Log mod; the Longship's is estimated from its sail force.
 
+Every ship names itself on its rudder ("Fast Longship Rudder") and its hold, and so do the vanilla
+ships ("Karve Rudder"), so you can always tell which ship you are looking at.
+
 Each ship sits in the Hammer right after the vanilla ship it is based on. As with every build
 piece, it shows up once you have picked up each of its materials.
 
@@ -37,6 +40,7 @@ is sturdier and holds 32 stacks.
 
 | Setting | | |
 |---|---|---|
+| Name Vanilla Ships (General) | Label the vanilla ships' rudders and holds too | Needs a restart |
 | Recipe | Comma-separated `ItemName:Amount` prefab names | Synced with the server |
 | Top Speed Multiplier | Relative to the vanilla ship it is based on | Synced with the server |
 | Health | Maximum hull health | Synced with the server |

@@ -45,6 +45,42 @@ namespace TheGreatestShips
                     Jotunn.Logger.LogError($"[TheGreatestShips] Creating {def.DisplayName} failed: {e}");
                 }
             }
+
+            if (!_vanillaLabeled && ShipConfig.NameVanillaShips.Value)
+            {
+                _vanillaLabeled = true;
+                foreach (var name in VanillaShips)
+                {
+                    var prefab = PrefabManager.Instance.GetPrefab(name);
+                    var shipName = prefab?.GetComponent<Piece>()?.m_name;
+                    if (shipName != null)
+                        LabelShip(prefab, shipName);
+                }
+            }
+        }
+
+        // Vanilla ships whose rudder and hold are labeled with the ship's name, so every ship can
+        // be told apart by looking at its controls.  Piece names are localization tokens
+        // ($ship_karve, $ship_longship, $ship_longship_ashlands for the Drakkar, $ship_raft), so the
+        // labels follow the player's language.
+        private static readonly string[] VanillaShips = { "Raft", "Karve", "VikingShip", "VikingShip_Ashlands" };
+        private static bool _vanillaLabeled;
+        private const string RudderToken = "$piece_ship_rudder";
+
+        // Hold: "Karve" instead of the vanilla "Storage".  Rudder: "Karve Rudder".  The hold's name
+        // is also the title of its inventory panel.
+        private static void LabelShip(GameObject prefab, string shipName)
+        {
+            foreach (var container in prefab.GetComponentsInChildren<Container>(true))
+                container.m_name = shipName;
+            foreach (var controls in prefab.GetComponentsInChildren<ShipControlls>(true))
+            {
+                // Rebuilt from the vanilla token, not appended, so a prefab copied from an
+                // already-labeled vanilla ship does not end up with both names.
+                controls.m_hoverText = controls.m_hoverText.Contains(RudderToken)
+                    ? $"{shipName} {RudderToken}"
+                    : $"{shipName} {controls.m_hoverText}";
+            }
         }
 
         private static void CreateClone(ShipDefinition def)
@@ -80,7 +116,6 @@ namespace TheGreatestShips
             var container = clone.GetComponentInChildren<Container>(true);
             if (container != null)
             {
-                container.m_name   = def.DisplayName;
                 container.m_width  = def.StorageWidth;
                 container.m_height = def.StorageHeight;
             }
@@ -88,6 +123,8 @@ namespace TheGreatestShips
             {
                 Jotunn.Logger.LogWarning($"[TheGreatestShips] {def.BasePrefab} has no Container; the {def.DisplayName} has no storage.");
             }
+
+            LabelShip(clone, def.DisplayName);
 
             var cfg = ShipConfig.For(def);
             TintSail(def, clone, cfg.SailColor.Value);
