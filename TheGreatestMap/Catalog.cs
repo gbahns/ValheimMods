@@ -28,6 +28,7 @@ namespace TheGreatestMap
         Structure,
         Seeds,
         Plants,
+        Campfire,
     }
 
     /// <summary>Static facts about each category: defaults, labels.</summary>
@@ -48,6 +49,7 @@ namespace TheGreatestMap
                 case Category.Camp:      return "Camps";
                 case Category.Portal:    return "Portals";
                 case Category.Structure: return "Structures";
+                case Category.Campfire:  return "Campfires";
                 default:                 return c.ToString();
             }
         }
@@ -108,6 +110,7 @@ namespace TheGreatestMap
                 case Category.BossAltar: return "pin:Boss";
                 case Category.Portal:    return "pin:Icon4";
                 case Category.Structure: return "pin:Icon1";
+                case Category.Campfire:  return "piece:fire_pit"; // the campfire's own build-menu picture
                 default:                 return "pin:Icon3";
             }
         }
@@ -124,6 +127,7 @@ namespace TheGreatestMap
                 case Category.Herbs:     return 1f;
                 case Category.Ore:       return 5f;
                 case Category.Portal:    return 5f;
+                case Category.Campfire:  return 3f;
                 case Category.Structure: return 6f;  // buildings in a farm can stand close together
                 default:                 return 20f;
             }
@@ -142,6 +146,7 @@ namespace TheGreatestMap
                 case Category.Ore:       return 40f;
                 case Category.Runestone: return 30f;
                 case Category.Portal:    return 40f;
+                case Category.Campfire:  return 40f;
                 default:                 return 80f; // dungeons, structures, camps, altars, traders: big things
             }
         }
@@ -156,7 +161,8 @@ namespace TheGreatestMap
                 case Category.Seeds:
                 case Category.Plants:
                 case Category.Herbs:     return 60;
-                case Category.Ore:       return 80;
+                case Category.Ore:
+                case Category.Campfire:  return 80;
                 default:                 return 100;
             }
         }
@@ -176,6 +182,7 @@ namespace TheGreatestMap
                 case Category.Dungeon:
                 case Category.Camp:
                 case Category.BossAltar:
+                case Category.Campfire:
                 case Category.Structure: return -1f; // the house icon says it all
                 default:                 return 0f;  // traders (three share the coin icon), portals (the tag)
             }
@@ -224,6 +231,8 @@ namespace TheGreatestMap
                            "Mistlands_Lighthouse*=Dvergr Lighthouse,Mistlands_Giant*=Giant Remains,Mistlands_Swords*=Petrified Swords," +
                            "Mistlands_Statue*=Dvergr Statue,Mistlands_Viaduct*=Viaduct,CharredRuins*=Charred Ruins,AshlandRuins*=Ashlands Ruins," +
                            "FortressRuins*=Fortress Ruins,PlaceofMystery*=Place of Mystery";
+                case Category.Campfire:
+                    return "fire_pit=Campfire|piece:fire_pit";
                 default:
                     return "";
             }
@@ -236,6 +245,7 @@ namespace TheGreatestMap
                 case Category.Dungeon:   return "Any location with an interior also counts as a dungeon even if it is not listed.";
                 case Category.Ore:       return "Matches MineRock5, MineRock, Destructible and Pickable objects by prefab name.";
                 case Category.Structure: return "Entries ending in * match by prefix. Unlisted outdoor locations also count when 'Structures Include Unlisted' is on.";
+                case Category.Campfire:  return "Only fires a player built count, not the ones the world puts in camps and villages. The icon can be piece:<prefab>, a building piece's build-menu picture.";
                 default:                 return "";
             }
         }
@@ -382,7 +392,8 @@ namespace TheGreatestMap
                     Name = e.Name ?? Prettify(prefab.TrimEnd('*')),
                     Icon = icon,
                     Source = source,
-                    Missing = icon != null && icon.StartsWith("item:") && !ItemExists(icon.Substring(5)),
+                    Missing = icon != null && (icon.StartsWith("item:") ? !ItemExists(icon.Substring(5))
+                        : icon.StartsWith("piece:") && ZNetScene.instance != null && ZNetScene.instance.GetPrefab(icon.Substring(6)) == null),
                     // A catalog line for something the game does not have is dead weight, and is
                     // invisible otherwise: onion seeds, for instance, come out of chests rather
                     // than the ground, so there may be nothing in the world to ever mark.
@@ -651,6 +662,20 @@ namespace TheGreatestMap
                 string tag = SafeText(portal);
                 found = Make(Category.Portal, string.IsNullOrEmpty(tag) ? "Portal" : tag, null, portal.transform.position, KeyOf(portal.gameObject, "portal"));
                 return true;
+            }
+
+            // A campfire someone built: where a group stopped. The world puts fires in camps and
+            // villages too, and those belong to the place, so only a player's own count.
+            var fire = go.GetComponentInParent<Fireplace>();
+            if (fire != null)
+            {
+                var piece = fire.GetComponent<Piece>();
+                string prefab = PrefabName(fire.gameObject);
+                if (piece != null && piece.IsPlacedByPlayer() && Lookup(prefab, out var e) && e.Cat == Category.Campfire)
+                {
+                    found = Make(Category.Campfire, e.Name ?? Loc(piece.m_name, "Campfire"), e.Icon, fire.transform.position, KeyOf(fire.gameObject, prefab));
+                    return true;
+                }
             }
 
             var rune = go.GetComponentInParent<RuneStone>();

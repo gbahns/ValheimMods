@@ -18,6 +18,7 @@ namespace TheGreatestMap
         private static readonly Dictionary<string, Minimap.PinData> _pinById = new Dictionary<string, Minimap.PinData>();
         private static readonly Dictionary<Minimap.PinData, string> _idByPin = new Dictionary<Minimap.PinData, string>();
         private static readonly Color AutoTint = new Color(1f, 0.93f, 0.72f, 1f);
+        private static readonly Color FireTint = new Color(1f, 0.5f, 0.12f, 1f);
         // The portal markers currently drawn, rebuilt by each styling pass. Portals are painted
         // every frame instead of here, because their color can fade over time.
         private static readonly List<Minimap.PinData> _portalPins = new List<Minimap.PinData>();
@@ -646,7 +647,13 @@ namespace TheGreatestMap
                     scale = Mathf.Clamp(size.Value, 20, 100) / 100f;
                 pin.m_uiElement.localScale = new Vector3(scale, scale, 1f);
                 if (kind == Category.Portal) { _portalPins.Add(pin); continue; }
-                if (pin.m_iconElement != null && shared.Auto)
+                if (pin.m_iconElement == null || !shared.Auto) continue;
+                // A campfire wears its own build-menu picture, which is already the color of fire,
+                // so it keeps its colors. Should it fall back to vanilla's white fire pin, that
+                // is painted orange instead.
+                if (kind == Category.Campfire)
+                    pin.m_iconElement.color = IconRegistry.IsVanillaPin(shared.Icon) ? FireTint : Color.white;
+                else
                     pin.m_iconElement.color = AutoTint;
             }
             // Vanilla lays the pins out again whenever the map moves, which on the minimap is every

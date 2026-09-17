@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0 — unreleased
+
+Client-side; works with a 0.2.x server. Players still on 1.0.0 or older see campfire markers as plain dots.
+
+- Campfires are marked. Building one notes it like any other find, and it is written down the next time your map comes out; a campfire another player built counts once you have seen it. The marker is the campfire's own build-menu picture, already the color of fire, with no label; should that picture be missing, vanilla's fire pin is used instead, painted orange. Taking a campfire down removes its marker for everyone. Fires the world puts in camps and villages are not counted. "Record Campfires" and the other per-kind settings cover it, and the list behind the map's marker button has a row for it.
+- Marker icons can name a building piece, as piece:<prefab>, to use its build-menu picture.
+
 ## 1.0.0 — 2026-09-16
 
 Client-side; works with a 0.2.x server.

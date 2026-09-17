@@ -346,7 +346,8 @@ namespace TheGreatestMap
                 }
                 CategoryIcon[cat] = mod.BindLocal("Icons", label, Categories.DefaultIcon(cat),
                     "Fallback icon for " + label.ToLowerInvariant() + " markers when the thing's own item icon cannot be worked out: " +
-                    "an item prefab name (its inventory icon is used) or pin:<VanillaPinType> such as pin:Icon0, pin:Memorial, pin:Boss.");
+                    "an item prefab name (its inventory icon is used), piece:<prefab> (a building piece's build-menu picture) " +
+                    "or pin:<VanillaPinType> such as pin:Icon0, pin:Memorial, pin:Boss.");
             }
             StructuresIncludeUnlisted = mod.BindLocal("Catalog", "Structures Include Unlisted", true,
                 "Treat any outdoor location that is not listed under another kind as a structure (the location's prefab name, " +

@@ -6,7 +6,8 @@ namespace TheGreatestMap
 {
     /// <summary>
     /// Marker icons travel with each shared marker as a key: "item:Dandelion" (that item's
-    /// inventory icon) or "pin:Boss" (a vanilla pin sprite). Each client maps a key to a local
+    /// inventory icon), "piece:fire_pit" (a building piece's build-menu picture) or "pin:Boss"
+    /// (a vanilla pin sprite). Each client maps a key to a local
     /// pin type on first use, starting at 100, and registers the sprite with the minimap, so
     /// every client draws the same picture even if it met the keys in a different order.
     /// </summary>
@@ -28,6 +29,7 @@ namespace TheGreatestMap
             if (key.Length == 0) return null;
             if (key.StartsWith("item:", StringComparison.OrdinalIgnoreCase)) return "item:" + key.Substring(5).Trim();
             if (key.StartsWith("pin:", StringComparison.OrdinalIgnoreCase)) return "pin:" + key.Substring(4).Trim();
+            if (key.StartsWith("piece:", StringComparison.OrdinalIgnoreCase)) return "piece:" + key.Substring(6).Trim();
             return "item:" + key;
         }
 
@@ -99,6 +101,16 @@ namespace TheGreatestMap
                     case "icon4": return "Portal";
                     default: return raw;
                 }
+            }
+            if (key.StartsWith("piece:"))
+            {
+                var piece = PieceOf(raw);
+                if (piece != null && !string.IsNullOrEmpty(piece.m_name) && Localization.instance != null)
+                {
+                    string localized = Localization.instance.Localize(piece.m_name);
+                    if (!string.IsNullOrEmpty(localized) && !localized.StartsWith("[")) return localized;
+                }
+                return raw;
             }
             try
             {
@@ -305,6 +317,11 @@ namespace TheGreatestMap
                     if (data.m_name == vanilla) return data.m_icon;
                 return null;
             }
+            if (key.StartsWith("piece:"))
+            {
+                var piece = PieceOf(key.Substring(6));
+                return piece != null ? piece.m_icon : null;
+            }
             try
             {
                 if (ObjectDB.instance == null) return null;
@@ -317,6 +334,24 @@ namespace TheGreatestMap
                 TheGreatestMapMod.Log.LogWarning($"[TheGreatestMap] Could not load icon '{key}': {e.Message}");
                 return null;
             }
+        }
+
+        /// <summary>The Piece on a world prefab, for pieces that draw their build-menu picture.</summary>
+        private static Piece PieceOf(string prefab)
+        {
+            try
+            {
+                var go = ZNetScene.instance != null && !string.IsNullOrEmpty(prefab) ? ZNetScene.instance.GetPrefab(prefab) : null;
+                return go != null ? go.GetComponent<Piece>() : null;
+            }
+            catch (Exception) { return null; }
+        }
+
+        /// <summary>A vanilla pin sprite: white, so it takes whatever color it is given.</summary>
+        internal static bool IsVanillaPin(string iconKey)
+        {
+            string key = Normalize(iconKey);
+            return key != null && key.StartsWith("pin:");
         }
 
         /// <summary>Grow Minimap's per-type visibility array so vanilla can index our types.</summary>
