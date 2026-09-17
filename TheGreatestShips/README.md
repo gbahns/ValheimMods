@@ -1,5 +1,10 @@
 # The Greatest Ships
 
+> **⚠ Pre-release, still changing.** This mod is new and hasn't reached 1.0. Cargo slots,
+> default build materials, and other balance numbers **will** change as it's tuned against real
+> sailing data. A future update can shrink a ship's hold or swap its recipe out from under you.
+> Use it at your own risk, and expect to re-tune your own configs after an update.
+
 New ships built on Valheim's own hulls. Install on the server and on every client.
 
 | Ship | Based on | Top speed | Health | Turning | Storage | Width | Sail | Hull | Recipe (Workbench) |
