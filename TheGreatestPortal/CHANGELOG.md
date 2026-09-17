@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.0 — unreleased
+## 1.0.0 — 2026-09-16
 
 - First stable release: no longer an early alpha. Nothing changes in play from 0.5.0, and any
   version from 0.1.0 up still connects to any other.
