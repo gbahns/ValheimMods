@@ -7,6 +7,7 @@
 - The **Scoreboard** tab ranks everyone who runs this mod, online now or not. Click a column to sort by it.
 - The **Details** tab breaks one player's stats into sections, with their skills and the creatures
   they have killed most.
+- Optionally, a small **always-on player list** with everyone's death count.
 
 Install it on your own game and the server needs nothing: everyone online who also runs the mod
 shows up. Install it on the server as well and the board also remembers players who are **not**
@@ -42,6 +43,35 @@ distances as `4.2 km`, everything else as a count. Stats still at zero are hidde
 on *Show Zero Stats*.
 
 Left and Right arrows step through the players. Tab switches between the two views.
+
+## The player list
+
+A small list in the corner of the screen showing each player and how many times they have died,
+most deaths first. Your own row is gold. It is **off by default**; turn it on with
+*Show Player List*, the console command `dwams_hud`, or a key you choose under *Toggle Key*.
+
+Once on, it stays up for the whole of play, over the map and the inventory too. It steps aside only
+where it would otherwise draw on top of something it shouldn't: when the game hides its own HUD
+(Ctrl+F3), during cutscenes, behind the pause menu and the black fade on death or teleport, and
+while the stats panel is open, which shows the same numbers and more. It never takes the mouse, so
+nothing underneath it stops being clickable.
+
+A player who has just died stays on the list while they respawn. Who counts as online comes from
+the game's own list of connected players, so the respawn, when a player's game briefly can't answer,
+doesn't make them vanish at the moment their count goes up. One side effect: two characters with
+the same name show as online together whenever either one is.
+
+By default it lists only the players online now, which is what an always-visible list is usually
+for; *Include Offline Players* adds the ones the server remembers. It asks the others for their
+numbers every 30 seconds while the stats panel is closed, since deaths change rarely. Your own
+count is always current.
+
+It starts on the left, below the hotbar. If it lands on top of something in your setup, move it
+with *Corner* and *Offset*: the offset is how far in from that corner, in pixels at 1080p, both
+numbers counted inward whichever corner you pick. *Font Size* and *Max Rows* do what they say.
+
+The toggle key is unbound by default because nearly every letter is already taken by the game or
+another mod. Pick one that is free in your own setup.
 
 ## Keys
 
@@ -111,6 +141,7 @@ the keep window runs out.
 | Command | What it does |
 |---|---|
 | `dwams` | Open or close the panel. |
+| `dwams_hud` | Show or hide the always-on player list. |
 | `dwams_refresh` | Ask everyone online, and the server, for stats again. |
 | `dwams_status` | Print the scoreboard, and say whether the server is keeping records. |
 
@@ -119,7 +150,8 @@ the keep window runs out.
 `BepInEx/config/DeathMonger.DudeWhatAreMyStats.cfg`, or press F1 in game if you have a
 configuration manager. Notable settings: the open key, *Pause While Open*, *Ask Other Players*,
 *Refresh Seconds*, *Show Offline Players*, *Push Minutes*, *Show Zero Stats*, *Top Creature Count*
-and *Fix Treasure Discovery Count*, plus *Server Store Enabled* and *Server Keep Days* on a server.
+and *Fix Treasure Discovery Count*, the `[Player List]` section for the always-on list, plus
+*Server Store Enabled* and *Server Keep Days* on a server.
 
 ## A vanilla bug it fixes
 

@@ -16,6 +16,7 @@ namespace DudeWhatAreMyStats
     ///    K/D, bosses, time played and their best skill. Click a column to sort by it.
     ///  * The Details tab breaks one player's stats out by section, with their skills and the
     ///    creatures they have killed most.
+    ///  * Optionally, a small always-on list of players and their death counts.
     ///
     /// The server is optional. Players who are online answer for themselves over a routed RPC,
     /// which an unmodded server forwards without needing the mod, so the client alone is enough to
@@ -28,7 +29,7 @@ namespace DudeWhatAreMyStats
     {
         public const string ModGuid    = "DeathMonger.DudeWhatAreMyStats";
         public const string ModName    = "Dude What Are My Stats";
-        public const string ModVersion = "0.2.0";
+        public const string ModVersion = "0.3.0";
 
         internal static DudeWhatAreMyStatsMod Instance { get; private set; }
         internal static ManualLogSource Log { get; private set; }
@@ -62,15 +63,18 @@ namespace DudeWhatAreMyStats
         private void Update()
         {
             if (!ModEnabled.Value) return;
+            UiKit.ObserveFocus();   // every frame, before any key is read, so the typing check's tail holds
             StatsNetwork.Update();
             StatsStore.Update();
             if (Player.m_localPlayer == null)
             {
                 // Logged out with the panel up: drop the pause and the roster with the world.
                 StatsPanel.Close();
+                PlayerListHud.Hide();
                 return;
             }
             StatsPanel.Update();
+            PlayerListHud.Update();
         }
 
         private void OnDestroy()

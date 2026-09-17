@@ -160,10 +160,12 @@ namespace DudeWhatAreMyStats
             }
 
             // The console opens over the panel (its toggle ignores text prompts) and `dwams` in
-            // the console is itself a way to get here, so while the console or chat has the
-            // keyboard the panel must keep its hands off it: otherwise typing an "i" closes the
-            // panel, Tab both completes and switches tabs, and the arrows move two things at once.
-            if (Console.IsVisible() || (Chat.instance != null && Chat.instance.HasFocus()))
+            // the console is itself a way to get here, so while the console, chat or any text box
+            // has the keyboard the panel must keep its hands off it: otherwise typing an "i"
+            // closes the panel, Tab both completes and switches tabs, and the arrows move two
+            // things at once. The panel has no text box of its own, so a focused one is always
+            // somebody else's.
+            if (Console.IsVisible() || (Chat.instance != null && Chat.instance.HasFocus()) || UiKit.AnyFieldFocused())
             {
                 StatsPause.Refresh();
                 return;

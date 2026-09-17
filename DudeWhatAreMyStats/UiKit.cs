@@ -22,13 +22,32 @@ namespace DudeWhatAreMyStats
             return true;
         }
 
-        /// <summary>No text box, console or chat has the keyboard.</summary>
+        /// <summary>
+        /// Nothing else has the keyboard: no console, chat, prompt or menu, and no text box of
+        /// any kind, whoever it belongs to. A hotkey must never fire off a letter being typed.
+        /// </summary>
         internal static bool CanTakeInput()
         {
             if (Console.IsVisible() || TextInput.IsVisible() || Menu.IsActive()) return false;
             if (Chat.instance != null && Chat.instance.HasFocus()) return false;
             if (Minimap.instance != null && Minimap.InTextInput()) return false;
+            // The hammer's build menu search box, new in Valheim 1.0. Vanilla's own key handling in
+            // Player, PlayerController and Minimap all check exactly this, but the list above
+            // predates it, so typing a piece name containing the hotkey's letter fired the hotkey.
+            if (BuildSearchFocused()) return false;
+            // Any other text box that has the keyboard: a sign, a filter, another mod's field.
+            // Vanilla never needs this, because it knows its own boxes; a mod's hotkey cannot
+            // know them all, so it asks Unity which field is focused instead.
+            if (UiKit.TextFocused() || UiKit.AnyFieldFocused()) return false;
             return true;
+        }
+
+        private static bool BuildSearchFocused()
+        {
+            var hud = Hud.instance;
+            if (hud == null || hud.m_buildUi == null) return false;
+            try { return hud.m_buildUi.SearchFieldFocused; }
+            catch { return false; }   // a build menu torn down under us mid-frame
         }
     }
 
@@ -109,6 +128,53 @@ namespace DudeWhatAreMyStats
         }
 
         internal static bool IsFocused(TMP_InputField field) => field != null && field.isFocused;
+
+        private static int _anyFocusedFrame = -1000;
+
+        /// <summary>
+        /// True while any text box at all has the keyboard, and for two frames after it lets go,
+        /// so the Enter or Escape that ends the typing is not also read as a keypress.
+        ///
+        /// Asks Unity's event system which object is selected, so it covers fields this toolkit
+        /// never created: the build menu's search, sign text, other mods' filters. A field can be
+        /// selected without being typed into (a controller moving focus over it), which is why the
+        /// test is isFocused and not merely "is selected".
+        /// </summary>
+        internal static bool AnyFieldFocused()
+        {
+            ObserveFocus();
+            return _typingNow || Time.frameCount - _anyFocusedFrame <= 2;
+        }
+
+        private static int _observedFrame = -1;
+        private static bool _typingNow;
+
+        /// <summary>
+        /// Looks at the focused field once per frame. Call it every frame, before anything reads a
+        /// key: the two-frame tail only works if the last frame someone was typing was actually
+        /// seen, and a hotkey that asks only on the frame its key goes down would miss it. That
+        /// matters most for a key that also ends typing (Enter, Escape), since the text box may
+        /// already have let go of the keyboard by the time this mod's Update runs.
+        /// </summary>
+        internal static void ObserveFocus()
+        {
+            if (_observedFrame == Time.frameCount) return;
+            _observedFrame = Time.frameCount;
+            var events = EventSystem.current;
+            var selected = events != null ? events.currentSelectedGameObject : null;
+            _typingNow = selected != null && IsTyping(selected);
+            if (_typingNow) _anyFocusedFrame = Time.frameCount;
+        }
+
+        private static bool IsTyping(GameObject go)
+        {
+            // Explicit checks rather than ?. : Unity objects compare equal to null once destroyed,
+            // which the null-conditional operator does not see.
+            var tmp = go.GetComponent<TMP_InputField>();
+            if (tmp != null && tmp.isFocused) return true;
+            var legacy = go.GetComponent<InputField>();
+            return legacy != null && legacy.isFocused;
+        }
 
         // ── layout ──────────────────────────────────────────────────────────────────
 

@@ -31,6 +31,16 @@ namespace DudeWhatAreMyStats
         internal static ConfigEntry<int> ListScrollRows;
         internal static ConfigEntry<int> TopCreatureCount;
 
+        // ── the always-on player list ───────────────────────────────────────────────
+        internal static ConfigEntry<bool> ShowPlayerList;
+        internal static ConfigEntry<KeyboardShortcut> PlayerListKey;
+        internal static ConfigEntry<bool> PlayerListIncludeOffline;
+        internal static ConfigEntry<float> PlayerListRefreshSeconds;
+        internal static ConfigEntry<int> PlayerListMaxRows;
+        internal static ConfigEntry<HudCorner> PlayerListCorner;
+        internal static ConfigEntry<string> PlayerListOffset;
+        internal static ConfigEntry<float> PlayerListFontSize;
+
         // ── fixes ───────────────────────────────────────────────────────────────────
         internal static ConfigEntry<bool> FixTreasureDiscoveryCount;
 
@@ -98,6 +108,33 @@ namespace DudeWhatAreMyStats
                 "How many rows a list moves per notch of the mouse wheel.");
             TopCreatureCount = mod.BindLocalRangeInt("Display", "Top Creature Count", 15, 0, 100,
                 "How many creatures to list in the Details tab's Creatures killed section, most killed first. 0 hides it.");
+
+            ShowPlayerList = mod.BindLocal("Player List", "Show Player List", false,
+                "Keep a small list of players and how many times each has died on screen all the time, most deaths " +
+                "first. It stays up over the map and the inventory, and steps aside only when the game hides its own " +
+                "HUD (Ctrl+F3), during cutscenes, behind the pause menu and the death or teleport fade, and while the " +
+                "stats panel is open. Off by default. The console command dwams_hud turns it on and off too.");
+            PlayerListKey = mod.BindLocal("Player List", "Toggle Key", new KeyboardShortcut(KeyCode.None),
+                "A key that turns the player list on and off. Unbound by default, since almost every letter is taken " +
+                "by the game or another mod; pick one that is free in your own setup. It stands down while you are " +
+                "typing in any text box.");
+            PlayerListIncludeOffline = mod.BindLocal("Player List", "Include Offline Players", false,
+                "Also list players who are not online, from the server's record of them. Off keeps the list to the " +
+                "people actually playing, which is what an always-visible list is usually for. Needs the mod on the " +
+                "server to have anyone to show.");
+            PlayerListRefreshSeconds = mod.BindLocalRange("Player List", "Refresh Seconds", 30f, 5f, 300f,
+                "How often the list asks the other players for their numbers while the stats panel is closed. " +
+                "Deaths change rarely, so this can be slow. Your own count is always current.");
+            PlayerListMaxRows = mod.BindLocalRangeInt("Player List", "Max Rows", 10, 1, 30,
+                "The most players to list. Any beyond that are summed up as \"+N more\".");
+            PlayerListCorner = mod.BindLocal("Player List", "Corner", HudCorner.TopLeft,
+                "Which corner of the screen the list sits in.");
+            PlayerListOffset = mod.BindLocal("Player List", "Offset", "16,300",
+                "How far in from that corner, as x,y in pixels at 1080p. Both numbers are measured inward from the " +
+                "corner, whichever corner it is. The default sits on the left, below the hotbar; move it if it " +
+                "overlaps something else on your screen.");
+            PlayerListFontSize = mod.BindLocalRange("Player List", "Font Size", 16f, 10f, 30f,
+                "Text size of the player list.");
 
             FixTreasureDiscoveryCount = mod.BindLocal("Fixes", "Fix Treasure Discovery Count", true,
                 "Correct a bug in Valheim itself that counts a treasure chest as newly found every time it is " +

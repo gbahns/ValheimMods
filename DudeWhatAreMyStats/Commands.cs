@@ -14,6 +14,13 @@ namespace DudeWhatAreMyStats
                     StatsPanel.Toggle();
                 }));
 
+            new Terminal.ConsoleCommand("dwams_hud", "Dude What Are My Stats: show or hide the always-on player list",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    PlayerListHud.Toggle();
+                    args.Context?.AddString("Player list " + (DwamsConfig.ShowPlayerList.Value ? "on." : "off."));
+                }));
+
             new Terminal.ConsoleCommand("dwams_refresh", "Dude What Are My Stats: ask the other players for their stats again",
                 (Terminal.ConsoleEvent)(args =>
                 {

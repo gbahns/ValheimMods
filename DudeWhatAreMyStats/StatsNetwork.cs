@@ -124,8 +124,12 @@ namespace DudeWhatAreMyStats
 
         // ── asking the people who are here ──────────────────────────────────────────
 
-        /// <summary>Asks everyone online for their stats, and the server for everyone it remembers.</summary>
-        internal static void Request()
+        /// <summary>
+        /// Asks everyone online for their stats and, unless told not to, the server for everyone it
+        /// remembers. A caller that only shows online players has no use for the stored roster, which
+        /// is the largest message this mod sends, so it can leave that part out.
+        /// </summary>
+        internal static void Request(bool includeServer = true)
         {
             if (DwamsConfig.AskOtherPlayers != null && !DwamsConfig.AskOtherPlayers.Value) return;
             var rpc = ZRoutedRpc.instance;
@@ -136,7 +140,7 @@ namespace DudeWhatAreMyStats
             // An empty package: the request carries nothing today, but having a payload means the
             // message shape can grow later without a second RPC name.
             rpc.InvokeRoutedRPC(ZRoutedRpc.Everybody, RpcRequest, new ZPackage());
-            AskServer();
+            if (includeServer) AskServer();
         }
 
         /// <summary>Everything again, right now: the Refresh button and the console command.</summary>
@@ -376,6 +380,17 @@ namespace DudeWhatAreMyStats
         /// <summary>
         /// Everyone we can show: the local character, then whoever answered just now, then whoever
         /// the server remembers and did not answer. A live answer always beats the stored copy.
+        ///
+        /// Who counts as online comes from the game's own list of connected players when it has one,
+        /// not from how recently someone answered. Answer timing is a poor proxy: a player who has
+        /// just died has no character for ten seconds and then spends several more respawning, and
+        /// answers nothing the whole time, so a request landing in that gap would drop them off the
+        /// list at the very moment their death count went up. The connection list is built from
+        /// connected peers, not living characters, so a dead player stays on it. Answer timing is
+        /// only the fallback, for the first moments after joining before that list arrives.
+        ///
+        /// The list names players rather than identifying them, so two characters sharing a name
+        /// are online together whenever either is. That is the one thing this trades away.
         /// </summary>
         internal static List<Snapshot> Roster()
         {
@@ -391,6 +406,7 @@ namespace DudeWhatAreMyStats
                 seen.Add(local.Identity);
             }
 
+            bool byPresence = ReadConnectedNames();
             bool settling = Time.unscaledTime - _lastRequestAt < SettleSeconds;
             float cutoff = settling ? _prevRequestAt : _lastRequestAt;
             bool keepOffline = DwamsConfig.RememberOfflinePlayers == null || DwamsConfig.RememberOfflinePlayers.Value;
@@ -398,21 +414,38 @@ namespace DudeWhatAreMyStats
             foreach (var snap in _remote.Values)
             {
                 if (!seen.Add(snap.Identity)) continue;   // our own echo
-                snap.Online = snap.ReceivedAt >= cutoff - 0.5f;
+                snap.Online = byPresence ? IsConnected(snap) : snap.ReceivedAt >= cutoff - 0.5f;
                 if (!snap.Online && !keepOffline) continue;
                 list.Add(snap);
             }
 
-            if (keepOffline)
+            foreach (var snap in _stored.Values)
             {
-                foreach (var snap in _stored.Values)
-                {
-                    if (!seen.Add(snap.Identity)) continue;   // they answered for themselves already
-                    snap.Online = false;
-                    list.Add(snap);
-                }
+                if (!seen.Add(snap.Identity)) continue;   // they answered for themselves already
+                // A stored record for someone who is connected but has not answered yet (just
+                // joined, or mid-respawn) is still someone playing now, so it is shown as online
+                // even when offline players are not wanted. Anyone else only if they are.
+                snap.Online = byPresence && IsConnected(snap);
+                if (!snap.Online && !keepOffline) continue;
+                list.Add(snap);
             }
             return list;
         }
+
+        private static readonly HashSet<string> _connected = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Fills in the names of everyone connected. False when the game has no list to give yet.</summary>
+        private static bool ReadConnectedNames()
+        {
+            _connected.Clear();
+            var znet = ZNet.instance;
+            var players = znet != null ? znet.GetPlayerList() : null;
+            if (players == null) return false;
+            foreach (var p in players)
+                if (!string.IsNullOrEmpty(p.m_name)) _connected.Add(p.m_name);
+            return _connected.Count > 0;
+        }
+
+        private static bool IsConnected(Snapshot snap) => !string.IsNullOrEmpty(snap.Name) && _connected.Contains(snap.Name);
     }
 }
