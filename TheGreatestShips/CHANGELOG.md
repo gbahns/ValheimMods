@@ -20,6 +20,10 @@ the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was 
   that off for the vanilla ones.
 - A config from 0.9.0 still holding the old Fast Karve speed or the old Cargo Longship recipe is
   moved to the new defaults. Values changed by hand are kept.
+- Fixed: the three ships never showed up on the map or compass with HUDCompass installed.
+  HUDCompass decides what counts as a ship once, at the main menu, before this mod's ships exist
+  yet -- so it never saw them. If HUDCompass is installed, this mod now asks it to look again
+  once its own ships are ready.
 
 ## 0.9.0 — 2026-09-16
 

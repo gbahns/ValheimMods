@@ -309,6 +309,7 @@ namespace TheGreatestShips
                     ApplyRecipe(def);
                 EnsureInPieceTable();
                 EnsureInNamedPrefabs();
+                NotifyHudCompass();
             }
             catch (System.Exception e)
             {
@@ -382,6 +383,40 @@ namespace TheGreatestShips
                 int hash = built.Clone.name.GetStableHashCode();
                 if (!namedPrefabs.ContainsKey(hash))
                     namedPrefabs[hash] = built.Clone;
+            }
+        }
+
+        // Soft dependency on HUDCompass (Neobotics): it builds its one-time list of "which
+        // pieces are ships" at the main menu (FejdStartup.Start), before Jotunn's
+        // OnVanillaPrefabsAvailable has actually fired for mods -- like this one -- that clone a
+        // vanilla hull, so its map/compass pins never include ours. No reference to
+        // HUDCompass.dll: found only by scanning loaded assemblies, so nothing breaks if it
+        // isn't installed, and a HUDCompass update that renames the method just silently stops
+        // the nudge instead of failing to build or load.
+        private static bool _hudCompassChecked;
+        private static MethodInfo _hudCompassRebuildMarkerTypes;
+
+        private static void NotifyHudCompass()
+        {
+            if (!_hudCompassChecked)
+            {
+                _hudCompassChecked = true;
+                foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    if (asm.GetName().Name != "HUDCompass") continue;
+                    var type = asm.GetType("neobotics.ValheimMods.DynamicMapMarkers");
+                    _hudCompassRebuildMarkerTypes = type?.GetMethod("BuildDynamicMarkerTypes",
+                        BindingFlags.NonPublic | BindingFlags.Static);
+                    break;
+                }
+            }
+            try
+            {
+                _hudCompassRebuildMarkerTypes?.Invoke(null, null);
+            }
+            catch (System.Exception e)
+            {
+                Jotunn.Logger.LogWarning($"[TheGreatestShips] HUDCompass rebuild failed: {e.Message}");
             }
         }
     }
