@@ -1,9 +1,5 @@
 # The Greatest Map
 
-> **ALPHA.** In steady use on its authors' own server, and open to anyone who wants it. Expect
-> changes between versions and the occasional rough edge, and please report anything odd. Back up
-> your world before trying it, as you would with any mod that writes to your save.
-
 One shared, living map for your server, without the cartography table mess.
 
 - **Markers travel like exploration.** What you record or place goes onto your own map, saved with your character. At a cartography table your map and the shared map merge both ways, and others pick it up at their next table visit. Two players standing together with their maps out compare and merge their maps directly, markers and explored areas alike, no table needed. An erasure is a dated tombstone that wins over older copies of the marker, so erased markers stay erased instead of coming back from someone else's map. Erasing is off unless the server allows it, and then goes through the marker's right-click menu or Shift + right-click. A server can switch "Sharing Mode" to Instant to have every change go out at once instead.
@@ -16,12 +12,13 @@ One shared, living map for your server, without the cartography table mess.
 
 Install on the **server and every client** (BepInEx). The server keeps the shared markers in
 `BepInEx/config/TheGreatestMap/<world>_<seed>.pins.bin`. In a non-dedicated game the hosting
-player is the server.
+player is the server. Back up your world before trying it, as you would with any mod that writes to
+your save.
 
 A player who does not have the mod can still join a server that has it; they simply see vanilla
 map behavior and no shared markers. Versions only have to match when the shared-marker format
 changes: a server refuses a client older than its compatibility floor, which has been 0.2.0 since
-that release, so a 0.2.x client can join a 0.3.x server. A release that moves the floor says so at
+that release, so a 0.2.x client can join a 1.0 server. A release that moves the floor says so at
 the top of its changelog entry.
 
 ## Keys (configurable)

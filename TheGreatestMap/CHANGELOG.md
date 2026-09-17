@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.0 — 2026-09-16
+
+Client-side; works with a 0.2.x server.
+
+Out of alpha. The mod has been in daily use on its authors' server, and the description no longer
+calls it alpha. Nothing changes from 0.3.2 but the version number.
+
 ## 0.3.2 — 2026-09-16
 
 Client-side; works with a 0.2.x server.
