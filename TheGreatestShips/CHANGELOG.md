@@ -1,9 +1,9 @@
 # Changelog
 
-## 0.10.0 — unreleased
+## 0.9.1 — unreleased
 
-**Breaking: the server and every player need 0.10.0. The Fast Longship's hold changed size, so
-0.9.0 and 0.10.0 cannot share a server.**
+**Breaking: the server and every player need 0.9.1. The Fast Longship's hold changed size, so
+0.9.0 and 0.9.1 cannot share a server.**
 
 Rebalanced against real top speeds, worked out from logged sailing: the Karve reaches about 7.3,
 not the 8.8 that 0.9.0 was tuned against, and the Longship about 9.4.

@@ -16,13 +16,13 @@ namespace TheGreatestShips
     {
         public const string ModGuid    = "DeathMonger.TheGreatestShips";
         public const string ModName    = "The Greatest Ships";
-        public const string ModVersion = "0.10.0";
+        public const string ModVersion = "0.9.1";
 
         // Oldest version this one can share a server with.  Raise it only for a release that
         // changes what the two sides must agree on (prefab names, synced config, storage size).
-        // 0.10.0: the Fast Longship's hold grew from 3x3 to 4x3, and a client that still thinks
+        // 0.9.1: the Fast Longship's hold grew from 3x3 to 4x3, and a client that still thinks
         // it is 3x3 would mishandle the items in the new slots.
-        public const string MinCompatibleVersion = "0.10.0";
+        public const string MinCompatibleVersion = "0.9.1";
 
         internal static TheGreatestShipsMod Instance { get; private set; }
 

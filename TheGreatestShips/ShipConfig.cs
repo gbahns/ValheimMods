@@ -28,7 +28,7 @@ namespace TheGreatestShips
         internal static Entries For(ShipDefinition def) => _entries[def];
 
         // Raised when a release changes defaults that saved configs should follow.
-        //   2 (0.10.0): speeds rebased on logged top speeds, Cargo Longship recipe.
+        //   2 (0.9.1): speeds rebased on logged top speeds, Cargo Longship recipe.
         private const int CurrentConfigVersion = 2;
 
         internal static void Bind(TheGreatestShipsMod mod)
