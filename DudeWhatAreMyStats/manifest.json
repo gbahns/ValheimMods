@@ -1,6 +1,6 @@
 {
     "name": "DudeWhatAreMyStats",
-    "version_number": "0.3.0",
+    "version_number": "0.9.0",
     "website_url": "https://github.com/gbahns/ValheimMods",
     "description": "Your stats on one key press, with the game paused while you read. Scoreboard of every player, including ones who are offline: kills, deaths, K/D, bosses, time played and best skill.",
     "dependencies": [

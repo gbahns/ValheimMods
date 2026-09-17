@@ -1,6 +1,9 @@
 # Changelog
 
-## 0.3.0 — unreleased
+## 0.9.0
+
+Plays together with 0.2.0: the stats messages are unchanged, so players on either version see
+each other, and a server still on 0.2.0 keeps remembering offline players for everyone.
 
 - An always-visible player list with each player's death count, most deaths first. Off by default;
   turn it on with *Show Player List*, the console command `dwams_hud`, or a key of your choosing
