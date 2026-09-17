@@ -20,6 +20,7 @@ namespace TheGreatestShips
             public ConfigEntry<Color>  HullColor;
             public ConfigEntry<int>    HullStripes;
             public ConfigEntry<float>  Width;
+            public ConfigEntry<float>  Length;
         }
 
         private static readonly Dictionary<ShipDefinition, Entries> _entries =
@@ -86,6 +87,10 @@ namespace TheGreatestShips
                 // the server's values arrive.  Players should keep the same value.
                 e.Width = mod.Config.Bind(section, "Hull Width", Migrated(mod, def, "Hull Width", def.DefaultWidth),
                     $"Width relative to the vanilla {def.BaseName}; below 1 is narrower, above 1 wider. " +
+                    "Everyone on a server should use the same value. Requires a game restart.");
+
+                e.Length = mod.Config.Bind(section, "Hull Length", Migrated(mod, def, "Hull Length", def.DefaultLength),
+                    $"Bow-to-stern length relative to the vanilla {def.BaseName}; below 1 is shorter, above 1 longer. " +
                     "Everyone on a server should use the same value. Requires a game restart.");
 
                 var captured = def;

@@ -133,6 +133,7 @@ namespace TheGreatestShips
             TintSail(def, clone, cfg.SailColor.Value);
             TintHull(def, clone, cfg.HullColor.Value, cfg.HullStripes.Value);
             SetWidth(def, clone, cfg.Width.Value);
+            SetLength(def, clone, cfg.Length.Value);
 
             _built[def] = new Built { Clone = clone, BaseSailForceFactor = ship.m_sailForceFactor };
             ApplyHandling(def);
@@ -255,6 +256,19 @@ namespace TheGreatestShips
             scale.x *= width;
             clone.transform.localScale = scale;
             Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: width x{width}.");
+        }
+
+        // Same as SetWidth, but bow-to-stern (local Z, Ship.CustomFixedUpdate's transform.forward)
+        // instead of side-to-side (local X).
+        private static void SetLength(ShipDefinition def, GameObject clone, float length)
+        {
+            length = Mathf.Clamp(length, 0.5f, 2f);
+            if (Mathf.Approximately(length, 1f)) return;
+
+            var scale = clone.transform.localScale;
+            scale.z *= length;
+            clone.transform.localScale = scale;
+            Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: length x{length}.");
         }
 
         // Speed, rudder and health, on the prefab and on every ship already in the world (they

@@ -30,6 +30,9 @@ the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was 
 - Two new, bigger cargo tiers above the Knarr, both slower and clumsier than the one before but
   tougher and roomier: the **Busse** (36 slots, 1800 health) and the **Big Busse** (64 slots, 2200
   health).
+- New "Hull Length" setting, alongside "Hull Width": stretches the ship bow-to-stern instead of
+  side-to-side. The Busse (1.15×) and Big Busse (1.3×) use it so their bigger hold reads as a
+  longer hull, not just a fatter one.
 
 ## 0.9.0 — 2026-09-16
 

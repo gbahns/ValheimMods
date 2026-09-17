@@ -7,15 +7,15 @@
 
 New ships built on Valheim's own hulls. Install on the server and on every client.
 
-| Ship | Based on | Top speed | Health | Turning | Storage | Width | Sail | Hull | Recipe (Workbench) |
-|---|---|---|---|---|---|---|---|---|---|
-| Karve *(vanilla)* | | 7.3 | 500 | normal | 4 | | | | |
-| **Fast Karve** | Karve | 10.1 | 400 | normal | 2 | 0.85× | blue | red stripes | Fine Wood 30, Ancient Bark 20, Bronze Nails 60, Troll Hide 8, Resin 20 |
-| Longship *(vanilla)* | | 9.65 | 1000 | normal | 18 | | | | |
-| **Fast Longship** | Longship | 12.35 | 800 | normal | 12 | 0.85× | blue | red stripes | Fine Wood 40, Ancient Bark 40, Iron Nails 100, Linen Thread 20, Resin 30 |
-| **Knarr** | Longship | 8.6 | 1500 | slower | 32 | 1.25× | amber | green stripes | Fine Wood 40, Ancient Bark 60, Iron Nails 180, Deer Hide 10, Core Wood 30 |
-| **Busse** | Longship | about 8.0 | 1800 | slower still | 36 | 1.3× | amber | green stripes | Fine Wood 55, Ancient Bark 85, Iron Nails 250, Deer Hide 15, Core Wood 45 |
-| **Big Busse** | Longship | about 7.5 | 2200 | slowest | 64 | 1.4× | amber | green stripes | Fine Wood 80, Ancient Bark 130, Iron Nails 350, Deer Hide 25, Core Wood 70 |
+| Ship | Based on | Top speed | Health | Turning | Storage | Width | Length | Sail | Hull | Recipe (Workbench) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Karve *(vanilla)* | | 7.3 | 500 | normal | 4 | | | | | |
+| **Fast Karve** | Karve | 10.1 | 400 | normal | 2 | 0.85× | | blue | red stripes | Fine Wood 30, Ancient Bark 20, Bronze Nails 60, Troll Hide 8, Resin 20 |
+| Longship *(vanilla)* | | 9.65 | 1000 | normal | 18 | | | | | |
+| **Fast Longship** | Longship | 12.35 | 800 | normal | 12 | 0.85× | | blue | red stripes | Fine Wood 40, Ancient Bark 40, Iron Nails 100, Linen Thread 20, Resin 30 |
+| **Knarr** | Longship | 8.6 | 1500 | slower | 32 | 1.25× | | amber | green stripes | Fine Wood 40, Ancient Bark 60, Iron Nails 180, Deer Hide 10, Core Wood 30 |
+| **Busse** | Longship | about 8.0 | 1800 | slower still | 36 | 1.3× | 1.15× | amber | green stripes | Fine Wood 55, Ancient Bark 85, Iron Nails 250, Deer Hide 15, Core Wood 45 |
+| **Big Busse** | Longship | about 7.5 | 2200 | slowest | 64 | 1.4× | 1.3× | amber | green stripes | Fine Wood 80, Ancient Bark 130, Iron Nails 350, Deer Hide 25, Core Wood 70 |
 
 Top speeds are in m/s, in full wind about 64° off the stern. They were worked out from logged
 sailing with the Captain's Log mod.
@@ -40,7 +40,9 @@ longship's hold.
 
 Three tiers of deep, heavy longship built to haul, named for real Norse cargo vessels. Each is
 slower and clumsier than a longship, but sturdier, and holds progressively more: the Knarr 32
-stacks, the Busse 36, the Big Busse 64.
+stacks, the Busse 36, the Big Busse 64. The Busse and Big Busse are also stretched bow-to-stern
+(1.15× and 1.3×), not just wider, so their bigger hold reads as a longer hull, not just a fatter
+one.
 
 ## Configuration
 
@@ -57,6 +59,7 @@ stacks, the Busse 36, the Big Busse 64.
 | Hull Color | Paint multiplied into the hull planks, not the mast or rudder | Needs a restart |
 | Hull Stripes | Number of painted bands; 0 paints the hull solid | Needs a restart |
 | Hull Width | Width relative to the vanilla ship. Keep it the same for everyone on a server | Needs a restart |
+| Hull Length | Bow-to-stern length relative to the vanilla ship. Keep it the same for everyone on a server | Needs a restart |
 
 Updating from 0.9.0 moves a Fast Karve speed of 1.14 and the old Cargo Longship recipe to the new
 defaults. The Cargo Longship's own section also moves across under its new name, Knarr. Values you

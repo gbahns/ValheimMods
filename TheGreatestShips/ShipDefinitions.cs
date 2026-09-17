@@ -29,6 +29,7 @@ namespace TheGreatestShips
         public Color  DefaultHullColor;
         public int    DefaultHullStripes; // painted bands on the hull; 0 paints it solid
         public float  DefaultWidth;       // sideways scale of the whole ship
+        public float  DefaultLength = 1f; // bow-to-stern scale of the whole ship
 
         // Defaults an earlier release shipped.  A saved config still holding one of these was
         // never changed by hand, so it is moved to the current default (see ShipConfig.Migrate).
@@ -131,6 +132,7 @@ namespace TheGreatestShips
                 DefaultHullColor   = Green,
                 DefaultHullStripes = 6,
                 DefaultWidth       = 1.3f,
+                DefaultLength      = 1.15f,
             },
             new ShipDefinition
             {
@@ -150,6 +152,7 @@ namespace TheGreatestShips
                 DefaultHullColor   = Green,
                 DefaultHullStripes = 6,
                 DefaultWidth       = 1.4f,
+                DefaultLength      = 1.3f,
             },
         };
     }
