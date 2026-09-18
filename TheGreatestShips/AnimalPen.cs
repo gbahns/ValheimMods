@@ -20,7 +20,8 @@ namespace TheGreatestShips
     /// contact, like the hull -- and PenBallast pins the body's center of mass and inertia to the
     /// hull-only values so the rails add no top-heaviness.
     ///
-    /// Still a first pass on placement: DeckHeight and the pen's size are estimates.
+    /// Placement: the pen is centered on the hull's origin, which puts the mast (z = 0.28) inside
+    /// it; the open deck aft of the mast runs from about z = 0.1 back to the benches at -2.8.
     /// </summary>
     internal static class AnimalPen
     {
@@ -31,12 +32,10 @@ namespace TheGreatestShips
 
         private const float PenLength  = 4f;   // along the hull (bow-to-stern)
         private const float PenWidth   = 3f;   // across the beam
-        private const float DeckHeight = 1.2f; // rough guess for deck height above the hull's local origin
-
-        // Where the posts stand, relative to the hull's origin.  The earlier wall panels were
-        // centered on DeckHeight, so their bottoms sat at DeckHeight - 0.5, and Greg judged those
-        // "on the deck": the posts start there too.
-        private const float PostBottom = DeckHeight - 0.5f;
+        // The deck, above the hull's local origin: read from the VikingShip prefab, where everything
+        // that stands on the deck (benches, ladders, chest, controls) sits at y = 0.53..0.62.
+        private const float DeckHeight = 0.58f;
+        private const float PostBottom = DeckHeight;
         private const float PostHeight = 1f;
         // Rail centers above PostBottom.  Beams are 0.4 thick, so these cover 0.2..0.6 and
         // 0.65..1.05: a 5 cm gap so the two don't share a face and shimmer, and nothing a boar
