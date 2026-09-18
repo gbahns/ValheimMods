@@ -37,7 +37,8 @@ namespace TheGreatestShips
         //   4 (0.9.1): Fast Longship 1.28 -> 1.342, matching the Fast Ship Skuldelev's sail force.
         //   5 (0.9.1): Fast Longship recipe: Troll Hide, Guck and 120 Iron Nails; no Linen or Resin.
         //              Knarr recipe: 180 Iron Nails and 2 Chain (the 0.9.0 recipe had 150 and none).
-        private const int CurrentConfigVersion = 5;
+        //   6 (0.9.1): the Byrdings 10/15/20% slower than a longship (were 1.0 / 0.97 / 0.95).
+        private const int CurrentConfigVersion = 6;
 
         internal static void Bind(TheGreatestShipsMod mod)
         {

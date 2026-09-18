@@ -16,9 +16,9 @@ New ships built on Valheim's own hulls. Install on the server and on every clien
 | **Knarr** | Longship | 8.6 | 1500 | slower | 32 | 1.25× | | amber | green stripes | Fine Wood 40, Ancient Bark 60, Iron Nails 180, Deer Hide 10, Core Wood 30, Chain 2 |
 | **Busse** | Longship | about 8.0 | 1800 | slower still | 36 | 1.3× | 1.15× | amber | green stripes | Fine Wood 55, Ancient Bark 85, Iron Nails 250, Deer Hide 15, Core Wood 45, Chain 4 |
 | **Big Busse** | Longship | about 7.5 | 2200 | slowest | 64 | 1.4× | 1.3× | amber | green stripes | Fine Wood 80, Ancient Bark 130, Iron Nails 350, Deer Hide 25, Core Wood 70, Chain 6 |
-| **Small Byrding** *(experimental)* | Longship | 9.65 | 1000 | normal | 12 | | | white | brown | Fine Wood 40, Ancient Bark 40, Iron Nails 100, Deer Hide 10, Wood 80 |
-| **Byrding** *(experimental)* | Longship, 1.25× | about 9.4 | 1250 | a little slower | 18 | | | white | brown | Fine Wood 50, Ancient Bark 50, Iron Nails 125, Deer Hide 12, Wood 100 |
-| **Greater Byrding** *(experimental)* | Longship, 1.5× | about 9.2 | 1500 | slower | 24 | | | white | brown | Fine Wood 60, Ancient Bark 60, Iron Nails 150, Deer Hide 15, Wood 120, Lox Pelt 4, Wolf Pelt 4 |
+| **Small Byrding** *(experimental)* | Longship | about 8.7 | 1000 | normal | 12 | | | white | brown | Fine Wood 40, Ancient Bark 40, Iron Nails 100, Deer Hide 10, Wood 80 |
+| **Byrding** *(experimental)* | Longship, 1.25× | about 8.2 | 1250 | a little slower | 18 | | | white | brown | Fine Wood 50, Ancient Bark 50, Iron Nails 125, Deer Hide 12, Wood 100 |
+| **Greater Byrding** *(experimental)* | Longship, 1.5× | about 7.7 | 1500 | slower | 24 | | | white | brown | Fine Wood 60, Ancient Bark 60, Iron Nails 150, Deer Hide 15, Wood 120, Lox Pelt 4, Wolf Pelt 4 |
 
 Top speeds are in m/s, in full wind about 64° off the stern. They were worked out from logged
 sailing with the Captain's Log mod.
@@ -59,7 +59,8 @@ rocks). Expect it to need retuning.
 That is the **Small Byrding**: a boar or two. The **Byrding** is the whole ship scaled 1.25×, with a
 pen the length of its deck, mast and all: room for a few boars, and a longship's hold. The
 **Greater Byrding** is scaled 1.5×, with a fence high enough that a wolf can't clear it: room for a
-lox, or a pack of wolves. Each turns a little more slowly than the last.
+lox, or a pack of wolves. Each is slower than the last: 10%, 15% and 20% under a longship, and
+each turns a little more slowly too.
 
 ## Configuration
 

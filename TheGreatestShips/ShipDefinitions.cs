@@ -173,7 +173,8 @@ namespace TheGreatestShips
                 StorageWidth       = 6,
                 StorageHeight      = 2,   // one row off the vanilla Longship's 6x3: fodder and tack take space
                 DefaultRecipe      = "FineWood:40,ElderBark:40,IronNails:100,DeerHide:10,Wood:80",
-                DefaultSpeed       = 1f,      // unchanged from the vanilla Longship: 9.65
+                DefaultSpeed       = 0.9f,    // about 8.7: 10% under a longship, the pen's other price
+                OldDefaultSpeed    = 1f,
                 DefaultHealth      = 1000f,   // unchanged from the vanilla Longship
                 DefaultRudderSpeed = 1f,      // unchanged from the vanilla Longship
                 DefaultSailColor   = Color.white,
@@ -197,7 +198,8 @@ namespace TheGreatestShips
                 StorageWidth       = 6,
                 StorageHeight      = 3,
                 DefaultRecipe      = "FineWood:50,ElderBark:50,IronNails:125,DeerHide:12,Wood:100",
-                DefaultSpeed       = 0.97f,   // about 9.4
+                DefaultSpeed       = 0.85f,   // about 8.2: 15% under a longship
+                OldDefaultSpeed    = 0.97f,
                 DefaultHealth      = 1250f,
                 DefaultRudderSpeed = 0.9f,
                 DefaultSailColor   = Color.white,
@@ -221,7 +223,8 @@ namespace TheGreatestShips
                 StorageWidth       = 6,
                 StorageHeight      = 4,
                 DefaultRecipe      = "FineWood:60,ElderBark:60,IronNails:150,DeerHide:15,Wood:120,LoxPelt:4,WolfPelt:4",
-                DefaultSpeed       = 0.95f,   // about 9.2: a big hull under a longship's sail
+                DefaultSpeed       = 0.8f,    // about 7.7: 20% under a longship
+                OldDefaultSpeed    = 0.95f,
                 DefaultHealth      = 1500f,
                 DefaultRudderSpeed = 0.8f,
                 DefaultSailColor   = Color.white,
