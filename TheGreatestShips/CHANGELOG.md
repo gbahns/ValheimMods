@@ -37,14 +37,15 @@ the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was 
 - New "Hull Length" setting, alongside "Hull Width": stretches the ship bow-to-stern instead of
   side-to-side. The Busse (1.15×) and Big Busse (1.3×) use it so their bigger hold reads as a
   longer hull, not just a fatter one.
-- **Experimental:** a **Byrding** -- a Longship with a rail-fenced pen built onto the deck --
+- **Experimental:** a **Small Byrding** -- a Longship with a rail-fenced pen built onto the deck --
   corner posts and two rails a side, no gate yet -- that keeps a frightened tamed animal from
   jumping overboard the way it can on a bare longship. First pass: the pen's position, size
   and deck height are estimates, not measured in-game, and it doesn't protect penned animals from
   outside damage (only from jumping off). Otherwise a vanilla Longship with 12 hold slots instead of 18, the rest going to fodder and tack. Named for the Norse trading vessel that carried livestock.
-- **Experimental:** a **Greater Byrding** -- the Byrding half again as big, the whole ship scaled
-  1.5×, with a pen the length of its deck and a fence high enough for wolves: room for a lox. A
-  longship's hold, 1500 health, slower to turn. Its recipe adds 4 Lox Pelt and 4 Wolf Pelt.
+- **Experimental:** two bigger sizes of it. The **Byrding** is the whole ship scaled 1.25×, with a
+  pen the length of its deck: room for a few boars, a longship's hold, 1250 health, a little
+  slower to turn. The **Greater Byrding** is scaled 1.5×, its fence high enough for wolves: room
+  for a lox, 24 hold slots, 1500 health, slower still. Its recipe adds 4 Lox Pelt and 4 Wolf Pelt.
 - New "Hull Scale" setting: the whole ship in all three dimensions; "Hull Width" and "Hull Length"
   multiply on top of it.
 

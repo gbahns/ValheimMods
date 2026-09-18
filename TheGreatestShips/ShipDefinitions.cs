@@ -16,9 +16,10 @@ namespace TheGreatestShips
         public string DisplayName;
         public string Description;
         // The config section a saved .cfg file has this ship's settings under is named after
-        // DisplayName (see ShipConfig.Bind).  Set this to the previous DisplayName when renaming
-        // a ship so ShipConfig can move a saved section across instead of orphaning it.
-        public string OldDisplayName;
+        // DisplayName (see ShipConfig.Bind).  List every previous DisplayName here when renaming
+        // a ship, newest first, so ShipConfig can move a saved section across instead of
+        // orphaning it.
+        public string[] OldDisplayNames;
         public int    StorageWidth;
         public int    StorageHeight;
         public string DefaultRecipe;
@@ -106,7 +107,7 @@ namespace TheGreatestShips
                 BaseName           = "Longship",
                 BaseTopSpeed       = 9.65f,
                 DisplayName        = "Knarr",
-                OldDisplayName     = "Cargo Longship",
+                OldDisplayNames    = new[] { "Cargo Longship" },
                 Description        = "A deep, heavy longship built to haul. Slower and clumsier than a longship, but sturdier, with nearly twice its hold. The smallest of three cargo tiers -- see also the Busse and the Big Busse.",
                 StorageWidth       = 8,
                 StorageHeight      = 4,
@@ -162,13 +163,13 @@ namespace TheGreatestShips
             },
             new ShipDefinition
             {
-                PrefabName         = "DM_StableShip",   // saved hash: keep even though it's now the Byrding
+                PrefabName         = "DM_StableShip",   // saved hash: keep even though it's now the Small Byrding
                 BasePrefab         = "VikingShip",
                 BaseName           = "Longship",
                 BaseTopSpeed       = 9.65f,
-                DisplayName        = "Byrding",
-                OldDisplayName     = "Stable Ship",
-                Description        = "A longship with a fenced pen on deck, so a frightened animal can't jump overboard. Two thirds of a longship's hold: the rest is fodder and tack.",
+                DisplayName        = "Small Byrding",
+                OldDisplayNames    = new[] { "Byrding", "Stable Ship" },   // must come before the Byrding, which now owns that section name
+                Description        = "A longship with a small fenced pen aft of the mast, so a frightened animal can't jump overboard: a boar or two. Two thirds of a longship's hold: the rest is fodder and tack.",
                 StorageWidth       = 6,
                 StorageHeight      = 2,   // one row off the vanilla Longship's 6x3: fodder and tack take space
                 DefaultRecipe      = "FineWood:40,ElderBark:40,IronNails:100,DeerHide:10,Wood:80",
@@ -187,6 +188,30 @@ namespace TheGreatestShips
             },
             new ShipDefinition
             {
+                PrefabName         = "DM_Byrding",
+                BasePrefab         = "VikingShip",
+                BaseName           = "Longship",
+                BaseTopSpeed       = 9.65f,
+                DisplayName        = "Byrding",
+                Description        = "A longship a quarter again the size, with a pen the length of its deck: room for a few boars. A longship's hold, and a little slower to turn.",
+                StorageWidth       = 6,
+                StorageHeight      = 3,
+                DefaultRecipe      = "FineWood:50,ElderBark:50,IronNails:125,DeerHide:12,Wood:100",
+                DefaultSpeed       = 0.97f,   // about 9.4
+                DefaultHealth      = 1250f,
+                DefaultRudderSpeed = 0.9f,
+                DefaultSailColor   = Color.white,
+                DefaultHullColor   = Brown,
+                DefaultHullStripes = 0,
+                DefaultWidth       = 1f,
+                DefaultLength      = 1f,
+                DefaultScale       = 1.25f,
+                // The whole open deck, mast inside it, from the aft benches to the chest; boar-height
+                // rails.  In hull units, so at 1.25x this is 4.25 x 6.75 m with rails to 1.3 m.
+                Pen = new PenSpec { Length = 5.4f, Width = 3.4f, CenterZ = 0.15f, PostHeight = 1f, RailHeights = new[] { 0.4f, 0.85f } },
+            },
+            new ShipDefinition
+            {
                 PrefabName         = "DM_GreaterByrding",
                 BasePrefab         = "VikingShip",
                 BaseName           = "Longship",
@@ -194,7 +219,7 @@ namespace TheGreatestShips
                 DisplayName        = "Greater Byrding",
                 Description        = "A longship half again the size, with a high-railed pen the length of its deck: room for a lox, and a fence a wolf can't clear. Slow to turn.",
                 StorageWidth       = 6,
-                StorageHeight      = 3,
+                StorageHeight      = 4,
                 DefaultRecipe      = "FineWood:60,ElderBark:60,IronNails:150,DeerHide:15,Wood:120,LoxPelt:4,WolfPelt:4",
                 DefaultSpeed       = 0.95f,   // about 9.2: a big hull under a longship's sail
                 DefaultHealth      = 1500f,

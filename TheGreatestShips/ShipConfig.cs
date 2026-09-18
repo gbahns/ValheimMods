@@ -127,11 +127,26 @@ namespace TheGreatestShips
         // remove the old entry so it does not also linger in the file under its old name.
         private static T Migrated<T>(TheGreatestShipsMod mod, ShipDefinition def, string key, T fallback)
         {
-            if (def.OldDisplayName == null) return fallback;
-            var oldDef = new ConfigDefinition(def.OldDisplayName, key);
-            T value = mod.Config.Bind(oldDef, fallback).Value;
-            mod.Config.Remove(oldDef);
-            return value;
+            if (def.OldDisplayNames == null) return fallback;
+            // Bind() hands back `fallback` whether or not the file had the entry, so a saved value
+            // is told from an absent one by comparing serialized text against the fallback's; a
+            // saved value that happens to equal the fallback is indistinguishable, and harmless
+            // to skip.  Newest old name first, so a ship renamed twice takes the latest section.
+            string fallbackText = TomlTypeConverter.ConvertToString(fallback, typeof(T));
+            T result = fallback;
+            bool found = false;
+            foreach (var oldName in def.OldDisplayNames)
+            {
+                var oldDef = new ConfigDefinition(oldName, key);
+                var entry = mod.Config.Bind(oldDef, fallback);
+                if (!found && entry.GetSerializedValue() != fallbackText)
+                {
+                    result = entry.Value;
+                    found = true;
+                }
+                mod.Config.Remove(oldDef);
+            }
+            return result;
         }
 
         // Moves values still at an old release's default to the current default.  A value that
