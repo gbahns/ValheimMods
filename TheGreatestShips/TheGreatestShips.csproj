@@ -42,6 +42,10 @@
       <HintPath>..\Libs\UnityEngine.CoreModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="UnityEngine.ImageConversionModule">
+      <HintPath>..\Libs\UnityEngine.ImageConversionModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="UnityEngine.PhysicsModule">
       <HintPath>..\Libs\UnityEngine.PhysicsModule.dll</HintPath>
       <Private>false</Private>

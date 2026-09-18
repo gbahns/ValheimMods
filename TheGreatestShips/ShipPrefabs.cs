@@ -139,6 +139,10 @@ namespace TheGreatestShips
             if (def.Pen != null)
                 AnimalPen.Build(clone, def.Pen);
 
+            // Last, once the ship looks the way it will be built: its own Hammer icon.
+            var icon = piece != null ? ShipIcons.Render(def, clone) : null;
+            if (icon != null) piece.m_icon = icon;
+
             _built[def] = new Built { Clone = clone, BaseSailForceFactor = ship.m_sailForceFactor };
             ApplyHandling(def);
             Jotunn.Logger.LogInfo($"[TheGreatestShips] Cloned {def.BasePrefab} as {def.PrefabName} ({def.BaseName} sail force {ship.m_sailForceFactor}).");
