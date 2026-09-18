@@ -42,6 +42,11 @@ the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was 
   jumping overboard the way it can on a bare longship. First pass: the pen's position, size
   and deck height are estimates, not measured in-game, and it doesn't protect penned animals from
   outside damage (only from jumping off). Otherwise a vanilla Longship with 12 hold slots instead of 18, the rest going to fodder and tack. Named for the Norse trading vessel that carried livestock.
+- **Experimental:** a **Greater Byrding** -- the Byrding half again as big, the whole ship scaled
+  1.5×, with a pen the length of its deck and a fence high enough for wolves: room for a lox. A
+  longship's hold, 1500 health, slower to turn. Its recipe adds 4 Lox Pelt and 4 Wolf Pelt.
+- New "Hull Scale" setting: the whole ship in all three dimensions; "Hull Width" and "Hull Length"
+  multiply on top of it.
 
 ## 0.9.0 — 2026-09-16
 

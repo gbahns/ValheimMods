@@ -17,6 +17,7 @@ New ships built on Valheim's own hulls. Install on the server and on every clien
 | **Busse** | Longship | about 8.0 | 1800 | slower still | 36 | 1.3× | 1.15× | amber | green stripes | Fine Wood 55, Ancient Bark 85, Iron Nails 250, Deer Hide 15, Core Wood 45, Chain 4 |
 | **Big Busse** | Longship | about 7.5 | 2200 | slowest | 64 | 1.4× | 1.3× | amber | green stripes | Fine Wood 80, Ancient Bark 130, Iron Nails 350, Deer Hide 25, Core Wood 70, Chain 6 |
 | **Byrding** *(experimental)* | Longship | 9.65 | 1000 | normal | 12 | | | white | brown | Fine Wood 40, Ancient Bark 40, Iron Nails 100, Deer Hide 10, Wood 80 |
+| **Greater Byrding** *(experimental)* | Longship, 1.5× | about 9.2 | 1500 | slower | 18 | | | white | brown | Fine Wood 60, Ancient Bark 60, Iron Nails 150, Deer Hide 15, Wood 120, Lox Pelt 4, Wolf Pelt 4 |
 
 Top speeds are in m/s, in full wind about 64° off the stern. They were worked out from logged
 sailing with the Captain's Log mod.
@@ -54,6 +55,10 @@ size and deck height are estimates rather than measured in-game, and it only sto
 escaping -- it does nothing to protect them from outside damage (monsters, the ship hitting
 rocks). Expect it to need retuning.
 
+The **Greater Byrding** is the same idea half again as big -- the whole ship scaled 1.5× -- with a
+pen the length of its deck, mast and all, and a fence high enough that a wolf can't clear it: room
+for a lox, or a pack of wolves. A longship's hold, and it turns slowly.
+
 ## Configuration
 
 `BepInEx/config/DeathMonger.TheGreatestShips.cfg` has one section per ship, named after it:
@@ -70,6 +75,7 @@ rocks). Expect it to need retuning.
 | Hull Stripes | Number of painted bands; 0 paints the hull solid | Needs a restart |
 | Hull Width | Width relative to the vanilla ship. Keep it the same for everyone on a server | Needs a restart |
 | Hull Length | Bow-to-stern length relative to the vanilla ship. Keep it the same for everyone on a server | Needs a restart |
+| Hull Scale | Size of the whole ship in all three dimensions; Width and Length multiply on top. Keep it the same for everyone on a server | Needs a restart |
 
 Updating from 0.9.0 moves a Fast Karve speed of 1.14 and the old Cargo Longship recipe to the new
 defaults. The Cargo Longship's own section also moves across under its new name, Knarr. Values you

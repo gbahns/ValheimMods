@@ -21,6 +21,7 @@ namespace TheGreatestShips
             public ConfigEntry<int>    HullStripes;
             public ConfigEntry<float>  Width;
             public ConfigEntry<float>  Length;
+            public ConfigEntry<float>  Scale;
         }
 
         private static readonly Dictionary<ShipDefinition, Entries> _entries =
@@ -95,6 +96,10 @@ namespace TheGreatestShips
                 e.Length = mod.Config.Bind(section, "Hull Length", Migrated(mod, def, "Hull Length", def.DefaultLength),
                     $"Bow-to-stern length relative to the vanilla {def.BaseName}; below 1 is shorter, above 1 longer. " +
                     "Everyone on a server should use the same value. Requires a game restart.");
+
+                e.Scale = mod.Config.Bind(section, "Hull Scale", Migrated(mod, def, "Hull Scale", def.DefaultScale),
+                    $"Size of the whole ship, all three dimensions, relative to the vanilla {def.BaseName}. Width and Length " +
+                    "multiply on top of it. Everyone on a server should use the same value. Requires a game restart.");
 
                 var captured = def;
                 e.Recipe.SettingChanged += (_, __) => ShipPrefabs.ApplyRecipe(captured);

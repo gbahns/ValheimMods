@@ -5,9 +5,26 @@ using UnityEngine;
 namespace TheGreatestShips
 {
     /// <summary>
-    /// Builds a rail fence on the Stable Ship's deck -- a 1 m post at each corner, 2 m beams along
-    /// the sides -- out of vanilla pole and beam pieces reduced to bare geometry: renderers and
-    /// colliders, no scripts.
+    /// Where a ship's livestock pen goes and how big it is, in the hull's local units: on a ship
+    /// with a Hull Scale, everything here scales with it.  Positions are for the VikingShip hull,
+    /// whose deck is at y = 0.58, mast at z = 0.28, aft rowing benches from z = -2.78, chest from
+    /// z = 3.06.  Rails are whole beams when (Width - 0.4) and (Length - 0.4) split into 2 m and
+    /// 1 m pieces.
+    /// </summary>
+    internal sealed class PenSpec
+    {
+        public float   Length;       // along the hull (bow-to-stern)
+        public float   Width;        // across the beam
+        public float   CenterZ;      // pen center, fore (+) or aft (-) of the hull's origin
+        public float   PostHeight;   // corner posts; the 1 m pole is scaled to this
+        public float[] RailHeights;  // rail centers above the deck; rails are 0.4 thick
+    }
+
+    /// <summary>
+    /// Builds a rail fence on a ship's deck -- a post at each corner, beams along the sides --
+    /// out of vanilla pole and beam pieces reduced to bare geometry: renderers and colliders, no
+    /// scripts.  The rails form a solid band, which also blocks the line-of-sight ray monster AI
+    /// uses to spot a target: a penned animal can't see threats and they can't see it.
     ///
     /// Three lessons from earlier attempts.  The pieces must not keep their ZNetView / WearNTear /
     /// Piece components: as live build pieces they had no support on a ship and collapsed a few
@@ -19,10 +36,6 @@ namespace TheGreatestShips
     /// straight through the boars.  So the colliders do belong to the ship's body -- real swept
     /// contact, like the hull -- and PenBallast pins the body's center of mass and inertia to the
     /// hull-only values so the rails add no top-heaviness.
-    ///
-    /// Placement, from the VikingShip prefab: the mast is at z = 0.28 and the aft rowing benches
-    /// start at z = -2.78, so the pen sits in the open deck between them.  Its sides are sized so
-    /// every rail is whole beams (2 + 1 m across, 2 m along) with the posts' width taken off.
     /// </summary>
     internal static class AnimalPen
     {
@@ -31,21 +44,12 @@ namespace TheGreatestShips
         private const string Beam2PrefabName = "wood_beam";   // 2.0 x 0.4 x 0.4, along its local X
         private const string Beam1PrefabName = "wood_beam_1"; // 1.0 x 0.4 x 0.4
 
-        private const float PenLength  = 2.4f; // along the hull: z = -2.6 .. -0.2, clear of mast and benches
-        private const float PenWidth   = 3.4f; // across the beam; the hull is widest here
-        private const float PenCenterZ = -1.4f;
-        // The deck, above the hull's local origin: read from the VikingShip prefab, where everything
-        // that stands on the deck (benches, ladders, chest, controls) sits at y = 0.53..0.62.
+        // The VikingShip's deck, above the hull's local origin: everything that stands on it
+        // (benches, ladders, chest, controls) sits at y = 0.53..0.62 in the prefab.
         private const float DeckHeight = 0.58f;
-        private const float PostBottom = DeckHeight;
-        private const float PostHeight = 1f;
-        // Rail centers above PostBottom.  Beams are 0.4 thick, so these cover 0.2..0.6 and
-        // 0.65..1.05: a 5 cm gap so the two don't share a face and shimmer, and nothing a boar
-        // could get under.
-        private static readonly float[] RailHeights = { 0.4f, 0.85f };
-        private const float PostWidth = 0.4f;
+        private const float PostWidth  = 0.4f;
 
-        internal static void Build(GameObject clone)
+        internal static void Build(GameObject clone, PenSpec spec)
         {
             var post  = PrefabManager.Instance.GetPrefab(PostPrefabName);
             var beam2 = PrefabManager.Instance.GetPrefab(Beam2PrefabName);
@@ -63,28 +67,28 @@ namespace TheGreatestShips
             pen.transform.SetParent(clone.transform, false);
             pen.AddComponent<PenBallast>();
 
-            float halfLen = PenLength / 2f;
-            float halfWid = PenWidth / 2f;
+            float halfLen = spec.Length / 2f;
+            float halfWid = spec.Width / 2f;
             int pieces = 0;
 
             foreach (var corner in new[] { new Vector3(halfWid, 0, halfLen), new Vector3(-halfWid, 0, halfLen),
                                            new Vector3(halfWid, 0, -halfLen), new Vector3(-halfWid, 0, -halfLen) })
             {
-                Place(post, pen.transform, corner + new Vector3(0f, PostBottom + PostHeight / 2f, PenCenterZ), Quaternion.identity);
+                var p = Place(post, pen.transform, corner + new Vector3(0f, DeckHeight + spec.PostHeight / 2f, spec.CenterZ), Quaternion.identity);
+                p.transform.localScale = new Vector3(1f, spec.PostHeight, 1f); // the pole is 1 m tall
                 pieces++;
             }
 
             // Four sides, no gate: a gate needs its Door script, and that needs the networking
-            // these pieces lose.  Loading is the player's problem for now.
-            foreach (float rail in RailHeights)
+            // these pieces lose.  Rails run between the posts' inner faces rather than into their
+            // centers, so no rail face lies in the same plane as a post face (which shimmers).
+            foreach (float rail in spec.RailHeights)
             {
-                // Rails run between the posts' inner faces rather than into their centers, so no
-                // rail face lies in the same plane as a post face (which shimmers).
-                float y = PostBottom + rail;
-                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(0f, y, PenCenterZ + halfLen), 0f, PenWidth - PostWidth);    // bow
-                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(0f, y, PenCenterZ - halfLen), 0f, PenWidth - PostWidth);   // stern
-                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(halfWid, y, PenCenterZ), 90f, PenLength - PostWidth);  // starboard
-                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(-halfWid, y, PenCenterZ), 90f, PenLength - PostWidth); // port
+                float y = DeckHeight + rail;
+                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(0f, y, spec.CenterZ + halfLen), 0f, spec.Width - PostWidth);    // bow
+                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(0f, y, spec.CenterZ - halfLen), 0f, spec.Width - PostWidth);   // stern
+                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(halfWid, y, spec.CenterZ), 90f, spec.Length - PostWidth);  // starboard
+                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(-halfWid, y, spec.CenterZ), 90f, spec.Length - PostWidth); // port
             }
 
             // The pieces' "woodwall" material has _RippleDistance 0.03: Custom/Piece displaces
@@ -97,12 +101,12 @@ namespace TheGreatestShips
             foreach (var renderer in pen.GetComponentsInChildren<Renderer>(true))
                 renderer.SetPropertyBlock(noRipple);
 
-            Jotunn.Logger.LogInfo($"[TheGreatestShips] Built animal pen: {pieces} posts and rails (first pass; position and size are estimates).");
+            Jotunn.Logger.LogInfo($"[TheGreatestShips] Built animal pen: {pieces} posts and rails, {spec.Width} x {spec.Length} at z {spec.CenterZ}.");
         }
 
         // A rail of the given length, centered on `center`, running along the yaw'd X axis: as
-        // many 2 m beams as fit, then a 1 m beam for an odd metre, laid end to end from one post
-        // to the other.
+        // many 2 m beams as fit, then a 1 m beam scaled to whatever is left, laid end to end from
+        // one post to the other.
         private static int PlaceRail(Transform parent, GameObject beam2, GameObject beam1, Vector3 center, float yaw, float length)
         {
             var rotation = Quaternion.Euler(0f, yaw, 0f);
@@ -116,8 +120,6 @@ namespace TheGreatestShips
             float remainder = length - (x + length / 2f);
             if (remainder > 0.01f)
             {
-                // A 1 m beam scaled along its length to whatever is left (0.6 m for a 3 m side
-                // less the posts), so the rail meets the post instead of stopping short.
                 var last = Place(beam1, parent, center + rotation * new Vector3(x + remainder / 2f, 0f, 0f), rotation);
                 last.transform.localScale = new Vector3(remainder, 1f, 1f);
                 placed++;

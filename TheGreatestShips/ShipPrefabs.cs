@@ -132,12 +132,12 @@ namespace TheGreatestShips
             var cfg = ShipConfig.For(def);
             TintSail(def, clone, cfg.SailColor.Value);
             TintHull(def, clone, cfg.HullColor.Value, cfg.HullStripes.Value);
+            SetScale(def, clone, cfg.Scale.Value);
             SetWidth(def, clone, cfg.Width.Value);
             SetLength(def, clone, cfg.Length.Value);
 
-            // One-off, not a general per-ship field yet: only the Stable Ship gets a pen.
-            if (def.PrefabName == "DM_StableShip")
-                AnimalPen.Build(clone);
+            if (def.Pen != null)
+                AnimalPen.Build(clone, def.Pen);
 
             _built[def] = new Built { Clone = clone, BaseSailForceFactor = ship.m_sailForceFactor };
             ApplyHandling(def);
@@ -260,6 +260,19 @@ namespace TheGreatestShips
             scale.x *= width;
             clone.transform.localScale = scale;
             Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: width x{width}.");
+        }
+
+        // The whole ship, all three axes.  Width and Length multiply on top of it.  The game
+        // floats a hull by where its center of mass sits against the water level, so a scaled-up
+        // hull rides deeper: its deck ends up at about the same height above the water, with
+        // more hull beneath.
+        private static void SetScale(ShipDefinition def, GameObject clone, float scale)
+        {
+            scale = Mathf.Clamp(scale, 0.5f, 2f);
+            if (Mathf.Approximately(scale, 1f)) return;
+
+            clone.transform.localScale *= scale;
+            Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: scale x{scale}.");
         }
 
         // Same as SetWidth, but bow-to-stern (local Z, Ship.CustomFixedUpdate's transform.forward)

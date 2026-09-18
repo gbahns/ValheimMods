@@ -30,6 +30,8 @@ namespace TheGreatestShips
         public int    DefaultHullStripes; // painted bands on the hull; 0 paints it solid
         public float  DefaultWidth;       // sideways scale of the whole ship
         public float  DefaultLength = 1f; // bow-to-stern scale of the whole ship
+        public float  DefaultScale  = 1f; // uniform scale of the whole ship, all three axes
+        public PenSpec Pen;               // a livestock pen on deck, or null
 
         // Defaults an earlier release shipped.  A saved config still holding one of these was
         // never changed by hand, so it is moved to the current default (see ShipConfig.Migrate).
@@ -160,7 +162,7 @@ namespace TheGreatestShips
             },
             new ShipDefinition
             {
-                PrefabName         = "DM_StableShip",
+                PrefabName         = "DM_StableShip",   // saved hash: keep even though it's now the Byrding
                 BasePrefab         = "VikingShip",
                 BaseName           = "Longship",
                 BaseTopSpeed       = 9.65f,
@@ -178,6 +180,35 @@ namespace TheGreatestShips
                 DefaultHullStripes = 0,
                 DefaultWidth       = 1f,
                 DefaultLength      = 1f,
+                // Aft of the mast, between it (z = 0.28) and the benches (z = -2.78).  Two rails
+                // 0.4 thick at 0.4 and 0.85 make a solid band from 0.2 to 1.05: a boar can't get
+                // under, over, or see out.
+                Pen = new PenSpec { Length = 2.4f, Width = 3.4f, CenterZ = -1.4f, PostHeight = 1f, RailHeights = new[] { 0.4f, 0.85f } },
+            },
+            new ShipDefinition
+            {
+                PrefabName         = "DM_GreaterByrding",
+                BasePrefab         = "VikingShip",
+                BaseName           = "Longship",
+                BaseTopSpeed       = 9.65f,
+                DisplayName        = "Greater Byrding",
+                Description        = "A longship half again the size, with a high-railed pen the length of its deck: room for a lox, and a fence a wolf can't clear. Slow to turn.",
+                StorageWidth       = 6,
+                StorageHeight      = 3,
+                DefaultRecipe      = "FineWood:60,ElderBark:60,IronNails:150,DeerHide:15,Wood:120,LoxPelt:4,WolfPelt:4",
+                DefaultSpeed       = 0.95f,   // about 9.2: a big hull under a longship's sail
+                DefaultHealth      = 1500f,
+                DefaultRudderSpeed = 0.8f,
+                DefaultSailColor   = Color.white,
+                DefaultHullColor   = Brown,
+                DefaultHullStripes = 0,
+                DefaultWidth       = 1f,
+                DefaultLength      = 1f,
+                DefaultScale       = 1.5f,
+                // The whole open deck, mast inside it, from the aft benches to the chest.  In hull
+                // units, so at 1.5x this is 5.1 x 8.1 m with rails to 2.25 m -- a wolf jumps, a
+                // lox doesn't fit anything smaller.
+                Pen = new PenSpec { Length = 5.4f, Width = 3.4f, CenterZ = 0.15f, PostHeight = 1.5f, RailHeights = new[] { 0.4f, 0.85f, 1.3f } },
             },
         };
     }
