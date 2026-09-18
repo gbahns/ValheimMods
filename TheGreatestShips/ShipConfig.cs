@@ -53,7 +53,8 @@ namespace TheGreatestShips
         //  16 (0.9.1): every recipe within five ingredients, the build HUD's real limit: the Fast Longship drops
         //              Guck, the cargo ships fold Core Wood into Ancient Bark, the Greater Byrding drops Deer Hide
         //              for 20 Lox Pelt.
-        private const int CurrentConfigVersion = 16;
+        //  17 (0.9.1): Small Byrding 12 Deer Hide, Byrding 15.
+        private const int CurrentConfigVersion = 17;
 
         internal static void Bind(TheGreatestShipsMod mod)
         {
