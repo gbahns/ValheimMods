@@ -35,6 +35,7 @@ namespace TheGreatestShips
         //   3 (0.9.1): Cargo Longship renamed Knarr, its config section moved to match.
         //   4 (0.9.1): Fast Longship 1.28 -> 1.342, matching the Fast Ship Skuldelev's sail force.
         //   5 (0.9.1): Fast Longship recipe: Troll Hide, Guck and 120 Iron Nails; no Linen or Resin.
+        //              Knarr recipe: 180 Iron Nails and 2 Chain (the 0.9.0 recipe had 150 and none).
         private const int CurrentConfigVersion = 5;
 
         internal static void Bind(TheGreatestShipsMod mod)

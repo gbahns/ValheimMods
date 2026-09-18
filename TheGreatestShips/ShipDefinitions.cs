@@ -108,7 +108,7 @@ namespace TheGreatestShips
                 Description        = "A deep, heavy longship built to haul. Slower and clumsier than a longship, but sturdier, with nearly twice its hold. The smallest of three cargo tiers -- see also the Busse and the Big Busse.",
                 StorageWidth       = 8,
                 StorageHeight      = 4,
-                DefaultRecipe      = "FineWood:40,ElderBark:60,IronNails:180,DeerHide:10,RoundLog:30",
+                DefaultRecipe      = "FineWood:40,ElderBark:60,IronNails:180,DeerHide:10,RoundLog:30,Chain:2",
                 OldDefaultRecipe   = "FineWood:40,ElderBark:60,IronNails:150,DeerHide:10,RoundLog:30",
                 DefaultSpeed       = 0.87f,   // about 8.6, measured 8.58
                 DefaultHealth      = 1500f,   // Longship 1000
@@ -128,7 +128,7 @@ namespace TheGreatestShips
                 Description        = "A longship built out further than the Knarr. Slower still and even clumsier, but holds more and shrugs off more damage.",
                 StorageWidth       = 9,
                 StorageHeight      = 4,
-                DefaultRecipe      = "FineWood:55,ElderBark:85,IronNails:250,DeerHide:15,RoundLog:45",
+                DefaultRecipe      = "FineWood:55,ElderBark:85,IronNails:250,DeerHide:15,RoundLog:45,Chain:4",
                 DefaultSpeed       = 0.83f,   // about 8.0
                 DefaultHealth      = 1800f,
                 DefaultRudderSpeed = 0.7f,
@@ -148,7 +148,7 @@ namespace TheGreatestShips
                 Description        = "The largest hold of the three cargo tiers. Slow and hard to turn, but tougher than the Busse and hauls far more.",
                 StorageWidth       = 8,
                 StorageHeight      = 8,
-                DefaultRecipe      = "FineWood:80,ElderBark:130,IronNails:350,DeerHide:25,RoundLog:70",
+                DefaultRecipe      = "FineWood:80,ElderBark:130,IronNails:350,DeerHide:25,RoundLog:70,Chain:6",
                 DefaultSpeed       = 0.78f,   // about 7.5
                 DefaultHealth      = 2200f,
                 DefaultRudderSpeed = 0.6f,

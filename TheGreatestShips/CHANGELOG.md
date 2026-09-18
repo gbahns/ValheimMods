@@ -16,7 +16,7 @@ the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was 
   Hide, 10 Troll Hide, 10 Guck -- so it no longer waits on the Plains for Linen, and Resin (never
   a real cost) is gone; and it is 10% longer as well as 15% narrower.
 - Cargo Longship: health 1000 → 1500, and its rudder swings at 0.8 of a longship's speed, so it
-  turns more slowly. Its recipe takes 180 Iron Nails instead of 150. Top speed about 8.4.
+  turns more slowly. Its recipe takes 180 Iron Nails instead of 150, and 2 Chain. Top speed about 8.4.
 - New per-ship settings "Health" and "Rudder Speed", synced with the server.
 - Every ship names itself: its rudder reads "Use rudder (Fast Longship)" and its hold "Fast Longship
   Storage". The vanilla ships get the same ("Use rudder (Karve)", "Longship Storage", and the
@@ -33,7 +33,7 @@ the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was 
   automatically.
 - Two new, bigger cargo tiers above the Knarr, both slower and clumsier than the one before but
   tougher and roomier: the **Busse** (36 slots, 1800 health) and the **Big Busse** (64 slots, 2200
-  health).
+  health). All three cargo ships take Chain -- 2, 4 and 6 -- as cargo lashing and mooring.
 - New "Hull Length" setting, alongside "Hull Width": stretches the ship bow-to-stern instead of
   side-to-side. The Busse (1.15×) and Big Busse (1.3×) use it so their bigger hold reads as a
   longer hull, not just a fatter one.
