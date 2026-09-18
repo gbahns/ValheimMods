@@ -13,22 +13,23 @@ New ships built on Valheim's own hulls. Install on the server and on every clien
 | **Fast Karve** | Karve | 10.1 | 400 | normal | 2 | 0.85× | | blue | red stripes | Fine Wood 30, Ancient Bark 20, Bronze Nails 60, Troll Hide 8, Resin 20 |
 | Longship *(vanilla)* | | 9.65 | 1000 | normal | 18 | | | | | |
 | **Fast Longship** | Longship | 13.0 | 800 | normal | 12 | 0.85× | 1.1× | blue | red stripes | Fine Wood 40, Ancient Bark 40, Iron Nails 120, Deer Hide 10, Troll Hide 10, Guck 10 |
-| **Knarr** | Longship | 8.6 | 1500 | slower | 32 | 1.25× | | amber | green stripes | Fine Wood 40, Ancient Bark 40, Iron Nails 140, Deer Hide 10, Troll Hide 10, Core Wood 20 |
-| **Busse** | Longship | about 8.0 | 1800 | slower still | 36 | 1.3× | 1.15× | amber | green stripes | Fine Wood 50, Ancient Bark 40, Iron Nails 160, Deer Hide 15, Troll Hide 15, Core Wood 30 |
-| **Big Busse** | Longship | about 7.5 | 2200 | slowest | 64 | 1.4× | 1.3× | amber | green stripes | Fine Wood 60, Ancient Bark 50, Iron Nails 190, Deer Hide 20, Troll Hide 20, Core Wood 30 |
+| **Knarr** | Longship | 8.6 | 1100 | slower | 32 | 1.25× | | amber | green stripes | Fine Wood 40, Ancient Bark 30, Iron Nails 120, Deer Hide 10, Troll Hide 10, Core Wood 20 |
+| **Busse** | Longship | about 8.0 | 1400 | slower still | 36 | 1.3× | 1.15× | amber | green stripes | Fine Wood 50, Ancient Bark 30, Iron Nails 140, Deer Hide 15, Troll Hide 15, Core Wood 30 |
+| **Big Busse** | Longship | about 7.5 | 1900 | slowest | 64 | 1.5× | 1.5× | amber | green stripes | Fine Wood 60, Ancient Bark 50, Iron Nails 180, Deer Hide 20, Troll Hide 20, Core Wood 40 |
 | **Small Byrding** *(experimental)* | Longship | about 8.7 | 1000 | normal | 12 | | | white | brown | Fine Wood 40, Ancient Bark 40, Iron Nails 100, Deer Hide 10, Wood 24 |
-| **Byrding** *(experimental)* | Longship, 1.25× | about 8.2 | 1250 | a little slower | 18 | | | white | brown | Fine Wood 55, Ancient Bark 55, Iron Nails 150, Deer Hide 12, Wood 36 |
-| **Greater Byrding** *(experimental)* | Longship, 1.5× | about 7.7 | 1500 | slower | 24 | | | white | brown | Fine Wood 65, Ancient Bark 65, Iron Nails 200, Wood 52, Deer Hide 20, Lox Pelt 10 |
+| **Byrding** *(experimental)* | Longship, 1.25× | about 8.2 | 1400 | a little slower | 18 | | | white | brown | Fine Wood 55, Ancient Bark 55, Iron Nails 150, Deer Hide 12, Wood 36 |
+| **Greater Byrding** *(experimental)* | Longship, 1.5× | about 7.7 | 1600 | slower | 24 | | | white | brown | Fine Wood 65, Ancient Bark 65, Iron Nails 200, Wood 52, Deer Hide 20, Lox Pelt 10 |
 
 Top speeds are in m/s, in full wind about 64° off the stern. They were worked out from logged
 sailing with the Captain's Log mod.
 
 Hulls are priced by their planking: a ship's wood and nails follow the area of its hull, taking
-the vanilla Longship's 80 wood and 100 nails as the unit, with the cargo ships built somewhat
-heavier (about 1.15× the wood and 1.3× the nails per unit of hull) and the Byrdings, mostly open
-deck, somewhat lighter. Every recipe's materials weigh 450 or less -- one load with the
-Megingjord -- except the Greater Byrding, the biggest ship here, at 494: two trips, or one on a
-Mead of Troll Endurance. (The vanilla Longship's materials weigh 220, the Drakkar's 260.)
+the vanilla Longship's 80 wood and 100 nails as the unit -- the cargo ships pay a small premium
+(about 1.05×) and the Byrdings, mostly open deck, a little less. Health follows the wood in the
+recipe, 1000 per 80, except the two fast ships, which are built light and take 20% less. Every
+recipe's materials weigh 450 or less -- one load with the Megingjord -- except the Greater
+Byrding, the biggest ship here, at 494: two trips, or one on a Mead of Troll Endurance. (The
+vanilla Longship's materials weigh 220, the Drakkar's 260.)
 
 Every ship names itself on its rudder ("Use rudder (Fast Longship)") and its hold ("Fast Longship
 Storage"), and so do the vanilla ships ("Use rudder (Karve)", "Karve Storage"), so you can always tell which ship you are looking at.
@@ -51,8 +52,9 @@ with swamp guck: the fastest ship here, with a lighter hull and two thirds of a 
 Three tiers of deep, heavy longship built to haul, named for real Norse cargo vessels. Each is
 slower and clumsier than a longship, but sturdier, and holds progressively more: the Knarr 32
 stacks, the Busse 36, the Big Busse 64. The Busse and Big Busse are also stretched bow-to-stern
-(1.15× and 1.3×), not just wider, so their bigger hold reads as a longer hull, not just a fatter
-one.
+(1.15× and 1.5×), not just wider, so their bigger hold reads as a longer hull, not just a fatter
+one; each holds about 1.4× as much per square meter of deck as a longship, which is what a hull
+with no rowing benches should manage.
 
 ## Small Byrding, Byrding and Greater Byrding *(experimental)*
 

@@ -38,6 +38,9 @@ namespace TheGreatestShips
         // never changed by hand, so it is moved to the current default (see ShipConfig.Migrate).
         public float    OldDefaultSpeed = float.NaN;
         public string[] OldDefaultRecipes;
+        public float[]  OldDefaultHealths;   // earlier defaults for Health, Hull Width and Hull Length: a saved
+        public float[]  OldDefaultWidths;    // value still at one of these moves to the current default
+        public float[]  OldDefaultLengths;
     }
 
     internal static class ShipDefinitions
@@ -111,14 +114,16 @@ namespace TheGreatestShips
                 Description        = "A deep, heavy longship built to haul. Slower and clumsier than a longship, but sturdier, with nearly twice its hold. The smallest of three cargo tiers -- see also the Busse and the Big Busse.",
                 StorageWidth       = 8,
                 StorageHeight      = 4,
-                DefaultRecipe      = "FineWood:40,ElderBark:40,IronNails:140,DeerHide:10,TrollHide:10,RoundLog:20",   // weighs 300; ~1.15x a longship's wood and ~1.3x its nails per unit of hull
-                OldDefaultRecipes  = new[] { "FineWood:40,ElderBark:60,IronNails:180,DeerHide:10,TrollHide:10,RoundLog:30",
+                DefaultRecipe      = "FineWood:40,ElderBark:30,IronNails:120,DeerHide:10,TrollHide:10,RoundLog:20",   // weighs 270; wood and nails ~1.05x a longship's per unit of hull planking
+                OldDefaultRecipes  = new[] { "FineWood:40,ElderBark:40,IronNails:140,DeerHide:10,TrollHide:10,RoundLog:20",
+                                             "FineWood:40,ElderBark:60,IronNails:180,DeerHide:10,TrollHide:10,RoundLog:30",
                                              "FineWood:40,ElderBark:60,IronNails:180,TrollHide:10,RoundLog:30",
                                              "FineWood:40,ElderBark:60,IronNails:180,DeerHide:10,RoundLog:30",
                                              "FineWood:40,ElderBark:60,IronNails:180,DeerHide:10,RoundLog:30,Chain:2",
                                              "FineWood:40,ElderBark:60,IronNails:150,DeerHide:10,RoundLog:30" },
                 DefaultSpeed       = 0.87f,   // about 8.6, measured 8.58
-                DefaultHealth      = 1500f,   // Longship 1000
+                DefaultHealth      = 1100f,   // Longship 1000; health follows the wood in the recipe (1000 per 80)
+                OldDefaultHealths  = new[] { 1500f },
                 DefaultRudderSpeed = 0.8f,    // Longship 1.0, as OdinShipPlus's cargo ships
                 DefaultSailColor   = Amber,
                 DefaultHullColor   = Green,
@@ -135,14 +140,16 @@ namespace TheGreatestShips
                 Description        = "A longship built out further than the Knarr. Slower still and even clumsier, but holds more and shrugs off more damage.",
                 StorageWidth       = 9,
                 StorageHeight      = 4,
-                DefaultRecipe      = "FineWood:50,ElderBark:40,IronNails:160,DeerHide:15,TrollHide:15,RoundLog:30",   // weighs 365
-                OldDefaultRecipes  = new[] { "FineWood:50,ElderBark:50,IronNails:240,DeerHide:15,TrollHide:15,RoundLog:40",
+                DefaultRecipe      = "FineWood:50,ElderBark:30,IronNails:140,DeerHide:15,TrollHide:15,RoundLog:30",   // weighs 335
+                OldDefaultRecipes  = new[] { "FineWood:50,ElderBark:40,IronNails:160,DeerHide:15,TrollHide:15,RoundLog:30",
+                                             "FineWood:50,ElderBark:50,IronNails:240,DeerHide:15,TrollHide:15,RoundLog:40",
                                              "FineWood:50,ElderBark:60,IronNails:240,TrollHide:15,RoundLog:40",
                                              "FineWood:50,ElderBark:60,IronNails:240,DeerHide:15,RoundLog:40",
                                              "FineWood:50,ElderBark:60,IronNails:240,DeerHide:15,RoundLog:40,Chain:4",
                                              "FineWood:55,ElderBark:85,IronNails:250,DeerHide:15,RoundLog:45,Chain:4" },
                 DefaultSpeed       = 0.83f,   // about 8.0
-                DefaultHealth      = 1800f,
+                DefaultHealth      = 1400f,
+                OldDefaultHealths  = new[] { 1800f },
                 DefaultRudderSpeed = 0.7f,
                 DefaultSailColor   = Amber,
                 DefaultHullColor   = Green,
@@ -160,20 +167,24 @@ namespace TheGreatestShips
                 Description        = "The largest hold of the three cargo tiers. Slow and hard to turn, but tougher than the Busse and hauls far more.",
                 StorageWidth       = 8,
                 StorageHeight      = 8,
-                DefaultRecipe      = "FineWood:60,ElderBark:50,IronNails:190,DeerHide:20,TrollHide:20,RoundLog:30",   // weighs 435
-                OldDefaultRecipes  = new[] { "FineWood:70,ElderBark:80,IronNails:320,DeerHide:20,TrollHide:20,RoundLog:40",
+                DefaultRecipe      = "FineWood:60,ElderBark:50,IronNails:180,DeerHide:20,TrollHide:20,RoundLog:40",   // weighs 450
+                OldDefaultRecipes  = new[] { "FineWood:60,ElderBark:50,IronNails:190,DeerHide:20,TrollHide:20,RoundLog:30",
+                                             "FineWood:70,ElderBark:80,IronNails:320,DeerHide:20,TrollHide:20,RoundLog:40",
                                              "FineWood:70,ElderBark:90,IronNails:320,TrollHide:20,RoundLog:40",
                                              "FineWood:70,ElderBark:90,IronNails:320,DeerHide:20,RoundLog:40",
                                              "FineWood:70,ElderBark:90,IronNails:320,DeerHide:20,RoundLog:40,Chain:6",
                                              "FineWood:80,ElderBark:130,IronNails:350,DeerHide:25,RoundLog:70,Chain:6" },
                 DefaultSpeed       = 0.78f,   // about 7.5
-                DefaultHealth      = 2200f,
+                DefaultHealth      = 1900f,
+                OldDefaultHealths  = new[] { 2200f },
                 DefaultRudderSpeed = 0.6f,
                 DefaultSailColor   = Amber,
                 DefaultHullColor   = Green,
                 DefaultHullStripes = 6,
-                DefaultWidth       = 1.4f,
-                DefaultLength      = 1.3f,
+                DefaultWidth       = 1.5f,    // 1.5 x 1.5: the Greater Byrding's footprint, at longship height, so 64
+                DefaultLength      = 1.5f,    // slots is the Knarr's cargo density (1.4x a longship's per deck area), not 2x
+                OldDefaultWidths   = new[] { 1.4f },
+                OldDefaultLengths  = new[] { 1.3f },
             },
             new ShipDefinition
             {
@@ -219,7 +230,8 @@ namespace TheGreatestShips
                                              "FineWood:50,ElderBark:50,IronNails:125,DeerHide:12,Wood:100" },
                 DefaultSpeed       = 0.85f,   // about 8.2: 15% under a longship
                 OldDefaultSpeed    = 0.97f,
-                DefaultHealth      = 1250f,
+                DefaultHealth      = 1400f,   // follows the wood in the recipe (1000 per 80)
+                OldDefaultHealths  = new[] { 1250f },
                 DefaultRudderSpeed = 0.9f,
                 DefaultSailColor   = Color.white,
                 DefaultHullColor   = Brown,
@@ -250,7 +262,8 @@ namespace TheGreatestShips
                                              "FineWood:60,ElderBark:60,IronNails:150,DeerHide:15,Wood:120,LoxPelt:4,WolfPelt:4" },
                 DefaultSpeed       = 0.8f,    // about 7.7: 20% under a longship
                 OldDefaultSpeed    = 0.95f,
-                DefaultHealth      = 1500f,
+                DefaultHealth      = 1600f,   // follows the wood in the recipe (1000 per 80)
+                OldDefaultHealths  = new[] { 1500f },
                 DefaultRudderSpeed = 0.8f,
                 DefaultSailColor   = Color.white,
                 DefaultHullColor   = Brown,

@@ -46,7 +46,10 @@ namespace TheGreatestShips
         //  12 (0.9.1): the Greater Byrding takes 20 Deer Hide and 10 Lox Pelt.
         //  13 (0.9.1): hulls priced by their planking: the cargo ships take less wood and far fewer nails, the
         //              Byrding and Greater Byrding about 10% more.
-        private const int CurrentConfigVersion = 13;
+        //  14 (0.9.1): cargo recipes down to ~1.05x a longship's per unit of hull; the Big Busse grows to
+        //              1.5 x 1.5; health follows the wood in each recipe (Knarr 1100, Busse 1400, Big Busse
+        //              1900, Byrding 1400, Greater Byrding 1600).
+        private const int CurrentConfigVersion = 14;
 
         internal static void Bind(TheGreatestShipsMod mod)
         {
@@ -171,6 +174,21 @@ namespace TheGreatestShips
             {
                 e.Recipe.Value = def.DefaultRecipe;
                 Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: recipe updated to the new default.");
+            }
+            MigrateFloat(def, "Health",      e.Health, def.OldDefaultHealths, def.DefaultHealth);
+            MigrateFloat(def, "Hull Width",  e.Width,  def.OldDefaultWidths,  def.DefaultWidth);
+            MigrateFloat(def, "Hull Length", e.Length, def.OldDefaultLengths, def.DefaultLength);
+        }
+
+        private static void MigrateFloat(ShipDefinition def, string key, ConfigEntry<float> entry, float[] oldDefaults, float current)
+        {
+            if (oldDefaults == null) return;
+            foreach (float old in oldDefaults)
+            {
+                if (!Mathf.Approximately(entry.Value, old)) continue;
+                entry.Value = current;
+                Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: {key} {old} -> {current} (new default).");
+                return;
             }
         }
 
