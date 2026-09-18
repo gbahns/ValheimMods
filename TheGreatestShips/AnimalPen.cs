@@ -20,8 +20,9 @@ namespace TheGreatestShips
     /// contact, like the hull -- and PenBallast pins the body's center of mass and inertia to the
     /// hull-only values so the rails add no top-heaviness.
     ///
-    /// Placement: the pen is centered on the hull's origin, which puts the mast (z = 0.28) inside
-    /// it; the open deck aft of the mast runs from about z = 0.1 back to the benches at -2.8.
+    /// Placement, from the VikingShip prefab: the mast is at z = 0.28 and the aft rowing benches
+    /// start at z = -2.78, so the pen sits in the open deck between them.  Its sides are sized so
+    /// every rail is whole beams (2 + 1 m across, 2 m along) with the posts' width taken off.
     /// </summary>
     internal static class AnimalPen
     {
@@ -30,8 +31,9 @@ namespace TheGreatestShips
         private const string Beam2PrefabName = "wood_beam";   // 2.0 x 0.4 x 0.4, along its local X
         private const string Beam1PrefabName = "wood_beam_1"; // 1.0 x 0.4 x 0.4
 
-        private const float PenLength  = 4f;   // along the hull (bow-to-stern)
-        private const float PenWidth   = 3f;   // across the beam
+        private const float PenLength  = 2.4f; // along the hull: z = -2.6 .. -0.2, clear of mast and benches
+        private const float PenWidth   = 3.4f; // across the beam; the hull is widest here
+        private const float PenCenterZ = -1.4f;
         // The deck, above the hull's local origin: read from the VikingShip prefab, where everything
         // that stands on the deck (benches, ladders, chest, controls) sits at y = 0.53..0.62.
         private const float DeckHeight = 0.58f;
@@ -68,7 +70,7 @@ namespace TheGreatestShips
             foreach (var corner in new[] { new Vector3(halfWid, 0, halfLen), new Vector3(-halfWid, 0, halfLen),
                                            new Vector3(halfWid, 0, -halfLen), new Vector3(-halfWid, 0, -halfLen) })
             {
-                Place(post, pen.transform, corner + new Vector3(0f, PostBottom + PostHeight / 2f, 0f), Quaternion.identity);
+                Place(post, pen.transform, corner + new Vector3(0f, PostBottom + PostHeight / 2f, PenCenterZ), Quaternion.identity);
                 pieces++;
             }
 
@@ -79,11 +81,18 @@ namespace TheGreatestShips
                 // Rails run between the posts' inner faces rather than into their centers, so no
                 // rail face lies in the same plane as a post face (which shimmers).
                 float y = PostBottom + rail;
-                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(0f, y, halfLen), 0f, PenWidth - PostWidth);    // bow
-                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(0f, y, -halfLen), 0f, PenWidth - PostWidth);   // stern
-                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(halfWid, y, 0f), 90f, PenLength - PostWidth);  // starboard
-                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(-halfWid, y, 0f), 90f, PenLength - PostWidth); // port
+                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(0f, y, PenCenterZ + halfLen), 0f, PenWidth - PostWidth);    // bow
+                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(0f, y, PenCenterZ - halfLen), 0f, PenWidth - PostWidth);   // stern
+                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(halfWid, y, PenCenterZ), 90f, PenLength - PostWidth);  // starboard
+                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(-halfWid, y, PenCenterZ), 90f, PenLength - PostWidth); // port
             }
+
+            // Diagnostic for a constant shimmer on the rails even with the ship at rest: the sun
+            // moves and the hull bobs, so the shadow map re-rasterizes every frame, and smooth
+            // light faces show that where the deck's dark planks hide it.  If this cures it, the
+            // cause is confirmed and this can stay or be replaced with a shadow bias.
+            foreach (var renderer in pen.GetComponentsInChildren<Renderer>(true))
+                renderer.receiveShadows = false;
 
             Jotunn.Logger.LogInfo($"[TheGreatestShips] Built animal pen: {pieces} posts and rails (first pass; position and size are estimates).");
         }
