@@ -18,7 +18,7 @@ New ships built on Valheim's own hulls. Install on the server and on every clien
 | **Big Busse** | Longship | about 7.5 | 2200 | slowest | 64 | 1.4× | 1.3× | amber | green stripes | Fine Wood 80, Ancient Bark 130, Iron Nails 350, Deer Hide 25, Core Wood 70, Chain 6 |
 | **Small Byrding** *(experimental)* | Longship | about 8.7 | 1000 | normal | 12 | | | white | brown | Fine Wood 40, Ancient Bark 40, Iron Nails 100, Deer Hide 10, Wood 80 |
 | **Byrding** *(experimental)* | Longship, 1.25× | about 8.2 | 1250 | a little slower | 18 | | | white | brown | Fine Wood 50, Ancient Bark 50, Iron Nails 125, Deer Hide 12, Wood 100 |
-| **Greater Byrding** *(experimental)* | Longship, 1.5× | about 7.7 | 1500 | slower | 24 | | | white | brown | Fine Wood 60, Ancient Bark 60, Iron Nails 150, Deer Hide 15, Wood 120, Lox Pelt 4, Wolf Pelt 4 |
+| **Greater Byrding** *(experimental)* | Longship, 1.5× | about 7.7 | 1500 | slower | 24 | | | white | brown | Fine Wood 60, Ancient Bark 60, Iron Nails 150, Wood 120, Lox Pelt 4, Wolf Pelt 4 |
 
 Top speeds are in m/s, in full wind about 64° off the stern. They were worked out from logged
 sailing with the Captain's Log mod.

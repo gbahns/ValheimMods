@@ -222,7 +222,7 @@ namespace TheGreatestShips
                 Description        = "A longship half again the size, with a high-railed pen the length of its deck: room for a lox, and a fence a wolf can't clear. Slow to turn.",
                 StorageWidth       = 6,
                 StorageHeight      = 4,
-                DefaultRecipe      = "FineWood:60,ElderBark:60,IronNails:150,DeerHide:15,Wood:120,LoxPelt:4,WolfPelt:4",
+                DefaultRecipe      = "FineWood:60,ElderBark:60,IronNails:150,Wood:120,LoxPelt:4,WolfPelt:4",   // six: the build HUD shows at most 6 + the station
                 DefaultSpeed       = 0.8f,    // about 7.7: 20% under a longship
                 OldDefaultSpeed    = 0.95f,
                 DefaultHealth      = 1500f,
