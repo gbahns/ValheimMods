@@ -22,7 +22,7 @@ namespace TheGreatestShips
     {
         private const string WallPrefabName = "wood_wall_half"; // solid, 2m wide x 1m tall x 0.3m thick
 
-        private const int   WallRows   = 3;    // stacked height: 3m, comfortably above player head height
+        private const int   WallRows   = 2;    // stacked height: 2m, about head height (3 looked too tall in-game)
         private const float PenLength  = 4f;   // along the hull (bow-to-stern)
         private const float PenWidth   = 3f;   // across the beam
         private const float DeckHeight = 1.2f; // rough guess for deck height above the hull's local origin
