@@ -22,7 +22,8 @@ namespace TheGreatestShips
     {
         private const string WallPrefabName = "wood_wall_half"; // solid, 2m wide x 1m tall x 0.3m thick
 
-        private const int   WallRows   = 2;    // stacked height: 2m, about head height (3 looked too tall in-game)
+        private const int   WallRows   = 2;    // panels stacked per wall
+        private const float WallHeight = 1.5f; // metres; 3 looked too tall in-game, 2 still did
         private const float PenLength  = 4f;   // along the hull (bow-to-stern)
         private const float PenWidth   = 3f;   // across the beam
         private const float DeckHeight = 1.2f; // rough guess for deck height above the hull's local origin
@@ -47,12 +48,13 @@ namespace TheGreatestShips
             float halfLen = PenLength / 2f;
             float halfWid = PenWidth / 2f;
 
-            // Bow, port and starboard are walled; the stern is left open for loading animals.
-            // (A gate needs its Door script, and that needs the networking these pieces lose.)
+            // All four sides walled, no gate: a gate needs its Door script, and that needs the
+            // networking these pieces lose.  Loading is the player's problem for now.
             int walls = 0;
-            walls += PlaceWallRun(pen.transform, wallPrefab, new Vector3(0f, DeckHeight, halfLen), 0f, PenWidth);
-            walls += PlaceWallRun(pen.transform, wallPrefab, new Vector3(halfWid, DeckHeight, 0f), 90f, PenLength);
-            walls += PlaceWallRun(pen.transform, wallPrefab, new Vector3(-halfWid, DeckHeight, 0f), 90f, PenLength);
+            walls += PlaceWallRun(pen.transform, wallPrefab, new Vector3(0f, DeckHeight, halfLen), 0f, PenWidth);   // bow
+            walls += PlaceWallRun(pen.transform, wallPrefab, new Vector3(0f, DeckHeight, -halfLen), 0f, PenWidth);  // stern
+            walls += PlaceWallRun(pen.transform, wallPrefab, new Vector3(halfWid, DeckHeight, 0f), 90f, PenLength); // starboard
+            walls += PlaceWallRun(pen.transform, wallPrefab, new Vector3(-halfWid, DeckHeight, 0f), 90f, PenLength); // port
 
             Jotunn.Logger.LogInfo($"[TheGreatestShips] Built animal pen: {walls} wall panels (first pass; position and size are estimates).");
         }
@@ -68,11 +70,13 @@ namespace TheGreatestShips
                 float alongOffset = (i - (segments - 1) / 2f) * 2f;
                 var offset = rotation * new Vector3(alongOffset, 0f, 0f);
 
+                float panelHeight = WallHeight / WallRows; // the panel is 1m tall, so this is also its Y scale
                 for (int row = 0; row < WallRows; row++)
                 {
                     var wall = Object.Instantiate(wallPrefab, parent);
-                    wall.transform.localPosition = center + offset + new Vector3(0f, row * 1f, 0f);
+                    wall.transform.localPosition = center + offset + new Vector3(0f, row * panelHeight, 0f);
                     wall.transform.localRotation = rotation;
+                    wall.transform.localScale    = new Vector3(1f, panelHeight, 1f);
                     StripToGeometry(wall);
                     placed++;
                 }
