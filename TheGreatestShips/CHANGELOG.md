@@ -46,7 +46,7 @@ the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was 
 - **Experimental:** two bigger sizes of it. The **Byrding** is the whole ship scaled 1.25×, with a
   pen the length of its deck: room for a few boars, a longship's hold, 1250 health, 15% slower
   than a longship and a little slower to turn. The **Greater Byrding** is scaled 1.5×, its fence
-  high enough for wolves: room for a lox, 24 hold slots, 1500 health, 20% slower, slower to turn. Its recipe adds 4 Lox Pelt, which makes it Plains-tier -- as a lox carrier is anyway.
+  high enough for wolves: room for a lox, 24 hold slots, 1500 health, 20% slower, slower to turn. Its recipe takes 20 Deer Hide and 10 Lox Pelt, which makes it Plains-tier -- as a lox carrier is anyway.
 - New "Hull Scale" setting: the whole ship in all three dimensions; "Hull Width" and "Hull Length"
   multiply on top of it.
 - Recipes trimmed so their materials weigh at most 450 (one Megingjord load), or 600 for the Big

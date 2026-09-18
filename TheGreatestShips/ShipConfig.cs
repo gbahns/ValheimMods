@@ -43,7 +43,8 @@ namespace TheGreatestShips
         //   9 (0.9.1): the cargo ships take Troll Hide instead of Deer Hide; the Greater Byrding drops Wolf Pelt.
         //  10 (0.9.1): the Byrdings' Wood is exactly their pen's pieces (24 / 36 / 52).
         //  11 (0.9.1): the cargo ships take Deer Hide as well as Troll Hide; a little less Ancient Bark.
-        private const int CurrentConfigVersion = 11;
+        //  12 (0.9.1): the Greater Byrding takes 20 Deer Hide and 10 Lox Pelt.
+        private const int CurrentConfigVersion = 12;
 
         internal static void Bind(TheGreatestShipsMod mod)
         {
