@@ -44,7 +44,9 @@ namespace TheGreatestShips
         //  10 (0.9.1): the Byrdings' Wood is exactly their pen's pieces (24 / 36 / 52).
         //  11 (0.9.1): the cargo ships take Deer Hide as well as Troll Hide; a little less Ancient Bark.
         //  12 (0.9.1): the Greater Byrding takes 20 Deer Hide and 10 Lox Pelt.
-        private const int CurrentConfigVersion = 12;
+        //  13 (0.9.1): hulls priced by their planking: the cargo ships take less wood and far fewer nails, the
+        //              Byrding and Greater Byrding about 10% more.
+        private const int CurrentConfigVersion = 13;
 
         internal static void Bind(TheGreatestShipsMod mod)
         {

@@ -16,8 +16,9 @@ the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was 
   Hide, 10 Troll Hide, 10 Guck -- so it no longer waits on the Plains for Linen, and Resin (never
   a real cost) is gone; and it is 10% longer as well as 15% narrower.
 - Cargo Longship: health 1000 → 1500, and its rudder swings at 0.8 of a longship's speed, so it
-  turns more slowly. Its recipe takes 180 Iron Nails instead of 150, and Troll Hide as well as Deer
-  Hide, as the Fast Longship does. Top speed about 8.4.
+  turns more slowly. Its recipe takes 140 Iron Nails instead of 150, 40 Ancient Bark instead of
+  60, 20 Core Wood instead of 30, and Troll Hide as well as Deer Hide, as the Fast Longship does.
+  Top speed about 8.4.
 - New per-ship settings "Health" and "Rudder Speed", synced with the server.
 - Every ship names itself: its rudder reads "Use rudder (Fast Longship)" and its hold "Fast Longship
   Storage". The vanilla ships get the same ("Use rudder (Karve)", "Longship Storage", and the
@@ -49,11 +50,14 @@ the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was 
   high enough for wolves: room for a lox, 24 hold slots, 1500 health, 20% slower, slower to turn. Its recipe takes 20 Deer Hide and 10 Lox Pelt, which makes it Plains-tier -- as a lox carrier is anyway.
 - New "Hull Scale" setting: the whole ship in all three dimensions; "Hull Width" and "Hull Length"
   multiply on top of it.
-- Recipes trimmed so their materials weigh at most 450 (one Megingjord load), or 600 for the Big
-  Busse and Greater Byrding (two trips, or a Mead of Troll Endurance): the Byrdings' Wood is
-  exactly what their pen's poles and beams cost (24 / 36 / 52), less Ancient Bark and Core Wood on
-  the Busse and Big Busse. The Fast Karve, Fast Longship and
-  Knarr already fit and are unchanged.
+- Hulls priced by their planking: each ship's wood and nails follow the area of its hull, with the
+  Longship's 80 wood and 100 nails as the unit. The cargo ships had been paying about 1.5× the
+  wood and 2× the nails per unit of hull, so they come down (Busse 140 → 120 wood, 240 → 160
+  nails; Big Busse 190 → 140 wood, 320 → 190 nails); the scaled Byrdings had been paying less than
+  a Longship per unit of hull, so they go up about 10% (Byrding 110 wood, 150 nails; Greater
+  Byrding 130 wood, 200 nails). The Byrdings' Wood is exactly what their pen's poles and beams
+  cost (24 / 36 / 52). Every recipe's materials now weigh at most 450 (one Megingjord load) except
+  the Greater Byrding's 494 (two trips, or a Mead of Troll Endurance).
 - Fixed: selecting a ship with seven ingredients in the Hammer threw an error every frame (the
   build HUD has room for six plus the crafting station). The row now grows to fit, though every
   recipe here stays within six.
