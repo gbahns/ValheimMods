@@ -70,13 +70,14 @@ namespace TheGreatestShips
             float halfLen = spec.Length / 2f;
             float halfWid = spec.Width / 2f;
             int pieces = 0;
+            int wood = 0; // what the same pieces cost to build: pole 1, 2 m beam 2, 1 m beam 1
 
             foreach (var corner in new[] { new Vector3(halfWid, 0, halfLen), new Vector3(-halfWid, 0, halfLen),
                                            new Vector3(halfWid, 0, -halfLen), new Vector3(-halfWid, 0, -halfLen) })
             {
                 var p = Place(post, pen.transform, corner + new Vector3(0f, DeckHeight + spec.PostHeight / 2f, spec.CenterZ), Quaternion.identity);
                 p.transform.localScale = new Vector3(1f, spec.PostHeight, 1f); // the pole is 1 m tall
-                pieces++;
+                pieces++; wood += 1;
             }
 
             // Four sides, no gate: a gate needs its Door script, and that needs the networking
@@ -85,10 +86,16 @@ namespace TheGreatestShips
             foreach (float rail in spec.RailHeights)
             {
                 float y = DeckHeight + rail;
-                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(0f, y, spec.CenterZ + halfLen), 0f, spec.Width - PostWidth);    // bow
-                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(0f, y, spec.CenterZ - halfLen), 0f, spec.Width - PostWidth);   // stern
-                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(halfWid, y, spec.CenterZ), 90f, spec.Length - PostWidth);  // starboard
-                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(-halfWid, y, spec.CenterZ), 90f, spec.Length - PostWidth); // port
+                foreach (var (center, yaw, length) in new[] {
+                    (new Vector3(0f, y, spec.CenterZ + halfLen), 0f, spec.Width - PostWidth),    // bow
+                    (new Vector3(0f, y, spec.CenterZ - halfLen), 0f, spec.Width - PostWidth),    // stern
+                    (new Vector3(halfWid, y, spec.CenterZ), 90f, spec.Length - PostWidth),      // starboard
+                    (new Vector3(-halfWid, y, spec.CenterZ), 90f, spec.Length - PostWidth) })   // port
+                {
+                    var (long2, short1) = PlaceRail(pen.transform, beam2, beam1, center, yaw, length);
+                    pieces += long2 + short1;
+                    wood   += long2 * 2 + short1;
+                }
             }
 
             // The pieces' "woodwall" material has _RippleDistance 0.03: Custom/Piece displaces
@@ -101,30 +108,30 @@ namespace TheGreatestShips
             foreach (var renderer in pen.GetComponentsInChildren<Renderer>(true))
                 renderer.SetPropertyBlock(noRipple);
 
-            Jotunn.Logger.LogInfo($"[TheGreatestShips] Built animal pen: {pieces} posts and rails, {spec.Width} x {spec.Length} at z {spec.CenterZ}.");
+            Jotunn.Logger.LogInfo($"[TheGreatestShips] Built animal pen: {pieces} posts and rails, {spec.Width} x {spec.Length} at z {spec.CenterZ}; the same pieces would cost {wood} Wood.");
         }
 
         // A rail of the given length, centered on `center`, running along the yaw'd X axis: as
         // many 2 m beams as fit, then a 1 m beam scaled to whatever is left, laid end to end from
-        // one post to the other.
-        private static int PlaceRail(Transform parent, GameObject beam2, GameObject beam1, Vector3 center, float yaw, float length)
+        // one post to the other.  Returns how many of each it placed.
+        private static (int long2, int short1) PlaceRail(Transform parent, GameObject beam2, GameObject beam1, Vector3 center, float yaw, float length)
         {
             var rotation = Quaternion.Euler(0f, yaw, 0f);
             float x = -length / 2f;
-            int placed = 0;
+            int long2 = 0, short1 = 0;
             while (length - (x + length / 2f) >= 2f - 0.01f)
             {
                 Place(beam2, parent, center + rotation * new Vector3(x + 1f, 0f, 0f), rotation);
-                x += 2f; placed++;
+                x += 2f; long2++;
             }
             float remainder = length - (x + length / 2f);
             if (remainder > 0.01f)
             {
                 var last = Place(beam1, parent, center + rotation * new Vector3(x + remainder / 2f, 0f, 0f), rotation);
                 last.transform.localScale = new Vector3(remainder, 1f, 1f);
-                placed++;
+                short1++;
             }
-            return placed;
+            return (long2, short1);
         }
 
         private static GameObject Place(GameObject prefab, Transform parent, Vector3 localPosition, Quaternion localRotation)

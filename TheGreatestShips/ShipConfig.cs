@@ -41,7 +41,8 @@ namespace TheGreatestShips
         //   7 (0.9.1): recipes trimmed to weigh at most 450 (600 for the Big Busse and Greater Byrding).
         //   8 (0.9.1): the cargo ships no longer take Chain.
         //   9 (0.9.1): the cargo ships take Troll Hide instead of Deer Hide; the Greater Byrding drops Wolf Pelt.
-        private const int CurrentConfigVersion = 9;
+        //  10 (0.9.1): the Byrdings' Wood is exactly their pen's pieces (24 / 36 / 52).
+        private const int CurrentConfigVersion = 10;
 
         internal static void Bind(TheGreatestShipsMod mod)
         {

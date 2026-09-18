@@ -180,8 +180,9 @@ namespace TheGreatestShips
                 Description        = "A longship with a small fenced pen aft of the mast, so a frightened animal can't jump overboard: a boar or two. Two thirds of a longship's hold: the rest is fodder and tack.",
                 StorageWidth       = 6,
                 StorageHeight      = 2,   // one row off the vanilla Longship's 6x3: fodder and tack take space
-                DefaultRecipe      = "FineWood:40,ElderBark:40,IronNails:100,DeerHide:10,Wood:40",   // weighs 300
-                OldDefaultRecipes  = new[] { "FineWood:40,ElderBark:40,IronNails:100,DeerHide:10,Wood:80" },
+                DefaultRecipe      = "FineWood:40,ElderBark:40,IronNails:100,DeerHide:10,Wood:24",   // Wood = the pen's pieces exactly; weighs 268
+                OldDefaultRecipes  = new[] { "FineWood:40,ElderBark:40,IronNails:100,DeerHide:10,Wood:40",
+                                             "FineWood:40,ElderBark:40,IronNails:100,DeerHide:10,Wood:80" },
                 DefaultSpeed       = 0.9f,    // about 8.7: 10% under a longship, the pen's other price
                 OldDefaultSpeed    = 1f,
                 DefaultHealth      = 1000f,   // unchanged from the vanilla Longship
@@ -206,8 +207,9 @@ namespace TheGreatestShips
                 Description        = "A longship a quarter again the size, with a pen the length of its deck: room for a few boars. A longship's hold, and a little slower to turn.",
                 StorageWidth       = 6,
                 StorageHeight      = 3,
-                DefaultRecipe      = "FineWood:50,ElderBark:50,IronNails:125,DeerHide:12,Wood:50",   // weighs 375
-                OldDefaultRecipes  = new[] { "FineWood:50,ElderBark:50,IronNails:125,DeerHide:12,Wood:100" },
+                DefaultRecipe      = "FineWood:50,ElderBark:50,IronNails:125,DeerHide:12,Wood:36",   // Wood = the pen's pieces exactly; weighs 347
+                OldDefaultRecipes  = new[] { "FineWood:50,ElderBark:50,IronNails:125,DeerHide:12,Wood:50",
+                                             "FineWood:50,ElderBark:50,IronNails:125,DeerHide:12,Wood:100" },
                 DefaultSpeed       = 0.85f,   // about 8.2: 15% under a longship
                 OldDefaultSpeed    = 0.97f,
                 DefaultHealth      = 1250f,
@@ -232,8 +234,9 @@ namespace TheGreatestShips
                 Description        = "A longship half again the size, with a high-railed pen the length of its deck: room for a lox, and a fence a wolf can't clear. Slow to turn.",
                 StorageWidth       = 6,
                 StorageHeight      = 4,
-                DefaultRecipe      = "FineWood:60,ElderBark:60,IronNails:150,Wood:60,LoxPelt:4",   // weighs 439; Lox Pelt makes it Plains-tier, which a lox carrier is anyway
-                OldDefaultRecipes  = new[] { "FineWood:60,ElderBark:60,IronNails:150,Wood:60,LoxPelt:4,WolfPelt:4",
+                DefaultRecipe      = "FineWood:60,ElderBark:60,IronNails:150,Wood:52,LoxPelt:4",   // Wood = the pen's pieces exactly; weighs 423; Lox Pelt makes it Plains-tier, which a lox carrier is anyway
+                OldDefaultRecipes  = new[] { "FineWood:60,ElderBark:60,IronNails:150,Wood:60,LoxPelt:4",
+                                             "FineWood:60,ElderBark:60,IronNails:150,Wood:60,LoxPelt:4,WolfPelt:4",
                                              "FineWood:60,ElderBark:60,IronNails:150,Wood:120,LoxPelt:4,WolfPelt:4",
                                              "FineWood:60,ElderBark:60,IronNails:150,DeerHide:15,Wood:120,LoxPelt:4,WolfPelt:4" },
                 DefaultSpeed       = 0.8f,    // about 7.7: 20% under a longship

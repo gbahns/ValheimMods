@@ -16,9 +16,9 @@ New ships built on Valheim's own hulls. Install on the server and on every clien
 | **Knarr** | Longship | 8.6 | 1500 | slower | 32 | 1.25× | | amber | green stripes | Fine Wood 40, Ancient Bark 60, Iron Nails 180, Troll Hide 10, Core Wood 30 |
 | **Busse** | Longship | about 8.0 | 1800 | slower still | 36 | 1.3× | 1.15× | amber | green stripes | Fine Wood 50, Ancient Bark 60, Iron Nails 240, Troll Hide 15, Core Wood 40 |
 | **Big Busse** | Longship | about 7.5 | 2200 | slowest | 64 | 1.4× | 1.3× | amber | green stripes | Fine Wood 70, Ancient Bark 90, Iron Nails 320, Troll Hide 20, Core Wood 40 |
-| **Small Byrding** *(experimental)* | Longship | about 8.7 | 1000 | normal | 12 | | | white | brown | Fine Wood 40, Ancient Bark 40, Iron Nails 100, Deer Hide 10, Wood 40 |
-| **Byrding** *(experimental)* | Longship, 1.25× | about 8.2 | 1250 | a little slower | 18 | | | white | brown | Fine Wood 50, Ancient Bark 50, Iron Nails 125, Deer Hide 12, Wood 50 |
-| **Greater Byrding** *(experimental)* | Longship, 1.5× | about 7.7 | 1500 | slower | 24 | | | white | brown | Fine Wood 60, Ancient Bark 60, Iron Nails 150, Wood 60, Lox Pelt 4 |
+| **Small Byrding** *(experimental)* | Longship | about 8.7 | 1000 | normal | 12 | | | white | brown | Fine Wood 40, Ancient Bark 40, Iron Nails 100, Deer Hide 10, Wood 24 |
+| **Byrding** *(experimental)* | Longship, 1.25× | about 8.2 | 1250 | a little slower | 18 | | | white | brown | Fine Wood 50, Ancient Bark 50, Iron Nails 125, Deer Hide 12, Wood 36 |
+| **Greater Byrding** *(experimental)* | Longship, 1.5× | about 7.7 | 1500 | slower | 24 | | | white | brown | Fine Wood 60, Ancient Bark 60, Iron Nails 150, Wood 52, Lox Pelt 4 |
 
 Top speeds are in m/s, in full wind about 64° off the stern. They were worked out from logged
 sailing with the Captain's Log mod.
@@ -63,7 +63,8 @@ That is the **Small Byrding**: a boar or two. The **Byrding** is the whole ship 
 pen the length of its deck, mast and all: room for a few boars, and a longship's hold. The
 **Greater Byrding** is scaled 1.5×, with a fence high enough that a wolf can't clear it: room for a
 lox, or a pack of wolves. Each is slower than the last: 10%, 15% and 20% under a longship, and
-each turns a little more slowly too.
+each turns a little more slowly too. The Wood in each recipe is exactly what its pen's poles and
+beams would cost to build by hand: 24, 36 and 52.
 
 ## Configuration
 

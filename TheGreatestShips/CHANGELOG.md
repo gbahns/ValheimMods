@@ -50,8 +50,9 @@ the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was 
 - New "Hull Scale" setting: the whole ship in all three dimensions; "Hull Width" and "Hull Length"
   multiply on top of it.
 - Recipes trimmed so their materials weigh at most 450 (one Megingjord load), or 600 for the Big
-  Busse and Greater Byrding (two trips, or a Mead of Troll Endurance): less Wood on the Byrdings,
-  less Ancient Bark and Core Wood on the Busse and Big Busse. The Fast Karve, Fast Longship and
+  Busse and Greater Byrding (two trips, or a Mead of Troll Endurance): the Byrdings' Wood is
+  exactly what their pen's poles and beams cost (24 / 36 / 52), less Ancient Bark and Core Wood on
+  the Busse and Big Busse. The Fast Karve, Fast Longship and
   Knarr already fit and are unchanged.
 - Fixed: selecting a ship with seven ingredients in the Hammer threw an error every frame (the
   build HUD has room for six plus the crafting station). The row now grows to fit, though every
