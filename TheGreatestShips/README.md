@@ -13,9 +13,9 @@ New ships built on Valheim's own hulls. Install on the server and on every clien
 | **Fast Karve** | Karve | 10.1 | 400 | normal | 2 | 0.85× | | blue | red stripes | Fine Wood 30, Ancient Bark 20, Bronze Nails 60, Troll Hide 8, Resin 20 |
 | Longship *(vanilla)* | | 9.65 | 1000 | normal | 18 | | | | | |
 | **Fast Longship** | Longship | 13.0 | 800 | normal | 12 | 0.85× | 1.1× | blue | red stripes | Fine Wood 40, Ancient Bark 40, Iron Nails 120, Deer Hide 10, Troll Hide 10, Guck 10 |
-| **Knarr** | Longship | 8.6 | 1500 | slower | 32 | 1.25× | | amber | green stripes | Fine Wood 40, Ancient Bark 60, Iron Nails 180, Troll Hide 10, Core Wood 30 |
-| **Busse** | Longship | about 8.0 | 1800 | slower still | 36 | 1.3× | 1.15× | amber | green stripes | Fine Wood 50, Ancient Bark 60, Iron Nails 240, Troll Hide 15, Core Wood 40 |
-| **Big Busse** | Longship | about 7.5 | 2200 | slowest | 64 | 1.4× | 1.3× | amber | green stripes | Fine Wood 70, Ancient Bark 90, Iron Nails 320, Troll Hide 20, Core Wood 40 |
+| **Knarr** | Longship | 8.6 | 1500 | slower | 32 | 1.25× | | amber | green stripes | Fine Wood 40, Ancient Bark 60, Iron Nails 180, Deer Hide 10, Troll Hide 10, Core Wood 30 |
+| **Busse** | Longship | about 8.0 | 1800 | slower still | 36 | 1.3× | 1.15× | amber | green stripes | Fine Wood 50, Ancient Bark 50, Iron Nails 240, Deer Hide 15, Troll Hide 15, Core Wood 40 |
+| **Big Busse** | Longship | about 7.5 | 2200 | slowest | 64 | 1.4× | 1.3× | amber | green stripes | Fine Wood 70, Ancient Bark 80, Iron Nails 320, Deer Hide 20, Troll Hide 20, Core Wood 40 |
 | **Small Byrding** *(experimental)* | Longship | about 8.7 | 1000 | normal | 12 | | | white | brown | Fine Wood 40, Ancient Bark 40, Iron Nails 100, Deer Hide 10, Wood 24 |
 | **Byrding** *(experimental)* | Longship, 1.25× | about 8.2 | 1250 | a little slower | 18 | | | white | brown | Fine Wood 50, Ancient Bark 50, Iron Nails 125, Deer Hide 12, Wood 36 |
 | **Greater Byrding** *(experimental)* | Longship, 1.5× | about 7.7 | 1500 | slower | 24 | | | white | brown | Fine Wood 60, Ancient Bark 60, Iron Nails 150, Wood 52, Lox Pelt 4 |

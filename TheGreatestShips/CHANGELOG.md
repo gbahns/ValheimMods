@@ -16,8 +16,8 @@ the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was 
   Hide, 10 Troll Hide, 10 Guck -- so it no longer waits on the Plains for Linen, and Resin (never
   a real cost) is gone; and it is 10% longer as well as 15% narrower.
 - Cargo Longship: health 1000 → 1500, and its rudder swings at 0.8 of a longship's speed, so it
-  turns more slowly. Its recipe takes 180 Iron Nails instead of 150, and Troll Hide in place of Deer
-  Hide, as the fast ships do. Top speed about 8.4.
+  turns more slowly. Its recipe takes 180 Iron Nails instead of 150, and Troll Hide as well as Deer
+  Hide, as the Fast Longship does. Top speed about 8.4.
 - New per-ship settings "Health" and "Rudder Speed", synced with the server.
 - Every ship names itself: its rudder reads "Use rudder (Fast Longship)" and its hold "Fast Longship
   Storage". The vanilla ships get the same ("Use rudder (Karve)", "Longship Storage", and the
