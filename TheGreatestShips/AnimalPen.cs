@@ -87,12 +87,15 @@ namespace TheGreatestShips
                 pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(-halfWid, y, PenCenterZ), 90f, PenLength - PostWidth); // port
             }
 
-            // Diagnostic for a constant shimmer on the rails even with the ship at rest: the sun
-            // moves and the hull bobs, so the shadow map re-rasterizes every frame, and smooth
-            // light faces show that where the deck's dark planks hide it.  If this cures it, the
-            // cause is confirmed and this can stay or be replaced with a shadow bias.
+            // The pieces' "woodwall" material has _RippleDistance 0.03: Custom/Piece displaces
+            // vertices by a pattern sampled at world position, a subtle hand-hewn look on a wall
+            // that never moves.  On a hull bobbing at anchor the sample point shifts every frame
+            // and the rails shimmer constantly -- every one of the ship's own materials has it at
+            // 0.  A property block zeroes it per renderer without copying the material.
+            var noRipple = new MaterialPropertyBlock();
+            noRipple.SetFloat("_RippleDistance", 0f);
             foreach (var renderer in pen.GetComponentsInChildren<Renderer>(true))
-                renderer.receiveShadows = false;
+                renderer.SetPropertyBlock(noRipple);
 
             Jotunn.Logger.LogInfo($"[TheGreatestShips] Built animal pen: {pieces} posts and rails (first pass; position and size are estimates).");
         }
