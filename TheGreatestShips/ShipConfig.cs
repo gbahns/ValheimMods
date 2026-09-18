@@ -39,7 +39,8 @@ namespace TheGreatestShips
         //              Knarr recipe: 180 Iron Nails and 2 Chain (the 0.9.0 recipe had 150 and none).
         //   6 (0.9.1): the Byrdings 10/15/20% slower than a longship (were 1.0 / 0.97 / 0.95).
         //   7 (0.9.1): recipes trimmed to weigh at most 450 (600 for the Big Busse and Greater Byrding).
-        private const int CurrentConfigVersion = 7;
+        //   8 (0.9.1): the cargo ships no longer take Chain.
+        private const int CurrentConfigVersion = 8;
 
         internal static void Bind(TheGreatestShipsMod mod)
         {
@@ -160,7 +161,7 @@ namespace TheGreatestShips
                 e.Speed.Value = def.DefaultSpeed;
                 Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: Top Speed Multiplier {def.OldDefaultSpeed} -> {def.DefaultSpeed} (new default).");
             }
-            if (def.OldDefaultRecipe != null && e.Recipe.Value == def.OldDefaultRecipe)
+            if (def.OldDefaultRecipes != null && System.Array.IndexOf(def.OldDefaultRecipes, e.Recipe.Value) >= 0)
             {
                 e.Recipe.Value = def.DefaultRecipe;
                 Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: recipe updated to the new default.");
