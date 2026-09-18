@@ -82,10 +82,11 @@ namespace TheGreatestShips
                 BaseName           = "Longship",
                 BaseTopSpeed       = 9.65f,
                 DisplayName        = "Fast Longship",
-                Description        = "A lean longship under a linen sail, the fastest hull on the water. Two thirds of a longship's hold.",
+                Description        = "A long, lean longship under an oversized sail, braced with troll hide and extra iron: the fastest hull on the water. Two thirds of a longship's hold, and a lighter one.",
                 StorageWidth       = 4,
                 StorageHeight      = 3,
-                DefaultRecipe      = "FineWood:40,ElderBark:40,IronNails:100,LinenThread:20,Resin:30",
+                DefaultRecipe      = "FineWood:40,ElderBark:40,IronNails:120,TrollHide:10,Resin:30",
+                OldDefaultRecipe   = "FineWood:40,ElderBark:40,IronNails:100,LinenThread:20,Resin:30",
                 DefaultSpeed       = 1.342f,  // sqrt(0.09/0.05): the Fast Ship Skuldelev's sail force exactly, about 12.95
                 OldDefaultSpeed    = 1.28f,   // 0.9.0's default (about 12.4)
                 DefaultHealth      = 800f,    // Longship 1000: a lighter hull
@@ -94,6 +95,7 @@ namespace TheGreatestShips
                 DefaultHullColor   = Red,
                 DefaultHullStripes = 6,
                 DefaultWidth       = 0.85f,
+                DefaultLength      = 1.1f,    // long and narrow, like a real fast hull
             },
             new ShipDefinition
             {
