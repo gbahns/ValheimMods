@@ -12,8 +12,9 @@ the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was 
   intended (at 1.14 it topped out at 8.4). Health 500 → 400.
 - Fast Longship: 12 storage slots (4×3) instead of 9. Health 1000 → 800. Top speed multiplier
   1.28 → 1.342, which gives it exactly the Fast Ship Skuldelev's sail force: about 13. Its recipe
-  swaps Linen Thread for 10 Troll Hide (as the Fast Karve) and takes 120 Iron Nails instead of
-  100, so it no longer waits on the Plains; and it is 10% longer as well as 15% narrower.
+  is now all Swamp-tier and below -- 40 Fine Wood, 40 Ancient Bark, 120 Iron Nails, 10 Deer
+  Hide, 10 Troll Hide, 10 Guck -- so it no longer waits on the Plains for Linen, and Resin (never
+  a real cost) is gone; and it is 10% longer as well as 15% narrower.
 - Cargo Longship: health 1000 → 1500, and its rudder swings at 0.8 of a longship's speed, so it
   turns more slowly. Its recipe takes 180 Iron Nails instead of 150. Top speed about 8.4.
 - New per-ship settings "Health" and "Rudder Speed", synced with the server.

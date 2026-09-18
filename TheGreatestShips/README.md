@@ -12,7 +12,7 @@ New ships built on Valheim's own hulls. Install on the server and on every clien
 | Karve *(vanilla)* | | 7.3 | 500 | normal | 4 | | | | | |
 | **Fast Karve** | Karve | 10.1 | 400 | normal | 2 | 0.85× | | blue | red stripes | Fine Wood 30, Ancient Bark 20, Bronze Nails 60, Troll Hide 8, Resin 20 |
 | Longship *(vanilla)* | | 9.65 | 1000 | normal | 18 | | | | | |
-| **Fast Longship** | Longship | 13.0 | 800 | normal | 12 | 0.85× | 1.1× | blue | red stripes | Fine Wood 40, Ancient Bark 40, Iron Nails 120, Troll Hide 10, Resin 30 |
+| **Fast Longship** | Longship | 13.0 | 800 | normal | 12 | 0.85× | 1.1× | blue | red stripes | Fine Wood 40, Ancient Bark 40, Iron Nails 120, Deer Hide 10, Troll Hide 10, Guck 10 |
 | **Knarr** | Longship | 8.6 | 1500 | slower | 32 | 1.25× | | amber | green stripes | Fine Wood 40, Ancient Bark 60, Iron Nails 180, Deer Hide 10, Core Wood 30 |
 | **Busse** | Longship | about 8.0 | 1800 | slower still | 36 | 1.3× | 1.15× | amber | green stripes | Fine Wood 55, Ancient Bark 85, Iron Nails 250, Deer Hide 15, Core Wood 45 |
 | **Big Busse** | Longship | about 7.5 | 2200 | slowest | 64 | 1.4× | 1.3× | amber | green stripes | Fine Wood 80, Ancient Bark 130, Iron Nails 350, Deer Hide 25, Core Wood 70 |
@@ -34,8 +34,8 @@ has only two storage slots.
 
 ## Fast Longship
 
-A long, lean longship under an oversized sail, braced with troll hide and extra iron: the fastest
-ship here, with a lighter hull and two thirds of a longship's hold.
+A long, lean longship under an oversized sail, braced with troll hide and extra iron and sealed
+with swamp guck: the fastest ship here, with a lighter hull and two thirds of a longship's hold.
 
 ## Knarr, Busse and Big Busse
 
