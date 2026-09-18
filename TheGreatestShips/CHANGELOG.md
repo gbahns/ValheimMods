@@ -37,11 +37,11 @@ the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was 
 - New "Hull Length" setting, alongside "Hull Width": stretches the ship bow-to-stern instead of
   side-to-side. The Busse (1.15×) and Big Busse (1.3×) use it so their bigger hold reads as a
   longer hull, not just a fatter one.
-- **Experimental:** a **Stable Ship** -- a Longship with a rail-fenced pen built onto the deck --
+- **Experimental:** a **Byrding** -- a Longship with a rail-fenced pen built onto the deck --
   corner posts and two rails a side, no gate yet -- that keeps a frightened tamed animal from
   jumping overboard the way it can on a bare longship. First pass: the pen's position, size
   and deck height are estimates, not measured in-game, and it doesn't protect penned animals from
-  outside damage (only from jumping off). Otherwise identical to a vanilla Longship.
+  outside damage (only from jumping off). Otherwise a vanilla Longship with 12 hold slots instead of 18, the rest going to fodder and tack. Named for the Norse trading vessel that carried livestock.
 
 ## 0.9.0 — 2026-09-16
 

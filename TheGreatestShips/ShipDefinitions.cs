@@ -164,10 +164,11 @@ namespace TheGreatestShips
                 BasePrefab         = "VikingShip",
                 BaseName           = "Longship",
                 BaseTopSpeed       = 9.65f,
-                DisplayName        = "Stable Ship",
-                Description        = "A longship with a fenced pen on deck, tall enough that even a frightened animal can't jump overboard. First pass -- expect this one to need retuning.",
+                DisplayName        = "Byrding",
+                OldDisplayName     = "Stable Ship",
+                Description        = "A longship with a fenced pen on deck, so a frightened animal can't jump overboard. Two thirds of a longship's hold: the rest is fodder and tack.",
                 StorageWidth       = 6,
-                StorageHeight      = 3,   // the vanilla Longship's own layout (6x3 = 18)
+                StorageHeight      = 2,   // one row off the vanilla Longship's 6x3: fodder and tack take space
                 DefaultRecipe      = "FineWood:40,ElderBark:40,IronNails:100,DeerHide:10,Wood:80",
                 DefaultSpeed       = 1f,      // unchanged from the vanilla Longship: 9.65
                 DefaultHealth      = 1000f,   // unchanged from the vanilla Longship
