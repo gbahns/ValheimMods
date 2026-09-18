@@ -48,6 +48,8 @@ the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was 
   high enough for wolves: room for a lox, 24 hold slots, 1500 health, 20% slower, slower to turn. Its recipe adds 4 Lox Pelt and 4 Wolf Pelt.
 - New "Hull Scale" setting: the whole ship in all three dimensions; "Hull Width" and "Hull Length"
   multiply on top of it.
+- Fixed: selecting a ship with six or more ingredients in the Hammer threw an error every frame
+  (the build HUD has a fixed row of requirement slots). The row now grows to fit.
 
 ## 0.9.0 — 2026-09-16
 
