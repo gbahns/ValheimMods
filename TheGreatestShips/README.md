@@ -48,12 +48,12 @@ one.
 
 ## Stable Ship *(experimental)*
 
-A longship with a fenced pen on deck, built from real solid wood walls and a gate, tall enough
-that a frightened tamed animal can't jump overboard the way it can on a bare longship. Otherwise
-identical to a vanilla Longship. This is a first pass: the pen's position, size and deck height
-are estimates rather than measured in-game, and it only stops animals from escaping -- it does
-nothing to protect them from outside damage (monsters, the ship hitting rocks). Expect it to need
-retuning.
+A longship with a solid-walled pen on deck, three sides walled and the stern left open for
+loading, tall enough that a frightened tamed animal can't jump overboard the way it can on a bare
+longship. Otherwise identical to a vanilla Longship. This is a first pass: the pen's position,
+size and deck height are estimates rather than measured in-game, and it only stops animals from
+escaping -- it does nothing to protect them from outside damage (monsters, the ship hitting
+rocks). Expect it to need retuning.
 
 ## Configuration
 
