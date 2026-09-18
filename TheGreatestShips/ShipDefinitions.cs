@@ -43,6 +43,7 @@ namespace TheGreatestShips
         private static readonly Color Amber = new Color(1f, 0.8f, 0.5f, 1f);
         private static readonly Color Red   = new Color(1f, 0.62f, 0.55f, 1f);
         private static readonly Color Green = new Color(0.6f, 0.85f, 0.6f, 1f);
+        private static readonly Color Brown = new Color(0.55f, 0.4f, 0.3f, 1f);
 
         // Top speeds in full wind at the best angle (64° off the stern), from Greg's CaptainsLog
         // sailing logs: Karve 7.3, Longship 9.65, OdinShipPlus Cargo Ship 8.7, Fast Ship
@@ -153,6 +154,26 @@ namespace TheGreatestShips
                 DefaultHullStripes = 6,
                 DefaultWidth       = 1.4f,
                 DefaultLength      = 1.3f,
+            },
+            new ShipDefinition
+            {
+                PrefabName         = "DM_StableShip",
+                BasePrefab         = "VikingShip",
+                BaseName           = "Longship",
+                BaseTopSpeed       = 9.65f,
+                DisplayName        = "Stable Ship",
+                Description        = "A longship with a fenced pen on deck, tall enough that even a frightened animal can't jump overboard. First pass -- expect this one to need retuning.",
+                StorageWidth       = 2,
+                StorageHeight      = 9,   // matches the vanilla Longship's own 18 slots
+                DefaultRecipe      = "FineWood:40,ElderBark:40,IronNails:100,DeerHide:10,Wood:80",
+                DefaultSpeed       = 1f,      // unchanged from the vanilla Longship: 9.65
+                DefaultHealth      = 1000f,   // unchanged from the vanilla Longship
+                DefaultRudderSpeed = 1f,      // unchanged from the vanilla Longship
+                DefaultSailColor   = Color.white,
+                DefaultHullColor   = Brown,
+                DefaultHullStripes = 0,
+                DefaultWidth       = 1f,
+                DefaultLength      = 1f,
             },
         };
     }

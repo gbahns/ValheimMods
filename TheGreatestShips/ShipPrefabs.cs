@@ -135,6 +135,10 @@ namespace TheGreatestShips
             SetWidth(def, clone, cfg.Width.Value);
             SetLength(def, clone, cfg.Length.Value);
 
+            // One-off, not a general per-ship field yet: only the Stable Ship gets a pen.
+            if (def.PrefabName == "DM_StableShip")
+                AnimalPen.Build(clone);
+
             _built[def] = new Built { Clone = clone, BaseSailForceFactor = ship.m_sailForceFactor };
             ApplyHandling(def);
             Jotunn.Logger.LogInfo($"[TheGreatestShips] Cloned {def.BasePrefab} as {def.PrefabName} ({def.BaseName} sail force {ship.m_sailForceFactor}).");

@@ -16,6 +16,7 @@ New ships built on Valheim's own hulls. Install on the server and on every clien
 | **Knarr** | Longship | 8.6 | 1500 | slower | 32 | 1.25× | | amber | green stripes | Fine Wood 40, Ancient Bark 60, Iron Nails 180, Deer Hide 10, Core Wood 30 |
 | **Busse** | Longship | about 8.0 | 1800 | slower still | 36 | 1.3× | 1.15× | amber | green stripes | Fine Wood 55, Ancient Bark 85, Iron Nails 250, Deer Hide 15, Core Wood 45 |
 | **Big Busse** | Longship | about 7.5 | 2200 | slowest | 64 | 1.4× | 1.3× | amber | green stripes | Fine Wood 80, Ancient Bark 130, Iron Nails 350, Deer Hide 25, Core Wood 70 |
+| **Stable Ship** *(experimental)* | Longship | 9.65 | 1000 | normal | 18 | | | white | brown | Fine Wood 40, Ancient Bark 40, Iron Nails 100, Deer Hide 10, Wood 80 |
 
 Top speeds are in m/s, in full wind about 64° off the stern. They were worked out from logged
 sailing with the Captain's Log mod.
@@ -43,6 +44,15 @@ slower and clumsier than a longship, but sturdier, and holds progressively more:
 stacks, the Busse 36, the Big Busse 64. The Busse and Big Busse are also stretched bow-to-stern
 (1.15× and 1.3×), not just wider, so their bigger hold reads as a longer hull, not just a fatter
 one.
+
+## Stable Ship *(experimental)*
+
+A longship with a fenced pen on deck, built from real solid wood walls and a gate, tall enough
+that a frightened tamed animal can't jump overboard the way it can on a bare longship. Otherwise
+identical to a vanilla Longship. This is a first pass: the pen's position, size and deck height
+are estimates rather than measured in-game, and it only stops animals from escaping -- it does
+nothing to protect them from outside damage (monsters, the ship hitting rocks). Expect it to need
+retuning.
 
 ## Configuration
 
