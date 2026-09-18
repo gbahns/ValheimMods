@@ -38,7 +38,8 @@ namespace TheGreatestShips
         //   5 (0.9.1): Fast Longship recipe: Troll Hide, Guck and 120 Iron Nails; no Linen or Resin.
         //              Knarr recipe: 180 Iron Nails and 2 Chain (the 0.9.0 recipe had 150 and none).
         //   6 (0.9.1): the Byrdings 10/15/20% slower than a longship (were 1.0 / 0.97 / 0.95).
-        private const int CurrentConfigVersion = 6;
+        //   7 (0.9.1): recipes trimmed to weigh at most 450 (600 for the Big Busse and Greater Byrding).
+        private const int CurrentConfigVersion = 7;
 
         internal static void Bind(TheGreatestShipsMod mod)
         {
