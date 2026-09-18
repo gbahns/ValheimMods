@@ -111,7 +111,7 @@ namespace TheGreatestShips
                 Description        = "A deep, heavy longship built to haul. Slower and clumsier than a longship, but sturdier, with nearly twice its hold. The smallest of three cargo tiers -- see also the Busse and the Big Busse.",
                 StorageWidth       = 8,
                 StorageHeight      = 4,
-                DefaultRecipe      = "FineWood:40,ElderBark:60,IronNails:180,TrollHide:10,RoundLog:30",   // weighs 374
+                DefaultRecipe      = "FineWood:40,ElderBark:60,IronNails:180,TrollHide:10,RoundLog:30",   // weighs 370
                 OldDefaultRecipes  = new[] { "FineWood:40,ElderBark:60,IronNails:180,DeerHide:10,RoundLog:30",
                                              "FineWood:40,ElderBark:60,IronNails:180,DeerHide:10,RoundLog:30,Chain:2",
                                              "FineWood:40,ElderBark:60,IronNails:150,DeerHide:10,RoundLog:30" },
