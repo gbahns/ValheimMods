@@ -9,13 +9,16 @@ namespace TheGreatestShips
     /// the sides -- out of vanilla pole and beam pieces reduced to bare geometry: renderers and
     /// colliders, no scripts.
     ///
-    /// Two lessons from the first attempt (solid wall panels).  The pieces must not keep their
-    /// ZNetView / WearNTear / Piece components: as live build pieces they had no support on a ship
-    /// and collapsed a few seconds after spawning, dropping their wood.  And their colliders must
-    /// not belong to the ship's rigidbody: Unity works a body's center of mass out from its
-    /// colliders, so geometry above deck made the ship top-heavy and it rolled over.  The pen
-    /// therefore sits under its own kinematic rigidbody, which follows the ship's transform but
-    /// keeps its colliders (and mass) to itself.
+    /// Three lessons from earlier attempts.  The pieces must not keep their ZNetView / WearNTear /
+    /// Piece components: as live build pieces they had no support on a ship and collapsed a few
+    /// seconds after spawning, dropping their wood.  Their colliders can't simply be added to the
+    /// ship's rigidbody either: Unity works a body's center of mass out from its colliders, so
+    /// geometry above deck made the ship top-heavy and it rolled over.  And they can't sit on a
+    /// kinematic rigidbody of their own: a kinematic body moved through its transform teleports
+    /// each physics step instead of sweeping, so when the hull jolted on a rock the rails jumped
+    /// straight through the boars.  So the colliders do belong to the ship's body -- real swept
+    /// contact, like the hull -- and PenBallast pins the body's center of mass and inertia to the
+    /// hull-only values so the rails add no top-heaviness.
     ///
     /// Still a first pass on placement: DeckHeight and the pen's size are estimates.
     /// </summary>
@@ -52,13 +55,12 @@ namespace TheGreatestShips
                 return;
             }
 
-            // Everything hangs off this.  Kinematic: driven by the ship's transform, never by
-            // forces, and its colliders are its own rather than compounded into the hull's.
+            // No rigidbody of its own: the pieces' colliders compound into the hull's body, and
+            // PenBallast (which runs on each spawned ship, not on the prefab) keeps that body
+            // balanced as if they weren't there.
             var pen = new GameObject("animal_pen");
             pen.transform.SetParent(clone.transform, false);
-            var body = pen.AddComponent<Rigidbody>();
-            body.isKinematic = true;
-            body.useGravity  = false;
+            pen.AddComponent<PenBallast>();
 
             float halfLen = PenLength / 2f;
             float halfWid = PenWidth / 2f;
@@ -129,6 +131,34 @@ namespace TheGreatestShips
             scripts.Sort((a, b) => (a is ZNetView ? 1 : 0) - (b is ZNetView ? 1 : 0));
             foreach (var script in scripts)
                 if (script != null) Object.DestroyImmediate(script);
+        }
+    }
+
+    /// <summary>
+    /// Keeps the ship's rigidbody balanced as though the pen weren't there.  Unity derives a
+    /// body's center of mass and inertia from its colliders unless they are set explicitly; this
+    /// measures both with the pen's colliders switched off, then switches them back on and sets
+    /// the values explicitly, which also stops Unity recomputing them.  Runs on every spawned
+    /// ship (Start never runs on the inactive prefab).
+    /// </summary>
+    internal sealed class PenBallast : MonoBehaviour
+    {
+        private void Start()
+        {
+            var body = GetComponentInParent<Rigidbody>();
+            if (body == null) return;
+
+            var colliders = GetComponentsInChildren<Collider>(true);
+            foreach (var c in colliders) c.enabled = false;
+            body.ResetCenterOfMass();
+            body.ResetInertiaTensor();
+            var centerOfMass = body.centerOfMass;
+            var inertia      = body.inertiaTensor;
+            var inertiaRot   = body.inertiaTensorRotation;
+            foreach (var c in colliders) c.enabled = true;
+            body.centerOfMass          = centerOfMass;
+            body.inertiaTensor         = inertia;
+            body.inertiaTensorRotation = inertiaRot;
         }
     }
 }
