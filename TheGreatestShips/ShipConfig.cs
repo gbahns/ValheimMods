@@ -49,7 +49,8 @@ namespace TheGreatestShips
         //  14 (0.9.1): cargo recipes down to ~1.05x a longship's per unit of hull; the Big Busse grows to
         //              1.5 x 1.5; health follows the wood in each recipe (Knarr 1100, Busse 1400, Big Busse
         //              1900, Byrding 1400, Greater Byrding 1600).
-        private const int CurrentConfigVersion = 14;
+        //  15 (0.9.1): the Busse and Big Busse's first (pre-Chain) recipes added to the migration list.
+        private const int CurrentConfigVersion = 15;
 
         internal static void Bind(TheGreatestShipsMod mod)
         {

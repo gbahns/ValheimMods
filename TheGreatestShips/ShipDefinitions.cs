@@ -146,7 +146,8 @@ namespace TheGreatestShips
                                              "FineWood:50,ElderBark:60,IronNails:240,TrollHide:15,RoundLog:40",
                                              "FineWood:50,ElderBark:60,IronNails:240,DeerHide:15,RoundLog:40",
                                              "FineWood:50,ElderBark:60,IronNails:240,DeerHide:15,RoundLog:40,Chain:4",
-                                             "FineWood:55,ElderBark:85,IronNails:250,DeerHide:15,RoundLog:45,Chain:4" },
+                                             "FineWood:55,ElderBark:85,IronNails:250,DeerHide:15,RoundLog:45,Chain:4",
+                                             "FineWood:55,ElderBark:85,IronNails:250,DeerHide:15,RoundLog:45" },
                 DefaultSpeed       = 0.83f,   // about 8.0
                 DefaultHealth      = 1400f,
                 OldDefaultHealths  = new[] { 1800f },
@@ -173,7 +174,8 @@ namespace TheGreatestShips
                                              "FineWood:70,ElderBark:90,IronNails:320,TrollHide:20,RoundLog:40",
                                              "FineWood:70,ElderBark:90,IronNails:320,DeerHide:20,RoundLog:40",
                                              "FineWood:70,ElderBark:90,IronNails:320,DeerHide:20,RoundLog:40,Chain:6",
-                                             "FineWood:80,ElderBark:130,IronNails:350,DeerHide:25,RoundLog:70,Chain:6" },
+                                             "FineWood:80,ElderBark:130,IronNails:350,DeerHide:25,RoundLog:70,Chain:6",
+                                             "FineWood:80,ElderBark:130,IronNails:350,DeerHide:25,RoundLog:70" },
                 DefaultSpeed       = 0.78f,   // about 7.5
                 DefaultHealth      = 1900f,
                 OldDefaultHealths  = new[] { 2200f },
