@@ -35,9 +35,11 @@ namespace TheGreatestShips
         // "on the deck": the posts start there too.
         private const float PostBottom = DeckHeight - 0.5f;
         private const float PostHeight = 1f;
-        // Rail centers above PostBottom.  Beams are 0.4 thick, so 0.4 and 0.8 cover 0.2..1.0 with
-        // no gap between them, and nothing a boar could get under.
-        private static readonly float[] RailHeights = { 0.4f, 0.8f };
+        // Rail centers above PostBottom.  Beams are 0.4 thick, so these cover 0.2..0.6 and
+        // 0.65..1.05: a 5 cm gap so the two don't share a face and shimmer, and nothing a boar
+        // could get under.
+        private static readonly float[] RailHeights = { 0.4f, 0.85f };
+        private const float PostWidth = 0.4f;
 
         internal static void Build(GameObject clone)
         {
@@ -73,11 +75,13 @@ namespace TheGreatestShips
             // these pieces lose.  Loading is the player's problem for now.
             foreach (float rail in RailHeights)
             {
+                // Rails run between the posts' inner faces rather than into their centers, so no
+                // rail face lies in the same plane as a post face (which shimmers).
                 float y = PostBottom + rail;
-                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(0f, y, halfLen), 0f, PenWidth);    // bow
-                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(0f, y, -halfLen), 0f, PenWidth);   // stern
-                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(halfWid, y, 0f), 90f, PenLength);  // starboard
-                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(-halfWid, y, 0f), 90f, PenLength); // port
+                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(0f, y, halfLen), 0f, PenWidth - PostWidth);    // bow
+                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(0f, y, -halfLen), 0f, PenWidth - PostWidth);   // stern
+                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(halfWid, y, 0f), 90f, PenLength - PostWidth);  // starboard
+                pieces += PlaceRail(pen.transform, beam2, beam1, new Vector3(-halfWid, y, 0f), 90f, PenLength - PostWidth); // port
             }
 
             Jotunn.Logger.LogInfo($"[TheGreatestShips] Built animal pen: {pieces} posts and rails (first pass; position and size are estimates).");
@@ -96,20 +100,25 @@ namespace TheGreatestShips
                 Place(beam2, parent, center + rotation * new Vector3(x + 1f, 0f, 0f), rotation);
                 x += 2f; placed++;
             }
-            if (length - (x + length / 2f) >= 1f - 0.01f)
+            float remainder = length - (x + length / 2f);
+            if (remainder > 0.01f)
             {
-                Place(beam1, parent, center + rotation * new Vector3(x + 0.5f, 0f, 0f), rotation);
+                // A 1 m beam scaled along its length to whatever is left (0.6 m for a 3 m side
+                // less the posts), so the rail meets the post instead of stopping short.
+                var last = Place(beam1, parent, center + rotation * new Vector3(x + remainder / 2f, 0f, 0f), rotation);
+                last.transform.localScale = new Vector3(remainder, 1f, 1f);
                 placed++;
             }
             return placed;
         }
 
-        private static void Place(GameObject prefab, Transform parent, Vector3 localPosition, Quaternion localRotation)
+        private static GameObject Place(GameObject prefab, Transform parent, Vector3 localPosition, Quaternion localRotation)
         {
             var piece = Object.Instantiate(prefab, parent);
             piece.transform.localPosition = localPosition;
             piece.transform.localRotation = localRotation;
             StripToGeometry(piece);
+            return piece;
         }
 
         // Removes every script from the piece and its children, leaving renderers, mesh filters,
