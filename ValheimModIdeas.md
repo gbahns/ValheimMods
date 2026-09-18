@@ -407,8 +407,10 @@ OdinShipPlus, read from their asset bundles.
 - New synced Health and Rudder Speed settings; the floor was raised to 0.9.1 for the hold resize.
 
 Every ship's real top speed at its shipped default got logged eventually: Karve 7.3, Longship
-9.65, Fast Karve 10.09, Fast Longship 12.35, Cargo Longship (now Knarr) 8.58 -- all close to the
-sail-force-scaling formula's prediction. Greg decided against tuning against OdinShip at all
+9.65, Fast Karve 10.09, Fast Longship 12.35 (at 1.243), Cargo Longship (now Knarr) 8.58 -- all
+close to the sail-force-scaling formula's prediction. Later the same day Greg had the Fast
+Longship raised to 1.342, the Skuldelev's sail force exactly, for an identical theoretical top
+speed (12.95); that setting is not logged yet. Greg decided against tuning against OdinShip at all
 ("we don't need to compete with OdinShip... our main comps [are] the vanilla ships") after
 noticing even the *free* OdinShip mod has 64-slot cargo ships; the ValheimGuides Ships page grew a
 "Show Vanilla Equivalent" toggle plus Resin/Wood/Skin/Nails/Other columns (from decompiling

@@ -33,7 +33,8 @@ namespace TheGreatestShips
         // Raised when a release changes defaults that saved configs should follow.
         //   2 (0.9.1): speeds rebased on logged top speeds, Cargo Longship recipe.
         //   3 (0.9.1): Cargo Longship renamed Knarr, its config section moved to match.
-        private const int CurrentConfigVersion = 3;
+        //   4 (0.9.1): Fast Longship 1.28 -> 1.342, matching the Fast Ship Skuldelev's sail force.
+        private const int CurrentConfigVersion = 4;
 
         internal static void Bind(TheGreatestShipsMod mod)
         {
@@ -99,7 +100,9 @@ namespace TheGreatestShips
                 e.Health.SettingChanged += (_, __) => ShipPrefabs.ApplyHandling(captured);
                 e.RudderSpeed.SettingChanged += (_, __) => ShipPrefabs.ApplyHandling(captured);
 
-                if (configVersion.Value < 2)
+                // Migrate() only moves a value still sitting at a documented old default, so
+                // re-running it for every version step is safe: a hand-set value never matches.
+                if (configVersion.Value < CurrentConfigVersion)
                     Migrate(def, e);
 
                 _entries[def] = e;

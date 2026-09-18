@@ -12,7 +12,7 @@ New ships built on Valheim's own hulls. Install on the server and on every clien
 | Karve *(vanilla)* | | 7.3 | 500 | normal | 4 | | | | | |
 | **Fast Karve** | Karve | 10.1 | 400 | normal | 2 | 0.85× | | blue | red stripes | Fine Wood 30, Ancient Bark 20, Bronze Nails 60, Troll Hide 8, Resin 20 |
 | Longship *(vanilla)* | | 9.65 | 1000 | normal | 18 | | | | | |
-| **Fast Longship** | Longship | 12.35 | 800 | normal | 12 | 0.85× | | blue | red stripes | Fine Wood 40, Ancient Bark 40, Iron Nails 100, Linen Thread 20, Resin 30 |
+| **Fast Longship** | Longship | about 13 | 800 | normal | 12 | 0.85× | | blue | red stripes | Fine Wood 40, Ancient Bark 40, Iron Nails 100, Linen Thread 20, Resin 30 |
 | **Knarr** | Longship | 8.6 | 1500 | slower | 32 | 1.25× | | amber | green stripes | Fine Wood 40, Ancient Bark 60, Iron Nails 180, Deer Hide 10, Core Wood 30 |
 | **Busse** | Longship | about 8.0 | 1800 | slower still | 36 | 1.3× | 1.15× | amber | green stripes | Fine Wood 55, Ancient Bark 85, Iron Nails 250, Deer Hide 15, Core Wood 45 |
 | **Big Busse** | Longship | about 7.5 | 2200 | slowest | 64 | 1.4× | 1.3× | amber | green stripes | Fine Wood 80, Ancient Bark 130, Iron Nails 350, Deer Hide 25, Core Wood 70 |
