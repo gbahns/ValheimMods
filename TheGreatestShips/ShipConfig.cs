@@ -40,7 +40,8 @@ namespace TheGreatestShips
         //   6 (0.9.1): the Byrdings 10/15/20% slower than a longship (were 1.0 / 0.97 / 0.95).
         //   7 (0.9.1): recipes trimmed to weigh at most 450 (600 for the Big Busse and Greater Byrding).
         //   8 (0.9.1): the cargo ships no longer take Chain.
-        private const int CurrentConfigVersion = 8;
+        //   9 (0.9.1): the cargo ships take Troll Hide instead of Deer Hide; the Greater Byrding drops Wolf Pelt.
+        private const int CurrentConfigVersion = 9;
 
         internal static void Bind(TheGreatestShipsMod mod)
         {
