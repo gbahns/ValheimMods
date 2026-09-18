@@ -13,12 +13,12 @@ the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was 
 - Fast Longship: 12 storage slots (4×3) instead of 9. Health 1000 → 800. Top speed multiplier
   1.28 → 1.342, which gives it exactly the Fast Ship Skuldelev's sail force: about 13. Its recipe
   is now all Swamp-tier and below -- 40 Fine Wood, 40 Ancient Bark, 120 Iron Nails, 10 Deer
-  Hide, 10 Troll Hide, 10 Guck -- so it no longer waits on the Plains for Linen, and Resin (never
-  a real cost) is gone; and it is 10% longer as well as 15% narrower.
+  Hide, 10 Troll Hide -- so it no longer waits on the Plains for Linen, and Resin (never a real
+  cost) is gone; and it is 10% longer as well as 15% narrower.
 - Cargo Longship: health 1000 → 1100, and its rudder swings at 0.8 of a longship's speed, so it
-  turns more slowly. Its recipe takes 120 Iron Nails instead of 150, 30 Ancient Bark instead of
-  60, 20 Core Wood instead of 30, and Troll Hide as well as Deer Hide, as the Fast Longship does.
-  Top speed about 8.4.
+  turns more slowly. Its recipe takes 120 Iron Nails instead of 150, 50 Ancient Bark instead of
+  60, no Core Wood, and Troll Hide as well as Deer Hide, as the Fast Longship does. Top speed
+  about 8.4.
 - New per-ship settings "Health" and "Rudder Speed", synced with the server.
 - Every ship names itself: its rudder reads "Use rudder (Fast Longship)" and its hold "Fast Longship
   Storage". The vanilla ships get the same ("Use rudder (Karve)", "Longship Storage", and the
@@ -48,7 +48,7 @@ the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was 
 - **Experimental:** two bigger sizes of it. The **Byrding** is the whole ship scaled 1.25×, with a
   pen the length of its deck: room for a few boars, a longship's hold, 1400 health, 15% slower
   than a longship and a little slower to turn. The **Greater Byrding** is scaled 1.5×, its fence
-  high enough for wolves: room for a lox, 24 hold slots, 1600 health, 20% slower, slower to turn. Its recipe takes 20 Deer Hide and 10 Lox Pelt, which makes it Plains-tier -- as a lox carrier is anyway.
+  high enough for wolves: room for a lox, 24 hold slots, 1600 health, 20% slower, slower to turn. Its recipe takes 20 Lox Pelt, which makes it Plains-tier -- as a lox carrier is anyway.
 - New "Hull Scale" setting: the whole ship in all three dimensions; "Hull Width" and "Hull Length"
   multiply on top of it.
 - Hulls priced by their planking: each ship's wood and nails follow the area of its hull, with the
@@ -58,14 +58,15 @@ the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was 
   paying less than a Longship per unit of hull, so they go up about 10% (Byrding 110 wood, 150
   nails; Greater Byrding 130 wood, 200 nails). The Byrdings' Wood is exactly what their pen's
   poles and beams cost (24 / 36 / 52). Every recipe's materials now weigh at most 450 (one
-  Megingjord load) except the Greater Byrding's 494 (two trips, or a Mead of Troll Endurance).
+  Megingjord load) except the Greater Byrding's 484 (two trips, or a Mead of Troll Endurance).
 - Health follows the wood in each recipe, 1000 per 80: Knarr 1100, Busse 1400, Big Busse 1900,
   Byrding 1400, Greater Byrding 1600. The fast ships keep their 20% less, built light for speed.
   Saved Health, Hull Width and Hull Length values still at an earlier default move to the new one.
 - Fixed: selecting a ship with six or more ingredients in the Hammer threw an error every frame:
-  the build HUD's requirement row has six slots, five ingredients plus the crafting station. The
-  row now grows to fit, each added slot spaced like the ones before it; every recipe here stays
-  within six ingredients.
+  the build HUD's requirement row has six slots, five ingredients plus the crafting station. Every
+  recipe here now stays within five (the cargo ships' Core Wood folds into Ancient Bark, the Fast
+  Longship drops Guck, the Greater Byrding drops Deer Hide). A hand-edited sixth ingredient still
+  shows -- the row grows to fit it -- but the station's icon then hangs off the panel.
 
 ## 0.9.0 — 2026-09-16
 

@@ -91,8 +91,9 @@ namespace TheGreatestShips
                 Description        = "A long, lean longship under an oversized sail, braced with troll hide and extra iron and sealed with swamp guck: the fastest hull on the water. Two thirds of a longship's hold, and a lighter one.",
                 StorageWidth       = 4,
                 StorageHeight      = 3,
-                DefaultRecipe      = "FineWood:40,ElderBark:40,IronNails:120,DeerHide:10,TrollHide:10,Guck:10",
-                OldDefaultRecipes  = new[] { "FineWood:40,ElderBark:40,IronNails:100,LinenThread:20,Resin:30" },
+                DefaultRecipe      = "FineWood:40,ElderBark:40,IronNails:120,DeerHide:10,TrollHide:10",   // weighs 250; five ingredients, the build HUD's limit
+                OldDefaultRecipes  = new[] { "FineWood:40,ElderBark:40,IronNails:120,DeerHide:10,TrollHide:10,Guck:10",
+                                             "FineWood:40,ElderBark:40,IronNails:100,LinenThread:20,Resin:30" },
                 DefaultSpeed       = 1.342f,  // sqrt(0.09/0.05): the Fast Ship Skuldelev's sail force exactly, about 12.95
                 OldDefaultSpeed    = 1.28f,   // 0.9.0's default (about 12.4)
                 DefaultHealth      = 800f,    // Longship 1000: a lighter hull
@@ -114,8 +115,9 @@ namespace TheGreatestShips
                 Description        = "A deep, heavy longship built to haul. Slower and clumsier than a longship, but sturdier, with nearly twice its hold. The smallest of three cargo tiers -- see also the Busse and the Big Busse.",
                 StorageWidth       = 8,
                 StorageHeight      = 4,
-                DefaultRecipe      = "FineWood:40,ElderBark:30,IronNails:120,DeerHide:10,TrollHide:10,RoundLog:20",   // weighs 270; wood and nails ~1.05x a longship's per unit of hull planking
-                OldDefaultRecipes  = new[] { "FineWood:40,ElderBark:40,IronNails:140,DeerHide:10,TrollHide:10,RoundLog:20",
+                DefaultRecipe      = "FineWood:40,ElderBark:50,IronNails:120,DeerHide:10,TrollHide:10",   // weighs 270; wood and nails ~1.05x a longship's per unit of hull planking
+                OldDefaultRecipes  = new[] { "FineWood:40,ElderBark:30,IronNails:120,DeerHide:10,TrollHide:10,RoundLog:20",
+                                             "FineWood:40,ElderBark:40,IronNails:140,DeerHide:10,TrollHide:10,RoundLog:20",
                                              "FineWood:40,ElderBark:60,IronNails:180,DeerHide:10,TrollHide:10,RoundLog:30",
                                              "FineWood:40,ElderBark:60,IronNails:180,TrollHide:10,RoundLog:30",
                                              "FineWood:40,ElderBark:60,IronNails:180,DeerHide:10,RoundLog:30",
@@ -140,8 +142,9 @@ namespace TheGreatestShips
                 Description        = "A longship built out further than the Knarr. Slower still and even clumsier, but holds more and shrugs off more damage.",
                 StorageWidth       = 9,
                 StorageHeight      = 4,
-                DefaultRecipe      = "FineWood:50,ElderBark:30,IronNails:140,DeerHide:15,TrollHide:15,RoundLog:30",   // weighs 335
-                OldDefaultRecipes  = new[] { "FineWood:50,ElderBark:40,IronNails:160,DeerHide:15,TrollHide:15,RoundLog:30",
+                DefaultRecipe      = "FineWood:50,ElderBark:60,IronNails:140,DeerHide:15,TrollHide:15",   // weighs 335
+                OldDefaultRecipes  = new[] { "FineWood:50,ElderBark:30,IronNails:140,DeerHide:15,TrollHide:15,RoundLog:30",
+                                             "FineWood:50,ElderBark:40,IronNails:160,DeerHide:15,TrollHide:15,RoundLog:30",
                                              "FineWood:50,ElderBark:50,IronNails:240,DeerHide:15,TrollHide:15,RoundLog:40",
                                              "FineWood:50,ElderBark:60,IronNails:240,TrollHide:15,RoundLog:40",
                                              "FineWood:50,ElderBark:60,IronNails:240,DeerHide:15,RoundLog:40",
@@ -168,8 +171,9 @@ namespace TheGreatestShips
                 Description        = "The largest hold of the three cargo tiers. Slow and hard to turn, but tougher than the Busse and hauls far more.",
                 StorageWidth       = 8,
                 StorageHeight      = 8,
-                DefaultRecipe      = "FineWood:60,ElderBark:50,IronNails:180,DeerHide:20,TrollHide:20,RoundLog:40",   // weighs 450
-                OldDefaultRecipes  = new[] { "FineWood:60,ElderBark:50,IronNails:190,DeerHide:20,TrollHide:20,RoundLog:30",
+                DefaultRecipe      = "FineWood:60,ElderBark:90,IronNails:180,DeerHide:20,TrollHide:20",   // weighs 450
+                OldDefaultRecipes  = new[] { "FineWood:60,ElderBark:50,IronNails:180,DeerHide:20,TrollHide:20,RoundLog:40",
+                                             "FineWood:60,ElderBark:50,IronNails:190,DeerHide:20,TrollHide:20,RoundLog:30",
                                              "FineWood:70,ElderBark:80,IronNails:320,DeerHide:20,TrollHide:20,RoundLog:40",
                                              "FineWood:70,ElderBark:90,IronNails:320,TrollHide:20,RoundLog:40",
                                              "FineWood:70,ElderBark:90,IronNails:320,DeerHide:20,RoundLog:40",
@@ -255,8 +259,9 @@ namespace TheGreatestShips
                 Description        = "A longship half again the size, with a high-railed pen the length of its deck: room for a lox, and a fence a wolf can't clear. Slow to turn.",
                 StorageWidth       = 6,
                 StorageHeight      = 4,
-                DefaultRecipe      = "FineWood:65,ElderBark:65,IronNails:200,Wood:52,DeerHide:20,LoxPelt:10",   // Wood = the pen's pieces exactly; weighs 494 (two trips, or one on Troll Endurance); Lox Pelt makes it Plains-tier, which a lox carrier is anyway
-                OldDefaultRecipes  = new[] { "FineWood:60,ElderBark:60,IronNails:150,Wood:52,DeerHide:20,LoxPelt:10",
+                DefaultRecipe      = "FineWood:65,ElderBark:65,IronNails:200,Wood:52,LoxPelt:20",   // Wood = the pen's pieces exactly; weighs 484 (two trips, or one on Troll Endurance); Lox Pelt makes it Plains-tier, which a lox carrier is anyway
+                OldDefaultRecipes  = new[] { "FineWood:65,ElderBark:65,IronNails:200,Wood:52,DeerHide:20,LoxPelt:10",
+                                             "FineWood:60,ElderBark:60,IronNails:150,Wood:52,DeerHide:20,LoxPelt:10",
                                              "FineWood:60,ElderBark:60,IronNails:150,Wood:52,LoxPelt:4",
                                              "FineWood:60,ElderBark:60,IronNails:150,Wood:60,LoxPelt:4",
                                              "FineWood:60,ElderBark:60,IronNails:150,Wood:60,LoxPelt:4,WolfPelt:4",

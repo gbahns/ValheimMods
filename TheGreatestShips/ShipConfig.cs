@@ -50,7 +50,10 @@ namespace TheGreatestShips
         //              1.5 x 1.5; health follows the wood in each recipe (Knarr 1100, Busse 1400, Big Busse
         //              1900, Byrding 1400, Greater Byrding 1600).
         //  15 (0.9.1): the Busse and Big Busse's first (pre-Chain) recipes added to the migration list.
-        private const int CurrentConfigVersion = 15;
+        //  16 (0.9.1): every recipe within five ingredients, the build HUD's real limit: the Fast Longship drops
+        //              Guck, the cargo ships fold Core Wood into Ancient Bark, the Greater Byrding drops Deer Hide
+        //              for 20 Lox Pelt.
+        private const int CurrentConfigVersion = 16;
 
         internal static void Bind(TheGreatestShipsMod mod)
         {
