@@ -44,13 +44,25 @@ namespace TheGreatestShips
             int needed = piece.m_resources.Length + 1; // + the crafting station
             if (needed <= slots.Length) return;
 
+            // The slots are placed by hand, not by a layout group, so a clone lands exactly on
+            // top of the slot it was copied from: step each one along by the spacing between the
+            // last two existing slots.
             var grown = new List<GameObject>(slots);
+            Vector2 step = Vector2.zero;
+            if (slots.Length >= 2)
+            {
+                var a = slots[slots.Length - 2].GetComponent<RectTransform>();
+                var b = slots[slots.Length - 1].GetComponent<RectTransform>();
+                if (a != null && b != null) step = b.anchoredPosition - a.anchoredPosition;
+            }
             while (grown.Count < needed)
             {
                 var last  = grown[grown.Count - 1];
                 var clone = Object.Instantiate(last, last.transform.parent);
                 clone.name = last.name;
                 clone.transform.SetSiblingIndex(last.transform.GetSiblingIndex() + 1);
+                var rect = clone.GetComponent<RectTransform>();
+                if (rect != null) rect.anchoredPosition += step;
                 grown.Add(clone);
             }
             __instance.m_requirementItems = grown.ToArray();

@@ -62,9 +62,10 @@ the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was 
 - Health follows the wood in each recipe, 1000 per 80: Knarr 1100, Busse 1400, Big Busse 1900,
   Byrding 1400, Greater Byrding 1600. The fast ships keep their 20% less, built light for speed.
   Saved Health, Hull Width and Hull Length values still at an earlier default move to the new one.
-- Fixed: selecting a ship with seven ingredients in the Hammer threw an error every frame (the
-  build HUD has room for six plus the crafting station). The row now grows to fit, though every
-  recipe here stays within six.
+- Fixed: selecting a ship with six or more ingredients in the Hammer threw an error every frame:
+  the build HUD's requirement row has six slots, five ingredients plus the crafting station. The
+  row now grows to fit, each added slot spaced like the ones before it; every recipe here stays
+  within six ingredients.
 
 ## 0.9.0 — 2026-09-16
 
