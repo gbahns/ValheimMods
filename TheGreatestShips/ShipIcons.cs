@@ -21,15 +21,19 @@ namespace TheGreatestShips
     {
         private const int Size = 128;
 
-        // Yaw first, then tilt about the world X axis: the bow swings 60 degrees off the camera
-        // toward the right of the frame, and the deck tips 20 degrees toward the viewer.
-        private static readonly Quaternion View = Quaternion.Euler(20f, 0f, 0f) * Quaternion.Euler(0f, -60f, 0f);
+        // Yaw first, then tilt about the world X axis: the bow swings 45 degrees off the camera
+        // toward the right of the frame, and the deck tips 35 degrees toward the viewer -- so the
+        // hull runs diagonally through the square (bigger than a side view, which is a streak
+        // across the middle) and its breadth shows, which is the point of a fat cargo hull.
+        private static readonly Quaternion View = Quaternion.Euler(35f, 0f, 0f) * Quaternion.Euler(0f, -45f, 0f);
 
-        // Every icon is shot from the same distance, so a bigger ship is a bigger picture: the
-        // distance that just fits a longship scaled 1.5x (the largest hull here by default).
-        // Smaller ships shrink in proportion down to this floor, so a karve stays legible.
+        // A bigger ship is a bigger picture: the largest hull here by default (a longship scaled
+        // 1.5x) just fits the frame, and smaller ships shrink -- at half strength (the square root
+        // of the size ratio), so the ordering reads without the small ships going tiny, and no
+        // further than this floor.
         private const float ReferenceScale = 1.5f;
-        private const float SmallestFraction = 0.55f;
+        private const float SizeStrength = 0.5f;
+        private const float SmallestFraction = 0.74f;
         private static float _referenceSize = -1f;
 
         internal static Sprite Render(ShipDefinition def, GameObject clone)
@@ -46,7 +50,7 @@ namespace TheGreatestShips
                 copy = Stage(clone, out stage);
                 float size = FramedSize(copy);
                 float distance = size > 0f && _referenceSize > 0f
-                    ? Mathf.Clamp(_referenceSize / size, 1f, 1f / SmallestFraction)
+                    ? Mathf.Clamp(Mathf.Pow(_referenceSize / size, SizeStrength), 1f, 1f / SmallestFraction)
                     : 1f;
 
                 var sprite = RenderManager.Instance.Render(new RenderManager.RenderRequest(copy)
