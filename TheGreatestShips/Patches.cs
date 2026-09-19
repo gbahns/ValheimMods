@@ -85,17 +85,24 @@ namespace TheGreatestShips
     [HarmonyPatch(typeof(InventoryGrid), "UpdateGui")]
     internal static class InventoryGridFitPatch
     {
+        // Private in the game; the publicized reference assembly only makes them compile.
+        static readonly AccessTools.FieldRef<InventoryGrid, List<InventoryElement>> _elements =
+            AccessTools.FieldRefAccess<InventoryGrid, List<InventoryElement>>("m_elements");
+        static readonly AccessTools.FieldRef<InventoryGrid, int> _width  = AccessTools.FieldRefAccess<InventoryGrid, int>("m_width");
+        static readonly AccessTools.FieldRef<InventoryGrid, int> _height = AccessTools.FieldRefAccess<InventoryGrid, int>("m_height");
+        static readonly AccessTools.FieldRef<InventoryGrid, float> _space = AccessTools.FieldRefAccess<InventoryGrid, float>("m_elementSpace");
+
         [HarmonyPostfix]
         static void Postfix(InventoryGrid __instance)
         {
-            var elements = __instance.m_elements;
+            var elements = _elements(__instance);
             if (elements == null || elements.Count == 0) return;
-            int width  = __instance.m_width;
-            int height = __instance.m_height;
+            int width  = _width(__instance);
+            int height = _height(__instance);
             if (width <= 0 || height <= 0) return;
 
             var panel = __instance.transform as RectTransform;
-            float space     = __instance.m_elementSpace;
+            float space     = _space(__instance);
             float gridWidth = width * space;
             if (panel == null || panel.rect.width <= 0f || gridWidth <= panel.rect.width) return;
 
