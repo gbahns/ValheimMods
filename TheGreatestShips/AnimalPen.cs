@@ -67,6 +67,16 @@ namespace TheGreatestShips
             pen.transform.SetParent(clone.transform, false);
             pen.AddComponent<PenBallast>();
 
+            // Under attack the hull takes sudden impulses -- hits on the ship, leech bumps, a
+            // grounding -- and jumps a few centimeters in one physics step.  A penned animal is
+            // its own rigidbody and doesn't jump with it, so a rail can end up overlapping the
+            // animal, and Unity resolves an overlap along the shortest path out: past the rail's
+            // midline, that's outboard, and the animal is ejected through the wall.  Speculative
+            // contacts are generated ahead of the hull's motion instead of after the overlap, so
+            // the rail pushes the animal along with it.
+            var body = clone.GetComponent<Rigidbody>();
+            if (body != null) body.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+
             float halfLen = spec.Length / 2f;
             float halfWid = spec.Width / 2f;
             int pieces = 0;
