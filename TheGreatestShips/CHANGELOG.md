@@ -67,6 +67,10 @@ the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was 
   recipe here now stays within five (the cargo ships' Core Wood folds into Ancient Bark, the Fast
   Longship drops Guck, the Greater Byrding drops Deer Hide). A hand-edited sixth ingredient still
   shows -- the row grows to fit it -- but the station's icon then hangs off the panel.
+- Fixed: livestock aboard a ship under sail died to the ship itself. A ship rams whatever its
+  colliders strike above 1.5 m/s -- rails, mast and deck included -- for up to 50 blunt, and a
+  tamed boar has 10 health; a frightened animal running into the mast or the bow rail on a ship
+  doing 6 m/s was killed outright. On this mod's ships a tamed creature is never rammed.
 - Fixed: the Busse's nine-wide hold overflowed the inventory panel, half a slot off each side.
   A hold wider than the panel now draws its slots a little smaller to fit (the panel is built
   for eight).

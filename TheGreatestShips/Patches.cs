@@ -122,4 +122,36 @@ namespace TheGreatestShips
             Jotunn.Logger.LogInfo($"[TheGreatestShips] Inventory grid {width}x{height} is wider than its panel; slots drawn at {scale:0.00} scale to fit.");
         }
     }
+
+    /// <summary>
+    /// A ship's ImpactEffect deals its ramming damage (the longship's is 50 blunt, scaled by
+    /// speed) to any creature one of its colliders strikes above 1.5 m/s -- and every rail, the
+    /// mast and the deck are the ship.  A tamed boar has 10 hit points.  A calm animal moves with
+    /// the deck and is never struck; a frightened one runs, and on a ship under sail the mast or
+    /// the bow rail meets it at the ship's full speed: one hit, dead.  Players are spared by a
+    /// flag on the effect; livestock is not.  On this mod's ships, a tamed creature is: the hit
+    /// is skipped outright, knockback included.  Wild creatures are rammed as in vanilla.
+    /// </summary>
+    [HarmonyPatch(typeof(ImpactEffect), "OnCollisionEnter")]
+    internal static class ImpactEffectSparesLivestockPatch
+    {
+        static readonly HashSet<string> _ourShips =
+            new HashSet<string>(System.Linq.Enumerable.Select(ShipDefinitions.All, d => d.PrefabName));
+
+        [HarmonyPrefix]
+        static bool Prefix(ImpactEffect __instance, Collision info)
+        {
+            if (info == null || info.contactCount == 0) return true;
+
+            string name = __instance.name;
+            int clone = name.IndexOf('(');
+            if (clone > 0) name = name.Substring(0, clone).Trim();
+            if (!_ourShips.Contains(name)) return true;
+
+            var other = info.GetContact(0).otherCollider;
+            var hit = other != null ? Projectile.FindHitObject(other) : null;
+            var character = hit != null ? hit.GetComponent<Character>() : null;
+            return character == null || !character.IsTamed();
+        }
+    }
 }
