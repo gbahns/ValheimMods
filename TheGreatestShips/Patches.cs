@@ -74,4 +74,45 @@ namespace TheGreatestShips
             }
         }
     }
+
+    /// <summary>
+    /// A hold wider than the inventory panel (the Busse's is nine slots; vanilla never goes past
+    /// eight) overflows it: InventoryGrid.UpdateGui centers the grid in the panel, so half a slot
+    /// falls off each side.  The grid root is pinned every frame, so the slots themselves are
+    /// scaled down and re-spaced to fit the panel's width, keeping the same centering.  Runs only
+    /// after UpdateGui has (re)built the elements: they come back at scale 1.
+    /// </summary>
+    [HarmonyPatch(typeof(InventoryGrid), "UpdateGui")]
+    internal static class InventoryGridFitPatch
+    {
+        [HarmonyPostfix]
+        static void Postfix(InventoryGrid __instance)
+        {
+            var elements = __instance.m_elements;
+            if (elements == null || elements.Count == 0) return;
+            int width  = __instance.m_width;
+            int height = __instance.m_height;
+            if (width <= 0 || height <= 0) return;
+
+            var panel = __instance.transform as RectTransform;
+            float space     = __instance.m_elementSpace;
+            float gridWidth = width * space;
+            if (panel == null || panel.rect.width <= 0f || gridWidth <= panel.rect.width) return;
+
+            float scale = panel.rect.width / gridWidth;
+            var first = elements[0].transform as RectTransform;
+            if (first == null || Mathf.Approximately(first.localScale.x, scale)) return; // already fitted
+
+            float start = panel.rect.width / 2f - gridWidth * scale / 2f;
+            for (int i = 0; i < elements.Count; i++)
+            {
+                var rect = elements[i].transform as RectTransform;
+                if (rect == null) continue;
+                int x = i % width, y = i / width;
+                rect.localScale       = new Vector3(scale, scale, 1f);
+                rect.anchoredPosition = new Vector2(start + x * space * scale, -y * space * scale);
+            }
+            Jotunn.Logger.LogInfo($"[TheGreatestShips] Inventory grid {width}x{height} is wider than its panel; slots drawn at {scale:0.00} scale to fit.");
+        }
+    }
 }

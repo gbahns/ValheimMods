@@ -67,6 +67,12 @@ the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was 
   recipe here now stays within five (the cargo ships' Core Wood folds into Ancient Bark, the Fast
   Longship drops Guck, the Greater Byrding drops Deer Hide). A hand-edited sixth ingredient still
   shows -- the row grows to fit it -- but the station's icon then hangs off the panel.
+- Fixed: the Busse's nine-wide hold overflowed the inventory panel, half a slot off each side.
+  A hold wider than the panel now draws its slots a little smaller to fit (the panel is built
+  for eight).
+- Each ship's Hammer icon is a picture of that ship -- its own sail and hull colors, its width
+  and length, its pen -- instead of the longship's icon eight times over. The icons are also
+  written to BepInEx/config/TheGreatestShips/icons/ as PNGs.
 
 ## 0.9.0 — 2026-09-16
 
