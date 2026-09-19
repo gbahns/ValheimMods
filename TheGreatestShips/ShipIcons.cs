@@ -32,8 +32,13 @@ namespace TheGreatestShips
         // of the size ratio), so the ordering reads without the small ships going tiny, and no
         // further than this floor.
         private const float ReferenceScale = 1.5f;
-        private const float SizeStrength = 0.5f;
+        private const float SizeStrength = 0.35f;   // a longship-sized hull comes out ~88% of the frame, as vanilla's icon is
         private const float SmallestFraction = 0.74f;
+
+        // Jotunn's single frontal light leaves the picture about half as bright as the game's own
+        // icons (mean luminance ~75 against ~135).  Its light is private, so the finished pixels
+        // get a midtone lift instead: 75 becomes ~120, highlights barely move.
+        private const float Gamma = 0.6f;
         private static float _referenceSize = -1f;
 
         internal static Sprite Render(ShipDefinition def, GameObject clone)
@@ -64,6 +69,7 @@ namespace TheGreatestShips
                     Jotunn.Logger.LogWarning($"[TheGreatestShips] {def.DisplayName}: icon render returned nothing; keeping the {def.BaseName}'s icon.");
                     return null;
                 }
+                Brighten(sprite.texture);
                 Save(def, sprite);
                 return sprite;
             }
@@ -146,12 +152,19 @@ namespace TheGreatestShips
             }
 
             // The water mask is a hull-shaped volume that only writes depth in the game, to keep
-            // the sea out of the boat; the Karve's "shadow" is a blob under it.  Neither is boat.
+            // the sea out of the boat; the Karve's "shadow" is a blob under it; the water-surface
+            // and splash effects are big flat meshes.  None is boat, and Jotunn frames the picture
+            // by every mesh renderer's bounds whether or not it's enabled -- so they go entirely,
+            // or the ship sits small inside a frame sized to invisible geometry.
             foreach (var renderer in root.GetComponentsInChildren<Renderer>(true))
             {
                 string n = renderer.name.ToLowerInvariant();
                 if (n.Contains("watermask") || n.Contains("shadow") || n.StartsWith("vfx") || n.Contains("splash") || n == "trail")
-                    renderer.enabled = false;
+                {
+                    var filter = renderer.GetComponent<MeshFilter>();
+                    Object.DestroyImmediate(renderer);
+                    if (filter != null) Object.DestroyImmediate(filter);
+                }
             }
 
             var scripts = new List<MonoBehaviour>(root.GetComponentsInChildren<MonoBehaviour>(true));
@@ -162,6 +175,19 @@ namespace TheGreatestShips
                 Object.DestroyImmediate(joint);
             foreach (var body in root.GetComponentsInChildren<Rigidbody>(true))
                 Object.DestroyImmediate(body);
+        }
+
+        private static void Brighten(Texture2D texture)
+        {
+            var pixels = texture.GetPixels();
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                var c = pixels[i];
+                if (c.a <= 0f) continue;
+                pixels[i] = new Color(Mathf.Pow(c.r, Gamma), Mathf.Pow(c.g, Gamma), Mathf.Pow(c.b, Gamma), c.a);
+            }
+            texture.SetPixels(pixels);
+            texture.Apply();
         }
 
         private static void Save(ShipDefinition def, Sprite sprite)
