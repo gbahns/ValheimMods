@@ -207,7 +207,7 @@ namespace TheGreatestShips
                 OldDefaultRecipes  = new[] { "FineWood:40,ElderBark:40,IronNails:100,DeerHide:10,Wood:24",
                                              "FineWood:40,ElderBark:40,IronNails:100,DeerHide:10,Wood:40",
                                              "FineWood:40,ElderBark:40,IronNails:100,DeerHide:10,Wood:80" },
-                DefaultSpeed       = 0.9f,    // about 8.7: 10% under a longship, the pen's other price
+                DefaultSpeed       = 0.9f,    // about 8.7, measured 8.59: 10% under a longship, the pen's other price
                 OldDefaultSpeed    = 1f,
                 DefaultHealth      = 1000f,   // unchanged from the vanilla Longship
                 DefaultRudderSpeed = 1f,      // unchanged from the vanilla Longship
@@ -236,7 +236,7 @@ namespace TheGreatestShips
                                              "FineWood:50,ElderBark:50,IronNails:125,DeerHide:12,Wood:36",
                                              "FineWood:50,ElderBark:50,IronNails:125,DeerHide:12,Wood:50",
                                              "FineWood:50,ElderBark:50,IronNails:125,DeerHide:12,Wood:100" },
-                DefaultSpeed       = 0.85f,   // about 8.2: 15% under a longship
+                DefaultSpeed       = 0.85f,   // about 8.2, measured 8.25: 15% under a longship
                 OldDefaultSpeed    = 0.97f,
                 DefaultHealth      = 1400f,   // follows the wood in the recipe (1000 per 80)
                 OldDefaultHealths  = new[] { 1250f },

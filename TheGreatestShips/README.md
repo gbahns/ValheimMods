@@ -16,8 +16,8 @@ New ships built on Valheim's own hulls. Install on the server and on every clien
 | **Knarr** | Longship | 8.6 | 1100 | slower | 32 | 1.25× | | amber | green stripes | Fine Wood 40, Ancient Bark 50, Iron Nails 120, Deer Hide 10, Troll Hide 10 |
 | **Busse** | Longship | about 8.0 | 1400 | slower still | 36 | 1.3× | 1.15× | amber | green stripes | Fine Wood 50, Ancient Bark 60, Iron Nails 140, Deer Hide 15, Troll Hide 15 |
 | **Big Busse** | Longship | about 7.5 | 1900 | slowest | 64 | 1.5× | 1.5× | amber | green stripes | Fine Wood 60, Ancient Bark 90, Iron Nails 180, Deer Hide 20, Troll Hide 20 |
-| **Small Byrding** *(experimental)* | Longship | about 8.7 | 1000 | normal | 12 | | | white | brown | Fine Wood 40, Ancient Bark 40, Iron Nails 100, Deer Hide 12, Wood 24 |
-| **Byrding** *(experimental)* | Longship, 1.25× | about 8.2 | 1400 | a little slower | 18 | | | white | brown | Fine Wood 55, Ancient Bark 55, Iron Nails 150, Deer Hide 15, Wood 36 |
+| **Small Byrding** *(experimental)* | Longship | 8.6 | 1000 | normal | 12 | | | white | brown | Fine Wood 40, Ancient Bark 40, Iron Nails 100, Deer Hide 12, Wood 24 |
+| **Byrding** *(experimental)* | Longship, 1.25× | 8.3 | 1400 | a little slower | 18 | | | white | brown | Fine Wood 55, Ancient Bark 55, Iron Nails 150, Deer Hide 15, Wood 36 |
 | **Greater Byrding** *(experimental)* | Longship, 1.5× | about 7.7 | 1600 | slower | 24 | | | white | brown | Fine Wood 65, Ancient Bark 65, Iron Nails 200, Wood 52, Lox Pelt 20 |
 
 Top speeds are in m/s, in full wind about 64° off the stern. They were worked out from logged
