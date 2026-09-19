@@ -98,13 +98,13 @@ namespace TheGreatestShips
                 }
             }
 
-            // The pieces' "woodwall" material has _RippleDistance 0.03: Custom/Piece displaces
-            // vertices by a pattern sampled at world position, a subtle hand-hewn look on a wall
-            // that never moves.  On a hull bobbing at anchor the sample point shifts every frame
-            // and the rails shimmer constantly -- every one of the ship's own materials has it at
-            // 0.  Zeroed in a copy of each material: a property block would do it too, until the
-            // first hover highlight, when MaterialMan writes its own block over every renderer
-            // on the ship and the shimmer comes back.
+            // The pieces' "woodwall" material is Custom/Piece with _VALUENOISEVERTEX_ON: the
+            // shader nudges every vertex by a noise texture sampled at its *world* position, a
+            // static hand-hewn look on a wall that never moves.  On a hull that bobs the sample
+            // point shifts every frame and the rails crawl constantly.  The ship's own wood is the
+            // same shader flagged _MOVEABLEOBJECT_ON with no vertex noise, so each material is
+            // copied and given the ship's flags.  (A property block would do until the first
+            // hover highlight, when MaterialMan writes its own block over every renderer.)
             var stilled = new Dictionary<Material, Material>();
             foreach (var renderer in pen.GetComponentsInChildren<Renderer>(true))
             {
@@ -113,11 +113,14 @@ namespace TheGreatestShips
                 for (int i = 0; i < materials.Length; i++)
                 {
                     var material = materials[i];
-                    if (material == null || !material.HasProperty("_RippleDistance")) continue;
+                    if (material == null) continue;
                     if (!stilled.TryGetValue(material, out var copy))
                     {
-                        copy = new Material(material) { name = material.name + "_still" };
-                        copy.SetFloat("_RippleDistance", 0f);
+                        copy = new Material(material) { name = material.name + "_" + clone.name };
+                        copy.DisableKeyword("_VALUENOISEVERTEX_ON");
+                        copy.EnableKeyword("_MOVEABLEOBJECT_ON");
+                        foreach (var (prop, value) in new[] { ("_ValueNoiseVertex", 0f), ("_ValueNoise", 0f), ("_RippleDistance", 0f), ("_MoveableObject", 1f) })
+                            if (copy.HasProperty(prop)) copy.SetFloat(prop, value);
                         stilled[material] = copy;
                     }
                     materials[i] = copy;

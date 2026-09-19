@@ -25,28 +25,34 @@ namespace TheGreatestShips
         // toward the right of the frame, and the deck tips 20 degrees toward the viewer.
         private static readonly Quaternion View = Quaternion.Euler(20f, 0f, 0f) * Quaternion.Euler(0f, -60f, 0f);
 
+        // Every icon is shot from the same distance, so a bigger ship is a bigger picture: the
+        // distance that just fits a longship scaled 1.5x (the largest hull here by default).
+        // Smaller ships shrink in proportion down to this floor, so a karve stays legible.
+        private const float ReferenceScale = 1.5f;
+        private const float SmallestFraction = 0.55f;
+        private static float _referenceSize = -1f;
+
         internal static Sprite Render(ShipDefinition def, GameObject clone)
         {
             GameObject stage = null, copy = null;
             try
             {
-                stage = new GameObject("TheGreatestShips_icon_stage");
-                stage.SetActive(false);
-                copy = Object.Instantiate(clone, stage.transform);
-                copy.name = clone.name;
+                if (_referenceSize < 0f)
+                {
+                    var longship = PrefabManager.Instance.GetPrefab("VikingShip");
+                    _referenceSize = longship != null ? ReferenceScale * FramedSize(longship) : 0f;
+                }
 
-                var ship = copy.GetComponent<Ship>();
-                var sail = ship != null ? ship.m_sailObject : null;
-                StripToGeometry(copy);
-                if (sail != null) sail.SetActive(true);
-
-                copy.transform.SetParent(null);
-                copy.transform.position = new Vector3(0f, -4000f, 0f); // out of anyone's sight
-                copy.SetActive(true);
+                copy = Stage(clone, out stage);
+                float size = FramedSize(copy);
+                float distance = size > 0f && _referenceSize > 0f
+                    ? Mathf.Clamp(_referenceSize / size, 1f, 1f / SmallestFraction)
+                    : 1f;
 
                 var sprite = RenderManager.Instance.Render(new RenderManager.RenderRequest(copy)
                 {
                     Width = Size, Height = Size, Rotation = View,
+                    DistanceMultiplier = distance,
                     ParticleSimulationTime = -1f, // no bow splash or wake in the picture
                 });
                 if (sprite == null)
@@ -66,6 +72,57 @@ namespace TheGreatestShips
             {
                 if (copy  != null) Object.Destroy(copy);
                 if (stage != null) Object.Destroy(stage);
+            }
+        }
+
+        // A script-free, active copy of the prefab, parked far below the world.  `stage` is the
+        // inactive parent it was instantiated under (so nothing ran Awake); destroy both after.
+        private static GameObject Stage(GameObject prefab, out GameObject stage)
+        {
+            stage = new GameObject("TheGreatestShips_icon_stage");
+            stage.SetActive(false);
+            var copy = Object.Instantiate(prefab, stage.transform);
+            copy.name = prefab.name;
+
+            var ship = copy.GetComponent<Ship>();
+            var sail = ship != null ? ship.m_sailObject : null;
+            StripToGeometry(copy);
+            if (sail != null) sail.SetActive(true);
+
+            copy.transform.SetParent(null);
+            copy.transform.position = new Vector3(0f, -4000f, 0f); // out of anyone's sight
+            copy.SetActive(true);
+            return copy;
+        }
+
+        // The measure Jotunn frames by: the larger of the width and height of the mesh
+        // renderers' world bounds once the object is turned to the icon's view.
+        private static float FramedSize(GameObject target)
+        {
+            GameObject stage = null;
+            var copy = target.activeInHierarchy ? target : Stage(target, out stage);
+            try
+            {
+                var was = copy.transform.rotation;
+                copy.transform.rotation = View;
+                var min = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
+                var max = new Vector3(float.MinValue, float.MinValue, float.MinValue);
+                bool any = false;
+                foreach (var renderer in copy.GetComponentsInChildren<Renderer>())
+                {
+                    if (!(renderer is MeshRenderer) && !(renderer is SkinnedMeshRenderer)) continue;
+                    min = Vector3.Min(min, renderer.bounds.min);
+                    max = Vector3.Max(max, renderer.bounds.max);
+                    any = true;
+                }
+                copy.transform.rotation = was;
+                if (!any) return 0f;
+                var extent = max - min;
+                return Mathf.Max(extent.x, extent.y);
+            }
+            finally
+            {
+                if (stage != null) { Object.Destroy(copy); Object.Destroy(stage); }
             }
         }
 
