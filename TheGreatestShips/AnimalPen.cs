@@ -102,11 +102,29 @@ namespace TheGreatestShips
             // vertices by a pattern sampled at world position, a subtle hand-hewn look on a wall
             // that never moves.  On a hull bobbing at anchor the sample point shifts every frame
             // and the rails shimmer constantly -- every one of the ship's own materials has it at
-            // 0.  A property block zeroes it per renderer without copying the material.
-            var noRipple = new MaterialPropertyBlock();
-            noRipple.SetFloat("_RippleDistance", 0f);
+            // 0.  Zeroed in a copy of each material: a property block would do it too, until the
+            // first hover highlight, when MaterialMan writes its own block over every renderer
+            // on the ship and the shimmer comes back.
+            var stilled = new Dictionary<Material, Material>();
             foreach (var renderer in pen.GetComponentsInChildren<Renderer>(true))
-                renderer.SetPropertyBlock(noRipple);
+            {
+                var materials = renderer.sharedMaterials;
+                bool changed = false;
+                for (int i = 0; i < materials.Length; i++)
+                {
+                    var material = materials[i];
+                    if (material == null || !material.HasProperty("_RippleDistance")) continue;
+                    if (!stilled.TryGetValue(material, out var copy))
+                    {
+                        copy = new Material(material) { name = material.name + "_still" };
+                        copy.SetFloat("_RippleDistance", 0f);
+                        stilled[material] = copy;
+                    }
+                    materials[i] = copy;
+                    changed = true;
+                }
+                if (changed) renderer.sharedMaterials = materials;
+            }
 
             Jotunn.Logger.LogInfo($"[TheGreatestShips] Built animal pen: {pieces} posts and rails, {spec.Width} x {spec.Length} at z {spec.CenterZ}; the same pieces would cost {wood} Wood.");
         }
