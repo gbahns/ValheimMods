@@ -47,6 +47,7 @@ namespace TheGreatestShips
                 var sprite = RenderManager.Instance.Render(new RenderManager.RenderRequest(copy)
                 {
                     Width = Size, Height = Size, Rotation = View,
+                    ParticleSimulationTime = -1f, // no bow splash or wake in the picture
                 });
                 if (sprite == null)
                 {
@@ -76,9 +77,20 @@ namespace TheGreatestShips
             foreach (var group in root.GetComponentsInChildren<LODGroup>(true))
             {
                 var lods = group.GetLODs();
+                if (lods.Length < 2) continue;
+                var nearest = new HashSet<Renderer>(lods[0].renderers);
                 for (int i = 1; i < lods.Length; i++)
                     foreach (var r in lods[i].renderers)
-                        if (r != null) r.enabled = false;
+                        if (r != null && !nearest.Contains(r)) r.enabled = false; // a renderer LOD0 also uses stays on
+            }
+
+            // The water mask is a hull-shaped volume that only writes depth in the game, to keep
+            // the sea out of the boat; the Karve's "shadow" is a blob under it.  Neither is boat.
+            foreach (var renderer in root.GetComponentsInChildren<Renderer>(true))
+            {
+                string n = renderer.name.ToLowerInvariant();
+                if (n.Contains("watermask") || n.Contains("shadow") || n.StartsWith("vfx") || n.Contains("splash") || n == "trail")
+                    renderer.enabled = false;
             }
 
             var scripts = new List<MonoBehaviour>(root.GetComponentsInChildren<MonoBehaviour>(true));
