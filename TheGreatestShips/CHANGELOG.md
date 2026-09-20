@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.2 — unreleased
+## 0.9.2 — 2026-09-20
 
 **Breaking: the server and every player need 0.9.2. Hull Width, Hull Length and Hull Scale are
 now the server's, so a 0.9.1 client would keep its own.**
