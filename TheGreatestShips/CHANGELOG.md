@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.1 — unreleased
+## 0.9.1 — 2026-09-20
 
 **Breaking: the server and every player need 0.9.1. The Fast Longship's hold changed size, so
 0.9.0 and 0.9.1 cannot share a server.**
