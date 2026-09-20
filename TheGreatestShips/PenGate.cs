@@ -19,7 +19,9 @@ namespace TheGreatestShips
         private const float SwingAngle = 65f;   // about the hinge (local Z): the top swings outboard and down, to ~25 degrees above the deck
         private const float SwingSpeed = 120f;  // degrees per second
 
-        internal bool Port;   // set when built: the port gate keeps its own state and swings the other way
+        // Set when built.  Public so Unity serializes it: Instantiate copies serialized fields
+        // only, and an internal one left every spawned ship with two starboard gates.
+        public bool Port;   // the port gate keeps its own state and swings the other way
 
         private string ZdoKey    => Port ? "DM_PenGateOpenPort" : "DM_PenGateOpen";
         private string RpcName   => Port ? "DM_PenGatePort" : "DM_PenGate";
@@ -33,7 +35,8 @@ namespace TheGreatestShips
         {
             _nview = GetComponentInParent<ZNetView>();
             if (_nview == null || !_nview.IsValid()) { _nview = null; return; }
-            _nview.Register<bool>(RpcName, RPC_SetOpen);
+            try { _nview.Register<bool>(RpcName, RPC_SetOpen); }
+            catch (System.ArgumentException) { /* already registered on this ship: same gate, same handler */ }
             _open = _nview.GetZDO().GetBool(ZdoKey);
             transform.localRotation = Target();
         }
