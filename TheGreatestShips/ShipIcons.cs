@@ -35,6 +35,12 @@ namespace TheGreatestShips
         private const float SizeStrength = 0.35f;   // a longship-sized hull comes out ~88% of the frame, as vanilla's icon is
         private const float SmallestFraction = 0.74f;
 
+        // Jotunn fits the frame to the renderers' axis-aligned bounds, and a rotated box's bounds
+        // have empty corners: a longship hull yawed 45 degrees reaches only ~84% of its box in
+        // width (the bow is a point, not a corner).  Every hull here is that shape, so the camera
+        // comes in by this much and the tips land just inside the frame.
+        private const float Tightness = 0.86f;
+
         // Jotunn's single frontal light leaves the picture about half as bright as the game's own
         // icons (mean luminance ~75 against ~135).  Its light is private, so the finished pixels
         // get a midtone lift instead: 75 becomes ~120, highlights barely move.
@@ -54,9 +60,9 @@ namespace TheGreatestShips
 
                 copy = Stage(clone, out stage);
                 float size = FramedSize(copy);
-                float distance = size > 0f && _referenceSize > 0f
+                float distance = Tightness * (size > 0f && _referenceSize > 0f
                     ? Mathf.Clamp(Mathf.Pow(_referenceSize / size, SizeStrength), 1f, 1f / SmallestFraction)
-                    : 1f;
+                    : 1f);
 
                 var sprite = RenderManager.Instance.Render(new RenderManager.RenderRequest(copy)
                 {

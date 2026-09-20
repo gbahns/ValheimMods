@@ -355,11 +355,11 @@ namespace TheGreatestShips
         // Temporary diagnostic (2026-09-20): which layers the camera stops at and which collide
         // with characters, to pick the pen pieces' layer.  Logged once per world load.
         private static bool _probed;
-        private static void ProbeLayers()
+        internal static void ProbeLayers(GameCamera camera)
         {
-            if (_probed || GameCamera.instance == null) return;
+            if (_probed || camera == null) return;
             _probed = true;
-            int mask = GameCamera.instance.m_blockCameraMask.value;
+            int mask = camera.m_blockCameraMask.value;
             var parts = new List<string>();
             foreach (int layer in new[] { 0, 9, 10, 14, 15, 16, 28 })
                 parts.Add($"{layer}:{LayerMask.LayerToName(layer)} camera={((mask >> layer) & 1) == 1} hitsCharacter={!Physics.GetIgnoreLayerCollision(9, layer)}");
@@ -371,7 +371,6 @@ namespace TheGreatestShips
             try
             {
                 EnsureInNamedPrefabs();
-                ProbeLayers();
             }
             catch (System.Exception e)
             {
