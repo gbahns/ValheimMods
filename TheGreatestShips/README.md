@@ -78,7 +78,10 @@ over the gunwale, so with the ship alongside a dock at rail height animals can w
 
 ## Configuration
 
-`BepInEx/config/DeathMonger.TheGreatestShips.cfg` has one section per ship, named after it:
+`BepInEx/config/DeathMonger.TheGreatestShips.cfg` has one section per ship, named after it.
+When an update changes a default, any value you never touched moves to the new default by
+itself; a value you set yourself is kept. To get the new defaults for everything, delete the
+file (or just the entries you want reset) and start the game.
 
 | Setting | | |
 |---|---|---|
