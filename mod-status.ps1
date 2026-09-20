@@ -79,7 +79,7 @@ function Get-Published($repository, $namespace, $name) {
 # the commit, so a DLL names both its release and the source it was built from.  That separates
 # the three cases a hash cannot: an older version still deployed, the same version rebuilt, and
 # the identical build.  DLLs built before that stamping all claim 1.0.0.0 and cannot be placed.
-function Get-ServerDllState([byte[]]$bytes, [string]$localDll) {
+function Get-ServerDllState([byte[]]$bytes, [string]$localDll, [string]$expected) {
     $tmp = Join-Path ([IO.Path]::GetTempPath()) ("modstatus-" + [Guid]::NewGuid().ToString("N") + ".dll")
     try {
         [IO.File]::WriteAllBytes($tmp, $bytes)
@@ -87,7 +87,10 @@ function Get-ServerDllState([byte[]]$bytes, [string]$localDll) {
         $local  = [Diagnostics.FileVersionInfo]::GetVersionInfo($localDll)
         $rv = $remote.FileVersion
         $lv = $local.FileVersion
-        if ($rv -eq "1.0.0.0" -and $lv -ne "1.0.0.0") { return "unstamped" }
+        # An unstamped DLL reads 1.0.0.0 -- but so does a correctly stamped 1.0.0, and calling that
+        # unstamped sends someone to redeploy a file that is already byte-identical to the release.
+        # When 1.0.0 is the version the server is expected to hold, take the reading at face value.
+        if ($rv -eq "1.0.0.0" -and $lv -ne "1.0.0.0" -and $expected -ne "1.0.0") { return "unstamped" }
         $short = $rv -replace '\.0$', ''
 
         if ($rv -eq $lv) {
@@ -295,7 +298,7 @@ if ($Server) {
                 if (-not $target) { $r.ServerState = "absent"; continue }
                 if (-not $r.Dll)  { $r.ServerState = "present (no local build)"; continue }
                 $bytes = $client.GetByteArrayAsync("$base/game-servers/$id/files/" + ($target -replace " ", "%20")).Result
-                $r.ServerState = Get-ServerDllState $bytes $r.Dll
+                $r.ServerState = Get-ServerDllState $bytes $r.Dll $r.Expected
             }
         } catch {
             Write-Warning "Server check failed: $($_.Exception.Message)"
