@@ -6,7 +6,7 @@ schemaVersion = "0.0.1"
 [package]
 namespace = "DeathMonger"
 name = "TheGreatestShips"
-versionNumber = "0.9.1"
+versionNumber = "0.9.2"
 description = "Three new ships built on the vanilla hulls: a Fast Karve, a Fast Longship and a Cargo Longship, each with its own speed, hold, width and paint."
 websiteUrl = "https://github.com/gbahns/ValheimMods/tree/main/TheGreatestShips"
 containsNsfwContent = false

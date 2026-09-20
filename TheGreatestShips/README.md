@@ -93,9 +93,9 @@ file (or just the entries you want reset) and start the game.
 | Sail Color | Multiplied into the sail. White leaves it as it is | Needs a restart |
 | Hull Color | Paint multiplied into the hull planks, not the mast or rudder | Needs a restart |
 | Hull Stripes | Number of painted bands; 0 paints the hull solid | Needs a restart |
-| Hull Width | Width relative to the vanilla ship. Keep it the same for everyone on a server | Needs a restart |
-| Hull Length | Bow-to-stern length relative to the vanilla ship. Keep it the same for everyone on a server | Needs a restart |
-| Hull Scale | Size of the whole ship in all three dimensions; Width and Length multiply on top. Keep it the same for everyone on a server | Needs a restart |
+| Hull Width | Width relative to the vanilla ship | Synced with the server |
+| Hull Length | Bow-to-stern length relative to the vanilla ship | Synced with the server |
+| Hull Scale | Size of the whole ship in all three dimensions; Width and Length multiply on top | Synced with the server |
 
 Updating from 0.9.0 moves a Fast Karve speed of 1.14 and the old Cargo Longship recipe to the new
 defaults. The Cargo Longship's own section also moves across under its new name, Knarr. Values you

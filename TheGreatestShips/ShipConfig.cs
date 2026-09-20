@@ -106,25 +106,27 @@ namespace TheGreatestShips
                     "Paint the hull color in this many bands with bare wood between them. 0 paints the hull " +
                     "solid. The bands follow the hull texture's layout. Requires a game restart.");
 
-                // Not synced: the shape is fixed when the ship is created at the main menu, before
-                // the server's values arrive.  Players should keep the same value.
-                e.Width = mod.Config.Bind(section, "Hull Width", Migrated(mod, def, "Hull Width", def.DefaultWidth),
-                    $"Width relative to the vanilla {def.BaseName}; below 1 is narrower, above 1 wider. " +
-                    "Everyone on a server should use the same value. Requires a game restart.");
+                // Synced: every player must agree on where a hull is.  The shape is set when the
+                // ship is created at the main menu and set again when the server's values arrive
+                // (ShipPrefabs.ApplyDimensions), on the prefab and on the ships already afloat.
+                e.Width = mod.BindSynced(section, "Hull Width", Migrated(mod, def, "Hull Width", def.DefaultWidth),
+                    $"Width relative to the vanilla {def.BaseName}; below 1 is narrower, above 1 wider.");
 
-                e.Length = mod.Config.Bind(section, "Hull Length", Migrated(mod, def, "Hull Length", def.DefaultLength),
-                    $"Bow-to-stern length relative to the vanilla {def.BaseName}; below 1 is shorter, above 1 longer. " +
-                    "Everyone on a server should use the same value. Requires a game restart.");
+                e.Length = mod.BindSynced(section, "Hull Length", Migrated(mod, def, "Hull Length", def.DefaultLength),
+                    $"Bow-to-stern length relative to the vanilla {def.BaseName}; below 1 is shorter, above 1 longer.");
 
-                e.Scale = mod.Config.Bind(section, "Hull Scale", Migrated(mod, def, "Hull Scale", def.DefaultScale),
+                e.Scale = mod.BindSynced(section, "Hull Scale", Migrated(mod, def, "Hull Scale", def.DefaultScale),
                     $"Size of the whole ship, all three dimensions, relative to the vanilla {def.BaseName}. Width and Length " +
-                    "multiply on top of it. Everyone on a server should use the same value. Requires a game restart.");
+                    "multiply on top of it.");
 
                 var captured = def;
                 e.Recipe.SettingChanged += (_, __) => ShipPrefabs.ApplyRecipe(captured);
                 e.Speed.SettingChanged  += (_, __) => ShipPrefabs.ApplyHandling(captured);
                 e.Health.SettingChanged += (_, __) => ShipPrefabs.ApplyHandling(captured);
                 e.RudderSpeed.SettingChanged += (_, __) => ShipPrefabs.ApplyHandling(captured);
+                e.Width.SettingChanged  += (_, __) => ShipPrefabs.ApplyDimensions(captured);
+                e.Length.SettingChanged += (_, __) => ShipPrefabs.ApplyDimensions(captured);
+                e.Scale.SettingChanged  += (_, __) => ShipPrefabs.ApplyDimensions(captured);
 
                 // Migrate() only moves a value still sitting at a documented old default, so
                 // re-running it for every version step is safe: a hand-set value never matches.

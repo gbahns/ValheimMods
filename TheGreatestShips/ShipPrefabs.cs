@@ -22,6 +22,8 @@ namespace TheGreatestShips
             // The base hull's own sail force, read from its prefab so a game update that retunes
             // the vanilla ship carries over.
             public float BaseSailForceFactor;
+            // The base hull's transform scale, which Hull Width / Length / Scale multiply.
+            public Vector3 BaseScale;
         }
 
         private static readonly Dictionary<ShipDefinition, Built> _built =
@@ -132,9 +134,8 @@ namespace TheGreatestShips
             var cfg = ShipConfig.For(def);
             TintSail(def, clone, cfg.SailColor.Value);
             TintHull(def, clone, cfg.HullColor.Value, cfg.HullStripes.Value);
-            SetScale(def, clone, cfg.Scale.Value);
-            SetWidth(def, clone, cfg.Width.Value);
-            SetLength(def, clone, cfg.Length.Value);
+            var baseScale = clone.transform.localScale;
+            clone.transform.localScale = Dimensions(baseScale, cfg);
 
             if (def.Pen != null)
                 AnimalPen.Build(clone, def.Pen);
@@ -143,7 +144,7 @@ namespace TheGreatestShips
             var icon = piece != null ? ShipIcons.Render(def, clone) : null;
             if (icon != null) piece.m_icon = icon;
 
-            _built[def] = new Built { Clone = clone, BaseSailForceFactor = ship.m_sailForceFactor };
+            _built[def] = new Built { Clone = clone, BaseSailForceFactor = ship.m_sailForceFactor, BaseScale = baseScale };
             ApplyHandling(def);
             Jotunn.Logger.LogInfo($"[TheGreatestShips] Cloned {def.BasePrefab} as {def.PrefabName} ({def.BaseName} sail force {ship.m_sailForceFactor}).");
         }
@@ -255,41 +256,47 @@ namespace TheGreatestShips
         // Stretches the whole ship sideways -- hull, deck, seats, ladder, colliders -- so
         // everything on board keeps its place.  Parts that turn (sail, rudder) skew slightly when
         // turned inside a non-uniform scale; at these widths that is hard to see.
-        private static void SetWidth(ShipDefinition def, GameObject clone, float width)
+        // Width, length and scale as one transform scale: the base hull's, times
+        // (width x scale, scale, length x scale).  Width is local X, length local Z (the bow;
+        // Ship.CustomFixedUpdate's transform.forward).  The game floats a hull by where its
+        // center of mass sits against the water, so a scaled-up hull rides deeper: its deck ends
+        // up at about the same height above the water, with more hull beneath.
+        private static Vector3 Dimensions(Vector3 baseScale, ShipConfig.Entries cfg)
         {
-            width = Mathf.Clamp(width, 0.5f, 2f);
-            if (Mathf.Approximately(width, 1f)) return;
-
-            var scale = clone.transform.localScale;
-            scale.x *= width;
-            clone.transform.localScale = scale;
-            Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: width x{width}.");
+            float scale  = Mathf.Clamp(cfg.Scale.Value,  0.5f, 2f);
+            float width  = Mathf.Clamp(cfg.Width.Value,  0.5f, 2f);
+            float length = Mathf.Clamp(cfg.Length.Value, 0.5f, 2f);
+            return Vector3.Scale(baseScale, new Vector3(width * scale, scale, length * scale));
         }
 
-        // The whole ship, all three axes.  Width and Length multiply on top of it.  The game
-        // floats a hull by where its center of mass sits against the water level, so a scaled-up
-        // hull rides deeper: its deck ends up at about the same height above the water, with
-        // more hull beneath.
-        private static void SetScale(ShipDefinition def, GameObject clone, float scale)
+        // The dimensions, on the prefab and on every ship already in the world: the server's
+        // values arrive after the prefab was built at the main menu, and every player must
+        // agree on where a hull is.  The pen is a child of the hull in hull units, so it
+        // follows; the icon is taken again, since it is a picture of the hull.
+        internal static void ApplyDimensions(ShipDefinition def)
         {
-            scale = Mathf.Clamp(scale, 0.5f, 2f);
-            if (Mathf.Approximately(scale, 1f)) return;
+            if (!_built.TryGetValue(def, out var built)) return;
 
-            clone.transform.localScale *= scale;
-            Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: scale x{scale}.");
-        }
+            var target = Dimensions(built.BaseScale, ShipConfig.For(def));
+            if (built.Clone.transform.localScale == target) return;
+            built.Clone.transform.localScale = target;
 
-        // Same as SetWidth, but bow-to-stern (local Z, Ship.CustomFixedUpdate's transform.forward)
-        // instead of side-to-side (local X).
-        private static void SetLength(ShipDefinition def, GameObject clone, float length)
-        {
-            length = Mathf.Clamp(length, 0.5f, 2f);
-            if (Mathf.Approximately(length, 1f)) return;
+            int updated = 0;
+            foreach (var updater in Ship.Instances)
+            {
+                if (updater is Ship ship && Utils.GetPrefabName(ship.gameObject) == def.PrefabName)
+                {
+                    ship.transform.localScale = target;
+                    updated++;
+                }
+            }
 
-            var scale = clone.transform.localScale;
-            scale.z *= length;
-            clone.transform.localScale = scale;
-            Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: length x{length}.");
+            var piece = built.Clone.GetComponent<Piece>();
+            var icon  = piece != null ? ShipIcons.Render(def, built.Clone) : null;
+            if (icon != null) piece.m_icon = icon;
+
+            var b = built.BaseScale;
+            Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: hull {target.x / b.x:0.00} wide, {target.y / b.y:0.00} tall, {target.z / b.z:0.00} long (x the {def.BaseName}); {updated} ship(s) in the world updated.");
         }
 
         // Speed, rudder and health, on the prefab and on every ship already in the world (they

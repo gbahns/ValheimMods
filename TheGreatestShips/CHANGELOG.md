@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.2 — unreleased
+
+**Breaking: the server and every player need 0.9.2. Hull Width, Hull Length and Hull Scale are
+now the server's, so a 0.9.1 client would keep its own.**
+
+- Hull Width, Hull Length and Hull Scale come from the server, like the recipe, speed and health.
+  Every player must agree on where a hull is; a player who set a different width was standing in
+  a hull the others' game said wasn't there. The shape is applied when the server's values
+  arrive, to the ships already afloat as well. Sail Color, Hull Color and Hull Stripes stay
+  yours: they are only looks.
+
 ## 0.9.1 — 2026-09-20
 
 **Breaking: the server and every player need 0.9.1. The Fast Longship's hold changed size, so
