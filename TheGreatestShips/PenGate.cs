@@ -16,10 +16,14 @@ namespace TheGreatestShips
     /// </summary>
     internal sealed class PenGate : MonoBehaviour, Hoverable, Interactable
     {
-        private const string ZdoKey    = "DM_PenGateOpen";
-        private const string RpcName   = "DM_PenGate";
-        private const float  OpenAngle = -65f;   // about the hinge (local Z): the top swings to +X, outboard, and down
-        private const float  SwingSpeed = 120f;  // degrees per second
+        private const float SwingAngle = 65f;   // about the hinge (local Z): the top swings outboard and down, to ~25 degrees above the deck
+        private const float SwingSpeed = 120f;  // degrees per second
+
+        internal bool Port;   // set when built: the port gate keeps its own state and swings the other way
+
+        private string ZdoKey    => Port ? "DM_PenGateOpenPort" : "DM_PenGateOpen";
+        private string RpcName   => Port ? "DM_PenGatePort" : "DM_PenGate";
+        private float  OpenAngle => Port ? SwingAngle : -SwingAngle;   // +X is starboard; a positive Z rotation tips +Y toward -X
 
         private ZNetView _nview;
         private bool     _open;

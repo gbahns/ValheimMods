@@ -105,67 +105,67 @@ namespace TheGreatestShips
             float gateWidth = Mathf.Min(GateWidth, sideSpan);
             float segment   = gateWidth >= sideSpan - 0.01f ? 0f : (sideSpan - gateWidth) / 2f - PostWidth;   // corner post to gate post
             float segmentZ  = (halfLen - PostWidth / 2f) - segment / 2f;                                       // its center, from the pen's
-            if (segment > 0.01f)
-            {
-                foreach (float dz in new[] { gateWidth / 2f + PostWidth / 2f, -(gateWidth / 2f + PostWidth / 2f) })
-                {
-                    var p = Place(post, pen.transform, new Vector3(halfWid, DeckHeight + spec.PostHeight / 2f, spec.CenterZ + dz), Quaternion.identity);
-                    p.transform.localScale = new Vector3(1f, spec.PostHeight, 1f);
-                    pieces++; wood += 1;
-                }
-            }
+            float sideWall  = halfLen - gateWidth / 2f;                 // a gate post and whatever rail is beyond it
+            float sideWallZ = (halfLen + gateWidth / 2f) / 2f;
 
-            // The gate's pivot: on the rail line at deck level, mid-side.  Everything under it
-            // turns with it.
-            var gate = new GameObject("pen_gate");
-            gate.transform.SetParent(pen.transform, false);
-            gate.transform.localPosition = new Vector3(halfWid, DeckHeight, spec.CenterZ);
-            gate.AddComponent<PenGate>();
-
+            // Bow and stern: rails and the flat wall.
             foreach (float rail in spec.RailHeights)
             {
                 float y = DeckHeight + rail;
-                var fixedRails = new List<(Vector3 center, float yaw, float length)> {
-                    (new Vector3(0f, y, spec.CenterZ + halfLen), 0f, spec.Width - PostWidth),    // bow
-                    (new Vector3(0f, y, spec.CenterZ - halfLen), 0f, spec.Width - PostWidth),    // stern
-                    (new Vector3(-halfWid, y, spec.CenterZ), 90f, sideSpan) };                  // port
-                if (segment > 0.01f)
+                foreach (float end in new[] { halfLen, -halfLen })
                 {
-                    fixedRails.Add((new Vector3(halfWid, y, spec.CenterZ + segmentZ), 90f, segment));   // starboard, fore of the gate
-                    fixedRails.Add((new Vector3(halfWid, y, spec.CenterZ - segmentZ), 90f, segment));   // starboard, aft of it
-                }
-                foreach (var (center, yaw, length) in fixedRails)
-                {
-                    var (long2, short1) = PlaceRail(pen.transform, beam2, beam1, center, yaw, length);
+                    var (long2, short1) = PlaceRail(pen.transform, beam2, beam1, new Vector3(0f, y, spec.CenterZ + end), 0f, spec.Width - PostWidth);
                     pieces += long2 + short1;
                     wood   += long2 * 2 + short1;
                 }
-                var (gate2, gate1) = PlaceRail(gate.transform, beam2, beam1, new Vector3(0f, rail, 0f), 90f, gateWidth);
-                pieces += gate2 + gate1;
-                wood   += gate2 * 2 + gate1;
             }
+            Wall(pen.transform, new Vector3(0f, DeckHeight + wallTop / 2f, spec.CenterZ + halfLen - wallThickness / 2f), new Vector3(spec.Width, wallTop, wallThickness), post.layer);
+            Wall(pen.transform, new Vector3(0f, DeckHeight + wallTop / 2f, spec.CenterZ - halfLen + wallThickness / 2f), new Vector3(spec.Width, wallTop, wallThickness), post.layer);
 
-            // An invisible flat wall flush with the rails' inner faces, deck to the top rail.  A
-            // boar can't jump (its AI never triggers one) but it runs at 8 m/s, and a capsule
-            // collider at that speed rides up a knee-high ledge; the lower rail is one and the
-            // upper rail's top is only 0.45 above it, so two rails are a staircase to a panicked
-            // animal.  A vertical face gives it nothing to climb.  It stops exactly where the
-            // rails do, so animals can still be dropped in over the top.  The gate's section of
-            // it belongs to the gate, and lying down it is the ramp's surface.
-            float sideWall  = halfLen - gateWidth / 2f;                 // a gate post and whatever rail is beyond it
-            float sideWallZ = (halfLen + gateWidth / 2f) / 2f;
-            foreach (var (parent, center, size) in new[] {
-                (pen.transform,  new Vector3(0f, DeckHeight + wallTop / 2f, spec.CenterZ + halfLen - wallThickness / 2f), new Vector3(spec.Width, wallTop, wallThickness)),   // bow
-                (pen.transform,  new Vector3(0f, DeckHeight + wallTop / 2f, spec.CenterZ - halfLen + wallThickness / 2f), new Vector3(spec.Width, wallTop, wallThickness)),   // stern
-                (pen.transform,  new Vector3(-halfWid + wallThickness / 2f, DeckHeight + wallTop / 2f, spec.CenterZ), new Vector3(wallThickness, wallTop, spec.Length)),   // port
-                (pen.transform,  new Vector3(halfWid - wallThickness / 2f, DeckHeight + wallTop / 2f, spec.CenterZ + sideWallZ), new Vector3(wallThickness, wallTop, sideWall)),   // starboard, fore
-                (pen.transform,  new Vector3(halfWid - wallThickness / 2f, DeckHeight + wallTop / 2f, spec.CenterZ - sideWallZ), new Vector3(wallThickness, wallTop, sideWall)),   // starboard, aft
-                (gate.transform, new Vector3(-wallThickness / 2f, wallTop / 2f, 0f), new Vector3(wallThickness, wallTop, gateWidth)) })                                          // the gate
+            // Each side: a gate mid-side, gate posts if the side is longer than the gate, rails
+            // from the corner posts to the gate posts, and the flat wall in three parts -- the
+            // middle one belongs to the gate and, lying down, is the ramp's surface.
+            var gates = new List<GameObject>();
+            foreach (float side in new[] { 1f, -1f })   // +X starboard, -X port
             {
-                var wall = new GameObject("pen_wall") { layer = post.layer };
-                wall.transform.SetParent(parent, false);
-                wall.transform.localPosition = center;
-                wall.AddComponent<BoxCollider>().size = size;
+                float x = side * halfWid;
+                if (segment > 0.01f)
+                {
+                    foreach (float dz in new[] { gateWidth / 2f + PostWidth / 2f, -(gateWidth / 2f + PostWidth / 2f) })
+                    {
+                        var p = Place(post, pen.transform, new Vector3(x, DeckHeight + spec.PostHeight / 2f, spec.CenterZ + dz), Quaternion.identity);
+                        p.transform.localScale = new Vector3(1f, spec.PostHeight, 1f);
+                        pieces++; wood += 1;
+                    }
+                }
+
+                // The gate's pivot: on the rail line at deck level, mid-side.  Everything under
+                // it turns with it.
+                var gate = new GameObject(side > 0 ? "pen_gate" : "pen_gate_port");
+                gate.transform.SetParent(pen.transform, false);
+                gate.transform.localPosition = new Vector3(x, DeckHeight, spec.CenterZ);
+                gate.AddComponent<PenGate>().Port = side < 0;
+                gates.Add(gate);
+
+                foreach (float rail in spec.RailHeights)
+                {
+                    float y = DeckHeight + rail;
+                    if (segment > 0.01f)
+                        foreach (float dz in new[] { segmentZ, -segmentZ })
+                        {
+                            var (long2, short1) = PlaceRail(pen.transform, beam2, beam1, new Vector3(x, y, spec.CenterZ + dz), 90f, segment);
+                            pieces += long2 + short1;
+                            wood   += long2 * 2 + short1;
+                        }
+                    var (gate2, gate1) = PlaceRail(gate.transform, beam2, beam1, new Vector3(0f, rail, 0f), 90f, gateWidth);
+                    pieces += gate2 + gate1;
+                    wood   += gate2 * 2 + gate1;
+                }
+
+                float wallX = side * (halfWid - wallThickness / 2f);
+                Wall(pen.transform,  new Vector3(wallX, DeckHeight + wallTop / 2f, spec.CenterZ + sideWallZ), new Vector3(wallThickness, wallTop, sideWall), post.layer);
+                Wall(pen.transform,  new Vector3(wallX, DeckHeight + wallTop / 2f, spec.CenterZ - sideWallZ), new Vector3(wallThickness, wallTop, sideWall), post.layer);
+                Wall(gate.transform, new Vector3(-side * wallThickness / 2f, wallTop / 2f, 0f), new Vector3(wallThickness, wallTop, gateWidth), post.layer);
             }
 
             // An invisible lip along the top of each wall, jutting inward: an animal lifted by a
@@ -188,9 +188,10 @@ namespace TheGreatestShips
             }
 
             // The hover system wants the Hoverable on the collider's own object (see PenGateHandle).
-            foreach (var collider in gate.GetComponentsInChildren<Collider>(true))
-                if (collider.GetComponent<PenGateHandle>() == null)
-                    collider.gameObject.AddComponent<PenGateHandle>();
+            foreach (var gate in gates)
+                foreach (var collider in gate.GetComponentsInChildren<Collider>(true))
+                    if (collider.GetComponent<PenGateHandle>() == null)
+                        collider.gameObject.AddComponent<PenGateHandle>();
 
             // The pieces' "woodwall" material is Custom/Piece with _VALUENOISEVERTEX_ON: the
             // shader nudges every vertex by a noise texture sampled at its *world* position, a
@@ -232,7 +233,7 @@ namespace TheGreatestShips
                 foreach (var t in pen.GetComponentsInChildren<Transform>(true))
                     t.gameObject.layer = vehicle;
 
-            Jotunn.Logger.LogInfo($"[TheGreatestShips] Built animal pen: {pieces} posts and rails (a {gateWidth:0.0} m gate to starboard) plus a flat inner wall to {wallTop:0.00}, {spec.Width} x {spec.Length} at z {spec.CenterZ}; the same pieces would cost {wood} Wood.");
+            Jotunn.Logger.LogInfo($"[TheGreatestShips] Built animal pen: {pieces} posts and rails (a {gateWidth:0.0} m gate each side) plus a flat inner wall to {wallTop:0.00}, {spec.Width} x {spec.Length} at z {spec.CenterZ}; the same pieces would cost {wood} Wood.");
         }
 
         // A rail of the given length, centered on `center`, running along the yaw'd X axis: as
@@ -256,6 +257,14 @@ namespace TheGreatestShips
                 short1++;
             }
             return (long2, short1);
+        }
+
+        private static void Wall(Transform parent, Vector3 localPosition, Vector3 size, int layer)
+        {
+            var wall = new GameObject("pen_wall") { layer = layer };
+            wall.transform.SetParent(parent, false);
+            wall.transform.localPosition = localPosition;
+            wall.AddComponent<BoxCollider>().size = size;
         }
 
         private static GameObject Place(GameObject prefab, Transform parent, Vector3 localPosition, Quaternion localRotation)
