@@ -263,7 +263,7 @@ namespace TheGreatestShips
             if (_ship == null || _lips == null || Time.time < _next) return;
             _next = Time.time + 0.25f;
             bool sailing = _ship.GetSpeedSetting() != Ship.Speed.Stop
-                        || (_body != null && _body.velocity.magnitude > DriftSpeed);
+                        || (_body != null && _body.linearVelocity.magnitude > DriftSpeed);
             if (sailing == _on) return;
             _on = sailing;
             foreach (var lip in _lips) lip.enabled = sailing;
