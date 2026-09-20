@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.5 — 2026-09-20
+
+- **Fixed: `Mod Enabled = false` on a dedicated server destroyed placed shrines.** The setting
+  skipped prefab registration, and a server that cannot resolve a prefab deletes its ZDO instead
+  of ignoring it the way a client does — so switching the mod off wiped every shrine the server
+  reached, permanently and without warning. A dedicated server now ignores the setting, loads
+  anyway, and logs an error explaining why. To take the mod off a server, remove the DLL: the
+  prefabs are then never asked for and the shrines survive.
+- The setting's description and the README now say this, instead of recommending it as a way to
+  isolate a problem. It is still yours to use on your own game, where shrines are only hidden.
+
 ## 0.8.4 — 2026-09-20
 
 - New "Lock Configuration" setting (General, on by default, the server's): while on, the synced

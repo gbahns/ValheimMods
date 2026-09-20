@@ -1,6 +1,6 @@
 # Forsaken Shrines
 
-> **Alpha — Version 0.8.3**
+> **Alpha — Version 0.8.5**
 > This should be considered an early release version of this mod.  It seems to be working but you might encounter issues.  Recipes, placement rules, and balance are subject to change.  I wanted to make it available for people to use and also to get feedback.  If you're using it without issue let me know; that feedback will help me confirm it's working and promote it to v1.0.0. Join [my discord server](https://discord.gg/eH7UfRj5mG) to ask questions, provide feedback, or report issues.
 
 Build a shrine to each Forsaken boss you have defeated, then mount that boss's trophy on it to channel the guardian power remotely — no return trip to the world-center altar required for activation.
@@ -57,6 +57,8 @@ The config file is created at `BepInEx/config/DeathMonger.ForsakenShrines.cfg` o
 
 **\[General\]**
 - `Mod Enabled` (default: true) — master switch. Set to false to turn the mod off without removing the DLL: no shrine pieces, no placement rules, no Harmony patches. Not server-synced. Takes effect on the next game launch; shrines already placed in the world are hidden until you re-enable it.
+
+  **A dedicated server ignores this setting.** A server without the shrine prefabs deletes the shrines players have already built, permanently, so it loads the mod either way and logs an error saying so. To take Forsaken Shrines off a server, remove the DLL — that leaves the placed shrines alone.
 
 - `Lock Configuration` (default: true) — while on, only the server's admins (adminlist.txt) can change the synced settings, from their game; everyone else sees them read-only.
 
