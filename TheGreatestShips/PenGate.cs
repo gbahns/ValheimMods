@@ -74,4 +74,22 @@ namespace TheGreatestShips
 
         public bool UseItem(Humanoid user, ItemDrop.ItemData item) => false;
     }
+
+    /// <summary>
+    /// Player.FindHoverObject only takes the looked-at object as the hover target when the
+    /// Hoverable sits on the collider's own GameObject; otherwise the hover goes to the
+    /// rigidbody's object, the ship, which has no hover text.  So every collider under the gate
+    /// carries one of these, forwarding to the PenGate above it.
+    /// </summary>
+    internal sealed class PenGateHandle : MonoBehaviour, Hoverable, Interactable
+    {
+        private PenGate _gate;
+        private PenGate Gate => _gate != null ? _gate : (_gate = GetComponentInParent<PenGate>());
+
+        public string GetHoverText() => Gate != null ? Gate.GetHoverText() : "";
+        public string GetHoverName() => Gate != null ? Gate.GetHoverName() : "";
+        public float  GetHoverOffset() => 0f;
+        public bool Interact(Humanoid user, bool hold, bool alt) => Gate != null && Gate.Interact(user, hold, alt);
+        public bool UseItem(Humanoid user, ItemDrop.ItemData item) => false;
+    }
 }

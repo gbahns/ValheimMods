@@ -187,6 +187,11 @@ namespace TheGreatestShips
                 box.enabled = false;
             }
 
+            // The hover system wants the Hoverable on the collider's own object (see PenGateHandle).
+            foreach (var collider in gate.GetComponentsInChildren<Collider>(true))
+                if (collider.GetComponent<PenGateHandle>() == null)
+                    collider.gameObject.AddComponent<PenGateHandle>();
+
             // The pieces' "woodwall" material is Custom/Piece with _VALUENOISEVERTEX_ON: the
             // shader nudges every vertex by a noise texture sampled at its *world* position, a
             // static hand-hewn look on a wall that never moves.  On a hull that bobs the sample
