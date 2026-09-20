@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.3 — unreleased
+## 0.9.3 — 2026-09-20
 
 - New "Lock Configuration" setting (General, on by default, the server's): while on, the synced
   settings -- recipes, speeds, health, rudder, hull dimensions -- can be changed only by the
