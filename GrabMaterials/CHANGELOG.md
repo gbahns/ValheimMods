@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.4.1 — 2026-09-18
+
+- **One configurable container range.** "Container Range" under [Client config] is how far away a container can be for every command in the mod. It was hardcoded and inconsistent: `/g`, `/i` and `/search` reached 50 m while the build-piece hotkey only reached 10 m, so materials the panel counted could be out of the hotkey's reach. The default is 20 m to match AzuCraftyBoxes' default pull range; set it to whatever your craft-from-containers and auto-store mods use so one distance means "in reach" everywhere. Anyone used to the old 50 m grab can set it back.
+- Removed the test commands `/listcontainers`, `/listlocalcontainers`, `/listcontents`, `/listpieces` and `/count`. They only wrote to the log and existed to prove the container tracking worked; `/i` covers what they did.
+- **Fixed: `/g 100 carrot` grabbed carrot seeds.** The cultivator's Carrot plant is a build piece whose recipe is one carrot seed, and piece names were checked before item names, so the crop shadowed the vegetable. The same went for turnips, onions, barley, flax and every other crop. When a name is both a crop and an item, the item now wins; the seeds are still there by their own name (`/g 100 carrot seeds`).
+
 ## 2.4.0 — 2026-09-16
 
 - **Fixed: an open inventory or packs panel blocked the whole keyboard.** Only Escape worked, so you could not walk, use a hotkey, or open anything else while a panel was up. Panels now behave like the game's own inventory: the cursor is free and the mouse no longer turns the camera, while movement and hotkeys keep working. Scrolling a panel still does not zoom the camera, and typing in the pack editor is still kept out of the game.

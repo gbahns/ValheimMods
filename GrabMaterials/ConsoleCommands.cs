@@ -165,7 +165,7 @@ namespace GrabMaterials
 				}
 				//GrabItemsFromNearbyContainers(item, amount);
 			}
-			GrabItemsFromNearbyContainers(itemsToGrab, 50f, packName, grabDelta);
+			GrabItemsFromNearbyContainers(itemsToGrab, GrabMaterialsMod.GrabMaterialsMod.Range, packName, grabDelta);
 		}
 
 		/// <summary>
@@ -183,8 +183,9 @@ namespace GrabMaterials
 		// item is what teaches you the recipes that use it, so this is mainly a way to learn
 		// a batch of recipes from shared storage in one go.  Containers only: you cannot take
 		// from a smelter, so the processors that "/i new" lists are not considered here.
-		public static void GrabUndiscoveredItems(float radius = 50f)
+		public static void GrabUndiscoveredItems()
 		{
+			var radius = GrabMaterialsMod.GrabMaterialsMod.Range;
 			var player = Player.m_localPlayer;
 			if (player == null) return;
 
@@ -336,7 +337,7 @@ namespace GrabMaterials
 					Log.LogInfo($"Grabbing for {pieceName}: {requirement.m_amount} {requirement.m_resItem.m_itemData.m_shared.m_name}");
 					itemsToGrab.Add(new ItemToGrab(requirement.m_resItem.m_itemData.m_shared.m_name, requirement.m_amount));
 				}
-				GrabItemsFromNearbyContainers(itemsToGrab, 50f, pieceName, GlobalDelta);
+				GrabItemsFromNearbyContainers(itemsToGrab, GrabMaterialsMod.GrabMaterialsMod.Range, pieceName, GlobalDelta);
 			}
 
 			/*
@@ -645,7 +646,7 @@ namespace GrabMaterials
 		public static void HighlightContainersHolding(string sharedName)
 		{
 			if (string.IsNullOrEmpty(sharedName)) return;
-			var nearbyContainers = Boxes.GetNearbyContainers(50f);
+			var nearbyContainers = Boxes.GetNearbyContainers(GrabMaterialsMod.GrabMaterialsMod.Range);
 			foreach (var container in nearbyContainers)
 			{
 				var inventory = container.GetInventory();
@@ -668,7 +669,7 @@ namespace GrabMaterials
 		{
 			if (sharedNames == null || sharedNames.Count == 0) return;
 			var nameSet = sharedNames as HashSet<string> ?? new HashSet<string>(sharedNames);
-			var nearbyContainers = Boxes.GetNearbyContainers(50f);
+			var nearbyContainers = Boxes.GetNearbyContainers(GrabMaterialsMod.GrabMaterialsMod.Range);
 			foreach (var container in nearbyContainers)
 			{
 				var inventory = container.GetInventory();
@@ -739,7 +740,7 @@ namespace GrabMaterials
 					itemsToGrab.Add(new ItemToGrab(requirement.m_resItem.m_itemData.Name(), requirement.m_amount));
 					//GrabItemsFromNearbyContainers(requirement.m_resItem.m_itemData.m_shared.m_name, requirement.m_amount);
 				}
-				GrabItemsFromNearbyContainers(itemsToGrab, 10f, LocalizePieceName(piece), GlobalDelta);
+				GrabItemsFromNearbyContainers(itemsToGrab, GrabMaterialsMod.GrabMaterialsMod.Range, LocalizePieceName(piece), GlobalDelta);
 			}
 		}
 
@@ -830,7 +831,27 @@ namespace GrabMaterials
 				// two of them lead with the same token.
 				var key = Extensions.TokenName(shared);
 				if (!sharedNameLookup.ContainsKey(key)) sharedNameLookup[key] = shared;
+				// The display name too ("Carrot seeds"), so a typed localized name is an item name.
+				var localized = Extensions.Localize(shared);
+				if (!string.IsNullOrEmpty(localized) && localized != shared && !sharedNameLookup.ContainsKey(localized))
+					sharedNameLookup[localized] = shared;
 			}
+		}
+
+		// Piece lookup that will not let a cultivator crop shadow the item of the same name.
+		// The Carrot plant's localized name is "Carrot" and its recipe is one carrot seed, so
+		// a plain piece-first lookup turned "/g 100 carrot" into 100 carrot seeds.  When a name
+		// is both a Plant piece and an item, the item wins; the plant's seeds are still one
+		// grab away by their own name ("/g 100 carrot seeds" or "/g 100 carrotseeds").
+		private static bool TryGetPiece(string name, out Piece piece)
+		{
+			if (pieceLookup.Count == 0) BuildPieceLookUp();
+			if (!pieceLookup.TryGetValue(name.ToLowerInvariant(), out piece)) return false;
+			if (piece.GetComponent<Plant>() == null) return true;
+			if (sharedNameLookup.Count == 0) BuildSharedNameLookup();
+			if (!sharedNameLookup.ContainsKey(name.Replace("$item_", ""))) return true;
+			piece = null;
+			return false;
 		}
 
 		// True when every material a pack resolves to has been held by the player at least once
@@ -847,7 +868,7 @@ namespace GrabMaterials
 			foreach (var entry in entries)
 			{
 				var name = entry.Split(':')[0];
-				if (pieceLookup.TryGetValue(name.ToLowerInvariant(), out var piece))
+				if (TryGetPiece(name, out var piece))
 				{
 					if (piece.m_resources == null) continue;
 					foreach (var req in piece.m_resources)
@@ -871,9 +892,8 @@ namespace GrabMaterials
 				BuildPieceLookUp();
 			if (itemLookup.Count == 0)
 				BuildItemLookUp();
-			if (pieceLookup.ContainsKey(name.ToLowerInvariant()))
+			if (TryGetPiece(name, out var piece))
 			{
-				var piece = pieceLookup[name.ToLowerInvariant()];
 				Log.LogInfo($"Found piece {name} in lookup table, grabbing materials for it");
 				var resources = piece.m_resources;
 				if (resources != null)
@@ -895,10 +915,9 @@ namespace GrabMaterials
 
 		public static void GrabItemsFromNearbyContainers(string name, int count = 1)
 		{
-			var radius = 50f; // Default radius
+			var radius = GrabMaterialsMod.GrabMaterialsMod.Range;
 			var itemsToGrab = GetItemsToGrab(name, count);
-			// GetItemsToGrab populates pieceLookup on first use; check after.
-			var isPiece = pieceLookup.ContainsKey(name.ToLowerInvariant());
+			var isPiece = TryGetPiece(name, out _);
 			var label = isPiece ? name : null;
 			// Apply delta only when we're grabbing a piece's recipe (e.g. /g cart).
 			// A bare /g wood request is literal — the user asked for that count.

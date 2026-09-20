@@ -26,6 +26,8 @@ namespace GrabMaterialsMod
 		const string ModGuid = "DeathMonger.GrabMaterialsMod";
 		private readonly Harmony harmony = new Harmony(ModGuid);
 		public static GrabMaterialsMod Instance;
+		// The one container distance every command uses.  Read live so config edits apply at once.
+		internal static float Range => Instance?.ContainerRange?.Value ?? 20f;
 		internal static ManualLogSource Log;
 
 		public enum DeltaSetting
@@ -39,6 +41,7 @@ namespace GrabMaterialsMod
 		public ConfigEntry<bool> GrabDeltaGlobal;
 		public ConfigEntry<float> GrabDeltaLedgerTimeout;
 		public ConfigEntry<float> HighlightDuration;
+		public ConfigEntry<float> ContainerRange;
 		public ConfigEntry<float> PanelIdleTimeout;
 		public ConfigEntry<float> PanelFadeDuration;
 		public ConfigEntry<bool> PanelDismissOnMovement;
@@ -167,6 +170,7 @@ namespace GrabMaterialsMod
 			//new KeyboardShortcut(KeyCode.G, KeyCode.LeftShift, KeyCode.RightShift)
 			GrabSelectedPieceMatsKeyboardConfig = Config.Bind("Grab Selected Piece", "GrabSelectedPieceMatsKey", KeyCode.J, new ConfigDescription("Key to grab materials for the currently selectede build piece"));
 			HighlightDuration = Config.Bind("Client config", "Highlight Duration", 2f, new ConfigDescription("Duration in seconds to highlight containers when grabbing materials"));
+			ContainerRange = Config.Bind("Client config", "Container Range", 20f, new ConfigDescription("How far away (in meters) a container can be and still be used by every command in this mod: grabs, packs, the build-piece hotkey, /inventory, /search and /store. Set it to match your craft-from-containers and auto-store mods so one distance means 'in reach' everywhere.", new AcceptableValueRange<float>(1f, 100f)));
 			GrabDeltaGlobal = Config.Bind("Client config", "Grab Delta (default)", true, new ConfigDescription("If true, all grabs (packs, individual build pieces, /grab <piece>) only grab the shortfall between what you already have and what's needed. Per-pack settings can override this."));
 			GrabDeltaLedgerTimeout = Config.Bind("Client config", "Grab Delta Ledger Timeout (seconds)", 30f, new ConfigDescription("Back-to-back delta grabs share a ledger so the same inventory isn't credited toward two different builds (e.g. /g cart then /g explore won't both 'see' the same 10 wood). After this many seconds without a delta grab, the ledger clears so the next grab considers only what's currently in your inventory. Set to 0 to effectively disable cross-grab tracking."));
 
@@ -230,9 +234,6 @@ namespace GrabMaterialsMod
 			new Terminal.ConsoleCommand("grabpiece", "grab materials for named build piece, e.g. workbench or portal", (args) => { args.GrabMaterialsForPiece(); });
 
 			//view container info
-			new Terminal.ConsoleCommand("listcontainers", "list all known containers", (args) => { ListKnownContainers(); });
-			new Terminal.ConsoleCommand("listlocalcontainers", "[radius] - Finds containers within the radius.", (args) => { ListLocalContainers(args); });
-			new Terminal.ConsoleCommand("listcontents", "[radius] - Finds containers within the radius and lists their contents.", (args) => { ListLocalContainerContents(args); });
 			new Terminal.ConsoleCommand("listpacks", "Lists your configured grab packs.", (args) => { ListGrabPacks(); });
 			new Terminal.ConsoleCommand("grabreset", "Clear the grab-delta ledger so the next delta grab considers only what's currently in your inventory.", (args) => {
 				GrabMaterials.ConsoleCommands.ResetPendingLedger();
@@ -246,9 +247,6 @@ namespace GrabMaterialsMod
 			new Terminal.ConsoleCommand("search", "[search-text] - search for items matching this string in nearby containers", (args) => { FindContainersWithMatchingItems(args); });
 			new Terminal.ConsoleCommand("s", "[search-text] - search for items matching this string in nearby containers", (args) => { FindContainersWithMatchingItems(args); });
 			new Terminal.ConsoleCommand("store", "[items] - stores items randomly nearby containers", (args) => { StoreItemsInNearbyContainers(); });
-			new Terminal.ConsoleCommand("count", "[name of item to count] - omit to count everything", (args) => { CountInventory(args); });
-			new Terminal.ConsoleCommand("listpieces", "", (args) => { ListAllPieces(); });
-			//new Terminal.ConsoleCommand("buildpiecelookup", "", (args) => { BuildPieceLookup(); });
 		}
 
 		private void InitButtons()
@@ -387,123 +385,6 @@ namespace GrabMaterialsMod
 			harmony.UnpatchSelf();
 		}
 
-		private static void ListAllPieces()
-		{
-			if (!ZNetScene.instance)
-			{
-				Log.LogWarning("Cannot index: ZNetScene.instance is null");
-				return;
-			}
-
-			//Log.LogWarning("listing all recipies");
-			//foreach (Recipe recipe in ObjectDB.instance.m_recipes)
-			//{
-			//	Log.LogInfo($"Recipe: {recipe.name} {(recipe.m_item != null ? recipe.m_item.name : "m_item is null")} {recipe.m_enabled} {recipe.IsValid()} {recipe.m_craftingStation}");
-			//	//Log.LogInfo($"{recipe.m_item.name} {recipe.m_item.enabled} {recipe.m_enabled} {recipe.m_item.m_itemData.Count()} {recipe.IsValid()} {recipe.m_craftingStation}");
-			//}
-
-			Log.LogWarning("listing build pieces (prefabs with an associated component)");
-			foreach (var prefab in ZNetScene.instance.m_prefabs)
-			{
-				if (prefab.TryGetComponent<Piece>(out var piece))
-				{
-					// Get the localized, user-facing name (e.g., "Campfire")
-					var localizedName = "";
-					try
-					{
-						if (piece.m_name.StartsWith("$"))
-						{ // if the name starts with $, it is a localization key
-							localizedName = GrabMaterials.Extensions.Localize(piece.m_name);
-						}
-						else
-						{
-							localizedName = $"{piece.m_name}";
-						}
-					}
-					catch (Exception e)
-					{
-						Log.LogError($"Error translating piece name {piece.m_name}: {e.Message}");
-						localizedName = $"translation failed";
-					}
-					if (prefab.name == piece.name)
-					{
-						//Log.LogInfo($"{prefab.name} \"{localizedName}\" {GetPieceResourceList(piece)}");
-						// Check if the piece has an enabled recipe
-						var hasEnabledRecipe = false;
-						foreach (Recipe recipe in ObjectDB.instance.m_recipes)
-						{
-							// Find the matching recipe AND check if it's enabled.
-							if (recipe.m_item == piece && recipe.m_enabled)
-							{
-								hasEnabledRecipe = true; // Found an enabled recipe for this item.
-								break; // No need to check further recipes.
-							}
-						}
-
-						Log.LogInfo($"{prefab.name} \"{localizedName}\" {piece.GetResourceList()} {hasEnabledRecipe} {prefab.activeInHierarchy} {piece.enabled} {piece.m_enabled} {piece.isActiveAndEnabled} {piece.IsPlacedByPlayer()} {piece.m_category} {piece.m_craftingStation}");
-						//if (localizedName == "Chest")
-						//	Log.LogInfo($"{hasEnabledRecipe} {prefab.activeInHierarchy} {prefab.activeSelf} {prefab.gameObject.activeInHierarchy} {prefab.gameObject.activeSelf} {piece.m_destroyedLootPrefab} {piece.enabled} {piece.m_enabled} {piece.isActiveAndEnabled} {piece.IsPlacedByPlayer()} {prefab.name} \"{localizedName}\" {piece.GetResourceList()} {piece.m_category} {piece.m_craftingStation}");
-					}
-					else
-					{
-						Log.LogError($"DIFFERENT NAMES Piece: {prefab.name} {piece.name} {localizedName}");
-					}
-					//Log.LogInfo($"Piece: {piece.name} ({prefab.name})");
-				}
-			}
-
-			//Jotunn.Managers.PieceManager.Instance.GetPiece().Pieces.ForEach(piece =>
-			//{
-			//	Log.LogInfo($"{piece.name}");
-			//});
-
-			////this just list the build pieces available on the currently selected workbench category
-			//var pieces = player.GetBuildPieces();
-			//if (pieces == null)
-			//{
-			//	Log.LogInfo("No build pieces found");
-			//	return;
-			//}
-			//Log.LogInfo($"listing {pieces.Count()} pieces");
-			//foreach (var piece in pieces)
-			//{
-			//	Log.LogInfo($"{piece.name}");
-			//}
-
-			////this seems to only give the players base recipes without even a hammer
-			//var recipes = new List<Recipe>();
-			//player.GetAvailableRecipes(ref recipes);
-			//Log.LogInfo($"listing {recipes.Count()} recipes");
-			//foreach (var recipe in recipes)
-			//{
-			//	Log.LogInfo($"{recipe}");
-			//}
-
-			//var objectDB = ObjectDB.instance;
-			//if (objectDB == null)
-			//{
-			//	Log.LogError("ObjectDB instance is null");
-			//	return;
-			//}
-
-			//foreach (var prefab in objectDB.m_items)
-			//{
-			//	Log.LogInfo($"Prefab: {prefab.name}");
-			//}
-
-			//Log.LogWarning("listing named prefabs");
-			//foreach (var prefab in ZNetScene.instance.m_namedPrefabs.Values)
-			//{
-			//	Log.LogInfo($"Named Prefab: {prefab.name}");
-			//}
-
-			//PieceTable pieceTable = GetPieceTable();
-			//Jotunn.Utils.ModRegistry.GetPieces().ForEach(piece =>
-			//{
-			//	Log.LogInfo($"{piece.name}");
-			//});
-		}
-
 		//private static List<GameObject> GetPrefabs()
 		//{
 		//	HashSet<GameObject> prefabs = new HashSet<GameObject>(ZNetScene.instance.m_prefabs);
@@ -514,49 +395,6 @@ namespace GrabMaterialsMod
 
 		//	return combinedPrefabs;
 		//}
-
-		private static void ListKnownContainers()
-		{
-			int i = 0;
-			Log.LogInfo($"listing {Boxes.Containers.Count} known containers");
-			foreach (var container in Boxes.Containers)
-				Log.LogInfo($"{++i}. {container.name} {container.m_name}  ({container.GetType()} {container.GetInstanceID()})");
-		}
-
-		private static void ListLocalContainers(Terminal.ConsoleEventArgs args)
-		{
-			int i = 0;
-			var radius = 10f; // Default radius
-			if (args.Length > 1)
-				float.TryParse(args[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out radius);
-			var nearbyContainers = Boxes.GetNearbyContainers(radius);
-			Log.LogInfo($"listing {nearbyContainers.Count} containers within {radius} meters out of {Boxes.Containers.Count} known containers");
-			foreach (var container in nearbyContainers)
-				Log.LogInfo($"{++i}. {container.name} {container.m_name}  ({container.GetType()} {container.GetInstanceID()})");
-		}
-
-		private static void ListLocalContainerContents(Terminal.ConsoleEventArgs args)
-		{
-			var radius = 50f; // Default radius
-			if (args.Length > 1)
-				float.TryParse(args[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out radius);
-			var nearbyContainers = Boxes.GetNearbyContainers(radius);
-			Log.LogInfo($"listing {nearbyContainers.Count} containers within {radius} meters out of {Boxes.Containers.Count} known containers");
-			Log.LogInfo($"showing the contents of {nearbyContainers.Count} nearby containers");
-			foreach (var container in nearbyContainers)
-			{
-				Log.LogInfo($"contents of {container.name} {container.GetInstanceID()}:");
-				var inventory = container.GetInventory();
-				var items = inventory.GetAllItems();
-				foreach (var item in items)
-				{
-					var localizedName = "";
-					localizedName = GrabMaterials.Extensions.Localize(item.m_shared.m_name);
-					//Log.LogInfo($"{item.Name()} ({item.m_shared.m_name}) [{localizedName}] {item.Count()} crafted by '{item.m_crafterName}'\ntooltip: {item.GetTooltip()}\nname: {item.Name()}\n{item.ToString()}");
-					Log.LogInfo($"{item.Count()},{localizedName},{item.Name()},{item.GetCategory()},{item.m_shared.m_itemType},{item.IsWeapon()},{item.IsEquipable()},{item.m_shared.m_isDrink},{item.GetArmor()},{item.m_shared.m_armorMaterial},{item.m_shared.m_food},{item.m_shared.m_foodStamina},{item.m_shared.m_foodEitr},{item.m_shared.m_ammoType},{item.m_shared.m_questItem},{item.m_shared.m_skillType}"); //crafted by '{item.m_crafterName}'
-				}
-			}
-		}
 
 		private static void SetInventoryStyle(Terminal.ConsoleEventArgs args)
 		{
@@ -592,7 +430,7 @@ namespace GrabMaterialsMod
 
 		private static void ListLocalInventory(Terminal.ConsoleEventArgs args)
 		{
-			var radius = 50f; // Default radius
+			var radius = Range;
 			var text = args.Length > 1 ? args.ArgsAll.ToLower() : null;
 
 			// "/i new" lists only what this character has never held, rather than matching the
@@ -917,7 +755,7 @@ namespace GrabMaterialsMod
 				return;
 			}
 
-			var radius = 50f; // Default radius
+			var radius = Range;
 			var text = args[1];
 
 			var nearbyContainers = Boxes.GetNearbyContainers(radius);
@@ -944,7 +782,7 @@ namespace GrabMaterialsMod
 
 		static void StoreItemsInNearbyContainers()
 		{
-			var radius = 50f; // Default radius
+			var radius = Range;
 			var nearbyContainers = Boxes.GetNearbyContainers(radius);
 			var player = Player.m_localPlayer;
 			var playerInventory = player.GetInventory();
@@ -978,23 +816,5 @@ namespace GrabMaterialsMod
 			}
 		}
 
-		static void CountInventory(Terminal.ConsoleEventArgs args)
-		{
-			var itemName = "";
-			var count = 0;
-			var player = Player.m_localPlayer;
-			var playerInventory = player.GetInventory();
-			if (args.Length > 1)
-			{
-				itemName = args[1];
-				count = playerInventory.CountItems(itemName);
-				Log.LogInfo($"{count} {itemName} in inventory");
-			}
-			else
-			{
-				count = playerInventory.CountItems();
-				Log.LogInfo($"{count} items in inventory");
-			}
-		}
 	}
 }

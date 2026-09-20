@@ -66,6 +66,7 @@ Quickly pull materials from nearby chests into your inventory without having to 
 <li>Case insensitive matching
 <li>'/listpacks' to write the list of grabpacks to the log
 <li>Configure how long containers are highlighted when you pull items from them or search for items
+<li>Configure how far away a container can be and still be used ("Container Range", default 20 m); match it to your craft-from-containers and auto-store mods
 <li>'/inventory [search-text]' to count the number of items within range; if search-text specifies, looks for items that match on name or category
 
 <h3>Fixes in version 1.0.0</h3>
