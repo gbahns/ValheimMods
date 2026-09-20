@@ -20,7 +20,10 @@ namespace GrabMaterials
 		{
 			public string Name;
 			public int Count;
-			public ItemToGrab(string name, int count) { Name = name.Replace("$item_",""); Count = count; }
+			// Whatever the request was typed as (token, display name, either case), keep the
+			// item's own token so the results panel names the item it took.  "/g corewood"
+			// matches Core wood by its display name, but its token is $item_roundlog.
+			public ItemToGrab(string name, int count) { Name = CanonicalItemName(name.Replace("$item_", "")); Count = count; }
 			public string FullName { get { return $"$item_{Name}"; } }
 		}
 
@@ -603,7 +606,9 @@ namespace GrabMaterials
 		private static string LocalizeItemName(ItemToGrab item)
 		{
 			var translated = Extensions.Localize(item.FullName);
-			return string.IsNullOrEmpty(translated) || translated == item.FullName ? item.Name : translated;
+			// Valheim hands back "[item_x]" for a token it does not know; that is not a name.
+			var failed = string.IsNullOrEmpty(translated) || translated == item.FullName || translated.StartsWith("[");
+			return failed ? item.Name : translated;
 		}
 
 		private static string LocalizePieceName(Piece piece)
@@ -833,9 +838,28 @@ namespace GrabMaterials
 				if (!sharedNameLookup.ContainsKey(key)) sharedNameLookup[key] = shared;
 				// The display name too ("Carrot seeds"), so a typed localized name is an item name.
 				var localized = Extensions.Localize(shared);
-				if (!string.IsNullOrEmpty(localized) && localized != shared && !sharedNameLookup.ContainsKey(localized))
-					sharedNameLookup[localized] = shared;
+				if (!string.IsNullOrEmpty(localized) && localized != shared && !localized.StartsWith("["))
+				{
+					if (!sharedNameLookup.ContainsKey(localized)) sharedNameLookup[localized] = shared;
+					// And without spaces, so "corewood" finds "Corewood" and "finewood" finds "Fine wood".
+					var squeezed = localized.Replace(" ", "");
+					if (!sharedNameLookup.ContainsKey(squeezed)) sharedNameLookup[squeezed] = shared;
+				}
 			}
+		}
+
+		// The item's own token name for whatever the user typed: "Corewood", "corewood" or
+		// "core wood" -> "roundlog".  Spaces are ignored, since the game is inconsistent
+		// about them ("Fine wood" but "Corewood") and the tokens never have any.  Names that
+		// resolve to nothing come back unchanged.
+		private static string CanonicalItemName(string name)
+		{
+			if (string.IsNullOrEmpty(name)) return name;
+			if (sharedNameLookup.Count == 0) BuildSharedNameLookup();
+			if (sharedNameLookup.TryGetValue(name, out var shared)) return Extensions.TokenName(shared);
+			var squeezed = name.Replace(" ", "");
+			if (squeezed != name && sharedNameLookup.TryGetValue(squeezed, out shared)) return Extensions.TokenName(shared);
+			return name;
 		}
 
 		// Piece lookup that will not let a cultivator crop shadow the item of the same name.

@@ -4,6 +4,8 @@
 
 - **One configurable container range.** "Container Range" under [Client config] is how far away a container can be for every command in the mod. It was hardcoded and inconsistent: `/g`, `/i` and `/search` reached 50 m while the build-piece hotkey only reached 10 m, so materials the panel counted could be out of the hotkey's reach. The default is 20 m to match AzuCraftyBoxes' default pull range; set it to whatever your craft-from-containers and auto-store mods use so one distance means "in reach" everywhere. Anyone used to the old 50 m grab can set it back.
 - Removed the test commands `/listcontainers`, `/listlocalcontainers`, `/listcontents`, `/listpieces` and `/count`. They only wrote to the log and existed to prove the container tracking worked; `/i` covers what they did.
+- Item names can be typed with or without spaces: `/g core wood`, `/g corewood` and `/g roundlog` all grab Corewood, and `/g 10 fine wood` or `/g fine wood 10` both work.
+- **Fixed: the results panel showed a raw token such as `[item_corewood]`** when you asked for an item by its display name rather than its internal one (`/g corewood` instead of `/g roundlog`). The panel now names the item it actually took.
 - **Fixed: `/g 100 carrot` grabbed carrot seeds.** The cultivator's Carrot plant is a build piece whose recipe is one carrot seed, and piece names were checked before item names, so the crop shadowed the vegetable. The same went for turnips, onions, barley, flax and every other crop. When a name is both a crop and an item, the item now wins; the seeds are still there by their own name (`/g 100 carrot seeds`).
 
 ## 2.4.0 — 2026-09-16
