@@ -72,7 +72,10 @@ each turns a little more slowly too. The Wood in each recipe is exactly what its
 beams would cost to build by hand: 24, 36 and 52. Each pen holds about one boar per two square
 meters -- three, ten and fifteen -- and past that the animals stand on one another and can be
 lost over the side. Under way, an invisible lip along the top of the rails keeps a jostled animal
-in; at rest it is gone, so animals can be dropped in over the rails from a dock.
+in; at rest it is gone, so animals can be dropped in over the rails from a dock. Each pen also has
+a gate on its starboard side: look at it and Use, and it folds outboard into a ramp from the pen
+floor up over the gunwale, so with the ship alongside a dock at rail height animals can walk off,
+or on.
 
 ## Configuration
 
