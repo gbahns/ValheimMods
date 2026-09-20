@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.0 — unreleased
+## 1.1.0 — 2026-09-20
 
 Client-side; works with a 0.2.x server. Players still on 1.0.0 or older see campfire markers as plain dots.
 
