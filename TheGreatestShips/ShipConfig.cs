@@ -54,7 +54,8 @@ namespace TheGreatestShips
         //              Guck, the cargo ships fold Core Wood into Ancient Bark, the Greater Byrding drops Deer Hide
         //              for 20 Lox Pelt.
         //  17 (0.9.1): Small Byrding 12 Deer Hide, Byrding 15.
-        private const int CurrentConfigVersion = 17;
+        //  18 (0.9.1): the Greater Byrding's Wood is 51, its pen's pieces with the gate.
+        private const int CurrentConfigVersion = 18;
 
         internal static void Bind(TheGreatestShipsMod mod)
         {
