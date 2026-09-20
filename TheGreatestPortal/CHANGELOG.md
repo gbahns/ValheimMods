@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.1 — 2026-09-20
+
+- New "Lock Configuration" setting (General, on by default, the server's): while on, the Rules
+  can be changed only by the server's admins, from their own game, and every other player sees
+  them read-only. Before this any player could turn on "Anyone Can Redirect All Portals" for the
+  whole server -- the very thing that rule exists to gate. Not a breaking change.
+
 ## 1.0.0 — 2026-09-16
 
 - First stable release: no longer an early alpha. Nothing changes in play from 0.5.0, and any

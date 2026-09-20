@@ -8,6 +8,7 @@ namespace TheGreatestPortal
     {
         // ── server-synced rules ─────────────────────────────────────────────────────
         internal static ConfigEntry<int> MaxNameLength;
+        internal static ConfigEntry<bool> LockConfiguration;
         internal static ConfigEntry<bool> UntargetedOpensMap;
         internal static ConfigEntry<bool> AdoptExistingConnections;
         internal static ConfigEntry<bool> AnyoneCanRedirectAll;
@@ -33,6 +34,11 @@ namespace TheGreatestPortal
 
         internal static void Bind(TheGreatestPortalMod mod)
         {
+            LockConfiguration = mod.BindLocking("General", "Lock Configuration", true,
+                "While on, the settings marked as synced can be changed only by the server's admins " +
+                "(adminlist.txt), from their game; everyone else sees them read-only. Off, any player can " +
+                "change them for the whole server.");
+
             MaxNameLength = mod.BindSyncedRange("Rules", "Max Name Length", 32, 1, 64,
                 "Longest portal name allowed. Vanilla allows 10 characters.");
             UntargetedOpensMap = mod.BindSynced("Rules", "Open Portals Show The Map", true,

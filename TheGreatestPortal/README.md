@@ -76,6 +76,7 @@ to mark a favorite.
 | Section | Setting | Default | Meaning |
 |---|---|---|---|
 | General | Mod Enabled | true | Turn the whole mod off without removing the DLL; portals go back to pairing by name. Not server-synced, and read once at startup |
+| General | Lock Configuration | true | While on, only the server's admins (adminlist.txt) can change the Rules, from their game; everyone else sees them read-only (server-synced) |
 | Rules | Max Name Length | 32 | Longest portal name (server-synced) |
 | Rules | Open Portals Show The Map | true | An open portal shows the map when you step in. When false it goes nowhere, like an unpaired vanilla portal (server-synced) |
 | Rules | Adopt Existing Connections | true | Portals this mod has not configured keep their vanilla tag pair (server-synced) |

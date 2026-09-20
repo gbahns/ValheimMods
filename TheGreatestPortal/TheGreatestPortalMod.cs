@@ -26,7 +26,7 @@ namespace TheGreatestPortal
     {
         public const string ModGuid    = "DeathMonger.TheGreatestPortal";
         public const string ModName    = "The Greatest Portal";
-        public const string ModVersion = "1.0.0";
+        public const string ModVersion = "1.0.1";
 
         // Oldest version whose network messages this build still speaks. ServerSync refuses
         // peers below this, so bump it only when a message format changes.
@@ -91,6 +91,19 @@ namespace TheGreatestPortal
         {
             var entry = Config.Bind(section, key, defaultValue, new ConfigDescription(description + " [Synced with Server]"));
             _configSync.AddConfigEntry(entry).SynchronizedConfig = true;
+            return entry;
+        }
+
+        /// <summary>
+        /// The entry that locks the synced settings: while the server has it on, only admins
+        /// (adminlist.txt) can change a synced setting from their client, and other players see
+        /// them read-only.  Without one, ServerSync accepts a change from anyone.
+        /// </summary>
+        internal ConfigEntry<bool> BindLocking(string section, string key, bool defaultValue, string description)
+        {
+            var entry = Config.Bind(section, key, defaultValue,
+                new ConfigDescription(description + " [Synced with Server]"));
+            _configSync.AddLockingConfigEntry(entry);
             return entry;
         }
 
