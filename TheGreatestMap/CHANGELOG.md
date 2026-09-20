@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.0 — 2026-09-20
+
+Client-side; works with a 0.2.x server. The settings below become the server's to set, so a player
+still on 1.1.0 or older keeps deciding them for themselves until they update.
+
+- New setting "Lock Configuration" (General, on, server-synced): only server admins may change the settings marked [Synced with Server]. Those settings were shared before, but nothing enforced who set them, so any player could change a rule of the shared map for the whole server and the last one to touch it won. Your own settings are untouched, and single player and hosting your own game are unaffected.
+- The settings that cross a marker off for everyone are now the server's: "Cross Off Mined Copper", "Cross Off Mined Silver" and "Cross Off Structures When Searched". Whether a mined-out deposit is crossed off on everybody's map is a rule of the server, not a choice of whoever happened to swing the pick.
+- "Apply Label Rules To Existing Markers" and "Repair Dungeon Icons" are the server's as well. Both rewrite markers other players wrote, and labels are only ever removed, never added back, so one player's setting quietly edited the shared map for everyone.
+
 ## 1.1.0 — 2026-09-20
 
 Client-side; works with a 0.2.x server. Players still on 1.0.0 or older see campfire markers as plain dots.

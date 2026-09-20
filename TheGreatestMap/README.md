@@ -170,14 +170,28 @@ counts as well unless "Structures Include Unlisted" is off or its prefab name is
 
 ## Configuration
 
-`BepInEx/config/DeathMonger.TheGreatestMap.cfg`. The sharing rules (require the map to record,
-require the map to edit, share placed markers, whether the table carries player markers) are server-synced. Everything
-else is per player: keys, auto-sync radius and cooldown, the record radius, what stops you writing
-(under attack, and optionally while moving), which kinds of things to record, whether mined-out
-copper and silver are crossed off, marker and label
-spacing, marker size per kind (plants draw at 60% by default), whether each kind shows on the small
-minimap, the prefab lists behind each kind, the fallback icon for each kind, the legend's size and
-position, and the position, rotation and scale of the parchment and pencil in your hands.
+`BepInEx/config/DeathMonger.TheGreatestMap.cfg`. Settings fall into two groups, and which group a
+setting is in follows one question: does your choice change what other players see?
+
+**The server's**, marked `[Synced with Server]` and settable only by admins while "Lock
+Configuration" is on (it is by default): the sharing mode, whether erasing recorded markers is
+allowed, whether the map must be out to record or to edit, whether placed markers are shared,
+whether the cartography table carries player markers, whether mined-out copper and silver and
+searched structures are crossed off, and the two that rewrite markers other people wrote (the label
+rules applied on sync, and the dungeon icon repair). These are rules of the shared map: crossing a
+deposit off puts a line through it on everybody's map, so it should not be decided by whoever
+happened to swing the pick. Turning "Lock Configuration" off lets any player set them for the whole
+server, which is how it worked before 1.2.0. Single player and hosting your own game are
+unaffected — you are the server.
+
+**Yours**, and nobody else's business: keys, auto-sync radius and cooldown, the record radius, what
+stops you writing (under attack, and optionally while moving), which kinds of things to record,
+marker and label spacing, marker size per kind (plants draw at 60% by default), whether each kind
+shows on the small minimap, the prefab lists behind each kind, the fallback icon for each kind,
+everything under Display including all the hiding, the legend's size and position, and the position,
+rotation and scale of the parchment and pencil in your hands. Your own file keeps your own values
+for the server's settings too, so what you play with alone is never overwritten by a server you
+visited.
 
 ## Notes
 

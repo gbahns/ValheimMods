@@ -28,7 +28,7 @@ namespace TheGreatestMap
     {
         public const string ModGuid    = "DeathMonger.TheGreatestMap";
         public const string ModName    = "The Greatest Map";
-        public const string ModVersion = "1.1.0";
+        public const string ModVersion = "1.2.0";
 
         // Oldest version whose shared-marker wire format this build still speaks. ServerSync
         // refuses peers below this, so bump it only when the format or an RPC changes, not on
@@ -110,6 +110,18 @@ namespace TheGreatestMap
             var entry = Config.Bind(section, key, defaultValue, new ConfigDescription(description + " [Synced with Server]"));
             _configSync.AddConfigEntry(entry).SynchronizedConfig = true;
             return entry;
+        }
+
+        /// <summary>
+        /// Registers the entry that decides whether synced settings are the server's to set. Until
+        /// one is registered ServerSync's IsLocked is permanently false, which switches off both
+        /// halves of its enforcement: a client broadcasts its own edits to everyone, and the server
+        /// skips the admin check on a config package it receives. Synced settings are then merely
+        /// shared, and the last player to touch one wins.
+        /// </summary>
+        internal void LockConfig<T>(ConfigEntry<T> entry) where T : System.IConvertible
+        {
+            _configSync.AddLockingConfigEntry(entry);
         }
 
         /// <summary>Binds a client-only config entry.</summary>

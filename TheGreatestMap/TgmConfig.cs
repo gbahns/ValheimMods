@@ -16,6 +16,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> ShowMessages;
 
         // ── Sharing rules (server-synced) ───────────────────────────────────────────
+        internal static ConfigEntry<bool> LockConfiguration;
         internal static ConfigEntry<SharingMode> SharingMode;
         internal static ConfigEntry<bool> AllowErasingMarkers;
         internal static ConfigEntry<bool> RequireMapOutToEdit;
@@ -167,6 +168,14 @@ namespace TheGreatestMap
                 "the way recording resolves it. The console command tgm_legend does the same.");
             ShowMessages = mod.BindLocal("General", "Show Messages", true,
                 "Show small top-left messages when the map is taken out, a marker is recorded, and so on.");
+
+            LockConfiguration = mod.BindSynced("General", "Lock Configuration", true,
+                "Only server admins may change the settings marked [Synced with Server]. Those are the rules of the " +
+                "shared map rather than personal taste: who may erase a marker, what the cartography table carries, " +
+                "and which finds are crossed off for everyone, so one player's config should not decide them for the " +
+                "rest. Everything else stays yours. Off lets any player set them for the whole server, which is the " +
+                "behavior before 1.2.0. No effect in single player or when you host the game yourself.");
+            mod.LockConfig(LockConfiguration);
 
             SharingMode = mod.BindSynced("Sharing", "Sharing Mode", TheGreatestMap.SharingMode.Table,
                 "Table: markers travel like exploration. What you record or place stays on your own map until you merge " +
@@ -354,24 +363,24 @@ namespace TheGreatestMap
                 "tidied up, becomes the marker text). Turn off to record only the listed structure prefixes.");
             StructuresExcludePrefixes = mod.BindLocal("Catalog", "Structures Exclude Prefixes", "Vegvisir_,Runestone_,Meteorite,TarPit,Rock,Hugin,StartTemple,Pickable,Vegetation,Tree,Bush",
                 "Comma-separated prefab name prefixes never recorded as structures.");
-            ApplyLabelRulesOnSync = mod.BindLocal("Recording", "Apply Label Rules To Existing Markers", true,
+            ApplyLabelRulesOnSync = mod.BindSynced("Recording", "Apply Label Rules To Existing Markers", true,
                 "After each sync, apply the label rules above to recorded markers that already exist: within each kind, the " +
                 "oldest marker of a same-named cluster keeps its label and the others lose theirs, for everyone. Labels are only " +
                 "ever removed, never added back. The console command tgm_relabel does the same on demand.");
-            RepairDungeonIcons = mod.BindLocal("Recording", "Repair Dungeon Icons", true,
+            RepairDungeonIcons = mod.BindSynced("Recording", "Repair Dungeon Icons", true,
                 "Correct dungeon markers wearing the swamp crypt key because their cave was not in the catalog when they " +
                 "were written, such as bear caves. Only markers with that icon whose name says otherwise are touched, so a " +
                 "real sunken crypt keeps it. Runs when your map loads and after each merge, which also catches markers " +
                 "arriving from players still on an older version. The console command tgm_reicon does the same on demand.");
-            CrossOffStructuresOnChest = mod.BindLocal("Recording", "Cross Off Structures When Searched", true,
+            CrossOffStructuresOnChest = mod.BindSynced("Recording", "Cross Off Structures When Searched", true,
                 "Opening a chest inside a structure crosses its marker off for everyone. If the structure has no marker yet, " +
                 "it is remembered as searched and its marker starts crossed off when it is recorded.");
-            CrossOffMinedCopper = mod.BindLocal("Recording", "Cross Off Mined Copper", false,
+            CrossOffMinedCopper = mod.BindSynced("Recording", "Cross Off Mined Copper", false,
                 "Cross a copper deposit's marker off for everyone once it has been mined to nothing. Off by default, because " +
                 "a copper deposit runs on underground and a player cannot always tell whether they have got all of it, so " +
                 "crossing it off for them would tell them something they could not know. Tin and plants are always crossed " +
                 "off, since there is no doubt when those are done. You can still cross one off by hand.");
-            CrossOffMinedSilver = mod.BindLocal("Recording", "Cross Off Mined Silver", false,
+            CrossOffMinedSilver = mod.BindSynced("Recording", "Cross Off Mined Silver", false,
                 "Cross a silver vein's marker off for everyone once it has been mined to nothing. Off by default for the " +
                 "same reason as copper: part of a vein can be out of sight, and the map should not know more than the " +
                 "player does. You can still cross one off by hand.");
