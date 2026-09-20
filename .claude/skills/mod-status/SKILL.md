@@ -36,7 +36,6 @@ stamps each mod's manifest version into its assembly, and the SDK appends the co
 - `0.2.4 other commit` — same version number, built from different source. Worth a look.
 - `0.2.3 BEHIND` — the server is running an older version than this repo builds. Deploy.
 - `0.2.5 ahead` — newer than this repo. Someone else built it; don't overwrite it blindly.
-- `unstamped` — the DLL predates version stamping, so it cannot be placed. One deploy fixes it.
 - `client-only` — `mods.json` says the server has no use for it, so nothing is compared.
 - `client-only, still there` — as above, but a copy is sitting on the server doing nothing.
 - `absent` — not on the server, and not declared client-only either.
@@ -47,8 +46,11 @@ file against each mod's own `[BepInProcess("valheim.exe")]` attribute — the th
 enforces — so a mod declared server-side that cannot load on a server gets called out, as does a
 store listing that promises the same.
 
-One blind spot: a mod whose real version *is* 1.0.0 cannot be told apart from an unstamped
-build, since both report 1.0.0.0. Those rows fall through to the commit comparison.
+One blind spot: a DLL built before versions were stamped reads `1.0.0.0`, exactly like a correctly
+stamped 1.0.0, and nothing in the metadata separates them — only a hash against the published
+artifact would. The script reads `1.0.0.0` as the version 1.0.0 rather than guessing: right when it
+is one, and when it is genuinely an old build the row comes out `BEHIND`, which asks for the deploy
+that fixes it either way.
 
 ## Versions being prepared
 

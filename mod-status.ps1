@@ -87,10 +87,12 @@ function Get-ServerDllState([byte[]]$bytes, [string]$localDll, [string]$expected
         $local  = [Diagnostics.FileVersionInfo]::GetVersionInfo($localDll)
         $rv = $remote.FileVersion
         $lv = $local.FileVersion
-        # An unstamped DLL reads 1.0.0.0 -- but so does a correctly stamped 1.0.0, and calling that
-        # unstamped sends someone to redeploy a file that is already byte-identical to the release.
-        # When 1.0.0 is the version the server is expected to hold, take the reading at face value.
-        if ($rv -eq "1.0.0.0" -and $lv -ne "1.0.0.0" -and $expected -ne "1.0.0") { return "unstamped" }
+        # No "unstamped" verdict: an unstamped DLL and a correctly stamped 1.0.0 both read 1.0.0.0,
+        # and nothing in the metadata separates them -- only a hash against the published artifact
+        # would, which is a download per mod. Reading 1.0.0.0 as the version 1.0.0 is right when it
+        # is one, and when it is genuinely an ancient build it comes out as BEHIND, which asks for
+        # the same deploy the unstamped verdict asked for. The verdict only ever added a way to be
+        # wrong: it fired on TheGreatestMap twice, once for a DLL byte-identical to its release.
         $short = $rv -replace '\.0$', ''
 
         if ($rv -eq $lv) {
@@ -443,9 +445,6 @@ foreach ($r in $rows) {
         $srvVer = ($r.ServerState -split ' ')[0]
         $actions += ("$($r.Folder): the server has $srvVer, newer than the local build's $($r.DllVersion) - " +
                      "someone else built it; don't overwrite it blindly.")
-    }
-    if ($r.ServerState -eq "unstamped") {
-        $actions += "$($r.Folder): the server's DLL was built before versions were stamped, so its version cannot be read. One deploy replaces it with an identifiable build."
     }
 }
 # The server's own third-party packages, checked against mods.json. A package declared to belong
