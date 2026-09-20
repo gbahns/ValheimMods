@@ -118,22 +118,38 @@ namespace TheGreatestShips
                 var min = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
                 var max = new Vector3(float.MinValue, float.MinValue, float.MinValue);
                 bool any = false;
+                Renderer left = null, right = null, bottom = null, top = null;
                 foreach (var renderer in copy.GetComponentsInChildren<Renderer>())
                 {
                     if (!(renderer is MeshRenderer) && !(renderer is SkinnedMeshRenderer)) continue;
-                    min = Vector3.Min(min, renderer.bounds.min);
-                    max = Vector3.Max(max, renderer.bounds.max);
+                    var b = renderer.bounds;
+                    if (b.min.x < min.x) left   = renderer;
+                    if (b.max.x > max.x) right  = renderer;
+                    if (b.min.y < min.y) bottom = renderer;
+                    if (b.max.y > max.y) top    = renderer;
+                    min = Vector3.Min(min, b.min);
+                    max = Vector3.Max(max, b.max);
                     any = true;
                 }
                 copy.transform.rotation = was;
                 if (!any) return 0f;
                 var extent = max - min;
+                // Temporary diagnostic (2026-09-20): what sets the frame's edges.
+                Jotunn.Logger.LogInfo($"[TheGreatestShips] {target.name} framed {extent.x:0.0} x {extent.y:0.0} (depth {extent.z:0.0}); "
+                    + $"left {Describe(left)}, right {Describe(right)}, bottom {Describe(bottom)}, top {Describe(top)}");
                 return Mathf.Max(extent.x, extent.y);
             }
             finally
             {
                 if (stage != null) { Object.Destroy(copy); Object.Destroy(stage); }
             }
+        }
+
+        private static string Describe(Renderer r)
+        {
+            if (r == null) return "-";
+            var b = r.bounds;
+            return $"{r.name}[{r.GetType().Name}{(r.enabled ? "" : ",off")} {b.size.x:0.0}x{b.size.y:0.0}x{b.size.z:0.0} at {b.center.x:0.0},{b.center.y:0.0},{b.center.z:0.0}]";
         }
 
         // Every script goes (ZNetView last: others RequireComponent it), and the rigidbody with
