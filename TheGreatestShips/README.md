@@ -85,6 +85,7 @@ file (or just the entries you want reset) and start the game.
 
 | Setting | | |
 |---|---|---|
+| Lock Configuration (General) | While on, only the server's admins can change the synced settings, from their game; others see them read-only | Synced with the server |
 | Name Vanilla Ships (General) | Label the vanilla ships' rudders and holds too | Needs a restart |
 | Recipe | Comma-separated `ItemName:Amount` prefab names, at most five: the build HUD has room for five plus the crafting station (a sixth is shown, but the station's icon hangs off the panel) | Synced with the server |
 | Top Speed Multiplier | Relative to the vanilla ship it is based on | Synced with the server |

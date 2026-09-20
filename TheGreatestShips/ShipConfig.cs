@@ -30,6 +30,7 @@ namespace TheGreatestShips
         internal static Entries For(ShipDefinition def) => _entries[def];
 
         internal static ConfigEntry<bool> NameVanillaShips;
+        internal static ConfigEntry<bool> LockConfiguration;
 
         // Raised when a release changes defaults that saved configs should follow.
         //   2 (0.9.1): speeds rebased on logged top speeds, Cargo Longship recipe.
@@ -66,6 +67,11 @@ namespace TheGreatestShips
                 "Used by the mod to update old defaults. Do not change.");
 
             // Cosmetic and applied at the main menu, so not synced.
+            LockConfiguration = mod.BindLocking("General", "Lock Configuration", true,
+                "While on, the settings marked as synced can be changed only by the server's admins " +
+                "(adminlist.txt), from their game; everyone else sees them read-only. Off, any player can " +
+                "change them for the whole server.");
+
             NameVanillaShips = mod.Config.Bind("General", "Name Vanilla Ships", true,
                 "Label the vanilla ships' rudders and holds with the ship's name (\"Use rudder (Karve)\", \"Longship Storage\"), " +
                 "as this mod's own ships are, so you can tell which ship you are looking at. Requires a game restart.");

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.3 — unreleased
+
+- New "Lock Configuration" setting (General, on by default, the server's): while on, the synced
+  settings -- recipes, speeds, health, rudder, hull dimensions -- can be changed only by the
+  server's admins, from their own game, and every other player sees them read-only. Before this
+  any player could change them for the whole server. Not a breaking change: 0.9.2 clients can
+  still connect, they just can't change what they aren't allowed to.
+
 ## 0.9.2 — 2026-09-20
 
 **Breaking: the server and every player need 0.9.2. Hull Width, Hull Length and Hull Scale are

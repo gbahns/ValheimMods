@@ -16,7 +16,7 @@ namespace TheGreatestShips
     {
         public const string ModGuid    = "DeathMonger.TheGreatestShips";
         public const string ModName    = "The Greatest Ships";
-        public const string ModVersion = "0.9.2";
+        public const string ModVersion = "0.9.3";
 
         // Oldest version this one can share a server with.  Raise it only for a release that
         // changes what the two sides must agree on (prefab names, synced config, storage size).
@@ -65,6 +65,19 @@ namespace TheGreatestShips
             var entry = Config.Bind(section, key, defaultValue,
                 new ConfigDescription(description + " [Synced with Server]"));
             _configSync.AddConfigEntry(entry).SynchronizedConfig = true;
+            return entry;
+        }
+
+        /// <summary>
+        /// The entry that locks the synced settings: while the server has it on, only admins
+        /// (adminlist.txt) can change a synced setting from their client, and other players see
+        /// them read-only.  Without one, ServerSync accepts a change from anyone.
+        /// </summary>
+        internal ConfigEntry<bool> BindLocking(string section, string key, bool defaultValue, string description)
+        {
+            var entry = Config.Bind(section, key, defaultValue,
+                new ConfigDescription(description + " [Synced with Server]"));
+            _configSync.AddLockingConfigEntry(entry);
             return entry;
         }
     }
