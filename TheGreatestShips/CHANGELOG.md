@@ -57,8 +57,8 @@ the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was 
   nails; Busse 110 wood, 140 nails; Big Busse 150 wood, 180 nails); the scaled Byrdings had been
   paying less than a Longship per unit of hull, so they go up about 10% (Byrding 110 wood, 150
   nails; Greater Byrding 130 wood, 200 nails). The Byrdings' Wood is exactly what their pen's
-  poles and beams cost (24 / 36 / 51, gate included). Every recipe's materials now weigh at most 450 (one
-  Megingjord load) except the Greater Byrding's 482 (two trips, or a Mead of Troll Endurance).
+  poles and beams cost (24 / 36 / 50, gates included). Every recipe's materials now weigh at most 450 (one
+  Megingjord load) except the Greater Byrding's 480 (two trips, or a Mead of Troll Endurance).
 - Health follows the wood in each recipe, 1000 per 80: Knarr 1100, Busse 1400, Big Busse 1900,
   Byrding 1400, Greater Byrding 1600. The fast ships keep their 20% less, built light for speed.
   Saved Health, Hull Width and Hull Length values still at an earlier default move to the new one.

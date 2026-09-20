@@ -18,7 +18,7 @@ New ships built on Valheim's own hulls. Install on the server and on every clien
 | **Big Busse** | Longship | about 7.5 | 1900 | slowest | 64 | 1.5× | 1.5× | amber | green stripes | Fine Wood 60, Ancient Bark 90, Iron Nails 180, Deer Hide 20, Troll Hide 20 |
 | **Small Byrding** *(experimental)* | Longship | 8.6 | 1000 | normal | 12 | | | white | brown | Fine Wood 40, Ancient Bark 40, Iron Nails 100, Deer Hide 12, Wood 24 |
 | **Byrding** *(experimental)* | Longship, 1.25× | 8.3 | 1400 | a little slower | 18 | | | white | brown | Fine Wood 55, Ancient Bark 55, Iron Nails 150, Deer Hide 15, Wood 36 |
-| **Greater Byrding** *(experimental)* | Longship, 1.5× | about 7.7 | 1600 | slower | 24 | | | white | brown | Fine Wood 65, Ancient Bark 65, Iron Nails 200, Wood 51, Lox Pelt 20 |
+| **Greater Byrding** *(experimental)* | Longship, 1.5× | about 7.7 | 1600 | slower | 24 | | | white | brown | Fine Wood 65, Ancient Bark 65, Iron Nails 200, Wood 50, Lox Pelt 20 |
 
 Top speeds are in m/s, in full wind about 64° off the stern. They were worked out from logged
 sailing with the Captain's Log mod.
@@ -28,7 +28,7 @@ the vanilla Longship's 80 wood and 100 nails as the unit -- the cargo ships pay 
 (about 1.05×) and the Byrdings, mostly open deck, a little less. Health follows the wood in the
 recipe, 1000 per 80, except the two fast ships, which are built light and take 20% less. Every
 recipe's materials weigh 450 or less -- one load with the Megingjord -- except the Greater
-Byrding, the biggest ship here, at 482: two trips, or one on a Mead of Troll Endurance. (The
+Byrding, the biggest ship here, at 480: two trips, or one on a Mead of Troll Endurance. (The
 vanilla Longship's materials weigh 220, the Drakkar's 260.)
 
 Every ship names itself on its rudder ("Use rudder (Fast Longship)") and its hold ("Fast Longship
@@ -69,7 +69,7 @@ pen the length of its deck, mast and all: room for a few boars, and a longship's
 **Greater Byrding** is scaled 1.5×, with a fence high enough that a wolf can't clear it: room for a
 lox, or a pack of wolves. Each is slower than the last: 10%, 15% and 20% under a longship, and
 each turns a little more slowly too. The Wood in each recipe is exactly what its pen's poles and
-beams would cost to build by hand: 24, 36 and 51. Each pen holds about one boar per two square
+beams would cost to build by hand: 24, 36 and 50. Each pen holds about one boar per two square
 meters -- three, ten and fifteen -- and past that the animals stand on one another and can be
 lost over the side. Under way, an invisible lip along the top of the rails keeps a jostled animal
 in; at rest it is gone, so animals can be dropped in over the rails from a dock. Each pen also has

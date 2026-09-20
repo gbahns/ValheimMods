@@ -261,8 +261,9 @@ namespace TheGreatestShips
                 Description        = "A longship half again the size, with a high-railed pen the length of its deck: room for a lox, and a fence a wolf can't clear. Slow to turn.",
                 StorageWidth       = 6,
                 StorageHeight      = 4,
-                DefaultRecipe      = "FineWood:65,ElderBark:65,IronNails:200,Wood:51,LoxPelt:20",   // Wood = the pen's pieces exactly (gate included); weighs 482 (two trips, or one on Troll Endurance); Lox Pelt makes it Plains-tier, which a lox carrier is anyway
-                OldDefaultRecipes  = new[] { "FineWood:65,ElderBark:65,IronNails:200,Wood:52,LoxPelt:20",
+                DefaultRecipe      = "FineWood:65,ElderBark:65,IronNails:200,Wood:50,LoxPelt:20",   // Wood = the pen's pieces exactly (gates included); weighs 480 (two trips, or one on Troll Endurance); Lox Pelt makes it Plains-tier, which a lox carrier is anyway
+                OldDefaultRecipes  = new[] { "FineWood:65,ElderBark:65,IronNails:200,Wood:51,LoxPelt:20",
+                                             "FineWood:65,ElderBark:65,IronNails:200,Wood:52,LoxPelt:20",
                                              "FineWood:65,ElderBark:65,IronNails:200,Wood:52,DeerHide:20,LoxPelt:10",
                                              "FineWood:60,ElderBark:60,IronNails:150,Wood:52,DeerHide:20,LoxPelt:10",
                                              "FineWood:60,ElderBark:60,IronNails:150,Wood:52,LoxPelt:4",
