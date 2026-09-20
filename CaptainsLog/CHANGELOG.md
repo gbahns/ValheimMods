@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.0 — unreleased
+## 1.1.0 — 2026-09-20
 
 - **Install it on a dedicated server to log everyone's sailing.** The server writes one CSV, `BepInEx/CaptainsLog/shiplog-server-<timestamp>.csv`, with a row for every ship that has someone at the helm or its sail or oars engaged. Speed is the velocity the sailing player's game reports, not the server's estimate.
 - New `Player` column (second, after `Timestamp`) in both the client and server logs. On the server it names the helmsman, or whoever's game is running the ship when nobody is steering.
