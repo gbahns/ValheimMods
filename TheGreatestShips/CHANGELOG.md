@@ -75,11 +75,11 @@ the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was 
   at rest, so animals can still be dropped in over the top at a dock. A pen holds about one boar
   per two square meters -- three on the Small Byrding, ten on the Byrding, fifteen on the Greater
   -- and past that they stand on each other, and no wall holds a boar standing on a boar.
-- The pens have a gate: a section of the starboard rails (the whole side on the Small Byrding, a
-  2 m section on the others) that folds outboard on Use into a ramp from the pen floor up over
-  the gunwale, which at midships is only half a meter above the deck. Dock alongside, open the
-  gate, food on the dock at rail height, and the animals walk off -- or, from a dock, walk on.
-  Its state is kept in the ship and shared by everyone aboard.
+- The pens have a gate on each side: a section of the rails (the whole side on the Small
+  Byrding, a 2 m section on the others) that folds outboard on Use into a ramp from the pen floor
+  up over the gunwale, which at midships is only half a meter above the deck. Dock on either
+  side, open that gate, food on the dock at rail height, and the animals walk off -- or, from a
+  dock, walk on. Each gate's state is kept in the ship and shared by everyone aboard.
 - Fixed: livestock aboard a ship under sail died to the ship itself. A ship rams whatever its
   colliders strike above 1.5 m/s -- rails, mast and deck included -- for up to 50 blunt, and a
   tamed boar has 10 health; a frightened animal running into the mast or the bow rail on a ship
