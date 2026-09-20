@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.4 — 2026-09-20
+
+- New "Lock Configuration" setting (General, on by default, the server's): while on, the synced
+  settings -- the placement rules and every shrine recipe -- can be changed only by the server's
+  admins, from their own game, and every other player sees them read-only. Before this any
+  player could change them for the whole server. Not a breaking change: 0.8.3 clients can still
+  connect (this release stops pinning the required version to the current one).
+
 ## 0.8.3 — 2026-09-13
 
 **Server and clients update together.** The version check in this mod has never been enforced,

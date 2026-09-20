@@ -31,7 +31,10 @@ namespace ForsakenShrines
     {
         public const string ModGuid    = "DeathMonger.ForsakenShrines";
         public const string ModName    = "Forsaken Shrines";
-        public const string ModVersion = "0.8.3";
+        public const string ModVersion = "0.8.4";
+        // The oldest version that can share a server with this one.  Kept apart from ModVersion
+        // so a release that changes no network contract does not lock older clients out.
+        public const string MinCompatibleVersion = "0.8.3";
 
         internal static ForsakenShrinesMod Instance { get; private set; }
 
@@ -69,7 +72,7 @@ namespace ForsakenShrines
             {
                 DisplayName            = ModName,
                 CurrentVersion         = ModVersion,
-                MinimumRequiredVersion = ModVersion,
+                MinimumRequiredVersion = MinCompatibleVersion,
             };
 
             ShrineConfig.Bind(this);
@@ -112,6 +115,19 @@ namespace ForsakenShrines
             var entry = Config.Bind(section, key, defaultValue,
                 new ConfigDescription(description + " [Synced with Server]"));
             _configSync.AddConfigEntry(entry).SynchronizedConfig = true;
+            return entry;
+        }
+
+        /// <summary>
+        /// The entry that locks the synced settings: while the server has it on, only admins
+        /// (adminlist.txt) can change a synced setting from their client, and other players see
+        /// them read-only.  Without one, ServerSync accepts a change from anyone.
+        /// </summary>
+        internal ConfigEntry<bool> BindLocking(string section, string key, bool defaultValue, string description)
+        {
+            var entry = Config.Bind(section, key, defaultValue,
+                new ConfigDescription(description + " [Synced with Server]"));
+            _configSync.AddLockingConfigEntry(entry);
             return entry;
         }
     }

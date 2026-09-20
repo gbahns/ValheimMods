@@ -14,6 +14,7 @@ namespace ForsakenShrines
         // ── Placement rules ─────────────────────────────────────────────────────────
         internal static ConfigEntry<bool> RequireNaturalTerrain;
         internal static ConfigEntry<bool> RequireSkyExposure;
+        internal static ConfigEntry<bool> LockConfiguration;
 
         // ── Per-shrine recipe strings ────────────────────────────────────────────────
         // Format: "ItemName:Amount:Recover,..."  e.g. "Stone:20:true,TrophyDeer:5:false"
@@ -22,6 +23,11 @@ namespace ForsakenShrines
 
         internal static void Bind(ForsakenShrinesMod mod)
         {
+            LockConfiguration = mod.BindLocking("General", "Lock Configuration", true,
+                "While on, the settings marked as synced can be changed only by the server's admins " +
+                "(adminlist.txt), from their game; everyone else sees them read-only. Off, any player can " +
+                "change them for the whole server.");
+
             RequireNaturalTerrain = mod.BindSynced("Placement", "RequireNaturalTerrain", true,
                 "Shrines must be placed directly on natural terrain — no player-built floor or platform beneath them.");
             RequireSkyExposure = mod.BindSynced("Placement", "RequireSkyExposure", true,

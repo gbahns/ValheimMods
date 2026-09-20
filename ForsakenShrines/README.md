@@ -58,6 +58,8 @@ The config file is created at `BepInEx/config/DeathMonger.ForsakenShrines.cfg` o
 **\[General\]**
 - `Mod Enabled` (default: true) — master switch. Set to false to turn the mod off without removing the DLL: no shrine pieces, no placement rules, no Harmony patches. Not server-synced. Takes effect on the next game launch; shrines already placed in the world are hidden until you re-enable it.
 
+- `Lock Configuration` (default: true) — while on, only the server's admins (adminlist.txt) can change the synced settings, from their game; everyone else sees them read-only.
+
 **\[Placement\]**
 - `RequireNaturalTerrain` (default: true) — require natural ground beneath the shrine
 - `RequireSkyExposure` (default: true) — require open sky above the shrine
