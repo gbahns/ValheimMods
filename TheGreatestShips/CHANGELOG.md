@@ -69,8 +69,12 @@ the 8.8 that 0.9.0 was tuned against, and the Longship 9.65, not the 9.5 it was 
   shows -- the row grows to fit it -- but the station's icon then hangs off the panel.
 - Fixed: a panicked boar could climb out of a pen. It can't jump, but at a run its collider
   rides up the lower rail and then the upper one -- two rails make a staircase. The rails now
-  carry an invisible flat inner wall from the deck to the top rail, so there is nothing to climb;
-  animals can still be dropped in over the top.
+  carry an invisible flat inner wall from the deck to the top rail, so there is nothing to climb,
+  and while the ship is under way an invisible lip along the top of the wall, jutting inward, so
+  an animal lifted by a shove or a heeling deck meets a ceiling instead of an edge. Both are off
+  at rest, so animals can still be dropped in over the top at a dock. A pen holds about one boar
+  per two square meters -- three on the Small Byrding, ten on the Byrding, fifteen on the Greater
+  -- and past that they stand on each other, and no wall holds a boar standing on a boar.
 - Fixed: livestock aboard a ship under sail died to the ship itself. A ship rams whatever its
   colliders strike above 1.5 m/s -- rails, mast and deck included -- for up to 50 blunt, and a
   tamed boar has 10 health; a frightened animal running into the mast or the bow rail on a ship

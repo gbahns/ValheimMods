@@ -69,7 +69,10 @@ pen the length of its deck, mast and all: room for a few boars, and a longship's
 **Greater Byrding** is scaled 1.5×, with a fence high enough that a wolf can't clear it: room for a
 lox, or a pack of wolves. Each is slower than the last: 10%, 15% and 20% under a longship, and
 each turns a little more slowly too. The Wood in each recipe is exactly what its pen's poles and
-beams would cost to build by hand: 24, 36 and 52.
+beams would cost to build by hand: 24, 36 and 52. Each pen holds about one boar per two square
+meters -- three, ten and fifteen -- and past that the animals stand on one another and can be
+lost over the side. Under way, an invisible lip along the top of the rails keeps a jostled animal
+in; at rest it is gone, so animals can be dropped in over the rails from a dock.
 
 ## Configuration
 

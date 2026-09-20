@@ -66,6 +66,7 @@ namespace TheGreatestShips
             var pen = new GameObject("animal_pen");
             pen.transform.SetParent(clone.transform, false);
             pen.AddComponent<PenBallast>();
+            pen.AddComponent<PenLip>();
 
             // Under attack the hull takes sudden impulses -- hits on the ship, leech bumps, a
             // grounding -- and jumps a few centimeters in one physics step.  A penned animal is
@@ -127,6 +128,25 @@ namespace TheGreatestShips
                 wall.transform.SetParent(pen.transform, false);
                 wall.transform.localPosition = center + new Vector3(0f, DeckHeight + wallTop / 2f, 0f);
                 wall.AddComponent<BoxCollider>().size = size;
+            }
+
+            // An invisible lip along the top of each wall, jutting inward: an animal lifted by a
+            // shove or a heeling deck meets a ceiling at the wall instead of an edge.  Only while
+            // sailing (PenLip switches it), so animals can still be dropped in over the wall at
+            // rest.  Starts off; PenBallast restores that after its measurement.
+            const float lipWidth = 0.6f, lipThickness = 0.2f;
+            foreach (var (center, size) in new[] {
+                (new Vector3(0f, 0f, spec.CenterZ + halfLen - wallThickness - lipWidth / 2f), new Vector3(spec.Width, lipThickness, lipWidth)),   // bow
+                (new Vector3(0f, 0f, spec.CenterZ - halfLen + wallThickness + lipWidth / 2f), new Vector3(spec.Width, lipThickness, lipWidth)),   // stern
+                (new Vector3(halfWid - wallThickness - lipWidth / 2f, 0f, spec.CenterZ), new Vector3(lipWidth, lipThickness, spec.Length)),      // starboard
+                (new Vector3(-halfWid + wallThickness + lipWidth / 2f, 0f, spec.CenterZ), new Vector3(lipWidth, lipThickness, spec.Length)) })   // port
+            {
+                var lip = new GameObject("pen_lip") { layer = post.layer };
+                lip.transform.SetParent(pen.transform, false);
+                lip.transform.localPosition = center + new Vector3(0f, DeckHeight + wallTop + lipThickness / 2f, 0f);
+                var box = lip.AddComponent<BoxCollider>();
+                box.size = size;
+                box.enabled = false;
             }
 
             // The pieces' "woodwall" material is Custom/Piece with _VALUENOISEVERTEX_ON: the
@@ -213,6 +233,43 @@ namespace TheGreatestShips
     /// the values explicitly, which also stops Unity recomputing them.  Runs on every spawned
     /// ship (Start never runs on the inactive prefab).
     /// </summary>
+    /// <summary>
+    /// Switches the pen's lip colliders on while the ship is under way -- sail or rudder set to
+    /// anything but Stop, or the hull moving faster than a drift -- and off at rest, so animals
+    /// can be dropped in over the wall at a dock.  Checked a few times a second on every client;
+    /// the speed setting and velocity are synced, so everyone agrees.
+    /// </summary>
+    internal sealed class PenLip : MonoBehaviour
+    {
+        private const float DriftSpeed = 1f; // m/s: below this, "at rest"
+        private Ship _ship;
+        private Rigidbody _body;
+        private Collider[] _lips;
+        private float _next;
+        private bool _on;
+
+        private void Start()
+        {
+            _ship = GetComponentInParent<Ship>();
+            _body = GetComponentInParent<Rigidbody>();
+            var lips = new List<Collider>();
+            foreach (var c in GetComponentsInChildren<Collider>(true))
+                if (c.name == "pen_lip") lips.Add(c);
+            _lips = lips.ToArray();
+        }
+
+        private void Update()
+        {
+            if (_ship == null || _lips == null || Time.time < _next) return;
+            _next = Time.time + 0.25f;
+            bool sailing = _ship.GetSpeedSetting() != Ship.Speed.Stop
+                        || (_body != null && _body.velocity.magnitude > DriftSpeed);
+            if (sailing == _on) return;
+            _on = sailing;
+            foreach (var lip in _lips) lip.enabled = sailing;
+        }
+    }
+
     internal sealed class PenBallast : MonoBehaviour
     {
         private void Start()
@@ -221,13 +278,14 @@ namespace TheGreatestShips
             if (body == null) return;
 
             var colliders = GetComponentsInChildren<Collider>(true);
-            foreach (var c in colliders) c.enabled = false;
+            var wasEnabled = new bool[colliders.Length];
+            for (int i = 0; i < colliders.Length; i++) { wasEnabled[i] = colliders[i].enabled; colliders[i].enabled = false; }
             body.ResetCenterOfMass();
             body.ResetInertiaTensor();
             var centerOfMass = body.centerOfMass;
             var inertia      = body.inertiaTensor;
             var inertiaRot   = body.inertiaTensorRotation;
-            foreach (var c in colliders) c.enabled = true;
+            for (int i = 0; i < colliders.Length; i++) colliders[i].enabled = wasEnabled[i];
             body.centerOfMass          = centerOfMass;
             body.inertiaTensor         = inertia;
             body.inertiaTensorRotation = inertiaRot;
