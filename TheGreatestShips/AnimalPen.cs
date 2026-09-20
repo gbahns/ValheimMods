@@ -180,6 +180,15 @@ namespace TheGreatestShips
                 if (changed) renderer.sharedMaterials = materials;
             }
 
+            // Everything in the pen goes on the hull's own layer, "vehicle": the camera's block
+            // mask skips it (the pieces' "piece" layer is exactly what that mask exists to stop
+            // at, so orbiting the camera over the pen kept pulling it in), characters still
+            // collide with it, and the monsters' line-of-sight mask still includes it.
+            int vehicle = LayerMask.NameToLayer("vehicle");
+            if (vehicle >= 0)
+                foreach (var t in pen.GetComponentsInChildren<Transform>(true))
+                    t.gameObject.layer = vehicle;
+
             Jotunn.Logger.LogInfo($"[TheGreatestShips] Built animal pen: {pieces} posts and rails plus a flat inner wall to {wallTop:0.00}, {spec.Width} x {spec.Length} at z {spec.CenterZ}; the same pieces would cost {wood} Wood.");
         }
 

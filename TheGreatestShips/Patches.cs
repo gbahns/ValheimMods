@@ -23,14 +23,6 @@ namespace TheGreatestShips
         static void Postfix() => ShipPrefabs.OnZNetSceneAwake();
     }
 
-    // Temporary diagnostic (2026-09-20): the camera's block mask, read once the camera exists.
-    [HarmonyPatch(typeof(GameCamera), "Awake")]
-    internal static class GameCameraAwakeProbe
-    {
-        [HarmonyPostfix]
-        static void Postfix(GameCamera __instance) => ShipPrefabs.ProbeLayers(__instance);
-    }
-
     /// <summary>
     /// The build HUD shows a piece's requirements in a fixed row of slots and puts the crafting
     /// station in the slot after the last ingredient, so a recipe with as many ingredients as
