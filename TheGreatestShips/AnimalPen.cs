@@ -108,6 +108,27 @@ namespace TheGreatestShips
                 }
             }
 
+            // An invisible flat wall flush with the rails' inner faces, deck to the top rail.  A
+            // boar can't jump (its AI never triggers one) but it runs at 8 m/s, and a capsule
+            // collider at that speed rides up a knee-high ledge; the lower rail is one and the
+            // upper rail's top is only 0.45 above it, so two rails are a staircase to a panicked
+            // animal.  A vertical face gives it nothing to climb.  It stops exactly where the
+            // rails do, so animals can still be dropped in over the top.
+            float wallTop = 0f;
+            foreach (float rail in spec.RailHeights) wallTop = Mathf.Max(wallTop, rail + 0.2f);
+            const float wallThickness = 0.2f;
+            foreach (var (center, size) in new[] {
+                (new Vector3(0f, 0f, spec.CenterZ + halfLen - wallThickness / 2f), new Vector3(spec.Width, wallTop, wallThickness)),   // bow
+                (new Vector3(0f, 0f, spec.CenterZ - halfLen + wallThickness / 2f), new Vector3(spec.Width, wallTop, wallThickness)),   // stern
+                (new Vector3(halfWid - wallThickness / 2f, 0f, spec.CenterZ), new Vector3(wallThickness, wallTop, spec.Length)),      // starboard
+                (new Vector3(-halfWid + wallThickness / 2f, 0f, spec.CenterZ), new Vector3(wallThickness, wallTop, spec.Length)) })   // port
+            {
+                var wall = new GameObject("pen_wall") { layer = post.layer };
+                wall.transform.SetParent(pen.transform, false);
+                wall.transform.localPosition = center + new Vector3(0f, DeckHeight + wallTop / 2f, 0f);
+                wall.AddComponent<BoxCollider>().size = size;
+            }
+
             // The pieces' "woodwall" material is Custom/Piece with _VALUENOISEVERTEX_ON: the
             // shader nudges every vertex by a noise texture sampled at its *world* position, a
             // static hand-hewn look on a wall that never moves.  On a hull that bobs the sample
@@ -139,7 +160,7 @@ namespace TheGreatestShips
                 if (changed) renderer.sharedMaterials = materials;
             }
 
-            Jotunn.Logger.LogInfo($"[TheGreatestShips] Built animal pen: {pieces} posts and rails, {spec.Width} x {spec.Length} at z {spec.CenterZ}; the same pieces would cost {wood} Wood.");
+            Jotunn.Logger.LogInfo($"[TheGreatestShips] Built animal pen: {pieces} posts and rails plus a flat inner wall to {wallTop:0.00}, {spec.Width} x {spec.Length} at z {spec.CenterZ}; the same pieces would cost {wood} Wood.");
         }
 
         // A rail of the given length, centered on `center`, running along the yaw'd X axis: as
