@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.4.1 — 2026-09-18
+## 2.4.1 — 2026-09-20
 
 - **One configurable container range.** "Container Range" under [Client config] is how far away a container can be for every command in the mod. It was hardcoded and inconsistent: `/g`, `/i` and `/search` reached 50 m while the build-piece hotkey only reached 10 m, so materials the panel counted could be out of the hotkey's reach. The default is 20 m to match AzuCraftyBoxes' default pull range; set it to whatever your craft-from-containers and auto-store mods use so one distance means "in reach" everywhere. Anyone used to the old 50 m grab can set it back.
 - Removed the test commands `/listcontainers`, `/listlocalcontainers`, `/listcontents`, `/listpieces` and `/count`. They only wrote to the log and existed to prove the container tracking worked; `/i` covers what they did.
