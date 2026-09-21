@@ -1,6 +1,23 @@
 # Changelog
 
-## 1.3.1 — unreleased
+## 2.0.0 — 2026-09-21
+
+Loadouts changed shape in this release: what a loadout loads is now chosen cell by cell, and the panel was rebuilt around that. Everything below is new since 1.3.0.
+
+
+- **A loadout is the cells you choose.** Every cell a loadout saves — each worn slot, each hotbar key, each quick slot — can be in the loadout or left out of it. Load applies the cells that are in and leaves everything else exactly as it is. So "Fenris" can be armor alone, "Bow kit" the bow in 4 and the arrows in 7, and "Ashlands" the food and meads, and loading all three in a row builds the outfit. Ten slots go a lot further that way.
+- A new loadout starts with the helmet, chest, legs and cape and nothing else. That is what most switching is; the belt, wisplight, food and tools you carry everywhere don't need saving.
+- A row shows only the cells its loadout loads. Press **+** on the row to see every cell that was saved, click cells to add them or take them out, and press **-** to tuck the rest away again. The label above a group — Armor, Weapons, Food and so on — adds or removes the whole group at once, and its color says whether the group is all in, all out, or mixed.
+- Save still records everything you are wearing and carrying, and keeps the row's choices cell for cell, so re-saving "Fenris" over new gear never resets what it loads. A cell added back later shows what was there at the last save.
+- **The trinket slot is part of a loadout now**, under Accessories with the belt. It was not captured before.
+- A worn slot that is in the loadout but empty means "wear nothing there": an included empty Cape takes your cape off. The summary line says so, as "no cape".
+- **Load no longer draws a weapon.** It puts gear in the cells you chose and leaves what you hold to you, the way any chest does. The Weapon and Shield entries that recorded the hands are gone; a drawn weapon has no slot of its own, it sits in a hotbar cell, and that is where it is listed.
+- Racks saved by an older version load everything, as they always did, until you take a cell out. An older version reading a rack from this one ignores the choices and the trinket, and drops both if it saves the slot again.
+- Icons are a little smaller to make room for the labels.
+- A rack keeps exactly the slots you leave it with. It used to pad itself back up to five every time it was opened, so deleting the last three was undone on the next visit. Only a rack that has never been saved to starts with five.
+- **The row buttons fold into a menu.** By default each row now has an **Equip** button and a three-bar button that opens a menu with Save, Show all cells, Compare and Delete. That takes less than half the room, so the panel can be dragged much narrower. Equip reads "Wearing" in green while you have the loadout on. `Show Row Buttons` in the config brings the five separate buttons back.
+- **The panel can be resized.** Drag the grip in its bottom-right corner. The rows follow the width as you drag: a loadout's icon groups sit on one line when they fit and wrap onto another only when they don't, so a wider panel is a way to keep every loadout on a single line. The size is remembered with the position; until you set a height, the panel fits its loadouts.
+- "Saved", "Loaded" and "Deleted" now appear above the panel. They were Valheim's center message before, which draws beneath any mod panel, so they went unread behind this one.
 
 - **Saving a loadout no longer sweeps up ordinary inventory.** With AzuExtendedPlayerInventory's "Extra Inventory Rows" turned on, whatever happened to be lying in those extra bag rows — resin, nails, arrows — was saved as part of the loadout, and Load would then try to put it back. The capture assumed the bag was exactly 8×4 and treated every cell beyond that as one of Azu's special slots. It now asks Azu which cells are its quick slots and equipment row, and captures only those; the rest of the bag is yours, however many rows it has.
 - Loadouts saved before this version still carry those stray entries. Re-save each affected slot once and they are gone.

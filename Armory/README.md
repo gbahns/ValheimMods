@@ -9,7 +9,8 @@ The rack is also a real storage container. Drop your alternate gear in, walk up,
 ## Features
 
 - **Named loadout slots** — save your current equipment as `"Farming"`, `"Mining"`, `"Boss"`, etc. Rename by clicking the slot name. Up to 10 slots per rack.
-- **Combined armor + hotbar** — captures helm, chest, legs, cape, utility, right-hand, left-hand, **and** quickbar items 1–8.
+- **Combined armor + hotbar** — captures helm, chest, legs, cape, belt, trinket, **and** quickbar items 1–8.
+- **Loadouts are the cells you choose** — each worn slot, hotbar key and quick slot can be in a loadout or out of it, and Load touches only what's in. A new loadout starts as armor and cape. Press **+** on a row to see every saved cell and add or remove some; the group labels add or remove a whole group. An armor set, a weapon kit and a food set load one after another to build an outfit.
 - **Storage + loadouts in one** — the rack is also a Container (6×4 grid). Load pulls items from the rack *and* your inventory; saved gear in the rack counts as "available".
 - **In-place swap** — when Load equips a new item, whatever was in that slot gets stored back at the exact grid position the new item came from. Nothing ends up on the action bar unless that's where it was sitting.
 - **Live status** — a green ● on the Load button means you're already wearing this loadout. Missing items show red in the summary text and red in the icon strip.
@@ -23,9 +24,10 @@ The rack is also a real storage container. Drop your alternate gear in, walk up,
 ## How to Use
 
 1. Build an **Armory Rack** from the Hammer menu's **Furniture** tab. Requires a Workbench in range. See [Recipe](#recipe).
-2. Press **[Use]** on the rack to open the panel — your inventory and the rack's storage appear alongside it.
+2. Press **[Use]** on the rack to open the panel — your inventory and the rack's storage appear alongside it. Each loadout row has an **Equip** button and a menu button (three bars) with Save, Show all cells, Compare and Delete; the steps below say "click Save" and so on, meaning that menu, or the row buttons if you turn those on in the config.
 3. Click **Save** (↓) on a slot to capture what you're currently wearing and the items in hotbar slots 1–8.
 4. Click **Load** (↑) on a saved slot to equip that loadout. Items come from the rack first, then your inventory. Whatever you were wearing gets stored in the slot the loaded item came from.
+   - A row shows only the cells its loadout loads; a new one starts as helmet, chest, legs and cape. Press **+** to see every cell that was saved, click a cell to add it or take it out, and press **-** to hide the rest again. The label above a group (**Armor**, **Weapons**, **Food**, ...) adds or removes the whole group. Save always records everything, so a cell added later shows what you had there at the last save.
 5. Click the slot name to rename it. Click the red **x** to delete the slot (empty slots and duplicates delete without confirmation; non-empty unique slots prompt first).
 6. Click **Shared / Personal** in the top-left to choose who may open the rack. Only the player who built it can change this.
 7. To name a rack, point at it and press **Shift+[Use]** — the same modifier Valheim uses for renaming a portal. An empty name returns it to "Armory".
@@ -62,9 +64,11 @@ The config file is created at `BepInEx/config/GBahns.Armory.cfg` on first run.
 **\[UI\]**
 - `Show Summary Text` (default: true) — show the textual list of items below each loadout's name (`Helm:..., Chest:...`, etc.).
 - `Show Icons` (default: true) — show the row of item icons at the bottom of each loadout row.
+- `Show Row Buttons` (default: false) — show Save, Load, +, Cmp and x on every row. Off puts them in a menu behind one button per row, which takes less room and lets the panel be narrower.
 
 **\[Window\]**
 - `Panel Position X` / `Panel Position Y` — auto-updated when you close the rack so the panel reopens where you last left it. Persists across game sessions.
+- `Panel Width` / `Panel Height` — auto-updated when you drag the grip in the panel's bottom-right corner. A loadout's icon groups sit on one line when they fit the width and wrap only when they don't. A height of 0 fits the panel to its loadouts.
 
 ---
 
@@ -93,4 +97,4 @@ resolve, not something this mod can guard against from the client.
 
 - Save/Load/Compare/Delete buttons disable themselves when not applicable (e.g. Load is disabled when the slot is empty or when you're already wearing the saved set).
 - The rack's doors swing open while the panel is open — purely visual, no gameplay effect.
-- Held items (weapons/tools you have equipped in your hands) are part of the loadout and get swapped on Load just like armor.
+- Load never draws a weapon. It puts items in your cells and leaves what you hold to you, as any chest does.

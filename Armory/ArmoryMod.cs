@@ -25,7 +25,7 @@ namespace Armory
     // ArmoryUI is only ever reached from InventoryGui.Show, and ArmoryPause returns immediately
     // while Player.m_localPlayer is null.  What does run is the part the server needs: the clone,
     // its registration into ZNetScene, and the ArmoryRack component on the spawned object.
-    [BepInPlugin(ModGuid, "Armory", "1.3.1")]
+    [BepInPlugin(ModGuid, "Armory", "2.0.0")]
     [BepInDependency("com.jotunn.jotunn")]
     public class ArmoryMod : BaseUnityPlugin
     {
@@ -44,6 +44,7 @@ namespace Armory
         public static ConfigEntry<bool> PauseGameWhileOpen;
         public static ConfigEntry<bool> ShowSummaryText;
         public static ConfigEntry<bool> ShowIcons;
+        public static ConfigEntry<bool> ShowRowButtons;
 
         // Persisted main-panel position so it survives across game sessions (logins).
         // Auto-updated when the player closes the rack; defaults place the panel to the right
@@ -51,6 +52,8 @@ namespace Armory
         // for UnityEngine.Vector2 isn't guaranteed to be registered in this runtime.
         public static ConfigEntry<float> PanelPosX;
         public static ConfigEntry<float> PanelPosY;
+        public static ConfigEntry<float> PanelWidth;
+        public static ConfigEntry<float> PanelHeight;
 
         private void Awake()
         {
@@ -89,6 +92,13 @@ namespace Armory
                 defaultValue: true,
                 description: "Show the row of item icons at the bottom of each loadout row.");
 
+            ShowRowButtons = Config.Bind(
+                section:     "UI",
+                key:         "Show Row Buttons",
+                defaultValue: false,
+                description: "Show Save, Load, +, Cmp and x on every loadout row. Off puts them in a menu " +
+                             "behind one button per row, which takes less room and lets the panel be narrower.");
+
             PanelPosX = Config.Bind(
                 section:     "Window",
                 key:         "Panel Position X",
@@ -100,6 +110,21 @@ namespace Armory
                 key:         "Panel Position Y",
                 defaultValue: 0f,
                 description: "Saved vertical panel position (auto-updated when you close the rack).");
+
+            PanelWidth = Config.Bind(
+                section:     "Window",
+                key:         "Panel Width",
+                defaultValue: 760f,
+                description: "Saved panel width (auto-updated when you drag the grip in the panel's bottom-right " +
+                             "corner). A loadout's icon groups sit on one line when they fit the width, and wrap " +
+                             "onto more lines only when they don't.");
+
+            PanelHeight = Config.Bind(
+                section:     "Window",
+                key:         "Panel Height",
+                defaultValue: 0f,
+                description: "Saved panel height (auto-updated when you drag the grip). 0 means fit the panel to " +
+                             "its loadouts, up to most of the screen; the list scrolls past that.");
 
             if (!ModEnabled.Value)
             {

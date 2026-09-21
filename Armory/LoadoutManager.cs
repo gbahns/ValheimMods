@@ -23,53 +23,47 @@ namespace Armory
         public static readonly AccessTools.FieldRef<Humanoid, ItemDrop.ItemData> F_Leg      = AccessTools.FieldRefAccess<Humanoid, ItemDrop.ItemData>("m_legItem");
         public static readonly AccessTools.FieldRef<Humanoid, ItemDrop.ItemData> F_Shoulder = AccessTools.FieldRefAccess<Humanoid, ItemDrop.ItemData>("m_shoulderItem");
         public static readonly AccessTools.FieldRef<Humanoid, ItemDrop.ItemData> F_Utility  = AccessTools.FieldRefAccess<Humanoid, ItemDrop.ItemData>("m_utilityItem");
-        public static readonly AccessTools.FieldRef<Humanoid, ItemDrop.ItemData> F_Right    = AccessTools.FieldRefAccess<Humanoid, ItemDrop.ItemData>("m_rightItem");
-        public static readonly AccessTools.FieldRef<Humanoid, ItemDrop.ItemData> F_Left     = AccessTools.FieldRefAccess<Humanoid, ItemDrop.ItemData>("m_leftItem");
+        public static readonly AccessTools.FieldRef<Humanoid, ItemDrop.ItemData> F_Trinket  = AccessTools.FieldRefAccess<Humanoid, ItemDrop.ItemData>("m_trinketItem");
 
         /// <summary>
-        /// True if the player is currently wearing exactly what the loadout has saved
-        /// (matching SharedName + Quality on every equipped slot, including null vs null),
-        /// AND every hotbar slot that the loadout has something saved for matches the
-        /// player's current hotbar at that position.  Extra items in hotbar positions the
-        /// loadout didn't specify are ignored.
+        /// True if the player is currently wearing exactly what the loadout has saved, judged
+        /// only over its included cells: every included worn slot matches (SharedName +
+        /// Quality, including null vs null), and every included hotbar or quick-slot cell holds
+        /// a matching item.  Cells left out don't constrain the player, and neither does what
+        /// is in hand.
         /// </summary>
         public static bool IsLoadoutActive(LoadoutSlot slot, Player player)
         {
             if (slot == null || player == null || slot.IsEmpty()) return false;
+            if (!LoadoutCategories.HasIncludedContent(slot)) return false;
 
-            // Equipped armor / weapons / shield must match exactly.
-            if (!ItemMatches(slot.Helmet,    F_Helmet(player))) return false;
-            if (!ItemMatches(slot.Chest,     F_Chest(player)))  return false;
-            if (!ItemMatches(slot.Legs,      F_Leg(player)))    return false;
-            if (!ItemMatches(slot.Shoulder,  F_Shoulder(player))) return false;
-            if (!ItemMatches(slot.Utility,   F_Utility(player))) return false;
-            if (!ItemMatches(slot.RightHand, F_Right(player)))  return false;
-            if (!ItemMatches(slot.LeftHand,  F_Left(player)))   return false;
+            if (slot.IncludesWorn(WornSlot.Helmet)  && !ItemMatches(slot.Helmet,   F_Helmet(player)))   return false;
+            if (slot.IncludesWorn(WornSlot.Chest)   && !ItemMatches(slot.Chest,    F_Chest(player)))    return false;
+            if (slot.IncludesWorn(WornSlot.Legs)    && !ItemMatches(slot.Legs,     F_Leg(player)))      return false;
+            if (slot.IncludesWorn(WornSlot.Cape)    && !ItemMatches(slot.Shoulder, F_Shoulder(player))) return false;
+            if (slot.IncludesWorn(WornSlot.Belt)    && !ItemMatches(slot.Utility,  F_Utility(player)))  return false;
+            if (slot.IncludesWorn(WornSlot.Trinket) && !ItemMatches(slot.Trinket,  F_Trinket(player)))  return false;
 
-            // Hotbar: every position the loadout has SAVED something must have a matching item
-            // at that position in the player's inventory.  Positions the loadout left empty
-            // don't constrain the player (extra stuff in those slots is fine).
             var inv = player.GetInventory();
+            if (inv == null) return true;
             if (slot.Hotbar != null)
             {
                 for (int x = 0; x < 8 && x < slot.Hotbar.Length; x++)
                 {
                     var saved = slot.Hotbar[x];
                     if (saved == null || string.IsNullOrEmpty(saved.SharedName)) continue;
-                    var current = inv?.GetItemAt(x, 0);
-                    if (!ItemMatches(saved, current)) return false;
+                    if (!slot.IncludesHotbar(x)) continue;
+                    if (!ItemMatches(saved, inv.GetItemAt(x, 0))) return false;
                 }
             }
-
-            // Extended slots: same rule, but at the saved (GridX, GridY) outside the standard bag.
-            if (slot.Extended != null && inv != null)
+            if (slot.Extended != null)
             {
                 foreach (var saved in slot.Extended)
                 {
                     if (saved == null || string.IsNullOrEmpty(saved.SharedName)) continue;
                     if (saved.GridX < 0 || saved.GridY < 0) continue;
-                    var current = inv.GetItemAt(saved.GridX, saved.GridY);
-                    if (!ItemMatches(saved, current)) return false;
+                    if (!slot.IncludesExtended(saved.GridX, saved.GridY)) continue;
+                    if (!ItemMatches(saved, inv.GetItemAt(saved.GridX, saved.GridY))) return false;
                 }
             }
             return true;
@@ -96,8 +90,7 @@ namespace Armory
                 Legs      = Serialize(F_Leg(player)),
                 Shoulder  = Serialize(F_Shoulder(player)),
                 Utility   = Serialize(F_Utility(player)),
-                RightHand = Serialize(F_Right(player)),
-                LeftHand  = Serialize(F_Left(player)),
+                Trinket   = Serialize(F_Trinket(player)),
                 Hotbar    = new SavedItem[8],
             };
             // The hotbar is the top row of the grid, y=0; the game reads hotkey N from (N-1, 0).
@@ -137,8 +130,7 @@ namespace Armory
             void TrackEquipped(ItemDrop.ItemData i) { if (i != null) equipped.Add(i); }
             TrackEquipped(F_Helmet(player));   TrackEquipped(F_Chest(player));
             TrackEquipped(F_Leg(player));      TrackEquipped(F_Shoulder(player));
-            TrackEquipped(F_Utility(player));  TrackEquipped(F_Right(player));
-            TrackEquipped(F_Left(player));
+            TrackEquipped(F_Utility(player));  TrackEquipped(F_Trinket(player));
 
             foreach (var item in inv.GetAllItems())
             {
@@ -171,47 +163,56 @@ namespace Armory
         // ── Apply ──────────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Unequips all current gear then equips each item found in the player's inventory or
-        /// the rack's storage (if provided).  Items in the rack are moved into the player's
-        /// inventory first, since Valheim requires items to be in the player's inventory to
-        /// equip them.  Returns (equippedCount, missingCount).
+        /// Applies the loadout's included cells.  For each included worn slot: unequip what is
+        /// there and equip the saved item, found in the player's inventory or the rack's
+        /// storage (if provided); items in the rack are moved into the player's inventory
+        /// first, since Valheim requires that to equip them.  For each included hotbar or
+        /// quick-slot cell: put the saved item in that cell.  Nothing else is touched, and no
+        /// weapon is drawn — Load puts gear in cells; what the player holds is theirs to pick.
+        /// Returns (equippedCount, missingCount).
         /// </summary>
         public static (int found, int missing) ApplyLoadout(Player player, LoadoutSlot slot, Inventory rackInv = null)
         {
             var playerInv = player.GetInventory();
+            Jotunn.Logger.LogInfo($"[Armory] Load '{slot.Name}': worn={slot.IncludeWorn}, hotbar=0x{slot.IncludeHotbar:X2}, " +
+                                  $"quick={(slot.IncludeAllExtended ? "all" : slot.IncludeExtended.Count.ToString())}");
 
-            // Snapshot every currently-equipped item BEFORE unequip so we know each slot's
-            // grid position.  When we later pull a replacement from the rack we move the old
-            // item to that rack position — i.e. items swap places exactly.
-            var oldHelmet   = F_Helmet(player);
-            var oldChest    = F_Chest(player);
-            var oldLegs     = F_Leg(player);
-            var oldShoulder = F_Shoulder(player);
-            var oldUtility  = F_Utility(player);
-            var oldRight    = F_Right(player);
-            var oldLeft     = F_Left(player);
+            bool doHelmet  = slot.IncludesWorn(WornSlot.Helmet);
+            bool doChest   = slot.IncludesWorn(WornSlot.Chest);
+            bool doLegs    = slot.IncludesWorn(WornSlot.Legs);
+            bool doCape    = slot.IncludesWorn(WornSlot.Cape);
+            bool doBelt    = slot.IncludesWorn(WornSlot.Belt);
+            bool doTrinket = slot.IncludesWorn(WornSlot.Trinket);
+
+            // Snapshot every included worn item BEFORE unequip so we know each slot's grid
+            // position.  When we later pull a replacement from the rack we move the old item to
+            // that rack position — i.e. items swap places exactly.  An included slot with
+            // nothing saved is emptied: that is what the loadout says to wear there.
+            var oldHelmet   = doHelmet  ? F_Helmet(player)   : null;
+            var oldChest    = doChest   ? F_Chest(player)    : null;
+            var oldLegs     = doLegs    ? F_Leg(player)      : null;
+            var oldShoulder = doCape    ? F_Shoulder(player) : null;
+            var oldUtility  = doBelt    ? F_Utility(player)  : null;
+            var oldTrinket  = doTrinket ? F_Trinket(player)  : null;
 
             if (oldHelmet   != null) player.UnequipItem(oldHelmet,   false);
             if (oldChest    != null) player.UnequipItem(oldChest,    false);
             if (oldLegs     != null) player.UnequipItem(oldLegs,     false);
             if (oldShoulder != null) player.UnequipItem(oldShoulder, false);
             if (oldUtility  != null) player.UnequipItem(oldUtility,  false);
-            if (oldRight    != null) player.UnequipItem(oldRight,    false);
-            if (oldLeft     != null) player.UnequipItem(oldLeft,     false);
+            if (oldTrinket  != null) player.UnequipItem(oldTrinket,  false);
 
             int found = 0, missing = 0;
-            TryEquip(player, playerInv, rackInv, slot.Helmet,    oldHelmet,   ref found, ref missing);
-            TryEquip(player, playerInv, rackInv, slot.Chest,     oldChest,    ref found, ref missing);
-            TryEquip(player, playerInv, rackInv, slot.Legs,      oldLegs,     ref found, ref missing);
-            TryEquip(player, playerInv, rackInv, slot.Shoulder,  oldShoulder, ref found, ref missing);
-            TryEquip(player, playerInv, rackInv, slot.Utility,   oldUtility,  ref found, ref missing);
-            TryEquip(player, playerInv, rackInv, slot.RightHand, oldRight,    ref found, ref missing);
-            TryEquip(player, playerInv, rackInv, slot.LeftHand,  oldLeft,     ref found, ref missing);
+            if (doHelmet)  TryEquip(player, playerInv, rackInv, slot.Helmet,   oldHelmet,   ref found, ref missing);
+            if (doChest)   TryEquip(player, playerInv, rackInv, slot.Chest,    oldChest,    ref found, ref missing);
+            if (doLegs)    TryEquip(player, playerInv, rackInv, slot.Legs,     oldLegs,     ref found, ref missing);
+            if (doCape)    TryEquip(player, playerInv, rackInv, slot.Shoulder, oldShoulder, ref found, ref missing);
+            if (doBelt)    TryEquip(player, playerInv, rackInv, slot.Utility,  oldUtility,  ref found, ref missing);
+            if (doTrinket) TryEquip(player, playerInv, rackInv, slot.Trinket,  oldTrinket,  ref found, ref missing);
 
-            // Restore extended-inventory items (Azu food/potion/trinket slots) BEFORE the hotbar
-            // pass — extended slots have fixed positions assigned by Azu, and moving items there
-            // first means any subsequent hotbar swaps don't accidentally land an item in an
-            // extended slot's target position.
+            // Restore quick-slot / equipment cells (Azu) BEFORE the hotbar pass — they have
+            // fixed positions, and filling them first means a hotbar swap can't land an item in
+            // one of them by accident.
             if (slot.Extended != null)
             {
                 foreach (var saved in slot.Extended)
@@ -219,6 +220,7 @@ namespace Armory
                     if (saved == null || string.IsNullOrEmpty(saved.SharedName)) continue;
                     int destX = saved.GridX, destY = saved.GridY;
                     if (destX < 0 || destY < 0) continue;  // missing position info — can't restore
+                    if (!slot.IncludesExtended(destX, destY)) continue;
 
                     var (newItem, source) = FindItem(saved, playerInv, rackInv);
                     if (newItem == null) { missing++; continue; }
@@ -233,6 +235,7 @@ namespace Armory
                     if (oldOccupant == newItem) { found++; continue; }
                     try
                     {
+                        ReleaseIfLeaving(player, playerInv, source, oldOccupant);
                         SwapItemInto(playerInv, source, newItem, destX, destY, oldOccupant);
                         found++;
                     }
@@ -244,15 +247,17 @@ namespace Armory
                 }
             }
 
-            // Restore the hotbar (bottom row, y=0).  For each saved slot, find a matching item
-            // (player inv first, then rack) and move it to that hotbar position.  Whatever was
-            // previously at the target hotbar slot gets stowed at the new item's old position.
+            // Restore the hotbar (top row, y=0).  For each included cell with something saved,
+            // find a matching item (player inv first, then rack) and move it there.  Whatever
+            // was in the cell gets stowed at the new item's old position.  Cells left out are
+            // left alone, whatever they hold.
             if (slot.Hotbar != null)
             {
                 for (int x = 0; x < 8 && x < slot.Hotbar.Length; x++)
                 {
                     var saved = slot.Hotbar[x];
                     if (saved == null || string.IsNullOrEmpty(saved.SharedName)) continue;
+                    if (!slot.IncludesHotbar(x)) continue;
 
                     var (newItem, source) = FindItem(saved, playerInv, rackInv);
                     if (newItem == null) { missing++; continue; }
@@ -267,6 +272,7 @@ namespace Armory
                     if (oldOccupant == newItem) { found++; continue; }
                     try
                     {
+                        ReleaseIfLeaving(player, playerInv, source, oldOccupant);
                         SwapItemInto(playerInv, source, newItem, x, 0, oldOccupant);
                         found++;
                     }
@@ -279,6 +285,17 @@ namespace Armory
             }
 
             return (found, missing);
+        }
+
+        // An item that is drawn or worn and about to leave the player's inventory for the rack
+        // is put away first.  Nothing in vanilla notices an equipped item vanishing from the
+        // grid; the player would go on holding it while the rack held it too.  An item moving
+        // between cells of the player's own inventory stays equipped — equipment is a reference,
+        // not a position.
+        private static void ReleaseIfLeaving(Player player, Inventory playerInv, Inventory source, ItemDrop.ItemData displaced)
+        {
+            if (displaced == null || source == null || source == playerInv) return;
+            if (player.IsItemEquiped(displaced)) player.UnequipItem(displaced, false);
         }
 
         // Attempts to equip the saved item, pulling it from wherever it lives (player inv or
@@ -518,13 +535,17 @@ namespace Armory
         private static readonly AccessTools.FieldRef<ObjectDB, List<GameObject>> F_ObjectDBItems =
             AccessTools.FieldRefAccess<ObjectDB, List<GameObject>>("m_items");
 
-        // Lazy SharedName → icon Sprite cache built on first access.
+        // Lazy SharedName → icon Sprite and SharedName → SharedData caches built on first access.
+        // The second is what lets a saved item be categorized long after it was captured: the
+        // save holds only its name, and the item's type and food values live on the prefab.
         private static Dictionary<string, Sprite> _iconBySharedName;
+        private static Dictionary<string, ItemDrop.ItemData.SharedData> _sharedBySharedName;
 
         private static void BuildIconCache()
         {
             if (_iconBySharedName != null) return;
-            _iconBySharedName = new Dictionary<string, Sprite>();
+            _iconBySharedName   = new Dictionary<string, Sprite>();
+            _sharedBySharedName = new Dictionary<string, ItemDrop.ItemData.SharedData>();
             if (ObjectDB.instance == null) return;
             List<GameObject> items = null;
             try { items = F_ObjectDBItems(ObjectDB.instance); }
@@ -540,6 +561,8 @@ namespace Armory
                 var drop   = prefab.GetComponent<ItemDrop>();
                 var shared = drop?.m_itemData?.m_shared;
                 if (shared?.m_name == null) continue;
+                if (!_sharedBySharedName.ContainsKey(shared.m_name))
+                    _sharedBySharedName[shared.m_name] = shared;
                 if (shared.m_icons != null && shared.m_icons.Length > 0)
                     _iconBySharedName[shared.m_name] = shared.m_icons[0];
             }
@@ -555,6 +578,18 @@ namespace Armory
             BuildIconCache();
             return _iconBySharedName != null && _iconBySharedName.TryGetValue(saved.SharedName, out var icon)
                 ? icon : null;
+        }
+
+        /// <summary>
+        /// The prefab's shared item data for a saved item, or null if no loaded prefab has that
+        /// name (the item came from a mod that is no longer installed) or ObjectDB isn't up yet.
+        /// </summary>
+        public static ItemDrop.ItemData.SharedData GetSharedData(SavedItem saved)
+        {
+            if (saved == null || string.IsNullOrEmpty(saved.SharedName)) return null;
+            BuildIconCache();
+            return _sharedBySharedName != null && _sharedBySharedName.TryGetValue(saved.SharedName, out var shared)
+                ? shared : null;
         }
 
         /// <summary>
