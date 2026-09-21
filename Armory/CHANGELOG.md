@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.1 — unreleased
+
+- **Saving a loadout no longer sweeps up ordinary inventory.** With AzuExtendedPlayerInventory's "Extra Inventory Rows" turned on, whatever happened to be lying in those extra bag rows — resin, nails, arrows — was saved as part of the loadout, and Load would then try to put it back. The capture assumed the bag was exactly 8×4 and treated every cell beyond that as one of Azu's special slots. It now asks Azu which cells are its quick slots and equipment row, and captures only those; the rest of the bag is yours, however many rows it has.
+- Loadouts saved before this version still carry those stray entries. Re-save each affected slot once and they are gone.
+- Without AzuExtendedPlayerInventory, only worn gear and the hotbar are captured, as before. An Azu older than the version that publishes the cell queries gets the same treatment, with a note in the log.
+
 ## 1.3.0 — 2026-09-16
 
 - **Racks can be named.** Point at one and press **Shift+[Use]** — the same modifier that renames a portal or edits a sign — and type a name. It replaces "Armory" on the hover text, heads the loadout panel, and heads the storage panel beside it, so a row of racks along a wall tells you which is which without opening any of them. Leave the name empty to go back to "Armory".

@@ -28,14 +28,14 @@ namespace Armory
         public SavedItem RightHand;
         public SavedItem LeftHand;
 
-        // Bottom-row inventory slots (the 1-8 hotbar).  Indexed by x position (0..7).
+        // Hotbar: the top row of the grid (y=0).  Indexed by x position (0..7).
         // Null entries mean "no item saved for this slot".
         public SavedItem[] Hotbar = new SavedItem[8];
 
-        // Items the player had parked in extended inventory slots — i.e. grid positions outside
-        // the standard 8×4 bag.  Used by mods like AzuExtendedPlayerInventory, which exposes
-        // dedicated slots for food, potions, and trinkets at positions x >= 8 or y >= 4.  We
-        // save the exact (GridX, GridY) on each item so Load can restore them to the same slot.
+        // Items the player had parked in cells AzuExtendedPlayerInventory reserves: its quick
+        // slots (food, potions) and its equipment row.  Which cells those are is Azu's answer,
+        // not a coordinate rule — Azu can also add plain bag rows, and those are not captured.
+        // We save the exact (GridX, GridY) on each item so Load can restore it to the same cell.
         public List<SavedItem> Extended = new List<SavedItem>();
 
         public bool IsEmpty() =>

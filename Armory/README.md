@@ -84,7 +84,7 @@ resolve, not something this mod can guard against from the client.
 
 - **Multiplayer compatible** — loadout data is stored in the rack's ZDO, so it persists through world saves and is visible to other players. The rack opens as an ordinary container, so everything vanilla does for a chest it does here: the ownership hand-off that makes the storage grid draw and save, the refusal when someone else already has it open, wards, and the privacy setting.
 - **Container mods** — AzuAutoStore, AzuCraftyBoxes, Grab Materials and anything else that scans for containers treat the rack as the chest it is, because that is exactly what it is.
-- **AzuExtendedPlayerInventory** — supported. Items sitting in Azu's extra equipment slots are detected and swapped correctly.
+- **AzuExtendedPlayerInventory** — supported. Gear worn in Azu's equipment row and items parked in its quick slots are saved with the loadout and restored to the same cells. Azu's extra inventory rows are treated as the ordinary bag they are and left alone.
 - Should be compatible with most other mods; no vanilla systems are permanently altered.
 
 ---

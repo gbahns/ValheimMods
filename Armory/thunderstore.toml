@@ -4,7 +4,7 @@ schemaVersion = "0.0.1"
 [package]
 namespace = "DeathMonger"
 name = "Armory"
-versionNumber = "1.3.0"
+versionNumber = "1.3.1"
 description = "Craft an Armory Rack to save, store and instantly recall named gear sets - armor, weapons, cape, utility and hotbar - without rummaging through chests every time you switch tasks."
 websiteUrl = "https://github.com/gbahns/ValheimMods/tree/main/Armory"
 containsNsfwContent = false

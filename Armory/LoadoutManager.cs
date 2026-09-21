@@ -100,37 +100,38 @@ namespace Armory
                 LeftHand  = Serialize(F_Left(player)),
                 Hotbar    = new SavedItem[8],
             };
-            // Bottom-row inventory (the 1..8 hotbar) is y=0 in the grid.
+            // The hotbar is the top row of the grid, y=0; the game reads hotkey N from (N-1, 0).
             for (int x = 0; x < 8; x++)
                 slot.Hotbar[x] = Serialize(inv?.GetItemAt(x, 0));
 
-            // Extended-inventory slots: anything outside the standard 8×4 bag that isn't
-            // currently equipped.  Catches food, potions, and trinkets parked in Azu's
-            // dedicated slots.  Equipped items at extended positions (Azu armor slots) are
-            // handled by the Helmet/Chest/etc paths above, so we exclude them here to avoid
-            // double-handling on Load.
+            // Dedicated cells added by AzuExtendedPlayerInventory: its quick slots and its
+            // equipment row.  Equipped items there are already covered by the Helmet/Chest/etc
+            // paths above, so they are excluded to avoid double-handling on Load.  Nothing else
+            // in the grid is captured — the rest of the bag is the player's, not the loadout's.
             slot.Extended = CaptureExtendedItems(player, inv);
 
-            // Diagnostic: log every item's grid position so we can confirm which row holds
-            // the hotbar on this Valheim version.
             if (inv != null)
             {
-                Jotunn.Logger.LogInfo($"[Armory] Capture: inventory has {inv.GetAllItems().Count} item(s); positions:");
-                foreach (var it in inv.GetAllItems())
-                    Jotunn.Logger.LogInfo($"[Armory]   ({it.m_gridPos.x},{it.m_gridPos.y}) {it.m_shared?.m_name}  stack={it.m_stack}");
-                Jotunn.Logger.LogInfo($"[Armory] Capture: extended-slot items = {slot.Extended.Count}");
+                Jotunn.Logger.LogInfo($"[Armory] Capture: {inv.GetWidth()}x{inv.GetHeight()} inventory, {inv.GetAllItems().Count} item(s); " +
+                                      $"hotbar row 0, Azu cells {(AzuCompat.IsAvailable ? "queried" : "unavailable")}");
+                foreach (var ext in slot.Extended)
+                    Jotunn.Logger.LogInfo($"[Armory]   captured ({ext.GridX},{ext.GridY}) {ext.SharedName}  stack={ext.Stack}");
             }
 
             return slot;
         }
 
-        // Scan the inventory for items at extended grid positions (outside the standard 8×4
-        // bag).  Skip anything that's currently equipped — those are captured by the
+        // Scan the inventory for items sitting in cells Azu reserves (quick slots, equipment
+        // row).  Skip anything that's currently equipped — those are captured by the
         // Helmet/Chest/Legs/... paths.  Returns each saved item with its (GridX, GridY).
+        //
+        // The test is Azu's own, per cell, never "is this outside 8×4": Azu's "Extra Inventory
+        // Rows" option adds ordinary bag rows below the vanilla four, and a row-number rule
+        // swept up whatever was lying there — resin, nails, arrows — as part of the loadout.
         private static List<SavedItem> CaptureExtendedItems(Player player, Inventory inv)
         {
             var result = new List<SavedItem>();
-            if (inv == null) return result;
+            if (inv == null || !AzuCompat.IsAvailable) return result;
 
             var equipped = new HashSet<ItemDrop.ItemData>();
             void TrackEquipped(ItemDrop.ItemData i) { if (i != null) equipped.Add(i); }
@@ -144,8 +145,8 @@ namespace Armory
                 if (item == null || item.m_stack <= 0) continue;
                 if (equipped.Contains(item)) continue;
                 int x = item.m_gridPos.x, y = item.m_gridPos.y;
-                bool isExtended = x < 0 || x >= 8 || y < 0 || y >= 4;
-                if (!isExtended) continue;
+                if (y == 0 && x < 8) continue;                     // hotbar, captured above
+                if (!AzuCompat.IsDedicatedCell(inv, x, y)) continue;
                 var saved = Serialize(item);
                 if (saved == null) continue;
                 saved.GridX = x;
