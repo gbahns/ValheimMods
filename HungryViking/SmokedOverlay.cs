@@ -6,11 +6,12 @@ namespace HungryViking
     // Center-outward vignette triggered when the player is standing in smoke.
     // Unlike VignetteOverlay (edges-in), this renders from the screen center outward.
     // No status icon — Valheim already shows one for the Smoked SE.
-    public class SmokedOverlay : MonoBehaviour
+    public class SmokedOverlay : MonoBehaviour, IWarningLabel
     {
-        private RawImage _image;
-        private Text     _label;
-        private float    _urgency;
+        private RawImage      _image;
+        private Text          _label;
+        private RectTransform _labelRt;
+        private float         _urgency;
 
         private static readonly Color LabelRedColor = new Color(1f, 0f, 0f, 1f);
         private Color _labelBaseColor = new Color(0.7f, 0.7f, 0.7f, 1f);
@@ -29,6 +30,7 @@ namespace HungryViking
             var canvas = canvasGo.AddComponent<Canvas>();
             canvas.renderMode   = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 99;
+            Canvas = canvas;
 
             var imgGo = new GameObject("Image");
             imgGo.transform.SetParent(canvasGo.transform, false);
@@ -57,12 +59,22 @@ namespace HungryViking
             _label.raycastTarget = false;
             _label.gameObject.SetActive(false);
 
-            var labelRt       = (RectTransform)labelGo.transform;
-            labelRt.anchorMin = new Vector2(0f, 1f);
-            labelRt.anchorMax = new Vector2(1f, 1f);
-            labelRt.pivot     = new Vector2(0.5f, 1f);
-            labelRt.offsetMin = new Vector2(0f, -100f);
-            labelRt.offsetMax = new Vector2(0f, -70f);
+            _labelRt           = (RectTransform)labelGo.transform;
+            _labelRt.anchorMin = new Vector2(0f, 1f);
+            _labelRt.anchorMax = new Vector2(1f, 1f);
+            _labelRt.pivot     = new Vector2(0.5f, 1f);
+            SetLabelTop(LabelPlacer.DefaultTop);
+        }
+
+        public Canvas Canvas       { get; private set; }
+        public bool   LabelVisible => _label.gameObject.activeSelf;
+        public float  LabelWidth   => _label.preferredWidth;
+
+        // Places the label's top edge this many screen pixels below the top of the screen.
+        public void SetLabelTop(float top)
+        {
+            _labelRt.offsetMin = new Vector2(0f, -(top + WarningLabel.Height));
+            _labelRt.offsetMax = new Vector2(0f, -top);
         }
 
         public void SetLabelBaseColor(Color color) => _labelBaseColor = color;

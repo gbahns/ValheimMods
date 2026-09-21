@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace HungryViking
 {
-    [BepInPlugin(ModGuid, "Hungry Viking", "1.2.1")]
+    [BepInPlugin(ModGuid, "Hungry Viking", "1.3.0")]
     [BepInProcess("valheim.exe")]
     public class HungryVikingMod : BaseUnityPlugin
     {
@@ -25,11 +25,15 @@ namespace HungryViking
         public ConfigEntry<float> SmokedVignetteExtent;
         public ConfigEntry<float> PoisonedVignetteIntensity;
         public ConfigEntry<float> PoisonedVignetteExtent;
+        public ConfigEntry<LabelPlacement> LabelPlacementMode;
+        public ConfigEntry<int>   ManualLabelOffset;
 
         private FoodMonitor        _foodMonitor;
         private VignetteOverlay    _vignette;
         private SmokedOverlay      _smokedOverlay;
         private SmokedOverlay      _poisonedOverlay;
+        private IWarningLabel[]    _labels;
+        private LabelPlacer        _labelPlacer;
         private HungerStatusEffect _statusEffect;
         private StatusEffect       _activeStatusEffect;
         private Player             _statusEffectPlayer;
@@ -65,6 +69,8 @@ namespace HungryViking
             _smokedOverlay   = gameObject.AddComponent<SmokedOverlay>();
             _poisonedOverlay = gameObject.AddComponent<SmokedOverlay>();
             _poisonedOverlay.SetLabelBaseColor(new Color(0.2f, 0.75f, 0.2f, 1f));
+            _labels      = new IWarningLabel[] { _vignette, _smokedOverlay, _poisonedOverlay };
+            _labelPlacer = new LabelPlacer(_vignette.Canvas, _smokedOverlay.Canvas, _poisonedOverlay.Canvas);
             _foodMonitor  = new FoodMonitor(this);
             _statusEffect = HungerStatusEffect.Create();
 
@@ -77,6 +83,8 @@ namespace HungryViking
             SmokedVignetteExtent.SettingChanged     += (_, __) => _smokedPreviewTimer   = 2f;
             PoisonedVignetteIntensity.SettingChanged += (_, __) => _poisonedPreviewTimer = 2f;
             PoisonedVignetteExtent.SettingChanged   += (_, __) => _poisonedPreviewTimer = 2f;
+            LabelPlacementMode.SettingChanged       += (_, __) => _hungerPreviewTimer   = 2f;
+            ManualLabelOffset.SettingChanged        += (_, __) => _hungerPreviewTimer   = 2f;
 
             InitCommands();
 
@@ -174,6 +182,15 @@ namespace HungryViking
                     Log.LogInfo($"hv_testsmoked: smoked overlay {(_smokedTestActive ? "ON" : "OFF")}");
                 });
 
+            new Terminal.ConsoleCommand("hv_labels",
+                "[Hungry Viking] Lists the HUD elements the warning labels move down to avoid, and where they end up.",
+                _ =>
+                {
+                    const string sample = "You are starting to feel hungry.";
+                    float width = _vignette.LabelVisible ? _vignette.LabelWidth : sample.Length * 11f;
+                    Log.LogInfo("hv_labels:\n" + _labelPlacer.Describe(width, WarningLabel.Height));
+                });
+
             new Terminal.ConsoleCommand("hv_testpoisoned",
                 "[Hungry Viking] Toggles the poisoned vignette overlay on/off for visual testing.",
                 _ =>
@@ -242,6 +259,16 @@ namespace HungryViking
                 new ConfigDescription(
                     "How far from the screen center the poison vignette reaches. 0 = invisible, 1 = covers the full screen.",
                     new AcceptableValueRange<float>(0f, 1f)));
+
+            LabelPlacementMode = Config.Bind("Labels", "Placement", LabelPlacement.Automatic,
+                "Automatic: the warning labels sit near the top of the screen and move down below anything else there, " +
+                "such as a compass mod or the boss health bar. Manual: they sit at Manual Y Offset.");
+
+            ManualLabelOffset = Config.Bind("Labels", "Manual Y Offset", (int)LabelPlacer.DefaultTop,
+                new ConfigDescription(
+                    "Distance in screen pixels from the top of the screen to the first warning label, when Placement is Manual. " +
+                    "Further labels stack below it.",
+                    new AcceptableValueRange<int>(0, 2000)));
 
             Config.Save();
         }
@@ -441,6 +468,29 @@ namespace HungryViking
             {
                 _poisonedOverlay.SetBase(0f, Color.white);
                 _poisonedOverlay.SetLabel(null);
+            }
+        }
+
+        // After every overlay has decided this frame's label text, stack the visible labels.
+        private void LateUpdate()
+        {
+            float width = 0f;
+            int   shown = 0;
+            foreach (var label in _labels)
+            {
+                if (!label.LabelVisible) continue;
+                width = Mathf.Max(width, label.LabelWidth);
+                shown++;
+            }
+
+            float top = _labelPlacer.Top(LabelPlacementMode.Value, ManualLabelOffset.Value,
+                                         shown > 0, width, shown * WarningLabel.Height);
+
+            foreach (var label in _labels)
+            {
+                if (!label.LabelVisible) continue;
+                label.SetLabelTop(top);
+                top += WarningLabel.Height;
             }
         }
 

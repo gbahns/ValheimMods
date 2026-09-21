@@ -33,9 +33,13 @@ Warnings only track food you've actually eaten this session: a fresh character w
 - **On-screen label** — "You are poisoned." The text oscillates from green toward red.
 - No extra HUD icon — the game already shows one.
 
+### Warning labels
+
+The hunger, smoke and poison labels stack at the top center of the screen. By default they move down out of the way of anything else up there, such as a compass mod or the boss health bar, and move back up a few seconds after it goes away. Set **Placement** to `Manual` to pin them at a fixed height instead.
+
 ## Configuration
 
-Open `BepInEx/config/DeathMonger.HungryViking.cfg` to adjust settings. Changing Vignette Intensity or Vignette Extent in any section triggers a 2-second preview so you can dial in the values without needing to be hungry, smoked, or poisoned.
+Open `BepInEx/config/DeathMonger.HungryViking.cfg` to adjust settings. Changing Vignette Intensity or Vignette Extent in any section, or either label setting, triggers a 2-second preview so you can dial in the values without needing to be hungry, smoked, or poisoned.
 
 **[General]**
 
@@ -67,6 +71,13 @@ Open `BepInEx/config/DeathMonger.HungryViking.cfg` to adjust settings. Changing 
 | Vignette Intensity | `0.25` | Max center opacity (0–1) |
 | Vignette Extent | `0.55` | How far the vignette reaches from center outward (0–1) |
 
+**[Labels]**
+
+| Setting | Default | Description |
+|---|---|---|
+| Placement | `Automatic` | `Automatic` moves the labels below other HUD elements at the top of the screen; `Manual` uses Manual Y Offset |
+| Manual Y Offset | `40` | Screen pixels from the top of the screen to the first label, in Manual mode |
+
 ---
 
 ## Console Commands
@@ -78,6 +89,7 @@ Open the console with **F5**. Commands marked **(cheat)** require `devcommands` 
 | `hv_testhunger` | No | Toggle hunger vignette on/off for visual testing |
 | `hv_testsmoked` | No | Toggle smoke vignette on/off for visual testing |
 | `hv_testpoisoned` | No | Toggle poison vignette on/off for visual testing |
+| `hv_labels` | No | List the HUD elements the labels are avoiding, and where Automatic placement puts them |
 | `hv_foodstatus` | Yes | Print name and remaining time for each food slot |
 | `hv_drainfood <slot> [seconds]` | Yes | Subtract seconds from one slot (default 60s) |
 | `hv_drainfoods [seconds]` | Yes | Subtract seconds from all slots (default 60s) |

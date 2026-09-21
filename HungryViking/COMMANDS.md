@@ -29,6 +29,13 @@ Toggles the poison vignette and label on/off.
 hv_testpoisoned
 ```
 
+### `hv_labels`
+Writes to the BepInEx log every HUD element Automatic placement would move the labels below (its distance from the top of the screen and its path in the scene), and where the first label ends up. Use it when a label lands somewhere unexpected.
+
+```
+hv_labels
+```
+
 ---
 
 ## Food Status (cheat)

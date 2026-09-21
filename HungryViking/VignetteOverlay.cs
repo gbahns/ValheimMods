@@ -5,11 +5,12 @@ namespace HungryViking
 {
     // Screen-edge vignette driven by food-expiry tier.
     // The vignette texture is generated at runtime — no bundled assets required.
-    public class VignetteOverlay : MonoBehaviour
+    public class VignetteOverlay : MonoBehaviour, IWarningLabel
     {
-        private RawImage _image;
-        private Text     _hungerLabel;
-        private float    _hungerUrgency;
+        private RawImage      _image;
+        private Text          _hungerLabel;
+        private RectTransform _labelRt;
+        private float         _hungerUrgency;
 
         private static readonly Color LabelBaseColor = new Color(1f, 0.35f, 0.1f, 1f);
         private static readonly Color LabelRedColor  = new Color(1f, 0f,    0f,   1f);
@@ -27,6 +28,7 @@ namespace HungryViking
             var canvas = canvasGo.AddComponent<Canvas>();
             canvas.renderMode   = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 100;
+            Canvas = canvas;
 
             var imgGo = new GameObject("Image");
             imgGo.transform.SetParent(canvasGo.transform, false);
@@ -42,7 +44,7 @@ namespace HungryViking
             rt.offsetMin    = Vector2.zero;
             rt.offsetMax    = Vector2.zero;
 
-            // "You are hungry" label — top-center, visible whenever any food slot is empty.
+            // "You are hungry" label — top-center; HungryVikingMod positions it with SetLabelTop.
             var labelGo = new GameObject("HungerLabel");
             labelGo.transform.SetParent(canvasGo.transform, false);
 
@@ -56,12 +58,22 @@ namespace HungryViking
             _hungerLabel.raycastTarget = false;
             _hungerLabel.gameObject.SetActive(false);
 
-            var labelRt         = (RectTransform)labelGo.transform;
-            labelRt.anchorMin   = new Vector2(0f, 1f);
-            labelRt.anchorMax   = new Vector2(1f, 1f);
-            labelRt.pivot       = new Vector2(0.5f, 1f);
-            labelRt.offsetMin   = new Vector2(0f, -70f);
-            labelRt.offsetMax   = new Vector2(0f, -40f);
+            _labelRt           = (RectTransform)labelGo.transform;
+            _labelRt.anchorMin = new Vector2(0f, 1f);
+            _labelRt.anchorMax = new Vector2(1f, 1f);
+            _labelRt.pivot     = new Vector2(0.5f, 1f);
+            SetLabelTop(LabelPlacer.DefaultTop);
+        }
+
+        public Canvas Canvas       { get; private set; }
+        public bool   LabelVisible => _hungerLabel.gameObject.activeSelf;
+        public float  LabelWidth   => _hungerLabel.preferredWidth;
+
+        // Places the label's top edge this many screen pixels below the top of the screen.
+        public void SetLabelTop(float top)
+        {
+            _labelRt.offsetMin = new Vector2(0f, -(top + WarningLabel.Height));
+            _labelRt.offsetMax = new Vector2(0f, -top);
         }
 
         // Sustained base effect — call every frame with 0 alpha to clear it.

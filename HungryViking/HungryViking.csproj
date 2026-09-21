@@ -42,6 +42,10 @@
       <HintPath>..\Libs\UnityEngine.UIModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>..\Libs\Unity.TextMeshPro.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="UnityEngine_publicized">
       <HintPath>..\Libs\UnityEngine_publicized.dll</HintPath>
       <Private>false</Private>
