@@ -66,7 +66,7 @@ if ($Package -and -not $Profile) { $Profile = "Default SD" }
 $saveTrigger = "BepInEx/config/TheGreatestMap/save-now"
 # Files never worth sending to a server: debug symbols, build sidecars, store metadata and docs.
 $skipNames = @("manifest.json", "README.md", "CHANGELOG.md", "icon.png", "LICENSE", "LICENSE.md", "LICENSE.txt")
-$skipPatterns = @('\.pdb$', '\.old-\d+$', '\.old$', '-disabled$', '\.cs$', '^Placeholder')
+$skipPatterns = @('\.pdb$', '\.mdb$', '(?i)readme.*\.txt$', '\.old-\d+$', '\.old$', '-disabled$', '\.cs$', '^Placeholder')
 
 # ── which side each mod belongs on ──────────────────────────────────────────────
 # mods.json says which mods the server can actually use.  A mod marked "client" is never
