@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1 — 2026-09-22
+
+- The divider under the Continue buttons is now a copy of the orange ornament the menu draws above itself, the same width and style, flipped to face the vanilla menu, instead of a thin yellow line.
+
 ## 1.0.0 — 2026-09-22
 
 First release. (The same build went out as 0.1.0 a few minutes earlier; 1.0.0 is the one to install.)

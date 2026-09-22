@@ -11,7 +11,7 @@ Vanilla's main menu makes you click Start, confirm a character, then pick a worl
 - A world starts with the hosting options it was last started with: open to others or not, public or not, crossplay or not, and the password if it had one.
 - A server, whether a dedicated one or a friend's game over Steam or crossplay, is rejoined directly. If you typed a password the last time, it is entered for you.
 
-**The full list.** Right-click any Continue button to open every remembered game as a scrollable list, newest first, with how long ago each was played. Click one to start it, or *forget* to drop it. A More... button under the Continue buttons does the same if you turn it on. The buttons are yellow by default, with a thin line under them, so they read as separate from the vanilla menu; both are configurable.
+**The full list.** Right-click any Continue button to open every remembered game as a scrollable list, newest first, with how long ago each was played. Click one to start it, or *forget* to drop it. A More... button under the Continue buttons does the same if you turn it on. The buttons are gold by default, with the menu's own orange ornament line under them, so they read as separate from the vanilla menu; both are configurable.
 
 **A wrong-world check.** When the vanilla Start button is about to load a character into a world that character has never been in, the game asks first, and lists the worlds that character has been in. A brand-new character is never asked, and neither are the Continue buttons, since those pairs were played before.
 
@@ -47,7 +47,7 @@ Turn the setting off to be asked every time; passwords already stored are droppe
 | Remember Passwords | true | See above. |
 | Warn On Unknown World | true | The wrong-world check on the vanilla Start button. |
 | Button Color | `#F5D76E` | Text color of the Continue buttons; a hex color or a name, blank for vanilla's. |
-| Divider | true | A thin line between the Continue buttons and the vanilla menu. |
+| Divider | true | The menu's ornament line, repeated between the Continue buttons and the vanilla menu. |
 | More Button | false | A More... button that opens the full list; right-click does the same, so off by default. |
 | Menu Bottom Margin | 40 | The menu's buttons stack downward, and every button a mod adds pushes Quit further down. When the lowest button would come closer than this to the bottom of the screen, the whole list is lifted to keep it there. Negative disables the lift. |
 

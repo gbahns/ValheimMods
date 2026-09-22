@@ -161,7 +161,7 @@ namespace OneClickLaunch
                 s_buttons.Add(more);
             }
             if (OneClickLaunchMod.Divider.Value)
-                s_divider = MakeDivider(s_template, index++, color);
+                s_divider = MakeDivider(fs, s_template, index++, color);
 
             // A controller starts on the first entry of m_menuButtons; make that the most recent
             // game, so a gamepad is one press from playing too.
@@ -246,22 +246,74 @@ namespace OneClickLaunch
             return Color.white;
         }
 
-        /// <summary>A thin line between our buttons and vanilla's, in the same list.</summary>
-        private static GameObject MakeDivider(Button template, int index, Color color)
+        /// <summary>
+        /// A divider between our buttons and vanilla's: a copy of the ornament the menu draws
+        /// above itself, so it is the same orange line with the knot, at the same width. The
+        /// copy sits inside a wrapper because the button list lays its children out to its own
+        /// width and the ornament is wider than the list; the wrapper takes a row of the
+        /// ornament's height, and the ornament hangs centered inside it at its own size.
+        /// </summary>
+        private static GameObject MakeDivider(FejdStartup fs, Button template, int index, Color color)
         {
-            var go = new GameObject("OneClickLaunch_Divider", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
-            go.transform.SetParent(template.transform.parent, false);
-            var image = go.GetComponent<Image>();
-            image.color = new Color(color.r, color.g, color.b, 0.45f);
-            image.raycastTarget = false;
-            var element = go.GetComponent<LayoutElement>();
-            element.minHeight = element.preferredHeight = 2f;
+            Transform ornament = FindOrnament(fs);
+            float height = 17f;
+            var wrapper = new GameObject("OneClickLaunch_Divider", typeof(RectTransform), typeof(LayoutElement));
+            wrapper.transform.SetParent(template.transform.parent, false);
+
+            if (ornament != null)
+            {
+                var copy = UnityEngine.Object.Instantiate(ornament.gameObject, wrapper.transform);
+                copy.name = "ornament";
+                copy.SetActive(true);
+                var copyRect = copy.transform as RectTransform;
+                var sourceRect = ornament as RectTransform;
+                if (copyRect != null && sourceRect != null)
+                {
+                    height = Mathf.Max(1f, sourceRect.rect.height);
+                    copyRect.anchorMin = copyRect.anchorMax = new Vector2(0.5f, 0.5f);
+                    copyRect.pivot = new Vector2(0.5f, 0.5f);
+                    copyRect.anchoredPosition = Vector2.zero;
+                    copyRect.sizeDelta = sourceRect.rect.size;
+                    // Upside down, so the knot faces the vanilla menu below the way the original faces ours above.
+                    copyRect.localScale = new Vector3(copyRect.localScale.x, -Mathf.Abs(copyRect.localScale.y), copyRect.localScale.z);
+                }
+                foreach (Graphic g in copy.GetComponentsInChildren<Graphic>(true)) g.raycastTarget = false;
+            }
+            else
+            {
+                // No ornament to copy: a plain line in the vanilla orange, at the ornament's width.
+                var line = new GameObject("line", typeof(RectTransform), typeof(Image));
+                line.transform.SetParent(wrapper.transform, false);
+                var lineRect = line.transform as RectTransform;
+                lineRect.anchorMin = lineRect.anchorMax = new Vector2(0.5f, 0.5f);
+                lineRect.pivot = new Vector2(0.5f, 0.5f);
+                lineRect.sizeDelta = new Vector2(504f, 2f);
+                var image = line.GetComponent<Image>();
+                image.color = new Color(1f, 0.631f, 0.235f, 0.9f);
+                image.raycastTarget = false;
+                height = 8f;
+            }
+
+            var element = wrapper.GetComponent<LayoutElement>();
+            element.minHeight = element.preferredHeight = height;
             element.flexibleHeight = 0f;
-            var rect = go.transform as RectTransform;
-            var templateRect = template.transform as RectTransform;
-            rect.sizeDelta = new Vector2(templateRect != null ? templateRect.rect.width * 0.8f : 200f, 2f);
-            go.transform.SetSiblingIndex(index);
-            return go;
+            var rect = wrapper.transform as RectTransform;
+            rect.sizeDelta = new Vector2(rect.sizeDelta.x, height);
+            wrapper.transform.SetSiblingIndex(index);
+            return wrapper;
+        }
+
+        /// <summary>The line the menu draws above itself: a child of the menu list named "ornament".</summary>
+        private static Transform FindOrnament(FejdStartup fs)
+        {
+            foreach (Transform t in fs.m_menuList.GetComponentsInChildren<Transform>(true))
+            {
+                if (t == null || t.name.StartsWith("OneClickLaunch_", StringComparison.Ordinal)) continue;
+                if (t.parent != null && t.parent.name.StartsWith("OneClickLaunch_", StringComparison.Ordinal)) continue;
+                if (string.Equals(t.name, "ornament", StringComparison.OrdinalIgnoreCase) && t.GetComponentInChildren<Graphic>(true) != null) return t;
+            }
+            OneClickLaunchMod.Log.LogInfo("The menu's ornament was not found; the divider is a plain line.");
+            return null;
         }
 
         // --------------------------------------------------------------------- launch ----

@@ -26,7 +26,7 @@ namespace OneClickLaunch
     {
         public const string ModGuid    = "DeathMonger.OneClickLaunch";
         public const string ModName    = "One Click Launch";
-        public const string ModVersion = "1.0.0";
+        public const string ModVersion = "1.0.1";
 
         internal static ManualLogSource Log { get; private set; }
         internal static OneClickLaunchMod Instance { get; private set; }
@@ -95,7 +95,7 @@ namespace OneClickLaunch
                 "Text color of the Continue buttons, so they stand out from the vanilla ones. A hex " +
                 "color like #F5D76E, or a name like yellow, white, orange. Blank for the vanilla color.");
             Divider = Config.Bind("Look", "Divider", true,
-                "Draw a thin line between the Continue buttons and the vanilla menu.");
+                "Repeat the menu's own ornament line between the Continue buttons and the vanilla menu.");
             MoreButton = Config.Bind("Look", "More Button", false,
                 "Add a More... button under the Continue buttons that opens the full list of remembered " +
                 "games. Right-clicking any Continue button opens the same list, so this is off by default.");
