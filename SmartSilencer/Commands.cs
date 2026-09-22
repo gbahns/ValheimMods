@@ -5,7 +5,7 @@ namespace SmartSilencer
 {
     /// <summary>
     /// The console command (F5): <c>silencer</c> alone prints the state; <c>silencer on|off</c> flips the
-    /// master switch; <c>silencer music|video|other|focus on|off</c> flips one trigger; <c>silencer apps</c>
+    /// master switch; <c>silencer music|video|other|focus|paused|menu on|off</c> flips one trigger; <c>silencer apps</c>
     /// lists every program with an audio session right now, with the name to put in a list.
     /// </summary>
     internal static class Commands
@@ -13,7 +13,7 @@ namespace SmartSilencer
         internal static void Register()
         {
             new Terminal.ConsoleCommand("silencer",
-                "Smart Silencer: 'silencer' shows the state, 'silencer on|off' flips it, 'silencer music|video|other|focus on|off' flips one trigger, 'silencer apps' lists what is audible",
+                "Smart Silencer: 'silencer' shows the state, 'silencer on|off' flips it, 'silencer music|video|other|focus|paused|menu on|off' flips one trigger, 'silencer apps' lists what is audible",
                 (Terminal.ConsoleEvent)(args =>
                 {
                     var mod = SmartSilencerMod.Instance;
@@ -31,7 +31,7 @@ namespace SmartSilencer
                             entry.Value = a[2] == "on";
                             reply = Status(mod);
                         }
-                        else reply = "Usage: silencer | silencer on|off | silencer music|video|other|focus on|off | silencer apps";
+                        else reply = "Usage: silencer | silencer on|off | silencer music|video|other|focus|paused|menu on|off | silencer apps";
                     }
                     foreach (var line in reply.Split('\n')) args.Context?.AddString(line);
                 }));
@@ -45,6 +45,8 @@ namespace SmartSilencer
                 case "video": entry = SmartSilencerMod.OnVideo; return true;
                 case "other": entry = SmartSilencerMod.OnOther; return true;
                 case "focus": entry = SmartSilencerMod.OnUnfocused; return true;
+                case "paused": entry = SmartSilencerMod.OnPaused; return true;
+                case "menu": entry = SmartSilencerMod.OnMainMenu; return true;
                 default: entry = null; return false;
             }
         }
@@ -58,7 +60,8 @@ namespace SmartSilencer
             sb.Append(mod.IsQuiet ? $"Quiet right now ({mod.QuietReason})" : "Sound is on right now");
             sb.Append($", level {mod.Level:0.00}.\n");
             sb.Append($"Triggers: music {OnOff(SmartSilencerMod.OnMusic.Value)}, video {OnOff(SmartSilencerMod.OnVideo.Value)}, ");
-            sb.Append($"other {OnOff(SmartSilencerMod.OnOther.Value)}, focus {OnOff(SmartSilencerMod.OnUnfocused.Value)}.");
+            sb.Append($"other {OnOff(SmartSilencerMod.OnOther.Value)}, focus {OnOff(SmartSilencerMod.OnUnfocused.Value)}, ");
+            sb.Append($"paused {OnOff(SmartSilencerMod.OnPaused.Value)}, menu {OnOff(SmartSilencerMod.OnMainMenu.Value)}.");
             if (!AudioSessions.Available) sb.Append("\nWindows audio sessions are unavailable: " + AudioSessions.Failure);
             return sb.ToString();
         }

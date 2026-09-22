@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0 — unreleased
+
+- Two new triggers, both off by default: **Game Paused** (the single-player ESC pause, or a PauseMyServer pause on a server) and **Main Menu**.
+- The console command takes `paused` and `menu` alongside the other trigger names.
+
 ## 1.0.0 — 2026-09-22
 
 First release.

@@ -28,7 +28,7 @@ namespace SmartSilencer
     {
         public const string ModGuid    = "DeathMonger.SmartSilencer";
         public const string ModName    = "Smart Silencer";
-        public const string ModVersion = "1.0.0";
+        public const string ModVersion = "1.1.0";
 
         internal static ManualLogSource Log { get; private set; }
         internal static SmartSilencerMod Instance { get; private set; }
@@ -47,6 +47,8 @@ namespace SmartSilencer
         internal static ConfigEntry<bool> OnVideo;
         internal static ConfigEntry<bool> OnOther;
         internal static ConfigEntry<bool> OnUnfocused;
+        internal static ConfigEntry<bool> OnPaused;
+        internal static ConfigEntry<bool> OnMainMenu;
 
         // [Apps]
         internal static ConfigEntry<string> MusicApps;
@@ -84,6 +86,8 @@ namespace SmartSilencer
         private bool   _audioWants;              // the debounced verdict of the audio triggers
         private string _audioReason = "";        // who was making the sound, for the message
         private bool   _focusWants;
+        private bool   _pauseWants;
+        private bool   _menuWants;
 
         private bool   _quiet;                   // the verdict currently being acted on
         private string _quietReason = "";
@@ -128,6 +132,11 @@ namespace SmartSilencer
                 "the game. The console command 'silencer apps' lists what is audible right now.");
             OnUnfocused = Config.Bind("Triggers", "Game Not Focused", true,
                 "Go quiet while another window is in front, and come back when the game is.");
+            OnPaused = Config.Bind("Triggers", "Game Paused", false,
+                "Go quiet while the game is paused: the ESC menu in single player, or a pause granted by " +
+                "PauseMyServer on a server. The ESC menu on a server does not pause, so it does not count.");
+            OnMainMenu = Config.Bind("Triggers", "Main Menu", false,
+                "Go quiet on the main menu, before a world is loaded and after leaving one.");
 
             MusicApps = Config.Bind("Apps", "Music Apps", DefaultMusicApps,
                 "Programs that count as music players, by executable name without .exe, comma " +
@@ -239,14 +248,19 @@ namespace SmartSilencer
             }
 
             _focusWants = enabled && OnUnfocused.Value && !Application.isFocused;
+            _pauseWants = enabled && OnPaused.Value && Game.instance != null && Game.IsPaused();
+            _menuWants  = enabled && OnMainMenu.Value && Game.instance == null && FejdStartup.instance != null;
 
-            bool quiet = enabled && (_audioWants || _focusWants);
+            bool quiet = enabled && (_audioWants || _focusWants || _pauseWants || _menuWants);
             if (quiet != _quiet)
             {
                 _quiet = quiet;
-                _quietReason = _focusWants && !_audioWants ? "tabbed out" : _audioReason;
-                if (quiet) Say(_focusWants && !_audioWants ? "Silenced while you're away" : $"Silenced for {_audioReason}");
-                else Say("Sound is back");
+                if (!quiet) Say("Sound is back");
+                // Name the cause. Sound first, since it is the one you would not have guessed.
+                else if (_audioWants) { _quietReason = _audioReason; Say($"Silenced for {_audioReason}"); }
+                else if (_focusWants) { _quietReason = "tabbed out";  Say("Silenced while you're away"); }
+                else if (_pauseWants) { _quietReason = "paused";      Say("Silenced while paused"); }
+                else                  { _quietReason = "main menu";   Say("Silenced on the main menu"); }
             }
         }
 

@@ -6,7 +6,7 @@ schemaVersion = "0.0.1"
 [package]
 namespace = "DeathMonger"
 name = "SmartSilencer"
-versionNumber = "1.0.0"
+versionNumber = "1.1.0"
 description = "Auto-mutes Valheim while music or a video plays in another program, or while the game is not the window in front. Each trigger has its own switch."
 websiteUrl = "https://github.com/gbahns/ValheimMods/tree/main/SmartSilencer"
 containsNsfwContent = false
