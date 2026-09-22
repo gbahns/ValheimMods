@@ -1,0 +1,12 @@
+# Changelog
+
+## 1.0.0 — 2026-09-22
+
+First release.
+
+- The game's sound fades down while a music player (Spotify and friends) is playing, while a video plays (any browser, VLC and the like), or while another window is in front, and fades back up when that stops.
+- Each of the three triggers has its own switch, plus an optional fourth for any other program making sound (off by default, so a voice call or a notification does not count).
+- Music and video are told apart by program, through two editable lists; a third list of programs is always ignored.
+- A hotkey and the `silencer` console command flip the whole thing while playing; `silencer apps` shows what is audible right now and how it is classified.
+- On-screen messages and log lines for each transition are separate switches (Show Messages, Log Transitions); the log is off by default.
+- Quiet Volume, fade times, the sound threshold, the trigger delay and the silence grace period are all configurable and take effect without a restart.

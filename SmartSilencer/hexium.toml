@@ -1,0 +1,31 @@
+# Hexium (valheim.hexium.gg) publish config: same package, Hexium repository URL and category slugs.
+# Used by package.ps1 -Hexium.  Keep versionNumber/description in step with thunderstore.toml.
+[config]
+schemaVersion = "0.0.1"
+
+[package]
+namespace = "DeathMonger"
+name = "SmartSilencer"
+versionNumber = "1.0.0"
+description = "Auto-mutes Valheim while music or a video plays in another program, or while the game is not the window in front. Each trigger has its own switch."
+websiteUrl = "https://github.com/gbahns/ValheimMods/tree/main/SmartSilencer"
+containsNsfwContent = false
+
+[package.dependencies]
+"denikson-BepInExPack_Valheim" = "5.4.2350"
+
+[build]
+icon = "./icon.png"
+readme = "./README.md"
+outdir = "./build"
+
+[[build.copy]]
+source = "./bin/Release/net48/SmartSilencer.dll"
+target = "BepInEx/plugins/"
+
+[publish]
+repository = "https://valheim.hexium.gg"
+communities = ["valheim"]
+
+[publish.categories]
+valheim = ["Tools", "Quality of Life", "Open Source", "Valheim 1.0"]

@@ -1,0 +1,7 @@
+{
+    "name": "SmartSilencer",
+    "version_number": "1.0.0",
+    "website_url": "https://github.com/gbahns/ValheimMods/tree/main/SmartSilencer",
+    "description": "Auto-mutes Valheim while music or a video plays in another program, or while the game is not the window in front. Each trigger has its own switch.",
+    "dependencies": ["denikson-BepInExPack_Valheim-5.4.2350"]
+}

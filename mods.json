@@ -160,3 +160,7 @@
     "Shalopay-FoodSorting":                          { "side": "client", "why": "Client-only. Disabled because it does not work on Valheim 1.0; Greg will re-enable it if that is ever fixed." }
   }
 }
+    "SmartSilencer": {
+      "side": "client",
+      "why": "[BepInProcess(\"valheim.exe\")]. Scales the local AudioListener from Windows per-app level meters and window focus; a dedicated server has neither sound nor a window."
+    },
