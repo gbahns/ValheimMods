@@ -12,7 +12,7 @@
 # Get your token from: thunderstore.io -> Settings -> Teams -> Service Accounts
 
 param(
-    [string]$Version = "1.1.0",
+    [string]$Version = "1.1.1",
     [switch]$Publish,
     [switch]$Hexium
 )

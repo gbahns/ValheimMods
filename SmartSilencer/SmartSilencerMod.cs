@@ -28,7 +28,7 @@ namespace SmartSilencer
     {
         public const string ModGuid    = "DeathMonger.SmartSilencer";
         public const string ModName    = "Smart Silencer";
-        public const string ModVersion = "1.1.0";
+        public const string ModVersion = "1.1.1";
 
         internal static ManualLogSource Log { get; private set; }
         internal static SmartSilencerMod Instance { get; private set; }
@@ -106,8 +106,10 @@ namespace SmartSilencer
                 "Hotkey that flips Mod Enabled while playing. Empty by default, since every plain key " +
                 "already does something in Valheim; a modifier combination such as LeftControl + F9 " +
                 "is a safe choice. The console command 'silencer' does the same.");
-            ShowMessages = Config.Bind("General", "Show Messages", true,
-                "Show a short top-left message when the game goes quiet and when the sound comes back.");
+            ShowMessages = Config.Bind("General", "Show Messages", false,
+                "Show a short top-left message when the game goes quiet and when the sound comes back. " +
+                "Handy for confirming the mod is working; off by default. The hotkey's on/off confirmation " +
+                "always shows.");
             LogTransitions = Config.Bind("General", "Log Transitions", false,
                 "Also write each of those transitions (silenced for what, sound back, on and off) to the " +
                 "BepInEx log. Handy for confirming the mod is working, noise afterwards.");
@@ -333,7 +335,7 @@ namespace SmartSilencer
         internal void SetEnabled(bool on, bool announce)
         {
             ModEnabled.Value = on;
-            if (announce) Say(on ? "Smart Silencer on" : "Smart Silencer off: the game keeps its sound");
+            if (announce) Say(on ? "Smart Silencer on" : "Smart Silencer off: the game keeps its sound", always: true);
         }
 
         // ── reporting ────────────────────────────────────────────────────────────────
@@ -361,10 +363,11 @@ namespace SmartSilencer
             return sb.ToString().TrimEnd();
         }
 
-        private void Say(string text)
+        /// <summary>A transition message: to the log if Log Transitions, on screen if Show Messages or <paramref name="always"/>.</summary>
+        private void Say(string text, bool always = false)
         {
             if (LogTransitions.Value) Log.LogInfo(text);
-            if (!ShowMessages.Value) return;
+            if (!ShowMessages.Value && !always) return;
             if (MessageHud.instance == null) return;
             MessageHud.instance.ShowMessage(MessageHud.MessageType.TopLeft, text);
         }

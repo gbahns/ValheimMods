@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1 — unreleased
+
+- Show Messages now defaults to off, like Log Transitions: the on-screen messages are for confirming the mod works, not for every song. An existing config keeps whatever it has. The hotkey's on/off confirmation still shows regardless.
+
 ## 1.1.0 — 2026-09-22
 
 - Two new triggers, both off by default: **Game Paused** (the single-player ESC pause, or a PauseMyServer pause on a server) and **Main Menu**.

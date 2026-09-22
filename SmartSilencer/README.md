@@ -39,7 +39,7 @@ Music and video are detected the same way the Windows volume mixer shows a movin
 | --- | --- | --- |
 | Mod Enabled | true | Master switch, and what the hotkey flips. |
 | Toggle Key | (none) | Hotkey for the master switch. |
-| Show Messages | true | Top-left messages on going quiet and coming back. |
+| Show Messages | false | Top-left messages on going quiet and coming back. Handy for confirming it works. The hotkey's on/off confirmation always shows. |
 | Log Transitions | false | Also write those transitions to the BepInEx log. Handy for confirming it works, noise afterwards. |
 | Quiet Volume | 0 | The game's volume while silenced, 0 to 1. 0.2 keeps it faintly there under the music. |
 | Fade Out Seconds | 0.4 | How long the sound takes to go down. |
