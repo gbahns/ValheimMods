@@ -51,6 +51,14 @@
       "side": "client",
       "why": "[BepInProcess(\"valheim.exe\")]; README says client-side only."
     },
+    "OneClickLaunch": {
+      "side": "client",
+      "why": "[BepInProcess(\"valheim.exe\")]. Main-menu Continue buttons; the server has no main menu and the history file is per player."
+    },
+    "SmartSilencer": {
+      "side": "client",
+      "why": "[BepInProcess(\"valheim.exe\")]. Scales the local AudioListener from Windows per-app level meters and window focus; a dedicated server has neither sound nor a window."
+    },
     "PauseMyServer": {
       "side": "both",
       "why": "Server-authoritative: the server decides whether a pause is granted and broadcasts it; the client freezes."
@@ -160,7 +168,3 @@
     "Shalopay-FoodSorting":                          { "side": "client", "why": "Client-only. Disabled because it does not work on Valheim 1.0; Greg will re-enable it if that is ever fixed." }
   }
 }
-    "SmartSilencer": {
-      "side": "client",
-      "why": "[BepInProcess(\"valheim.exe\")]. Scales the local AudioListener from Windows per-app level meters and window focus; a dedicated server has neither sound nor a window."
-    },
