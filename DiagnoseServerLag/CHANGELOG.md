@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.1
+
+- **The group capture in 0.5.0 never ran.** All of its code shipped, and none of it was reachable:
+  `BeginGather` was defined but never called from either place that should have called it, so
+  `dsl_bench_server` quietly did exactly what it did in 0.4.2 and wrote no group report at all.
+  Caught by a real capture on the server producing no `group-*.csv`, and the server log showing the
+  old code path word for word.
+- The cause was two scripted edits that silently failed to match and were not checked. The build
+  succeeded because the code they should have replaced was still valid. Both call sites are now
+  wired and verified.
+
 ## 0.5.0
 
 - **`dsl_bench_server` now captures the whole group.** The server takes its own window and asks

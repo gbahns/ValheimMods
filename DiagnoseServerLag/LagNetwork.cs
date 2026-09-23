@@ -272,11 +272,12 @@ namespace DiagnoseServerLag
             var znet = ZNet.instance;
             if (rpc == null || znet == null) return;
 
-            // Hosting: the server is this process, so there is nobody to ask.
+            // Hosting: the server is this process, so there is nobody to ask for the server's half -
+            // but the other players still have to be asked, so this goes through the same gather.
             if (znet.IsServer())
             {
-                string local = Commands.Bench(seconds, out string localPath);
-                Print(local + (localPath == null ? "" : "\nwrote " + localPath));
+                Commands.Bench(seconds, out _);
+                BeginGather(ZDOMan.GetSessionID(), seconds);
                 return;
             }
 
@@ -304,10 +305,11 @@ namespace DiagnoseServerLag
                     return;
                 }
 
-                string text = Commands.Bench(seconds, out string path);
-                if (path != null) text += "\nwrote " + path + " on the server";
-                DiagnoseServerLagMod.Log.LogInfo("[DiagnoseServerLag] capture requested by a client\n" + text);
-                ZRoutedRpc.instance?.InvokeRoutedRPC(sender, RpcCaptureResult, Wrap(text));
+                // The server's own window is captured here; every client's is gathered before the
+                // answer goes out, so the whole group describes the same seconds. The reply is sent
+                // by FinishGather, once the clients have answered or the wait has run out.
+                Commands.Bench(seconds, out _);
+                BeginGather(sender, seconds);
             }
             catch (Exception e)
             {
