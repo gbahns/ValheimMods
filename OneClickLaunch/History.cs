@@ -56,10 +56,16 @@ namespace OneClickLaunch
         public string Label()
         {
             string format = IsWorld ? OneClickLaunchMod.WorldLabel.Value : OneClickLaunchMod.ServerLabel.Value;
-            string server = string.IsNullOrEmpty(serverName) ? History.DisplayAddress(serverAddress) : serverName;
+            // A server reads by its name, or its address when no name is known. One on this
+            // computer reads "localhost" unless the player asked for its name instead: only the
+            // host sees that button, and a server started with -public 0 gives no name anyway.
+            string address = History.DisplayAddress(serverAddress);
+            bool preferAddress = IsServer && History.IsLoopback(serverAddress)
+                && OneClickLaunchMod.LocalServerLabel.Value == LocalServerLabelMode.Localhost;
+            string server = !preferAddress && !string.IsNullOrEmpty(serverName) ? History.DistinctName(this) : address;
             return format
                 .Replace("{character}", profileName ?? profileFile ?? "?")
-                .Replace("{world}", worldName ?? "?")
+                .Replace("{world}", !string.IsNullOrEmpty(worldName) ? worldName : (IsServer ? address : "?"))
                 .Replace("{server}", server ?? "?");
         }
 
@@ -85,6 +91,7 @@ namespace OneClickLaunch
                 o["serverType"]    = serverType;
                 o["serverAddress"] = serverAddress;
                 o["serverName"]    = serverName;
+                if (worldName != null) o["worldName"] = worldName;   // the world the server runs, once seen
             }
             if (password != null) o["password"] = PasswordVault.Protect(password);
             o["lastPlayedUtcTicks"] = lastPlayedUtcTicks;
@@ -226,6 +233,15 @@ namespace OneClickLaunch
             if (Entries.Remove(entry)) Save();
         }
 
+        /// <summary>The world a server turned out to be running, learned on connecting.</summary>
+        internal static void SetServerWorld(string key, string world)
+        {
+            var e = Find(key);
+            if (e == null || !e.IsServer || string.IsNullOrEmpty(world) || e.worldName == world) return;
+            e.worldName = world;
+            Save();
+        }
+
         internal static void SetPassword(string key, string password)
         {
             var e = Find(key);
@@ -254,6 +270,30 @@ namespace OneClickLaunch
                 if (otherHost == host && otherPort != null) ports.Add(otherPort);
             }
             return ports.Count > 1 ? shownHost + ":" + port : shownHost;
+        }
+
+        /// <summary>
+        /// A server's name as a button reads it. Two different servers with the same name (a
+        /// local one and a hosted one both called the same thing, say) each get their address
+        /// after the name so they can be told apart.
+        /// </summary>
+        internal static string DistinctName(Entry entry)
+        {
+            foreach (var e in Entries)
+            {
+                if (e == entry || !e.IsServer || string.IsNullOrEmpty(e.serverName)) continue;
+                if (!string.Equals(e.serverName, entry.serverName, StringComparison.OrdinalIgnoreCase)) continue;
+                if (e.serverType == entry.serverType && e.serverAddress == entry.serverAddress) continue;
+                return $"{entry.serverName} ({DisplayAddress(entry.serverAddress)})";
+            }
+            return entry.serverName;
+        }
+
+        internal static bool IsLoopback(string address)
+        {
+            if (string.IsNullOrEmpty(address)) return false;
+            SplitAddress(address, out string host, out _);
+            return host == "127.0.0.1" || host == "::1" || string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase);
         }
 
         private static void SplitAddress(string address, out string host, out string port)

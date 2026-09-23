@@ -20,13 +20,19 @@ namespace OneClickLaunch
     ///
     /// Client-side only; nothing goes to the server.
     /// </summary>
+    public enum LocalServerLabelMode
+    {
+        Localhost,
+        ServerName,
+    }
+
     [BepInPlugin(ModGuid, ModName, ModVersion)]
     [BepInProcess("valheim.exe")]
     public class OneClickLaunchMod : BaseUnityPlugin
     {
         public const string ModGuid    = "DeathMonger.OneClickLaunch";
         public const string ModName    = "One Click Launch";
-        public const string ModVersion = "1.0.1";
+        public const string ModVersion = "1.0.2";
 
         internal static ManualLogSource Log { get; private set; }
         internal static OneClickLaunchMod Instance { get; private set; }
@@ -39,6 +45,7 @@ namespace OneClickLaunch
         internal static ConfigEntry<bool>   RememberPasswords;
         internal static ConfigEntry<bool>   WarnOnUnknownWorld;
         internal static ConfigEntry<int>    MenuBottomMargin;
+        internal static ConfigEntry<LocalServerLabelMode> LocalServerLabel;
         internal static ConfigEntry<string> ButtonColorSetting;
         internal static ConfigEntry<bool>   Divider;
         internal static ConfigEntry<bool>   MoreButton;
@@ -69,8 +76,13 @@ namespace OneClickLaunch
                 "Text of a button that starts a local world. {character} is the character's name and " +
                 "{world} the world's name.");
             ServerLabel = Config.Bind("General", "Server Button Label", "{character} on {server}",
-                "Text of a button that joins a server. {character} is the character's name and " +
-                "{server} the server's name, or its address if the name is not known.");
+                "Text of a button that joins a server. {character} is the character's name; {server} is " +
+                "the server's name, or its address if the name is not known; {world} is the name of the " +
+                "world the server runs, learned on connecting, or the address until then.");
+            LocalServerLabel = Config.Bind("General", "Local Server Label", LocalServerLabelMode.Localhost,
+                "What {server} reads for a server on this computer (127.0.0.1). Localhost: always " +
+                "\"localhost\". ServerName: the server's name when the game can learn it, which a server " +
+                "started with -public 0 never gives out, and \"localhost\" otherwise.");
             RememberPasswords = Config.Bind("General", "Remember Passwords", true,
                 "Remember the password you typed for a server, or set for a world you hosted, so the " +
                 "button can enter it for you. Stored in BepInEx/config/DeathMonger.OneClickLaunch.history.json, " +

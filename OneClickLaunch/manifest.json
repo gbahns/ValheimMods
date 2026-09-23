@@ -1,6 +1,6 @@
 {
     "name": "One_Click_Launch",
-    "version_number": "1.0.1",
+    "version_number": "1.0.2",
     "website_url": "https://github.com/gbahns/ValheimMods/tree/main/OneClickLaunch",
     "description": "One click from the main menu back into the game you were playing. Remembers each character with the world or server they were actually played in.",
     "dependencies": ["denikson-BepInExPack_Valheim-5.4.2350"]

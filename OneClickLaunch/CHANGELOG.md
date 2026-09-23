@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2 — 2026-09-22
+
+- A server's name is also taken from the favorites and recent-servers list, where the game keeps the name it saw when it queried the server, and a server remembered without a name picks one up as soon as the game learns it. An address standing in for a name is not taken as one. A server on this computer reads "localhost" (Local Server Label can prefer its name, when the game can learn one; a server started with -public 0 never gives it out). A server joined by address is queried directly for its name. Two different servers with the same name show their address after it.
+
 ## 1.0.1 — 2026-09-22
 
 - The divider under the Continue buttons is now a copy of the orange ornament the menu draws above itself, the same width and style, flipped to face the vanilla menu, instead of a thin yellow line.

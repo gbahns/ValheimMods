@@ -81,6 +81,7 @@ namespace OneClickLaunch
                     s_autoPasswordKey = null;
                 }
                 s_worldConfirmed = false;
+                ServerNameLookup.NewMenuVisit();
 
                 // Back at the menu is when a setting edited while playing (button count, labels,
                 // margin) should take effect, not at the next game start.
@@ -141,6 +142,7 @@ namespace OneClickLaunch
             }
             s_vanillaMenuButtons = MenuButtonsRef(fs) ?? new Button[0];
 
+            RefreshServerNames();
             var entries = History.Entries.Take(OneClickLaunchMod.ButtonCount.Value).ToList();
             if (entries.Count == 0) return;
 
@@ -409,7 +411,7 @@ namespace OneClickLaunch
             fs.JoinServer();
         }
 
-        private static ServerJoinData BuildJoinData(Entry entry)
+        internal static ServerJoinData BuildJoinData(Entry entry)
         {
             switch (entry.serverType)
             {
@@ -534,18 +536,92 @@ namespace OneClickLaunch
             return id?.ToString();
         }
 
+        /// <summary>
+        /// The server's name as the game knows it: from the favorites and recent-servers list,
+        /// where the game saves the name it saw when the server was queried, or from a live
+        /// matchmaking query. A server joined by address alone, never through the server list,
+        /// has neither until it turns up in the recent list with a name.
+        /// </summary>
         private static string ServerName(ServerJoinData join)
         {
             try
             {
+                if (MultiBackendMatchmaking.TryGetServerName(join, out string name) && IsRealName(name, join)) return name;
                 ServerMatchmakingData data = MultiBackendMatchmaking.GetServerMatchmakingData(join);
-                if (data.IsValid && !string.IsNullOrEmpty(data.m_serverName)) return data.m_serverName;
+                if (data.IsValid && IsRealName(data.m_serverName, join)) return data.m_serverName;
             }
             catch (Exception ex)
             {
                 OneClickLaunchMod.Log.LogDebug($"No server name for {join}: {ex.Message}");
             }
             return null;
+        }
+
+        /// <summary>
+        /// The game saves a server it has no name for under its address as the name, so a
+        /// "name" that is only the address, or a bare host, is not a name.
+        /// </summary>
+        internal static bool IsRealName(string name, ServerJoinData join)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return false;
+            string n = name.Trim();
+            if (n == join.ToString()) return false;
+            if (join.m_type == ServerJoinDataType.Dedicated)
+            {
+                string host = join.Dedicated.m_host ?? "";
+                if (n == host || n == host + ":" + join.Dedicated.m_port || n == join.Dedicated.ToString()) return false;
+            }
+            return !System.Text.RegularExpressions.Regex.IsMatch(n, @"^\[?[0-9A-Fa-f:.]+\]?(:\d+)?$");
+        }
+
+        /// <summary>Servers remembered without a name: see whether the game has learned one since.</summary>
+        private static void RefreshServerNames()
+        {
+            bool changed = false;
+            foreach (Entry entry in History.Entries)
+            {
+                if (!entry.IsServer) continue;
+                // A local server labeled "localhost" needs no name, so do not ask it for one.
+                if (History.IsLoopback(entry.serverAddress) && OneClickLaunchMod.LocalServerLabel.Value == LocalServerLabelMode.Localhost) continue;
+                ServerJoinData join = BuildJoinData(entry);
+                if (!join.IsValid) continue;
+                if (!string.IsNullOrEmpty(entry.serverName))
+                {
+                    // Saved by an earlier build with the address as its name: drop it.
+                    if (IsRealName(entry.serverName, join)) continue;
+                    entry.serverName = null;
+                    changed = true;
+                }
+                string name = ServerName(join);
+                if (string.IsNullOrEmpty(name))
+                {
+                    // The game will not ask a private address itself; ask the server directly.
+                    Entry captured = entry;
+                    ServerNameLookup.Request(captured, learned => OnNameLearned(captured, learned));
+                    continue;
+                }
+                entry.serverName = name;
+                changed = true;
+                OneClickLaunchMod.Log.LogInfo($"Learned the name of {entry.serverAddress}: {name}.");
+            }
+            if (changed) History.Save();
+        }
+
+        /// <summary>A server answered our ping with its name, some time after the menu was built.</summary>
+        private static void OnNameLearned(Entry entry, string name)
+        {
+            ServerJoinData join = BuildJoinData(entry);
+            if (!join.IsValid || !IsRealName(name, join)) return;
+            if (entry.serverName == name) return;
+            entry.serverName = name;
+            History.Save();
+            OneClickLaunchMod.Log.LogInfo($"{entry.serverAddress} says its name is {name}.");
+            FejdStartup fs = FejdStartup.instance;
+            if (fs != null && fs.m_menuList != null && s_template != null)
+            {
+                Rebuild(fs);
+                HistoryPanel.Refresh();
+            }
         }
 
         // ------------------------------------------------------------------ passwords ----
@@ -557,6 +633,20 @@ namespace OneClickLaunch
             {
                 if (!OneClickLaunchMod.RememberPasswords.Value || s_pendingServerKey == null || string.IsNullOrEmpty(pwd)) return;
                 History.SetPassword(s_pendingServerKey, pwd);
+            }
+        }
+
+        [HarmonyPatch(typeof(ZNet), "RPC_PeerInfo")]
+        private static class ZNet_RPC_PeerInfo_Patch
+        {
+            // The server's peer info carries the name of the world it runs. A private server
+            // never answers a name query, so this is the best label it can get.
+            private static void Postfix(ZNet __instance)
+            {
+                if (s_pendingServerKey == null || __instance == null || __instance.IsServer()) return;
+                string world = __instance.GetWorldName();
+                if (string.IsNullOrEmpty(world)) return;
+                History.SetServerWorld(s_pendingServerKey, world);
             }
         }
 

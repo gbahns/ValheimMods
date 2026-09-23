@@ -4,7 +4,7 @@ schemaVersion = "0.0.1"
 [package]
 namespace = "DeathMonger"
 name = "One_Click_Launch"
-versionNumber = "1.0.1"
+versionNumber = "1.0.2"
 description = "One click from the main menu back into the game you were playing. Remembers each character with the world or server they were actually played in."
 websiteUrl = "https://github.com/gbahns/ValheimMods/tree/main/OneClickLaunch"
 containsNsfwContent = false

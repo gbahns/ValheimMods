@@ -43,7 +43,8 @@ Turn the setting off to be asked every time; passwords already stored are droppe
 | Buttons | 3 | How many recent pairs get a button (1 to 8). |
 | History Size | 100 | How many pairs to remember, most recent first. |
 | World Button Label | `{character} in {world}` | Text of a world button. |
-| Server Button Label | `{character} on {server}` | Text of a server button; `{server}` is the server's name, or its address when the name is not known. 127.0.0.1 reads as localhost, and the port is shown only when the same host is remembered on more than one port. |
+| Server Button Label | `{character} on {server}` | Text of a server button; `{server}` is the server's name, or its address when the name is not known; `{world}` is the name of the world the server runs, learned when you connect. 127.0.0.1 reads as localhost (see Local Server Label), the port is shown only when the same host is remembered on more than one port, and two different servers with the same name show their address after it. |
+| Local Server Label | Localhost | What a server on this computer is called: always `localhost`, or its name when the game can learn one. A server started with `-public 0` never gives out its name, so it reads `localhost` either way. |
 | Remember Passwords | true | See above. |
 | Warn On Unknown World | true | The wrong-world check on the vanilla Start button. |
 | Button Color | `#F5D76E` | Text color of the Continue buttons; a hex color or a name, blank for vanilla's. |
