@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.2.3 — unreleased
+
+- **Stopped flooding the server console.** On the real server, 452 of the last 600 console lines
+  were one warning from this mod — "Could not read a peer socket: Steamworks is not initialized" —
+  repeated once per peer per second, with nobody connected. A diagnostic mod was making the server
+  harder to diagnose.
+  The cause: `GetConnectedPeers()` returns everything in the peer list, including sockets still
+  being set up or torn down, and calling into a socket like that throws. Vanilla's own
+  `GetNetStats` walks the same list but touches a socket only when `IsReady()` — "has a uid yet" —
+  and that guard is the entire reason vanilla never hits this. The peer walk now has it too.
+- **The per-player table was empty on every real server.** The row was built *after* the socket
+  call, so any peer that threw was dropped before it was ever added. That silently emptied one of
+  the things the mod exists to show, and left the server's worst-queue figure sitting at a
+  reassuring `0 B` that nothing had measured. The row is now built from the peer's identity first
+  and kept whatever the socket does; only the socket figures are left as not measurable.
+- **"2 connected" over an empty list** — the player count included peers that had not finished
+  handshaking. It now counts the same peers the table shows.
+- Any socket that still cannot be read is reported **once per session** instead of once a second.
+  The reading itself is not disabled: the failure is per-peer and transient, and switching it off
+  for everyone because one stale peer threw would trade a noisy bug for a silent one.
+
 ## 0.2.2
 
 - **Stopped accusing a healthy server.** A real server reported 33.3 ms per tick now, 33.3 ms

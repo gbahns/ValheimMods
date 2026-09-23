@@ -47,6 +47,9 @@ namespace DiagnoseServerLag
 
         private static bool _started;
 
+        /// <summary>One line per session when a socket cannot be read; see NoteSocketUnreadable.</summary>
+        private static bool _socketWarningLogged;
+
         /// <summary>
         /// True while the game is paused and the history is deliberately standing still.
         /// The report says so, because a frozen measurement that looked live would be a lie.
@@ -139,8 +142,6 @@ namespace DiagnoseServerLag
             var znet = ZNet.instance;
             if (znet != null)
             {
-                s.Peers = znet.GetConnectedPeers().Count;
-
                 // On a client this reads the server connection. On a server it averages every
                 // peer, which is the right headline number there: one player on a bad line should
                 // not be reported as the server having a bad line.
@@ -192,6 +193,14 @@ namespace DiagnoseServerLag
         {
             Peers.Clear();
 
+            // Only peers that have finished handshaking count as connected. Everything in m_peers
+            // is returned by GetConnectedPeers, including sockets still being set up or torn down,
+            // and reporting those as players put "2 connected" above an empty table.
+            int ready = 0;
+            foreach (var p in znet.GetConnectedPeers())
+                if (p != null && p.IsReady()) ready++;
+            s.Peers = ready;
+
             if (!znet.IsServer())
             {
                 var server = znet.GetServerPeer();
@@ -210,7 +219,7 @@ namespace DiagnoseServerLag
                 }
                 catch (Exception e)
                 {
-                    DiagnoseServerLagMod.Log.LogWarning($"[DiagnoseServerLag] Could not read the server socket: {e.Message}");
+                    NoteSocketUnreadable(e);
                 }
                 return;
             }
@@ -219,32 +228,71 @@ namespace DiagnoseServerLag
             int totalRate = 0;
             foreach (var peer in znet.GetConnectedPeers())
             {
-                if (peer?.m_socket == null) continue;
+                // Vanilla's own GetNetStats walks the same list and touches a socket only when
+                // IsReady() - which is simply "has a uid yet" - and that guard is the entire reason
+                // vanilla does not throw here. Without it, a peer that is mid-handshake or whose
+                // socket is being disposed throws "Steamworks is not initialized" on the first
+                // socket call, every second, for as long as it sits in the list. On the real server
+                // that filled 452 of the last 600 console lines with one warning, with nobody
+                // connected - a diagnostic mod making the server harder to diagnose.
+                //
+                // Such a peer has no uid and no name, so there is nothing to show for it either.
+                if (peer == null || !peer.IsReady() || peer.m_socket == null) continue;
+
+                // Identity first, and kept whatever the socket does next. Building the row after
+                // the socket call was the second half of the bug: every peer that threw was dropped
+                // before it was ever added, so the per-player table - one of the things this mod
+                // exists to show - came out empty, and the worst-queue figure sat at a reassuring
+                // 0 B that nothing had actually measured.
+                var ps = new PeerSample
+                {
+                    Uid = peer.m_uid,
+                    Name = string.IsNullOrEmpty(peer.m_playerName) ? "(connecting)" : peer.m_playerName,
+                    DistanceFromCenter = peer.m_refPos.magnitude,
+                };
+
                 try
                 {
                     peer.m_socket.GetConnectionQuality(out float localQ, out _, out int ping, out _, out _);
-                    var ps = new PeerSample
-                    {
-                        Uid = peer.m_uid,
-                        Name = string.IsNullOrEmpty(peer.m_playerName) ? "(connecting)" : peer.m_playerName,
-                        Ping = ping,
-                        HasPing = ping > 0 || localQ > 0f,
-                        Quality = localQ,
-                        SendQueue = Mathf.Max(0, peer.m_socket.GetSendQueueSize()),
-                        SendRate = Mathf.Max(0, peer.m_socket.GetCurrentSendRate()),
-                        DistanceFromCenter = peer.m_refPos.magnitude,
-                    };
+                    ps.Ping = ping;
+                    ps.HasPing = ping > 0 || localQ > 0f;
+                    ps.Quality = localQ;
+                    ps.SendQueue = Mathf.Max(0, peer.m_socket.GetSendQueueSize());
+                    ps.SendRate = Mathf.Max(0, peer.m_socket.GetCurrentSendRate());
                     if (ps.SendQueue > worstQueue) worstQueue = ps.SendQueue;
                     totalRate += ps.SendRate;
-                    Peers.Add(ps);
                 }
                 catch (Exception e)
                 {
-                    DiagnoseServerLagMod.Log.LogWarning($"[DiagnoseServerLag] Could not read a peer socket: {e.Message}");
+                    // The row still goes in, with the socket figures left at "not measurable".
+                    NoteSocketUnreadable(e);
                 }
+                Peers.Add(ps);
             }
+
             s.SendQueue = worstQueue;
             s.SendRate = totalRate;
+        }
+
+        /// <summary>
+        /// Says once that a socket could not be read, and then stops saying it.
+        ///
+        /// Deliberately not a latch that switches the reading off: the cause is per-peer and
+        /// transient - a connection still being set up, or one being torn down - so refusing to read
+        /// sockets ever again because one stale peer threw would trade a noisy bug for a silent one
+        /// and cost the per-player table for everybody else.
+        ///
+        /// What is latched is the logging. A condition that repeats once a second per peer is worth
+        /// exactly one line; the alternative is what the server console looked like before this.
+        /// </summary>
+        private static void NoteSocketUnreadable(Exception e)
+        {
+            if (_socketWarningLogged) return;
+            _socketWarningLogged = true;
+            DiagnoseServerLagMod.Log.LogInfo(
+                $"[DiagnoseServerLag] A socket could not be read ({e.Message}). Ping, connection quality " +
+                "and queue size are left as not measurable for that peer; everything else still works. " +
+                "Said once per session, not once a second.");
         }
 
         /// <summary>The most recent completed second, if there is one.</summary>
