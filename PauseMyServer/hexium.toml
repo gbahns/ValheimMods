@@ -6,7 +6,7 @@ schemaVersion = "0.0.1"
 [package]
 namespace = "DeathMonger"
 name = "PauseMyServer"
-versionNumber = "1.4.1"
+versionNumber = "1.5.0"
 description = "Pause a server-hosted game: the world pauses when every player online has asked for a pause (the ESC menu, or a mod that pauses for an open map or panel), and an admin can pause the whole server for everyone with a key."
 websiteUrl = "https://github.com/gbahns/ValheimMods"
 containsNsfwContent = false

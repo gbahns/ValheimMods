@@ -299,7 +299,8 @@ namespace PauseMyServer
             int wants = wanting + (hostIsPlaying && WantPause ? 1 : 0);
             bool everyone = total > 0 && wants == total && !(hostIsPlaying && ready == 0);
 
-            if (wants != _sentWants || total != _sentTotal)
+            bool countsChanged = wants != _sentWants || total != _sentTotal;
+            if (countsChanged)
             {
                 _sentWants = wants;
                 _sentTotal = total;
@@ -309,7 +310,14 @@ namespace PauseMyServer
             bool should = everyone || AdminPaused;
             bool forced = AdminPaused;
             string by = AdminPaused ? AdminPausedBy : (everyone ? (total == 1 ? soleName : "everyone") : _resumedBy);
-            if (should == ServerPaused && forced == _sentForced && by == _sentBy) return;
+            if (should == ServerPaused && forced == _sentForced && by == _sentBy)
+            {
+                // How many want a pause moves without the pause itself moving, and the state file
+                // carries both numbers, so a watcher would otherwise read a stale count for as
+                // long as the pause state held.
+                if (countsChanged) PauseStateFile.Publish(ServerPaused, _sentBy, wants, total);
+                return;
+            }
 
             ServerPaused = should;
             _sentForced = forced;
@@ -319,6 +327,7 @@ namespace PauseMyServer
                 ? $"[PauseMyServer] World paused ({(forced ? "admin: " : "wanted by ")}{by}; {total} player(s) online)."
                 : $"[PauseMyServer] World resumed ({wants} of {total} player(s) want a pause{(string.IsNullOrEmpty(by) ? "" : "; lifted by " + by)}).");
             ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.Everybody, RpcState, should, forced, by);
+            PauseStateFile.Publish(should, by, wants, total);
         }
     }
 }

@@ -100,6 +100,12 @@ namespace PauseMyServer
         {
             PauseSync.Reset();
             PauseSync.Register();
+
+            // Publish "up and running, not paused" as soon as the world is up, so a dashboard
+            // reads a live file from the start rather than nothing until the first pause.
+            // Servers only: a client's copy would say nothing anyone is watching for.
+            if (ZNet.instance != null && ZNet.instance.IsServer())
+                PauseStateFile.Publish(false, null, 0, 0);
         }
     }
 
@@ -107,6 +113,12 @@ namespace PauseMyServer
     internal static class ZNet_Shutdown_Patch
     {
         [HarmonyPrefix]
-        private static void Prefix() => PauseSync.Reset();
+        private static void Prefix()
+        {
+            PauseSync.Reset();
+            // The world is going down. Removing the file beats leaving one that claims a state
+            // the server is no longer in; a reader falls back the moment it disappears.
+            PauseStateFile.Shutdown();
+        }
     }
 }

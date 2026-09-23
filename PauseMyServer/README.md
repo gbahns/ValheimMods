@@ -45,6 +45,33 @@ The admin pause is designed for dedicated servers. On a hosted (non-dedicated) g
 
 A persistent label is shown while the game is paused, in solo games too: "Paused", or "Paused by <admin>". When a pause has been asked for and the game is still running, it turns bright red and reads "Unpaused", with "1/3 want to pause" on a second line in a smaller font. It waits half a second first, so the trip to the server and back never flashes red, and it stays quiet during the intro and cinematics. Texts, position (top or bottom) and size are configurable, and each mode can be turned off.
 
+## Telling a monitor or dashboard
+
+The server keeps a small JSON file up to date so anything outside the game can see the pause state without scraping the log:
+
+```
+BepInEx/config/PauseMyServer.state.json
+
+{"paused":true,"by":"Genius","wanting":1,"players":2,
+ "since":"2026-09-23T17:45:12.482Z","written":"2026-09-23T17:46:02.114Z",
+ "heartbeat":5,"version":"1.5.0"}
+```
+
+| Field | Meaning |
+|---|---|
+| `paused` | Whether the world is frozen right now. |
+| `by` | Who holds it: an admin's name, a player's name, or `everyone`. Empty when not paused. |
+| `wanting` | How many players have asked for a pause. |
+| `players` | How many are online. |
+| `since` | When `paused` last flipped, UTC. |
+| `written` | When this file was last written, UTC. |
+| `heartbeat` | Seconds between rewrites while nothing changes. |
+| `version` | The mod version that wrote it. |
+
+**Read it by age, not just by content.** The file is rewritten on every change and again every few seconds regardless, so `written` tells you the mod is alive. That is the whole trust model: fresh means live, stale means ignore it. Allow three missed heartbeats before calling it dead, and treat a missing file as "not running", which is also what you get deliberately when the world shuts down.
+
+Writes are atomic, to a temporary file that is then swapped in, so a reader can never catch a half-written file. Only servers write it, clients never do, and `Publish State File` under `Server` turns it off.
+
 ## Installation
 
 Install on the **server and on every client** (Gale, r2modman or Thunderstore Mod Manager, or drop `PauseMyServer.dll` into `BepInEx/plugins`). Keep the same version everywhere.
@@ -63,6 +90,7 @@ Works on Windows and Linux dedicated servers. Requires BepInExPack for Valheim.
 | General | Mod Enabled | true | Master toggle; disables every patch without removing the DLL. Restart required. |
 | General | Show Messages | true | Top-left HUD message when the game resumes for a reason other than you closing your menu. |
 | Admin | Pause Key | Pause | Admins only: toggle the server-wide pause. Ignored while typing in chat, the console or a text box. |
+| Server | Publish State File | true | Keep `PauseMyServer.state.json` up to date for a monitor or dashboard. Servers only. |
 | Pause Message | Show Pause Message | true | Show the persistent on-screen label while paused. |
 | Pause Message | Text | Paused | The label text. |
 | Pause Message | Admin Text | Paused by {0} | The label text during an admin pause; {0} is the admin's name. |

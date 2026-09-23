@@ -28,7 +28,7 @@ namespace PauseMyServer
     {
         public const string ModGuid    = "DeathMonger.PauseMyServer";
         public const string ModName    = "Pause My Server";
-        public const string ModVersion = "1.4.1";
+        public const string ModVersion = "1.5.0";
 
         internal static ManualLogSource Log { get; private set; }
 
@@ -38,6 +38,8 @@ namespace PauseMyServer
         internal static ConfigEntry<bool> ShowMessages;
 
         internal static ConfigEntry<KeyboardShortcut> PauseKey;
+
+        internal static ConfigEntry<bool> PublishStateFile;
 
         internal static ConfigEntry<bool> ShowPauseMessage;
         internal static ConfigEntry<string> PauseMessage;
@@ -65,6 +67,13 @@ namespace PauseMyServer
             PauseKey = Config.Bind("Admin", "Pause Key", new KeyboardShortcut(KeyCode.Pause),
                 "Admins only: toggle the server-wide pause for everyone. Ignored while typing in chat, the " +
                 "console or a text box. Non-admins get a notice. The console command pms_pause does the same.");
+
+            PublishStateFile = Config.Bind("Server", "Publish State File", true,
+                "Servers only: keep BepInEx/config/PauseMyServer.state.json up to date with the pause " +
+                "state, so a monitor or dashboard can read it instead of scraping the log. Rewritten on " +
+                "every change and every few seconds as a heartbeat, and deleted when the world shuts down.");
+            PauseStateFile.Version = ModVersion;
+            PauseStateFile.Enabled = PublishStateFile.Value;
 
             ShowPauseMessage = Config.Bind("Pause Message", "Show Pause Message", true,
                 "Show a persistent on-screen label while the game is paused. Also shown when pausing a " +
@@ -105,10 +114,14 @@ namespace PauseMyServer
             PauseSync.Update();
             PauseSync.UpdateInput();
             PauseOverlay.Update();
+            // Update, not a coroutine: this keeps running at time scale zero, so the heartbeat
+            // survives the very pause it is reporting.
+            if (ZNet.instance != null && ZNet.instance.IsServer()) PauseStateFile.Heartbeat();
         }
 
         private void OnDestroy()
         {
+            PauseStateFile.Shutdown();
             _harmony.UnpatchSelf();
         }
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.0 — unreleased
+
+- **The server publishes its pause state to a file**, so a monitor or dashboard can read it instead of scraping the log: `BepInEx/config/PauseMyServer.state.json`, holding whether the world is paused, who holds it, how many players want a pause, how many are online, and when the state last changed.
+- Written on every change and rewritten every few seconds as a heartbeat, so a reader can tell "running and not paused" from "the mod is not running". The file's age is the whole trust model. It is removed when the world shuts down.
+- Turn it off with Publish State File under Server. Clients never write it.
+
 ## 1.4.1 — 2026-09-15
 
 - The label no longer writes a TextMeshPro warning about a missing LiberationSans font asset into the log every time it is built. It now takes the HUD's font before the component starts up rather than just after.
