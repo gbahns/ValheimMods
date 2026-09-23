@@ -13,13 +13,27 @@ namespace DiagnoseServerLag
     /// ones - the first is the server or the path everyone shares, the second is four machines with
     /// four unrelated local problems, and no amount of averaging separates them.
     ///
-    /// Only the columns correlation needs are sent. The full record stays in each machine's own CSV,
-    /// where anyone who wants it can go and read it; shipping all twenty-six columns from every
-    /// client would multiply the payload for data nobody is going to line up by hand.
+    /// Every field travels, compressed. Layout 1 sent five columns, on the reasoning that nobody
+    /// would line the rest up by hand. The first real group capture disproved that within minutes:
+    /// it established that the stalls were local and then could not say what the machine had been
+    /// doing during them, which took a second command on a second machine to answer.
+    ///
+    /// That second command does not scale to other people. Every machine is recording all the time
+    /// and dsl_bench reads backwards, so a teammate asked later can still cover the same minute -
+    /// but it means four people running commands and sending four files, and a client that has
+    /// logged off has taken its ring with it for good, since the history lives in memory. One
+    /// command from the admin, while everyone is still connected, has to come back with everything.
+    ///
+    /// The payload objection does not survive either. The window is recorded before any of it is
+    /// sent, so the transfer cannot contaminate the measurement it carries, and a series of
+    /// slowly-changing numbers compresses hard.
     /// </summary>
     internal sealed class ClientSeries
     {
-        private const byte Layout = 1;
+        // 1: five columns, uncompressed. 2: every field, compressed. Both are still read,
+        // because clients update on their own schedule and an old one should be diminished
+        // rather than refused.
+        private const byte Layout = 2;
 
         /// <summary>One second, as much of it as the group view needs.</summary>
         internal struct Second
@@ -37,6 +51,12 @@ namespace DiagnoseServerLag
         internal int Cores;
         internal bool HasCpu;
         internal readonly List<Second> Seconds = new List<Second>();
+
+        /// <summary>The full per-second record. Empty when an older client sent layout 1.</summary>
+        internal readonly List<Sample> Samples = new List<Sample>();
+
+        /// <summary>Whether this client sent every field or only the correlation columns.</summary>
+        internal bool Full;
 
         /// <summary>Median frame time over the window, which the summary line reports.</summary>
         internal float FrameMedianMs;
@@ -57,15 +77,12 @@ namespace DiagnoseServerLag
             pkg.Write(TotalStalls);
             pkg.Write(CpuMedianMsPerSec);
             pkg.Write(RoundTripMs);
-            pkg.Write(Seconds.Count);
-            foreach (var s in Seconds)
-            {
-                pkg.Write(s.UtcTicks);
-                pkg.Write(s.FrameMaxMs);
-                pkg.Write(s.Stalls);
-                pkg.Write(s.CpuMsPerSec);
-                pkg.Write(s.Collections);
-            }
+            // The series goes in compressed: it is the bulk of the message, and it is the part
+            // that squeezes, being mostly slowly-changing or repeated numbers.
+            var inner = new ZPackage();
+            inner.Write(Samples.Count);
+            foreach (var s in Samples) SampleWire.Write(inner, s);
+            pkg.WriteCompressed(inner);
             return pkg;
         }
 
@@ -75,7 +92,8 @@ namespace DiagnoseServerLag
             try
             {
                 var c = new ClientSeries();
-                if (pkg.ReadByte() < 1) return null;
+                byte layout = pkg.ReadByte();
+                if (layout < 1) return null;
                 c.Uid = pkg.ReadLong();
                 c.Name = pkg.ReadString();
                 c.CpuName = pkg.ReadString();
@@ -85,20 +103,31 @@ namespace DiagnoseServerLag
                 c.TotalStalls = pkg.ReadInt();
                 c.CpuMedianMsPerSec = pkg.ReadSingle();
                 c.RoundTripMs = pkg.ReadInt();
-                int n = pkg.ReadInt();
-                // A client cannot be allowed to make the server allocate whatever it likes. The
-                // cap is the longest window the mod can hold, with room to spare.
-                if (n < 0 || n > 20000) return null;
-                for (int i = 0; i < n; i++)
+                if (layout >= 2)
                 {
-                    c.Seconds.Add(new Second
+                    var inner = pkg.ReadCompressedPackage();
+                    int n = inner.ReadInt();
+                    // A client cannot be allowed to make the server allocate whatever it likes.
+                    if (n < 0 || n > 20000) return null;
+                    for (int i = 0; i < n; i++) c.Samples.Add(SampleWire.Read(inner));
+                    c.Full = true;
+                    c.FillSecondsFromSamples();
+                }
+                else
+                {
+                    int n = pkg.ReadInt();
+                    if (n < 0 || n > 20000) return null;
+                    for (int i = 0; i < n; i++)
                     {
-                        UtcTicks = pkg.ReadLong(),
-                        FrameMaxMs = pkg.ReadSingle(),
-                        Stalls = pkg.ReadInt(),
-                        CpuMsPerSec = pkg.ReadSingle(),
-                        Collections = pkg.ReadInt(),
-                    });
+                        c.Seconds.Add(new Second
+                        {
+                            UtcTicks = pkg.ReadLong(),
+                            FrameMaxMs = pkg.ReadSingle(),
+                            Stalls = pkg.ReadInt(),
+                            CpuMsPerSec = pkg.ReadSingle(),
+                            Collections = pkg.ReadInt(),
+                        });
+                    }
                 }
                 return c;
             }
@@ -107,6 +136,24 @@ namespace DiagnoseServerLag
                 DiagnoseServerLagMod.Log.LogWarning($"[DiagnoseServerLag] Could not read a client series: {e.Message}");
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Mirrors the full samples into the correlation view, so everything downstream reads one
+        /// shape whether the client sent layout 1 or layout 2.
+        /// </summary>
+        private void FillSecondsFromSamples()
+        {
+            Seconds.Clear();
+            foreach (var s in Samples)
+                Seconds.Add(new Second
+                {
+                    UtcTicks = s.UtcTicks,
+                    FrameMaxMs = s.FrameMsMax,
+                    Stalls = s.Stalls,
+                    CpuMsPerSec = s.CpuMsPerSec,
+                    Collections = Machine.Collections(s),
+                });
         }
 
         /// <summary>Builds this machine's own series for the last <paramref name="seconds"/>.</summary>
@@ -126,15 +173,10 @@ namespace DiagnoseServerLag
             {
                 if (s.HasCpu) c.HasCpu = true;
                 c.TotalStalls += s.Stalls;
-                c.Seconds.Add(new Second
-                {
-                    UtcTicks = s.UtcTicks,
-                    FrameMaxMs = s.FrameMsMax,
-                    Stalls = s.Stalls,
-                    CpuMsPerSec = s.CpuMsPerSec,
-                    Collections = Machine.Collections(s),
-                });
+                c.Samples.Add(s);
             }
+            c.Full = true;
+            c.FillSecondsFromSamples();
             c.FrameMedianMs = Stats.Median(window, x => x.FrameMsAvg);
             c.CpuMedianMsPerSec = Stats.Median(window, x => x.CpuMsPerSec);
             return c;

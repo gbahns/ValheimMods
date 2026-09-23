@@ -55,6 +55,11 @@ namespace DiagnoseServerLag
                               (c.RoundTripMs > 0 ? $"   rt {c.RoundTripMs} ms" : ""));
             }
 
+            int reduced = 0;
+            foreach (var c2 in clients) if (!c2.Full) reduced++;
+            if (reduced > 0)
+                sb.AppendLine($"  ({reduced} client(s) sent the reduced 0.5.x format; their extra columns are empty, not zero)");
+
             if (clients.Count < expected)
                 sb.AppendLine($"  ({expected - clients.Count} client(s) did not answer: no mod, an older version, or Share My Performance off)");
 
@@ -145,9 +150,20 @@ namespace DiagnoseServerLag
         }
 
         /// <summary>
-        /// One row per machine per second, so the alignment survives the console scrolling away.
+        /// One row per machine per second, with every column, so the alignment survives the console
+        /// scrolling away and nobody has to go back and ask for more.
+        ///
+        /// Every field rather than a chosen few, because the alternative is asking each teammate to
+        /// run a command on their own machine and send the file on. That does work - every machine
+        /// records continuously and dsl_bench reads backwards over what is already there - but it
+        /// costs four people's attention, and anyone who has logged off in the meantime took their
+        /// history with them, since the ring lives in memory. The admin's one command has to end
+        /// with everything anyone is going to want.
+        ///
         /// Long format rather than a column per machine: the set of machines is not known until the
-        /// capture happens, and a spreadsheet pivots this in a click.
+        /// capture happens, and a spreadsheet pivots this in a click. A client too old to send the
+        /// full record leaves the extra columns empty rather than zero, so a gap is never read as a
+        /// measurement.
         /// </summary>
         private static string WriteCsv(List<Sample> window, List<ClientSeries> clients)
         {
@@ -162,24 +178,34 @@ namespace DiagnoseServerLag
                 sb.AppendLine($"# captured,{DateTime.Now:yyyy-MM-dd HH:mm:ss}");
                 sb.AppendLine($"# machines,{clients.Count + 1}");
                 sb.AppendLine("#");
-                sb.AppendLine("utc,machine,frame_max_ms,stalls,cpu_ms_per_sec,collections");
+                sb.AppendLine("utc,machine,frame_avg_ms,frame_max_ms,stalls,frames,ping_ms,ping_measured,"
+                            + "ping_round_trip,quality_local,quality_remote,in_bytes_sec,out_bytes_sec,"
+                            + "send_queue_bytes,send_rate_bytes_sec,zdos,instances,zdos_sent_sec,zdos_recv_sec,"
+                            + "change_queue,peers,cpu_ms_per_sec,cpu_measured,gc0,gc1,gc2,collections,"
+                            + "heap_bytes,working_set_bytes");
 
-                foreach (var s in window)
-                    sb.AppendLine(string.Join(",", new[]
-                    {
-                        Iso(s.UtcTicks), "server",
-                        s.FrameMsMax.ToString("0.00", c), s.Stalls.ToString(c),
-                        s.CpuMsPerSec.ToString("0.0", c), Machine.Collections(s).ToString(c),
-                    }));
+                foreach (var s in window) sb.AppendLine(Row("server", s, c));
 
                 foreach (var cl in clients)
-                    foreach (var sec in cl.Seconds)
-                        sb.AppendLine(string.Join(",", new[]
-                        {
-                            Iso(sec.UtcTicks), Csv(cl.Name),
-                            sec.FrameMaxMs.ToString("0.00", c), sec.Stalls.ToString(c),
-                            sec.CpuMsPerSec.ToString("0.0", c), sec.Collections.ToString(c),
-                        }));
+                {
+                    if (cl.Full)
+                    {
+                        foreach (var s in cl.Samples) sb.AppendLine(Row(Csv(cl.Name), s, c));
+                    }
+                    else
+                    {
+                        // Layout 1: only the correlation columns exist. The rest are left empty,
+                        // which a reader can tell apart from a measured zero.
+                        foreach (var sec in cl.Seconds)
+                            sb.AppendLine(string.Join(",", new[]
+                            {
+                                Iso(sec.UtcTicks), Csv(cl.Name), "", sec.FrameMaxMs.ToString("0.00", c),
+                                sec.Stalls.ToString(c), "", "", "", "", "", "", "", "", "", "", "", "",
+                                "", "", "", "", sec.CpuMsPerSec.ToString("0.0", c), "", "", "", "",
+                                sec.Collections.ToString(c), "", "",
+                            }));
+                    }
+                }
 
                 File.WriteAllText(path, sb.ToString());
                 return path;
@@ -190,6 +216,26 @@ namespace DiagnoseServerLag
                 return null;
             }
         }
+
+        /// <summary>One machine-second, every column, in the order the header declares.</summary>
+        private static string Row(string machine, Sample s, CultureInfo c) =>
+            string.Join(",", new[]
+            {
+                Iso(s.UtcTicks), machine,
+                s.FrameMsAvg.ToString("0.00", c), s.FrameMsMax.ToString("0.00", c),
+                s.Stalls.ToString(c), s.Frames.ToString(c),
+                s.Ping.ToString(c), s.HasPing ? "1" : "0", s.PingFromRoundTrip ? "1" : "0",
+                s.LocalQuality.ToString("0.0000", c), s.RemoteQuality.ToString("0.0000", c),
+                s.InByteSec.ToString("0", c), s.OutByteSec.ToString("0", c),
+                s.SendQueue.ToString(c), s.SendRate.ToString(c),
+                s.Zdos.ToString(c), s.Instances.ToString(c),
+                s.ZdosSent.ToString(c), s.ZdosRecv.ToString(c), s.ChangeQueue.ToString(c),
+                s.Peers.ToString(c),
+                s.CpuMsPerSec.ToString("0.0", c), s.HasCpu ? "1" : "0",
+                s.Gc0.ToString(c), s.Gc1.ToString(c), s.Gc2.ToString(c),
+                Machine.Collections(s).ToString(c),
+                s.HeapBytes.ToString(c), s.WorkingSetBytes.ToString(c),
+            });
 
         private static string Iso(long ticks) =>
             ticks <= 0 ? "" : new DateTime(ticks, DateTimeKind.Utc).ToString("yyyy-MM-ddTHH:mm:ssZ");

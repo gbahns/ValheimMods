@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.6.0 — unreleased
+
+- **The group capture now brings back every column from every machine**, not the five the
+  correlation needed. Greg's point, and the first real capture had already proved it: it answered
+  "were the stalls shared" (they were not) and then could not say what the machine had been doing
+  during them, which took a second command on a second machine to find out.
+- That second command does not scale to other people. Every machine records continuously and
+  `dsl_bench` reads backwards, so a teammate asked later can still cover the same minute — but it
+  costs four people's attention and four files, and **a client that has logged off has taken its
+  history with it**, since the ring lives in memory. One admin command, while everyone is still
+  connected, now ends with everything.
+- The series travels **compressed** (`ZPackage.WriteCompressed`). The payload objection that
+  justified trimming it does not hold anyway: the window is fully recorded before any of it is
+  sent, so the transfer cannot contaminate the measurement it is carrying.
+- `group-<timestamp>.csv` carries all 29 columns, one row per machine per second.
+- Clients older than 0.6.0 still answer, in the reduced format. Their extra columns are written
+  **empty rather than zero**, so a gap is never read as a measurement, and the summary says how
+  many sent the reduced form.
+
 ## 0.5.1
 
 - **The group capture in 0.5.0 never ran.** All of its code shipped, and none of it was reachable:

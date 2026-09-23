@@ -88,6 +88,88 @@ namespace DiagnoseServerLag
     }
 
     /// <summary>
+    /// Puts a whole Sample on the wire and takes it off again.
+    ///
+    /// Every field, not a chosen subset. The group capture used to send five columns on the
+    /// reasoning that nobody would line the rest up by hand - which was wrong the first time it
+    /// mattered: the very first real group capture answered "were the stalls shared" and then could
+    /// not answer "what was the machine doing", so it took a second command on a second machine to
+    /// finish the job the first was supposed to do.
+    ///
+    /// The payload argument that justified trimming does not hold either. The window is already
+    /// recorded before any of it is sent, so the transfer cannot contaminate the measurement it is
+    /// carrying, and ZPackage.WriteCompressed squeezes a series of slowly-changing numbers hard.
+    /// </summary>
+    internal static class SampleWire
+    {
+        internal static void Write(ZPackage pkg, Sample s)
+        {
+            pkg.Write(s.At);
+            pkg.Write(s.UtcTicks);
+            pkg.Write(s.FrameMsAvg);
+            pkg.Write(s.FrameMsMax);
+            pkg.Write(s.Stalls);
+            pkg.Write(s.Frames);
+            pkg.Write(s.Ping);
+            pkg.Write(s.HasPing);
+            pkg.Write(s.PingFromRoundTrip);
+            pkg.Write(s.LocalQuality);
+            pkg.Write(s.RemoteQuality);
+            pkg.Write(s.OutByteSec);
+            pkg.Write(s.InByteSec);
+            pkg.Write(s.SendQueue);
+            pkg.Write(s.SendRate);
+            pkg.Write(s.Zdos);
+            pkg.Write(s.Instances);
+            pkg.Write(s.ZdosSent);
+            pkg.Write(s.ZdosRecv);
+            pkg.Write(s.ChangeQueue);
+            pkg.Write(s.Peers);
+            pkg.Write(s.CpuMsPerSec);
+            pkg.Write(s.HasCpu);
+            pkg.Write(s.Gc0);
+            pkg.Write(s.Gc1);
+            pkg.Write(s.Gc2);
+            pkg.Write(s.HeapBytes);
+            pkg.Write(s.WorkingSetBytes);
+        }
+
+        internal static Sample Read(ZPackage pkg)
+        {
+            var s = new Sample();
+            s.At = pkg.ReadSingle();
+            s.UtcTicks = pkg.ReadLong();
+            s.FrameMsAvg = pkg.ReadSingle();
+            s.FrameMsMax = pkg.ReadSingle();
+            s.Stalls = pkg.ReadInt();
+            s.Frames = pkg.ReadInt();
+            s.Ping = pkg.ReadInt();
+            s.HasPing = pkg.ReadBool();
+            s.PingFromRoundTrip = pkg.ReadBool();
+            s.LocalQuality = pkg.ReadSingle();
+            s.RemoteQuality = pkg.ReadSingle();
+            s.OutByteSec = pkg.ReadSingle();
+            s.InByteSec = pkg.ReadSingle();
+            s.SendQueue = pkg.ReadInt();
+            s.SendRate = pkg.ReadInt();
+            s.Zdos = pkg.ReadInt();
+            s.Instances = pkg.ReadInt();
+            s.ZdosSent = pkg.ReadInt();
+            s.ZdosRecv = pkg.ReadInt();
+            s.ChangeQueue = pkg.ReadInt();
+            s.Peers = pkg.ReadInt();
+            s.CpuMsPerSec = pkg.ReadSingle();
+            s.HasCpu = pkg.ReadBool();
+            s.Gc0 = pkg.ReadInt();
+            s.Gc1 = pkg.ReadInt();
+            s.Gc2 = pkg.ReadInt();
+            s.HeapBytes = pkg.ReadLong();
+            s.WorkingSetBytes = pkg.ReadLong();
+            return s;
+        }
+    }
+
+    /// <summary>
     /// A fixed-length history of the most recent samples, oldest first when enumerated.
     ///
     /// The mod keeps a rolling window rather than a growing log because the question is always
