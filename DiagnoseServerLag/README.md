@@ -79,10 +79,35 @@ The readout is four lines — your frame time, ping, queue and the server's tick
 | `dsl_why` | Print the verdict and its evidence as text |
 | `dsl_now` | The last second measured on this machine |
 | `dsl_server` | What the server last reported about itself, including the per-player table |
+| `dsl_bench [seconds]` | Summarize the last N seconds (default 120) and write them to a CSV |
+| `dsl_cpu` | What this process is costing the machine, and how much headroom is left |
 | `dsl_dump` | Write every measured second to a CSV under `BepInEx/config/DiagnoseServerLag/` |
 | `dsl_reset` | Forget the history and rebuild the baseline |
 
 `dsl_why` and `dsl_server` work on the dedicated server's own console too.
+
+## Comparing two servers
+
+Tick time cannot tell you how a server is doing if it runs a frame limiter, and most dedicated servers do. A server pinned to 33.3 ms might be using a tenth of a core or all of it — the tick is held at its configured length either way, and only starts moving once the server has already failed.
+
+What survives the cap is **CPU time consumed per second of wall clock**, so that is what the mod records. It also gives you a headroom figure: how many times the current load the server could carry before one core is full. One core, not the machine — Valheim's simulation is effectively single threaded, so spare cores do not raise the ceiling.
+
+Run this on each server's own console:
+
+```
+dsl_bench 300
+```
+
+It prints a summary and writes `BepInEx/config/DiagnoseServerLag/lag-<role>-<timestamp>.csv`. Then compare the two:
+
+```powershell
+.\compare-servers.ps1 -A dathost -B "C:\path\to\local\lag-dedicated-....csv"
+.\compare-servers.ps1 -List      # what captures are on the DatHost server
+```
+
+`-A dathost` fetches the newest capture off the DatHost server over its REST API, using the same credentials as `deploy-dathost.ps1`.
+
+**Put the same world on both machines first.** A capture of a 340,000-object world against one holding 12,000 compares worlds, not servers — the script says so and refuses to draw a conclusion, falling back to a rough per-object normalization.
 
 ## Configuration
 

@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.3.0 — unreleased
+
+- **Measures what the server costs the machine, not just how long its ticks are.** Tick time cannot
+  measure a capped server, and most dedicated servers are capped: bahnsheim holds 33.3 ms with
+  almost no variance, and that single number is equally consistent with 3 ms of work plus 30 of
+  sleep or with 33 ms of work and nothing left over. Those are the same measurement and opposite
+  situations. The mod now records CPU time consumed per wall second, which survives the cap, says
+  how much room is left *before* the server is in trouble, and is the one figure that compares
+  honestly between two different machines.
+- Also records garbage collections by generation — a gen2 pause is a stall the tick average hides —
+  along with managed heap and working set.
+- **`dsl_bench [seconds]`** prints a summary built for comparison (role, cores, world, tick, CPU
+  share, headroom, GC rate, memory, traffic) and writes the same window to a CSV. It reads the
+  history already in the ring, so it returns immediately rather than starting a timer.
+- **`dsl_cpu`** prints the current CPU share and headroom on its own.
+- The CSV now carries a `#` metadata header — mod version, role, cores, CPU model, OS, world size,
+  player count — so a capture can be identified later without anyone remembering which machine it
+  came from, and gained columns for CPU, GC and memory.
+- **`compare-servers.ps1`** puts two captures side by side. `-A dathost` fetches the newest capture
+  off the DatHost server over its REST API; `-List` shows what captures are on it. It refuses to
+  draw a conclusion from captures of different worlds — it says so loudly and falls back to
+  per-object normalization, because comparing two servers carrying different amounts of world is
+  comparing worlds, not servers.
+- Headroom is reported against **one** core, not the machine. Valheim's simulation is effectively
+  single threaded, so idle cores next to it do not raise the ceiling.
+
 ## 0.2.3
 
 - **Stopped flooding the server console.** On the real server, 452 of the last 600 console lines

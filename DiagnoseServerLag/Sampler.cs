@@ -68,6 +68,7 @@ namespace DiagnoseServerLag
             Peers.Clear();
             _started = false;
             Frozen = false;
+            Machine.Reset();
             _bucketTotalMs = 0f;
             _bucketMaxMs = 0f;
             _bucketFrames = 0;
@@ -175,6 +176,11 @@ namespace DiagnoseServerLag
             // verdict rules that use it are client-only by construction.
             var scene = ZNetScene.instance;
             if (scene != null) s.Instances = scene.NrOfInstances();
+
+            // The machine-level half: CPU, memory and collections. This is the part that still
+            // means something on a frame-capped server, where tick time is constant by
+            // construction and says nothing about how much room is left.
+            Machine.Fill(ref s, now);
 
             History.Add(s);
         }

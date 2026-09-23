@@ -59,6 +59,16 @@ namespace DiagnoseServerLag
         internal int ChangeQueue;
 
         internal int Peers;
+
+        // ── what the process costs the machine ──────────────────────────────────────
+        // The measurements that survive a frame cap. See Machine for why tick time does not.
+        /// <summary>Milliseconds of CPU burned per second of wall clock. 1000 is one core fully busy.</summary>
+        internal float CpuMsPerSec;
+        internal bool HasCpu;
+        /// <summary>Garbage collections that happened during this second, by generation.</summary>
+        internal int Gc0, Gc1, Gc2;
+        internal long HeapBytes;
+        internal long WorkingSetBytes;
     }
 
     /// <summary>
