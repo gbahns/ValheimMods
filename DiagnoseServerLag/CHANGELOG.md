@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.0 — unreleased
+## 0.4.0
 
 - **"Your machine hitched" is no longer the end of the conversation.** A new verdict attributes
   stalls to **garbage collection** when the evidence supports it. A collection pause is invisible
