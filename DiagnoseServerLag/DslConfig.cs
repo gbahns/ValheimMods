@@ -54,6 +54,7 @@ namespace DiagnoseServerLag
         internal static ConfigEntry<float> ChurnFloor;
         internal static ConfigEntry<float> ChurnFactor;
         internal static ConfigEntry<float> InstanceRiseWarn;
+        internal static ConfigEntry<float> GcCoincidence;
 
         internal static void Bind(DiagnoseServerLagMod mod)
         {
@@ -171,6 +172,11 @@ namespace DiagnoseServerLag
                 "How many times the baseline rate of object updates counts as churn. Judged against this " +
                 "server's own recent normal, because a quiet forest and a working base legitimately differ by " +
                 "an order of magnitude and no fixed number is right for both.");
+            GcCoincidence = mod.BindRange("Thresholds", "GC Coincidence", 0.5f, 0.1f, 1f,
+                "What fraction of stalled seconds must contain a gen1 or gen2 garbage collection before the hitches " +
+                "are blamed on the collector. Also required to be at least twice the rate seen in seconds that did " +
+                "not stall, because a machine collecting constantly would otherwise have every stall blamed on it. " +
+                "Gen0 is ignored entirely: it is cheap and continuous.");
             InstanceRiseWarn = mod.BindRange("Thresholds", "Instance Rise Warn", 40f, 5f, 2000f,
                 "New objects a second being built into the scene which, happening at the same time as a stall, " +
                 "attributes that stall to loading the world rather than to the machine being too slow.");

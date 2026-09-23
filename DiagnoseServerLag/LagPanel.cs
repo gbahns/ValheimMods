@@ -235,6 +235,24 @@ namespace DiagnoseServerLag
             StatRow("bandwidth", $"{Stats.Bytes(s.InByteSec)}/s in, {Stats.Bytes(s.OutByteSec)}/s out", 0);
             StatRow("objects", $"{s.Zdos} known, {s.Instances} built nearby", 0);
             StatRow("object traffic", $"{s.ZdosRecv}/s in, {s.ZdosSent}/s out, {s.ChangeQueue} unacknowledged", 0);
+            // The machine-level rows. Without these the panel could say "your machine hitched" and
+            // show nothing at all about what the machine was doing, which is exactly where a reader
+            // was left to guess.
+            if (Machine.Readable && s.HasCpu)
+            {
+                StatRow("game CPU", $"{Machine.CoreShare(s.CpuMsPerSec) * 100f:0}% of one core, " +
+                                    $"{Machine.MachineShare(s.CpuMsPerSec) * 100f:0.0}% of {Machine.ProcessorCount} threads",
+                    Rank(Machine.CoreShare(s.CpuMsPerSec), 0.7f, 0.95f));
+                StatRow("collections", $"{Stats.Mean(window, x => x.Gc0) * 60f:0} gen0, {Stats.Mean(window, x => x.Gc1) * 60f:0} gen1, " +
+                                       $"{Stats.Mean(window, x => x.Gc2) * 60f:0.0} gen2 per minute",
+                    Stats.Mean(window, x => x.Gc2) * 60f >= 6f ? 1 : 0);
+                StatRow("memory", $"heap {Stats.Bytes(s.HeapBytes)}, working set {Stats.Bytes(s.WorkingSetBytes)}", 0);
+            }
+            else if (!Machine.Readable)
+            {
+                StatRow("game CPU", $"not measurable ({Machine.UnreadableReason})", 0);
+            }
+
             StatRow("history", Sampler.Frozen
                     ? $"{Sampler.History.Count}s kept, held still while paused"
                     : $"{Sampler.History.Count}s kept of {Sampler.History.Capacity}s", 0);
@@ -275,6 +293,9 @@ namespace DiagnoseServerLag
             StatRow("worst queue", $"{Stats.Bytes(r.WorstSendQueue)} to one player, {Stats.Bytes(r.TotalSendRate)}/s sent in total",
                 Rank(r.WorstSendQueue, DslConfig.QueueWarnBytes.Value, DslConfig.QueueSevereBytes.Value));
             StatRow("kind", r.Dedicated ? "dedicated server" : "a player's game, also drawing their screen", 0);
+            // The server's own CPU is not in the report yet - dsl_bench_server is where it lives -
+            // so say where to get it rather than leaving a gap the reader reads as zero.
+            StatRow("server CPU", "run dsl_bench_server for the server's CPU and headroom", 0);
             StatRow("report age", $"{LagNetwork.ReportAge:0.0}s", LagNetwork.ReportAge > 10f ? 1 : 0);
         }
 

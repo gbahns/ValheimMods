@@ -18,6 +18,8 @@ namespace DiagnoseServerLag
         ObjectChurn,
         /// <summary>The client is building a piece of the world. Transient by nature.</summary>
         SceneLoading,
+        /// <summary>The stalls are collection pauses. Memory, not speed.</summary>
+        GarbageCollection,
         /// <summary>This computer could not draw fast enough, with everything else healthy.</summary>
         ThisMachine,
         /// <summary>Something stalled and none of the rules claimed it.</summary>
@@ -110,6 +112,7 @@ namespace DiagnoseServerLag
             AddConnectionQuality(findings, window);
             AddObjectChurn(findings, window, baseline, report);
             AddSceneLoading(findings, window, stalls);
+            AddGarbageCollection(findings, window, stalls);
             AddThisMachine(findings, window, stalls, serverKnown, serverHealthy);
 
             if (findings.Count == 0)
@@ -408,6 +411,61 @@ namespace DiagnoseServerLag
         }
 
         /// <summary>
+        /// The stalls are garbage collections.
+        ///
+        /// This is the rule that stops "your machine hitched" being the end of the conversation. A
+        /// collection pause is invisible to every other measurement here: the network is fine, the
+        /// server is fine, the frame average barely moves, and one frame in a hundred takes a
+        /// quarter of a second. That is exactly the shape a player reports as random stuttering.
+        ///
+        /// Coincidence alone would not be evidence. A big heap collects gen0 constantly, so "there
+        /// was a collection during the stall" is nearly always true and proves nothing. What counts
+        /// is whether collections are *disproportionately* concentrated in the seconds that stalled
+        /// compared with the seconds that did not - the same base-rate comparison the churn rule
+        /// uses, for the same reason. Gen0 is excluded entirely: it is cheap and constant, and
+        /// including it would make this fire on every machine.
+        /// </summary>
+        private static void AddGarbageCollection(List<Finding> findings, List<Sample> window, int stalls)
+        {
+            if (stalls <= 0) return;
+
+            int stallSeconds = 0, quietSeconds = 0, gcInStall = 0, gcInQuiet = 0;
+            int gen2 = 0, gen1 = 0;
+            foreach (var s in window)
+            {
+                bool collected = s.Gc2 > 0 || s.Gc1 > 0;   // the generations that actually pause
+                gen2 += s.Gc2;
+                gen1 += s.Gc1;
+                if (s.Stalls > 0) { stallSeconds++; if (collected) gcInStall++; }
+                else { quietSeconds++; if (collected) gcInQuiet++; }
+            }
+            if (stallSeconds < 2 || gcInStall == 0) return;
+
+            float duringStalls = (float)gcInStall / stallSeconds;
+            float duringQuiet = quietSeconds > 0 ? (float)gcInQuiet / quietSeconds : 0f;
+            if (duringStalls < DslConfig.GcCoincidence.Value) return;
+            // Twice the background rate, or a background rate of essentially zero. Without this a
+            // machine collecting every second would have every stall blamed on the collector.
+            if (duringQuiet > 0.01f && duringStalls < duringQuiet * 2f) return;
+
+            int confidence = duringQuiet <= 0.01f ? 85 : 70;
+            var f = new Finding(Cause.GarbageCollection, confidence,
+                $"The hitches are garbage collections: {gcInStall} of {stallSeconds} stalled second{(stallSeconds == 1 ? "" : "s")} had one.",
+                "This is memory, not speed. The game pauses to collect, and the pause gets longer the more memory is " +
+                "under management - so the machine-wide picture matters as much as the game's own heap. Closing what " +
+                "else is running, and anything holding a large working set, does more here than any graphics setting. " +
+                "If Windows is compressing memory to keep up, that is the same problem seen from the other side.");
+
+            f.With($"collections in {duringStalls * 100f:0}% of stalled seconds against {duringQuiet * 100f:0}% of quiet ones");
+            f.With($"{gen1} gen1 and {gen2} gen2 collections over {window.Count}s");
+            f.With($"worst frame {Stats.Max(window, x => x.FrameMsMax):0} ms, median {Stats.Median(window, x => x.FrameMsAvg):0} ms");
+            Sampler.TryNewest(out var now);
+            if (now.HeapBytes > 0)
+                f.With($"game heap {Stats.Bytes(now.HeapBytes)}, working set {Stats.Bytes(now.WorkingSetBytes)}");
+            findings.Add(f);
+        }
+
+        /// <summary>
         /// This computer, and nothing else.
         ///
         /// Deliberately the last rule and conditional on the others having stayed quiet. It is the
@@ -423,7 +481,8 @@ namespace DiagnoseServerLag
 
             // If another rule already explained it, this is a symptom rather than a cause.
             foreach (var f in findings)
-                if (f.Cause == Cause.SceneLoading || f.Cause == Cause.ServerStarved) return;
+                if (f.Cause == Cause.SceneLoading || f.Cause == Cause.ServerStarved
+                    || f.Cause == Cause.GarbageCollection) return;
 
             int confidence;
             string advice;
@@ -457,6 +516,17 @@ namespace DiagnoseServerLag
             if (serverKnown) finding.With($"server tick {ServerTickMs(LagNetwork.Latest):0.0} ms - {(serverHealthy ? "healthy" : "also struggling")}");
             else finding.With("no server measurement available");
             finding.With($"queue {Stats.Bytes(Stats.Median(window, x => x.SendQueue))}, ping {Stats.Median(window, x => x.Ping):0} ms");
+            // Without this the finding names the machine and says nothing about what it was doing,
+            // which is where the reader was left to guess.
+            bool haveCpu = false;
+            foreach (var w in window) if (w.HasCpu) { haveCpu = true; break; }
+            if (haveCpu)
+            {
+                float cpu = Stats.Median(window, x => x.CpuMsPerSec);
+                finding.With($"this game used {Machine.CoreShare(cpu) * 100f:0}% of one core, {Machine.MachineShare(cpu) * 100f:0.0}% of {Machine.ProcessorCount} threads");
+                finding.With($"heap {Stats.Bytes(Stats.Median(window, x => x.HeapBytes))}, working set {Stats.Bytes(Stats.Median(window, x => x.WorkingSetBytes))}, " +
+                             $"{Stats.Mean(window, x => x.Gc1) * 60f:0} gen1 and {Stats.Mean(window, x => x.Gc2) * 60f:0.0} gen2 collections a minute");
+            }
             findings.Add(finding);
         }
 

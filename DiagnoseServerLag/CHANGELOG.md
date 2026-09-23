@@ -1,6 +1,24 @@
 # Changelog
 
-## 0.3.2 — unreleased
+## 0.4.0 — unreleased
+
+- **"Your machine hitched" is no longer the end of the conversation.** A new verdict attributes
+  stalls to **garbage collection** when the evidence supports it. A collection pause is invisible
+  to every other measurement here — network fine, server fine, frame average barely moving, one
+  frame in a hundred taking a quarter of a second — which is exactly the shape people report as
+  random stuttering.
+  Coincidence alone is not treated as evidence. A large heap collects gen0 constantly, so "there
+  was a collection during the stall" is nearly always true and proves nothing. The rule asks
+  whether collections are *disproportionately* concentrated in the seconds that stalled compared
+  with the seconds that did not, and stays silent when the rate is merely high throughout. Gen0 is
+  ignored entirely; only gen1 and gen2 actually pause.
+- The report now shows **game CPU, collections per minute, heap and working set** for your own
+  machine. They were recorded from 0.3.0 and only written to the CSV, so the panel could say the
+  machine hitched while showing nothing about what the machine was doing.
+- When the verdict is still "this machine", it now carries that CPU and memory evidence instead of
+  naming the machine and stopping.
+
+### Also in this release
 
 - **A throwing method was discarding measurements that worked.** The three per-socket figures were
   read inside one `try`, so when one threw the other two went with it. That cost real data on a
