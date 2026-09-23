@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace DiagnoseServerLag
@@ -34,6 +35,8 @@ namespace DiagnoseServerLag
         private const string RpcReport  = "DSL_Report";    // server -> the client that asked
         private const string RpcCapture = "DSL_Capture";       // admin client -> server: take a capture
         private const string RpcCaptureResult = "DSL_CaptureResult";   // server -> that client, as text
+        private const string RpcCaptureAll = "DSL_CaptureAll";         // server -> every client: send your window
+        private const string RpcClientSeries = "DSL_ClientSeries";     // client -> server, its window
 
         /// <summary>Asked this many times with no answer before the server is called unmodded.</summary>
         private const int SilenceBeforeAbsent = 3;
@@ -113,6 +116,8 @@ namespace DiagnoseServerLag
                 rpc.Register<ZPackage>(RpcReport, RPC_Report);
                 rpc.Register<ZPackage>(RpcCapture, RPC_Capture);
                 rpc.Register<ZPackage>(RpcCaptureResult, RPC_CaptureResult);
+                rpc.Register<ZPackage>(RpcCaptureAll, RPC_CaptureAll);
+                rpc.Register<ZPackage>(RpcClientSeries, RPC_ClientSeries);
                 DiagnoseServerLagMod.Log.LogInfo("[DiagnoseServerLag] Diagnostic RPCs registered.");
             }
             catch (Exception e)
@@ -137,6 +142,7 @@ namespace DiagnoseServerLag
         {
             Register();
             if (ZNet.instance == null) return;
+            UpdateGather();
 
             // Hosting: the server half is this process, so there is nothing to ask and no delay
             // between the two halves of the diagnosis.
@@ -349,6 +355,110 @@ namespace DiagnoseServerLag
             if (peer?.m_socket == null) return false;
             string host = peer.m_socket.GetHostName();
             return !string.IsNullOrEmpty(host) && znet.IsAdmin(host);
+        }
+
+        // ── group capture ───────────────────────────────────────────────────────────
+        //
+        // An admin asks the server for a capture; the server asks every connected client for the
+        // same window and answers once they have replied or the wait runs out. What this buys over
+        // running dsl_bench on each machine separately is the wall clock: the same seconds, lined
+        // up, so "everyone hitched at once" and "one machine hitched four times" stop looking alike.
+
+        /// <summary>How long the server waits for clients before answering with what it has.</summary>
+        private const float GatherSeconds = 8f;
+
+        private static readonly List<ClientSeries> _gathered = new List<ClientSeries>();
+        private static long _gatherFor;            // the admin waiting for the answer
+        private static int _gatherSeconds;
+        private static float _gatherDeadline;
+        private static int _gatherExpected;
+        private static bool _gathering;
+
+        /// <summary>Server side: ask every connected client for the same window, then answer.</summary>
+        private static void BeginGather(long asker, int seconds)
+        {
+            var znet = ZNet.instance;
+            var rpc = ZRoutedRpc.instance;
+            if (znet == null || rpc == null) return;
+
+            _gathered.Clear();
+            _gatherFor = asker;
+            _gatherSeconds = seconds;
+            _gatherDeadline = Time.unscaledTime + GatherSeconds;
+            _gathering = true;
+            _gatherExpected = 0;
+
+            var pkg = new ZPackage();
+            pkg.Write(seconds);
+            foreach (var peer in znet.GetConnectedPeers())
+            {
+                if (peer == null || !peer.IsReady()) continue;
+                _gatherExpected++;
+                rpc.InvokeRoutedRPC(peer.m_uid, RpcCaptureAll, pkg);
+            }
+
+            // Nobody to ask: answer at once rather than making the admin wait out the deadline for
+            // a silence that is already known.
+            if (_gatherExpected == 0) FinishGather();
+        }
+
+        /// <summary>Server side: called every frame while a gather is open.</summary>
+        private static void UpdateGather()
+        {
+            if (!_gathering) return;
+            if (_gathered.Count < _gatherExpected && Time.unscaledTime < _gatherDeadline) return;
+            FinishGather();
+        }
+
+        private static void FinishGather()
+        {
+            _gathering = false;
+            string text;
+            try
+            {
+                text = GroupReport.Build(_gatherSeconds, _gathered, _gatherExpected, out string path);
+                if (path != null) text += "\nwrote " + path + " on the server";
+                DiagnoseServerLagMod.Log.LogInfo("[DiagnoseServerLag] group capture\n" + text);
+            }
+            catch (Exception e)
+            {
+                text = "The group capture failed: " + e.Message;
+                DiagnoseServerLagMod.Log.LogError($"[DiagnoseServerLag] Group capture failed: {e}");
+            }
+
+            if (Sampler.IsServerHere && Player.m_localPlayer != null && _gatherFor == ZDOMan.GetSessionID())
+                Print(text);                                  // hosting: the admin is here
+            else
+                ZRoutedRpc.instance?.InvokeRoutedRPC(_gatherFor, RpcCaptureResult, Wrap(text));
+            _gathered.Clear();
+        }
+
+        /// <summary>A client is asked for its window. Answering is a client-side choice.</summary>
+        private static void RPC_CaptureAll(long sender, ZPackage pkg)
+        {
+            try
+            {
+                if (ZNet.instance == null || ZNet.instance.IsDedicated()) return;
+                if (!DslConfig.ShareMyPerformance.Value) return;
+                int seconds = 120;
+                try { seconds = pkg.ReadInt(); } catch { }
+                seconds = Mathf.Clamp(seconds, 5, Sampler.History.Capacity);
+                ZRoutedRpc.instance?.InvokeRoutedRPC(sender, RpcClientSeries, ClientSeries.FromLocal(seconds).Pack());
+            }
+            catch (Exception e)
+            {
+                DiagnoseServerLagMod.Log.LogWarning($"[DiagnoseServerLag] Could not answer a group capture: {e.Message}");
+            }
+        }
+
+        /// <summary>Server side: a client's window arrived.</summary>
+        private static void RPC_ClientSeries(long sender, ZPackage pkg)
+        {
+            if (!_gathering) return;
+            var series = ClientSeries.Unpack(pkg);
+            if (series == null) return;
+            series.Uid = sender;                              // trust the routing, not the payload
+            _gathered.Add(series);
         }
 
         /// <summary>

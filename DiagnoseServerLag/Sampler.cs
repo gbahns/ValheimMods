@@ -159,6 +159,7 @@ namespace DiagnoseServerLag
             var s = new Sample
             {
                 At = now,
+                UtcTicks = DateTime.UtcNow.Ticks,
                 Frames = _bucketFrames,
                 FrameMsAvg = _bucketFrames > 0 ? _bucketTotalMs / _bucketFrames : 0f,
                 FrameMsMax = _bucketMaxMs,

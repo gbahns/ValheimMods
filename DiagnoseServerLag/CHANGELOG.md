@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.5.0 — unreleased
+
+- **`dsl_bench_server` now captures the whole group.** The server takes its own window and asks
+  every connected client for the same one, then answers with all of them together. Greg's idea, and
+  it turns the mod from "diagnose this machine" into "diagnose this session".
+- **The point is the correlation, not the collection.** Stalls happening on two or more machines in
+  the *same wall-clock second* are one shared event — the server, or the path everyone crosses.
+  The same stalls scattered across different seconds are separate local problems. The numbers are
+  identical either way and only the alignment tells them apart, which is exactly what no single
+  capture can do. The report says which, and names the seconds.
+- Each sample now carries a **UTC timestamp**. `Time.unscaledTime` counts from process start, so
+  two machines agree on nothing; without wall clock a group capture would be a pile of unrelated
+  summaries.
+- Clients send a compact per-second series rather than a summary, because a summary cannot be
+  aligned. Only the columns correlation needs travel; the full record stays in each machine's own
+  CSV.
+- A `group-<timestamp>.csv` is written on the server, one row per machine per second, in long
+  format so a spreadsheet pivots it in a click.
+- **Share My Performance** (client-side, default on) decides whether this machine answers. It sends
+  frame times, stalls, CPU share and collection counts for the asked-about window — performance
+  numbers only, nothing about what you were doing. Turn it off and you are simply absent from the
+  group view.
+- Clients that do not answer are counted and named as such, so a partial picture is never mistaken
+  for a complete one. Clients older than 0.5.0 cannot answer and will show up that way.
+
 ## 0.4.2
 
 - **Stopped inventing a distinction between GC generations.** Unity's Mono — which every copy of

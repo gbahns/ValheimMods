@@ -14,8 +14,22 @@ namespace DiagnoseServerLag
     /// </summary>
     internal struct Sample
     {
-        /// <summary>Time.unscaledTime when this second ended.</summary>
+        /// <summary>Time.unscaledTime when this second ended. Per-process; meaningless off this machine.</summary>
         internal float At;
+
+        /// <summary>
+        /// Wall clock when this second ended, in UTC ticks.
+        ///
+        /// The only field here that means the same thing on two different machines, which is what
+        /// makes a group capture more than a pile of unrelated summaries: stalls that line up on
+        /// the same wall-clock second across several clients are one shared event, and stalls that
+        /// do not are several local ones. Time.unscaledTime cannot answer that - it counts from
+        /// process start, so two machines agree on nothing.
+        ///
+        /// Accurate to whatever the machines' clocks agree on, which with normal time sync is well
+        /// inside the one-second resolution this is compared at.
+        /// </summary>
+        internal long UtcTicks;
 
         // ── how long the frames took ────────────────────────────────────────────────
         // On a client these are render frames. On a dedicated server they are simulation ticks:

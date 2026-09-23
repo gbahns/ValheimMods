@@ -87,6 +87,26 @@ The readout is four lines — your frame time, ping, queue and the server's tick
 
 A Valheim dedicated server has no console to type into — it reads nothing from stdin — so every command here runs on a **client**. To measure the server itself, an admin runs `dsl_bench_server`, which asks the server to capture itself and prints its reply in your console.
 
+## Diagnosing a session, not just a machine
+
+`dsl_bench_server` captures the server **and every connected client over the same seconds**, then says the one thing no single capture can:
+
+```
+  server           tick   33.3 ms   stalls   0   CPU  20.3% of a core   412669 objects
+  Death            frame   8.7 ms   stalls   4   CPU  45.1% of a core   rt 18 ms
+  Marco            frame  14.2 ms   stalls   0   CPU  22.0% of a core   rt 41 ms
+
+ALONE: stalls nobody else had, which are local to that machine.
+  Death            4 second(s) stalling by itself
+  No second had two machines stalling together, so nothing here points at the server.
+```
+
+Stalls in the **same wall-clock second** on two or more machines are one shared event — the server, or the path everyone crosses. The same stalls at different seconds are separate local problems. The numbers look identical; only the alignment separates them.
+
+A `group-<timestamp>.csv` is written on the server, one row per machine per second.
+
+Each client decides whether to answer via **Share My Performance** (default on). It sends frame times, stalls, CPU share and collection counts — performance numbers only. Clients that do not answer are counted and named, so a partial picture is never mistaken for a complete one.
+
 ## Comparing two servers
 
 Tick time cannot tell you how a server is doing if it runs a frame limiter, and most dedicated servers do. A server pinned to 33.3 ms might be using a tenth of a core or all of it — the tick is held at its configured length either way, and only starts moving once the server has already failed.

@@ -41,6 +41,7 @@ namespace DiagnoseServerLag
         // ── server side ─────────────────────────────────────────────────────────────
         internal static ConfigEntry<bool> AnswerClients;
         internal static ConfigEntry<bool> SharePeerDetail;
+        internal static ConfigEntry<bool> ShareMyPerformance;
 
         // ── thresholds ──────────────────────────────────────────────────────────────
         internal static ConfigEntry<float> ServerTickWarnMs;
@@ -135,6 +136,16 @@ namespace DiagnoseServerLag
                 "bytes and distance from the world center - in the answer to everyone, not only admins. The " +
                 "aggregate numbers that diagnose the server always go to everyone; this is the part that names " +
                 "who is on a bad line. Admins receive it either way.");
+
+            // Default on, matching how DudeWhatAreMyStats treats its scoreboard: a server of
+            // friends diagnosing a shared problem wants everyone in the picture, and a player who
+            // would rather not be can say so without the feature needing per-request consent.
+            ShareMyPerformance = mod.Bind("Display", "Share My Performance", true,
+                "Answer an admin's group capture with this machine's frame times, stalls, CPU share and collection " +
+                "counts for the window they asked about. It is what lets a capture tell 'everyone hitched at once', " +
+                "which is the server or the network, from 'one machine hitched', which is that machine. Performance " +
+                "numbers only - nothing about what you were doing. Turn it off and you are simply absent from the " +
+                "group view; everything else still works.");
 
             ServerTickWarnMs = mod.BindRange("Thresholds", "Server Tick Warn Ms", 50f, 5f, 500f,
                 "Server milliseconds per tick above which the server is called slow - but only when the tick " +
