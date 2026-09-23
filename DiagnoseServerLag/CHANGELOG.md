@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.3 — unreleased
+## 0.2.3
 
 - **Stopped flooding the server console.** On the real server, 452 of the last 600 console lines
   were one warning from this mod — "Could not read a peer socket: Steamworks is not initialized" —
