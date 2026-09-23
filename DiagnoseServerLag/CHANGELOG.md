@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.0 — unreleased
+## 0.5.0
 
 - **`dsl_bench_server` now captures the whole group.** The server takes its own window and asks
   every connected client for the same one, then answers with all of them together. Greg's idea, and
