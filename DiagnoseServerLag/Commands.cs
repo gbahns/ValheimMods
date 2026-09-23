@@ -105,7 +105,10 @@ namespace DiagnoseServerLag
                         $"CPU {s.CpuMsPerSec:0} ms/s = {Machine.CoreShare(s.CpuMsPerSec) * 100f:0.0}% of one core, " +
                         $"{Machine.MachineShare(s.CpuMsPerSec) * 100f:0.0}% of {Machine.ProcessorCount} cores\n" +
                         $"headroom about {Machine.Headroom(s.CpuMsPerSec):0.0}x the current load before one core is full\n" +
-                        $"GC {s.Gc0}/{s.Gc1}/{s.Gc2} this second, heap {Stats.Bytes(s.HeapBytes)}, working set {Stats.Bytes(s.WorkingSetBytes)}");
+                        $"collections {Machine.Collections(s)} this second" +
+                        (Machine.GenerationsDistinct ? $" ({s.Gc0}/{s.Gc1}/{s.Gc2} by generation)" : " (generations not separated)") +
+                        $", heap {Stats.Bytes(s.HeapBytes)}" +
+                        (Machine.HasWorkingSet ? $", working set {Stats.Bytes(s.WorkingSetBytes)}" : ", working set not measurable"));
                 }));
 
             new Terminal.ConsoleCommand("dsl_reset", "Diagnose Server Lag: forget the measurements and start again",
@@ -160,8 +163,12 @@ namespace DiagnoseServerLag
                 sb.AppendLine($"  CPU             {cpu:0} ms/s = {Machine.CoreShare(cpu) * 100f:0.0}% of one core, {Machine.MachineShare(cpu) * 100f:0.0}% of the machine");
                 sb.AppendLine($"  CPU peak        {cpuPeak:0} ms/s = {Machine.CoreShare(cpuPeak) * 100f:0.0}% of one core");
                 sb.AppendLine($"  headroom        about {Machine.Headroom(cpu):0.0}x the current load before one core is full");
-                sb.AppendLine($"  GC per minute   {Stats.Mean(window, x => x.Gc0) * 60f:0} gen0, {Stats.Mean(window, x => x.Gc1) * 60f:0} gen1, {Stats.Mean(window, x => x.Gc2) * 60f:0.0} gen2");
-                sb.AppendLine($"  memory          heap {Stats.Bytes(Stats.Median(window, x => x.HeapBytes))}, working set {Stats.Bytes(Stats.Median(window, x => x.WorkingSetBytes))}");
+                sb.AppendLine(Machine.GenerationsDistinct
+                    ? $"  GC per minute   {Stats.Mean(window, x => x.Gc0) * 60f:0} gen0, {Stats.Mean(window, x => x.Gc1) * 60f:0} gen1, {Stats.Mean(window, x => x.Gc2) * 60f:0.0} gen2"
+                    : $"  GC per minute   {Stats.Mean(window, x => Machine.Collections(x)) * 60f:0.0} (generations not separated by this runtime)");
+                sb.AppendLine(Machine.HasWorkingSet
+                    ? $"  memory          heap {Stats.Bytes(Stats.Median(window, x => x.HeapBytes))}, working set {Stats.Bytes(Stats.Median(window, x => x.WorkingSetBytes))}"
+                    : $"  memory          heap {Stats.Bytes(Stats.Median(window, x => x.HeapBytes))}, working set not measurable");
             }
             else
             {
@@ -210,6 +217,8 @@ namespace DiagnoseServerLag
                 sb.AppendLine($"# zdos,{now.Zdos}");
                 sb.AppendLine($"# peers,{now.Peers}");
                 sb.AppendLine($"# cpu_readable,{(Machine.Readable ? 1 : 0)}");
+                sb.AppendLine($"# gc_generations_distinct,{(Machine.GenerationsDistinct ? 1 : 0)}");
+                sb.AppendLine($"# working_set_readable,{(Machine.HasWorkingSet ? 1 : 0)}");
                 sb.AppendLine("#");
 
                 sb.AppendLine("second,frames,frame_avg_ms,frame_max_ms,stalls,ping_ms,ping_measured,ping_round_trip,quality_local,quality_remote," +

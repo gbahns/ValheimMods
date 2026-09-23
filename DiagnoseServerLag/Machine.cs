@@ -43,11 +43,45 @@ namespace DiagnoseServerLag
         private static int _lastGen0, _lastGen1, _lastGen2;
         private static bool _primed;
 
+        // Running totals, kept only to answer whether this runtime separates the generations.
+        private static long _totalGen0, _totalGen2;
+
+        /// <summary>
+        /// Whether GC.CollectionCount actually distinguishes the generations on this runtime.
+        ///
+        /// Unity's Mono does not: a real dedicated server reported gc0 == gc1 == gc2 in all 300
+        /// rows of a capture, every one of them "1/1/1". On .NET, gen0 collections vastly outnumber
+        /// gen2 and the difference is the whole point of reading them separately - cheap and
+        /// constant against rare and expensive. Where the runtime returns one number three times,
+        /// presenting it as three is an invented distinction, and the rule that leans on it has to
+        /// fall back to "a collection happened" instead.
+        ///
+        /// Decided from accumulated counts rather than one sample, because a single second showing
+        /// 1/1/1 is equally consistent with one gen2 collection on a runtime that does separate
+        /// them.
+        /// </summary>
+        internal static bool GenerationsDistinct => _totalGen0 > _totalGen2;
+
+        /// <summary>
+        /// Whether the working set is readable. Unity's Mono leaves Process.WorkingSet64 at zero,
+        /// and a zero that means "not measurable" must not be displayed as though the process were
+        /// using no memory.
+        /// </summary>
+        internal static bool HasWorkingSet { get; private set; }
+
         internal static void Reset()
         {
             _primed = false;
             _self = null;
+            // The generation and working-set findings are properties of the runtime, not of the
+            // world just left, so they are deliberately not cleared here.
         }
+
+        /// <summary>Collections in a sample, counted the way this runtime can actually report them.</summary>
+        internal static int Collections(Sample s) => GenerationsDistinct ? s.Gc1 + s.Gc2 : s.Gc0;
+
+        /// <summary>Whether this sample contained a collection that could have paused the game.</summary>
+        internal static bool Collected(Sample s) => GenerationsDistinct ? (s.Gc1 > 0 || s.Gc2 > 0) : s.Gc0 > 0;
 
         /// <summary>
         /// Fills in the machine-level part of a sample.
@@ -85,6 +119,8 @@ namespace DiagnoseServerLag
                     s.Gc0 = g0 - _lastGen0;
                     s.Gc1 = g1 - _lastGen1;
                     s.Gc2 = g2 - _lastGen2;
+                    _totalGen0 += s.Gc0;
+                    _totalGen2 += s.Gc2;
                 }
                 _primed = true;
                 _lastCpu = cpu;
@@ -97,6 +133,7 @@ namespace DiagnoseServerLag
                 // cached when the Process object was created.
                 _self.Refresh();
                 s.WorkingSetBytes = _self.WorkingSet64;
+                if (s.WorkingSetBytes > 0) HasWorkingSet = true;
                 s.HeapBytes = GC.GetTotalMemory(false);
             }
             catch (Exception e)

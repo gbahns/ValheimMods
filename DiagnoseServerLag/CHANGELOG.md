@@ -1,6 +1,25 @@
 # Changelog
 
-## 0.4.1 — unreleased
+## 0.4.2 — unreleased
+
+- **Stopped inventing a distinction between GC generations.** Unity's Mono — which every copy of
+  Valheim ships, on Windows and Linux alike — returns the same number from `GC.CollectionCount` for
+  all three generations. A real 300-second capture showed `gc0 == gc1 == gc2` in all 300 rows. The
+  mod now detects that from accumulated counts and reports one honest "collections per minute"
+  figure instead of three identical ones dressed up as generations.
+- The garbage-collection verdict adapts with it: where generations are real it still ignores gen0,
+  which is cheap and constant, and where they are not it tests whether a collection happened at
+  all. The base-rate comparison — collections during stalled seconds against quiet ones — carries
+  the rule either way, which is why it still works without the generation filter.
+- **"working set 0 MB" was never a measurement.** Mono leaves `Process.WorkingSet64` at zero, and
+  the report was printing that as though the process used no memory. It now says "not measurable"
+  wherever it appears — panel, `dsl_bench`, `dsl_cpu` and the compare script. The managed heap is
+  unaffected and still reported.
+- Captures record what the runtime could actually answer, as `gc_generations_distinct` and
+  `working_set_readable` in the CSV header, so a file stays readable long after the session.
+
+## 0.4.1
+## 0.4.1
 
 - **Captures can cover an hour instead of ten minutes.** The history was a fixed 600 samples, which
   capped `dsl_bench` at ten minutes. It is now a **History Minutes** setting, default 60 and

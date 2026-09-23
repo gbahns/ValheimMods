@@ -243,10 +243,15 @@ namespace DiagnoseServerLag
                 StatRow("game CPU", $"{Machine.CoreShare(s.CpuMsPerSec) * 100f:0}% of one core, " +
                                     $"{Machine.MachineShare(s.CpuMsPerSec) * 100f:0.0}% of {Machine.ProcessorCount} threads",
                     Rank(Machine.CoreShare(s.CpuMsPerSec), 0.7f, 0.95f));
-                StatRow("collections", $"{Stats.Mean(window, x => x.Gc0) * 60f:0} gen0, {Stats.Mean(window, x => x.Gc1) * 60f:0} gen1, " +
-                                       $"{Stats.Mean(window, x => x.Gc2) * 60f:0.0} gen2 per minute",
-                    Stats.Mean(window, x => x.Gc2) * 60f >= 6f ? 1 : 0);
-                StatRow("memory", $"heap {Stats.Bytes(s.HeapBytes)}, working set {Stats.Bytes(s.WorkingSetBytes)}", 0);
+                float perMin = Stats.Mean(window, x => Machine.Collections(x)) * 60f;
+                StatRow("collections", Machine.GenerationsDistinct
+                        ? $"{Stats.Mean(window, x => x.Gc0) * 60f:0} gen0, {Stats.Mean(window, x => x.Gc1) * 60f:0} gen1, {Stats.Mean(window, x => x.Gc2) * 60f:0.0} gen2 per minute"
+                        : $"{perMin:0.0} per minute (this runtime does not separate the generations)",
+                    perMin >= 6f ? 1 : 0);
+                // A working set of zero is Mono declining to answer, not a process using no memory.
+                StatRow("memory", Machine.HasWorkingSet
+                        ? $"heap {Stats.Bytes(s.HeapBytes)}, working set {Stats.Bytes(s.WorkingSetBytes)}"
+                        : $"heap {Stats.Bytes(s.HeapBytes)}, working set not measurable on this runtime", 0);
             }
             else if (!Machine.Readable)
             {

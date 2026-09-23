@@ -200,11 +200,13 @@ $table = @(
     Row "headroom"         ($(if ($sa.Headroom) { "{0:N1}x" -f $sa.Headroom } else { "n/a" })) `
                            ($(if ($sb.Headroom) { "{0:N1}x" -f $sb.Headroom } else { "n/a" }))
     Row "" "" ""
-    Row "GC gen0 /min"     (Num $sa.Gc0)     (Num $sb.Gc0)
-    Row "GC gen1 /min"     (Num $sa.Gc1)     (Num $sb.Gc1)
-    Row "GC gen2 /min"     (Num $sa.Gc2 "N1") (Num $sb.Gc2 "N1")
+    # Where the runtime reports one number three times, showing three rows invents a distinction.
+    Row "collections /min" (Num $sa.Gc0 "N1") (Num $sb.Gc0 "N1")
     Row "heap"             (HumanBytes $sa.Heap)    (HumanBytes $sb.Heap)
-    Row "working set"      (HumanBytes $sa.Working) (HumanBytes $sb.Working)
+    # Unity's Mono leaves WorkingSet64 at zero. Printing "0 B" would read as a process using no
+    # memory rather than a runtime declining to answer.
+    Row "working set"      $(if ($sa.Working -gt 0) { HumanBytes $sa.Working } else { "not measurable" }) `
+                           $(if ($sb.Working -gt 0) { HumanBytes $sb.Working } else { "not measurable" })
 )
 
 Write-Host ""

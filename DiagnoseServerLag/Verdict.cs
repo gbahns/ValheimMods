@@ -418,24 +418,30 @@ namespace DiagnoseServerLag
         /// server is fine, the frame average barely moves, and one frame in a hundred takes a
         /// quarter of a second. That is exactly the shape a player reports as random stuttering.
         ///
-        /// Coincidence alone would not be evidence. A big heap collects gen0 constantly, so "there
-        /// was a collection during the stall" is nearly always true and proves nothing. What counts
-        /// is whether collections are *disproportionately* concentrated in the seconds that stalled
+        /// Coincidence alone would not be evidence. A big heap collects constantly, so "there was a
+        /// collection during the stall" is nearly always true and proves nothing. What counts is
+        /// whether collections are *disproportionately* concentrated in the seconds that stalled
         /// compared with the seconds that did not - the same base-rate comparison the churn rule
-        /// uses, for the same reason. Gen0 is excluded entirely: it is cheap and constant, and
-        /// including it would make this fire on every machine.
+        /// uses, for the same reason.
+        ///
+        /// Which collections count is left to Machine, because it depends on the runtime. Where the
+        /// generations are real, only gen1 and gen2 are considered: gen0 is cheap and constant and
+        /// would make this fire everywhere. Unity's Mono reports one number three times, so there
+        /// the test is simply whether a collection happened at all - which is why the base-rate
+        /// comparison carries the rule rather than the generation filter.
         /// </summary>
         private static void AddGarbageCollection(List<Finding> findings, List<Sample> window, int stalls)
         {
             if (stalls <= 0) return;
 
             int stallSeconds = 0, quietSeconds = 0, gcInStall = 0, gcInQuiet = 0;
-            int gen2 = 0, gen1 = 0;
+            int gen2 = 0, gen1 = 0, total = 0;
             foreach (var s in window)
             {
-                bool collected = s.Gc2 > 0 || s.Gc1 > 0;   // the generations that actually pause
+                bool collected = Machine.Collected(s);
                 gen2 += s.Gc2;
                 gen1 += s.Gc1;
+                total += Machine.Collections(s);
                 if (s.Stalls > 0) { stallSeconds++; if (collected) gcInStall++; }
                 else { quietSeconds++; if (collected) gcInQuiet++; }
             }
@@ -457,7 +463,9 @@ namespace DiagnoseServerLag
                 "If Windows is compressing memory to keep up, that is the same problem seen from the other side.");
 
             f.With($"collections in {duringStalls * 100f:0}% of stalled seconds against {duringQuiet * 100f:0}% of quiet ones");
-            f.With($"{gen1} gen1 and {gen2} gen2 collections over {window.Count}s");
+            f.With(Machine.GenerationsDistinct
+                ? $"{gen1} gen1 and {gen2} gen2 collections over {window.Count}s"
+                : $"{total} collections over {window.Count}s (this runtime does not separate the generations)");
             f.With($"worst frame {Stats.Max(window, x => x.FrameMsMax):0} ms, median {Stats.Median(window, x => x.FrameMsAvg):0} ms");
             Sampler.TryNewest(out var now);
             if (now.HeapBytes > 0)
