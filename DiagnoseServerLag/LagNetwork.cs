@@ -32,6 +32,8 @@ namespace DiagnoseServerLag
     {
         private const string RpcRequest = "DSL_Request";   // client -> server
         private const string RpcReport  = "DSL_Report";    // server -> the client that asked
+        private const string RpcCapture = "DSL_Capture";       // admin client -> server: take a capture
+        private const string RpcCaptureResult = "DSL_CaptureResult";   // server -> that client, as text
 
         /// <summary>Asked this many times with no answer before the server is called unmodded.</summary>
         private const int SilenceBeforeAbsent = 3;
@@ -66,6 +68,8 @@ namespace DiagnoseServerLag
             {
                 rpc.Register<ZPackage>(RpcRequest, RPC_Request);
                 rpc.Register<ZPackage>(RpcReport, RPC_Report);
+                rpc.Register<ZPackage>(RpcCapture, RPC_Capture);
+                rpc.Register<ZPackage>(RpcCaptureResult, RPC_CaptureResult);
                 DiagnoseServerLagMod.Log.LogInfo("[DiagnoseServerLag] Diagnostic RPCs registered.");
             }
             catch (Exception e)
@@ -99,10 +103,12 @@ namespace DiagnoseServerLag
             if (Sampler.IsServerHere)
             {
                 Module = ServerModule.Local;
-                // Kept up to date on a headless server too, with nobody to show it to: it is what
-                // makes dsl_why and dsl_server work on the dedicated server's own console, which is
-                // the only screen that machine has. Without it the server would run the diagnosis
-                // against itself and conclude the server could not be measured.
+                // Kept up to date on a headless server too, with nobody to show it to, because the
+                // capture a client asks for is built from it. An earlier version of this comment
+                // claimed it was what made dsl_why work on the dedicated server's own console; that
+                // console does not exist. Valheim's dedicated server reads nothing from stdin -
+                // verified by sending the real server a plain "save" and watching it do nothing -
+                // so every Terminal.ConsoleCommand in this mod is reachable only from a client.
                 if (Latest != null && Time.unscaledTime - Latest.ReceivedAt < 1f) return;
                 Latest = ServerReport.FromLocal(includePeerDetail: true);
                 Latest.ReceivedAt = Time.unscaledTime;
@@ -167,6 +173,110 @@ namespace DiagnoseServerLag
             Latest = report;
             Module = ServerModule.Present;
             _unanswered = 0;
+        }
+
+        /// <summary>
+        /// Asks the server to take a capture of itself and send back the summary.
+        ///
+        /// This exists because a Valheim dedicated server has no console to type into. Console
+        /// commands registered with Terminal.ConsoleCommand only ever reach the in-game console,
+        /// which needs a client; the server process reads nothing from stdin, verified against the
+        /// real server by sending it a plain "save" and watching nothing happen. So dsl_bench, which
+        /// was written for exactly that machine, could not be run on it at all - the measurement had
+        /// to be reachable from a client or it was unreachable.
+        ///
+        /// Admin only: it writes a file on the server, and that is not something any player passing
+        /// through should be able to ask for repeatedly.
+        /// </summary>
+        internal static void AskCapture(int seconds)
+        {
+            var rpc = ZRoutedRpc.instance;
+            var znet = ZNet.instance;
+            if (rpc == null || znet == null) return;
+
+            // Hosting: the server is this process, so there is nobody to ask.
+            if (znet.IsServer())
+            {
+                string local = Commands.Bench(seconds, out string localPath);
+                Print(local + (localPath == null ? "" : "\nwrote " + localPath));
+                return;
+            }
+
+            var pkg = new ZPackage();
+            pkg.Write(seconds);
+            rpc.InvokeRoutedRPC(RpcCapture, pkg);
+        }
+
+        /// <summary>A client asked us to capture. Server side only, and only for an admin.</summary>
+        private static void RPC_Capture(long sender, ZPackage pkg)
+        {
+            try
+            {
+                var znet = ZNet.instance;
+                if (znet == null || !znet.IsServer()) return;
+
+                int seconds = 120;
+                try { seconds = pkg.ReadInt(); } catch { /* an older client sent nothing */ }
+                seconds = Mathf.Clamp(seconds, 5, Sampler.History.Capacity);
+
+                if (!IsAdmin(znet, sender))
+                {
+                    ZRoutedRpc.instance?.InvokeRoutedRPC(sender, RpcCaptureResult,
+                        Wrap("Capturing the server needs admin rights."));
+                    return;
+                }
+
+                string text = Commands.Bench(seconds, out string path);
+                if (path != null) text += "\nwrote " + path + " on the server";
+                DiagnoseServerLagMod.Log.LogInfo("[DiagnoseServerLag] capture requested by a client\n" + text);
+                ZRoutedRpc.instance?.InvokeRoutedRPC(sender, RpcCaptureResult, Wrap(text));
+            }
+            catch (Exception e)
+            {
+                DiagnoseServerLagMod.Log.LogWarning($"[DiagnoseServerLag] Could not take a capture: {e.Message}");
+            }
+        }
+
+        /// <summary>The server sent back what it measured.</summary>
+        private static void RPC_CaptureResult(long sender, ZPackage pkg)
+        {
+            string text;
+            try { text = pkg.ReadString(); }
+            catch { return; }
+            if (string.IsNullOrEmpty(text)) return;
+            Print(text);
+        }
+
+        private static ZPackage Wrap(string text)
+        {
+            var pkg = new ZPackage();
+            pkg.Write(text ?? "");
+            return pkg;
+        }
+
+        /// <summary>
+        /// Puts a block of text where the person who asked for it will see it.
+        ///
+        /// The reply arrives long after the console command that triggered it has returned, so it
+        /// cannot be handed back through the command's own context. The console is where it was
+        /// asked for and where it is wanted; the log keeps it after the console scrolls.
+        /// </summary>
+        private static void Print(string text)
+        {
+            DiagnoseServerLagMod.Log.LogInfo("[DiagnoseServerLag] " + text);
+            try { Console.instance?.AddString(text); }
+            catch { /* no console open; the log still has it */ }
+            DiagnoseServerLagMod.Message("Server capture ready - see the console (F5)");
+        }
+
+        /// <summary>Whether this asker may make the server do work and write a file.</summary>
+        private static bool IsAdmin(ZNet znet, long sender)
+        {
+            if (sender == ZDOMan.GetSessionID()) return true;        // the hosting player
+            var peer = znet.GetPeer(sender);
+            if (peer?.m_socket == null) return false;
+            string host = peer.m_socket.GetHostName();
+            return !string.IsNullOrEmpty(host) && znet.IsAdmin(host);
         }
 
         /// <summary>

@@ -87,6 +87,15 @@ namespace DiagnoseServerLag
                     args.Context?.AddString(text + (path == null ? "" : "\nwrote " + path));
                 }));
 
+            new Terminal.ConsoleCommand("dsl_bench_server", "Diagnose Server Lag: ask the server to capture itself (admin only)",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    int seconds = 120;
+                    if (args.Length > 1 && int.TryParse(args[1], out int n)) seconds = n;
+                    LagNetwork.AskCapture(seconds);
+                    args.Context?.AddString("Asked the server for a capture; its reply prints here when it arrives.");
+                }));
+
             new Terminal.ConsoleCommand("dsl_cpu", "Diagnose Server Lag: what this process is costing the machine",
                 (Terminal.ConsoleEvent)(args =>
                 {

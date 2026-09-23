@@ -1,4 +1,4 @@
-using BepInEx;
+﻿using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
@@ -7,7 +7,7 @@ using UnityEngine;
 namespace DiagnoseServerLag
 {
     /// <summary>
-    /// Diagnose Server Lag — says which of the six unrelated things called "lag" is actually
+    /// Diagnose Server Lag â€” says which of the six unrelated things called "lag" is actually
     /// happening, and shows the numbers it decided on.
     ///
     /// A starved server, a saturated link, a lossy connection, an overloaded base, a world still
@@ -17,7 +17,7 @@ namespace DiagnoseServerLag
     ///
     /// Install on the server and on every client. The server half is the point: a client watching
     /// its own frame times can tell that the game feels bad, and only the server's own tick times
-    /// can tell it whether the server was keeping up at the time — which is the one question that
+    /// can tell it whether the server was keeping up at the time â€” which is the one question that
     /// decides whether anything on your machine is worth changing. A server without the mod simply
     /// never answers, and clients say so and fall back to diagnosing their own end alone.
     /// </summary>
@@ -29,7 +29,7 @@ namespace DiagnoseServerLag
     {
         public const string ModGuid    = "DeathMonger.DiagnoseServerLag";
         public const string ModName    = "Diagnose Server Lag";
-        public const string ModVersion = "0.3.0";
+        public const string ModVersion = "0.3.1";
 
         internal static DiagnoseServerLagMod Instance { get; private set; }
         internal static ManualLogSource Log { get; private set; }

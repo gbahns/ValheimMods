@@ -1,6 +1,19 @@
 # Changelog
 
-## 0.3.0 — unreleased
+## 0.3.1
+
+- **`dsl_bench` could not be run on a dedicated server — the machine it was written for.** A Valheim
+  dedicated server has no console to type into: commands registered with `Terminal.ConsoleCommand`
+  only ever reach the in-game console, which needs a client, and the server process reads nothing
+  from stdin. Verified against the real server by sending it a plain `save` and watching it do
+  nothing.
+- **`dsl_bench_server [seconds]`** fixes it. An admin runs it from a connected client; the server
+  captures itself, writes its CSV, and sends the summary back to be printed in that client's
+  console. Admin only, because it makes the server do work and write a file.
+- Corrected the README, which had claimed since 0.1.0 that `dsl_why` and `dsl_server` work on the
+  dedicated server's own console. They never could.
+
+## 0.3.0
 
 - **Measures what the server costs the machine, not just how long its ticks are.** Tick time cannot
   measure a capped server, and most dedicated servers are capped: bahnsheim holds 33.3 ms with
