@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.1 — unreleased
+
+- **Captures can cover an hour instead of ten minutes.** The history was a fixed 600 samples, which
+  capped `dsl_bench` at ten minutes. It is now a **History Minutes** setting, default 60 and
+  adjustable up to 180. A sample is about 110 bytes, so an hour costs roughly 400 KB and three
+  hours about 1.2 MB — the ceiling is set by what is useful to capture, not by what it costs.
+- The setting's description says the thing that is easy to get wrong: longer is **not**
+  automatically better. The summary reports medians over whatever is in the window, so a capture
+  spanning ten minutes of work and ten of standing still describes neither. Match the capture to
+  the activity.
+
 ## 0.4.0
 
 - **"Your machine hitched" is no longer the end of the conversation.** A new verdict attributes

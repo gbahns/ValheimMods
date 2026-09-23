@@ -32,6 +32,7 @@ namespace DiagnoseServerLag
         internal static ConfigEntry<float> StallMs;
         internal static ConfigEntry<int> WindowSeconds;
         internal static ConfigEntry<int> BaselineSeconds;
+        internal static ConfigEntry<int> HistoryMinutes;
 
         // ── how often the server is asked ───────────────────────────────────────────
         internal static ConfigEntry<float> WatchSeconds;
@@ -108,6 +109,14 @@ namespace DiagnoseServerLag
                 "How much history counts as 'normal for this server' when judging whether something has got " +
                 "worse. Rules with no universal right answer - object churn especially - are judged against " +
                 "this rather than against a fixed number.");
+
+            HistoryMinutes = mod.BindRangeInt("Measurement", "History Minutes", 60, 5, 180,
+                "How many minutes of per-second samples to keep, and therefore the longest capture dsl_bench " +
+                "can summarize. A sample is about 110 bytes, so an hour costs roughly 400 KB and three hours " +
+                "about 1.2 MB - the ceiling is set by what is useful to capture, not by what it costs. Longer " +
+                "is not automatically better: the summary reports medians over whatever is in the window, so a " +
+                "window covering ten minutes of work and ten of standing still describes neither. Match the " +
+                "capture to the activity. Takes effect on restart.");
 
             WatchSeconds = mod.BindRange("Measurement", "Watch Seconds", 1f, 0.5f, 30f,
                 "How often to ask the server for its numbers while the report is open. Once a second keeps " +

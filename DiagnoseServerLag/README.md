@@ -122,6 +122,7 @@ Either prints a summary and writes `BepInEx/config/DiagnoseServerLag/lag-<role>-
 
 The ones worth knowing about:
 
+- **History Minutes** (60) — how much per-second history to keep, and so the longest capture `dsl_bench` can summarize. Up to 180. Longer is not automatically better: the summary reports medians over the whole window, so match the capture to the activity rather than maximizing it.
 - **Stall Milliseconds** (100) — a frame longer than this counts as a stall.
 - **Window Seconds** (10) — how many recent seconds the verdict is made from.
 - **Baseline Seconds** (60) — how much history counts as "normal for this server".

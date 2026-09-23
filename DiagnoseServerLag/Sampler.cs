@@ -35,7 +35,30 @@ namespace DiagnoseServerLag
     /// </summary>
     internal static class Sampler
     {
-        internal static readonly Ring History = new Ring(600);          // ten minutes at 1 Hz
+        /// <summary>
+        /// The rolling history, one sample a second.
+        ///
+        /// Not readonly, because the length is configurable and the config is not bound yet when
+        /// this type is initialised - ApplyCapacity replaces it once it is. A sample is about 110
+        /// bytes, so an hour costs roughly 400 KB and the three-hour maximum about 1.2 MB, which is
+        /// why the ceiling is set by what is useful to capture rather than by what it costs.
+        /// </summary>
+        internal static Ring History { get; private set; } = new Ring(3600);   // one hour at 1 Hz
+
+        /// <summary>
+        /// Resizes the history to the configured length. Called once, after the config is bound.
+        ///
+        /// Anything already recorded is dropped rather than copied across: this runs at startup
+        /// before a world exists, so there is nothing worth keeping, and carrying samples from one
+        /// ring to another is machinery with no caller.
+        /// </summary>
+        internal static void ApplyCapacity(int seconds)
+        {
+            seconds = Math.Max(60, seconds);
+            if (History.Capacity == seconds) return;
+            History = new Ring(seconds);
+            _started = false;
+        }
 
         /// <summary>The per-peer detail behind the newest sample. Server-side only; empty on a client.</summary>
         internal static readonly List<PeerSample> Peers = new List<PeerSample>();

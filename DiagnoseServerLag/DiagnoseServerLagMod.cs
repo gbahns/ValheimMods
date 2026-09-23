@@ -29,7 +29,7 @@ namespace DiagnoseServerLag
     {
         public const string ModGuid    = "DeathMonger.DiagnoseServerLag";
         public const string ModName    = "Diagnose Server Lag";
-        public const string ModVersion = "0.4.0";
+        public const string ModVersion = "0.4.1";
 
         internal static DiagnoseServerLagMod Instance { get; private set; }
         internal static ManualLogSource Log { get; private set; }
@@ -58,6 +58,8 @@ namespace DiagnoseServerLag
             }
 
             DslConfig.Bind(this);
+            // The ring is built at type initialisation, before any of that existed; size it now.
+            Sampler.ApplyCapacity(DslConfig.HistoryMinutes.Value * 60);
             Commands.Register();
             _harmony.PatchAll();
             Log.LogInfo($"[DiagnoseServerLag] {ModVersion} loaded.");
