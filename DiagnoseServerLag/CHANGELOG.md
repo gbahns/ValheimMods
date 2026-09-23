@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.0 — unreleased
+## 0.6.0
 
 - **The group capture now brings back every column from every machine**, not the five the
   correlation needed. Greg's point, and the first real capture had already proved it: it answered
