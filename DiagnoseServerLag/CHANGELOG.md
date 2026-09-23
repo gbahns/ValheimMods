@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.2 — unreleased
+## 0.4.2
 
 - **Stopped inventing a distinction between GC generations.** Unity's Mono — which every copy of
   Valheim ships, on Windows and Linux alike — returns the same number from `GC.CollectionCount` for
