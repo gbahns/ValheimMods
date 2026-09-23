@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.3.2 — unreleased
+
+- **A throwing method was discarding measurements that worked.** The three per-socket figures were
+  read inside one `try`, so when one threw the other two went with it. That cost real data on a
+  real server: `ZPlayFabSocket.GetCurrentSendRate()` throws `NotImplementedException` outright,
+  and it was taking the send queue size down with it — the one per-player number genuinely
+  measurable there, and the one that detects saturation. Each figure is now read on its own.
+- **The mod measures latency itself now.** No socket Valheim gives a dedicated server can report a
+  ping: `ZPlayFabSocket` inherits `GetConnectionQuality` from `ZNetStats`, the stub that hardcodes
+  ping and quality to zero, and `ZSteamSocket` reaches for the client Steam interface, which a
+  server process never initializes because `SteamAPI.Init` lives in the client-only `SteamManager`.
+  So the request the mod already sends every second now carries a sequence number, the report
+  echoes it back, and the gap is a real round trip.
+- Clients pass their measured round trip up with the next request, so the server's per-player table
+  shows a real latency for everyone running the mod — something no socket on a dedicated server
+  can provide. Shown as `ms rt` to keep it distinct from a socket ping.
+- A round trip is **labeled as a round trip**, not passed off as a ping. It includes a frame of
+  server processing, which arguably makes it the more useful figure — it is how long an action
+  takes to be acknowledged — but it is not the same number.
+- Connection quality no longer claims to be measured just because a latency exists. A round trip
+  says nothing about packet loss, and the two had shared one "is this measurable" flag.
+- Report layout 2 adds both fields after the peer block, so an older client reads every field it
+  knows and never notices the trailing bytes.
+
 ## 0.3.1
 
 - **`dsl_bench` could not be run on a dedicated server — the machine it was written for.** A Valheim

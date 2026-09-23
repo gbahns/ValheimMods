@@ -36,6 +36,8 @@ namespace DiagnoseServerLag
         internal float LocalQuality;
         internal float RemoteQuality;
         internal bool HasPing;
+        /// <summary>The ping was measured by the mod's own round trip, not reported by the socket.</summary>
+        internal bool PingFromRoundTrip;
         internal float OutByteSec;
         internal float InByteSec;
 

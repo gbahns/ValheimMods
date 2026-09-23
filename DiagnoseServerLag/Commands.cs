@@ -212,7 +212,7 @@ namespace DiagnoseServerLag
                 sb.AppendLine($"# cpu_readable,{(Machine.Readable ? 1 : 0)}");
                 sb.AppendLine("#");
 
-                sb.AppendLine("second,frames,frame_avg_ms,frame_max_ms,stalls,ping_ms,ping_measured,quality_local,quality_remote," +
+                sb.AppendLine("second,frames,frame_avg_ms,frame_max_ms,stalls,ping_ms,ping_measured,ping_round_trip,quality_local,quality_remote," +
                               "in_bytes_sec,out_bytes_sec,send_queue_bytes,send_rate_bytes_sec,zdos,instances,zdos_sent_sec,zdos_recv_sec,change_queue,peers," +
                               "cpu_ms_per_sec,cpu_measured,gc0,gc1,gc2,heap_bytes,working_set_bytes");
 
@@ -222,7 +222,7 @@ namespace DiagnoseServerLag
                     {
                         s.At.ToString("0.0", c), s.Frames.ToString(c),
                         s.FrameMsAvg.ToString("0.00", c), s.FrameMsMax.ToString("0.00", c), s.Stalls.ToString(c),
-                        s.Ping.ToString(c), s.HasPing ? "1" : "0",
+                        s.Ping.ToString(c), s.HasPing ? "1" : "0", s.PingFromRoundTrip ? "1" : "0",
                         s.LocalQuality.ToString("0.0000", c), s.RemoteQuality.ToString("0.0000", c),
                         s.InByteSec.ToString("0", c), s.OutByteSec.ToString("0", c),
                         s.SendQueue.ToString(c), s.SendRate.ToString(c),

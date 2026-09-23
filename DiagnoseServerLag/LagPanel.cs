@@ -214,10 +214,22 @@ namespace DiagnoseServerLag
             StatRow("worst frame", $"{Stats.Max(window, x => x.FrameMsMax):0} ms in the last {window.Count}s", 0);
             StatRow("stalls", $"{stalls} over {window.Count}s, counting frames past {DslConfig.StallMs.Value:0} ms",
                 stalls > 0 ? 1 : 0);
-            StatRow("ping", s.HasPing ? $"{s.Ping} ms, {Stats.Jitter(window, x => x.Ping):0} ms jitter" : "not measurable on this socket",
+            // Named for what it is. A socket ping and a request round trip are different numbers -
+            // the round trip includes a frame of server processing - and quietly labelling one as
+            // the other is the kind of small lie this panel exists not to tell.
+            string pingLabel = s.PingFromRoundTrip ? "round trip" : "ping";
+            StatRow(pingLabel, s.HasPing
+                    ? $"{s.Ping} ms, {Stats.Jitter(window, x => x.Ping):0} ms jitter" +
+                      (s.PingFromRoundTrip ? "   (measured by this mod; the socket cannot report one)" : "")
+                    : "not measurable on this socket",
                 s.HasPing ? Rank(Stats.Jitter(window, x => x.Ping), DslConfig.PingJitterWarnMs.Value, DslConfig.PingJitterWarnMs.Value * 2f) : 0);
-            StatRow("quality", s.HasPing ? $"{s.LocalQuality * 100f:0.0}% local, {s.RemoteQuality * 100f:0.0}% remote" : "not measurable on this socket",
-                s.HasPing ? RankLow(s.LocalQuality, DslConfig.QualityWarn.Value, DslConfig.QualitySevere.Value) : 0);
+            // Quality is a separate question from latency: a round trip tells you nothing about
+            // packet loss, so having one must not make this row claim to be measured.
+            bool qualityMeasured = s.LocalQuality > 0f || s.RemoteQuality > 0f;
+            StatRow("quality", qualityMeasured
+                    ? $"{s.LocalQuality * 100f:0.0}% local, {s.RemoteQuality * 100f:0.0}% remote"
+                    : "not measurable on this socket",
+                qualityMeasured ? RankLow(s.LocalQuality, DslConfig.QualityWarn.Value, DslConfig.QualitySevere.Value) : 0);
             StatRow("upload queue", $"{Stats.Bytes(s.SendQueue)}, {Stats.Bytes(Stats.Slope(window, x => x.SendQueue))}/s trend",
                 Rank(s.SendQueue, DslConfig.QueueWarnBytes.Value, DslConfig.QueueSevereBytes.Value));
             StatRow("bandwidth", $"{Stats.Bytes(s.InByteSec)}/s in, {Stats.Bytes(s.OutByteSec)}/s out", 0);
@@ -298,7 +310,8 @@ namespace DiagnoseServerLag
                     $"{Stats.Bytes(p.SendQueue)} queued",
                     null, null, 16f, rank >= 2 ? Bad : rank == 1 ? UiKit.Header : (isMe ? UiKit.Gold : UiKit.Body),
                     null,
-                    $"{(p.HasPing ? p.Ping + " ms" : "? ms")}   q {p.Quality * 100f:0}%   {p.DistanceFromCenter:0} m out");
+                    $"{(p.HasPing ? p.Ping + (r.PeerPingIsRoundTrip ? " ms rt" : " ms") : "? ms")}" +
+                    $"   {(p.Quality > 0f ? $"q {p.Quality * 100f:0}%" : "q -")}   {p.DistanceFromCenter:0} m out");
             }
         }
 

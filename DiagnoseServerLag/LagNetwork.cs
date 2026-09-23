@@ -42,6 +42,49 @@ namespace DiagnoseServerLag
         private static float _lastAskedAt = -999f;
         private static int _unanswered;
 
+        // ── latency the mod measures for itself ─────────────────────────────────────
+        //
+        // Neither socket Valheim gives a dedicated server can report latency. ZPlayFabSocket
+        // inherits GetConnectionQuality from ZNetStats, the stub that hardcodes ping and quality to
+        // zero, and ZSteamSocket reaches for the client Steam interface, which a server process
+        // never initialises because SteamAPI.Init lives in the client-only SteamManager. So the
+        // only honest way to a real number is to time something the mod already sends.
+        //
+        // The request/reply pair is exactly that: a sequence number goes out, comes back on the
+        // report, and the gap is the round trip. It measures slightly more than the wire - a frame
+        // of server processing rides along - and that is arguably the more useful figure, since it
+        // is how long an action actually takes to be acknowledged. Reported as a round trip rather
+        // than as a ping so the two are never confused.
+
+        private static int _seq;
+        private static int _awaitingSeq = -1;
+        private static float _awaitingSince;
+
+        /// <summary>Smoothed round trip to the server, in milliseconds. 0 until one has completed.</summary>
+        internal static float RoundTripMs { get; private set; }
+
+        /// <summary>Server side: the last round trip each player reported, by peer uid.</summary>
+        private static readonly System.Collections.Generic.Dictionary<long, float> _peerRtt =
+            new System.Collections.Generic.Dictionary<long, float>();
+
+        /// <summary>Server side: what this player last measured, or 0 if they never told us.</summary>
+        internal static float PeerRoundTripMs(long uid) =>
+            _peerRtt.TryGetValue(uid, out float ms) ? ms : 0f;
+
+        /// <summary>
+        /// Folds a completed round trip into the smoothed figure.
+        ///
+        /// Smoothed rather than taken raw because a single sample carries whatever the server was
+        /// doing that frame, and a latency readout that jumped forty milliseconds every second
+        /// would be read as jitter that is not there. The jitter measurement wants the opposite, so
+        /// the per-second samples the sampler records are what it works from.
+        /// </summary>
+        private static void RecordRoundTrip(float ms)
+        {
+            if (ms <= 0f || ms > 10000f) return;
+            RoundTripMs = RoundTripMs <= 0f ? ms : (RoundTripMs * 2f + ms) / 3f;
+        }
+
         internal static ServerReport Latest { get; private set; }
         internal static ServerModule Module { get; private set; } = ServerModule.Unknown;
 
@@ -85,6 +128,9 @@ namespace DiagnoseServerLag
             Module = ServerModule.Unknown;
             _lastAskedAt = -999f;
             _unanswered = 0;
+            RoundTripMs = 0f;
+            _awaitingSeq = -1;
+            _peerRtt.Clear();
         }
 
         internal static void Update()
@@ -141,9 +187,16 @@ namespace DiagnoseServerLag
             // and getting it wrong by falling back to Everybody would broadcast a request to every
             // player rather than failing quietly.
             //
-            // An empty payload today; having one at all means the request can carry options later
-            // without needing a second RPC name and a second round of version skew.
-            rpc.InvokeRoutedRPC(RpcRequest, new ZPackage());
+            // The payload carries a sequence number, echoed back on the report to close the round
+            // trip, and whatever we last measured - the server keeps that per player so an admin's
+            // Players table can show a real latency for everyone running the mod, which no socket
+            // on a dedicated server can provide.
+            var pkg = new ZPackage();
+            pkg.Write(++_seq);
+            pkg.Write(RoundTripMs);
+            _awaitingSeq = _seq;
+            _awaitingSince = Time.unscaledTime;
+            rpc.InvokeRoutedRPC(RpcRequest, pkg);
         }
 
         /// <summary>A client wants our numbers. Only a server answers.</summary>
@@ -155,7 +208,19 @@ namespace DiagnoseServerLag
                 if (znet == null || !znet.IsServer()) return;
                 if (!DslConfig.AnswerClients.Value) return;
 
+                // Both fields are optional: a client older than 0.3.2 sends an empty package, and
+                // reading past the end would throw where doing nothing is correct.
+                int seq = 0;
+                try
+                {
+                    seq = pkg.ReadInt();
+                    float theirRtt = pkg.ReadSingle();
+                    if (theirRtt > 0f && theirRtt < 10000f) _peerRtt[sender] = theirRtt;
+                }
+                catch { /* an older client, or no payload */ }
+
                 var report = ServerReport.FromLocal(includePeerDetail: MaySeePeerDetail(znet, sender));
+                report.Echo = seq;
                 ZRoutedRpc.instance?.InvokeRoutedRPC(sender, RpcReport, report.Pack());
             }
             catch (Exception e)
@@ -170,6 +235,13 @@ namespace DiagnoseServerLag
             var report = ServerReport.Unpack(pkg);
             if (report == null) return;
             report.ReceivedAt = Time.unscaledTime;
+            // Only the reply to the request still outstanding closes a round trip; a late or
+            // duplicated one would otherwise be timed from the wrong send.
+            if (report.Echo != 0 && report.Echo == _awaitingSeq)
+            {
+                RecordRoundTrip((Time.unscaledTime - _awaitingSince) * 1000f);
+                _awaitingSeq = -1;
+            }
             Latest = report;
             Module = ServerModule.Present;
             _unanswered = 0;

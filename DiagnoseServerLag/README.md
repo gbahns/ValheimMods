@@ -149,7 +149,11 @@ One deliberate omission: Valheim's `ISocket.GetAndResetStats` would give cleaner
 
 ## Reading the blind spots
 
-Ping and connection quality come from Steam's own connection status. Valheim's plain TCP path reports both as zero, so a zero here means **not measurable**, not perfect — the report says "not measurable on this socket" rather than coloring it green.
+**Latency on a dedicated server is measured by the mod, not by the game.** No socket Valheim gives a dedicated server can report a ping: the PlayFab socket inherits its connection-quality method from a stub that hardcodes zero, and the Steam socket reaches for the client Steam interface, which a server process never initializes because that lives in the client-only `SteamManager`. Nothing is missing from your host and there is nothing to install — it is how the game is built. So the mod times its own request to the server and reports that round trip instead, labeled `rt` so it is never confused with a socket ping. It includes a frame of server processing, which is arguably the more useful number: it is how long an action takes to be acknowledged.
+
+Connection quality has no such fallback. A round trip says nothing about packet loss, so where the socket cannot report quality the report says "not measurable" rather than inventing one.
+
+On a client, ping and connection quality come from Steam's own connection status where the connection is a Steam one. Valheim's plain TCP path reports both as zero, so a zero here means **not measurable**, not perfect — the report says "not measurable on this socket" rather than coloring it green.
 
 Nothing inside the game can see the host machine's CPU being shared with other tenants. It can, however, see the consequence: a server tick time that is bad while the object count and traffic are normal is the signature of an oversubscribed host, and that is itself a finding you can act on.
 

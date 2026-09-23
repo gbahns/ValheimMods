@@ -14,6 +14,8 @@ namespace DiagnoseServerLag
         internal float Quality;
         internal int SendQueue;
         internal int SendRate;
+        /// <summary>The ping came from the mod's own round trip, not from the socket.</summary>
+        internal bool PingFromRoundTrip;
         /// <summary>How far this player is from the world center; useful for spotting who is loading what.</summary>
         internal float DistanceFromCenter;
     }
@@ -212,20 +214,29 @@ namespace DiagnoseServerLag
                 var server = znet.GetServerPeer();
                 var socket = server?.m_socket;
                 if (socket == null) return;
-                try
+                // Separately, for the same reason as the per-peer reads below: on a PlayFab socket
+                // the queue size is real and the send rate throws NotImplementedException, and one
+                // try around both would throw the usable number away with the missing one.
+                //
+                // Clamped, because the game hands back negative queue sizes. ZSteamSocket's
+                // GetSendQueueSize sums its own queued byte arrays and Steam's pending counters,
+                // none of which can be negative on their own, yet a real session reported
+                // "-21294 B queued". Whatever Steam is reporting through that struct, a negative
+                // backlog is not a measurement, and letting it through both printed nonsense and
+                // fed the saturation rule a number it would silently read as healthy.
+                try { s.SendQueue = Mathf.Max(0, socket.GetSendQueueSize()); }
+                catch (Exception e) { NoteSocketUnreadable(e); }
+                try { s.SendRate = Mathf.Max(0, socket.GetCurrentSendRate()); }
+                catch (Exception e) { NoteSocketUnreadable(e); }
+
+                // The server connection cannot report latency on a PlayFab or plain socket, so use
+                // the round trip of the mod's own request instead. Flagged, so the report can say
+                // which it is rather than passing one off as the other.
+                if (!s.HasPing && LagNetwork.RoundTripMs > 0f)
                 {
-                    // Clamped, because the game hands back negative queue sizes. ZSteamSocket's
-                    // GetSendQueueSize sums its own queued byte arrays and Steam's pending counters,
-                    // none of which can be negative on their own, yet a real session reported
-                    // "-21294 B queued". Whatever Steam is reporting through that struct, a negative
-                    // backlog is not a measurement, and letting it through both printed nonsense and
-                    // fed the saturation rule a number it would silently read as healthy.
-                    s.SendQueue = Mathf.Max(0, socket.GetSendQueueSize());
-                    s.SendRate = Mathf.Max(0, socket.GetCurrentSendRate());
-                }
-                catch (Exception e)
-                {
-                    NoteSocketUnreadable(e);
+                    s.Ping = Mathf.RoundToInt(LagNetwork.RoundTripMs);
+                    s.HasPing = true;
+                    s.PingFromRoundTrip = true;
                 }
                 return;
             }
@@ -257,22 +268,44 @@ namespace DiagnoseServerLag
                     DistanceFromCenter = peer.m_refPos.magnitude,
                 };
 
+                // Each figure is read on its own, because the three are not equally available and
+                // failing together wastes the ones that work. On this server's PlayFab peers,
+                // GetConnectionQuality is inherited from ZNetStats and returns hardcoded zeros,
+                // GetSendQueueSize returns a real in-flight byte count, and GetCurrentSendRate
+                // throws NotImplementedException outright. Reading all three in one try meant that
+                // last throw discarded the queue size - the one per-peer number genuinely
+                // measurable here, and the one that detects saturation.
                 try
                 {
                     peer.m_socket.GetConnectionQuality(out float localQ, out _, out int ping, out _, out _);
-                    ps.Ping = ping;
-                    ps.HasPing = ping > 0 || localQ > 0f;
                     ps.Quality = localQ;
+                    if (ping > 0 || localQ > 0f) { ps.Ping = ping; ps.HasPing = true; }
+                }
+                catch (Exception e) { NoteSocketUnreadable(e); }
+
+                try
+                {
                     ps.SendQueue = Mathf.Max(0, peer.m_socket.GetSendQueueSize());
-                    ps.SendRate = Mathf.Max(0, peer.m_socket.GetCurrentSendRate());
                     if (ps.SendQueue > worstQueue) worstQueue = ps.SendQueue;
+                }
+                catch (Exception e) { NoteSocketUnreadable(e); }
+
+                try
+                {
+                    ps.SendRate = Mathf.Max(0, peer.m_socket.GetCurrentSendRate());
                     totalRate += ps.SendRate;
                 }
-                catch (Exception e)
+                catch (Exception e) { NoteSocketUnreadable(e); }
+
+                // Nothing on this server's sockets can answer for latency, so fall back to what the
+                // mod measured itself: the round trip of its own request to this player. Only
+                // players running the mod have one, which is honest rather than absent.
+                if (!ps.HasPing)
                 {
-                    // The row still goes in, with the socket figures left at "not measurable".
-                    NoteSocketUnreadable(e);
+                    float rtt = LagNetwork.PeerRoundTripMs(peer.m_uid);
+                    if (rtt > 0f) { ps.Ping = Mathf.RoundToInt(rtt); ps.HasPing = true; ps.PingFromRoundTrip = true; }
                 }
+
                 Peers.Add(ps);
             }
 

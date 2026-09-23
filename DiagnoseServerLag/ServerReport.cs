@@ -17,7 +17,11 @@ namespace DiagnoseServerLag
     /// </summary>
     internal sealed class ServerReport
     {
-        private const byte Layout = 1;
+        // 2 added Echo and PeerPingIsRoundTrip, both written AFTER the peer block. That placement
+        // is what keeps an older client readable: it parses every field it knows, stops at the end
+        // of the peers, and never notices the trailing bytes. A newer client reading an older
+        // server checks the version instead of reading past the end.
+        private const byte Layout = 2;
 
         /// <summary>Time.unscaledTime on the receiving client when this arrived.</summary>
         internal float ReceivedAt;
@@ -48,6 +52,12 @@ namespace DiagnoseServerLag
 
         /// <summary>Set when the server declined to include the peer table, so the panel can say why.</summary>
         internal bool PeerDetailWithheld;
+
+        /// <summary>The sequence number of the request this answers, which closes the round trip.</summary>
+        internal int Echo;
+
+        /// <summary>The peer pings came from each client's own round trip, not from a socket.</summary>
+        internal bool PeerPingIsRoundTrip;
 
         internal ZPackage Pack()
         {
@@ -84,6 +94,10 @@ namespace DiagnoseServerLag
                 pkg.Write(p.SendRate);
                 pkg.Write(p.DistanceFromCenter);
             }
+
+            // Layout 2 and later, after the peers; see the note on Layout.
+            pkg.Write(Echo);
+            pkg.Write(PeerPingIsRoundTrip);
             return pkg;
         }
 
@@ -132,6 +146,12 @@ namespace DiagnoseServerLag
                         DistanceFromCenter = pkg.ReadSingle(),
                     });
                 }
+
+                if (layout >= 2)
+                {
+                    r.Echo = pkg.ReadInt();
+                    r.PeerPingIsRoundTrip = pkg.ReadBool();
+                }
                 return r;
             }
             catch (Exception e)
@@ -167,6 +187,8 @@ namespace DiagnoseServerLag
 
             if (includePeerDetail) r.Peers.AddRange(Sampler.Peers);
             else r.PeerDetailWithheld = true;
+
+            foreach (var p in r.Peers) if (p.PingFromRoundTrip) { r.PeerPingIsRoundTrip = true; break; }
 
             return r;
         }
