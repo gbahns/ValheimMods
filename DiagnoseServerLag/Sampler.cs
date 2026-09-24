@@ -85,6 +85,27 @@ namespace DiagnoseServerLag
         internal static string OtherOwners { get; private set; } = "";
 
         /// <summary>
+        /// Players the game says are online, this machine included, from the synced player list.
+        ///
+        /// Needed because owning everything nearby means two completely different things depending
+        /// on whether anyone else is here. Alone it is simply how the game works and is worth no
+        /// remark at all; with four others in the zone it is the finding. A client's peer list
+        /// cannot answer this - it holds only the server - so the player list is what gets read.
+        /// </summary>
+        internal static int PlayersOnline { get; private set; } = 1;
+
+        /// <summary>How many players are online, so "I own everything" can be judged in context.</summary>
+        private static void CountPlayers()
+        {
+            try
+            {
+                var znet = ZNet.instance;
+                PlayersOnline = znet == null ? 1 : Math.Max(1, znet.GetPlayerList().Count);
+            }
+            catch { PlayersOnline = 1; }
+        }
+
+        /// <summary>
         /// Turns the owner tally into something worth reading.
         ///
         /// A client's peer list holds only the server, so an owner id cannot be looked up the
@@ -448,6 +469,7 @@ namespace DiagnoseServerLag
                 }
                 s.OwnedAI = owned;
                 s.NearbyAI = near;
+                CountPlayers();
                 DescribeOtherOwners();
             }
             catch (Exception e)

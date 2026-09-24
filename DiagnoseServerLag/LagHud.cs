@@ -105,9 +105,13 @@ namespace DiagnoseServerLag
 
             if (s.NearbyAI > 0)
             {
-                // Coloured on share, not on count: ten creatures all yours is the situation worth
-                // noticing, and forty split evenly across five players is not.
-                bool carrying = s.NearbyAI >= 5 && s.OwnedAI >= s.NearbyAI * 0.8f;
+                // Coloured on share, not on count - and only when somebody else could be sharing
+                // it. Alone in a zone you own everything near you by definition; that is the design
+                // working, not a warning, and colouring it would cry wolf in single player and on
+                // every solo evening.
+                bool carrying = Sampler.PlayersOnline > 1
+                                && s.NearbyAI >= 5
+                                && s.OwnedAI >= s.NearbyAI * 0.8f;
                 string others = string.IsNullOrEmpty(Sampler.OtherOwners) ? "" : $"  ({Sampler.OtherOwners})";
                 lines.Add(Line("simulating", $"{s.OwnedAI}/{s.NearbyAI}{others}", carrying ? 1 : 0));
             }

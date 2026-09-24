@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.1
+
+- **`simulating` no longer cries wolf when you are alone.** On your own you own everything near you
+  by definition — that is the design working, not a warning — so the line only colors when the
+  game reports more than one player online. Caught before it shipped to anyone: solo on a test
+  server, every session would have shown a warning-colored `12/12` that meant nothing, and a
+  readout that warns about normal is a readout people stop reading.
+- The count is still shown when alone. It is the *coloring* and the "who holds the rest" note that
+  wait for company.
+
 ## 0.7.0
 
 - **The corner readout now shows what a player can act on**, and is **on by default** (Shift+F8
