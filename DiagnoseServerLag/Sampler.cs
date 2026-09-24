@@ -539,7 +539,8 @@ namespace DiagnoseServerLag
                 DescribeOtherOwners();
                 // The per-owner latency rows are fed the object tally, not the creature one: what
                 // decides whether chopping a tree feels slow is who owns the tree.
-                LagNetwork.TrackOwners(_otherObjectOwners.Count > 0 ? _otherObjectOwners : _otherOwners);
+                LagNetwork.TrackOwners(_otherObjectOwners.Count > 0 ? _otherObjectOwners : _otherOwners,
+                                       _otherOwners);
             }
             catch (Exception e)
             {

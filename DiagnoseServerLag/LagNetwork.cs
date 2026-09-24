@@ -386,7 +386,15 @@ namespace DiagnoseServerLag
         {
             internal long Uid;
             internal string Name = "";
+            /// <summary>
+            /// Everything loaded here that they own, and how many of those are creatures. Both are
+            /// worth carrying because they are different burdens: any owned object costs a round
+            /// trip through them when you touch it, but a creature also costs them CPU every
+            /// frame, because BaseAI.UpdateAI runs only on the owner. Ten thousand of their fence
+            /// posts sitting idle is not the same as ten of their trolls thinking.
+            /// </summary>
             internal int Objects;
+            internal int Creatures;
             internal float Ms;              // 0 until an echo completes
             internal bool Answered;
             internal float LastReplyAt;
@@ -421,7 +429,7 @@ namespace DiagnoseServerLag
         /// The caller does the counting because it is already walking that list for other reasons;
         /// this only decides who is worth asking and when.
         /// </summary>
-        internal static void TrackOwners(Dictionary<long, int> owners)
+        internal static void TrackOwners(Dictionary<long, int> owners, Dictionary<long, int> creatures)
         {
             // Forget anyone who no longer owns anything here, so the list follows you around the
             // world rather than accumulating everyone you have ever stood near.
@@ -434,6 +442,7 @@ namespace DiagnoseServerLag
                 if (!_owners.TryGetValue(kv.Key, out var o))
                     _owners[kv.Key] = o = new OwnerLatency { Uid = kv.Key };
                 o.Objects = kv.Value;
+                o.Creatures = creatures != null && creatures.TryGetValue(kv.Key, out int c) ? c : 0;
                 if (string.IsNullOrEmpty(o.Name)) o.Name = NameFor(kv.Key);
                 if (o.Answered && Time.unscaledTime - o.LastReplyAt > EchoTimeout * 3f) o.Answered = false;
             }

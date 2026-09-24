@@ -298,7 +298,9 @@ namespace DiagnoseServerLag
                 string latency = o.Answered
                     ? $"{o.Ms:0} ms round trip through them"
                     : "no reply - they are not running this mod";
-                StatRow(who, $"{o.Objects} creature{(o.Objects == 1 ? "" : "s")}, {latency}",
+                string holds = $"{o.Objects} object{(o.Objects == 1 ? "" : "s")}" +
+                               (o.Creatures > 0 ? $" including {o.Creatures} creature{(o.Creatures == 1 ? "" : "s")}" : "");
+                StatRow(who, $"{holds}, {latency}",
                     o.Answered ? Rank(o.Ms, 200f, 400f) : 0);
             }
             Paragraph(_list,

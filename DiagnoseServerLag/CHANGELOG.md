@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.5
+
+- **Each owner's row shows creatures as well as objects.** 0.9.4 replaced one with the other; Greg
+  pointed out they are different burdens and both matter. Any object somebody else owns costs you a
+  round trip when you touch it, but a creature also costs *them* CPU every frame, because
+  BaseAI.UpdateAI runs only on the owner. Ten thousand of their fence posts sitting idle is not the
+  same as ten of their trolls thinking, and a row that showed only one of those numbers could not
+  tell the two situations apart.
+
 ## 0.9.4
 
 - **Objects are counted, not just creatures.** Greg spotted the gap: the readout said "simulating

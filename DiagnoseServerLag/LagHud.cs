@@ -190,7 +190,10 @@ namespace DiagnoseServerLag
                     // No reply means they are not running this mod, so the cost is unmeasurable
                     // rather than zero. Saying so is better than an empty column that reads as fast.
                     string cost = o.Answered ? $"{o.Ms:0} ms" : "no mod";
-                    lines.Add(Line(who, $"{o.Objects,4} obj   {cost}",
+                    // Both counts, because they are different costs: an owned object means a
+                    // round trip when you touch it, while an owned creature also means their
+                    // machine running its AI every frame.
+                    lines.Add(Line(who, $"{o.Objects,4} obj {o.Creatures,3} mob   {cost}",
                         o.Answered ? Rank(o.Ms, 200f, 400f) : 0));
                 }
                 if (owners.Count > shown)
