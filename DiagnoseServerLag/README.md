@@ -69,7 +69,18 @@ The pause goes through vanilla's own calls, so it works by itself solo or hostin
 
 F8 is free in vanilla Valheim. It replaced F10 in 0.1.1, which clashed with AutomaticFuel's default; if you installed 0.1.0 the mod moves your config over for you, unless you had already chosen a key of your own.
 
-The readout is four lines — your frame time, ping, queue and the server's tick time — with the worst one colored. It is off by default, because watching numbers is the habit this mod exists to replace.
+The readout is six lines, on by default, with the worst one colored:
+
+```
+frames      10 ms  103/s
+stalls      0 in 10s
+cpu         45% of a core
+round trip  18 ms
+simulating  41/44  (Marco has 3)
+server      33.3 ms  412669 obj
+```
+
+**`simulating` is the one to watch.** Valheim runs a creature's AI only on the machine that owns it, ownership falls to whoever was in range first, and it is never rebalanced — so if several of you pile into one zone, one person ends up computing everyone's fights on a machine nobody chose. This is the only warning you get. Spreading out, or letting the strongest machine enter a zone first, is the lever.
 
 ## Console commands
 

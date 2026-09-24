@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -5,14 +6,18 @@ using UnityEngine.UI;
 namespace DiagnoseServerLag
 {
     /// <summary>
-    /// The optional always-on corner readout: four lines, updated once a second.
+    /// The corner readout: six lines, updated once a second.
     ///
-    /// Off by default, and deliberately small. The mod's whole argument is that watching numbers
-    /// is what fails people - a frame counter says the machine is fine while the server burns, and
-    /// its owner concludes the game is fine - so this is here for the case the panel cannot serve,
-    /// which is wanting to notice the moment something turns while you are playing rather than
-    /// reading a diagnosis afterwards. The line that is furthest outside its threshold is colored,
-    /// so a glance is enough and reading is not required.
+    /// The mod's argument is that watching numbers is what fails people - a frame counter says the
+    /// machine is fine while the server burns, and its owner concludes the game is fine. This
+    /// earns its place by showing the numbers a player can act on rather than the ones that are
+    /// easiest to measure, and by colouring whichever is furthest outside its threshold, so a
+    /// glance is enough and reading is not required.
+    ///
+    /// Creatures simulated is the line that justifies the whole thing. Valheim runs a creature's
+    /// AI only on the machine that owns it, ownership falls to whoever was in range first and is
+    /// never rebalanced, and nothing else in the game will ever tell you that you are carrying a
+    /// zone for four other people.
     ///
     /// It lives on its own screen-space overlay canvas above the HUD, and borrows the font and
     /// material of the HUD's center message so it reads as the game's own text. Created lazily; the
@@ -58,53 +63,77 @@ namespace DiagnoseServerLag
             if (_root != null) _root.SetActive(false);
         }
 
+        /// <summary>
+        /// The six numbers worth a permanent place on screen.
+        ///
+        /// Chosen for what a player can act on rather than for what is measurable. Creatures
+        /// simulated is the one that earns its slot outright: Valheim runs a creature's AI only on
+        /// the machine that owns it, ownership goes to whoever was in range first and is never
+        /// rebalanced, and nothing else in the game tells you that you are the one carrying a zone
+        /// for everybody else. Knowing it is the difference between enduring a bad fight and
+        /// spreading out.
+        ///
+        /// Everything else here answers "is it me": frames and stalls for this machine, round trip
+        /// for the line, server tick for the other end. Quality, queue bytes, heap and collections
+        /// are deliberately absent - they matter when a rule fires, and the rule is one key away.
+        /// </summary>
         private static void Refresh()
         {
             if (!Sampler.TryNewest(out var s)) return;
             var report = LagNetwork.Latest;
+            var window = Sampler.History.Recent(DslConfig.WindowSeconds.Value);
+            int stalls = 0;
+            foreach (var w in window) stalls += w.Stalls;
 
-            string frames = Line("frames", $"{s.FrameMsAvg:0} ms  {1000f / Mathf.Max(0.01f, s.FrameMsAvg):0}/s",
-                Rank(s.FrameMsAvg, DslConfig.ClientFrameWarnMs.Value, DslConfig.ClientFrameWarnMs.Value * 2f));
+            var lines = new List<string>();
 
-            string link = s.HasPing
-                ? Line("link", $"{s.Ping} ms  q {s.LocalQuality * 100f:0}%",
-                    Mathf.Max(Rank(s.Ping, 120f, 250f), RankLow(s.LocalQuality, DslConfig.QualityWarn.Value, DslConfig.QualitySevere.Value)))
-                : Line("link", "not measurable", 0);
+            lines.Add(Line("frames", $"{s.FrameMsAvg:0} ms  {1000f / Mathf.Max(0.01f, s.FrameMsAvg):0}/s",
+                Rank(s.FrameMsAvg, DslConfig.ClientFrameWarnMs.Value, DslConfig.ClientFrameWarnMs.Value * 2f)));
 
-            string queue = Line("queue", Stats.Bytes(s.SendQueue),
-                Rank(s.SendQueue, DslConfig.QueueWarnBytes.Value, DslConfig.QueueSevereBytes.Value));
+            lines.Add(Line("stalls", $"{stalls} in {window.Count}s", stalls > 0 ? (stalls > 2 ? 2 : 1) : 0));
 
-            string server;
+            if (Machine.Readable && s.HasCpu)
+                lines.Add(Line("cpu", $"{Machine.CoreShare(s.CpuMsPerSec) * 100f:0}% of a core",
+                    Rank(Machine.CoreShare(s.CpuMsPerSec), 0.8f, 1.2f)));
+
+            // A round trip and a socket ping are different numbers; the label says which this is.
+            if (s.HasPing)
+                lines.Add(Line(s.PingFromRoundTrip ? "round trip" : "ping", $"{s.Ping} ms",
+                    Rank(s.Ping, 120f, 250f)));
+            else
+                lines.Add(Line("link", "not measurable", 0));
+
+            if (s.NearbyAI > 0)
+            {
+                // Coloured on share, not on count: ten creatures all yours is the situation worth
+                // noticing, and forty split evenly across five players is not.
+                bool carrying = s.NearbyAI >= 5 && s.OwnedAI >= s.NearbyAI * 0.8f;
+                string others = string.IsNullOrEmpty(Sampler.OtherOwners) ? "" : $"  ({Sampler.OtherOwners})";
+                lines.Add(Line("simulating", $"{s.OwnedAI}/{s.NearbyAI}{others}", carrying ? 1 : 0));
+            }
+
             if (report == null)
-                server = Line("server", LagNetwork.Module == ServerModule.Absent ? "no mod" : "asking...", 0);
+                lines.Add(Line("server", LagNetwork.Module == ServerModule.Absent ? "no mod" : "asking...", 0));
             else
             {
                 float tick = Mathf.Max(report.TickMsAvg, report.BaselineTickMs);
-                server = Line("server", $"{tick:0.0} ms  {report.Zdos} obj",
-                    Rank(tick, DslConfig.ServerTickWarnMs.Value, DslConfig.ServerTickSevereMs.Value));
+                lines.Add(Line("server", $"{tick:0.0} ms  {report.Zdos} obj",
+                    Verdict.ServerPaced(report) ? 0
+                        : Rank(tick, DslConfig.ServerTickWarnMs.Value, DslConfig.ServerTickSevereMs.Value)));
             }
 
-            _label.text = string.Join("\n", new[] { frames, link, queue, server });
+            _label.text = string.Join("\n", lines.ToArray());
         }
 
         /// <summary>0 normal, 1 past the warning threshold, 2 past the severe one.</summary>
         private static int Rank(float value, float warn, float severe) =>
             value >= severe ? 2 : value >= warn ? 1 : 0;
 
-        /// <summary>The same, for measurements where smaller is worse.</summary>
-        private static int RankLow(float value, float warn, float severe)
-        {
-            // Zero means the socket could not tell us. Coloring that red would report a broken
-            // link every time the plain TCP path is in use, which is not a fault, only a blind spot.
-            if (value <= 0f) return 0;
-            return value <= severe ? 2 : value <= warn ? 1 : 0;
-        }
-
         private static string Line(string label, string value, int rank)
         {
             Color c = rank >= 2 ? Bad : rank == 1 ? Warn : Good;
             string hex = ColorUtility.ToHtmlStringRGB(c);
-            return $"<color=#{hex}><mspace=0.55em>{label,-7}</mspace>{value}</color>";
+            return $"<color=#{hex}><mspace=0.55em>{label,-11}</mspace>{value}</color>";
         }
 
         private static bool Create()
@@ -140,7 +169,7 @@ namespace DiagnoseServerLag
             var rt = text.rectTransform;
             rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
             rt.pivot = new Vector2(1f, 1f);
-            rt.sizeDelta = new Vector2(260f, 96f);
+            rt.sizeDelta = new Vector2(420f, 150f);
             rt.anchoredPosition = new Vector2(-18f, -150f);
 
             go.SetActive(true);

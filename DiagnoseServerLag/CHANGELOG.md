@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.7.0 — unreleased
+
+- **The corner readout now shows what a player can act on**, and is **on by default** (Shift+F8
+  toggles; an existing config keeps whatever it was set to). Six lines:
+
+  ```
+  frames      10 ms  103/s
+  stalls      0 in 10s
+  cpu         45% of a core
+  round trip  18 ms
+  simulating  41/44  (Marco has 3)
+  server      33.3 ms  412669 obj
+  ```
+
+- **`simulating` is the line that justifies the readout.** Valheim runs a creature's AI only on the
+  machine that owns its ZDO; ownership falls to whoever was in range first and is never rebalanced.
+  Nothing else in the game will ever tell you that you are carrying a zone for four other people —
+  and it is the only number here you can act on, by spreading out or letting the strongest machine
+  enter first. It colors on *share*, not count: ten creatures all yours is worth noticing, forty
+  split across five players is not.
+- It names who holds the rest where it can. A client's peer list contains only the server, so an
+  owner id cannot be looked up directly; the synced player list is matched instead, via the id
+  carried in each character's ZDOID. That match can fail for a character made in an earlier
+  session, in which case the count is still shown and only the name is missing — an unnamed number
+  is honest, a wrong name would not be.
+- Deliberately absent: connection quality, queue bytes, heap, collections. They matter when a rule
+  fires, and the rule is one key away.
+
 ## 0.6.1
 
 - **Measures who is simulating the creatures.** Valheim runs a creature's AI only on the machine

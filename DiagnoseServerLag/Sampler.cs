@@ -75,6 +75,53 @@ namespace DiagnoseServerLag
         /// <summary>One line per session when a socket cannot be read; see NoteSocketUnreadable.</summary>
         private static bool _socketWarningLogged;
 
+        private static readonly Dictionary<long, int> _otherOwners = new Dictionary<long, int>();
+        private static readonly List<ZNet.PlayerInfo> _playerList = new List<ZNet.PlayerInfo>();
+
+        /// <summary>
+        /// Who is simulating the creatures here that this machine is not, as a readable phrase.
+        /// Empty when nobody else holds any.
+        /// </summary>
+        internal static string OtherOwners { get; private set; } = "";
+
+        /// <summary>
+        /// Turns the owner tally into something worth reading.
+        ///
+        /// A client's peer list holds only the server, so an owner id cannot be looked up the
+        /// obvious way. The player list is synced to everyone though, and a character's ZDOID
+        /// carries the id of the peer that created it - which is that player's own id - so the two
+        /// can usually be matched. Usually, not always: a character made in an earlier session
+        /// keeps its original id, so when the match fails the count is still reported and only the
+        /// name is missing. An unnamed number is honest; a wrong name would not be.
+        /// </summary>
+        private static void DescribeOtherOwners()
+        {
+            if (_otherOwners.Count == 0) { OtherOwners = ""; return; }
+
+            long topUid = 0; int topCount = 0;
+            foreach (var kv in _otherOwners)
+                if (kv.Value > topCount) { topUid = kv.Key; topCount = kv.Value; }
+
+            string name = null;
+            try
+            {
+                var znet = ZNet.instance;
+                if (znet != null)
+                {
+                    _playerList.Clear();
+                    _playerList.AddRange(znet.GetPlayerList());
+                    foreach (var info in _playerList)
+                        if (info.m_characterID.UserID == topUid) { name = info.m_name; break; }
+                }
+            }
+            catch { /* the list is a convenience; a missing name is not a failure */ }
+
+            string who = string.IsNullOrEmpty(name) ? "another player" : name;
+            OtherOwners = _otherOwners.Count == 1
+                ? $"{who} has {topCount}"
+                : $"{who} has {topCount} of {_otherOwners.Count} others";
+        }
+
         /// <summary>
         /// True while the game is paused and the history is deliberately standing still.
         /// The report says so, because a frozen measurement that looked live would be a lie.
@@ -380,6 +427,7 @@ namespace DiagnoseServerLag
                 var instances = BaseAI.Instances;
                 if (instances == null) return;
                 int owned = 0, near = 0;
+                _otherOwners.Clear();
                 for (int i = 0; i < instances.Count; i++)
                 {
                     var component = instances[i] as Component;
@@ -387,10 +435,20 @@ namespace DiagnoseServerLag
                     var view = component.GetComponent<ZNetView>();
                     if (view == null || !view.IsValid()) continue;
                     near++;
-                    if (view.IsOwner()) owned++;
+                    if (view.IsOwner()) { owned++; continue; }
+
+                    // Somebody else is simulating this one. Tally by owner so the readout can say
+                    // who is carrying what, which is the difference between a number and advice.
+                    var zdo = view.GetZDO();
+                    if (zdo == null) continue;
+                    long other = zdo.GetOwner();
+                    if (other == 0L) continue;               // nobody: the server will hand it out
+                    _otherOwners.TryGetValue(other, out int n);
+                    _otherOwners[other] = n + 1;
                 }
                 s.OwnedAI = owned;
                 s.NearbyAI = near;
+                DescribeOtherOwners();
             }
             catch (Exception e)
             {

@@ -74,9 +74,12 @@ namespace DiagnoseServerLag
                 "Turns the small corner readout on and off without opening the full report.",
                 new KeyboardShortcut(KeyCode.F10, KeyCode.LeftShift));
 
-            ShowHud = mod.Bind("Display", "Show Readout", false,
-                "A small always-on corner readout: your frame time, ping, queue and the server's tick time. " +
-                "Off by default because the point of the mod is the verdict, not another number to watch.");
+            ShowHud = mod.Bind("Display", "Show Readout", true,
+                "The corner readout: frame time, stalls, CPU share, round trip to the server, creatures this " +
+                "machine is simulating, and the server's tick. Shift+F8 toggles it. The creature line is the one " +
+                "worth watching - Valheim runs a creature's AI only on the machine that owns it, and ownership " +
+                "falls to whoever was in range first, so it is the only warning you get that you are carrying a " +
+                "zone for everyone else. A config that already exists keeps whatever it was set to.");
             PanelSize = mod.Bind("Display", "Panel Size", "860,640",
                 "Width and height of the report, remembered when you drag its bottom-right corner.");
             PanelPosition = mod.Bind("Display", "Panel Position", "0,0",
