@@ -513,6 +513,11 @@ namespace DiagnoseServerLag
             {
                 var znet = ZNet.instance;
                 if (znet == null) return "";
+                // The server owns a modest share of the world itself - 82 objects of 395,778 in one
+                // measurement - and it is not in the player list, so without this it shows up as
+                // "another player" and invites the wrong conclusion about a teammate.
+                var server = znet.GetServerPeer();
+                if (server != null && server.m_uid == uid) return "server";
                 foreach (var info in znet.GetPlayerList())
                     if (info.m_characterID.UserID == uid) return info.m_name;
             }

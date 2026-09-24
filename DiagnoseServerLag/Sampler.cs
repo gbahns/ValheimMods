@@ -115,32 +115,90 @@ namespace DiagnoseServerLag
         /// keeps its original id, so when the match fails the count is still reported and only the
         /// name is missing. An unnamed number is honest; a wrong name would not be.
         /// </summary>
+        /// <summary>One line of the owners list: who, and how many creatures they are simulating.</summary>
+        private struct OwnerTally
+        {
+            internal string Name;
+            internal int Count;
+        }
+
+        private static readonly List<OwnerTally> _tallies = new List<OwnerTally>();
+
+        /// <summary>
+        /// How many owners are named before the line is truncated. Four fits the readout without
+        /// crowding out the count it belongs to; past that the tail is what matters, not the names.
+        /// </summary>
+        private const int MaxOwnersShown = 4;
+
+        /// <summary>
+        /// Best effort at who an owner id belongs to, or null when it cannot be matched.
+        ///
+        /// The server is worth naming rather than leaving anonymous: it owns a modest share of the
+        /// world - 82 objects of 395,778 in one measurement - and seeing "server" in the list
+        /// answers a question, where "another player" would invite the wrong conclusion about a
+        /// teammate.
+        /// </summary>
+        private static string NameForOwner(long uid, long serverUid)
+        {
+            if (serverUid != 0L && uid == serverUid) return "server";
+            foreach (var info in _playerList)
+                if (info.m_characterID.UserID == uid) return info.m_name;
+            return null;
+        }
+
         private static void DescribeOtherOwners()
         {
             if (_otherOwners.Count == 0) { OtherOwners = ""; return; }
 
-            long topUid = 0; int topCount = 0;
-            foreach (var kv in _otherOwners)
-                if (kv.Value > topCount) { topUid = kv.Key; topCount = kv.Value; }
-
-            string name = null;
+            _playerList.Clear();
+            long serverUid = 0;
             try
             {
                 var znet = ZNet.instance;
                 if (znet != null)
                 {
-                    _playerList.Clear();
                     _playerList.AddRange(znet.GetPlayerList());
-                    foreach (var info in _playerList)
-                        if (info.m_characterID.UserID == topUid) { name = info.m_name; break; }
+                    var server = znet.GetServerPeer();
+                    if (server != null) serverUid = server.m_uid;
                 }
             }
             catch { /* the list is a convenience; a missing name is not a failure */ }
 
-            string who = string.IsNullOrEmpty(name) ? "another player" : name;
-            OtherOwners = _otherOwners.Count == 1
-                ? $"{who} has {topCount}"
-                : $"{who} has {topCount} of {_otherOwners.Count} others";
+            // Owners that cannot be matched to a player are pooled rather than each printed as
+            // "another player". Repeating an identical label several times is honest - they really
+            // are different people - but reads as a bug, and a reader cannot act on it either way.
+            // One entry that says how many there are carries the same information and admits what
+            // it does not know. Most of these turn out to be the server, which owns a small share
+            // of the world and is named rather than pooled.
+            _tallies.Clear();
+            int unnamedOwners = 0, unnamedCreatures = 0;
+            foreach (var kv in _otherOwners)
+            {
+                string name = NameForOwner(kv.Key, serverUid);
+                if (name == null) { unnamedOwners++; unnamedCreatures += kv.Value; continue; }
+                _tallies.Add(new OwnerTally { Name = name, Count = kv.Value });
+            }
+
+            // Busiest first, then by name. The tie-break is not cosmetic: the tally comes out of a
+            // Dictionary, whose order is not defined, so two players holding the same number would
+            // swap places every second and make the line flicker.
+            _tallies.Sort((a, b) => b.Count != a.Count
+                ? b.Count.CompareTo(a.Count)
+                : string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
+
+            // The pool goes last whatever its size: it is an aggregate rather than a person, so
+            // ranking it among individuals would be comparing two different kinds of thing.
+            if (unnamedOwners > 0)
+                _tallies.Add(new OwnerTally
+                {
+                    Name = unnamedOwners == 1 ? "someone else" : $"{unnamedOwners} others",
+                    Count = unnamedCreatures
+                });
+
+            var parts = new List<string>();
+            int shown = Math.Min(MaxOwnersShown, _tallies.Count);
+            for (int i = 0; i < shown; i++) parts.Add($"{_tallies[i].Name}: {_tallies[i].Count}");
+            OtherOwners = string.Join(", ", parts.ToArray()) + (_tallies.Count > shown ? ", ..." : "");
         }
 
         /// <summary>

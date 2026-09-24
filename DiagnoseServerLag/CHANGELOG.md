@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.9.2
+
+- **A row per player, instead of a label nobody could read.** The readout used to put who owns what
+  on one line and the worst latency on another, under the heading "their stuff" - two rows from two
+  sources to learn one thing about one person. Now each nearby owner gets a row carrying both: how
+  many creatures they are simulating and what it costs you to touch them. The name is the label, so
+  no heading is needed at all.
+- **The readout lines up.** Values sit on a column stop rather than being padded out to a fixed
+  character count, which only ever worked in a monospaced run - forcing this font to monospace set
+  every glyph on the same advance, so "frames" read as "f rames" and an eleven-character label ran
+  straight into its value. The block is also left-aligned in every corner now; right-aligning it
+  lined up the ends of the values and left the labels ragged.
+- **"round trip" is now "server trip".** It never said what it was a round trip to, and the new
+  per-player rows are round trips as well - to somebody else entirely.
+- **The server is named as the server.** It owns a real share of the world - 82 objects of 395,778
+  in one capture - and is not in the player list, so it was appearing as "another player" and
+  pointing suspicion at a teammate.
+- **"Brane has 7 of 2 others" is gone.** It read as a fraction, but counted creatures in the
+  numerator and players in the denominator, so it meant nothing. Owners are now listed with their
+  own tallies, sorted busiest first and then by name - the tally comes from a Dictionary, so equal
+  counts would otherwise swap places every second and make the line flicker.
+- **"(+1 more)" is gone too**, for naming no unit. Where a summary is still needed it says what it
+  is a summary of, and it counts only owners that actually answered rather than promising latencies
+  that were never measured.
+
+## 0.9.1
+
+- **The bottom corners now sit above the game's key hints.** Greg spotted the readout landing on top
+  of the control reference along the bottom of the screen. The clearance is measured from the hints
+  themselves each second rather than set to a constant, because the hints are contextual - building,
+  fighting and fishing each show a different block at a different height - so any fixed offset would
+  be wrong most of the time. Turn the hints off in Settings -> Gameplay and the readout takes the
+  space back.
+
 ## 0.9.0
 
 - **Latency to the people whose objects you are using.** Greg's idea. Your ping to the server does

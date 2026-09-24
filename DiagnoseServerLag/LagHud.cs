@@ -31,6 +31,33 @@ namespace DiagnoseServerLag
         /// <summary>How far in from the screen edge a cornered readout sits, in reference pixels.</summary>
         private const float Margin = 18f;
 
+        /// <summary>Where the value column starts, measured from the start of the label.</summary>
+        private const float ValueColumn = 104f;
+
+        /// <summary>
+        /// Width of the readout block, sized for the widest line the mod produces - currently the
+        /// cpu line. It has to be a fixed width rather than fitted to the content, because a block
+        /// that resized itself every second would jitter sideways as the numbers changed.
+        /// </summary>
+        private const float BlockWidth = 360f;
+
+        /// <summary>
+        /// How many other owners get a row before the rest are summarised. Four keeps the block a
+        /// readable height on a busy server; past that the count matters more than the names.
+        /// </summary>
+        private const int MaxOwnersShown = 4;
+
+        /// <summary>Gap left between the readout and the key hints it is sitting above.</summary>
+        private const float HintGap = 12f;
+
+        /// <summary>
+        /// Used when the key hints cannot be measured but are presumably there. Deliberately
+        /// generous: overlapping the game's own UI is worse than floating a little high.
+        /// </summary>
+        private const float HintFallback = 110f;
+
+        private static readonly Vector3[] _corners = new Vector3[4];
+
         private static GameObject _root;
         private static TMP_Text _label;
         private static float _nextRefresh;
@@ -115,10 +142,12 @@ namespace DiagnoseServerLag
             // A socket reporting exactly zero is reporting nothing - the same trap as quality and
             // working set - so the mod's own round trip is preferred whenever it has one.
             if (s.HasPing && s.Ping > 0)
-                lines.Add(Line(s.PingFromRoundTrip ? "round trip" : "ping", $"{s.Ping} ms",
+                lines.Add(Line(s.PingFromRoundTrip ? "server trip" : "ping", $"{s.Ping} ms",
                     Rank(s.Ping, 120f, 250f)));
             else if (LagNetwork.RoundTripMs > 0f)
-                lines.Add(Line("round trip", $"{LagNetwork.RoundTripMs:0} ms",
+                // Named for its far end, because "round trip" alone does not say to what - and the
+                // per-player rows below are round trips too, to somewhere else entirely.
+                lines.Add(Line("server trip", $"{LagNetwork.RoundTripMs:0} ms",
                     Rank(LagNetwork.RoundTripMs, 120f, 250f)));
             else
                 lines.Add(Line("link", s.HasPing ? "under 1 ms" : "not measurable", 0));
@@ -132,20 +161,29 @@ namespace DiagnoseServerLag
                 bool carrying = Sampler.PlayersOnline > 1
                                 && s.NearbyAI >= 5
                                 && s.OwnedAI >= s.NearbyAI * 0.8f;
-                string others = string.IsNullOrEmpty(Sampler.OtherOwners) ? "" : $"  ({Sampler.OtherOwners})";
-                lines.Add(Line("simulating", $"{s.OwnedAI}/{s.NearbyAI}{others}", carrying ? 1 : 0));
+                lines.Add(Line("simulating", $"{s.OwnedAI} of {s.NearbyAI} nearby", carrying ? 1 : 0));
 
-                // The slowest owner of anything near you, because that is the latency you actually
-                // feel when you swing at their tree - not your ping to the server.
+                // Then a line per other owner: what they are carrying, and what it costs you to
+                // touch it. The two facts were previously on separate lines from separate sources -
+                // a list of names and counts, then the single worst latency - which meant reading
+                // across two rows to learn one thing about one person, and needed a label
+                // ("their stuff") that nobody could parse. One row per player needs no label at
+                // all: the name is the label, and everything on the row is about them.
                 var owners = LagNetwork.OwnerLatencies();
-                LagNetwork.OwnerLatency worst = null;
+                int shown = 0;
                 foreach (var o in owners)
-                    if (o.Answered && (worst == null || o.Ms > worst.Ms)) worst = o;
-                if (worst != null)
-                    lines.Add(Line("their stuff",
-                        $"{(string.IsNullOrEmpty(worst.Name) ? "another player" : worst.Name)} {worst.Ms:0} ms" +
-                        (owners.Count > 1 ? $"  (+{owners.Count - 1} more)" : ""),
-                        Rank(worst.Ms, 200f, 400f)));
+                {
+                    if (shown >= MaxOwnersShown) break;
+                    shown++;
+                    string who = string.IsNullOrEmpty(o.Name) ? "another player" : o.Name;
+                    // No reply means they are not running this mod, so the cost is unmeasurable
+                    // rather than zero. Saying so is better than an empty column that reads as fast.
+                    string cost = o.Answered ? $"{o.Ms:0} ms" : "no mod";
+                    lines.Add(Line(who, $"{o.Objects,3}   {cost}",
+                        o.Answered ? Rank(o.Ms, 200f, 400f) : 0));
+                }
+                if (owners.Count > shown)
+                    lines.Add(Line("", $"+{owners.Count - shown} more", 0));
             }
 
             if (report == null)
@@ -166,12 +204,22 @@ namespace DiagnoseServerLag
         private static int Rank(float value, float warn, float severe) =>
             value >= severe ? 2 : value >= warn ? 1 : 0;
 
+        /// <summary>
+        /// One label-and-value row.
+        ///
+        /// The value is placed with an explicit column stop rather than by padding the label out to
+        /// a fixed character count. Padding only lines up in a monospaced run, and forcing this font
+        /// to monospace - which the first version did, with mspace - sets every glyph on the same
+        /// advance whether it needs it or not, so narrow letters drift apart and "frames" reads as
+        /// "f rames". A column stop leaves the letterforms alone and still aligns the values.
+        /// </summary>
         private static string Line(string label, string value, int rank)
         {
             Color c = rank >= 2 ? Bad : rank == 1 ? Warn : Good;
             string hex = ColorUtility.ToHtmlStringRGB(c);
-            return $"<color=#{hex}><mspace=0.55em>{label,-11}</mspace>{value}</color>";
+            return $"<color=#{hex}>{label}<pos={ValueColumn}px>{value}</color>";
         }
+
 
         /// <summary>
         /// Places the readout, re-read every refresh so a config change lands while you watch it.
@@ -186,6 +234,8 @@ namespace DiagnoseServerLag
             var rt = _label.rectTransform;
             var corner = DslConfig.HudPosition != null ? DslConfig.HudPosition.Value : Corner.BottomRight;
 
+            float bottom = Margin + BottomClearance();
+
             Vector2 anchor, offset;
             switch (corner)
             {
@@ -194,7 +244,7 @@ namespace DiagnoseServerLag
                 case Corner.TopRight:
                     anchor = new Vector2(1f, 1f); offset = new Vector2(-Margin, -Margin); break;
                 case Corner.BottomLeft:
-                    anchor = new Vector2(0f, 0f); offset = new Vector2(Margin, Margin); break;
+                    anchor = new Vector2(0f, 0f); offset = new Vector2(Margin, bottom); break;
                 case Corner.Custom:
                     float x = (DslConfig.HudX != null ? DslConfig.HudX.Value : 98f) / 100f;
                     float y = (DslConfig.HudY != null ? DslConfig.HudY.Value : 4f) / 100f;
@@ -202,16 +252,79 @@ namespace DiagnoseServerLag
                     offset = Vector2.zero;
                     break;
                 default:
-                    anchor = new Vector2(1f, 0f); offset = new Vector2(-Margin, Margin); break;
+                    anchor = new Vector2(1f, 0f); offset = new Vector2(-Margin, bottom); break;
             }
 
             rt.anchorMin = rt.anchorMax = rt.pivot = anchor;
             rt.anchoredPosition = offset;
-            // Text hugs whichever side it is pinned to, so a right-hand readout does not trail off
-            // toward the middle of the screen.
-            _label.alignment = anchor.x > 0.5f
-                ? (anchor.y > 0.5f ? TextAlignmentOptions.TopRight : TextAlignmentOptions.BottomRight)
-                : (anchor.y > 0.5f ? TextAlignmentOptions.TopLeft : TextAlignmentOptions.BottomLeft);
+            // Always left-aligned, whichever corner it is pinned to. Right-aligning a right-hand
+            // readout lines up the ends of the values instead of the starts of the labels, which
+            // leaves the label column ragged - the values are all different widths. The block hugs
+            // its corner because the rect does; the text inside it stays in two straight columns.
+            _label.alignment = anchor.y > 0.5f
+                ? TextAlignmentOptions.TopLeft
+                : TextAlignmentOptions.BottomLeft;
+        }
+
+        /// <summary>
+        /// How much room the game's key hints need along the bottom of the screen.
+        ///
+        /// Measured rather than assumed, because the hints are contextual - building, fighting and
+        /// fishing each show a different block, at a different height - so any constant would be
+        /// wrong most of the time. The measurement goes through screen space rather than comparing
+        /// rect sizes directly: the hints live on the game's canvas and the readout on its own, and
+        /// the two need not share a scale factor.
+        ///
+        /// A player who has turned the hints off in Settings -> Gameplay gets the space back,
+        /// because this asks whether they are actually on screen rather than whether they exist.
+        /// </summary>
+        private static float BottomClearance()
+        {
+            try
+            {
+                var hints = KeyHints.instance;
+                if (hints == null || !hints.gameObject.activeInHierarchy) return 0f;
+                var rt = hints.GetComponent<RectTransform>();
+                if (rt == null) return HintFallback;
+
+                var canvas = _root != null ? _root.GetComponent<Canvas>() : null;
+                float scale = canvas != null && canvas.scaleFactor > 0f ? canvas.scaleFactor : 1f;
+                float limit = Screen.height / scale * 0.4f;
+
+                // The hint blocks rather than their container. KeyHints holds one child per context
+                // - building, combat, inventory - and shows whichever applies, so the container is
+                // free to be a stretched full-screen rect whose top edge says nothing about where
+                // the visible hints end. The active children are the thing actually on screen.
+                float clearance = 0f;
+                for (int i = 0; i < rt.childCount; i++)
+                {
+                    var child = rt.GetChild(i) as RectTransform;
+                    if (child == null || !child.gameObject.activeInHierarchy) continue;
+                    float top = TopOf(child, scale);
+                    if (top > clearance && top <= limit) clearance = top;
+                }
+
+                // No usable child: fall back to the container, which is right when KeyHints is a
+                // plain bottom-anchored panel and caught by the same sanity limit when it is not.
+                if (clearance <= 0f)
+                {
+                    float top = TopOf(rt, scale);
+                    if (top > 0f && top <= limit) clearance = top;
+                }
+
+                return clearance > 0f ? clearance + HintGap : HintFallback;
+            }
+            catch
+            {
+                return HintFallback;
+            }
+        }
+
+        /// <summary>Height of a rect's top edge above the bottom of the screen, in canvas units.</summary>
+        private static float TopOf(RectTransform rt, float scale)
+        {
+            rt.GetWorldCorners(_corners);              // bottom-left, top-left, top-right, bottom-right
+            return RectTransformUtility.WorldToScreenPoint(null, _corners[1]).y / scale;
         }
 
         private static bool Create()
@@ -242,8 +355,11 @@ namespace DiagnoseServerLag
             text.alignment = TextAlignmentOptions.TopLeft;
             text.richText = true;
             text.raycastTarget = false;
+            // Never wrap. A readout line that folded onto a second line would be worse than one
+            // that runs a little past its box, and the box is sized so that does not happen.
+            text.textWrappingMode = TextWrappingModes.NoWrap;
 
-            text.rectTransform.sizeDelta = new Vector2(420f, 150f);
+            text.rectTransform.sizeDelta = new Vector2(BlockWidth, 150f);
 
             go.SetActive(true);
             _label = text;
