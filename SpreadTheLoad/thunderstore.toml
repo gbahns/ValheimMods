@@ -1,0 +1,29 @@
+[config]
+schemaVersion = "0.0.1"
+
+[package]
+namespace = "DeathMonger"
+name = "SpreadTheLoad"
+versionNumber = "0.1.0"
+description = "Server-side performance optimization for multiplayer: moves object ownership off a struggling client so other players stop inheriting its lag and desync. Valheim never rebalances who simulates what; this does. No client install needed."
+websiteUrl = "https://github.com/gbahns/ValheimMods"
+containsNsfwContent = false
+
+[package.dependencies]
+"denikson-BepInExPack_Valheim" = "5.4.2350"
+
+[build]
+icon = "./icon.png"
+readme = "./README.md"
+outdir = "./build"
+
+[[build.copy]]
+source = "./bin/Release/net48/SpreadTheLoad.dll"
+target = "BepInEx/plugins/"
+
+[publish]
+repository = "https://thunderstore.io"
+communities = ["valheim"]
+
+[publish.categories]
+valheim = ["mods", "server-side", "utility", "tweaks", "ai-generated"]

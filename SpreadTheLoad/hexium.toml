@@ -1,0 +1,33 @@
+# Hexium publish config: same package, Hexium repository URL and category slugs.
+# Keep versionNumber/description in step with thunderstore.toml.
+# NOTE: Hexium ignores these categories on API upload, and the install location
+# (Server-only, for this mod) is a site setting under "change install location".
+[config]
+schemaVersion = "0.0.1"
+
+[package]
+namespace = "DeathMonger"
+name = "SpreadTheLoad"
+versionNumber = "0.1.0"
+description = "Server-side performance optimization for multiplayer: moves object ownership off a struggling client so other players stop inheriting its lag and desync. Valheim never rebalances who simulates what; this does. No client install needed."
+websiteUrl = "https://github.com/gbahns/ValheimMods"
+containsNsfwContent = false
+
+[package.dependencies]
+"denikson-BepInExPack_Valheim" = "5.4.2350"
+
+[build]
+icon = "./icon.png"
+readme = "./README.md"
+outdir = "./build"
+
+[[build.copy]]
+source = "./bin/Release/net48/SpreadTheLoad.dll"
+target = "BepInEx/plugins/"
+
+[publish]
+repository = "https://valheim.hexium.gg"
+communities = ["valheim"]
+
+[publish.categories]
+valheim = ["Tools", "Quality of Life", "Open Source", "Valheim 1.0"]

@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <OutputType>Library</OutputType>
+    <RootNamespace>SpreadTheLoad</RootNamespace>
+    <AssemblyName>SpreadTheLoad</AssemblyName>
+    <Deterministic>true</Deterministic>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <NoWarn>$(NoWarn);MSB3277</NoWarn>
+    <LangVersion>12</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="HarmonyX" Version="2.9.0" />
+  </ItemGroup>
+
+  <!-- Plain assemblies, not the _publicized ones, for the reason spelled out in
+       DiagnoseServerLag.csproj: publicized references exist only at build time, so every private
+       member they let you compile against becomes a FieldAccessException in the game.
+
+       Everything this mod touches was checked against the 1.0 assembly first and is public:
+
+         ZNet.GetConnectedPeers / IsServer          ZNetPeer.m_uid / m_playerName / GetRefPos / IsReady
+         ZNetScene.InActiveArea(Vector3, Vector3)
+
+       The one private member is ZDOMan.IsInPeerActiveArea, which is reached by Harmony rather
+       than by reference, so it needs no access at compile time. -->
+  <ItemGroup>
+    <Reference Include="assembly_valheim">
+      <HintPath>..\Libs\assembly_valheim.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- Vector2s, which the mod never names but which the other InActiveArea overload
+         does; overload resolution needs to see it. -->
+    <Reference Include="assembly_utils">
+      <HintPath>..\Libs\assembly_utils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>..\Libs\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>..\Libs\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>..\Libs\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

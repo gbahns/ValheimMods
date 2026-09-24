@@ -27,6 +27,10 @@
       "side": "optional-server",
       "why": "Was client, changed 2026-09-17 in 1.1.0: the [BepInProcess] gate is gone. Clients log their own sailing without the server copy; on a dedicated server it logs every player's sailing to BepInEx/CaptainsLog/shiplog-server-*.csv. It adds no prefab and no RPC, so a server without it breaks nothing."
     },
+    "SpreadTheLoad": {
+      "side": "server",
+      "why": "Server-only and can only be server-side: ZDOMan.Update runs the whole ownership handout inside if (ZNet.instance.IsServer()), so a client copy would patch a method that never runs. It adds no prefab, no RPC and no version check, so clients need nothing and unmodded players connect normally."
+    },
     "DiagnoseServerLag": {
       "side": "both",
       "why": "The server half is the point: it measures its own tick times and per-player socket state and answers clients over a routed RPC. A client cannot make that measurement for itself, so without the server copy the mod can never rule the server in or out."
@@ -145,6 +149,7 @@
     "JereKuusela-Ruler":                             { "side": "client", "why": "Client-side only. Measuring overlay." },
     "JereKuusela-Render_Limits":                     { "side": "client", "why": "Rendering limits are a client concern; the Server-side tag is for config sync. Disabled in the profile." },
     "LTmadness-GumshoeTimerSuite":                   { "side": "client", "why": "Client-side only. Timers drawn on processors." },
+    "KuliTeam-PeekaChest":                           { "side": "client", "why": "Client-side only. Hover-to-see-inside, a rebuild of ContentsWithin; replaced CDEVx-ChestItemsHoverDisplay in the profile on 2026-09-22." },
     "MSchmoecker-ContentsWithin":                    { "side": "client", "why": "Client-side only. Disabled in the profile." },
     "Searica-DodgeShortcut":                         { "side": "client", "why": "Client-side only. A keybind." },
     "Zenox-ServerConnect":                           { "side": "client", "why": "A main-menu connect button; meaningless on a server." },
