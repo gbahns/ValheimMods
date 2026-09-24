@@ -105,16 +105,6 @@ namespace DiagnoseServerLag
             catch { PlayersOnline = 1; }
         }
 
-        /// <summary>
-        /// Turns the owner tally into something worth reading.
-        ///
-        /// A client's peer list holds only the server, so an owner id cannot be looked up the
-        /// obvious way. The player list is synced to everyone though, and a character's ZDOID
-        /// carries the id of the peer that created it - which is that player's own id - so the two
-        /// can usually be matched. Usually, not always: a character made in an earlier session
-        /// keeps its original id, so when the match fails the count is still reported and only the
-        /// name is missing. An unnamed number is honest; a wrong name would not be.
-        /// </summary>
         /// <summary>One line of the owners list: who, and how many creatures they are simulating.</summary>
         private struct OwnerTally
         {
@@ -527,6 +517,7 @@ namespace DiagnoseServerLag
                 }
                 s.OwnedAI = owned;
                 s.NearbyAI = near;
+                s.FeedMs = Feed.IntervalMs;
                 CountPlayers();
                 DescribeOtherOwners();
                 LagNetwork.TrackOwners(_otherOwners);

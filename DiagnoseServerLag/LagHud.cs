@@ -186,6 +186,22 @@ namespace DiagnoseServerLag
                     lines.Add(Line("", $"+{owners.Count - shown} more", 0));
             }
 
+            // How often the server actually reaches this client. Shown next to what the send
+            // cycle predicts, because the number alone means nothing - 200 ms is fine at eight
+            // players and a fault at two. A server can hold a perfect tick on 14% of a core and
+            // still only reach you five times a second; this is the only line that would show it.
+            float feed = Feed.IntervalMs;
+            if (feed > 0f)
+            {
+                float expect = Feed.PredictedMs(report);
+                string note = expect > 0f ? $"  (expect {expect:0})" : "";
+                // Judged against the prediction, not against a constant: being served slower than
+                // the cycle explains is the finding, and the cycle legitimately grows with the
+                // number of people playing.
+                int rank = expect <= 0f ? 0 : Rank(feed, expect * 1.5f, expect * 2.5f);
+                lines.Add(Line("server feed", $"{feed:0} ms{note}", rank));
+            }
+
             if (report == null)
                 lines.Add(Line("server", LagNetwork.Module == ServerModule.Absent ? "no mod" : "asking...", 0));
             else

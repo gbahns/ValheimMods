@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.9.3
+
+- **New line: `server feed`.** How often the server actually reaches this client, measured, next to
+  what the send cycle predicts. The server does not broadcast - `SendZDOToPeers2` serves one peer
+  per frame behind a 50 ms gate, so a full cycle is 50 ms plus one server frame per connected
+  player: 150 ms at three players, 217 ms at five, 317 ms at eight, at the dedicated server's 30 Hz
+  cap.
+
+  This is the measurement CPU and tick time cannot make. A server can sit at 14% of one core,
+  hold a perfect 33.3 ms tick, and still only reach you five times a second, because the cost is in
+  the scheduling rather than the load. It is the one candidate for lag that grows with the number
+  of people playing - which is the complaint this mod was built for, and the one thing a healthy
+  server reading has never been able to rule out.
+
+  Judged against the prediction rather than a constant, because 200 ms is expected at eight players
+  and a fault at two. `feed_ms` is in the group capture CSV as well, so a session with five people
+  either confirms the formula or kills it.
+
+- Wire layout 4. **Update the server before the clients**: an older server reading a newer client's
+  series would stop short and misread the samples after it. Older clients against this server are
+  fine.
+
 ## 0.9.2
 
 - **A row per player, instead of a label nobody could read.** The readout used to put who owns what

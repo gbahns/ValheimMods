@@ -33,7 +33,7 @@ namespace DiagnoseServerLag
         // 1: five columns, uncompressed. 2: every field, compressed. Both are still read,
         // because clients update on their own schedule and an old one should be diminished
         // rather than refused.
-        private const byte Layout = 3;
+        private const byte Layout = 4;
 
         /// <summary>One second, as much of it as the group view needs.</summary>
         internal struct Second

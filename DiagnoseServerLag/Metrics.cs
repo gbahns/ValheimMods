@@ -87,6 +87,12 @@ namespace DiagnoseServerLag
         /// <summary>Creatures loaded here at all, owned or not.</summary>
         internal int NearbyAI;
 
+        /// <summary>
+        /// Median gap between updates arriving from the server, in milliseconds. Client side only;
+        /// zero on the server, where the same callback measures something else. See Feed.
+        /// </summary>
+        internal float FeedMs;
+
         // ── what the process costs the machine ──────────────────────────────────────
         // The measurements that survive a frame cap. See Machine for why tick time does not.
         /// <summary>Milliseconds of CPU burned per second of wall clock. 1000 is one core fully busy.</summary>
@@ -115,7 +121,8 @@ namespace DiagnoseServerLag
     {
         internal static void Write(ZPackage pkg, Sample s)
         {
-            // Layout 3 appends OwnedAI/NearbyAI. Writers always write the newest shape; readers
+            // Layout 4 appends FeedMs, 3 appended OwnedAI/NearbyAI. Writers always write the
+            // newest shape; readers
             // are told which one they are looking at, so an older client stays readable instead
             // of being misparsed into nonsense.
 
@@ -149,6 +156,7 @@ namespace DiagnoseServerLag
             pkg.Write(s.WorkingSetBytes);
             pkg.Write(s.OwnedAI);
             pkg.Write(s.NearbyAI);
+            pkg.Write(s.FeedMs);
         }
 
         internal static Sample Read(ZPackage pkg, int layout)
@@ -186,6 +194,10 @@ namespace DiagnoseServerLag
             {
                 s.OwnedAI = pkg.ReadInt();
                 s.NearbyAI = pkg.ReadInt();
+            }
+            if (layout >= 4)
+            {
+                s.FeedMs = pkg.ReadSingle();
             }
             return s;
         }

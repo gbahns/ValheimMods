@@ -138,6 +138,7 @@ namespace DiagnoseServerLag
             _lastAskedAt = -999f;
             _unanswered = 0;
             RoundTripMs = 0f;
+            Feed.Reset();
             _awaitingSeq = -1;
             _peerRtt.Clear();
             _owners.Clear();
