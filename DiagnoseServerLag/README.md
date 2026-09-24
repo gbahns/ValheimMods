@@ -59,7 +59,7 @@ Works on Windows and Linux dedicated servers. Requires BepInExPack for Valheim.
 | Key | Does |
 |---|---|
 | **F8** | Open and close the report. Escape closes it too. |
-| **Shift+F8** | Turn the small corner readout on and off. |
+| **F7** | Turn the corner readout on and off. |
 
 There is also a **pause toggle** in the report's top-right corner, the same mark used on the large map and GrabMaterials' inventory panel: gray when off, Valheim orange while the game really is paused, red with a slash when the pause was asked for and refused. It is off by default.
 

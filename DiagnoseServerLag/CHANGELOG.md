@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.8.0
+
+- **The readout moved to the bottom right**, and **Readout Position** now offers all four corners
+  plus Custom, with **Readout Custom X / Y** as percentage sliders. Position is re-read every
+  refresh, so you can drag the values while watching it move.
+- **Toggle key is now F7**, on its own rather than a chord — it is pressed far more often than a
+  two-key combination deserves. Configs on Shift+F8 or Shift+F10 are migrated automatically.
+- **Fixed a false alarm: `cpu` was colored red at normal load.** The thresholds judged the client
+  against *one* core, but a game client is heavily multi-threaded — Valheim's measured 331% of a
+  core while running perfectly. It is still shown per-core, because that is the number people
+  recognise, but judged against the whole machine, and it now shows both.
+- **A socket ping of exactly zero is not a measurement**, it is a socket declining to answer — the
+  same trap as connection quality and working set. The mod's own round trip is preferred whenever
+  it has one, and a genuinely sub-millisecond link says so rather than reporting `0 ms`.
+
 ## 0.7.1
 
 - **`simulating` no longer cries wolf when you are alone.** On your own you own everything near you

@@ -22,6 +22,9 @@ namespace DiagnoseServerLag
         internal static ConfigEntry<KeyboardShortcut> OpenKey;
         internal static ConfigEntry<bool> ShowHud;
         internal static ConfigEntry<KeyboardShortcut> HudKey;
+        internal static ConfigEntry<LagHud.Corner> HudPosition;
+        internal static ConfigEntry<float> HudX;
+        internal static ConfigEntry<float> HudY;
         internal static ConfigEntry<string> PanelSize;
         internal static ConfigEntry<string> PanelPosition;
         internal static ConfigEntry<int> ListScrollRows;
@@ -70,8 +73,11 @@ namespace DiagnoseServerLag
                 "Opens and closes the lag report. Escape closes it too. Ignored while typing in chat, the " +
                 "console or a text box.",
                 new KeyboardShortcut(KeyCode.F10));
-            HudKey = mod.BindKey("Keys", "Toggle Readout", new KeyboardShortcut(KeyCode.F8, KeyCode.LeftShift),
-                "Turns the small corner readout on and off without opening the full report.",
+            // F7, on its own rather than a chord: the readout is toggled far more often than a
+            // two-key combination deserves. Both earlier defaults migrate; see BindKey.
+            HudKey = mod.BindKey("Keys", "Toggle Readout", new KeyboardShortcut(KeyCode.F7),
+                "Turns the corner readout on and off without opening the full report.",
+                new KeyboardShortcut(KeyCode.F8, KeyCode.LeftShift),
                 new KeyboardShortcut(KeyCode.F10, KeyCode.LeftShift));
 
             ShowHud = mod.Bind("Display", "Show Readout", true,
@@ -80,6 +86,16 @@ namespace DiagnoseServerLag
                 "worth watching - Valheim runs a creature's AI only on the machine that owns it, and ownership " +
                 "falls to whoever was in range first, so it is the only warning you get that you are carrying a " +
                 "zone for everyone else. A config that already exists keeps whatever it was set to.");
+            HudPosition = mod.Bind("Display", "Readout Position", LagHud.Corner.BottomRight,
+                "Which corner the readout sits in. Choose Custom to place it anywhere with the two settings " +
+                "below. Changes apply immediately, so you can drag the values around while looking at it.");
+            HudX = mod.BindRange("Display", "Readout Custom X", 98f, 0f, 100f,
+                "Custom position only: distance across the screen, as a percentage. 0 is the left edge, 100 the " +
+                "right. Ignored unless Readout Position is Custom.");
+            HudY = mod.BindRange("Display", "Readout Custom Y", 4f, 0f, 100f,
+                "Custom position only: distance up the screen, as a percentage. 0 is the bottom edge, 100 the " +
+                "top. Ignored unless Readout Position is Custom.");
+
             PanelSize = mod.Bind("Display", "Panel Size", "860,640",
                 "Width and height of the report, remembered when you drag its bottom-right corner.");
             PanelPosition = mod.Bind("Display", "Panel Position", "0,0",

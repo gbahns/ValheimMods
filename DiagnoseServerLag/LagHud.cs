@@ -25,6 +25,12 @@ namespace DiagnoseServerLag
     /// </summary>
     internal static class LagHud
     {
+        /// <summary>Where the readout sits. Custom is placed by the two percentage settings.</summary>
+        internal enum Corner { TopLeft, TopRight, BottomLeft, BottomRight, Custom }
+
+        /// <summary>How far in from the screen edge a cornered readout sits, in reference pixels.</summary>
+        private const float Margin = 18f;
+
         private static GameObject _root;
         private static TMP_Text _label;
         private static float _nextRefresh;
@@ -93,15 +99,29 @@ namespace DiagnoseServerLag
             lines.Add(Line("stalls", $"{stalls} in {window.Count}s", stalls > 0 ? (stalls > 2 ? 2 : 1) : 0));
 
             if (Machine.Readable && s.HasCpu)
-                lines.Add(Line("cpu", $"{Machine.CoreShare(s.CpuMsPerSec) * 100f:0}% of a core",
-                    Rank(Machine.CoreShare(s.CpuMsPerSec), 0.8f, 1.2f)));
+            {
+                // Shown against one core because that is the number people recognise, but judged
+                // against the whole machine, because a game client is heavily multi-threaded and a
+                // server's simulation is not. Valheim's client measured 331% of one core while
+                // running perfectly well; colouring that red - which the first version did - is the
+                // same error as reading a server's frame cap as a struggle.
+                float machine = Machine.MachineShare(s.CpuMsPerSec);
+                lines.Add(Line("cpu", $"{Machine.CoreShare(s.CpuMsPerSec) * 100f:0}% of a core" +
+                                      $"  ({machine * 100f:0}% of {Machine.ProcessorCount})",
+                    Rank(machine, 0.5f, 0.8f)));
+            }
 
             // A round trip and a socket ping are different numbers; the label says which this is.
-            if (s.HasPing)
+            // A socket reporting exactly zero is reporting nothing - the same trap as quality and
+            // working set - so the mod's own round trip is preferred whenever it has one.
+            if (s.HasPing && s.Ping > 0)
                 lines.Add(Line(s.PingFromRoundTrip ? "round trip" : "ping", $"{s.Ping} ms",
                     Rank(s.Ping, 120f, 250f)));
+            else if (LagNetwork.RoundTripMs > 0f)
+                lines.Add(Line("round trip", $"{LagNetwork.RoundTripMs:0} ms",
+                    Rank(LagNetwork.RoundTripMs, 120f, 250f)));
             else
-                lines.Add(Line("link", "not measurable", 0));
+                lines.Add(Line("link", s.HasPing ? "under 1 ms" : "not measurable", 0));
 
             if (s.NearbyAI > 0)
             {
@@ -126,6 +146,7 @@ namespace DiagnoseServerLag
                         : Rank(tick, DslConfig.ServerTickWarnMs.Value, DslConfig.ServerTickSevereMs.Value)));
             }
 
+            ApplyPosition();
             _label.text = string.Join("\n", lines.ToArray());
         }
 
@@ -138,6 +159,47 @@ namespace DiagnoseServerLag
             Color c = rank >= 2 ? Bad : rank == 1 ? Warn : Good;
             string hex = ColorUtility.ToHtmlStringRGB(c);
             return $"<color=#{hex}><mspace=0.55em>{label,-11}</mspace>{value}</color>";
+        }
+
+        /// <summary>
+        /// Places the readout, re-read every refresh so a config change lands while you watch it.
+        ///
+        /// The pivot matters as much as the anchor: pinned at a bottom corner the block has to grow
+        /// upward, or adding a line would push it off the screen. Anchoring both to the same point
+        /// is what makes the readout hug its corner at any resolution or UI scale.
+        /// </summary>
+        private static void ApplyPosition()
+        {
+            if (_label == null) return;
+            var rt = _label.rectTransform;
+            var corner = DslConfig.HudPosition != null ? DslConfig.HudPosition.Value : Corner.BottomRight;
+
+            Vector2 anchor, offset;
+            switch (corner)
+            {
+                case Corner.TopLeft:
+                    anchor = new Vector2(0f, 1f); offset = new Vector2(Margin, -Margin); break;
+                case Corner.TopRight:
+                    anchor = new Vector2(1f, 1f); offset = new Vector2(-Margin, -Margin); break;
+                case Corner.BottomLeft:
+                    anchor = new Vector2(0f, 0f); offset = new Vector2(Margin, Margin); break;
+                case Corner.Custom:
+                    float x = (DslConfig.HudX != null ? DslConfig.HudX.Value : 98f) / 100f;
+                    float y = (DslConfig.HudY != null ? DslConfig.HudY.Value : 4f) / 100f;
+                    anchor = new Vector2(Mathf.Clamp01(x), Mathf.Clamp01(y));
+                    offset = Vector2.zero;
+                    break;
+                default:
+                    anchor = new Vector2(1f, 0f); offset = new Vector2(-Margin, Margin); break;
+            }
+
+            rt.anchorMin = rt.anchorMax = rt.pivot = anchor;
+            rt.anchoredPosition = offset;
+            // Text hugs whichever side it is pinned to, so a right-hand readout does not trail off
+            // toward the middle of the screen.
+            _label.alignment = anchor.x > 0.5f
+                ? (anchor.y > 0.5f ? TextAlignmentOptions.TopRight : TextAlignmentOptions.BottomRight)
+                : (anchor.y > 0.5f ? TextAlignmentOptions.TopLeft : TextAlignmentOptions.BottomLeft);
         }
 
         private static bool Create()
@@ -169,15 +231,11 @@ namespace DiagnoseServerLag
             text.richText = true;
             text.raycastTarget = false;
 
-            // Top-right, below the clock and the biome name rather than over them.
-            var rt = text.rectTransform;
-            rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
-            rt.pivot = new Vector2(1f, 1f);
-            rt.sizeDelta = new Vector2(420f, 150f);
-            rt.anchoredPosition = new Vector2(-18f, -150f);
+            text.rectTransform.sizeDelta = new Vector2(420f, 150f);
 
             go.SetActive(true);
             _label = text;
+            ApplyPosition();
             return true;
         }
     }
