@@ -37,6 +37,8 @@ namespace DiagnoseServerLag
         private const string RpcCaptureResult = "DSL_CaptureResult";   // server -> that client, as text
         private const string RpcCaptureAll = "DSL_CaptureAll";         // server -> every client: send your window
         private const string RpcClientSeries = "DSL_ClientSeries";     // client -> server, its window
+        private const string RpcEcho = "DSL_Echo";                     // client -> an object owner
+        private const string RpcEchoReply = "DSL_EchoReply";           // that owner -> back
 
         /// <summary>Asked this many times with no answer before the server is called unmodded.</summary>
         private const int SilenceBeforeAbsent = 3;
@@ -118,6 +120,8 @@ namespace DiagnoseServerLag
                 rpc.Register<ZPackage>(RpcCaptureResult, RPC_CaptureResult);
                 rpc.Register<ZPackage>(RpcCaptureAll, RPC_CaptureAll);
                 rpc.Register<ZPackage>(RpcClientSeries, RPC_ClientSeries);
+                rpc.Register<ZPackage>(RpcEcho, RPC_Echo);
+                rpc.Register<ZPackage>(RpcEchoReply, RPC_EchoReply);
                 DiagnoseServerLagMod.Log.LogInfo("[DiagnoseServerLag] Diagnostic RPCs registered.");
             }
             catch (Exception e)
@@ -136,6 +140,9 @@ namespace DiagnoseServerLag
             RoundTripMs = 0f;
             _awaitingSeq = -1;
             _peerRtt.Clear();
+            _owners.Clear();
+            _echoSentAt.Clear();
+            _echoTarget.Clear();
         }
 
         internal static void Update()
@@ -357,6 +364,160 @@ namespace DiagnoseServerLag
             if (peer?.m_socket == null) return false;
             string host = peer.m_socket.GetHostName();
             return !string.IsNullOrEmpty(host) && znet.IsAdmin(host);
+        }
+
+
+        // ── latency to the people whose objects you are using ───────────────────────
+        //
+        // Your ping to the server is not what decides how an axe swing feels. Valheim routes an
+        // interaction to the object's owner, so hitting a tree Marco loaded travels you -> server
+        // -> Marco -> server -> you, and it is Marco's line and Marco's frame rate in the middle of
+        // it. That number exists nowhere in the game and is the one that actually governs whether
+        // the world answers you.
+        //
+        // Measured rather than estimated. Adding your round trip to theirs would be a defensible
+        // guess, but an echo over the real path costs a few bytes and includes the parts a guess
+        // leaves out - the server's forwarding and the owner's own frame time, which is precisely
+        // the cost when the owner is the person struggling.
+
+        /// <summary>What one other player's objects cost to interact with.</summary>
+        internal sealed class OwnerLatency
+        {
+            internal long Uid;
+            internal string Name = "";
+            internal int Objects;
+            internal float Ms;              // 0 until an echo completes
+            internal bool Answered;
+            internal float LastReplyAt;
+        }
+
+        private static readonly Dictionary<long, OwnerLatency> _owners = new Dictionary<long, OwnerLatency>();
+        private static readonly Dictionary<int, float> _echoSentAt = new Dictionary<int, float>();
+        private static readonly Dictionary<int, long> _echoTarget = new Dictionary<int, long>();
+        private static int _echoSeq;
+        private static float _nextEchoAt;
+
+        /// <summary>How often each owner is echoed. Rare on purpose; this is a background fact.</summary>
+        private const float EchoEverySeconds = 4f;
+
+        /// <summary>Owners worth echoing at once, busiest first, so a crowd does not become a broadcast.</summary>
+        private const int MaxEchoTargets = 4;
+
+        /// <summary>An echo older than this is written off, so a silent peer clears rather than sticks.</summary>
+        private const float EchoTimeout = 10f;
+
+        /// <summary>Latency to each player whose objects are loaded around you, busiest first.</summary>
+        internal static List<OwnerLatency> OwnerLatencies()
+        {
+            var list = new List<OwnerLatency>(_owners.Values);
+            list.Sort((a, b) => b.Objects.CompareTo(a.Objects));
+            return list;
+        }
+
+        /// <summary>
+        /// Told once a second which peers own objects nearby, with how many each holds.
+        ///
+        /// The caller does the counting because it is already walking that list for other reasons;
+        /// this only decides who is worth asking and when.
+        /// </summary>
+        internal static void TrackOwners(Dictionary<long, int> owners)
+        {
+            // Forget anyone who no longer owns anything here, so the list follows you around the
+            // world rather than accumulating everyone you have ever stood near.
+            var gone = new List<long>();
+            foreach (var kv in _owners) if (!owners.ContainsKey(kv.Key)) gone.Add(kv.Key);
+            foreach (var uid in gone) _owners.Remove(uid);
+
+            foreach (var kv in owners)
+            {
+                if (!_owners.TryGetValue(kv.Key, out var o))
+                    _owners[kv.Key] = o = new OwnerLatency { Uid = kv.Key };
+                o.Objects = kv.Value;
+                if (string.IsNullOrEmpty(o.Name)) o.Name = NameFor(kv.Key);
+                if (o.Answered && Time.unscaledTime - o.LastReplyAt > EchoTimeout * 3f) o.Answered = false;
+            }
+
+            if (Time.unscaledTime < _nextEchoAt) return;
+            _nextEchoAt = Time.unscaledTime + EchoEverySeconds;
+            SendEchoes();
+        }
+
+        private static void SendEchoes()
+        {
+            var rpc = ZRoutedRpc.instance;
+            if (rpc == null || ZNet.instance == null) return;
+
+            // Drop echoes nobody answered, so a peer without the mod stops holding a slot.
+            var stale = new List<int>();
+            foreach (var kv in _echoSentAt) if (Time.unscaledTime - kv.Value > EchoTimeout) stale.Add(kv.Key);
+            foreach (var seq in stale) { _echoSentAt.Remove(seq); _echoTarget.Remove(seq); }
+
+            var targets = OwnerLatencies();
+            int sent = 0;
+            foreach (var o in targets)
+            {
+                if (sent >= MaxEchoTargets) break;
+                sent++;
+                int seq = ++_echoSeq;
+                _echoSentAt[seq] = Time.unscaledTime;
+                _echoTarget[seq] = o.Uid;
+                var pkg = new ZPackage();
+                pkg.Write(seq);
+                rpc.InvokeRoutedRPC(o.Uid, RpcEcho, pkg);
+            }
+        }
+
+        /// <summary>Somebody wants to know what we cost them. Answer at once and say nothing else.</summary>
+        private static void RPC_Echo(long sender, ZPackage pkg)
+        {
+            try
+            {
+                if (!DslConfig.ShareMyPerformance.Value) return;
+                int seq = pkg.ReadInt();
+                var reply = new ZPackage();
+                reply.Write(seq);
+                reply.Write(Player.m_localPlayer != null ? Player.m_localPlayer.GetPlayerName() : "");
+                ZRoutedRpc.instance?.InvokeRoutedRPC(sender, RpcEchoReply, reply);
+            }
+            catch { /* an echo that fails is simply an owner that stays unmeasured */ }
+        }
+
+        /// <summary>An owner answered: that gap is what their objects cost to touch.</summary>
+        private static void RPC_EchoReply(long sender, ZPackage pkg)
+        {
+            try
+            {
+                int seq = pkg.ReadInt();
+                string name = pkg.ReadString();
+                if (!_echoSentAt.TryGetValue(seq, out float sentAt)) return;
+                _echoSentAt.Remove(seq);
+                _echoTarget.Remove(seq);
+
+                if (!_owners.TryGetValue(sender, out var o)) return;
+                float ms = (Time.unscaledTime - sentAt) * 1000f;
+                if (ms <= 0f || ms > 20000f) return;
+                // Smoothed the same way the server round trip is: one sample carries whatever that
+                // machine was doing in that frame, and a figure that jumped would read as jitter.
+                o.Ms = o.Ms <= 0f ? ms : (o.Ms * 2f + ms) / 3f;
+                o.Answered = true;
+                o.LastReplyAt = Time.unscaledTime;
+                if (!string.IsNullOrEmpty(name)) o.Name = name;
+            }
+            catch { }
+        }
+
+        /// <summary>Best effort at a name for an owner id; see Sampler for why this is awkward.</summary>
+        private static string NameFor(long uid)
+        {
+            try
+            {
+                var znet = ZNet.instance;
+                if (znet == null) return "";
+                foreach (var info in znet.GetPlayerList())
+                    if (info.m_characterID.UserID == uid) return info.m_name;
+            }
+            catch { }
+            return "";
         }
 
         // ── group capture ───────────────────────────────────────────────────────────

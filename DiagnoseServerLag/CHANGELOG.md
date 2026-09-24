@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.9.0
+
+- **Latency to the people whose objects you are using.** Greg's idea. Your ping to the server does
+  not decide how an interaction feels: Valheim routes it to the object's *owner*, so hitting a tree
+  somebody else loaded travels you → server → them → server → you, with their connection and their
+  frame rate in the middle. That number exists nowhere in the game, and it is the one that governs
+  whether the world answers you.
+- **Per owner, not per object** — every object the same player owns travels the identical path, so
+  the latency belongs to the person.
+- **Measured, not estimated.** Adding your round trip to theirs would be a defensible guess; an
+  echo over the real path costs a few bytes and includes what a guess leaves out — the server's
+  forwarding and the owner's own frame time, which is exactly the cost when the owner is the one
+  struggling.
+- The report lists every owner with their creature count and latency; the readout shows the slowest
+  one, since that is the one you feel. An owner who does not run the mod is listed as not replying
+  rather than being silently dropped.
+- Echoes go to at most four owners every four seconds, and the list forgets anyone whose objects
+  are no longer loaded near you, so it follows you around the world instead of accumulating
+  everyone you have ever stood beside.
+
 ## 0.8.0
 
 - **The readout moved to the bottom right**, and **Readout Position** now offers all four corners

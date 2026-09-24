@@ -163,6 +163,7 @@ namespace DiagnoseServerLag
 
             AddOtherFindings(findings);
             AddThisMachine();
+            AddOwnerLatency();
             AddServerSection();
             AddPeers();
 
@@ -273,6 +274,38 @@ namespace DiagnoseServerLag
             StatRow("history", Sampler.Frozen
                     ? $"{Sampler.History.Count}s kept, held still while paused"
                     : $"{Sampler.History.Count}s kept of {Sampler.History.Capacity}s", 0);
+        }
+
+        /// <summary>
+        /// Latency to the people whose objects are loaded around you.
+        ///
+        /// Your ping to the server does not decide how an interaction feels. Valheim routes it to
+        /// the object's owner, so hitting somebody else's tree travels you -> server -> them ->
+        /// server -> you, and their line and their frame rate are in the middle of it. Measured by
+        /// echoing each owner over that same path rather than by adding two pings together, so the
+        /// server's forwarding and the owner's own frame time are included - which is exactly the
+        /// cost when the owner is the one struggling.
+        /// </summary>
+        private static void AddOwnerLatency()
+        {
+            var owners = LagNetwork.OwnerLatencies();
+            if (owners.Count == 0) return;
+
+            UiKit.SectionHeader(_list, "Objects owned by other players");
+            foreach (var o in owners)
+            {
+                string who = string.IsNullOrEmpty(o.Name) ? "another player" : o.Name;
+                string latency = o.Answered
+                    ? $"{o.Ms:0} ms round trip through them"
+                    : "no reply - they are not running this mod";
+                StatRow(who, $"{o.Objects} creature{(o.Objects == 1 ? "" : "s")}, {latency}",
+                    o.Answered ? Rank(o.Ms, 200f, 400f) : 0);
+            }
+            Paragraph(_list,
+                "Interacting with one of these goes to its owner and back before anything happens, so this is " +
+                "the delay you feel hitting their tree - not your ping to the server. Ownership went to whoever " +
+                "was in range first and is never rebalanced; moving apart is what changes it.",
+                14f, UiKit.Dim);
         }
 
         private static void AddServerSection()

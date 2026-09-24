@@ -134,6 +134,18 @@ namespace DiagnoseServerLag
                                 && s.OwnedAI >= s.NearbyAI * 0.8f;
                 string others = string.IsNullOrEmpty(Sampler.OtherOwners) ? "" : $"  ({Sampler.OtherOwners})";
                 lines.Add(Line("simulating", $"{s.OwnedAI}/{s.NearbyAI}{others}", carrying ? 1 : 0));
+
+                // The slowest owner of anything near you, because that is the latency you actually
+                // feel when you swing at their tree - not your ping to the server.
+                var owners = LagNetwork.OwnerLatencies();
+                LagNetwork.OwnerLatency worst = null;
+                foreach (var o in owners)
+                    if (o.Answered && (worst == null || o.Ms > worst.Ms)) worst = o;
+                if (worst != null)
+                    lines.Add(Line("their stuff",
+                        $"{(string.IsNullOrEmpty(worst.Name) ? "another player" : worst.Name)} {worst.Ms:0} ms" +
+                        (owners.Count > 1 ? $"  (+{owners.Count - 1} more)" : ""),
+                        Rank(worst.Ms, 200f, 400f)));
             }
 
             if (report == null)

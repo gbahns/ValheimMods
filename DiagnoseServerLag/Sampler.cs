@@ -471,6 +471,7 @@ namespace DiagnoseServerLag
                 s.NearbyAI = near;
                 CountPlayers();
                 DescribeOtherOwners();
+                LagNetwork.TrackOwners(_otherOwners);
             }
             catch (Exception e)
             {
