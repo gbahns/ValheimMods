@@ -93,6 +93,17 @@ namespace DiagnoseServerLag
         /// </summary>
         internal float FeedMs;
 
+        /// <summary>
+        /// Every loaded object this machine owns, and how many are loaded here at all - not just
+        /// creatures. Ownership routing is not special to AI: TreeBase.RPC_Damage opens with the
+        /// same owner check BaseAI.UpdateAI does, so a tree, a rock or a workbench somebody else
+        /// owns costs a round trip through them exactly as a greydwarf does. Counting only
+        /// creatures described the wrong population for the commonest complaint of all, which is
+        /// that chopping wood feels slow.
+        /// </summary>
+        internal int OwnedObjects;
+        internal int NearbyObjects;
+
         // ── what the process costs the machine ──────────────────────────────────────
         // The measurements that survive a frame cap. See Machine for why tick time does not.
         /// <summary>Milliseconds of CPU burned per second of wall clock. 1000 is one core fully busy.</summary>
@@ -121,7 +132,7 @@ namespace DiagnoseServerLag
     {
         internal static void Write(ZPackage pkg, Sample s)
         {
-            // Layout 4 appends FeedMs, 3 appended OwnedAI/NearbyAI. Writers always write the
+            // Layout 5 appends OwnedObjects/NearbyObjects, 4 appended FeedMs, 3 OwnedAI/NearbyAI. Writers always write the
             // newest shape; readers
             // are told which one they are looking at, so an older client stays readable instead
             // of being misparsed into nonsense.
@@ -157,6 +168,8 @@ namespace DiagnoseServerLag
             pkg.Write(s.OwnedAI);
             pkg.Write(s.NearbyAI);
             pkg.Write(s.FeedMs);
+            pkg.Write(s.OwnedObjects);
+            pkg.Write(s.NearbyObjects);
         }
 
         internal static Sample Read(ZPackage pkg, int layout)
@@ -198,6 +211,11 @@ namespace DiagnoseServerLag
             if (layout >= 4)
             {
                 s.FeedMs = pkg.ReadSingle();
+            }
+            if (layout >= 5)
+            {
+                s.OwnedObjects = pkg.ReadInt();
+                s.NearbyObjects = pkg.ReadInt();
             }
             return s;
         }

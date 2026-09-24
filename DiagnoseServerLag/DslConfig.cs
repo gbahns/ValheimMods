@@ -22,6 +22,8 @@ namespace DiagnoseServerLag
         internal static ConfigEntry<KeyboardShortcut> OpenKey;
         internal static ConfigEntry<bool> ShowHud;
         internal static ConfigEntry<KeyboardShortcut> HudKey;
+        internal static ConfigEntry<KeyboardShortcut> OwnerNamesKey;
+        internal static ConfigEntry<bool> ShowOwnerNames;
         internal static ConfigEntry<LagHud.Corner> HudPosition;
         internal static ConfigEntry<float> HudX;
         internal static ConfigEntry<float> HudY;
@@ -79,6 +81,17 @@ namespace DiagnoseServerLag
                 "Turns the corner readout on and off without opening the full report.",
                 new KeyboardShortcut(KeyCode.F8, KeyCode.LeftShift),
                 new KeyboardShortcut(KeyCode.F10, KeyCode.LeftShift));
+
+            // F6, beside the readout's F7. Free in this profile: F7 is the readout, F8 is
+            // AutomaticFuel's and F9 cycles the controller layout.
+            OwnerNamesKey = mod.BindKey("Keys", "Toggle Owner Names", new KeyboardShortcut(KeyCode.F6),
+                "Turns the owner label on creature health bars on and off.");
+
+            ShowOwnerNames = mod.Bind("Display", "Show Owner Names", false,
+                "Puts the owning player's name on a creature's floating health bar, so you can see " +
+                "which particular creature is being simulated by somebody else rather than only how " +
+                "many of them are. Off by default: it is a diagnostic, and a label on everything " +
+                "would be clutter during ordinary play. F6 toggles it.");
 
             ShowHud = mod.Bind("Display", "Show Readout", true,
                 "The corner readout: frame time, stalls, CPU share, round trip to the server, creatures this " +

@@ -74,6 +74,11 @@ namespace DiagnoseServerLag
                 DiagnoseServerLagMod.Message(DslConfig.ShowHud.Value ? "Lag readout on" : "Lag readout off");
             }
 
+            // Handled here beside the readout's own key, but deliberately before the early
+            // return below: the owner labels are independent of whether the readout is showing.
+            if (DslConfig.OwnerNamesKey != null && Keys.CanTakeInput() && Keys.IsDown(DslConfig.OwnerNamesKey.Value))
+                OwnerNames.Toggle();
+
             bool wanted = DslConfig.ShowHud.Value && Sampler.History.Count > 0;
             if (!wanted)
             {
@@ -161,7 +166,13 @@ namespace DiagnoseServerLag
                 bool carrying = Sampler.PlayersOnline > 1
                                 && s.NearbyAI >= 5
                                 && s.OwnedAI >= s.NearbyAI * 0.8f;
-                lines.Add(Line("simulating", $"{s.OwnedAI} of {s.NearbyAI} nearby", carrying ? 1 : 0));
+                lines.Add(Line("simulating", $"{s.OwnedAI} of {s.NearbyAI} mobs", carrying ? 1 : 0));
+
+                // Objects, not just creatures. A tree, a rock or a workbench somebody else owns
+                // routes through their machine exactly as a greydwarf does, so a zone can hold no
+                // creatures at all and still send every axe swing through another player.
+                if (s.NearbyObjects > 0)
+                    lines.Add(Line("objects", $"{s.OwnedObjects} of {s.NearbyObjects}", 0));
 
                 // Then a line per other owner: what they are carrying, and what it costs you to
                 // touch it. The two facts were previously on separate lines from separate sources -
@@ -179,7 +190,7 @@ namespace DiagnoseServerLag
                     // No reply means they are not running this mod, so the cost is unmeasurable
                     // rather than zero. Saying so is better than an empty column that reads as fast.
                     string cost = o.Answered ? $"{o.Ms:0} ms" : "no mod";
-                    lines.Add(Line(who, $"{o.Objects,3}   {cost}",
+                    lines.Add(Line(who, $"{o.Objects,4} obj   {cost}",
                         o.Answered ? Rank(o.Ms, 200f, 400f) : 0));
                 }
                 if (owners.Count > shown)

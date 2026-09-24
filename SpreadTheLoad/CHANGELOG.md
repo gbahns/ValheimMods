@@ -21,6 +21,11 @@
   0.2s and the physics runs only there - so the person steering often waits a quarter second for
   every turn. Ship prefabs are found by component, so modded hulls are covered without a list.
   Whether a yielding player keeps the helm is a setting, defaulting to yes.
+- **Config changes take effect without a restart.** BepInEx keeps the value parsed at startup, so
+  without a file watcher an edited setting would do nothing until the process restarted - which on
+  a dedicated server means disconnecting everybody to change who is being steered away from. The
+  file is watched and reloaded, and every setting is read fresh each pass, so a change lands within
+  a second.
 - **Says so when it is not working.** ValheimPerformanceOptimizations replaces the vanilla method
   this mod works through, which would otherwise leave it silently inert. It checks both by asking
   Harmony who else patched that method and by noticing its own decision was never consulted while

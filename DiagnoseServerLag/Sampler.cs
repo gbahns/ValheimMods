@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using HarmonyLib;
 using UnityEngine;
 
 namespace DiagnoseServerLag
@@ -76,6 +77,21 @@ namespace DiagnoseServerLag
         private static bool _socketWarningLogged;
 
         private static readonly Dictionary<long, int> _otherOwners = new Dictionary<long, int>();
+
+        /// <summary>
+        /// The same tally over every loaded object, not just creatures. Kept separate because the
+        /// two answer different questions: creatures are what somebody else is *simulating*, while
+        /// objects are what you would be *waiting on* if you touched them.
+        /// </summary>
+        private static readonly Dictionary<long, int> _otherObjectOwners = new Dictionary<long, int>();
+
+        /// <summary>
+        /// ZNetScene.m_instances - everything instantiated on this machine, keyed by ZDO. Private,
+        /// but its type is public, so it can be read without boxing and without a publicized
+        /// assembly. Reflection here rather than a publicized reference is the rule this project
+        /// already follows: publicized members compile and then throw at runtime.
+        /// </summary>
+        private static System.Reflection.FieldInfo _instancesField;
         private static readonly List<ZNet.PlayerInfo> _playerList = new List<ZNet.PlayerInfo>();
 
         /// <summary>
@@ -518,14 +534,64 @@ namespace DiagnoseServerLag
                 s.OwnedAI = owned;
                 s.NearbyAI = near;
                 s.FeedMs = Feed.IntervalMs;
+                CountOwnedObjects(ref s);
                 CountPlayers();
                 DescribeOtherOwners();
-                LagNetwork.TrackOwners(_otherOwners);
+                // The per-owner latency rows are fed the object tally, not the creature one: what
+                // decides whether chopping a tree feels slow is who owns the tree.
+                LagNetwork.TrackOwners(_otherObjectOwners.Count > 0 ? _otherObjectOwners : _otherOwners);
             }
             catch (Exception e)
             {
                 NoteSocketUnreadable(e);   // one line per session, same as the socket reads
             }
+        }
+
+        /// <summary>
+        /// Every loaded object by owner, creatures included.
+        ///
+        /// Ownership routing is not special to AI. TreeBase.RPC_Damage opens with the same
+        /// `if (!m_nview.IsOwner()) return;` that BaseAI.UpdateAI does, so a tree, a rock, a
+        /// container or a workbench somebody else owns costs a round trip through their machine
+        /// exactly as a greydwarf does. Counting only creatures described the wrong population for
+        /// the commonest complaint there is - that chopping wood feels slow - and a zone could read
+        /// zero creatures while every axe swing still travelled through somebody else.
+        ///
+        /// This walks every instantiated object once a second. That is thousands of entries rather
+        /// than the few hundred in BaseAI.Instances, which is why it reads the ZDO keys directly
+        /// and touches no components: no GetComponent, no allocation, one dictionary pass.
+        /// </summary>
+        private static void CountOwnedObjects(ref Sample s)
+        {
+            try
+            {
+                var scene = ZNetScene.instance;
+                if (scene == null) return;
+                if (_instancesField == null)
+                {
+                    _instancesField = AccessTools.Field(typeof(ZNetScene), "m_instances");
+                    if (_instancesField == null) return;
+                }
+                var instances = _instancesField.GetValue(scene) as Dictionary<ZDO, ZNetView>;
+                if (instances == null) return;
+
+                int owned = 0, near = 0;
+                _otherObjectOwners.Clear();
+                foreach (var kv in instances)
+                {
+                    var zdo = kv.Key;
+                    if (zdo == null) continue;
+                    near++;
+                    if (zdo.IsOwner()) { owned++; continue; }
+                    long other = zdo.GetOwner();
+                    if (other == 0L) continue;              // ownerless: the server will hand it out
+                    _otherObjectOwners.TryGetValue(other, out int n);
+                    _otherObjectOwners[other] = n + 1;
+                }
+                s.OwnedObjects = owned;
+                s.NearbyObjects = near;
+            }
+            catch { /* the creature count still works; this is the richer answer, not the only one */ }
         }
 
         /// <summary>The most recent completed second, if there is one.</summary>

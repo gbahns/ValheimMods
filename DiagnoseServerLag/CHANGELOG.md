@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.4
+
+- **Objects are counted, not just creatures.** Greg spotted the gap: the readout said "simulating
+  11 of 23" and meant *creatures*, but ownership routing is not special to AI. TreeBase.RPC_Damage
+  opens with the same `if (!m_nview.IsOwner()) return;` that BaseAI.UpdateAI does, so a tree, a
+  rock, a container or a workbench somebody else owns costs a round trip through their machine
+  exactly as a greydwarf does. A zone could read zero creatures while every axe swing still
+  travelled through another player - which is precisely the case people complain about, chopping
+  wood. There is now an `objects` line, the per-player rows count objects rather than creatures,
+  and `owned_objects`/`nearby_objects` are in the group capture.
+- **Owner names on creature health bars, F6.** The readout can say Brane is simulating seven
+  creatures; it cannot say that *this* greydwarf, the one ignoring your axe, is one of them. Off by
+  default. It works through Character.GetHoverName, which EnemyHud reads its label from, so it
+  needs no UI code - and because Player overrides that method, the label never appears on players.
+- Wire layout 5. **Update the server before the clients**, as with 0.9.3.
+
 ## 0.9.3
 
 - **New line: `server feed`.** How often the server actually reaches this client, measured, next to

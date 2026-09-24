@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
@@ -108,9 +110,56 @@ namespace SpreadTheLoad
                 "Write a line to the server log now and then saying how many objects were moved " +
                 "and who they came from. Off by default; it is a summary, never one line per object.");
 
+            SetupConfigWatcher();
+
             _harmony = new Harmony(ModGuid);
             _harmony.PatchAll();
             Log.LogInfo($"[SpreadTheLoad] {ModVersion} loaded.");
+        }
+
+        /// <summary>
+        /// Re-reads the config file when it changes on disk.
+        ///
+        /// BepInEx does not do this by itself: a ConfigEntry holds the value parsed at startup, so
+        /// without a watcher an edited file does nothing until the process restarts. On a dedicated
+        /// server that is the difference between changing a setting and disconnecting everybody to
+        /// change a setting - which matters most for exactly the settings worth changing mid-session,
+        /// like who is being steered away from.
+        ///
+        /// Everything here reads .Value each pass rather than caching it, so a reload takes effect
+        /// within a second with nothing else to do.
+        /// </summary>
+        private FileSystemWatcher _configWatcher;
+
+        private void SetupConfigWatcher()
+        {
+            try
+            {
+                _configWatcher = new FileSystemWatcher(Paths.ConfigPath, Path.GetFileName(Config.ConfigFilePath));
+                _configWatcher.Changed += OnConfigFileChanged;
+                _configWatcher.Created += OnConfigFileChanged;
+                _configWatcher.Renamed += OnConfigFileChanged;
+                _configWatcher.SynchronizingObject = ThreadingHelper.SynchronizingObject;
+                _configWatcher.EnableRaisingEvents = true;
+            }
+            catch (Exception e)
+            {
+                Log.LogWarning($"[SpreadTheLoad] could not watch the config file for changes: {e.Message}");
+            }
+        }
+
+        private void OnConfigFileChanged(object sender, FileSystemEventArgs e)
+        {
+            if (!File.Exists(Config.ConfigFilePath)) return;
+            try
+            {
+                Config.Reload();
+                Log.LogInfo("[SpreadTheLoad] config reloaded; the new settings are in effect.");
+            }
+            catch (Exception ex)
+            {
+                Log.LogWarning($"[SpreadTheLoad] could not reload the config: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -136,6 +185,10 @@ namespace SpreadTheLoad
             catch { /* the watch is a convenience; it must never take the server down */ }
         }
 
-        private void OnDestroy() => _harmony?.UnpatchSelf();
+        private void OnDestroy()
+        {
+            _configWatcher?.Dispose();
+            _harmony?.UnpatchSelf();
+        }
     }
 }
