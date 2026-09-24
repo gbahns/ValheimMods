@@ -104,6 +104,14 @@ namespace DiagnoseServerLag
         internal int OwnedObjects;
         internal int NearbyObjects;
 
+        /// <summary>
+        /// Loaded objects nobody owns yet. Not a fault - it is the gap between an object existing
+        /// and the two-second pass that hands it to somebody - but it is worth seeing, because an
+        /// unowned creature runs no AI at all. A large number means a stretch of world that is
+        /// present and inert.
+        /// </summary>
+        internal int UnownedObjects;
+
         // ── what the process costs the machine ──────────────────────────────────────
         // The measurements that survive a frame cap. See Machine for why tick time does not.
         /// <summary>Milliseconds of CPU burned per second of wall clock. 1000 is one core fully busy.</summary>
@@ -132,7 +140,7 @@ namespace DiagnoseServerLag
     {
         internal static void Write(ZPackage pkg, Sample s)
         {
-            // Layout 5 appends OwnedObjects/NearbyObjects, 4 appended FeedMs, 3 OwnedAI/NearbyAI. Writers always write the
+            // Layout 6 appends UnownedObjects, 5 appended OwnedObjects/NearbyObjects, 4 appended FeedMs, 3 OwnedAI/NearbyAI. Writers always write the
             // newest shape; readers
             // are told which one they are looking at, so an older client stays readable instead
             // of being misparsed into nonsense.
@@ -170,6 +178,7 @@ namespace DiagnoseServerLag
             pkg.Write(s.FeedMs);
             pkg.Write(s.OwnedObjects);
             pkg.Write(s.NearbyObjects);
+            pkg.Write(s.UnownedObjects);
         }
 
         internal static Sample Read(ZPackage pkg, int layout)
@@ -216,6 +225,10 @@ namespace DiagnoseServerLag
             {
                 s.OwnedObjects = pkg.ReadInt();
                 s.NearbyObjects = pkg.ReadInt();
+            }
+            if (layout >= 6)
+            {
+                s.UnownedObjects = pkg.ReadInt();
             }
             return s;
         }

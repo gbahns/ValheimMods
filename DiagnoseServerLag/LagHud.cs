@@ -172,7 +172,13 @@ namespace DiagnoseServerLag
                 // routes through their machine exactly as a greydwarf does, so a zone can hold no
                 // creatures at all and still send every axe swing through another player.
                 if (s.NearbyObjects > 0)
-                    lines.Add(Line("objects", $"{s.OwnedObjects} of {s.NearbyObjects}", 0));
+                {
+                    // Unowned is shown only when there is some, because it is normally a handful
+                    // in transit. A large steady number is the interesting case: those objects are
+                    // loaded and nobody is simulating them.
+                    string idle = s.UnownedObjects > 0 ? $"   {s.UnownedObjects} unowned" : "";
+                    lines.Add(Line("objects", $"{s.OwnedObjects} of {s.NearbyObjects}{idle}", 0));
+                }
 
                 // Then a line per other owner: what they are carrying, and what it costs you to
                 // touch it. The two facts were previously on separate lines from separate sources -

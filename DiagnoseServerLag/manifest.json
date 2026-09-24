@@ -1,6 +1,6 @@
 {
     "name": "DiagnoseServerLag",
-    "version_number": "0.9.5",
+    "version_number": "0.9.6",
     "website_url": "https://github.com/gbahns/ValheimMods",
     "description": "Names the cause of lag instead of guessing. Measures your client and the server once a second and tells you which it is: starved server, saturated link, packet loss, object churn, world loading, or your own machine.",
     "dependencies": [

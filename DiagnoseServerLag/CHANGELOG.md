@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.9.6
+
+- **Unowned objects are counted.** Greg asked whether the server holds nearby objects before
+  handing them over. Mostly it does not - away from world origin they sit *unowned* until a
+  player's two-second pass claims them, and an unowned creature runs no AI at all. The `objects`
+  line now says how many are loaded but unsimulated, and `unowned_objects` is in the capture.
+
+- **Corrected a wrong comment, and it matters.** The code claimed "a dedicated server never
+  instantiates prefabs". The captures disprove it: bahnsheim held 82 instances against 430,020
+  ZDOs. `ZNet.m_referencePosition` is only ever assigned from client respawn code, so on a
+  dedicated server it stays at its `Vector3.zero` initialiser and the server keeps an active area
+  around **world origin, permanently**. What falls in that disc it instantiates and owns - and an
+  instantiated creature there runs `BaseAI.UpdateAI` on the server.
+
+  So server CPU *can* be a factor after all, bounded to roughly 112 m of spawn. That is not a small
+  exception: most groups' first base is near spawn. The server's own `owned_ai` and `owned_objects`
+  are already in the capture next to its `cpu_ms_per_sec`, so the correlation is testable.
+
 ## 0.9.5
 
 - **Each owner's row shows creatures as well as objects.** 0.9.4 replaced one with the other; Greg

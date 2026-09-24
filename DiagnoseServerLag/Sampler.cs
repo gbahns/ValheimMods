@@ -330,8 +330,13 @@ namespace DiagnoseServerLag
                 s.ChangeQueue = zdoMan.GetClientChangeQueue();
             }
 
-            // A dedicated server never instantiates prefabs, so this stays zero there and the
-            // verdict rules that use it are client-only by construction.
+            // A dedicated server instantiates far less than a client, but NOT nothing: an earlier
+            // comment here claimed zero and the measurements disprove it - bahnsheim held 82
+            // instances against 430,020 ZDOs. ZNet.m_referencePosition is only ever set from
+            // client respawn code, so on a dedicated server it stays at its Vector3.zero
+            // initialiser and the server keeps an active area around world origin forever. What
+            // falls in that disc it instantiates and owns - and an instantiated creature there
+            // runs its AI on the server, which is the one way server CPU becomes a factor.
             var scene = ZNetScene.instance;
             if (scene != null) s.Instances = scene.NrOfInstances();
 
@@ -576,7 +581,7 @@ namespace DiagnoseServerLag
                 var instances = _instancesField.GetValue(scene) as Dictionary<ZDO, ZNetView>;
                 if (instances == null) return;
 
-                int owned = 0, near = 0;
+                int owned = 0, near = 0, unowned = 0;
                 _otherObjectOwners.Clear();
                 foreach (var kv in instances)
                 {
@@ -585,12 +590,13 @@ namespace DiagnoseServerLag
                     near++;
                     if (zdo.IsOwner()) { owned++; continue; }
                     long other = zdo.GetOwner();
-                    if (other == 0L) continue;              // ownerless: the server will hand it out
+                    if (other == 0L) { unowned++; continue; }
                     _otherObjectOwners.TryGetValue(other, out int n);
                     _otherObjectOwners[other] = n + 1;
                 }
                 s.OwnedObjects = owned;
                 s.NearbyObjects = near;
+                s.UnownedObjects = unowned;
             }
             catch { /* the creature count still works; this is the richer answer, not the only one */ }
         }

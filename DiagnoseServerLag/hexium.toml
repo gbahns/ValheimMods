@@ -6,7 +6,7 @@ schemaVersion = "0.0.1"
 [package]
 namespace = "DeathMonger"
 name = "DiagnoseServerLag"
-versionNumber = "0.9.5"
+versionNumber = "0.9.6"
 description = "Names the cause of lag instead of guessing. Measures your client and the server once a second and tells you which it is: starved server, saturated link, packet loss, object churn, world loading, or your own machine."
 websiteUrl = "https://github.com/gbahns/ValheimMods"
 containsNsfwContent = false
