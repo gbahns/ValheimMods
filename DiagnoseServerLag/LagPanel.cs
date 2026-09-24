@@ -234,6 +234,11 @@ namespace DiagnoseServerLag
                 Rank(s.SendQueue, DslConfig.QueueWarnBytes.Value, DslConfig.QueueSevereBytes.Value));
             StatRow("bandwidth", $"{Stats.Bytes(s.InByteSec)}/s in, {Stats.Bytes(s.OutByteSec)}/s out", 0);
             StatRow("objects", $"{s.Zdos} known, {s.Instances} built nearby", 0);
+            // Creature AI runs only on the owner, so this is the share of the group's simulation
+            // this machine is carrying - and on a shared zone it is nobody's deliberate choice.
+            if (s.NearbyAI > 0)
+                StatRow("simulating", $"{s.OwnedAI} of {s.NearbyAI} creatures loaded nearby",
+                    s.NearbyAI >= 10 && s.OwnedAI >= s.NearbyAI * 0.8f ? 1 : 0);
             StatRow("object traffic", $"{s.ZdosRecv}/s in, {s.ZdosSent}/s out, {s.ChangeQueue} unacknowledged", 0);
             // The machine-level rows. Without these the panel could say "your machine hitched" and
             // show nothing at all about what the machine was doing, which is exactly where a reader

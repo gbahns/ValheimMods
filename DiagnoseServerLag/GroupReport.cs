@@ -51,8 +51,9 @@ namespace DiagnoseServerLag
                 string cpu = c.HasCpu && c.CpuMedianMsPerSec > 0f
                     ? $"CPU {c.CpuMedianMsPerSec / 10f,5:0.0}% of a core"
                     : "CPU n/a";
+                string ai = c.NearbyAI > 0 ? $"   simulating {c.OwnedAI}/{c.NearbyAI} creatures" : "";
                 sb.AppendLine($"  {Trim(c.Name, 16),-16} frame {c.FrameMedianMs,5:0.0} ms   stalls {c.TotalStalls,3}   {cpu}" +
-                              (c.RoundTripMs > 0 ? $"   rt {c.RoundTripMs} ms" : ""));
+                              (c.RoundTripMs > 0 ? $"   rt {c.RoundTripMs} ms" : "") + ai);
             }
 
             int reduced = 0;
@@ -66,6 +67,9 @@ namespace DiagnoseServerLag
             // ── what only the group can say ─────────────────────────────────────────
             sb.AppendLine();
             sb.AppendLine(Correlate(window, clients));
+
+            string ownership = Ownership(clients);
+            if (ownership != null) { sb.AppendLine(); sb.AppendLine(ownership); }
 
             csvPath = WriteCsv(window, clients);
             return sb.ToString().TrimEnd();
@@ -141,6 +145,50 @@ namespace DiagnoseServerLag
             return sb.ToString().TrimEnd();
         }
 
+        /// <summary>
+        /// Whether one machine is carrying the group's creature simulation.
+        ///
+        /// Valheim runs a creature's AI only on the owner of its ZDO, ownership goes to whoever was
+        /// in range when it had none, and nothing balances it afterwards. A group that piles into
+        /// one zone therefore leaves one person simulating all of it - on whichever machine
+        /// happened to arrive first, which is nobody's decision and usually nobody's best computer.
+        /// The server does not take this load: on the real server it owned 82 objects out of
+        /// 395,778.
+        ///
+        /// Reported only when someone actually holds a disproportionate share, so a spread-out
+        /// group - where this design works exactly as intended - is not nagged about nothing.
+        /// </summary>
+        private static string Ownership(List<ClientSeries> clients)
+        {
+            int total = 0, holders = 0;
+            ClientSeries top = null;
+            foreach (var c in clients)
+            {
+                total += c.OwnedAI;
+                if (c.OwnedAI > 0) holders++;
+                if (top == null || c.OwnedAI > top.OwnedAI) top = c;
+            }
+            if (top == null || total < 5 || clients.Count < 2) return null;
+
+            float share = (float)top.OwnedAI / total;
+            var sb = new StringBuilder();
+            sb.AppendLine($"CREATURE SIMULATION: {total} creature(s) across {clients.Count} clients, " +
+                          $"{holders} of them carrying any.");
+            foreach (var c in clients)
+                if (c.OwnedAI > 0)
+                    sb.AppendLine($"  {Trim(c.Name, 16),-16} {c.OwnedAI,4} owned of {c.NearbyAI} loaded nearby");
+
+            if (share >= 0.7f && clients.Count > 1)
+            {
+                sb.AppendLine($"  {Trim(top.Name, 16)} is running {share * 100f:0}% of it. Valheim simulates a creature only on");
+                sb.AppendLine("  the machine that owns it, so everyone else's fights are being computed there, and");
+                sb.AppendLine("  their hits are routed through that connection. Ownership goes to whoever was in");
+                sb.AppendLine("  range first and is never rebalanced - spreading out, or letting the strongest");
+                sb.AppendLine("  machine enter a zone first, is the only lever there is.");
+            }
+            return sb.ToString().TrimEnd();
+        }
+
         private static long ToSecond(long utcTicks) => utcTicks / TimeSpan.TicksPerSecond;
 
         private static string Trim(string s, int max)
@@ -182,7 +230,7 @@ namespace DiagnoseServerLag
                             + "ping_round_trip,quality_local,quality_remote,in_bytes_sec,out_bytes_sec,"
                             + "send_queue_bytes,send_rate_bytes_sec,zdos,instances,zdos_sent_sec,zdos_recv_sec,"
                             + "change_queue,peers,cpu_ms_per_sec,cpu_measured,gc0,gc1,gc2,collections,"
-                            + "heap_bytes,working_set_bytes");
+                            + "heap_bytes,working_set_bytes,owned_ai,nearby_ai");
 
                 foreach (var s in window) sb.AppendLine(Row("server", s, c));
 
@@ -202,7 +250,7 @@ namespace DiagnoseServerLag
                                 Iso(sec.UtcTicks), Csv(cl.Name), "", sec.FrameMaxMs.ToString("0.00", c),
                                 sec.Stalls.ToString(c), "", "", "", "", "", "", "", "", "", "", "", "",
                                 "", "", "", "", sec.CpuMsPerSec.ToString("0.0", c), "", "", "", "",
-                                sec.Collections.ToString(c), "", "",
+                                sec.Collections.ToString(c), "", "", "", "",
                             }));
                     }
                 }
@@ -235,6 +283,7 @@ namespace DiagnoseServerLag
                 s.Gc0.ToString(c), s.Gc1.ToString(c), s.Gc2.ToString(c),
                 Machine.Collections(s).ToString(c),
                 s.HeapBytes.ToString(c), s.WorkingSetBytes.ToString(c),
+                s.OwnedAI.ToString(c), s.NearbyAI.ToString(c),
             });
 
         private static string Iso(long ticks) =>

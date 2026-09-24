@@ -76,6 +76,17 @@ namespace DiagnoseServerLag
 
         internal int Peers;
 
+        // ── who is actually simulating the creatures ────────────────────────────────
+        // Valheim runs a creature's AI only on the machine that owns its ZDO; every other
+        // client just renders what the owner reports. Ownership goes to whoever was in range
+        // when the object had none and sticks until they walk away, with no balancing of any
+        // kind - so a group that piles into one zone can leave one person simulating all of it
+        // on a machine nobody chose. These two numbers are what make that visible.
+        /// <summary>Creatures whose AI this machine is running.</summary>
+        internal int OwnedAI;
+        /// <summary>Creatures loaded here at all, owned or not.</summary>
+        internal int NearbyAI;
+
         // ── what the process costs the machine ──────────────────────────────────────
         // The measurements that survive a frame cap. See Machine for why tick time does not.
         /// <summary>Milliseconds of CPU burned per second of wall clock. 1000 is one core fully busy.</summary>
@@ -104,6 +115,10 @@ namespace DiagnoseServerLag
     {
         internal static void Write(ZPackage pkg, Sample s)
         {
+            // Layout 3 appends OwnedAI/NearbyAI. Writers always write the newest shape; readers
+            // are told which one they are looking at, so an older client stays readable instead
+            // of being misparsed into nonsense.
+
             pkg.Write(s.At);
             pkg.Write(s.UtcTicks);
             pkg.Write(s.FrameMsAvg);
@@ -132,9 +147,11 @@ namespace DiagnoseServerLag
             pkg.Write(s.Gc2);
             pkg.Write(s.HeapBytes);
             pkg.Write(s.WorkingSetBytes);
+            pkg.Write(s.OwnedAI);
+            pkg.Write(s.NearbyAI);
         }
 
-        internal static Sample Read(ZPackage pkg)
+        internal static Sample Read(ZPackage pkg, int layout)
         {
             var s = new Sample();
             s.At = pkg.ReadSingle();
@@ -165,6 +182,11 @@ namespace DiagnoseServerLag
             s.Gc2 = pkg.ReadInt();
             s.HeapBytes = pkg.ReadLong();
             s.WorkingSetBytes = pkg.ReadLong();
+            if (layout >= 3)
+            {
+                s.OwnedAI = pkg.ReadInt();
+                s.NearbyAI = pkg.ReadInt();
+            }
             return s;
         }
     }

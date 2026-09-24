@@ -176,6 +176,11 @@ namespace DiagnoseServerLag
                 sb.AppendLine($"  CPU             not measurable{why}");
             }
 
+            // Creature AI runs only on the owner, so this is the share of the group's
+            // simulation this machine is carrying.
+            Sampler.TryNewest(out var newestAi);
+            if (newestAi.NearbyAI > 0)
+                sb.AppendLine($"  simulating      {newestAi.OwnedAI} of {newestAi.NearbyAI} creatures loaded nearby");
             sb.AppendLine($"  object traffic  {Stats.Median(window, x => x.ZdosSent):0}/s out, {Stats.Median(window, x => x.ZdosRecv):0}/s in");
             if (server) sb.AppendLine($"  worst queue     {Stats.Bytes(Stats.Max(window, x => x.SendQueue))}");
 
@@ -222,7 +227,7 @@ namespace DiagnoseServerLag
                 sb.AppendLine("#");
 
                 sb.AppendLine("second,frames,frame_avg_ms,frame_max_ms,stalls,ping_ms,ping_measured,ping_round_trip,quality_local,quality_remote," +
-                              "in_bytes_sec,out_bytes_sec,send_queue_bytes,send_rate_bytes_sec,zdos,instances,zdos_sent_sec,zdos_recv_sec,change_queue,peers," +
+                              "in_bytes_sec,out_bytes_sec,send_queue_bytes,send_rate_bytes_sec,zdos,instances,zdos_sent_sec,zdos_recv_sec,change_queue,peers,owned_ai,nearby_ai," +
                               "cpu_ms_per_sec,cpu_measured,gc0,gc1,gc2,heap_bytes,working_set_bytes");
 
                 foreach (var s in window)
@@ -237,7 +242,7 @@ namespace DiagnoseServerLag
                         s.SendQueue.ToString(c), s.SendRate.ToString(c),
                         s.Zdos.ToString(c), s.Instances.ToString(c),
                         s.ZdosSent.ToString(c), s.ZdosRecv.ToString(c), s.ChangeQueue.ToString(c),
-                        s.Peers.ToString(c),
+                        s.Peers.ToString(c), s.OwnedAI.ToString(c), s.NearbyAI.ToString(c),
                         s.CpuMsPerSec.ToString("0.0", c), s.HasCpu ? "1" : "0",
                         s.Gc0.ToString(c), s.Gc1.ToString(c), s.Gc2.ToString(c),
                         s.HeapBytes.ToString(c), s.WorkingSetBytes.ToString(c),

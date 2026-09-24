@@ -33,7 +33,7 @@ namespace DiagnoseServerLag
         // 1: five columns, uncompressed. 2: every field, compressed. Both are still read,
         // because clients update on their own schedule and an old one should be diminished
         // rather than refused.
-        private const byte Layout = 2;
+        private const byte Layout = 3;
 
         /// <summary>One second, as much of it as the group view needs.</summary>
         internal struct Second
@@ -64,6 +64,10 @@ namespace DiagnoseServerLag
         internal float CpuMedianMsPerSec;
         internal int RoundTripMs;
 
+        /// <summary>Creatures this machine was simulating, at the end of the window.</summary>
+        internal int OwnedAI;
+        internal int NearbyAI;
+
         internal ZPackage Pack()
         {
             var pkg = new ZPackage();
@@ -77,6 +81,8 @@ namespace DiagnoseServerLag
             pkg.Write(TotalStalls);
             pkg.Write(CpuMedianMsPerSec);
             pkg.Write(RoundTripMs);
+            pkg.Write(OwnedAI);
+            pkg.Write(NearbyAI);
             // The series goes in compressed: it is the bulk of the message, and it is the part
             // that squeezes, being mostly slowly-changing or repeated numbers.
             var inner = new ZPackage();
@@ -103,13 +109,18 @@ namespace DiagnoseServerLag
                 c.TotalStalls = pkg.ReadInt();
                 c.CpuMedianMsPerSec = pkg.ReadSingle();
                 c.RoundTripMs = pkg.ReadInt();
+                if (layout >= 3)
+                {
+                    c.OwnedAI = pkg.ReadInt();
+                    c.NearbyAI = pkg.ReadInt();
+                }
                 if (layout >= 2)
                 {
                     var inner = pkg.ReadCompressedPackage();
                     int n = inner.ReadInt();
                     // A client cannot be allowed to make the server allocate whatever it likes.
                     if (n < 0 || n > 20000) return null;
-                    for (int i = 0; i < n; i++) c.Samples.Add(SampleWire.Read(inner));
+                    for (int i = 0; i < n; i++) c.Samples.Add(SampleWire.Read(inner, layout));
                     c.Full = true;
                     c.FillSecondsFromSamples();
                 }
@@ -177,6 +188,11 @@ namespace DiagnoseServerLag
             }
             c.Full = true;
             c.FillSecondsFromSamples();
+            if (window.Count > 0)
+            {
+                c.OwnedAI = window[window.Count - 1].OwnedAI;
+                c.NearbyAI = window[window.Count - 1].NearbyAI;
+            }
             c.FrameMedianMs = Stats.Median(window, x => x.FrameMsAvg);
             c.CpuMedianMsPerSec = Stats.Median(window, x => x.CpuMsPerSec);
             return c;

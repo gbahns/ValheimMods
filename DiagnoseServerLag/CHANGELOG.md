@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.6.1 — unreleased
+
+- **Measures who is simulating the creatures.** Valheim runs a creature's AI only on the machine
+  that owns its ZDO (`if (!m_nview.IsOwner())` in `BaseAI.UpdateAI`); every other client just
+  renders what the owner reports. Ownership goes to whoever was in range when the object had none,
+  sticks until they walk away, and is **never rebalanced** — so a group that piles into one zone
+  leaves one person simulating all of it, on a machine nobody chose.
+- Each machine now reports **creatures owned and creatures loaded nearby**, counted from the
+  game's own `BaseAI.Instances` list once a second. It appears in the report, in `dsl_bench`, in
+  both CSVs, and — where it matters most — in the group capture, which now names who is carrying
+  the group's simulation and what share of it.
+- The concentration finding is only printed when somebody actually holds a disproportionate share,
+  so a spread-out group is not nagged about a design working exactly as intended.
+- This is why the server measuring clean and the game feeling bad are not a contradiction: the
+  server does not take this load. On the real server it owned 82 objects out of 395,778.
+
 ## 0.6.0
 
 - **The group capture now brings back every column from every machine**, not the five the

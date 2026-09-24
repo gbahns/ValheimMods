@@ -203,6 +203,8 @@ namespace DiagnoseServerLag
             var scene = ZNetScene.instance;
             if (scene != null) s.Instances = scene.NrOfInstances();
 
+            CountOwnedAI(ref s);
+
             // The machine-level half: CPU, memory and collections. This is the part that still
             // means something on a frame-capped server, where tick time is constant by
             // construction and says nothing about how much room is left.
@@ -356,6 +358,44 @@ namespace DiagnoseServerLag
                 $"[DiagnoseServerLag] A socket could not be read ({e.Message}). Ping, connection quality " +
                 "and queue size are left as not measurable for that peer; everything else still works. " +
                 "Said once per session, not once a second.");
+        }
+
+        /// <summary>
+        /// Counts the creatures whose AI this machine is running.
+        ///
+        /// BaseAI.Instances is the game's own list of every AI in the scene, so this is a walk of
+        /// a bounded list rather than of the object graph - a few hundred entries at the very most,
+        /// once a second. Ownership is read through the ZNetView because neither IUpdateAI nor
+        /// BaseAI exposes it.
+        ///
+        /// It is here because it is the one number that shows a group's load landing on one person.
+        /// The server owns almost nothing (82 objects out of 395,778 on the real server), so when
+        /// several players share a zone the creature simulation belongs to whoever arrived first,
+        /// and nothing in the game balances or reports that.
+        /// </summary>
+        private static void CountOwnedAI(ref Sample s)
+        {
+            try
+            {
+                var instances = BaseAI.Instances;
+                if (instances == null) return;
+                int owned = 0, near = 0;
+                for (int i = 0; i < instances.Count; i++)
+                {
+                    var component = instances[i] as Component;
+                    if (component == null) continue;
+                    var view = component.GetComponent<ZNetView>();
+                    if (view == null || !view.IsValid()) continue;
+                    near++;
+                    if (view.IsOwner()) owned++;
+                }
+                s.OwnedAI = owned;
+                s.NearbyAI = near;
+            }
+            catch (Exception e)
+            {
+                NoteSocketUnreadable(e);   // one line per session, same as the socket reads
+            }
         }
 
         /// <summary>The most recent completed second, if there is one.</summary>
