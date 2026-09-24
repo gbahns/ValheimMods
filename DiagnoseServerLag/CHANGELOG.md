@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.1 — unreleased
+## 0.6.1
 
 - **Measures who is simulating the creatures.** Valheim runs a creature's AI only on the machine
   that owns its ZDO (`if (!m_nview.IsOwner())` in `BaseAI.UpdateAI`); every other client just
