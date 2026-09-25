@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.10
+
+- **New setting: `Show My Own Ownership`**, off by default. The owner labels stay silent about
+  creatures you own yourself, which is right - the labels exist to show where an interaction is
+  *going*, and one to your own machine goes nowhere - but that makes the feature impossible to test
+  alone, because solo you own everything near you and the unowned ones are too far off for the game
+  to draw a nameplate on at all. Turn this on to watch it work before there is anybody to watch it
+  work against.
+
 ## 0.9.9
 
 - **Players SpreadTheLoad is steering work away from are greyed.** Their low counts are the mod
