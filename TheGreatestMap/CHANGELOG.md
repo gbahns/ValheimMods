@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.0 — 2026-09-25
+
+Client-side; works with a 0.2.x server.
+
+- Yggdrasil roots are recorded, the Mistlands roots a sap extractor is built on, with the sap icon. They are the only source of sap and they never move, so they are worth writing down, and finding one again in the mist is the whole problem. They count as a deposit, so "Record Ore" covers them, and they are never crossed off: tapping one does not use it up.
+- Things with no component that says what they are can now be recognized by name. A root is not mined, picked or broken, so nothing this mod looked for was on it; a catalog line naming any plain networked object now works, which is what made the root possible. It applies to berries, mushrooms, herbs, seeds, plants and deposits, not to locations or campfires, which have rules of their own.
+
 ## 1.2.0 — 2026-09-20
 
 Client-side; works with a 0.2.x server. The settings below become the server's to set, so a player

@@ -207,7 +207,8 @@ namespace TheGreatestMap
                     return "rock4_copper=Copper,MineRock_Tin=Tin,silvervein=Silver|SilverOre,MineRock_Obsidian=Obsidian,MineRock_Meteorite=Meteorite," +
                            "mudpile_beacon=Scrap Pile|IronScrap,mudpile2=Scrap Pile|IronScrap,mudpile=Scrap Pile|IronScrap,Pickable_Tar=Tar Pit," +
                            "giant_brain=Petrified Bone,giant_helmet1=Petrified Bone,giant_helmet2=Petrified Bone,giant_ribs=Petrified Bone," +
-                           "giant_skull=Petrified Bone,giant_sword1=Petrified Bone,giant_sword2=Petrified Bone";
+                           "giant_skull=Petrified Bone,giant_sword1=Petrified Bone,giant_sword2=Petrified Bone," +
+                           "YggdrasilRoot*=Yggdrasil Root|Sap";
                 case Category.Dungeon:
                     return "Crypt2=Burial Chambers|TrophySkeleton,Crypt3=Burial Chambers|TrophySkeleton,Crypt4=Burial Chambers|TrophySkeleton," +
                            "SunkenCrypt4=Sunken Crypt|TrophyDraugr,MountainCave02=Frost Cave|TrophyCultist,TrollCave02=Troll Cave|TrophyFrostTroll," +
@@ -243,7 +244,7 @@ namespace TheGreatestMap
             switch (c)
             {
                 case Category.Dungeon:   return "Any location with an interior also counts as a dungeon even if it is not listed.";
-                case Category.Ore:       return "Matches MineRock5, MineRock, Destructible and Pickable objects by prefab name.";
+                case Category.Ore:       return "Matches MineRock5, MineRock, Destructible and Pickable objects by prefab name, and a plain networked object such as a Yggdrasil root.";
                 case Category.Structure: return "Entries ending in * match by prefix. Unlisted outdoor locations also count when 'Structures Include Unlisted' is on.";
                 case Category.Campfire:  return "Only fires a player built count, not the ones the world puts in camps and villages. The icon can be piece:<prefab>, a building piece's build-menu picture.";
                 default:                 return "";
@@ -573,6 +574,25 @@ namespace TheGreatestMap
         /// deposit is called and which icon it wears, where we want something better than the
         /// defaults, and it can still put a deposit in some other category.
         /// </summary>
+        /// <summary>
+        /// Kinds whose catalog lines name ordinary objects standing in the world. The rest name
+        /// spawned locations (structures, dungeons, camps, altars, traders), which need their
+        /// radius and interior weighed, or campfires, which count only when a player built one.
+        /// </summary>
+        private static bool IsLooseObjectKind(Category c)
+        {
+            switch (c)
+            {
+                case Category.Berries:
+                case Category.Mushrooms:
+                case Category.Herbs:
+                case Category.Seeds:
+                case Category.Plants:
+                case Category.Ore:  return true;
+                default:            return false;
+            }
+        }
+
         private static bool ClassifyDeposit(GameObject owner, string displayName, DropTable drops, out Found found)
         {
             found = null;
@@ -720,6 +740,26 @@ namespace TheGreatestMap
                     string icon = e.Icon ?? Categories.KnownIcon(prefab) ?? (drops != null ? FirstDrop(drops.m_dropWhenDestroyed) : null);
                     found = Make(e.Cat, e.Name ?? Prettify(prefab), icon, destructible.transform.position, KeyOf(destructible.gameObject, prefab));
                     return true;
+                }
+            }
+
+            // A thing with no component that says what it is. A Yggdrasil root is not mined, picked
+            // or broken -- you build a sap extractor on it -- so it carries nothing but a ZNetView,
+            // and the only handle on it is the name of its networked prefab. Pickables are left out:
+            // one already went past the branch above, and it was skipped there for a reason (picked
+            // for good). So are locations and campfires, which have their own rules.
+            if (pickable == null)
+            {
+                var view = go.GetComponentInParent<ZNetView>();
+                if (view != null)
+                {
+                    string prefab = PrefabName(view.gameObject);
+                    if (Lookup(prefab, out var e) && IsLooseObjectKind(e.Cat))
+                    {
+                        found = Make(e.Cat, e.Name ?? Prettify(prefab), e.Icon ?? Categories.KnownIcon(prefab),
+                            view.transform.position, KeyOf(view.gameObject, prefab));
+                        return true;
+                    }
                 }
             }
 
