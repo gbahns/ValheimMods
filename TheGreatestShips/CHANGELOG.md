@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.4 — unreleased
+## 0.9.4 — 2026-09-25
 
 - Fixed: a burst of errors in the log when a pen ship's area unloaded -- a teleport, or sailing
   out of range. The gate kept reading the ship's network state for a frame or two after the
