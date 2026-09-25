@@ -516,7 +516,7 @@ namespace DiagnoseServerLag
             {
                 var instances = BaseAI.Instances;
                 if (instances == null) return;
-                int owned = 0, near = 0;
+                int owned = 0, near = 0, unownedAI = 0;
                 _otherOwners.Clear();
                 for (int i = 0; i < instances.Count; i++)
                 {
@@ -532,12 +532,13 @@ namespace DiagnoseServerLag
                     var zdo = view.GetZDO();
                     if (zdo == null) continue;
                     long other = zdo.GetOwner();
-                    if (other == 0L) continue;               // nobody: the server will hand it out
+                    if (other == 0L) { unownedAI++; continue; }   // nobody is running its AI
                     _otherOwners.TryGetValue(other, out int n);
                     _otherOwners[other] = n + 1;
                 }
                 s.OwnedAI = owned;
                 s.NearbyAI = near;
+                s.UnownedAI = unownedAI;
                 s.FeedMs = Feed.IntervalMs;
                 CountOwnedObjects(ref s);
                 CountPlayers();

@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.9.8
+
+- **The readout is an ownership table, and you are a row in it.** Greg's design: your own holdings
+  sit under your character name in the same column shape as everybody else's, instead of a
+  "simulating" line and an "objects" line in a different format above the others. The question is
+  never "how much do I have" but "how does my share compare to theirs", and two line formats made
+  that a calculation rather than a glance.
+
+  ```
+  Greg           4183 obj  11 mob
+  Brane           320 obj   7 mob   144 ms
+  server            1 obj   0 mob    82 ms
+  unowned        1445 obj  12 mob
+  total          5629 obj  23 mob
+  ```
+
+- **`unowned` is a row rather than a suffix**, because without it the arithmetic does not close -
+  4183 + 1 + 1445 = 5629 only reads as complete when the parts are stacked. `unowned_ai` joins the
+  capture, so the CSV carries the same breakdown as the screen.
+- **The bottom line is now `server tick`.** With a `server` row in the table for what the server
+  itself owns, two unrelated lines shared one label. It pairs with `server feed`.
+- Wire layout 7. **Update the server before the clients.**
+
 ## 0.9.7
 
 - **Owner labels now work on tamed animals.** Greg found they did not. Character.GetHoverName never

@@ -112,6 +112,9 @@ namespace DiagnoseServerLag
         /// </summary>
         internal int UnownedObjects;
 
+        /// <summary>Of those, how many are creatures - the ones running no AI at all.</summary>
+        internal int UnownedAI;
+
         // ── what the process costs the machine ──────────────────────────────────────
         // The measurements that survive a frame cap. See Machine for why tick time does not.
         /// <summary>Milliseconds of CPU burned per second of wall clock. 1000 is one core fully busy.</summary>
@@ -140,7 +143,7 @@ namespace DiagnoseServerLag
     {
         internal static void Write(ZPackage pkg, Sample s)
         {
-            // Layout 6 appends UnownedObjects, 5 appended OwnedObjects/NearbyObjects, 4 appended FeedMs, 3 OwnedAI/NearbyAI. Writers always write the
+            // Layout 7 appends UnownedAI, 6 appended UnownedObjects, 5 appended OwnedObjects/NearbyObjects, 4 appended FeedMs, 3 OwnedAI/NearbyAI. Writers always write the
             // newest shape; readers
             // are told which one they are looking at, so an older client stays readable instead
             // of being misparsed into nonsense.
@@ -179,6 +182,7 @@ namespace DiagnoseServerLag
             pkg.Write(s.OwnedObjects);
             pkg.Write(s.NearbyObjects);
             pkg.Write(s.UnownedObjects);
+            pkg.Write(s.UnownedAI);
         }
 
         internal static Sample Read(ZPackage pkg, int layout)
@@ -229,6 +233,10 @@ namespace DiagnoseServerLag
             if (layout >= 6)
             {
                 s.UnownedObjects = pkg.ReadInt();
+            }
+            if (layout >= 7)
+            {
+                s.UnownedAI = pkg.ReadInt();
             }
             return s;
         }

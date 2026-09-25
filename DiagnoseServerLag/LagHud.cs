@@ -157,35 +157,22 @@ namespace DiagnoseServerLag
             else
                 lines.Add(Line("link", s.HasPing ? "under 1 ms" : "not measurable", 0));
 
-            if (s.NearbyAI > 0)
+            if (s.NearbyObjects > 0 || s.NearbyAI > 0)
             {
-                // Coloured on share, not on count - and only when somebody else could be sharing
-                // it. Alone in a zone you own everything near you by definition; that is the design
-                // working, not a warning, and colouring it would cry wolf in single player and on
-                // every solo evening.
+                // The ownership table: a row per owner, you among them under your own name rather
+                // than as a separate "simulating" line above the others. Reading your share off the
+                // same row shape as everybody else's is what makes the comparison immediate - the
+                // question is never "how much do I have" but "how does my share compare to theirs",
+                // and two different line formats made that a calculation instead of a glance.
+                //
+                // Coloured on share, and only when somebody else could be taking some. Alone in a
+                // zone you own everything near you by definition; that is the design working, not a
+                // warning, and colouring it would cry wolf on every solo evening.
                 bool carrying = Sampler.PlayersOnline > 1
                                 && s.NearbyAI >= 5
                                 && s.OwnedAI >= s.NearbyAI * 0.8f;
-                lines.Add(Line("simulating", $"{s.OwnedAI} of {s.NearbyAI} mobs", carrying ? 1 : 0));
+                lines.Add(Line(LocalName(), Holding(s.OwnedObjects, s.OwnedAI, null), carrying ? 1 : 0));
 
-                // Objects, not just creatures. A tree, a rock or a workbench somebody else owns
-                // routes through their machine exactly as a greydwarf does, so a zone can hold no
-                // creatures at all and still send every axe swing through another player.
-                if (s.NearbyObjects > 0)
-                {
-                    // Unowned is shown only when there is some, because it is normally a handful
-                    // in transit. A large steady number is the interesting case: those objects are
-                    // loaded and nobody is simulating them.
-                    string idle = s.UnownedObjects > 0 ? $"   {s.UnownedObjects} unowned" : "";
-                    lines.Add(Line("objects", $"{s.OwnedObjects} of {s.NearbyObjects}{idle}", 0));
-                }
-
-                // Then a line per other owner: what they are carrying, and what it costs you to
-                // touch it. The two facts were previously on separate lines from separate sources -
-                // a list of names and counts, then the single worst latency - which meant reading
-                // across two rows to learn one thing about one person, and needed a label
-                // ("their stuff") that nobody could parse. One row per player needs no label at
-                // all: the name is the label, and everything on the row is about them.
                 var owners = LagNetwork.OwnerLatencies();
                 int shown = 0;
                 foreach (var o in owners)
@@ -196,14 +183,18 @@ namespace DiagnoseServerLag
                     // No reply means they are not running this mod, so the cost is unmeasurable
                     // rather than zero. Saying so is better than an empty column that reads as fast.
                     string cost = o.Answered ? $"{o.Ms:0} ms" : "no mod";
-                    // Both counts, because they are different costs: an owned object means a
-                    // round trip when you touch it, while an owned creature also means their
-                    // machine running its AI every frame.
-                    lines.Add(Line(who, $"{o.Objects,4} obj {o.Creatures,3} mob   {cost}",
+                    lines.Add(Line(who, Holding(o.Objects, o.Creatures, cost),
                         o.Answered ? Rank(o.Ms, 200f, 400f) : 0));
                 }
                 if (owners.Count > shown)
                     lines.Add(Line("", $"+{owners.Count - shown} more", 0));
+
+                // Not an owner, but it belongs in the table or the arithmetic does not close: these
+                // are loaded and nobody is simulating them at all.
+                if (s.UnownedObjects > 0 || s.UnownedAI > 0)
+                    lines.Add(Line("unowned", Holding(s.UnownedObjects, s.UnownedAI, null), 0));
+
+                lines.Add(Line("total", Holding(s.NearbyObjects, s.NearbyAI, null), 0));
             }
 
             // How often the server actually reaches this client. Shown next to what the send
@@ -223,17 +214,40 @@ namespace DiagnoseServerLag
             }
 
             if (report == null)
-                lines.Add(Line("server", LagNetwork.Module == ServerModule.Absent ? "no mod" : "asking...", 0));
+                lines.Add(Line("server tick", LagNetwork.Module == ServerModule.Absent ? "no mod" : "asking...", 0));
             else
             {
                 float tick = Mathf.Max(report.TickMsAvg, report.BaselineTickMs);
-                lines.Add(Line("server", $"{tick:0.0} ms  {report.Zdos} obj",
+                // "server tick", not "server": the table above can now carry a row named "server"
+                // for the objects the server itself owns, and two different lines under one label
+                // would be read as one thing.
+                lines.Add(Line("server tick", $"{tick:0.0} ms  {report.Zdos} obj",
                     Verdict.ServerPaced(report) ? 0
                         : Rank(tick, DslConfig.ServerTickWarnMs.Value, DslConfig.ServerTickSevereMs.Value)));
             }
 
             ApplyPosition();
             _label.text = string.Join("\n", lines.ToArray());
+        }
+
+        /// <summary>One holding, in the shared column shape every row of the table uses.</summary>
+        private static string Holding(int objects, int creatures, string cost) =>
+            $"{objects,5} obj {creatures,3} mob" + (cost == null ? "" : $"   {cost}");
+
+        /// <summary>Your own name, so your row reads like everybody else's rather than "you".</summary>
+        private static string LocalName()
+        {
+            try
+            {
+                var me = Player.m_localPlayer;
+                if (me != null)
+                {
+                    string name = me.GetPlayerName();
+                    if (!string.IsNullOrEmpty(name)) return name;
+                }
+            }
+            catch { }
+            return "you";
         }
 
         /// <summary>0 normal, 1 past the warning threshold, 2 past the severe one.</summary>
