@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using HarmonyLib;
 using UnityEngine;
 
 namespace SpreadTheLoad
@@ -38,6 +39,17 @@ namespace SpreadTheLoad
         /// </summary>
         private static readonly List<string> _prefabs = new List<string>();
         private static int _prefabCountAtScan = -1;
+
+        /// <summary>
+        /// ZNetScene.m_namedPrefabs, the dictionary GetPrefab actually reads.
+        ///
+        /// m_prefabs is the list serialised with the scene, and scanning it found the five vanilla
+        /// hulls and none of TheGreatestShips' on a server where that mod was plainly loaded. A mod
+        /// registering a prefab puts it in the named dictionary, which is what the rest of the game
+        /// looks things up in, so that is the registry to trust. Private, but keyed and valued by
+        /// public types, so reflection reads it without a publicized assembly.
+        /// </summary>
+        private static System.Reflection.FieldInfo _namedPrefabsField;
 
         // A sweep walks every sector, 400 at a time, which is what the iterative API is shaped for.
         // One slice per frame per prefab: a full cycle takes a few seconds on a large world, which
@@ -148,20 +160,33 @@ namespace SpreadTheLoad
             var scene = ZNetScene.instance;
             if (scene == null) return;
 
-            // Re-scan whenever the prefab list has grown. A single scan at startup missed every
-            // modded hull on the first real server this ran on - it found the five vanilla ships
-            // and none of TheGreatestShips' - because mods register their prefabs after ZNetScene
-            // exists. Comparing the count is cheap enough to do every pass and self-corrects
-            // however late a mod registers.
-            if (scene.m_prefabs.Count == _prefabCountAtScan) return;
-            _prefabCountAtScan = scene.m_prefabs.Count;
+            // Re-scan whenever the registry has grown, because mods register their prefabs after
+            // ZNetScene exists and a single scan at startup is always a race.
+            var named = NamedPrefabs(scene);
+            int count = named != null ? named.Count : scene.m_prefabs.Count;
+            if (count == _prefabCountAtScan) return;
+            _prefabCountAtScan = count;
             _prefabs.Clear();
 
-            foreach (var prefab in scene.m_prefabs)
+            if (named != null)
             {
-                if (prefab == null) continue;
-                if (prefab.GetComponent<Ship>() == null) continue;
-                _prefabs.Add(prefab.name);
+                foreach (var prefab in named.Values)
+                {
+                    if (prefab == null) continue;
+                    if (prefab.GetComponent<Ship>() == null) continue;
+                    if (!_prefabs.Contains(prefab.name)) _prefabs.Add(prefab.name);
+                }
+            }
+            else
+            {
+                // Only if the field has been renamed by a game update: the scene list still holds
+                // every vanilla hull, so helm ownership degrades to vanilla ships rather than none.
+                foreach (var prefab in scene.m_prefabs)
+                {
+                    if (prefab == null) continue;
+                    if (prefab.GetComponent<Ship>() == null) continue;
+                    if (!_prefabs.Contains(prefab.name)) _prefabs.Add(prefab.name);
+                }
             }
             // Reset the sweep: the prefab list changed underneath it.
             _prefabIndex = 0; _scanIndex = 0; _found.Clear();
@@ -169,6 +194,20 @@ namespace SpreadTheLoad
                 _prefabs.Count == 0
                     ? "[SpreadTheLoad] no ship prefabs found; helm ownership will do nothing."
                     : $"[SpreadTheLoad] watching {_prefabs.Count} ship type(s) for helm ownership: {string.Join(", ", _prefabs.ToArray())}");
+        }
+
+        private static Dictionary<int, GameObject> NamedPrefabs(ZNetScene scene)
+        {
+            try
+            {
+                if (_namedPrefabsField == null)
+                {
+                    _namedPrefabsField = AccessTools.Field(typeof(ZNetScene), "m_namedPrefabs");
+                    if (_namedPrefabsField == null) return null;
+                }
+                return _namedPrefabsField.GetValue(scene) as Dictionary<int, GameObject>;
+            }
+            catch { return null; }
         }
 
         private static void Report()

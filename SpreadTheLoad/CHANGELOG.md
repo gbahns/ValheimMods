@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.1.3
+
+- **A tree, rock or ore vein now goes to whoever is hitting it.** Vanilla never does this - TreeBase,
+  TreeLog, Destructible and MineRock5 all open their damage handler with
+  `if (!m_nview.IsOwner()) return;` and nothing anywhere calls ClaimOwnership - so the machine that
+  loaded a tree keeps it and every swing anyone else makes travels there and back, for that tree and
+  the next one. A chopping session is hundreds of interactions against a handful of objects, which
+  makes this the commonest way a group feels somebody else's frame time.
+
+  Resources only. A creature carries live AI state that is not all replicated, so moving one
+  mid-fight can make it re-acquire its target or re-path - a real hitch in the least welcome moment,
+  left alone until it can be measured rather than reasoned about.
+
+  Three details that matter: the transfer waits 0.4s so the swing that triggered it lands first
+  (the old owner's handler checks ownership, and changing it immediately drops that hit); a dwell
+  time stops two players bouncing one tree between them; and it never hands an object to a player
+  work is being steered *away* from, which would only churn.
+
+- **Ship prefabs are found in the right registry.** The scan read `ZNetScene.m_prefabs`, the list
+  serialised with the scene, and found the five vanilla hulls and none of TheGreatestShips'. Mods
+  register into `m_namedPrefabs`, which is what `GetPrefab` reads. Now 13 hulls including every
+  `DM_*` ship.
+
 ## 0.1.2
 
 - **The yield list is switched off with the mod.** `IsYielding` did not check `Enabled`, so with

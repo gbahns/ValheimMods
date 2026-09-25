@@ -35,7 +35,7 @@ namespace SpreadTheLoad
     {
         public const string ModGuid = "DeathMonger.SpreadTheLoad";
         public const string ModName = "Spread The Load";
-        public const string ModVersion = "0.1.2";
+        public const string ModVersion = "0.1.3";
 
         internal static ManualLogSource Log;
         internal static ConfigEntry<bool> Enabled;
@@ -44,6 +44,8 @@ namespace SpreadTheLoad
         internal static ConfigEntry<bool> RememberIds;
         internal static ConfigEntry<bool> AutoDetect;
         internal static ConfigEntry<int> StallsPerMinute;
+        internal static ConfigEntry<bool> OwnershipFollowsAttacker;
+        internal static ConfigEntry<float> AttackerDwellSeconds;
         internal static ConfigEntry<bool> AssignShipToCaptain;
         internal static ConfigEntry<bool> YieldingRetainsHelm;
 
@@ -90,6 +92,20 @@ namespace SpreadTheLoad
                 "one update every 0.05s. Clearing the flag needs five clean minutes - deliberately " +
                 "harder than setting it, so a borderline machine does not flap ownership back and " +
                 "forth. The last healthy player on the server is never flagged.");
+
+            OwnershipFollowsAttacker = Config.Bind("Interacting", "Ownership Follows Attacker", true,
+                "Give a tree, rock or ore vein to whoever is hitting it. Vanilla never does: the " +
+                "machine that loaded it keeps it, so every swing anyone else makes travels to that " +
+                "machine and back, for that tree and the next one. A chopping session is hundreds " +
+                "of interactions against a few objects, which makes this the commonest way a group " +
+                "feels somebody else's frame time. " +
+                "Resources only. A creature carries live AI state that is not all replicated, so " +
+                "moving one mid-fight can make it re-acquire its target or re-path; that is left " +
+                "alone until it can be measured rather than guessed at.");
+
+            AttackerDwellSeconds = Config.Bind("Interacting", "Attacker Dwell Seconds", 5f,
+                "How long an object stays put after being handed to somebody, so two players " +
+                "working the same tree cannot bounce it back and forth between them.");
 
             AssignShipToCaptain = Config.Bind("Ships", "Assign Ship To Captain", true,
                 "Give a ship to whoever is steering it. Vanilla only moves a ship when its owner " +
@@ -176,6 +192,7 @@ namespace SpreadTheLoad
             {
                 Conflicts.Tick(Time.unscaledTime, znet.IsServer(), znet.GetConnectedPeers().Count);
                 Ships.Tick(Time.unscaledTime);
+                Attackers.Tick(Time.unscaledTime);
                 if (Time.unscaledTime >= _nextJudge)
                 {
                     _nextJudge = Time.unscaledTime + 1f;
