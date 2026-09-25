@@ -67,6 +67,10 @@
       "side": "both",
       "why": "Server-authoritative: the server decides whether a pause is granted and broadcasts it; the client freezes."
     },
+    "TheObituaries": {
+      "side": "client",
+      "why": "[BepInProcess(\"valheim.exe\")]. The dying player's client composes the obituary and sends it to everybody over a routed RPC; the server relays a routed RPC it does not know without needing the mod, and a client without it drops the message."
+    },
     "StationExtensionGuard": {
       "side": "client",
       "why": "[BepInProcess(\"valheim.exe\")]. Never published; kept local."

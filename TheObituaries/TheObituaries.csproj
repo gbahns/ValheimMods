@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <OutputType>Library</OutputType>
+    <RootNamespace>TheObituaries</RootNamespace>
+    <AssemblyName>TheObituaries</AssemblyName>
+    <Deterministic>true</Deterministic>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <NoWarn>$(NoWarn);MSB3277</NoWarn>
+    <LangVersion>12</LangVersion>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="HarmonyX" Version="2.9.0" />
+  </ItemGroup>
+
+  <!-- The plain assemblies, not the _publicized ones: the game loads the real assemblies and
+       Mono enforces access at runtime, so anything private that compiles against a publicized
+       DLL throws in game. The one protected field this mod reads (Character.m_lastHit) goes
+       through Harmony's FieldRefAccess. -->
+  <ItemGroup>
+    <Reference Include="assembly_valheim">
+      <HintPath>..\Libs\assembly_valheim.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="assembly_utils">
+      <HintPath>..\Libs\assembly_utils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="assembly_guiutils">
+      <HintPath>..\Libs\assembly_guiutils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>..\Libs\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- The UnityEngine facade is needed alongside CoreModule or BaseUnityPlugin fails with CS0012. -->
+    <Reference Include="UnityEngine">
+      <HintPath>..\Libs\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>..\Libs\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

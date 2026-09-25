@@ -1,0 +1,29 @@
+[config]
+schemaVersion = "0.0.1"
+
+[package]
+namespace = "DeathMonger"
+name = "TheObituaries"
+versionNumber = "0.1.0"
+description = "Announces every player death to the whole server in Quake style: 'Greg was railed by a Deathsquito', 'Marco sank like a rock', 'Anna does a back flip into the lava'. Client-side; the server needs nothing."
+websiteUrl = "https://github.com/gbahns/ValheimMods/tree/main/TheObituaries"
+containsNsfwContent = false
+
+[package.dependencies]
+"denikson-BepInExPack_Valheim" = "5.4.2350"
+
+[build]
+icon = "./icon.png"
+readme = "./README.md"
+outdir = "./build"
+
+[[build.copy]]
+source = "./bin/Release/net48/TheObituaries.dll"
+target = "BepInEx/plugins/"
+
+[publish]
+repository = "https://thunderstore.io"
+communities = ["valheim"]
+
+[publish.categories]
+valheim = ["mods"]

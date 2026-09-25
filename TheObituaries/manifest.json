@@ -1,0 +1,7 @@
+{
+    "name": "TheObituaries",
+    "version_number": "0.1.0",
+    "website_url": "https://github.com/gbahns/ValheimMods/tree/main/TheObituaries",
+    "description": "Announces every player death to the whole server in Quake style: 'Greg was railed by a Deathsquito', 'Marco sank like a rock', 'Anna does a back flip into the lava'. Client-side; the server needs nothing.",
+    "dependencies": ["denikson-BepInExPack_Valheim-5.4.2350"]
+}
