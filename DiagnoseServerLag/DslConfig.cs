@@ -24,6 +24,7 @@ namespace DiagnoseServerLag
         internal static ConfigEntry<KeyboardShortcut> HudKey;
         internal static ConfigEntry<KeyboardShortcut> OwnerNamesKey;
         internal static ConfigEntry<bool> ShowOwnerNames;
+        internal static ConfigEntry<bool> ShowMyOwnOwnership;
         internal static ConfigEntry<LagHud.Corner> HudPosition;
         internal static ConfigEntry<float> HudX;
         internal static ConfigEntry<float> HudY;
@@ -92,6 +93,13 @@ namespace DiagnoseServerLag
                 "which particular creature is being simulated by somebody else rather than only how " +
                 "many of them are. Off by default: it is a diagnostic, and a label on everything " +
                 "would be clutter during ordinary play. F6 toggles it.");
+
+            ShowMyOwnOwnership = mod.Bind("Display", "Show My Own Ownership", false,
+                "Whether the owner label also appears on creatures you own yourself. Off by " +
+                "default: the labels exist to show where an interaction is going, and one to your " +
+                "own machine goes nowhere, so a label on everything you own would bury the few " +
+                "that matter. Turn it on to see the labels working when nobody else is online - " +
+                "alone you own everything nearby, so with this off there is nothing to show.");
 
             ShowHud = mod.Bind("Display", "Show Readout", true,
                 "The corner readout: frame time, stalls, CPU share, round trip to the server, creatures this " +

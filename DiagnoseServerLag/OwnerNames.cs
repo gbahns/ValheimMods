@@ -31,6 +31,7 @@ namespace DiagnoseServerLag
         private static readonly List<ZNet.PlayerInfo> _players = new List<ZNet.PlayerInfo>();
         private static float _nextRefresh;
         private static long _me;
+        private static string _mine;
 
         internal static bool Enabled =>
             DslConfig.ShowOwnerNames != null && DslConfig.ShowOwnerNames.Value;
@@ -56,7 +57,20 @@ namespace DiagnoseServerLag
             if (owner == 0L) return "unowned";
 
             Refresh();
-            if (owner == _me) return null;              // ours: nothing worth saying
+
+            // Silent about your own by default, and that is the right default: the labels exist
+            // to show where an interaction is *going*, and one to your own machine goes nowhere.
+            // A label on every creature you own would be clutter obscuring the few that matter.
+            //
+            // It is a setting only because the default makes the feature untestable alone - you
+            // own everything near you, and the unowned ones are too far off for the game to draw a
+            // nameplate on at all, since EnemyHud only labels what has been hovered or hit
+            // recently. Turning this on is how you see it working before there is anybody to see
+            // it working against.
+            if (owner == _me)
+                return DslConfig.ShowMyOwnOwnership != null && DslConfig.ShowMyOwnOwnership.Value
+                    ? (_mine ?? "you")
+                    : null;
             return _names.TryGetValue(owner, out string name) ? name : "another player";
         }
 
@@ -100,6 +114,8 @@ namespace DiagnoseServerLag
                 {
                     var view = me.GetComponent<ZNetView>();
                     if (view != null && view.IsValid()) _me = view.GetZDO().GetOwner();
+                    string mine = me.GetPlayerName();
+                    _mine = string.IsNullOrEmpty(mine) ? null : mine;
                 }
             }
             catch { /* a name we cannot resolve is one we simply do not show */ }
