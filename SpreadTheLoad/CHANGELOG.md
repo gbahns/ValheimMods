@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.2
+
+- **The yield list is switched off with the mod.** `IsYielding` did not check `Enabled`, so with
+  the mod turned off but names still configured it answered yes about a rule that was not in force.
+  The ship pass consults it, so this was a real bug rather than only a display one.
+- **A small public API**, `SpreadTheLoadApi`, so DiagnoseServerLag can grey the rows of players
+  work is being steered away from. This mod stays server-only and gains no client half; DSL's
+  server half reads it and sends the answer down with its own report.
+
 ## 0.1.1
 
 Both fixes come from the first run on a real server.

@@ -21,7 +21,7 @@ namespace DiagnoseServerLag
         // is what keeps an older client readable: it parses every field it knows, stops at the end
         // of the peers, and never notices the trailing bytes. A newer client reading an older
         // server checks the version instead of reading past the end.
-        private const byte Layout = 2;
+        private const byte Layout = 3;
 
         /// <summary>Time.unscaledTime on the receiving client when this arrived.</summary>
         internal float ReceivedAt;
@@ -49,6 +49,13 @@ namespace DiagnoseServerLag
 
         /// <summary>Empty when the server is configured not to share it, or the asker is not allowed it.</summary>
         internal List<PeerSample> Peers = new List<PeerSample>();
+
+        /// <summary>
+        /// Peers SpreadTheLoad is steering work away from, if it is installed and on. Sent as a
+        /// plain list of ids after everything else rather than a flag inside each peer, so an older
+        /// client stops at the end of the layout it knows and simply never learns about it.
+        /// </summary>
+        internal List<long> Yielding = new List<long>();
 
         /// <summary>Set when the server declined to include the peer table, so the panel can say why.</summary>
         internal bool PeerDetailWithheld;
@@ -98,6 +105,10 @@ namespace DiagnoseServerLag
             // Layout 2 and later, after the peers; see the note on Layout.
             pkg.Write(Echo);
             pkg.Write(PeerPingIsRoundTrip);
+
+            // Layout 3.
+            pkg.Write(Yielding.Count);
+            foreach (long uid in Yielding) pkg.Write(uid);
             return pkg;
         }
 
@@ -152,6 +163,12 @@ namespace DiagnoseServerLag
                     r.Echo = pkg.ReadInt();
                     r.PeerPingIsRoundTrip = pkg.ReadBool();
                 }
+                if (layout >= 3)
+                {
+                    int y = pkg.ReadInt();
+                    if (y < 0 || y > 256) return r;      // as with the peers: never trust a count
+                    for (int i = 0; i < y; i++) r.Yielding.Add(pkg.ReadLong());
+                }
                 return r;
             }
             catch (Exception e)
@@ -189,6 +206,10 @@ namespace DiagnoseServerLag
             else r.PeerDetailWithheld = true;
 
             foreach (var p in r.Peers) if (p.PingFromRoundTrip) { r.PeerPingIsRoundTrip = true; break; }
+
+            // Sent even when peer detail is withheld: it is a handful of ids, and knowing who is
+            // being steered away from is what explains an otherwise puzzling row.
+            r.Yielding = YieldInfo.Collect();
 
             return r;
         }

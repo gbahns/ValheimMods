@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.9.9
+
+- **Players SpreadTheLoad is steering work away from are greyed.** Their low counts are the mod
+  working rather than a fault, and the grey overrides the latency colour on purpose: an amber round
+  trip beside two dozen objects would invite exactly the wrong conclusion about why their row is
+  small.
+
+  Neither mod could do this alone - SpreadTheLoad is server-only and this readout is drawn on the
+  client - so DSL's server half finds `SpreadTheLoad.SpreadTheLoadApi` by reflection and the yield
+  list rides down with the server report. Reflection rather than a reference so this mod still
+  loads on a server that has never heard of SpreadTheLoad, which is every server but the one it was
+  written for. Absent, disabled or broken all mean "nobody is yielding".
+
+- **Six owner rows instead of four.** A five-player group is five other owners once the server is
+  counted, and the list truncated by object count - cutting whoever held least, which is precisely
+  the row worth seeing when somebody is being steered away from.
+
+- Server report layout 3. Older clients stop at the layout they know, so there is no ordering
+  requirement this time.
+
 ## 0.9.8
 
 - **The readout is an ownership table, and you are a row in it.** Greg's design: your own holdings

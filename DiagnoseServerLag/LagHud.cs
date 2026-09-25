@@ -42,10 +42,14 @@ namespace DiagnoseServerLag
         private const float BlockWidth = 360f;
 
         /// <summary>
-        /// How many other owners get a row before the rest are summarised. Four keeps the block a
-        /// readable height on a busy server; past that the count matters more than the names.
+        /// How many other owners get a row before the rest are summarised.
+        ///
+        /// Six, not four. A five-player group is five other owners once the server is counted, and
+        /// at four the list truncated by object count - which cut whoever held least. That is
+        /// exactly the row worth seeing when SpreadTheLoad is steering work away from somebody:
+        /// the player holding almost nothing is the evidence it is working.
         /// </summary>
-        private const int MaxOwnersShown = 4;
+        private const int MaxOwnersShown = 6;
 
         /// <summary>Gap left between the readout and the key hints it is sitting above.</summary>
         private const float HintGap = 12f;
@@ -65,6 +69,13 @@ namespace DiagnoseServerLag
         private static readonly Color Good = new Color(0.78f, 0.75f, 0.7f);
         private static readonly Color Warn = new Color(1f, 0.72f, 0.32f);
         private static readonly Color Bad = new Color(1f, 0.42f, 0.35f);
+
+        /// <summary>
+        /// For a player SpreadTheLoad is steering work away from. Deliberately duller than the
+        /// normal text rather than another warning colour: their low counts are the mod working,
+        /// not a fault, and the row is greyed to say "expected" rather than "look here".
+        /// </summary>
+        private static readonly Color Dim = new Color(0.52f, 0.50f, 0.47f);
 
         internal static void Update()
         {
@@ -183,8 +194,15 @@ namespace DiagnoseServerLag
                     // No reply means they are not running this mod, so the cost is unmeasurable
                     // rather than zero. Saying so is better than an empty column that reads as fast.
                     string cost = o.Answered ? $"{o.Ms:0} ms" : "no mod";
-                    lines.Add(Line(who, Holding(o.Objects, o.Creatures, cost),
-                        o.Answered ? Rank(o.Ms, 200f, 400f) : 0));
+                    // Greyed when the server says work is being steered away from them. That
+                    // overrides the latency colour on purpose: a yielding player's row is meant to
+                    // read as accounted for, and an amber round trip beside two dozen objects would
+                    // invite exactly the wrong conclusion about why their counts are low.
+                    string row = Holding(o.Objects, o.Creatures, cost);
+                    if (report != null && report.Yielding.Contains(o.Uid))
+                        lines.Add(Line(who, row, Dim));
+                    else
+                        lines.Add(Line(who, row, o.Answered ? Rank(o.Ms, 200f, 400f) : 0));
                 }
                 if (owners.Count > shown)
                     lines.Add(Line("", $"+{owners.Count - shown} more", 0));
@@ -263,9 +281,11 @@ namespace DiagnoseServerLag
         /// advance whether it needs it or not, so narrow letters drift apart and "frames" reads as
         /// "f rames". A column stop leaves the letterforms alone and still aligns the values.
         /// </summary>
-        private static string Line(string label, string value, int rank)
+        private static string Line(string label, string value, int rank) =>
+            Line(label, value, rank >= 2 ? Bad : rank == 1 ? Warn : Good);
+
+        private static string Line(string label, string value, Color c)
         {
-            Color c = rank >= 2 ? Bad : rank == 1 ? Warn : Good;
             string hex = ColorUtility.ToHtmlStringRGB(c);
             return $"<color=#{hex}>{label}<pos={ValueColumn}px>{value}</color>";
         }

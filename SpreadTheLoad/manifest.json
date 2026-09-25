@@ -1,6 +1,6 @@
 {
     "name": "SpreadTheLoad",
-    "version_number": "0.1.1",
+    "version_number": "0.1.2",
     "website_url": "https://github.com/gbahns/ValheimMods",
     "description": "Server-side performance optimization for multiplayer: moves object ownership off a struggling client so other players stop inheriting its lag and desync. Valheim never rebalances who simulates what; this does. No client install needed.",
     "dependencies": [

@@ -95,9 +95,22 @@ namespace SpreadTheLoad
             }
         }
 
-        /// <summary>Whether this peer is one the admin asked to steer work away from.</summary>
+        /// <summary>Whether anybody at all is being steered away from, named or auto-detected.</summary>
+        internal static bool AnyYielding
+        {
+            get { Refresh(); return _yielding.Count > 0; }
+        }
+
+        /// <summary>
+        /// Whether this peer is one work is being steered away from right now.
+        ///
+        /// Honours Enabled, unlike the first version: with the mod switched off nobody is being
+        /// steered anywhere, and a caller asking - the ship pass, or another mod wanting to show
+        /// it - would otherwise be told yes about a rule that is not in force.
+        /// </summary>
         internal static bool IsYielding(long uid)
         {
+            if (SpreadTheLoadMod.Enabled == null || !SpreadTheLoadMod.Enabled.Value) return false;
             Refresh();
             return _yielding.ContainsKey(uid);
         }
