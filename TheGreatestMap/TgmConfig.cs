@@ -33,6 +33,10 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> PauseWhileMapOpen;
         internal static ConfigEntry<bool> ShowPauseButton;
         internal static ConfigEntry<bool> MarkerButton;
+        internal static ConfigEntry<float> MarkerButtonOffsetX;
+        internal static ConfigEntry<float> MarkerButtonOffsetY;
+        internal static ConfigEntry<float> PauseButtonOffsetX;
+        internal static ConfigEntry<float> PauseButtonOffsetY;
         internal static ConfigEntry<bool> MarkerTooltips;
         internal static ConfigEntry<bool> MapOutStatusIcon;
         internal static ConfigEntry<string> LegendSize;
@@ -212,6 +216,18 @@ namespace TheGreatestMap
                 "or shows every marker from this mod at once, as right-clicking a vanilla icon does for that icon; " +
                 "left-clicking it opens the list of kinds, for hiding them one at a time. The pin is drawn gold while " +
                 "markers are shown and gray while they are hidden.");
+            MarkerButtonOffsetX = mod.BindLocal("Display", "Marker Button Offset X", 33f,
+                "Move the map-pin button sideways from vanilla's icon column, in pixels: positive right, negative left. " +
+                "The biome name the map writes while you point at it is drawn in the same corner, so the pin sits out " +
+                "of its way. Changes show at once with the map open.");
+            MarkerButtonOffsetY = mod.BindLocal("Display", "Marker Button Offset Y", 15f,
+                "Move the map-pin button up or down from above vanilla's icon column, in pixels: positive up, negative down.");
+            PauseButtonOffsetX = mod.BindLocal("Display", "Pause Button Offset X", 0f,
+                "Move the pause mark sideways from the map's top-right corner, in pixels: positive right, negative left.");
+            PauseButtonOffsetY = mod.BindLocal("Display", "Pause Button Offset Y", -20f,
+                "Move the pause mark up or down, in pixels: negative down, positive up. It sits below the biome name " +
+                "rather than beside it, since both want the same corner.");
+
             ShowAllMarkers = mod.BindLocal("Display", "Show Markers", true,
                 "Draw this mod's markers on your map at all. Off hides every one of them, whatever the per-kind switches " +
                 "say, including markers that have no kind; they stay on your map and keep syncing. This is what the " +

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.0 — 2026-09-25
+
+Client-side; works with a 0.2.x server.
+
+- The map-pin button and the pause mark are moved out of the corner the map writes the biome name in while you point at it. The pin goes up and right; the pause mark stays at the right but drops below the name. Four new Display settings place them: "Marker Button Offset X" (33) and "Y" (15), "Pause Button Offset X" (0) and "Y" (-20), in pixels, positive right and up. They take effect as you change them with the map open, so you can drag them where you want them.
+- The pause mark no longer measures its place from the map-pin button. It sat to that button's left, which meant moving the pin dragged the pause mark along with it.
+
 ## 1.3.0 — 2026-09-25
 
 Client-side; works with a 0.2.x server.

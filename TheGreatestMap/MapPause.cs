@@ -69,25 +69,19 @@ namespace TheGreatestMap
         }
 
         /// <summary>
-        /// Sit in the top-right corner, but left of the map-pin button rather than up against it.
-        /// Measured from where that button actually is, so the gap holds at any UI scale, and
-        /// falling back to the plain corner when the pin button is switched off.
+        /// Sit in the map's top-right corner, dropped below the biome name rather than set beside
+        /// it, because both want that corner and only one of them can have it. "Pause Button Offset
+        /// X" and "Y" move it from there, and are read every frame so a change shows at once.
         /// </summary>
         private static void Position(PauseToggle toggle)
         {
             var rect = toggle.Rect;
-            var parent = rect != null ? rect.parent as RectTransform : null;
-            if (parent == null) return;
+            if (rect == null || rect.parent as RectTransform == null) return;
             const float margin = 16f;
-            const float gap = 14f;
-            float x = -margin;
-            if (MarkerToggle.TryGetWorldLeft(out float worldLeft))
-            {
-                float local = parent.InverseTransformPoint(new Vector3(worldLeft, 0f, 0f)).x;
-                x = Mathf.Min(-margin, local - gap - parent.rect.xMax);
-            }
-            if (!Mathf.Approximately(rect.anchoredPosition.x, x))
-                rect.anchoredPosition = new Vector2(x, rect.anchoredPosition.y);
+            float dx = TgmConfig.PauseButtonOffsetX != null ? TgmConfig.PauseButtonOffsetX.Value : 0f;
+            float dy = TgmConfig.PauseButtonOffsetY != null ? TgmConfig.PauseButtonOffsetY.Value : 0f;
+            var want = new Vector2(-margin + dx, -margin + dy);
+            if (rect.anchoredPosition != want) rect.anchoredPosition = want;
         }
     }
 

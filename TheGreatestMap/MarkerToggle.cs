@@ -19,6 +19,7 @@ namespace TheGreatestMap
         private static GameObject _button;
         private static readonly List<Image> _tinted = new List<Image>();
         private static Sprite _pin;
+        private static Vector2 _placed;
         private static bool _lastShown = true;
 
         private static readonly Color Gold = new Color(1f, 0.93f, 0.72f, 1f);
@@ -52,6 +53,7 @@ namespace TheGreatestMap
                 return;
             }
             if (_button == null) Build(map);
+            Position();
             Recolor();
             KindMenu.Update();
         }
@@ -176,8 +178,25 @@ namespace TheGreatestMap
                 float lift = (highest + gap * scale - WorldBottom(ourRect)) / scale;
                 if (lift > 0f) ourRect.anchoredPosition += new Vector2(0f, lift);
             }
+            _placed = ourRect.anchoredPosition;
             go.transform.SetAsLastSibling();
             Recolor(force: true);
+        }
+
+        /// <summary>
+        /// Nudge the button clear of the biome name, which the map writes in this same corner while
+        /// you point at it. Applied to the measured position rather than added to wherever the
+        /// button is now, so it cannot creep, and read every frame so a change to the setting shows
+        /// at once.
+        /// </summary>
+        private static void Position()
+        {
+            if (_button == null) return;
+            var rect = (RectTransform)_button.transform;
+            float dx = TgmConfig.MarkerButtonOffsetX != null ? TgmConfig.MarkerButtonOffsetX.Value : 0f;
+            float dy = TgmConfig.MarkerButtonOffsetY != null ? TgmConfig.MarkerButtonOffsetY.Value : 0f;
+            var want = new Vector2(_placed.x + dx, _placed.y + dy);
+            if (rect.anchoredPosition != want) rect.anchoredPosition = want;
         }
 
         private static readonly Vector3[] _corners = new Vector3[4];
@@ -193,18 +212,6 @@ namespace TheGreatestMap
         {
             rt.GetWorldCorners(_corners);
             return Mathf.Min(_corners[0].y, _corners[3].y);
-        }
-
-        /// <summary>The world x of this button's left edge, so other things can keep clear of it.</summary>
-        internal static bool TryGetWorldLeft(out float x)
-        {
-            x = 0f;
-            if (_button == null) return false;
-            var rt = _button.transform as RectTransform;
-            if (rt == null) return false;
-            rt.GetWorldCorners(_corners);
-            x = Mathf.Min(_corners[0].x, _corners[1].x);
-            return true;
         }
 
         private static float WorldCenterX(RectTransform rt)
