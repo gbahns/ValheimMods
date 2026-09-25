@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.2 — 2026-09-25
+
+- The log now says what became of every portal you build: whether it took your default portal as
+  its destination, or exactly why it did not. If your default portal has gone missing, that is now
+  said on screen too, instead of quietly leaving the new portal open.
+- Setting or clearing the default portal, reading your favorites file, and every name or
+  destination sent to the server are logged as well. The server, for its part, notes each portal
+  it meets for the first time, with the destination its builder gave it. Nothing else in play
+  changes; any version from 0.1.0 up still connects to any other.
+- The panel used to write a page of interface details into everyone's log the first time it
+  opened. That is now a debug message, so it stays out of the log file.
+
 ## 1.0.1 — 2026-09-20
 
 - New "Lock Configuration" setting (General, on by default, the server's): while on, the Rules

@@ -33,6 +33,8 @@ namespace TheGreatestPortal
         private static readonly List<PortalInfo> _infos = new List<PortalInfo>();
         private static readonly Dictionary<long, ZDO> _byId = new Dictionary<long, ZDO>();
         private static readonly List<ZDO> _portals = new List<ZDO>();
+        private static readonly HashSet<long> _seen = new HashSet<long>();   // ids already reported in the log
+        private static bool _sweptOnce;
 
         internal static int ServerPortalCount { get; private set; }
         internal static int ServerConnectionChanges { get; private set; }
@@ -59,6 +61,8 @@ namespace TheGreatestPortal
             _infos.Clear();
             _byId.Clear();
             _portals.Clear();
+            _seen.Clear();
+            _sweptOnce = false;
             ServerPortalCount = 0;
             ServerConnectionChanges = 0;
             Catalog.Clear();
@@ -103,6 +107,14 @@ namespace TheGreatestPortal
             pkg.Write(name ?? "");
             pkg.Write(targetId);
             ZRoutedRpc.instance.InvokeRoutedRPC(RpcSet, pkg);
+            var t = Catalog.Get(targetId);
+            string dest = targetId == 0L ? "nothing, so it is an open portal" : DescribeTarget(t, targetId);
+            TheGreatestPortalMod.Log.LogInfo($"[TheGreatestPortal] Asked the server to name portal {portal} '{name}' and point it at {dest}.");
+        }
+
+        private static string DescribeTarget(PortalInfo t, long targetId)
+        {
+            return t != null ? $"'{t.DisplayName}' ({targetId})" : $"portal {targetId}, which is not in the list";
         }
 
         /// <summary>Asks the server to rename any portal, near or far, by its permanent id.</summary>
@@ -110,6 +122,7 @@ namespace TheGreatestPortal
         {
             if (ZRoutedRpc.instance == null || portalId == 0L) return;
             ZRoutedRpc.instance.InvokeRoutedRPC(RpcRename, portalId, name ?? "");
+            TheGreatestPortalMod.Log.LogInfo($"[TheGreatestPortal] Asked the server to rename portal {portalId} to '{name}'.");
         }
 
         /// <summary>Asks the server to point every portal in the world at one portal.</summary>
@@ -117,6 +130,7 @@ namespace TheGreatestPortal
         {
             if (ZRoutedRpc.instance == null || targetId == 0L) return;
             ZRoutedRpc.instance.InvokeRoutedRPC(RpcSetAll, targetId);
+            TheGreatestPortalMod.Log.LogInfo($"[TheGreatestPortal] Asked the server to point every portal at {targetId}.");
         }
 
         private static void RPC_Catalog(long sender, ZPackage pkg)
@@ -338,6 +352,16 @@ namespace TheGreatestPortal
                 long id = PortalData.GetId(zdo);
                 long to = PortalData.GetTarget(zdo);
 
+                // Reported before adoption below can change it, so the log shows what the builder
+                // actually stored: this is how a portal that did not take its builder's default
+                // can be told apart from one built with no default set.
+                if (_seen.Add(id) && _sweptOnce)
+                {
+                    var at = zdo.GetPosition();
+                    string dest = to == 0L ? "no destination" : "destination " + to;
+                    TheGreatestPortalMod.Log.LogInfo($"[TheGreatestPortal] New portal '{PortalData.GetName(zdo)}' ({id}) at [{at.x:0},{at.z:0}]: {dest}, configured by this mod: {PortalData.IsConfigured(zdo)}.");
+                }
+
                 if (!PortalData.IsConfigured(zdo) && TgpConfig.AdoptExistingConnections.Value)
                 {
                     ZDO old = Adoptable(zdo);
@@ -376,6 +400,7 @@ namespace TheGreatestPortal
                     Prefab = prefabName,
                 });
             }
+            _sweptOnce = true;   // the first sweep is the world as it already was, and is not news
             ServerPortalCount = _infos.Count;
             ServerConnectionChanges += changes;
             if (changes > 0) TheGreatestPortalMod.Log.LogInfo($"[TheGreatestPortal] Updated {changes} portal connection(s); {_infos.Count} portal(s) in the world.");

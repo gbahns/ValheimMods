@@ -585,7 +585,10 @@ namespace TheGreatestPortal
             _root = UnityEngine.Object.Instantiate(src.m_panel, src.m_panel.transform.parent);
             _root.name = "TGP_PortalPanel";
             _root.SetActive(false);
-            TheGreatestPortalMod.Log.LogInfo("[TheGreatestPortal] Cloned the text prompt for the portal panel:\n" + UiKit.Describe(_root.transform));
+            // Debug, not Info: this only matters when a Valheim update rearranges the
+            // prompt and the clone can no longer find its pieces. BepInEx keeps Debug
+            // out of the log file, so players do not see a UI tree in their log.
+            TheGreatestPortalMod.Log.LogDebug("[TheGreatestPortal] Cloned the text prompt for the portal panel:\n" + UiKit.Describe(_root.transform));
 
             foreach (var c in _root.GetComponents<LayoutGroup>()) UnityEngine.Object.Destroy(c);
             foreach (var c in _root.GetComponents<ContentSizeFitter>()) UnityEngine.Object.Destroy(c);

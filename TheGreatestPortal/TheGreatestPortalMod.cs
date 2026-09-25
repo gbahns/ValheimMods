@@ -26,7 +26,7 @@ namespace TheGreatestPortal
     {
         public const string ModGuid    = "DeathMonger.TheGreatestPortal";
         public const string ModName    = "The Greatest Portal";
-        public const string ModVersion = "1.0.1";
+        public const string ModVersion = "1.0.2";
 
         // Oldest version whose network messages this build still speaks. ServerSync refuses
         // peers below this, so bump it only when a message format changes.

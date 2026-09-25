@@ -167,7 +167,10 @@ namespace TheGreatestPortal
         }
     }
 
-    // A portal you build gets its permanent id at once and, if you have a default portal, its destination.
+    // A portal you build gets its permanent id at once and, if you have a default portal, its
+    // destination. Every step says in the log what it decided, because "my new portal did not
+    // point at my default" is the one thing players report and, from the outside, a portal that
+    // adopted nothing looks exactly like a portal built with no default set.
     [HarmonyPatch(typeof(Piece), nameof(Piece.SetCreator))]
     internal static class Piece_SetCreator_Patch
     {
@@ -177,20 +180,55 @@ namespace TheGreatestPortal
             var portal = __instance.GetComponent<TeleportWorld>();
             if (portal == null) return;
             var player = Player.m_localPlayer;
-            if (player == null || uid != player.GetPlayerID()) return;
+            if (player == null) return;
+            if (uid != player.GetPlayerID())
+            {
+                Log($"A portal was placed as player {uid}, who is not you ({player.GetPlayerID()}); leaving it alone.");
+                return;
+            }
             var nview = __instance.GetComponent<ZNetView>();
-            if (nview == null || !nview.IsValid() || !nview.IsOwner()) return;
+            if (nview == null || !nview.IsValid())
+            {
+                Log("A portal was placed but has no valid network object, so it gets no id or destination here; the server will give it an id and it will be an open portal.");
+                return;
+            }
+            if (!nview.IsOwner())
+            {
+                Log("A portal was placed that you do not own, so its destination is not yours to set; it will be an open portal.");
+                return;
+            }
             var zdo = nview.GetZDO();
-            if (PortalData.GetId(zdo) != 0L) return;   // not freshly built
-            zdo.Set(PortalData.IdHash, PortalData.NewId());
+            long already = PortalData.GetId(zdo);
+            if (already != 0L)
+            {
+                Log($"A portal was placed that already carries id {already}, so it is not freshly built; leaving its destination alone.");
+                return;
+            }
+            long id = PortalData.NewId();
+            zdo.Set(PortalData.IdHash, id);
 
             long def = Favorites.DefaultId;
+            if (def == 0L)
+            {
+                Log($"Built portal {id}: no default portal is set, so it is an open portal.");
+                return;
+            }
             var target = Catalog.Get(def);
-            if (def == 0L || target == null) return;
+            if (target == null)
+            {
+                Log($"Built portal {id}: your default portal {def} is not in the portal list " +
+                    $"({Catalog.Count} portal(s){(Catalog.HasSnapshot ? "" : ", and nothing has arrived from the server yet")}), " +
+                    "so it is an open portal. Tick the default box again on the portal you want.");
+                TheGreatestPortalMod.Message("Your default portal is gone; this one is open");
+                return;
+            }
             zdo.Set(PortalData.ToHash, def);
             zdo.Set(PortalData.SetHash, 1);
+            Log($"Built portal {id}: destination set to your default portal '{target.DisplayName}' ({def}).");
             TheGreatestPortalMod.Message("Portal will connect to " + target.DisplayName);
         }
+
+        private static void Log(string text) => TheGreatestPortalMod.Log.LogInfo("[TheGreatestPortal] " + text);
     }
 
     // ── input blocking while the panel is up ──────────────────────────────────────

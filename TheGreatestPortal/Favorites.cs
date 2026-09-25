@@ -77,6 +77,13 @@ namespace TheGreatestPortal
             if (_default == id) return;
             _default = id;
             Save();
+            if (id == 0L)
+            {
+                TheGreatestPortalMod.Log.LogInfo("[TheGreatestPortal] No default portal any more; portals you build will be open.");
+                return;
+            }
+            var p = Catalog.Get(id);
+            TheGreatestPortalMod.Log.LogInfo($"[TheGreatestPortal] Default portal for portals you build is now '{(p != null ? p.DisplayName : "a portal that is not in the list")}' ({id}), saved in {_path}.");
         }
 
         internal static void Reset()
@@ -112,7 +119,11 @@ namespace TheGreatestPortal
             _default = 0L;
             try
             {
-                if (!File.Exists(_path)) return;
+                if (!File.Exists(_path))
+                {
+                    TheGreatestPortalMod.Log.LogInfo($"[TheGreatestPortal] Nothing saved for this world yet; favorites and the default portal will go in {_path}.");
+                    return;
+                }
                 foreach (var raw in File.ReadAllLines(_path))
                 {
                     var line = raw.Trim();
@@ -124,6 +135,7 @@ namespace TheGreatestPortal
                     else if (key == "default") _default = id;
                     else if (key == "recent" && !_recents.Contains(id) && _recents.Count < MaxRecents) _recents.Add(id);
                 }
+                TheGreatestPortalMod.Log.LogInfo($"[TheGreatestPortal] Read {_favs.Count} favorite(s), {_recents.Count} recent portal(s) and default portal {(_default == 0L ? "none" : _default.ToString())} from {_path}.");
             }
             catch (Exception e)
             {
@@ -133,7 +145,11 @@ namespace TheGreatestPortal
 
         private static void Save()
         {
-            if (_path == null) return;
+            if (_path == null)
+            {
+                TheGreatestPortalMod.Log.LogWarning("[TheGreatestPortal] The world is not known yet, so favorites and the default portal cannot be saved.");
+                return;
+            }
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(_path));
