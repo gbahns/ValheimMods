@@ -29,7 +29,7 @@ namespace DiagnoseServerLag
     {
         public const string ModGuid    = "DeathMonger.DiagnoseServerLag";
         public const string ModName    = "Diagnose Server Lag";
-        public const string ModVersion = "0.9.6";
+        public const string ModVersion = "0.9.7";
 
         internal static DiagnoseServerLagMod Instance { get; private set; }
         internal static ManualLogSource Log { get; private set; }

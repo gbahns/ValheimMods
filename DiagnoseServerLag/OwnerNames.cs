@@ -48,11 +48,26 @@ namespace DiagnoseServerLag
         {
             if (zdo == null) return null;
             long owner = zdo.GetOwner();
-            if (owner == 0L) return null;
+
+            // An ownerless creature is worth labelling rather than skipping: nobody is running its
+            // AI at all, which is why distant ones stand inert until somebody gets close enough for
+            // the two-second pass to hand them over. On one solo measurement 12 of 23 nearby
+            // creatures were in this state, and this is the only way to see which ones.
+            if (owner == 0L) return "unowned";
 
             Refresh();
             if (owner == _me) return null;              // ours: nothing worth saying
             return _names.TryGetValue(owner, out string name) ? name : "another player";
+        }
+
+        /// <summary>Adds the owner label to a name, or returns it untouched when there is nothing to say.</summary>
+        internal static string Append(string name, ZNetView view)
+        {
+            if (view == null || !view.IsValid()) return name;
+            string owner = For(view.GetZDO());
+            if (owner == null) return name;
+            // Dimmed, so the creature's own name still reads first.
+            return $"{name} <color=#B0A08C>[{owner}]</color>";
         }
 
         private static void Refresh()
@@ -94,6 +109,10 @@ namespace DiagnoseServerLag
     /// <summary>
     /// Appends the owner to a creature's name. See <see cref="OwnerNames"/> for why this method and
     /// not the health bar itself.
+    ///
+    /// Skips anything with a Tameable, because Character.GetHoverName does not name those itself -
+    /// it hands straight off to Tameable.GetHoverName, which is patched separately below. Without
+    /// this guard a tame would be labelled twice, once by each.
     /// </summary>
     [HarmonyPatch(typeof(Character), nameof(Character.GetHoverName))]
     internal static class HoverNamePatch
@@ -103,15 +122,36 @@ namespace DiagnoseServerLag
             try
             {
                 if (!OwnerNames.Enabled || __instance == null) return;
-                var view = __instance.GetComponent<ZNetView>();
-                if (view == null || !view.IsValid()) return;
-
-                string owner = OwnerNames.For(view.GetZDO());
-                if (owner == null) return;
-                // Dimmed, so the creature's own name still reads first.
-                __result = $"{__result} <color=#B0A08C>[{owner}]</color>";
+                if (__instance.GetComponent<Tameable>() != null) return;   // handled by TameHoverNamePatch
+                __result = OwnerNames.Append(__result, __instance.GetComponent<ZNetView>());
             }
             catch { /* a label that cannot be built is simply not added */ }
+        }
+    }
+
+    /// <summary>
+    /// The same label for tamed animals, which never reach the method above:
+    ///
+    ///     public virtual string GetHoverName() {
+    ///         Tameable component = GetComponent&lt;Tameable&gt;();
+    ///         if ((bool)component) return component.GetHoverName();
+    ///
+    /// so wolves, boars and lox were the one category the first version could not label - and they
+    /// are a category worth labelling, since a tame somebody else owns behaves exactly like any
+    /// other object of theirs. Tameable.GetHoverName also runs RemoveRichTextTags over its own
+    /// text, which is why the label is appended after it rather than woven into it.
+    /// </summary>
+    [HarmonyPatch(typeof(Tameable), nameof(Tameable.GetHoverName))]
+    internal static class TameHoverNamePatch
+    {
+        private static void Postfix(Tameable __instance, ref string __result)
+        {
+            try
+            {
+                if (!OwnerNames.Enabled || __instance == null) return;
+                __result = OwnerNames.Append(__result, __instance.GetComponent<ZNetView>());
+            }
+            catch { }
         }
     }
 }

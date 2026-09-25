@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.7
+
+- **Owner labels now work on tamed animals.** Greg found they did not. Character.GetHoverName never
+  names a tame itself - it hands straight off to `Tameable.GetHoverName`, so wolves, boars and lox
+  were the one category the label could not reach. Both methods are patched now, with the outer one
+  standing down when a Tameable is present so nothing is labelled twice. Worth having: a tame
+  somebody else owns behaves exactly like any other object of theirs.
+- **Ownerless creatures are labelled `[unowned]`.** Nobody is running their AI at all, which is why
+  distant ones stand inert until somebody gets close enough for the two-second pass to hand them
+  over. One solo reading had 12 of 23 nearby creatures in that state; this shows which.
+
 ## 0.9.6
 
 - **Unowned objects are counted.** Greg asked whether the server holds nearby objects before
