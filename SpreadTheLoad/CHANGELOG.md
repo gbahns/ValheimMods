@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.1
+
+Both fixes come from the first run on a real server.
+
+- **The "NOT WORKING" alarm was a false positive.** It fired on a healthy server with no
+  conflicting mod installed. IsInPeerActiveArea is only reached from the second half of
+  `(!zdo.HasOwner() || !IsInPeerActiveArea(...))`, so an ownerless object short-circuits past it and
+  an object owned by the peer being processed takes the other branch entirely. It is consulted only
+  when one player's active area contains an object somebody *else* owns - which never happens while
+  everyone is off in their own corner. Silence now only corroborates the Harmony inspection instead
+  of accusing on its own.
+- **Modded ships were missed.** The prefab scan ran once at startup and found the five vanilla hulls
+  and none of TheGreatestShips', because mods register their prefabs after ZNetScene exists. It now
+  re-scans whenever the prefab list grows, which self-corrects however late a mod registers.
+
 ## 0.1.0
 
 - First build. Server-side only; nothing to install on clients.

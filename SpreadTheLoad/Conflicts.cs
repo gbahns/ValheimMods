@@ -42,6 +42,9 @@ namespace SpreadTheLoad
         /// <summary>How many times our postfix has been consulted. Zero is the interesting value.</summary>
         internal static long Consultations;
 
+        /// <summary>Foreign prefixes/transpilers found on the handout, empty if none.</summary>
+        private static readonly List<string> _foreign = new List<string>();
+
         private static bool _inspected;
         private static bool _reportedSilence;
         private static float _serverUpSince = -1f;
@@ -76,6 +79,21 @@ namespace SpreadTheLoad
 
             if (_reportedSilence || Consultations > 0) return;
             if (now - _peersSince < SilenceSeconds) return;
+
+            // Silence alone is NOT evidence, which the first version got wrong and said so in
+            // red on a healthy server. IsInPeerActiveArea is only reached from the second half of
+            //
+            //     (!zdo.HasOwner() || !IsInPeerActiveArea(position, zdo.GetOwner()))
+            //
+            // so an ownerless object short-circuits past it, and an object whose owner IS the peer
+            // being processed takes the other branch entirely. It is consulted only when one
+            // player's active area contains an object somebody else owns - which simply does not
+            // happen while everybody is off in their own corner of the world. Zero consultations
+            // with two players a thousand metres apart is correct behaviour, not a conflict.
+            //
+            // So this now only corroborates the inspection: it speaks when another mod was found
+            // on the method AND nothing ever reached us. Absent that, silence is left alone.
+            if (_foreign.Count == 0) return;
             _reportedSilence = true;
             SpreadTheLoadMod.Log.LogError(
                 "[SpreadTheLoad] Yield Players IS NOT WORKING: players have been connected for a minute " +
@@ -98,12 +116,13 @@ namespace SpreadTheLoad
                     return;
                 }
 
-                var others = Foreign(target);
-                if (others.Count == 0) return;
+                _foreign.Clear();
+                _foreign.AddRange(Foreign(target));
+                if (_foreign.Count == 0) return;
 
                 SpreadTheLoadMod.Log.LogWarning(
                     "[SpreadTheLoad] another mod patches the ownership handout this mod relies on: " +
-                    string.Join(", ", others.ToArray()) +
+                    string.Join(", ", _foreign.ToArray()) +
                     ". If it replaces the method rather than adding to it, this mod will have no effect - " +
                     "watch for the NOT WORKING line a minute after somebody joins.");
             }

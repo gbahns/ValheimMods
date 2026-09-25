@@ -4,7 +4,7 @@ schemaVersion = "0.0.1"
 [package]
 namespace = "DeathMonger"
 name = "SpreadTheLoad"
-versionNumber = "0.1.0"
+versionNumber = "0.1.1"
 description = "Server-side performance optimization for multiplayer: moves object ownership off a struggling client so other players stop inheriting its lag and desync. Valheim never rebalances who simulates what; this does. No client install needed."
 websiteUrl = "https://github.com/gbahns/ValheimMods"
 containsNsfwContent = false

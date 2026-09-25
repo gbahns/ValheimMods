@@ -37,7 +37,7 @@ namespace SpreadTheLoad
         /// DM_* hulls, anybody else's - are covered without a list to maintain.
         /// </summary>
         private static readonly List<string> _prefabs = new List<string>();
-        private static bool _discovered;
+        private static int _prefabCountAtScan = -1;
 
         // A sweep walks every sector, 400 at a time, which is what the iterative API is shaped for.
         // One slice per frame per prefab: a full cycle takes a few seconds on a large world, which
@@ -145,10 +145,17 @@ namespace SpreadTheLoad
 
         private static void Discover()
         {
-            if (_discovered) return;
             var scene = ZNetScene.instance;
             if (scene == null) return;
-            _discovered = true;
+
+            // Re-scan whenever the prefab list has grown. A single scan at startup missed every
+            // modded hull on the first real server this ran on - it found the five vanilla ships
+            // and none of TheGreatestShips' - because mods register their prefabs after ZNetScene
+            // exists. Comparing the count is cheap enough to do every pass and self-corrects
+            // however late a mod registers.
+            if (scene.m_prefabs.Count == _prefabCountAtScan) return;
+            _prefabCountAtScan = scene.m_prefabs.Count;
+            _prefabs.Clear();
 
             foreach (var prefab in scene.m_prefabs)
             {
@@ -156,6 +163,8 @@ namespace SpreadTheLoad
                 if (prefab.GetComponent<Ship>() == null) continue;
                 _prefabs.Add(prefab.name);
             }
+            // Reset the sweep: the prefab list changed underneath it.
+            _prefabIndex = 0; _scanIndex = 0; _found.Clear();
             SpreadTheLoadMod.Log.LogInfo(
                 _prefabs.Count == 0
                     ? "[SpreadTheLoad] no ship prefabs found; helm ownership will do nothing."
