@@ -43,13 +43,16 @@ namespace TheGreatestShips
 
         private void RPC_SetOpen(long sender, bool open)
         {
-            if (_nview != null && _nview.IsOwner())
+            if (_nview != null && _nview.IsValid() && _nview.IsOwner())
                 _nview.GetZDO().Set(ZdoKey, open);
         }
 
+        // IsValid on every read, not just in Start: when the ship's zone unloads (a teleport,
+        // sailing away) the ZDO is detached a frame or two before the object is destroyed, and
+        // Update still runs in between.
         private void Update()
         {
-            if (_nview == null) return;
+            if (_nview == null || !_nview.IsValid()) return;
             if (Time.time >= _next)
             {
                 _next = Time.time + 0.25f;
@@ -71,7 +74,7 @@ namespace TheGreatestShips
 
         public bool Interact(Humanoid user, bool hold, bool alt)
         {
-            if (hold || _nview == null) return false;
+            if (hold || _nview == null || !_nview.IsValid()) return false;
             bool open = !_nview.GetZDO().GetBool(ZdoKey);
             if (_nview.IsOwner()) _nview.GetZDO().Set(ZdoKey, open);
             else _nview.InvokeRPC(RpcName, open);

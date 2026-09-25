@@ -1,6 +1,6 @@
 {
     "name": "TheGreatestShips",
-    "version_number": "0.9.3",
+    "version_number": "0.9.4",
     "website_url": "https://github.com/gbahns/ValheimMods/tree/main/TheGreatestShips",
     "description": "Eight ships on Valheim's own hulls: a Fast Karve and Fast Longship, three cargo tiers (Knarr, Busse, Big Busse) and three Byrdings with a fenced, gated pen for livestock. Speeds from logged sailing; recipes, health and hull size server-synced.",
     "dependencies": [

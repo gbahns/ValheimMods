@@ -16,7 +16,7 @@ namespace TheGreatestShips
     {
         public const string ModGuid    = "DeathMonger.TheGreatestShips";
         public const string ModName    = "The Greatest Ships";
-        public const string ModVersion = "0.9.3";
+        public const string ModVersion = "0.9.4";
 
         // Oldest version this one can share a server with.  Raise it only for a release that
         // changes what the two sides must agree on (prefab names, synced config, storage size).

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.4 — unreleased
+
+- Fixed: a burst of errors in the log when a pen ship's area unloaded -- a teleport, or sailing
+  out of range. The gate kept reading the ship's network state for a frame or two after the
+  game had detached it. Nothing was affected beyond the log.
+- The package description now mentions all eight ships.
+
 ## 0.9.3 — 2026-09-20
 
 - New "Lock Configuration" setting (General, on by default, the server's): while on, the synced
