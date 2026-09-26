@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.1 — unreleased
+## 0.1.1 — 2026-09-26
 
 - New icon: a comfort gauge on a rune-ringed shield, with the bed, fire, hearth and rug around it.
 
