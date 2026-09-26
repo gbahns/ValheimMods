@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.4.1 — unreleased
+## 1.4.1 — 2026-09-26
 
 Client-side; works with a 0.2.x server.
 
