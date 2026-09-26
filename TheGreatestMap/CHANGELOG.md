@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.1 — unreleased
+
+Client-side; works with a 0.2.x server.
+
+- A portal you just raised is drawn again when something else is marked beside it. "Map All Portals" skipped any portal that already had a marker of this mod's within 4 m, but it counted a marker of any kind, and a base puts a campfire, a bush and a portal within a few meters of each other. The portal was treated as already marked and nothing was drawn until the pocket map next came out and recorded it. It now looks for a portal marker, or a marker placed by hand wearing the portal icon. The same test is what tgm_portals reports.
+
 ## 1.4.0 — 2026-09-25
 
 Client-side; works with a 0.2.x server.

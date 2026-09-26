@@ -223,15 +223,35 @@ namespace TheGreatestMap
             _drawnWanted = DrawingWanted();
             if (!_drawnWanted) return;
 
-            int type = IconRegistry.TypeFor(TgmConfig.CategoryIcon.TryGetValue(Category.Portal, out var icon)
-                ? icon.Value : Categories.DefaultIcon(Category.Portal));
+            string iconKey = TgmConfig.CategoryIcon.TryGetValue(Category.Portal, out var icon)
+                ? icon.Value : Categories.DefaultIcon(Category.Portal);
+            int type = IconRegistry.TypeFor(iconKey);
             foreach (var p in _live)
             {
-                if (ClientPins.HasOwnPinNear(null, p.Pos, MatchRadius)) continue; // already a marker of ours
+                if (AlreadyMarked(p.Pos, iconKey)) continue;
                 // m_save false: never written to the profile, never shared, gone when the setting is.
                 var pin = map.AddPin(p.Pos, (Minimap.PinType)type, string.IsNullOrEmpty(p.Name) ? "Portal" : p.Name, false, false, 0L);
                 if (pin != null) _drawn.Add(pin);
             }
+        }
+
+        /// <summary>
+        /// This portal already has a marker, so an extra pin would sit on top of one. It has to be
+        /// a portal that is marked and not merely something at the same spot: a base puts a
+        /// campfire, a bush and a portal within a few meters of each other, and any marker at all
+        /// counting as this portal's was leaving a newly raised portal with nothing drawn until
+        /// the pocket map next came out. A marker somebody placed by hand carries no kind, so
+        /// those are matched by the portal icon instead.
+        /// </summary>
+        private static bool AlreadyMarked(Vector3 pos, string iconKey)
+        {
+            foreach (var pin in ClientPins.All)
+            {
+                if (Geo.FlatDistance(pin.Pos, pos) > MatchRadius) continue;
+                if (ClientPins.KindOf(pin) == Category.Portal) return true;
+                if (!pin.Auto && IconRegistry.SameKey(pin.Icon, iconKey)) return true;
+            }
+            return false;
         }
 
         /// <summary>The map data was rebuilt under us (world load, table read): our pins are gone.</summary>
@@ -323,7 +343,9 @@ namespace TheGreatestMap
             lines.Add(live != null
                 ? $"nearest portal in the list: '{live.Name}' {Geo.FlatDistance(live.Pos, near):0.#} m away"
                 : "no portal in the list within 4 m of you");
-            lines.Add($"a marker of ours within 4 m: {ClientPins.HasOwnPinNear(null, near, MatchRadius)} (one there means no extra pin is drawn)");
+            string iconKey = TgmConfig.CategoryIcon.TryGetValue(Category.Portal, out var pinIcon)
+                ? pinIcon.Value : Categories.DefaultIcon(Category.Portal);
+            lines.Add($"a portal marker within 4 m: {AlreadyMarked(near, iconKey)} (one there means no extra pin is drawn)");
             return lines;
         }
 
