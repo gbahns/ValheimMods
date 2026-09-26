@@ -1,0 +1,7 @@
+{
+    "name": "Comfortometer",
+    "version_number": "0.1.0",
+    "website_url": "https://github.com/gbahns/ValheimMods/tree/main/Comfortometer",
+    "description": "A compact HUD panel that stays up while you move: every piece giving you comfort, its distance, duplicates in range, and what you just walked out of range of, in red.",
+    "dependencies": ["denikson-BepInExPack_Valheim-5.4.2350"]
+}

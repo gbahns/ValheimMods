@@ -1,0 +1,31 @@
+# Hexium (valheim.hexium.gg) publish config: same package, Hexium repository URL and category slugs.
+# Used by package.ps1 -Hexium.  Keep versionNumber/description in step with thunderstore.toml.
+[config]
+schemaVersion = "0.0.1"
+
+[package]
+namespace = "DeathMonger"
+name = "Comfortometer"
+versionNumber = "0.1.0"
+description = "A compact HUD panel that stays up while you move: every piece giving you comfort, its distance, duplicates in range, and what you just walked out of range of, in red."
+websiteUrl = "https://github.com/gbahns/ValheimMods/tree/main/Comfortometer"
+containsNsfwContent = false
+
+[package.dependencies]
+"denikson-BepInExPack_Valheim" = "5.4.2350"
+
+[build]
+icon = "./icon.png"
+readme = "./README.md"
+outdir = "./build"
+
+[[build.copy]]
+source = "./bin/Release/net48/Comfortometer.dll"
+target = "BepInEx/plugins/"
+
+[publish]
+repository = "https://valheim.hexium.gg"
+communities = ["valheim"]
+
+[publish.categories]
+valheim = ["Quality of Life", "Building", "Open Source", "Valheim 1.0"]
