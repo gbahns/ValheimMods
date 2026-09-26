@@ -22,8 +22,14 @@ trip through the slow one of 144 ms against an 18 ms ping to the server.
 
 ## What it does
 
-Name the players whose machines should not be handed shared work, and the server stops giving them
-objects that somebody else is also standing near — and hands back the ones they are already
+Three things, all server-side:
+
+1. **Objects follow whoever is using them** — a tree or ore vein moves to the player chopping it
+2. **Ships follow whoever is steering** — vanilla picks an arbitrary passenger instead
+3. **Named or detected struggling machines are steered away from** shared work
+
+For the third: name the players whose machines should not be handed shared work, and the server
+stops giving them objects that somebody else is also standing near — and hands back the ones they are already
 holding, which vanilla will not do on its own.
 
 They still own anything **only they** are near, so nothing is ever left unsimulated and no creature
@@ -49,6 +55,8 @@ graphics settings and hardware question, and [DiagnoseServerLag][dsl] will tell 
 | `Yield Players` | *(empty)* | Who to steer work away from. Empty means the mod does nothing. |
 | `Remember Ids` | `true` | Learn and remember network ids, so names keep working. |
 | `Log Activity` | `false` | Occasional summary line; never one line per object. |
+| `Ownership Follows Attacker` | `true` | Give a tree, rock or ore vein to whoever is hitting it. |
+| `Attacker Dwell Seconds` | `5` | How long it stays put afterwards. |
 | `Auto Detect Struggling Players` | `false` | Find struggling machines without naming anyone. |
 | `Stalls Per Minute` | `6` | How many stalls a minute before flagging someone. |
 | `Assign Ship To Captain` | `true` | Give a ship to whoever is steering it. |
@@ -94,6 +102,35 @@ Honest limits:
   to hand work to, and flagging everyone would only churn ownership.
 - Flags live in memory only. They are never written to the known-ids file and are dropped when the
   player disconnects — that file is for identities you chose, not guesses the mod made.
+
+## Chopping, mining and anything else you hit
+
+Vanilla never gives a resource to whoever is hitting it. `TreeBase`, `TreeLog`, `Destructible` and
+`MineRock5` all open their damage handler with `if (!m_nview.IsOwner()) return;`, and nothing
+anywhere calls `ClaimOwnership` — so the machine that loaded a tree keeps it, and every swing anyone
+else makes travels to that machine and back. For that tree, and the next one, indefinitely.
+
+A chopping session is hundreds of interactions against a handful of objects, which makes this the
+commonest way a group ends up feeling one person's frame time. `Ownership Follows Attacker` moves
+the object to whoever is working it, so the first swing lands remotely and the rest are local.
+
+The server sees the swings because it already relays them — it forwards every client-to-client RPC —
+so nothing is installed on any client.
+
+Three details worth knowing:
+
+- **The transfer waits 0.4 s.** The current owner's damage handler begins by checking it still owns
+  the object, so changing ownership the instant the swing arrives would make it drop that hit.
+- **A dwell time** (`Attacker Dwell Seconds`) stops two players working the same tree from bouncing
+  it between them.
+- **A yielding player is never given the object.** The yield pass would take it back within two
+  seconds and the next swing would move it again, which is worse than leaving it alone.
+
+**Resources only.** A tree's entire state is its health in the ZDO, so handing it over costs one
+owner revision and loses nothing. A creature carries live AI state — its target, its path, its alert
+timers — that is not all replicated, so moving one mid-fight can make it re-acquire or re-path. That
+is a real hitch in the least welcome moment, so creatures are left alone until it can be measured
+rather than reasoned about.
 
 ## Ships
 
