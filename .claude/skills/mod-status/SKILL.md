@@ -9,13 +9,39 @@ Run the board. It is read-only: nothing is built, uploaded, published, or restar
 
 ```powershell
 .\mod-status.ps1                    # local files + both registries
-.\mod-status.ps1 -Server            # also hash-check the DatHost server
+.\mod-status.ps1 -Server            # also the DatHost server, by version number
+.\mod-status.ps1 -Server -Deep      # ... comparing the DLLs byte for byte
 .\mod-status.ps1 -NoRemote          # local only, no network
 .\mod-status.ps1 -Mod TheGreatestMap
 ```
 
-Add `-Server` whenever the question involves the server, or when a release just happened.
-It needs `%USERPROFILE%\.dathost` and takes ~30s longer because each DLL is downloaded to hash.
+Add `-Server` whenever the question involves the server, or when a release just happened. It needs
+`%USERPROFILE%\.dathost` and costs about two seconds, from two cheap reads:
+
+1. **the server's BepInEx log** — names every plugin it loaded, with its version, so one 70 KB fetch
+   answers for every mod, and answers about what is *running*;
+2. **the plugins listing** — path and size per file, which is what the server holds *on disk*.
+
+Size is weak evidence of sameness (TheGreatestShips 0.9.3 and 0.9.4 are byte-for-byte the same
+length, which once made a size-only comparison call two servers identical when they were not) but
+strong evidence of difference. That asymmetry is what separates "never deployed" from "deployed and
+waiting for a restart" — states that read alike and call for opposite actions.
+
+Those are the only free facts the DatHost API offers. Tested 2026-09-26: the listing returns
+`path`, `size`, `deleted` and nothing more under any query parameter; HEAD on a file returns neither
+`Content-Length` nor `Last-Modified` nor an `ETag`; and byte-range requests are ignored, so a DLL's
+version resource cannot be read without pulling the whole file. Anything beyond version numbers
+therefore costs a download per mod, which is `-Deep`.
+
+Trust those version numbers by default. `-Deep` downloads a DLL per mod and compares hashes, taking
+around 30s instead, and earns that only when a version number is itself in doubt — two builds
+wearing one version, or a published number that quietly covers changed source. Reach for it when a
+row looks wrong rather than as a matter of course.
+
+The fast path reports what the server **loaded**, which is a slightly different question from what
+sits in its plugins folder, and usually the better one: a DLL uploaded without a restart still shows
+its old version, because that is the code players are meeting. `on disk, not loaded` is that case
+named outright — the file is there and no running plugin matches it.
 
 ## Reading the columns
 
@@ -25,19 +51,30 @@ It needs `%USERPROFILE%\.dathost` and takes ~30s longer because each DLL is down
 | `Thunderstore` / `Hexium` | the latest version live on that site. `unlisted` = the mod has no `thunderstore.toml` and has never been published. |
 | `Build` | `current`, `STALE` (a .cs or .csproj is newer than the Release DLL), or `not built`. |
 | `Git` | uncommitted changes under that mod's folder. |
-| `Server` | the version the server's own DLL reports, and how it compares to this repo's build. |
+| `Server` | the version the server is running, and how it compares to this repo's build. From the server's log by default; from the DLL itself under `-Deep`. |
 
-Server states, read out of the DLL rather than guessed from a hash (`Directory.Build.props`
-stamps each mod's manifest version into its assembly, and the SDK appends the commit):
+Server states (`Directory.Build.props` stamps each mod's manifest version into its assembly, and
+the SDK appends the commit, which is what lets `-Deep` tell two builds of one version apart):
 
-- `0.2.4 exact` — the identical build is deployed.
-- `0.2.4 rebuild` — same version, same commit, recompiled. Not a problem; a build that was
-  copied into a Gale profile and pushed from there looks like this.
-- `0.2.4 other commit` — same version number, built from different source. Worth a look.
-- `0.2.3 BEHIND` — the server is running an older version than this repo builds. Deploy.
+- `0.2.4 matches` — the server is running the version this repo builds, and the file on disk is the
+  size of that build. The default verdict.
+- `0.2.4 disk differs` — running the right version, but the DLL on disk is a different size, so a
+  restart would load something else. `-Deep` on that one mod says what.
+- `0.2.3 BEHIND, uploaded` — running an older version while the file on disk is the size of this
+  build: already deployed, waiting for a restart. Deploying again changes nothing.
+- `0.2.4 exact` — `-Deep` only: the identical build, byte for byte.
+- `0.2.4 rebuild` — `-Deep` only: same version, same commit, recompiled. Not a problem; a build that
+  was copied into a Gale profile and pushed from there looks like this.
+- `0.2.4 other commit` — `-Deep` only: same version number, built from different source. Worth a look.
+- `0.2.3 BEHIND` — the server is running an older version than this repo builds. Deploy it — or, if
+  it was already uploaded, restart the server, which the fast path cannot tell apart.
+- `on disk, not loaded` — the DLL is in the plugins folder but no loaded plugin matches it: an
+  upload waiting for a restart.
 - `0.2.5 ahead` — newer than this repo. Someone else built it; don't overwrite it blindly.
-- `client-only` — `mods.json` says the server has no use for it, so nothing is compared.
-- `client-only, still there` — as above, but a copy is sitting on the server doing nothing.
+- `-----------` — `mods.json` says the server has no use for it, so nothing is compared. A dashed
+  rule rather than words, so the rows that do say something stand out.
+- `client-only, still there` — as above, but a copy is sitting on the server doing nothing. This one
+  keeps its words: it is a finding, not a blank.
 - `absent` — not on the server, and not declared client-only either.
 
 `mods.json` is what makes those first two possible: it records whether each mod is `client`,

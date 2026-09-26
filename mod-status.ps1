@@ -3,11 +3,12 @@
 # Per mod it answers: do the local version numbers agree (manifest.json, thunderstore.toml,
 # hexium.toml, the BepInPlugin attribute), what version is live on Thunderstore and on Hexium,
 # is the Release build newer than the source, is the working tree clean, and with -Server
-# whether the DatHost server holds the exact DLL that was built here.
+# what version the DatHost server is running.
 #
 # Usage:
 #   .\mod-status.ps1                            # local files + both registries
-#   .\mod-status.ps1 -Server                    # also hash-check the DatHost server
+#   .\mod-status.ps1 -Server                    # also check the DatHost server (version numbers)
+#   .\mod-status.ps1 -Server -Deep              # ... and compare the DLLs byte for byte
 #   .\mod-status.ps1 -NoRemote                  # local only, no network
 #   .\mod-status.ps1 -Mod TheGreatestMap,PauseMyServer
 #
@@ -16,6 +17,10 @@
 param(
     [string[]]$Mod,
     [switch]$Server,
+    # Byte-for-byte instead of version numbers: downloads a DLL per mod, so it takes about half a
+    # minute longer. Worth it when a version number is in doubt - two builds of one version, or a
+    # published number covering changed source - and overkill the rest of the time.
+    [switch]$Deep,
     [switch]$NoRemote,
     [string]$SecretsPath = (Join-Path $env:USERPROFILE ".dathost")
 )
@@ -79,6 +84,62 @@ function Get-Published($repository, $namespace, $name) {
 # the commit, so a DLL names both its release and the source it was built from.  That separates
 # the three cases a hash cannot: an older version still deployed, the same version rebuilt, and
 # the identical build.  DLLs built before that stamping all claim 1.0.0.0 and cannot be placed.
+# What the server is actually running, from its own BepInEx log: one 70 KB fetch names every
+# plugin it loaded, with the version, where reading the versions off the DLLs costs a download
+# each. It answers a subtly better question too - what is LOADED, not what is sitting on disk -
+# so a DLL uploaded without a restart shows up as the old version, which is what players meet.
+function Get-LoadedPlugins($client, $base, $id) {
+    $bytes = $client.GetByteArrayAsync("$base/game-servers/$id/files/BepInEx/LogOutput.log").Result
+    $text = [Text.Encoding]::UTF8.GetString($bytes)
+
+    # Only the newest run counts: the log spans restarts, and an earlier run names versions that
+    # have since been replaced. Keep everything after the last chainloader banner.
+    $last = $text.LastIndexOf("Chainloader started")
+    if ($last -ge 0) { $text = $text.Substring($last) }
+
+    # "Loading [The Greatest Map 1.4.1]". The display name is not the folder name, but stripping
+    # everything but letters and digits makes the two meet: "The Greatest Map" -> thegreatestmap,
+    # "Captain's Log" -> captainslog.
+    $map = @{}
+    foreach ($m in [regex]::Matches($text, 'Loading \[(?<name>[^\[\]]+?) (?<ver>\d+(?:\.\d+)+)\]')) {
+        $key = ($m.Groups['name'].Value -replace '[^a-zA-Z0-9]', '').ToLower()
+        $map[$key] = $m.Groups['ver'].Value
+    }
+    return $map
+}
+
+# Version numbers only, against what the server loaded, with the file size as a second witness.
+#
+# The two cost nothing extra and answer different halves of the question. The log says what is
+# RUNNING; the listing's size says something about what is ON DISK. Size is weak evidence of
+# sameness - TheGreatestShips 0.9.3 and 0.9.4 are the same length, which is how a size-only
+# comparison once reported two servers identical when they were not - but it is strong evidence of
+# difference, and that asymmetry is exactly what separates "never deployed" from "deployed, waiting
+# for a restart". Both were reported as plain BEHIND before, and they call for opposite actions.
+#
+# Same vocabulary as the deep check where the words mean the same thing, so a row reads alike
+# either way.
+function Get-LoadedState([string]$loaded, [string]$localDll, $serverSize) {
+    $lv = [Diagnostics.FileVersionInfo]::GetVersionInfo($localDll).FileVersion
+    $short = $lv -replace '\.0$', ''
+    $sameSize = ($null -ne $serverSize) -and ($serverSize -eq (Get-Item $localDll).Length)
+
+    if ($loaded -eq $short -or $loaded -eq $lv) {
+        # Right version running, but the file is demonstrably not this build. Either something else
+        # was uploaded over it, or a newer build of the same version is waiting for a restart.
+        if ($null -ne $serverSize -and -not $sameSize) { return "$loaded disk differs" }
+        return "$loaded matches"
+    }
+    try {
+        if ([version]$loaded -lt [version]$short) {
+            # The build is already up there by every cheap measure; only a restart is missing.
+            if ($sameSize) { return "$loaded BEHIND, uploaded" }
+            return "$loaded BEHIND"
+        }
+        return "$loaded ahead"
+    } catch { return "$loaded differs" }
+}
+
 function Get-ServerDllState([byte[]]$bytes, [string]$localDll, [string]$expected) {
     $tmp = Join-Path ([IO.Path]::GetTempPath()) ("modstatus-" + [Guid]::NewGuid().ToString("N") + ".dll")
     try {
@@ -268,7 +329,13 @@ if ($Server) {
 
             $listing = Invoke-RestMethod -Headers $headers -TimeoutSec 60 `
                 -Uri "$base/game-servers/$id/files?path=BepInEx/plugins&hide_default_files=true"
+            # Sizes are kept as well as paths: the listing gives path, size and deleted and nothing
+            # else - no hash, no timestamp, whatever query parameters are tried - and HEAD on the
+            # download endpoint returns neither Content-Length nor Last-Modified, nor does it honour
+            # a byte range. So size is the only free fact about a file up there, and Get-LoadedState
+            # uses it for what it is worth.
             $paths = @()
+            $serverSizes = @{}
             foreach ($e in @($listing)) {
                 if ($e.deleted) { continue }
                 $p = $e.path
@@ -277,6 +344,7 @@ if ($Server) {
                 if ($p -match '/$') { continue }
                 if ($p -notmatch '^BepInEx/plugins/') { $p = "BepInEx/plugins/$p" }
                 $paths += $p
+                if ($null -ne $e.size) { $serverSizes[$p] = [long]$e.size }
             }
 
             # The third-party packages the server holds, so the report can say which of them
@@ -287,18 +355,50 @@ if ($Server) {
                 ForEach-Object { ($_ -replace '^BepInEx/plugins/', '') -replace '/.*$', '' } |
                 Sort-Object -Unique)
 
+            # One fetch for every version, unless -Deep asked for the DLLs themselves. If the log
+            # cannot be read - a server that has never started, a path that moved - fall through to
+            # the deep comparison rather than reporting nothing.
+            $loadedPlugins = $null
+            if (-not $Deep) {
+                try {
+                    $loadedPlugins = Get-LoadedPlugins $client "$base" $id
+                    if ($loadedPlugins.Count -eq 0) {
+                        Write-Warning "The server log named no plugins; comparing the DLLs instead."
+                        $loadedPlugins = $null
+                    }
+                } catch {
+                    Write-Warning "Could not read the server log ($($_.Exception.Message)); comparing the DLLs instead."
+                }
+            }
+
             foreach ($r in $rows) {
                 $target = $paths | Where-Object { $_ -match ("(^|/)" + [regex]::Escape("$($r.Folder).dll") + "$") } |
                     Select-Object -First 1
-                # A client-only mod is not meant to be there. Say so instead of downloading and
-                # comparing a DLL the server would never load -- and if a copy is still sitting
-                # there from before, that is worth naming.
+                # A client-only mod is not meant to be there, so there is nothing to compare: a
+                # dashed rule reads as "not applicable" and leaves the eye free for the rows that
+                # do say something. A copy still sitting there from before is the exception - that
+                # is a finding, and it keeps its words.
                 if ($r.Side -eq "client") {
-                    $r.ServerState = if ($target) { "client-only, still there" } else { "client-only" }
+                    $r.ServerState = if ($target) { "client-only, still there" } else { "-----------" }
                     continue
                 }
                 if (-not $target) { $r.ServerState = "absent"; continue }
                 if (-not $r.Dll)  { $r.ServerState = "present (no local build)"; continue }
+
+                if (-not $Deep -and $null -ne $loadedPlugins) {
+                    $key = ($r.Folder -replace '[^a-zA-Z0-9]', '').ToLower()
+                    if ($loadedPlugins.ContainsKey($key)) {
+                        $srvSize = if ($serverSizes.ContainsKey($target)) { $serverSizes[$target] } else { $null }
+                        $r.ServerState = Get-LoadedState $loadedPlugins[$key] $r.Dll $srvSize
+                    } else {
+                        # On disk but absent from the newest run's loads: the usual cause is an
+                        # upload the server has not restarted into. Naming that beats guessing a
+                        # version, and -Deep will read the file itself.
+                        $r.ServerState = "on disk, not loaded"
+                    }
+                    continue
+                }
+
                 $bytes = $client.GetByteArrayAsync("$base/game-servers/$id/files/" + ($target -replace " ", "%20")).Result
                 $r.ServerState = Get-ServerDllState $bytes $r.Dll $r.Expected
             }
@@ -432,10 +532,27 @@ foreach ($r in $rows) {
         if ($r.Build -eq "STALE") {
             $actions += ("$($r.Folder): the server has $srvVer against a local build of $($r.DllVersion), " +
                          "but that build is stale and the tree says $($r.Local). Rebuild before reading this.")
+        } elseif ($r.ServerState -match 'uploaded') {
+            # The file up there is the size of this build, so the deploy already happened and the
+            # old code is still loaded. Uploading again would change nothing.
+            $actions += ("$($r.Folder): the server is RUNNING $srvVer but the file on disk is the size of " +
+                         "the local $($r.DllVersion) build - it looks uploaded and waiting for a restart, " +
+                         "not undeployed. Restart the server rather than deploying again.")
         } else {
             $actions += ("$($r.Folder): the server has $srvVer and the local build is $($r.DllVersion) - " +
                          ".\deploy-dathost.ps1 -Mod $($r.Folder) -Published")
         }
+    }
+    # Right version loaded, wrong bytes on disk: a different build of that version is sitting there,
+    # which after a restart becomes what players run.
+    if ($r.ServerState -match 'disk differs') {
+        $actions += ("$($r.Folder): the server is running $($r.DllVersion) but the DLL on disk is a different " +
+                     "size from the local build, so a restart would load something else. " +
+                     "Confirm with .\mod-status.ps1 -Server -Deep -Mod $($r.Folder)")
+    }
+    if ($r.ServerState -eq 'on disk, not loaded') {
+        $actions += ("$($r.Folder): the DLL is on the server but no loaded plugin matches it - either the " +
+                     "server has not restarted since the upload, or the plugin failed to load. Check its log.")
     }
     if ($r.Unreleased -and $r.Expected -eq $r.Local) {
         $actions += ("$($r.Folder): CHANGELOG.md marks $($r.Local) unreleased but there is no released " +
