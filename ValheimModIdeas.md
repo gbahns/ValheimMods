@@ -449,7 +449,7 @@ so a hand-tuned Knarr setting survives the rename instead of silently reverting 
 
 1. **Hunger Pangs** — highest player impact, contained scope, no new game objects needed
 2. **Distance HUD** — smallest scope, good starter mod to establish project structure
-3. **Comfortometer** — built 2026-09-26 (0.1.0, deployed to Default SD Test); needs in-game testing before publishing
+3. **Comfortometer** — 0.1.0 published to Thunderstore and Hexium 2026-09-26
 4. **Forsaken Shrines** — medium complexity, high design value
 5. **Food-o-pedia** — medium complexity, data-heavy
 6. **D3 Armory** — most ambitious, save for last or parallel track
