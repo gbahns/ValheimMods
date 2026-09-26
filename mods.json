@@ -15,7 +15,10 @@
     "",
     "'profilePackages' covers the third-party packages mirrored by deploy-dathost.ps1 -Profile,",
     "keyed by the package folder name as it appears in the Gale profile's BepInEx/plugins. Only",
-    "list one when it should be skipped or forced; anything absent is mirrored as before."
+    "list one when it should be skipped or forced; anything absent is mirrored as before.",
+    "",
+    "'retired': true on a mod means the source is kept but the mod is out of use. The dashboard's",
+    "Development board leaves it out; nothing else reads it."
   ],
 
   "mods": {
@@ -55,6 +58,10 @@
       "side": "client",
       "why": "[BepInProcess(\"valheim.exe\")]; README says client-side only."
     },
+    "WhatsMyWorkbenchMissing": {
+      "side": "client",
+      "why": "[BepInProcess(\"valheim.exe\")]. A tooltip on the crafting panel, built from the local player's knowledge and inventory; no prefab, no RPC, nothing for a server to do."
+    },
     "OneClickLaunch": {
       "side": "client",
       "why": "[BepInProcess(\"valheim.exe\")]. Main-menu Continue buttons; the server has no main menu and the history file is per player."
@@ -73,6 +80,7 @@
     },
     "StationExtensionGuard": {
       "side": "client",
+      "retired": true,
       "why": "[BepInProcess(\"valheim.exe\")]. Never published; kept local."
     },
     "TheGreatestMap": {

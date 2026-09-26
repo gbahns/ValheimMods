@@ -1,0 +1,7 @@
+{
+    "name": "WhatsMyWorkbenchMissing",
+    "version_number": "0.1.0",
+    "website_url": "https://github.com/gbahns/ValheimMods/tree/main/WhatsMyWorkbenchMissing",
+    "description": "Hover a crafting station's level number to see which upgrades you haven't built yet but could, with their materials.",
+    "dependencies": ["denikson-BepInExPack_Valheim-5.4.2350"]
+}
