@@ -21,30 +21,30 @@ namespace TheObituaries
         private static readonly Dictionary<HitData.HitType, string[]> Environment = new Dictionary<HitData.HitType, string[]>
         {
             { HitData.HitType.Undefined,     new[] { "{v} died" } },
-            { HitData.HitType.EnemyHit,      new[] { "{v} died", "{v} was in the wrong place" } },
-            { HitData.HitType.PlayerHit,     new[] { "{v} died", "{v} was in the wrong place" } },
+            { HitData.HitType.EnemyHit,      new[] { "{v} died" } },
+            { HitData.HitType.PlayerHit,     new[] { "{v} died" } },
             { HitData.HitType.Fall,          new[] { "{v} cratered", "{v} fell to their death" } },
-            { HitData.HitType.Drowning,      new[] { "{v} sank like a rock", "{v} sleeps with the fishes" } },
-            { HitData.HitType.Burning,       new[] { "{v} burst into flames", "{v} was in the wrong place" } },
-            { HitData.HitType.Freezing,      new[] { "{v} was frozen solid", "{v} should have brought a cloak" } },
-            { HitData.HitType.Poisoned,      new[] { "{v} can't exist on slime alone", "{v} melted" } },
+            { HitData.HitType.Drowning,      new[] { "{v} sank like a rock", "{v} sleeps with the fishes", "{v} went for a swim and never came back", "{v} drowned", "{v} thought they could breathe water" } },
+            { HitData.HitType.Burning,       new[] { "{v} burnt to a crisp", "{v} was fried" } },
+            { HitData.HitType.Freezing,      new[] { "{v} was frozen solid", "{v} should have brought a coat", "{v} turned to ice", "{v} turned into an ice cube" } },
+            { HitData.HitType.Poisoned,      new[] { "{v} was poisoned to death", "{v} died from poisoning" } },
             { HitData.HitType.Water,         new[] { "{v} sank like a rock", "{v} sleeps with the fishes" } },
-            { HitData.HitType.Smoke,         new[] { "{v} was smoked out", "{v} saw the light" } },
-            { HitData.HitType.EdgeOfWorld,   new[] { "{v} tried to leave", "{v} found a way out" } },
-            { HitData.HitType.Impact,        new[] { "{v} was in the wrong place", "{v} was squished" } },
-            { HitData.HitType.Cart,          new[] { "{v} was squished by a cart", "{v} was run over by a cart" } },
-            { HitData.HitType.Tree,          new[] { "{v} was squished by a tree", "{v} should have yelled timber" } },
-            { HitData.HitType.Self,          new[] { "{v} suicides", "{v} becomes bored with life", "{v} killed themself" } },
-            { HitData.HitType.Structural,    new[] { "{v} was squished", "{v} was buried by their own building" } },
-            { HitData.HitType.Turret,        new[] { "{v} was gunned down by a ballista", "{v} saw the light" } },
-            { HitData.HitType.Boat,          new[] { "{v} was keelhauled", "{v} was squished by a boat" } },
-            { HitData.HitType.Stalagtite,    new[] { "{v} was spiked", "{v} was in the wrong place" } },
-            { HitData.HitType.Catapult,      new[] { "{v} rode a catapult shot", "{v} was in the wrong place" } },
+            { HitData.HitType.Smoke,         new[] { "{v} was smoked out", "{v} thought they could breathe smoke like air" } },
+            { HitData.HitType.EdgeOfWorld,   new[] { "{v} tried to leave", "{v} found a way out", "{v} was in the wrong place" } },
+            { HitData.HitType.Impact,        new[] { "{v} learned about gravity the hard way" } },
+            { HitData.HitType.Cart,          new[] { "{v} was squished by a cart", "{v} was run over by a cart", "{v} was crushed by a cart", "{v} was flattened by a cart", "{v} lost a fight with a cart" } },
+            { HitData.HitType.Tree,          new[] { "{v} was squished by a tree", "{v} took on a tree and lost" } },
+            { HitData.HitType.Self,          new[] { "{v} suicides", "{v} becomes bored with life", "{v} killed themself", "{v} was fed up with this cruel world", "{v} was tired of life", "{v} wanted to see what it's like on the other side", "{v} had seen enough" } },
+            { HitData.HitType.Structural,    new[] { "{v} was squished by a building", "{v} was buried by their own building" } },
+            { HitData.HitType.Turret,        new[] { "{v} was gunned down by a ballista" } },
+            { HitData.HitType.Boat,          new[] { "{v} was keelhauled", "{v} was squished by a boat", "{v} ate a boat" } },
+            { HitData.HitType.Stalagtite,    new[] { "{v} was spiked" } },
+            { HitData.HitType.Catapult,      new[] { "{v} rode a catapult shot", "{v} caught a catapult shot", "{v} ate a catapult shot" } },
             { HitData.HitType.CinderFire,    new[] { "{v} burst into flames", "{v} visits the Volcano God" } },
             { HitData.HitType.AshlandsOcean, new[] { "{v} heats up the water", "{v} was boiled alive" } },
             { HitData.HitType.AshlandsLava,  new[] { "{v} does a back flip into the lava", "{v} visits the Volcano God" } },
             { HitData.HitType.Incinerator,   new[] { "{v} saw the light", "{v} was recycled" } },
-            { HitData.HitType.DrawBridge,    new[] { "{v} was squished", "{v} was squished by a drawbridge" } },
+            { HitData.HitType.DrawBridge,    new[] { "{v} was squished by a drawbridge", "{v} was crushed by a drawbridge", "{v} didn't realize how dangerous a drawbridge can be" } },
         };
 
         // A hit the victim dealt to themself (their own bomb, their own staff).
@@ -128,16 +128,16 @@ namespace TheObituaries
         };
 
         // Fallback by the hit's dominant damage type, for creatures the table does not know.
-        private static readonly string[] ByBlunt      = { "{v} was smashed by {k}", "{v} was pummeled by {k}", "{v} was destroyed by {k}" };
-        private static readonly string[] BySlash      = { "{v} was slashed by {k}", "{v} was eviscerated by {k}" };
-        private static readonly string[] ByPierce     = { "{v} was perforated by {k}", "{v} was spiked by {k}" };
-        private static readonly string[] ByArrow      = { "{v} was railed by {k}", "{v} ate {k}'s arrow", "{v} was gunned down by {k}" };
-        private static readonly string[] ByFire       = { "{v} was fried by {k}", "{v} was melted by {k}" };
-        private static readonly string[] ByFrost      = { "{v} was frozen solid by {k}" };
-        private static readonly string[] ByLightning  = { "{v} was electrocuted by {k}", "{v} was zapped by {k}" };
-        private static readonly string[] ByPoison     = { "{v} was slimed by {k}" };
-        private static readonly string[] BySpirit     = { "{v} was scragged by {k}" };
-        private static readonly string[] ByAnything   = { "{v} was killed by {k}", "{v} was slain by {k}" };
+        private static readonly string[] ByBlunt = { "{v} was smashed by {k}", "{v} was pummeled by {k}", "{v} was destroyed by {k}" };
+        private static readonly string[] BySlash = { "{v} was slashed by {k}", "{v} was eviscerated by {k}" };
+        private static readonly string[] ByPierce = { "{v} was perforated by {k}", "{v} was spiked by {k}" };
+        private static readonly string[] ByArrow = { "{v} was railed by {k}", "{v} ate {k}'s arrow", "{v} was gunned down by {k}" };
+        private static readonly string[] ByFire = { "{v} was fried by {k}", "{v} was melted by {k}" };
+        private static readonly string[] ByFrost = { "{v} was frozen solid by {k}" };
+        private static readonly string[] ByLightning = { "{v} was electrocuted by {k}", "{v} was zapped by {k}" };
+        private static readonly string[] ByPoison = { "{v} was slimed by {k}" };
+        private static readonly string[] BySpirit = { "{v} was scragged by {k}" };
+        private static readonly string[] ByAnything = { "{v} was killed by {k}", "{v} was slain by {k}" };
 
         // ── killed by a player, by the weapon skill ──────────────────────────────────────
 
@@ -167,21 +167,37 @@ namespace TheObituaries
             if (string.IsNullOrEmpty(n.Victim)) n.Victim = "Someone";
 
             var type = hit != null ? hit.m_hitType : HitData.HitType.Undefined;
+            ZDOID attackerId = hit != null ? hit.m_attacker : ZDOID.None;
             Character killer = hit?.GetAttacker();
 
-            if (killer != null && killer == victim)
+            if (attackerId != ZDOID.None && victim != null && attackerId == victim.GetZDOID())
             {
                 n.Template = Pick(type == HitData.HitType.Self ? Environment[HitData.HitType.Self] : SelfInflicted);
                 return n;
             }
 
-            if (killer != null && (type == HitData.HitType.EnemyHit || type == HitData.HitType.PlayerHit))
+            if (type == HitData.HitType.EnemyHit || type == HitData.HitType.PlayerHit)
             {
-                n.Killer         = Describe(killer);
-                n.KillerId       = killer.GetZDOID();
-                n.KillerIsPlayer = killer is Player;
-                n.Template       = killer is Player ? Pick(PlayerLines(hit)) : Pick(CreatureLines(killer, hit));
-                return n;
+                if (killer != null)
+                {
+                    n.Killer = Describe(killer);
+                    n.KillerId = attackerId;
+                    n.KillerIsPlayer = killer is Player;
+                    n.Template = killer is Player ? Pick(PlayerLines(hit)) : Pick(CreatureLines(killer, hit));
+                    return n;
+                }
+
+                // The killer is no longer in the scene (despawned, or killed since), but it was
+                // there when it hit us, and AttackerMemory kept its description from then.
+                var remembered = AttackerMemory.Lookup(attackerId);
+                if (remembered != null)
+                {
+                    n.Killer = remembered.Description;
+                    n.KillerId = attackerId;
+                    n.KillerIsPlayer = remembered.IsPlayer;
+                    n.Template = remembered.IsPlayer ? Pick(PlayerLines(hit)) : Pick(CreatureLines(remembered.Prefab, hit));
+                    return n;
+                }
             }
 
             n.Template = Pick(EnvironmentLines(type));
@@ -210,14 +226,14 @@ namespace TheObituaries
             var d = hit.m_damage;
             string[] best = ByAnything; float most = 0f;
             void Consider(float amount, string[] lines) { if (amount > most) { most = amount; best = lines; } }
-            Consider(d.m_blunt,     ByBlunt);
-            Consider(d.m_slash,     BySlash);
-            Consider(d.m_pierce,    hit.m_ranged ? ByArrow : ByPierce);
-            Consider(d.m_fire,      ByFire);
-            Consider(d.m_frost,     ByFrost);
+            Consider(d.m_blunt, ByBlunt);
+            Consider(d.m_slash, BySlash);
+            Consider(d.m_pierce, hit.m_ranged ? ByArrow : ByPierce);
+            Consider(d.m_fire, ByFire);
+            Consider(d.m_frost, ByFrost);
             Consider(d.m_lightning, ByLightning);
-            Consider(d.m_poison,    ByPoison);
-            Consider(d.m_spirit,    BySpirit);
+            Consider(d.m_poison, ByPoison);
+            Consider(d.m_spirit, BySpirit);
             return best;
         }
 
@@ -309,7 +325,7 @@ namespace TheObituaries
             {
                 if (!prefix.Equals(cause, StringComparison.OrdinalIgnoreCase)) continue;
                 string name = prefix.Replace("_", " ");
-                n.Killer   = Article(name) + " " + name;
+                n.Killer = Article(name) + " " + name;
                 n.Template = Pick(lines);
                 return n;
             }

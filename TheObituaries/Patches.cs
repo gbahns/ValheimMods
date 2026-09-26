@@ -11,6 +11,7 @@ namespace TheObituaries
         [HarmonyPostfix]
         private static void Postfix()
         {
+            AttackerMemory.Clear();
             DeathNetwork.Register();
         }
     }
