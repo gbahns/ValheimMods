@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.5.0 — unreleased
+## 1.5.0 — 2026-09-25
 
 - **The server publishes its pause state to a file**, so a monitor or dashboard can read it instead of scraping the log: `BepInEx/config/PauseMyServer.state.json`, holding whether the world is paused, who holds it, how many players want a pause, how many are online, and when the state last changed.
 - Written on every change and rewritten every few seconds as a heartbeat, so a reader can tell "running and not paused" from "the mod is not running". The file's age is the whole trust model. It is removed when the world shuts down.
