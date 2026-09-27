@@ -26,7 +26,8 @@ namespace SpreadTheLoad
     /// target, its path, its alert timers - that is not all replicated, so moving one mid-fight can
     /// make it re-acquire its target or re-path. That is a real hitch in exactly the moment it
     /// would be least welcome, so creatures are left alone until it can be measured rather than
-    /// reasoned about.
+    /// reasoned about. Players are left alone for a harder reason: handing someone's character to
+    /// another machine makes that machine delete it. See <see cref="IsLiving"/>.
     /// </summary>
     internal static class Attackers
     {
@@ -42,8 +43,8 @@ namespace SpreadTheLoad
         private static readonly Dictionary<ZDOID, Pending> _pending = new Dictionary<ZDOID, Pending>();
         private static readonly Dictionary<ZDOID, float> _lastMoved = new Dictionary<ZDOID, float>();
 
-        /// <summary>Prefab hash -> whether it is a creature, so the test is done once per type.</summary>
-        private static readonly Dictionary<int, bool> _isCreature = new Dictionary<int, bool>();
+        /// <summary>Prefab hash -> whether it is alive, so the test is done once per type.</summary>
+        private static readonly Dictionary<int, bool> _isLiving = new Dictionary<int, bool>();
 
         /// <summary>
         /// How long a swing waits before the object moves.
@@ -109,7 +110,7 @@ namespace SpreadTheLoad
                     var zdo = zdoMan.GetZDO(kv.Key);
                     if (zdo == null || !zdo.IsValid()) continue;
                     if (zdo.GetOwner() == kv.Value.Attacker) continue;
-                    if (IsCreature(zdo)) continue;
+                    if (IsLiving(zdo)) continue;
 
                     zdo.SetOwner(kv.Value.Attacker);
                     if (_lastMoved.Count < MaxTracked) _lastMoved[kv.Key] = now;
@@ -128,27 +129,35 @@ namespace SpreadTheLoad
         }
 
         /// <summary>
-        /// Whether a ZDO is a creature, from its prefab rather than its instance.
+        /// Whether a ZDO is alive - a creature or a player - from its prefab rather than its
+        /// instance.
         ///
         /// It has to come from the prefab: the object being chopped is usually nowhere near the
         /// server's own active area, so there is no instantiated GameObject to ask. ZNetScene keeps
         /// every prefab regardless, and the answer is the same for every object of a type, so it is
         /// worked out once and remembered.
+        ///
+        /// The test is Character, not BaseAI. Every creature has both, but a player has only
+        /// Character - so BaseAI called a player a legal target, and a player is exactly what
+        /// RPC_Damage names when something hits them. The victim's own character was handed to
+        /// whoever swung at them, and the receiving client, finding it owns a Player that is not
+        /// its local one, destroys it in Player.FixedUpdate: "Destroying old local player", and
+        /// that player's screen goes black. Anything living is off limits.
         /// </summary>
-        private static bool IsCreature(ZDO zdo)
+        private static bool IsLiving(ZDO zdo)
         {
             int hash = zdo.GetPrefab();
-            if (_isCreature.TryGetValue(hash, out bool known)) return known;
+            if (_isLiving.TryGetValue(hash, out bool known)) return known;
 
-            bool creature = true;      // unknown means leave it alone
+            bool living = true;        // unknown means leave it alone
             try
             {
                 var prefab = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(hash) : null;
-                if (prefab != null) creature = prefab.GetComponent<BaseAI>() != null;
+                if (prefab != null) living = prefab.GetComponent<Character>() != null;
             }
             catch { }
-            _isCreature[hash] = creature;
-            return creature;
+            _isLiving[hash] = living;
+            return living;
         }
 
         private static void Report(float now)

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.4
+
+- **A player being hit is no longer treated like a tree.** The attacker rule skipped creatures by
+  looking for `BaseAI`, and a player does not have one - so when something hit a player, the damage
+  RPC named that player's own ZDO and their character was handed to whoever swung. The receiving
+  client then found it owned a `Player` that was not its local one and did what vanilla does in
+  `Player.FixedUpdate`: logged "Destroying old local player" and destroyed it. The player's screen
+  went black and they had to rejoin. The test is now `Character`, which every creature has too, so
+  nothing living is ever moved.
+
 ## 0.1.3
 
 - **A tree, rock or ore vein now goes to whoever is hitting it.** Vanilla never does this - TreeBase,
