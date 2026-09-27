@@ -15,18 +15,16 @@ namespace TheGreatestPortal
     internal static class Spelling
     {
         private const string Misspelling = "alter";
+        private const string WithThe = "thealter";   // the way the place is usually referred to
         internal const float Radius = 50f;
 
         /// <summary>
-        /// Called once a portal has been named. Only the letters count, in any case, so dressing
-        /// the word up with spaces, digits or punctuation ("Alter!", "a l t e r", "Alter 2") does
-        /// not save anyone, while a longer word that merely starts the same way ("Alternate") is
-        /// fine. Any other name, or a portal elsewhere, passes.
+        /// Called once a portal has been named. Any other name, or a portal elsewhere, passes.
         /// </summary>
         internal static void Judge(string name, Vector3 portalPos)
         {
             if (TgpConfig.AltarSpellingIsFatal == null || !TgpConfig.AltarSpellingIsFatal.Value) return;
-            if (!string.Equals(LettersOnly(name), Misspelling, StringComparison.OrdinalIgnoreCase)) return;
+            if (!Counts(name)) return;
             var player = Player.m_localPlayer;
             if (player == null || player.IsDead()) return;
             if (Utils.DistanceXZ(Stones(), portalPos) > Radius) return;
@@ -41,6 +39,33 @@ namespace TheGreatestPortal
             hit.m_point = player.transform.position + Vector3.up;
             hit.m_dir = Vector3.down;
             player.Damage(hit);
+        }
+
+        /// <summary>
+        /// Whether a name misspells the place. The word counts wherever it appears as a word of
+        /// its own, so "The Alter", "Alter Portal" and "the alter 2" are all caught, and so does
+        /// the whole name with everything but its letters taken out, which catches "Alter!",
+        /// "a l t e r" and "TheAlter". A longer word that merely contains the letters is not a
+        /// misspelling of anything and passes: "Altered", "Alternate", "Walter's place".
+        /// </summary>
+        private static bool Counts(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return false;
+            if (IsMisspelling(LettersOnly(name))) return true;
+            var word = new StringBuilder();
+            foreach (char c in name)
+            {
+                if (char.IsLetter(c)) { word.Append(c); continue; }
+                if (IsMisspelling(word.ToString())) return true;
+                word.Length = 0;
+            }
+            return IsMisspelling(word.ToString());
+        }
+
+        private static bool IsMisspelling(string word)
+        {
+            return string.Equals(word, Misspelling, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(word, WithThe, StringComparison.OrdinalIgnoreCase);
         }
 
         private static string LettersOnly(string text)

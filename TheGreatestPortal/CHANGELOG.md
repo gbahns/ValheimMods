@@ -1,5 +1,7 @@
 # Changelog
 
+## 1.0.3 — 2026-09-27
+
 ## 1.0.2 — 2026-09-25
 
 - The log now says what became of every portal you build: whether it took your default portal as
