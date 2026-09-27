@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.2 — unreleased
+## 0.1.2 — 2026-09-27
 
 - Fixed: after logging out and back in (or reconnecting) with the panel open, the panel came back with no rows and a large resize grip in its middle, and threw a NullReferenceException every refresh. The rebuilt panel was still holding the rows of the old one.
 - If the panel ever fails to draw, it is now rebuilt from scratch, and taken down after three failures, instead of staying half drawn.
