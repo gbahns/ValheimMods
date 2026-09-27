@@ -22,7 +22,7 @@ namespace Comfortometer
     {
         public const string ModGuid    = "DeathMonger.Comfortometer";
         public const string ModName    = "Comfortometer";
-        public const string ModVersion = "0.1.1";
+        public const string ModVersion = "0.1.2";
 
         internal static ManualLogSource Log { get; private set; }
 

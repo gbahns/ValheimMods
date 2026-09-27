@@ -104,14 +104,34 @@ namespace Comfortometer
 
             if (Time.unscaledTime < _nextRefresh) return;
             _nextRefresh = Time.unscaledTime + RefreshSeconds;
-            _last = ComfortScan.Scan(player);
-            Render(_last);
+            try
+            {
+                _last = ComfortScan.Scan(player);
+                Render(_last);
+                _failures = 0;
+            }
+            catch (System.Exception e)
+            {
+                // Never leave a half-drawn panel on screen: build it again from nothing, and if
+                // that keeps failing, take it down rather than throw every fifth of a second.
+                _failures++;
+                ComfortometerMod.Log.LogError($"Comfortometer panel failed to draw ({_failures}): {e}");
+                if (_failures >= 3) { ComfortometerMod.Log.LogError("Comfortometer: giving up on the panel until it is opened again."); Close(); _failures = 0; }
+                else Rebuild();
+            }
         }
+
+        private static int _failures;
 
         // ── building ────────────────────────────────────────────────────────────────
 
         private static bool Build()
         {
+            // The rows of the previous panel died with it: the HUD is destroyed and made again
+            // on every logout and login, and this panel with it. Keeping the dead rows here made
+            // Render throw on the first one, which left the new panel half laid out, with the
+            // grip still at Unity's default 100x100 rect in the middle. (0.1.2)
+            _rows.Clear();
             var hud = Hud.instance;
             var parent = hud.m_rootObject != null ? hud.m_rootObject.transform as RectTransform : hud.transform as RectTransform;
             if (parent == null) return false;
@@ -149,6 +169,7 @@ namespace Comfortometer
             var gripHandle = gripGo.GetComponent<UiBits.DragHandle>();
             gripHandle.OnDrag = OnGripDrag;
             gripHandle.OnEnd = SavePlacement;
+            gripGo.SetActive(false);          // shown by ApplyArranging while arranging
 
             // The title strip drags the whole panel. Last sibling, so a drag reaches it and not
             // the background, which would swallow the pointer without handling the drag.
