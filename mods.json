@@ -184,7 +184,7 @@
     "Azumatt-AzuCraftyBoxes":                        { "side": "optional-server", "why": "Client pulls from containers; server install enforces the config." },
     "Azumatt-AzuExtendedPlayerInventory":            { "side": "optional-server", "why": "Client inventory UI; server install enforces the config." },
     "Azumatt-Recycle_N_Reclaim":                     { "side": "optional-server", "why": "Recipes are resolved client-side; server install enforces the config." },
-    "Azumatt-RepairStation":                         { "side": "optional-server", "why": "Check whether it registers a new prefab - if it does, it is 'both'." },
+    "Azumatt-RepairStation":                         { "side": "both", "why": "Checked 2026-09-27: it DOES register a new prefab. RepairStation.dll carries 'piece_repairstation', registers it through Jotunn's PieceManager and embeds its own asset bundle (a UnityFS signature sits in the DLL), so a server without the mod destroys the ZDO of any repair station built in its active area - the ForsakenShrines failure again, silent and permanent. Note the README: installed on the server it version-checks and kicks clients that lack it, so it belongs in the synced profile as well." },
     "TastyChickenLegs-AutomaticFuel":                { "side": "optional-server", "why": "Fuelling containers; Server-side tagged." },
     "TastyChickenLegs-BetterCarts":                  { "side": "optional-server", "why": "Cart physics; Server-side tagged." },
 
