@@ -95,7 +95,7 @@ namespace TheGreatestPortal
             PanelPosition = mod.BindLocal("Display", "Panel Position", "0,0",
                 "Where the portal panel sits, as an offset from the screen center, remembered when you drag it by " +
                 "its title. Set to 0,0 to put it back in the middle.");
-            OthersRecentPortals = mod.BindLocalRangeInt("Display", "Others' Recent Portals", 5, 0, 20,
+            OthersRecentPortals = mod.BindLocalRangeInt("Display", "Other Players Recent Portals", 5, 0, 20,
                 "How many portals other players have used lately to show in an Others' Recents section. 0 leaves it out.");
             RecentlyCreatedPortals = mod.BindLocalRangeInt("Display", "Recently Created Portals", 5, 0, 20,
                 "How many newly built portals to show in a Recently Created section. 0 leaves it out.");

@@ -87,7 +87,7 @@ to mark a favorite.
 | Display | Always Show Portal Pins | false | Draw every portal on the large map all the time |
 | Display | Show Distances | true | Distances in the lists |
 | Display | Recent Portals | 5 | How many recent portals the Recents section shows; 0 hides it |
-| Display | Others' Recent Portals | 5 | How many portals other players have used lately to show in Others' Recents; 0 hides it |
+| Display | Other Players Recent Portals | 5 | How many portals other players have used lately to show in Others' Recents; 0 hides it |
 | Display | Recently Created Portals | 5 | How many newly built portals to show in Recently Created; 0 hides it |
 | Display | Map List Size | 380,660 | Width and height of the portal list on the map, remembered when you drag its corner |
 | Display | Group By Biome | false | Group the lists by biome; the switches on the panel and the map change it too |
