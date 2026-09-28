@@ -312,6 +312,21 @@ namespace TheGreatestPortal
             private void OnDisable() { if (Over) { Over = false; OnHoverChanged?.Invoke(false); } }
         }
 
+        /// <summary>A small button at a row's right end: a favorite star, a show-on-map pin.</summary>
+        internal struct RowIcon
+        {
+            public Sprite Sprite;
+            public Action OnClick;
+            public Color? Color;
+
+            public RowIcon(Sprite sprite, Action onClick, Color? color = null)
+            {
+                Sprite = sprite;
+                OnClick = onClick;
+                Color = color;
+            }
+        }
+
         internal sealed class RowHandle
         {
             public GameObject Root;
@@ -320,7 +335,6 @@ namespace TheGreatestPortal
             public TextMeshProUGUI Middle;
             public TextMeshProUGUI Right;
             public Hover Hover;
-            public Image Icon;
             public bool Selected;
 
             public void SetSelected(bool on) { Selected = on; Refresh(); }
@@ -344,7 +358,7 @@ namespace TheGreatestPortal
         private const float RightWidth = 64f;
         private const float RightRoom = RightWidth + 12f;
 
-        internal static RowHandle Row(Transform content, string label, string right, Action onClick, Action onRightClick, float fontSize = 17f, Color? labelColor = null, Action onDoubleClick = null, string middle = null, Sprite icon = null, Action onIcon = null)
+        internal static RowHandle Row(Transform content, string label, string right, Action onClick, Action onRightClick, float fontSize = 17f, Color? labelColor = null, Action onDoubleClick = null, string middle = null, RowIcon[] icons = null)
         {
             var go = new GameObject("Row", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button), typeof(LayoutElement), typeof(Hover));
             go.transform.SetParent(content, false);
@@ -379,8 +393,8 @@ namespace TheGreatestPortal
 
             bool hasRight = !string.IsNullOrEmpty(right);
             bool hasMiddle = !string.IsNullOrEmpty(middle);
-            bool hasIcon = icon != null && onIcon != null;
-            float room = hasIcon ? IconRoom : 0f;       // every other column ends short of the button
+            int iconCount = icons != null ? icons.Length : 0;
+            float room = iconCount * IconRoom;          // every other column ends short of the buttons
             float textEnd = (hasRight ? -RightRoom : -10f) - room;
             var lbl = Text(go.transform, "Label", label, fontSize, TextAlignmentOptions.Left, labelColor);
             var lrt = lbl.rectTransform;
@@ -411,29 +425,33 @@ namespace TheGreatestPortal
                 rrt.sizeDelta = new Vector2(RightWidth, 0f);
                 handle.Right = r;
             }
-            if (hasIcon)
+            // Laid out from the right edge inwards, in the order given. Each is its own button, so
+            // clicking one does not count as clicking the row, and each passes a right-click on to
+            // the row so the icons are not dead spots in the row's own right-click.
+            for (int i = 0; i < iconCount; i++)
             {
-                // Its own button, so clicking it does not count as clicking the row. Right-clicking
-                // it is passed on, so the icon is not a dead spot in the row's own right-click.
-                var ic = new GameObject("Icon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button), typeof(Hover));
+                var spec = icons[i];
+                if (spec.Sprite == null) continue;
+                var ic = new GameObject("Icon" + i, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button), typeof(Hover));
                 ic.transform.SetParent(go.transform, false);
                 var irt = ic.GetComponent<RectTransform>();
                 irt.anchorMin = new Vector2(1f, 0.5f);
                 irt.anchorMax = new Vector2(1f, 0.5f);
                 irt.pivot = new Vector2(1f, 0.5f);
-                irt.anchoredPosition = new Vector2(-6f, 0f);
+                irt.anchoredPosition = new Vector2(-6f - i * IconRoom, 0f);
                 irt.sizeDelta = new Vector2(IconSize, IconSize);
                 var iimg = ic.GetComponent<Image>();
-                iimg.sprite = icon;
-                iimg.color = Dim;
+                iimg.sprite = spec.Sprite;
+                Color rest = spec.Color ?? Dim;
+                iimg.color = rest;
                 var ibtn = ic.GetComponent<Button>();
                 ibtn.transition = Selectable.Transition.None;
                 ibtn.targetGraphic = iimg;
-                ibtn.onClick.AddListener(() => onIcon());
+                var act = spec.OnClick;
+                if (act != null) ibtn.onClick.AddListener(() => act());
                 var ihover = ic.GetComponent<Hover>();
                 ihover.OnRightClick = onRightClick;
-                ihover.OnHoverChanged = over => { if (iimg != null) iimg.color = over ? Color.white : Dim; };
-                handle.Icon = iimg;
+                ihover.OnHoverChanged = over => { if (iimg != null) iimg.color = over ? Color.white : rest; };
             }
             handle.Refresh();
             return handle;
@@ -525,6 +543,57 @@ namespace TheGreatestPortal
             _pin = Sprite.Create(tex, new Rect(0f, 0f, n, n), new Vector2(0.5f, 0.5f), 100f);
             _pin.hideFlags = HideFlags.HideAndDontSave;
             return _pin;
+        }
+
+        private static Sprite _starOutline;
+
+        /// <summary>
+        /// The same star drawn as an outline: the shape with a smaller copy of itself taken out of
+        /// the middle. A hollow star says "not a favorite" while still reading as the same control
+        /// as the filled one beside it.
+        /// </summary>
+        internal static Sprite StarOutline()
+        {
+            if (_starOutline != null) return _starOutline;
+            const int n = 48;
+            var outerPoly = StarPoly(n, n * 0.48f);
+            var innerPoly = StarPoly(n, n * 0.48f * 0.68f);
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    int hit = 0;
+                    for (int sy = 0; sy < 3; sy++)
+                        for (int sx = 0; sx < 3; sx++)
+                        {
+                            float fx = x + (sx + 0.5f) / 3f, fy = y + (sy + 0.5f) / 3f;
+                            if (InsidePolygon(outerPoly, fx, fy) && !InsidePolygon(innerPoly, fx, fy)) hit++;
+                        }
+                    px[y * n + x] = new Color32(255, 255, 255, (byte)(hit * 255 / 9));
+                }
+            tex.SetPixels32(px);
+            tex.Apply(false, true);
+            tex.filterMode = FilterMode.Bilinear;
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.hideFlags = HideFlags.HideAndDontSave;
+            _starOutline = Sprite.Create(tex, new Rect(0f, 0f, n, n), new Vector2(0.5f, 0.5f), 100f);
+            _starOutline.hideFlags = HideFlags.HideAndDontSave;
+            return _starOutline;
+        }
+
+        /// <summary>The ten points of a five-pointed star, point up, for a given outer radius.</summary>
+        private static Vector2[] StarPoly(int n, float outer)
+        {
+            var poly = new Vector2[10];
+            float inner = outer * 0.42f;
+            for (int i = 0; i < poly.Length; i++)
+            {
+                float r = i % 2 == 0 ? outer : inner;
+                float a = Mathf.PI / 2f + i * Mathf.PI / 5f;
+                poly[i] = new Vector2(n / 2f + r * Mathf.Cos(a), n / 2f + r * Mathf.Sin(a));
+            }
+            return poly;
         }
 
         private static bool InsidePolygon(Vector2[] poly, float x, float y)

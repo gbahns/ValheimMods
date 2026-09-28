@@ -25,7 +25,7 @@ sides say to each other raises that floor and says so in the changelog.
 |---|---|
 | Name | Up to 32 characters (configurable). Names do not have to be unique. |
 | Star beside the name | Marks the portal you are standing at as a favorite; click again to take it off. Takes effect at once. |
-| Destination list | Every other portal in the world, favorites first, each with where it leads and its distance. A **Recents** section at the top repeats the portals you most recently traveled to or from (5 by default). The first entry, *Open portal*, means no fixed destination. Up/Down move the selection, Enter confirms; a double-click on a row does both. Right-click a row for Travel here now, Rename, Favorite / Un-favorite and Show on map; renaming works on any portal, wherever it is. |
+| Destination list | Every other portal in the world, favorites first, each with where it leads and its distance. Above it sit **Recents** (the portals you most recently traveled to or from), **Others' Recents** (where everyone else has been lately) and **Recently Created** (the newest portals), 5 each by default. A star at the end of every row marks a favorite and flips it: filled for a favorite, hollow for not. The first entry, *Open portal*, means no fixed destination. Up/Down move the selection, Enter confirms; a double-click on a row does both. Right-click a row for Travel here now, Rename, Favorite / Un-favorite and Show on map; renaming works on any portal, wherever it is. |
 | Search | Type part of a name (or a biome) to filter the list. |
 | Group by biome | Sections per biome, with a Favorites section first; a favorite is listed only there. Click a header to fold or open that group; Expand all / Collapse all do the lot. All of it is remembered between sessions. |
 | Default new portals to point here | New portals you build lead here automatically. |
@@ -87,6 +87,9 @@ to mark a favorite.
 | Display | Always Show Portal Pins | false | Draw every portal on the large map all the time |
 | Display | Show Distances | true | Distances in the lists |
 | Display | Recent Portals | 5 | How many recent portals the Recents section shows; 0 hides it |
+| Display | Others' Recent Portals | 5 | How many portals other players have used lately to show in Others' Recents; 0 hides it |
+| Display | Recently Created Portals | 5 | How many newly built portals to show in Recently Created; 0 hides it |
+| Display | Map List Size | 380,660 | Width and height of the portal list on the map, remembered when you drag its corner |
 | Display | Group By Biome | false | Group the lists by biome; the switches on the panel and the map change it too |
 | Display | Panel Size | 680,600 | The portal panel's size, saved when you drag its corner |
 | Display | Panel Position | 0,0 | The panel's offset from the screen center, saved when you drag its title |

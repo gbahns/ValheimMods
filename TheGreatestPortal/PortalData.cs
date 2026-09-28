@@ -24,6 +24,15 @@ namespace TheGreatestPortal
         /// or XPortal connection is adopted as the destination, so upgrading a world keeps its pairs.</summary>
         internal static readonly int SetHash = "TGP_set".GetStableHashCode();
 
+        /// <summary>long: the world second this portal was built (0 = from before this was recorded).</summary>
+        internal static readonly int BornHash = "TGP_born".GetStableHashCode();
+
+        /// <summary>long: the world second someone last travelled through it (0 = not since the mod saw it).</summary>
+        internal static readonly int UsedHash = "TGP_use".GetStableHashCode();
+
+        /// <summary>string: who that last traveller was.</summary>
+        internal static readonly int UserHash = "TGP_by".GetStableHashCode();
+
         private static readonly Regex RichText = new Regex("<[^>]*>", RegexOptions.Compiled);
         private static readonly System.Random Rng = new System.Random();
 
@@ -31,6 +40,20 @@ namespace TheGreatestPortal
         internal static long GetTarget(ZDO zdo) => zdo == null ? 0L : zdo.GetLong(ToHash, 0L);
         internal static bool IsConfigured(ZDO zdo) => zdo != null && zdo.GetInt(SetHash, 0) != 0;
         internal static string GetName(ZDO zdo) => zdo == null ? "" : (zdo.GetString(ZDOVars.s_tag, "") ?? "");
+
+        internal static long GetBorn(ZDO zdo) => zdo == null ? 0L : zdo.GetLong(BornHash, 0L);
+        internal static long GetUsed(ZDO zdo) => zdo == null ? 0L : zdo.GetLong(UsedHash, 0L);
+        internal static string GetUser(ZDO zdo) => zdo == null ? "" : (zdo.GetString(UserHash, "") ?? "");
+
+        /// <summary>
+        /// The world's own clock in whole seconds. It is saved with the world and carries on where
+        /// it left off, so unlike Time.time it can still order two events either side of a restart.
+        /// </summary>
+        internal static long Now()
+        {
+            var znet = ZNet.instance;
+            return znet != null ? (long)znet.GetTimeSeconds() : 0L;
+        }
 
         /// <summary>A random permanent id. Never 0, which means "unassigned".</summary>
         internal static long NewId()

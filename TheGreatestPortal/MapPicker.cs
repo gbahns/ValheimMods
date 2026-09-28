@@ -207,6 +207,11 @@ namespace TheGreatestPortal
                 End();
                 return;
             }
+            if (UiKit.ContextMenu.IsOpen)
+            {
+                UiKit.ContextMenu.Update();   // it owns the keyboard and the mouse while it is up
+                return;
+            }
             // Escape while typing in the search box only leaves the box; the next Escape closes the map.
             if (SearchFocused && ZInput.GetKeyDown(KeyCode.Escape)) _search.DeactivateInputField();
             if (_catalogDirty)
@@ -445,6 +450,26 @@ namespace TheGreatestPortal
             for (int i = 0; i < _rows.Count; i++) _rows[i].SetSelected(_rowIds[i] == p.Id);
         }
 
+        /// <summary>
+        /// The right-click menu for a row. Right-clicking used to favorite outright, which left no
+        /// way to ask for anything else and was easy to do by accident; the star does that now.
+        /// </summary>
+        private static void RowMenu(Minimap map, PortalInfo p)
+        {
+            if (p == null || map == null || map.m_largeRoot == null) return;
+            var parent = map.m_largeRoot.transform as RectTransform;
+            if (parent == null) return;
+            string pick = Current == Mode.Travel ? "Travel here" : Current == Mode.Pick ? "Set as destination" : "Center the map here";
+            var items = new List<KeyValuePair<string, Action>>
+            {
+                new KeyValuePair<string, Action>(pick, () => Select(p)),
+                new KeyValuePair<string, Action>("Center the map here", () => CenterOn(p)),
+                new KeyValuePair<string, Action>(Favorites.IsFavorite(p.Id) ? "Un-favorite" : "Favorite", () => ToggleFavorite(p)),
+            };
+            if (Current == Mode.Browse) items.RemoveAt(0);   // the first two would be the same act
+            UiKit.ContextMenu.Show(parent, ZInput.pointerPosition, items);
+        }
+
         private static void ToggleFavorite(PortalInfo p)
         {
             if (p == null) return;
@@ -505,15 +530,15 @@ namespace TheGreatestPortal
                         ? (string.IsNullOrEmpty(_usualDestination)
                             ? "This trip only; the portal keeps the destination it is set to. The pin on a row shows where it is. Esc stays here."
                             : $"This trip only; the portal still leads to {_usualDestination}. The pin on a row shows where it is. Esc stays here.")
-                        : "Click a portal here or on the map to travel. The pin on a row shows where it is. Right-click marks a favorite. Esc stays here.";
+                        : "Click a portal here or on the map to travel. The pin on a row shows where it is. The star marks a favorite; right-click for a menu. Esc stays here.";
                     break;
                 case Mode.Pick:
                     _header.text = "Choose the destination";
-                    _hint.text = "Click a portal here or on the map. The pin on a row shows where it is. Right-click marks a favorite. Esc keeps the old destination.";
+                    _hint.text = "Click a portal here or on the map. The pin on a row shows where it is. The star marks a favorite; right-click for a menu. Esc keeps the old destination.";
                     break;
                 default:
                     _header.text = "Portals";
-                    _hint.text = $"Click a portal to center the map on it. Right-click marks a favorite. {TgpConfig.TogglePinsKey.Value.MainKey} hides them.";
+                    _hint.text = $"Click a portal to center the map on it. The star marks a favorite; right-click for a menu. {TgpConfig.TogglePinsKey.Value.MainKey} hides them.";
                     break;
             }
 
@@ -542,10 +567,15 @@ namespace TheGreatestPortal
                     continue;
                 }
                 var captured = e.Portal;
-                string label = e.Favorite ? "★ " + captured.DisplayName : captured.DisplayName;
+                bool fav = e.Favorite;
                 string dist = TgpConfig.ShowDistances.Value && player != null ? UiKit.Distance(from, captured.Pos) : null;
-                var row = UiKit.Row(_listContent, label, dist, () => Select(captured), () => ToggleFavorite(captured), 16f, e.Favorite ? UiKit.Gold : (Color?)null, null, PortalList.DestinationText(captured),
-                                    UiKit.Pin(), () => CenterOn(captured));
+                // The star says whether it is a favorite and flips it; the name no longer has to.
+                var icons = new[]
+                {
+                    new UiKit.RowIcon(fav ? UiKit.Star() : UiKit.StarOutline(), () => ToggleFavorite(captured), fav ? UiKit.Gold : (Color?)null),
+                    new UiKit.RowIcon(UiKit.Pin(), () => CenterOn(captured)),
+                };
+                var row = UiKit.Row(_listContent, captured.DisplayName, dist, () => Select(captured), () => RowMenu(map, captured), 16f, fav ? UiKit.Gold : (Color?)null, null, PortalList.DestinationText(captured), icons);
                 row.SetSelected(captured.Id == _highlightId && _highlightId != 0L);
                 long rowId = captured.Id;
                 var rowHover = row.Hover.OnHoverChanged;
@@ -670,6 +700,7 @@ namespace TheGreatestPortal
 
         private static void DestroyList()
         {
+            UiKit.ContextMenu.Close();
             if (_list != null) UnityEngine.Object.Destroy(_list);
             _list = null;
             _listRt = null;

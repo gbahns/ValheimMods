@@ -26,6 +26,8 @@ namespace TheGreatestPortal
         internal static ConfigEntry<bool> GroupByBiome;
         internal static ConfigEntry<string> CollapsedGroups;
         internal static ConfigEntry<int> RecentPortals;
+        internal static ConfigEntry<int> OthersRecentPortals;
+        internal static ConfigEntry<int> RecentlyCreatedPortals;
         internal static ConfigEntry<string> PanelSize;
         internal static ConfigEntry<string> PanelPosition;
         internal static ConfigEntry<int> ListScrollRows;
@@ -93,6 +95,10 @@ namespace TheGreatestPortal
             PanelPosition = mod.BindLocal("Display", "Panel Position", "0,0",
                 "Where the portal panel sits, as an offset from the screen center, remembered when you drag it by " +
                 "its title. Set to 0,0 to put it back in the middle.");
+            OthersRecentPortals = mod.BindLocalRangeInt("Display", "Others' Recent Portals", 5, 0, 20,
+                "How many portals other players have used lately to show in an Others' Recents section. 0 leaves it out.");
+            RecentlyCreatedPortals = mod.BindLocalRangeInt("Display", "Recently Created Portals", 5, 0, 20,
+                "How many newly built portals to show in a Recently Created section. 0 leaves it out.");
             MapListSize = mod.BindLocal("Display", "Map List Size", "380,660",
                 "Width and height of the portal list on the map, remembered when you drag its bottom-right corner.");
             ListScrollRows = mod.BindLocalRangeInt("Display", "List Scroll Rows", 4, 1, 20,

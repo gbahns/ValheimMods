@@ -206,6 +206,7 @@ namespace TheGreatestPortal
             }
             long id = PortalData.NewId();
             zdo.Set(PortalData.IdHash, id);
+            zdo.Set(PortalData.BornHash, PortalData.Now());
 
             long def = Favorites.DefaultId;
             if (def == 0L)

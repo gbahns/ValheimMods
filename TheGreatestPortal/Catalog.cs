@@ -16,6 +16,9 @@ namespace TheGreatestPortal
         public bool AllowAllItems; // the prefab's TeleportWorld.m_allowAllItems
         public float ExitDistance = 1f;
         public string Prefab = "";
+        public long Born;          // world second it was built, 0 = unknown
+        public long UsedAt;        // world second someone last travelled through it, 0 = never
+        public string UsedBy = ""; // and who that was
 
         public string DisplayName => string.IsNullOrEmpty(Name) ? "Unnamed portal" : Name;
 
@@ -30,6 +33,21 @@ namespace TheGreatestPortal
             pkg.Write(AllowAllItems);
             pkg.Write(ExitDistance);
             pkg.Write(Prefab ?? "");
+        }
+
+        /// <summary>The later additions, written after every record rather than inside one.</summary>
+        public void WriteExtra(ZPackage pkg)
+        {
+            pkg.Write(Born);
+            pkg.Write(UsedAt);
+            pkg.Write(UsedBy ?? "");
+        }
+
+        public void ReadExtra(ZPackage pkg)
+        {
+            Born = pkg.ReadLong();
+            UsedAt = pkg.ReadLong();
+            UsedBy = pkg.ReadString();
         }
 
         public static PortalInfo Read(ZPackage pkg)
@@ -58,6 +76,13 @@ namespace TheGreatestPortal
     internal static class Catalog
     {
         private const int Version = 1;
+
+        /// <summary>
+        /// Version of the block appended after the records. It is appended rather than folded into
+        /// them on purpose: a client built before it stops reading once it has its portals and
+        /// never sees the extra bytes, so old and new still understand each other either way round.
+        /// </summary>
+        private const int Extra = 1;
 
         private static readonly Dictionary<long, PortalInfo> _byId = new Dictionary<long, PortalInfo>();
         private static readonly List<PortalInfo> _all = new List<PortalInfo>();
@@ -108,13 +133,17 @@ namespace TheGreatestPortal
             int count = pkg.ReadInt();
             _byId.Clear();
             _all.Clear();
+            var order = new List<PortalInfo>(count);   // including any dropped, so the extras line up
             for (int i = 0; i < count; i++)
             {
                 var p = PortalInfo.Read(pkg);
+                order.Add(p);
                 if (p.Id == 0L || _byId.ContainsKey(p.Id)) continue;
                 _byId[p.Id] = p;
                 _all.Add(p);
             }
+            if (pkg.GetPos() < pkg.Size() && pkg.ReadInt() == Extra)
+                for (int i = 0; i < order.Count && pkg.GetPos() < pkg.Size(); i++) order[i].ReadExtra(pkg);
             HasSnapshot = true;
             try { Changed?.Invoke(); }
             catch (Exception e) { TheGreatestPortalMod.Log.LogError($"[TheGreatestPortal] Catalog listener failed: {e}"); }
@@ -127,6 +156,8 @@ namespace TheGreatestPortal
             pkg.Write(Version);
             pkg.Write(infos.Count);
             for (int i = 0; i < infos.Count; i++) infos[i].Write(pkg);
+            pkg.Write(Extra);
+            for (int i = 0; i < infos.Count; i++) infos[i].WriteExtra(pkg);
             return pkg;
         }
 

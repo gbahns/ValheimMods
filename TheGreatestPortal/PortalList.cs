@@ -24,6 +24,8 @@ namespace TheGreatestPortal
     {
         internal const string FavoritesKey = "favorites";
         internal const string RecentsKey = "recents";
+        internal const string OthersKey = "others";
+        internal const string CreatedKey = "created";
 
         private static readonly Dictionary<long, Heightmap.Biome> _biomes = new Dictionary<long, Heightmap.Biome>();
         private static HashSet<string> _collapsed;
@@ -127,28 +129,38 @@ namespace TheGreatestPortal
         /// </summary>
         internal static List<ListEntry> Build(long exclude, ZDOID excludeZdo, string query, bool groupByBiome)
         {
+            var all = new List<PortalInfo>();
             var favs = new List<PortalInfo>();
-            var rest = new List<PortalInfo>();
             foreach (var p in Catalog.All)
             {
                 if (exclude != 0L && p.Id == exclude) continue;
                 if (excludeZdo != ZDOID.None && p.ZdoId == excludeZdo) continue;
                 if (!Matches(p, query)) continue;
-                (Favorites.IsFavorite(p.Id) ? favs : rest).Add(p);
+                all.Add(p);
+                if (Favorites.IsFavorite(p.Id)) favs.Add(p);
             }
             favs.Sort(ByName);
+            all.Sort(ByName);
             var entries = new List<ListEntry>();
-            AddRecents(entries, exclude, excludeZdo, query);
-            bool haveRecents = entries.Count > 0;
+            var above = new HashSet<long>();   // what the sections on top have already shown
+            AddRecents(entries, above, exclude, excludeZdo, query);
+            AddOthersRecents(entries, above, exclude, excludeZdo, query);
+            AddRecentlyCreated(entries, above, exclude, excludeZdo, query);
+            bool haveTop = entries.Count > 0;
 
             if (!groupByBiome)
             {
-                rest.Sort(ByName);
-                // With Recents above it, the list proper needs a heading of its own too, or it reads
-                // as more of the same section.
-                if (haveRecents && favs.Count + rest.Count > 0) entries.Add(new ListEntry { IsHeader = true, Title = "All portals" });
-                foreach (var p in favs) entries.Add(new ListEntry { Portal = p, Favorite = true });
-                foreach (var p in rest) entries.Add(new ListEntry { Portal = p });
+                if (favs.Count > 0)
+                {
+                    bool favsCollapsed = IsCollapsed(FavoritesKey);
+                    entries.Add(Header($"Favorites ({favs.Count})", FavoritesKey, favsCollapsed));
+                    if (!favsCollapsed) foreach (var p in favs) entries.Add(new ListEntry { Portal = p, Favorite = true });
+                    haveTop = true;
+                }
+                // With sections above it, the list proper needs a heading of its own too, or it
+                // reads as more of the same section.
+                if (haveTop && all.Count > 0) entries.Add(new ListEntry { IsHeader = true, Title = "All portals" });
+                foreach (var p in all) entries.Add(new ListEntry { Portal = p, Favorite = Favorites.IsFavorite(p.Id) });
                 return entries;
             }
 
@@ -158,9 +170,10 @@ namespace TheGreatestPortal
                 entries.Add(Header($"Favorites ({favs.Count})", FavoritesKey, collapsed));
                 if (!collapsed) foreach (var p in favs) entries.Add(new ListEntry { Portal = p, Favorite = true });
             }
-            // Favorites live only in their own section; the biome sections hold the rest.
+            // A favorite is in its biome as well as under Favorites: starring a portal should not
+            // take it out of the place you would go looking for it.
             var groups = new Dictionary<Heightmap.Biome, List<PortalInfo>>();
-            foreach (var p in rest) Add(groups, p);
+            foreach (var p in all) Add(groups, p);
             var biomes = new List<Heightmap.Biome>(groups.Keys);
             biomes.Sort((a, b) =>
             {
@@ -176,7 +189,7 @@ namespace TheGreatestPortal
                 bool collapsed = IsCollapsed(key);
                 entries.Add(Header($"{BiomeName(biome)} ({list.Count})", key, collapsed));
                 if (collapsed) continue;
-                foreach (var p in list) entries.Add(new ListEntry { Portal = p });
+                foreach (var p in list) entries.Add(new ListEntry { Portal = p, Favorite = Favorites.IsFavorite(p.Id) });
             }
             return entries;
         }
@@ -185,7 +198,7 @@ namespace TheGreatestPortal
         /// The Recents section: newest first, as many as the setting asks for, counted after the
         /// portal you are standing at and any gone or filtered-out ones are skipped.
         /// </summary>
-        private static void AddRecents(List<ListEntry> entries, long exclude, ZDOID excludeZdo, string query)
+        private static void AddRecents(List<ListEntry> entries, HashSet<long> above, long exclude, ZDOID excludeZdo, string query)
         {
             int limit = TgpConfig.RecentPortals != null ? TgpConfig.RecentPortals.Value : 0;
             if (limit <= 0) return;
@@ -200,9 +213,73 @@ namespace TheGreatestPortal
                 if (!Matches(p, query)) continue;
                 shown.Add(p);
             }
+            Section(entries, above, shown, RecentsKey, "Recents");
+        }
+
+        /// <summary>
+        /// Where everyone else has been lately: the portals someone other than you last travelled
+        /// through, newest first. The server stamps both ends of every trip, so this is the one
+        /// part of the list that knows something your own game could not work out. A portal already
+        /// shown in a section above is left out rather than repeated.
+        /// </summary>
+        private static void AddOthersRecents(List<ListEntry> entries, HashSet<long> above, long exclude, ZDOID excludeZdo, string query)
+        {
+            int limit = TgpConfig.OthersRecentPortals != null ? TgpConfig.OthersRecentPortals.Value : 0;
+            if (limit <= 0) return;
+            string me = Player.m_localPlayer != null ? Player.m_localPlayer.GetPlayerName() : "";
+            var candidates = new List<PortalInfo>();
+            foreach (var p in Catalog.All)
+            {
+                if (p.UsedAt <= 0L) continue;
+                if (!string.IsNullOrEmpty(me) && string.Equals(p.UsedBy, me, StringComparison.OrdinalIgnoreCase)) continue;
+                if (exclude != 0L && p.Id == exclude) continue;
+                if (excludeZdo != ZDOID.None && p.ZdoId == excludeZdo) continue;
+                if (!Matches(p, query)) continue;
+                candidates.Add(p);
+            }
+            candidates.Sort((a, b) => b.UsedAt.CompareTo(a.UsedAt));
+            Section(entries, above, Take(candidates, above, limit), OthersKey, "Others' Recents");
+        }
+
+        /// <summary>The portals built most recently, newest first. One with no recorded birth is
+        /// from before the mod started noting it, and is not news.</summary>
+        private static void AddRecentlyCreated(List<ListEntry> entries, HashSet<long> above, long exclude, ZDOID excludeZdo, string query)
+        {
+            int limit = TgpConfig.RecentlyCreatedPortals != null ? TgpConfig.RecentlyCreatedPortals.Value : 0;
+            if (limit <= 0) return;
+            var candidates = new List<PortalInfo>();
+            foreach (var p in Catalog.All)
+            {
+                if (p.Born <= 0L) continue;
+                if (exclude != 0L && p.Id == exclude) continue;
+                if (excludeZdo != ZDOID.None && p.ZdoId == excludeZdo) continue;
+                if (!Matches(p, query)) continue;
+                candidates.Add(p);
+            }
+            candidates.Sort((a, b) => b.Born.CompareTo(a.Born));
+            Section(entries, above, Take(candidates, above, limit), CreatedKey, "Recently Created");
+        }
+
+        /// <summary>The first <paramref name="limit"/> that no section above has already shown.</summary>
+        private static List<PortalInfo> Take(List<PortalInfo> candidates, HashSet<long> above, int limit)
+        {
+            var shown = new List<PortalInfo>();
+            foreach (var p in candidates)
+            {
+                if (shown.Count >= limit) break;
+                if (above.Contains(p.Id)) continue;
+                shown.Add(p);
+            }
+            return shown;
+        }
+
+        /// <summary>Adds one of the sections that sit above the list proper, if it has anything in it.</summary>
+        private static void Section(List<ListEntry> entries, HashSet<long> above, List<PortalInfo> shown, string key, string title)
+        {
             if (shown.Count == 0) return;
-            bool collapsed = IsCollapsed(RecentsKey);
-            entries.Add(Header($"Recents ({shown.Count})", RecentsKey, collapsed));
+            foreach (var p in shown) above.Add(p.Id);
+            bool collapsed = IsCollapsed(key);
+            entries.Add(Header($"{title} ({shown.Count})", key, collapsed));
             if (collapsed) return;
             foreach (var p in shown) entries.Add(new ListEntry { Portal = p, Favorite = Favorites.IsFavorite(p.Id) });
         }

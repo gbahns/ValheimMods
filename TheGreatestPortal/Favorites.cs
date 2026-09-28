@@ -33,6 +33,7 @@ namespace TheGreatestPortal
         internal static void RecordTrip(long from, long to)
         {
             Load();
+            PortalNetwork.SendUsed(from, to);   // everyone else's list learns of it too
             bool changed = false;
             foreach (long id in new[] { from, to })
             {

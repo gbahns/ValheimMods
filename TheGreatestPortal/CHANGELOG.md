@@ -2,6 +2,18 @@
 
 ## 1.2.0 — unreleased
 
+- Two new sections at the top of both destination lists. **Others' Recents** shows where everyone
+  else has been lately: the server now notes both ends of every trip anyone takes, so this is the
+  one part of the list that knows something your own game could not work out. **Recently Created**
+  shows the portals built most recently. Each shows 5 by default and can be turned off in the
+  settings. Older clients and servers still understand the newer ones, in both directions.
+- Every row carries a star at its right end, filled when the portal is a favorite and hollow when
+  it is not. Clicking it flips the favorite, and the name no longer needs a star in front of it.
+- Right-clicking a row on the map opens a menu instead of favoriting outright, which left no way
+  to ask for anything else and was easy to do by accident.
+- A favorite keeps its ordinary place in the list as well as appearing under Favorites. Starring a
+  portal used to take it out of its biome, which is exactly where you would go looking for it.
+
 - The portal list on the map can be resized by dragging the grip in its bottom-right corner, and
   the size is remembered. It also starts at the top of the map view and a little wider than before.
 - Where a portal leads had been squeezed to a letter and an ellipsis in that list. The distance

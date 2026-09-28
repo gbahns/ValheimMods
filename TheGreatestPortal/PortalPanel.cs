@@ -277,17 +277,30 @@ namespace TheGreatestPortal
         private static void AddPortalRow(PortalInfo p, bool fav)
         {
             var captured = p;
-            string label = fav ? "★ " + p.DisplayName : p.DisplayName;
             string dist = TgpConfig.ShowDistances.Value ? UiKit.Distance(_pos, p.Pos) : null;
             UiKit.RowHandle row = null;
             int index = _rows.Count;
-            row = UiKit.Row(_listContent, label, dist,
+            // The star both says whether it is a favorite and flips it, so the name need not.
+            var icons = new[]
+            {
+                new UiKit.RowIcon(fav ? UiKit.Star() : UiKit.StarOutline(), () => ToggleRowFavorite(captured), fav ? UiKit.Gold : (Color?)null),
+            };
+            row = UiKit.Row(_listContent, p.DisplayName, dist,
                 () => Choose(captured.Id, index),
                 () => ShowRowMenu(captured, row),
                 16f, fav ? UiKit.Gold : (Color?)null,
                 () => { Choose(captured.Id, index); Apply(); },    // double-click: choose and confirm
-                PortalList.DestinationText(p));
+                PortalList.DestinationText(p), icons);
             AddRow(p.Id, row);
+        }
+
+        /// <summary>Stars or unstars a portal from its row, the same as the menu item does.</summary>
+        private static void ToggleRowFavorite(PortalInfo p)
+        {
+            if (p == null || p.Id == 0L) return;
+            bool on = Favorites.Toggle(p.Id);
+            TheGreatestPortalMod.Message(on ? "Favorite: " + p.DisplayName : "No longer a favorite: " + p.DisplayName);
+            Populate();
         }
 
         /// <summary>The right-click menu on a portal row.</summary>

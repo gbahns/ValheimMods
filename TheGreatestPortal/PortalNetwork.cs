@@ -24,6 +24,7 @@ namespace TheGreatestPortal
         private const string RpcSetAll  = "TGP_SetAll";    // client -> server: long target (every portal leads there)
         private const string RpcRename  = "TGP_Rename";    // client -> server: long portal id, string name
         private const string RpcNotice  = "TGP_Notice";    // server -> client: string message
+        private const string RpcUsed    = "TGP_Used";     // client -> server: long from, long to
 
         private const float Interval = 2f;
 
@@ -51,6 +52,7 @@ namespace TheGreatestPortal
             rpc.Register<long>(RpcSetAll, RPC_SetAll);
             rpc.Register<long, string>(RpcRename, RPC_Rename);
             rpc.Register<string>(RpcNotice, RPC_Notice);
+            rpc.Register<long, long>(RpcUsed, RPC_Used);
         }
 
         internal static void Reset()
@@ -131,6 +133,16 @@ namespace TheGreatestPortal
             if (ZRoutedRpc.instance == null || targetId == 0L) return;
             ZRoutedRpc.instance.InvokeRoutedRPC(RpcSetAll, targetId);
             TheGreatestPortalMod.Log.LogInfo($"[TheGreatestPortal] Asked the server to point every portal at {targetId}.");
+        }
+
+        /// <summary>
+        /// Tells the server both ends of a trip just taken, so everyone's list can show where
+        /// people have been lately. Only the server writes the times, so they share one clock.
+        /// </summary>
+        internal static void SendUsed(long fromId, long toId)
+        {
+            if (ZRoutedRpc.instance == null || (fromId == 0L && toId == 0L)) return;
+            ZRoutedRpc.instance.InvokeRoutedRPC(RpcUsed, fromId, toId);
         }
 
         private static void RPC_Catalog(long sender, ZPackage pkg)
@@ -260,6 +272,27 @@ namespace TheGreatestPortal
             _dirty = true;
         }
 
+        private static void RPC_Used(long sender, long fromId, long toId)
+        {
+            var znet = ZNet.instance;
+            if (znet == null || !znet.IsServer()) return;
+            string who = PeerName(znet, sender);
+            long now = PortalData.Now();
+            bool any = false;
+            foreach (long id in new[] { fromId, toId })
+            {
+                if (id == 0L) continue;
+                var zdo = FindById(id);
+                if (zdo == null) continue;
+                Own(zdo);
+                zdo.Set(PortalData.UsedHash, now);
+                zdo.Set(PortalData.UserHash, who);
+                ZDOMan.instance.ForceSendZDO(zdo.m_uid);
+                any = true;
+            }
+            if (any) _dirty = true;
+        }
+
         private static bool IsAdmin(ZNet znet, long sender)
         {
             if (sender == ZDOMan.GetSessionID()) return true;     // the hosting player
@@ -360,6 +393,14 @@ namespace TheGreatestPortal
                     var at = zdo.GetPosition();
                     string dest = to == 0L ? "no destination" : "destination " + to;
                     TheGreatestPortalMod.Log.LogInfo($"[TheGreatestPortal] New portal '{PortalData.GetName(zdo)}' ({id}) at [{at.x:0},{at.z:0}]: {dest}, configured by this mod: {PortalData.IsConfigured(zdo)}.");
+                    // Only a portal that turned up after the first sweep is new; the first sweep is
+                    // the world as it already stood, and stamping that would call it all brand new.
+                    if (PortalData.GetBorn(zdo) == 0L)
+                    {
+                        Own(zdo);
+                        zdo.Set(PortalData.BornHash, PortalData.Now());
+                        ZDOMan.instance.ForceSendZDO(zdo.m_uid);
+                    }
                 }
 
                 if (!PortalData.IsConfigured(zdo) && TgpConfig.AdoptExistingConnections.Value)
@@ -398,6 +439,9 @@ namespace TheGreatestPortal
                     AllowAllItems = allowAll,
                     ExitDistance = exit,
                     Prefab = prefabName,
+                    Born = PortalData.GetBorn(zdo),
+                    UsedAt = PortalData.GetUsed(zdo),
+                    UsedBy = PortalData.GetUser(zdo),
                 });
             }
             // A stable order, because the snapshot is compared byte for byte to decide whether to
