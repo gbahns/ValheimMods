@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.0 — unreleased
+## 1.2.0 — 2026-09-28
 
 - Two new sections at the top of both destination lists. **Others' Recents** shows where everyone
   else has been lately: the server now notes both ends of every trip anyone takes, so this is the
