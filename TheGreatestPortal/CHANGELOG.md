@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.0 — unreleased
+
+- The portal list on the map can be resized by dragging the grip in its bottom-right corner, and
+  the size is remembered. It also starts at the top of the map view and a little wider than before.
+- Where a portal leads had been squeezed to a letter and an ellipsis in that list. The distance
+  column now takes only the room it needs, and the rest goes to the destination; a wider list gives
+  it more still.
+
 ## 1.1.0 — 2026-09-28
 
 - **Portal pins no longer blink when anybody builds or removes a portal.** The pins were cleared

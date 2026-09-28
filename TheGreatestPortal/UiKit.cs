@@ -339,6 +339,11 @@ namespace TheGreatestPortal
         private const float IconRoom = 28f;
         private const float IconSize = 20f;
 
+        /// <summary>The right-hand column (a distance). Wide enough for "12.4 km" and no wider:
+        /// what it does not take is what the middle column has to say where a portal leads.</summary>
+        private const float RightWidth = 64f;
+        private const float RightRoom = RightWidth + 12f;
+
         internal static RowHandle Row(Transform content, string label, string right, Action onClick, Action onRightClick, float fontSize = 17f, Color? labelColor = null, Action onDoubleClick = null, string middle = null, Sprite icon = null, Action onIcon = null)
         {
             var go = new GameObject("Row", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button), typeof(LayoutElement), typeof(Hover));
@@ -376,7 +381,7 @@ namespace TheGreatestPortal
             bool hasMiddle = !string.IsNullOrEmpty(middle);
             bool hasIcon = icon != null && onIcon != null;
             float room = hasIcon ? IconRoom : 0f;       // every other column ends short of the button
-            float textEnd = (hasRight ? -96f : -10f) - room;
+            float textEnd = (hasRight ? -RightRoom : -10f) - room;
             var lbl = Text(go.transform, "Label", label, fontSize, TextAlignmentOptions.Left, labelColor);
             var lrt = lbl.rectTransform;
             lrt.anchorMin = Vector2.zero;
@@ -403,7 +408,7 @@ namespace TheGreatestPortal
                 rrt.anchorMax = new Vector2(1f, 1f);
                 rrt.pivot = new Vector2(1f, 0.5f);
                 rrt.anchoredPosition = new Vector2(-10f - room, 0f);
-                rrt.sizeDelta = new Vector2(84f, 0f);
+                rrt.sizeDelta = new Vector2(RightWidth, 0f);
                 handle.Right = r;
             }
             if (hasIcon)

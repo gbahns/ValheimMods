@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -51,6 +52,8 @@ namespace TheGreatestPortal
         private static Toggle _group;
         private static Button _expandAll;
         private static Button _collapseAll;
+        private static RectTransform _listRt;
+        private static float _listW, _listH;
         private static List<ListEntry> _entries = new List<ListEntry>();
         private static readonly List<UiKit.RowHandle> _rows = new List<UiKit.RowHandle>();
         private static readonly List<long> _rowIds = new List<long>();
@@ -567,28 +570,23 @@ namespace TheGreatestPortal
             rt.anchorMin = new Vector2(0f, 1f);
             rt.anchorMax = new Vector2(0f, 1f);
             rt.pivot = new Vector2(0f, 1f);
-            rt.anchoredPosition = new Vector2(20f, -60f);
-            rt.sizeDelta = new Vector2(330f, 660f);
+            rt.anchoredPosition = new Vector2(20f, -12f);   // hard against the top of the map view
+            _listRt = rt;
+            LoadListSize();
             var bg = _list.GetComponent<Image>();
             bg.color = new Color(0f, 0f, 0f, 0.55f);
             bg.raycastTarget = true;
             _listHover = _list.GetComponent<UiKit.Hover>();
 
             _header = UiKit.Text(_list.transform, "Header", "Portals", 22f, TextAlignmentOptions.Left, UiKit.Gold);
-            UiKit.Place(_header.rectTransform, 12f, 8f, 306f, 30f);
             _hint = UiKit.Text(_list.transform, "Hint", "", 13f, TextAlignmentOptions.TopLeft, UiKit.Dim);
             _hint.textWrappingMode = TextWrappingModes.Normal;
             _hint.overflowMode = TextOverflowModes.Truncate;
-            UiKit.Place(_hint.rectTransform, 12f, 40f, 306f, 54f);
 
             _search = UiKit.CloneInputField(_list.transform, "Search", "Search...", 40, text => { _query = (text ?? "").Trim(); RefreshList(map); }, null);
-            if (_search != null) UiKit.Place(_search.GetComponent<RectTransform>(), 8f, 98f, 196f, 28f);
             _group = UiKit.SimpleToggle(_list.transform, "GroupByBiome", "By biome", TgpConfig.GroupByBiome.Value, on => { TgpConfig.GroupByBiome.Value = on; RefreshList(map); });
-            UiKit.Place(_group.GetComponent<RectTransform>(), 212f, 98f, 114f, 28f);
             _expandAll = UiKit.LinkButton(_list.transform, "ExpandAll", "Expand all", () => { PortalList.ExpandAll(); RefreshList(map); });
-            UiKit.Place(_expandAll.GetComponent<RectTransform>(), 8f, 132f, 100f, 22f);
             _collapseAll = UiKit.LinkButton(_list.transform, "CollapseAll", "Collapse all", () => { PortalList.CollapseAll(_entries); RefreshList(map); });
-            UiKit.Place(_collapseAll.GetComponent<RectTransform>(), 114f, 132f, 100f, 22f);
 
             _listContent = UiKit.ScrollList(_list.transform, "List", out _scroll);
             var lrt = _scroll.GetComponent<RectTransform>();
@@ -597,12 +595,84 @@ namespace TheGreatestPortal
             lrt.pivot = new Vector2(0.5f, 0.5f);
             lrt.offsetMin = new Vector2(8f, 8f);
             lrt.offsetMax = new Vector2(-8f, -160f);
+
+            // Resize grip in the bottom-right corner, the same as the portal panel has.
+            var gripGo = new GameObject("Grip", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(UiKit.DragHandle));
+            gripGo.transform.SetParent(_list.transform, false);
+            var grt = gripGo.GetComponent<RectTransform>();
+            grt.anchorMin = new Vector2(1f, 0f);
+            grt.anchorMax = new Vector2(1f, 0f);
+            grt.pivot = new Vector2(1f, 0f);
+            grt.anchoredPosition = new Vector2(-2f, 2f);
+            grt.sizeDelta = new Vector2(18f, 18f);
+            var gimg = gripGo.GetComponent<Image>();
+            gimg.sprite = UiKit.Grip();
+            gimg.color = new Color(1f, 0.85f, 0.45f, 0.75f);
+            gimg.raycastTarget = true;
+            var handle = gripGo.GetComponent<UiKit.DragHandle>();
+            handle.OnDrag = OnListGripDrag;
+            handle.OnEnd = SaveListSize;
+
+            LayoutList();
+        }
+
+        // ── the list's own size ─────────────────────────────────────────────────────
+
+        private const float ListW = 380f, ListH = 660f;
+        private const float MinListW = 300f, MaxListW = 900f;
+        private const float MinListH = 240f, MaxListH = 1400f;
+
+        /// <summary>
+        /// Lays the list's own furniture out for the current width. The rows below stretch by
+        /// themselves, so a wider list is what gives a portal's destination room to be read.
+        /// </summary>
+        private static void LayoutList()
+        {
+            if (_listRt == null) return;
+            _listRt.sizeDelta = new Vector2(_listW, _listH);
+            float inner = _listW - 24f;
+            if (_header != null) UiKit.Place(_header.rectTransform, 12f, 8f, inner, 30f);
+            if (_hint != null) UiKit.Place(_hint.rectTransform, 12f, 40f, inner, 54f);
+            if (_search != null) UiKit.Place(_search.GetComponent<RectTransform>(), 8f, 98f, _listW - 130f, 28f);
+            if (_group != null) UiKit.Place(_group.GetComponent<RectTransform>(), _listW - 122f, 98f, 114f, 28f);
+            if (_expandAll != null) UiKit.Place(_expandAll.GetComponent<RectTransform>(), 8f, 132f, 100f, 22f);
+            if (_collapseAll != null) UiKit.Place(_collapseAll.GetComponent<RectTransform>(), 114f, 132f, 100f, 22f);
+        }
+
+        private static void OnListGripDrag(Vector2 screenDelta)
+        {
+            if (_list == null) return;
+            var canvas = _list.GetComponentInParent<Canvas>();
+            float scale = canvas != null && canvas.scaleFactor > 0f ? canvas.scaleFactor : 1f;
+            _listW = Mathf.Clamp(_listW + screenDelta.x / scale, MinListW, MaxListW);
+            _listH = Mathf.Clamp(_listH - screenDelta.y / scale, MinListH, MaxListH);   // it hangs from its top
+            LayoutList();
+        }
+
+        private static void SaveListSize()
+        {
+            if (TgpConfig.MapListSize != null) TgpConfig.MapListSize.Value = $"{Mathf.RoundToInt(_listW)},{Mathf.RoundToInt(_listH)}";
+        }
+
+        private static void LoadListSize()
+        {
+            _listW = ListW;
+            _listH = ListH;
+            var parts = (TgpConfig.MapListSize != null ? TgpConfig.MapListSize.Value : "" ?? "").Split(',');
+            if (parts.Length == 2
+                && float.TryParse(parts[0].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float w)
+                && float.TryParse(parts[1].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float h))
+            {
+                _listW = Mathf.Clamp(w, MinListW, MaxListW);
+                _listH = Mathf.Clamp(h, MinListH, MaxListH);
+            }
         }
 
         private static void DestroyList()
         {
             if (_list != null) UnityEngine.Object.Destroy(_list);
             _list = null;
+            _listRt = null;
             _listHover = null;
             _listContent = null;
             _scroll = null;

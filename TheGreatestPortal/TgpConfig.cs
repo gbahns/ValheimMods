@@ -31,6 +31,7 @@ namespace TheGreatestPortal
         internal static ConfigEntry<int> ListScrollRows;
         internal static ConfigEntry<float> AutoCloseGraceSeconds;
         internal static ConfigEntry<bool> ShowPortalListOnMap;
+        internal static ConfigEntry<string> MapListSize;
 
         internal static void Bind(TheGreatestPortalMod mod)
         {
@@ -92,6 +93,8 @@ namespace TheGreatestPortal
             PanelPosition = mod.BindLocal("Display", "Panel Position", "0,0",
                 "Where the portal panel sits, as an offset from the screen center, remembered when you drag it by " +
                 "its title. Set to 0,0 to put it back in the middle.");
+            MapListSize = mod.BindLocal("Display", "Map List Size", "380,660",
+                "Width and height of the portal list on the map, remembered when you drag its bottom-right corner.");
             ListScrollRows = mod.BindLocalRangeInt("Display", "List Scroll Rows", 4, 1, 20,
                 "How many rows a destination list moves per notch of the mouse wheel.");
             ShowPortalListOnMap = mod.BindLocal("Display", "Show Portal List On Map", true,
