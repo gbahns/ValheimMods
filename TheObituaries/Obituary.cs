@@ -166,6 +166,15 @@ namespace TheObituaries
             var n = new Notice { Victim = victim != null ? victim.GetPlayerName() : "" };
             if (string.IsNullOrEmpty(n.Victim)) n.Victim = "Someone";
 
+            // A mod that dealt this death itself has already said what it should read as; the
+            // hit it left behind says nothing, so there is nothing here worth working out.
+            string claimed = Api.Take();
+            if (claimed != null)
+            {
+                n.Template = claimed;
+                return n;
+            }
+
             var type = hit != null ? hit.m_hitType : HitData.HitType.Undefined;
             ZDOID attackerId = hit != null ? hit.m_attacker : ZDOID.None;
             Character killer = hit?.GetAttacker();
