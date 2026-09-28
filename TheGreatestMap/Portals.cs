@@ -296,6 +296,8 @@ namespace TheGreatestMap
             return Color.Lerp(_parsedColor, _parsedPulse, t);
         }
 
+        internal static Color ParseColor(string text, Color fallback) => Parse(text, fallback);
+
         private static Color Parse(string text, Color fallback)
         {
             if (string.IsNullOrEmpty(text)) return fallback;
@@ -400,6 +402,7 @@ namespace TheGreatestMap
         // ── TheGreatestPortal, if it happens to be installed ────────────────────────
 
         private static PropertyInfo _pickerOpen;
+        private static PropertyInfo _listHovered;
         private static bool _probed;
 
         /// <summary>
@@ -415,10 +418,27 @@ namespace TheGreatestMap
             {
                 _probed = true;
                 var type = AccessTools.TypeByName("TheGreatestPortal.MapPicker");
-                if (type != null) _pickerOpen = AccessTools.Property(type, "IsSelecting");
+                if (type != null)
+                {
+                    _pickerOpen = AccessTools.Property(type, "IsSelecting");
+                    _listHovered = AccessTools.Property(type, "ListPointerOver");
+                }
             }
             if (_pickerOpen == null) return false;
             try { return (bool)_pickerOpen.GetValue(null); }
+            catch { return false; }
+        }
+
+        /// <summary>
+        /// True while the pointer is over TheGreatestPortal's portal list, which covers the left of
+        /// the map. What is under a panel is not under the pointer: the tooltip works from the map
+        /// position the cursor sits over, which knows nothing about anything drawn on top of it.
+        /// </summary>
+        internal static bool PortalListHovered()
+        {
+            PortalPickerOpen();   // probes both properties the first time
+            if (_listHovered == null) return false;
+            try { return (bool)_listHovered.GetValue(null); }
             catch { return false; }
         }
     }

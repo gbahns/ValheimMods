@@ -43,7 +43,7 @@ namespace TheGreatestMap
             var map = Minimap.instance;
             if (map == null || map.m_mode != Minimap.MapMode.Large
                 || TgmConfig.MarkerTooltips == null || !TgmConfig.MarkerTooltips.Value
-                || MarkerMenu.IsOpen || KindMenu.IsOpen)
+                || MarkerMenu.IsOpen || KindMenu.IsOpen || Portals.PortalListHovered())
             {
                 Hide();
                 return;

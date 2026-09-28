@@ -2,6 +2,10 @@
 
 ## 1.4.2 — unreleased
 
+- Marker tooltips no longer appear for markers hidden behind TheGreatestPortal's portal list. The
+  tooltip works from the map position under the cursor, which knows nothing about panels drawn on
+  top of the map, so it was describing markers the pointer could not see.
+
 - **Marker icon types stop short of 1000, which is reserved for other mods.** A pin type is only an
   int, and this mod hands them out as it meets icons, counting up from 100 — so a map that had
   recorded 900 kinds of thing would eventually reach a number another mod had taken. Taking a
