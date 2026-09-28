@@ -49,11 +49,14 @@ namespace TheGreatestPortal
         private static TextMeshProUGUI _header;
         private static TextMeshProUGUI _hint;
         private static TMP_InputField _search;
+        private static readonly RowRename _rename = new RowRename();
         private static Toggle _group;
         private static Button _expandAll;
         private static Button _collapseAll;
         private static RectTransform _listRt;
+        private static RectTransform _listMover;
         private static float _listW, _listH;
+        private static Vector2 _listPos;
         private static List<ListEntry> _entries = new List<ListEntry>();
         private static readonly List<UiKit.RowHandle> _rows = new List<UiKit.RowHandle>();
         private static readonly List<long> _rowIds = new List<long>();
@@ -212,8 +215,9 @@ namespace TheGreatestPortal
                 UiKit.ContextMenu.Update();   // it owns the keyboard and the mouse while it is up
                 return;
             }
-            // Escape while typing in the search box only leaves the box; the next Escape closes the map.
-            if (SearchFocused && ZInput.GetKeyDown(KeyCode.Escape)) _search.DeactivateInputField();
+            // Escape while typing only leaves the box; the next Escape closes the map.
+            if (_rename.Active && ZInput.GetKeyDown(KeyCode.Escape)) _rename.Cancel();
+            else if (SearchFocused && ZInput.GetKeyDown(KeyCode.Escape)) _search.DeactivateInputField();
             if (_catalogDirty)
             {
                 _catalogDirty = false;
@@ -388,7 +392,7 @@ namespace TheGreatestPortal
             var p = PortalUnderPointer(map);
             if (p != null)
             {
-                ToggleFavorite(p);
+                RowMenu(map, p);   // a pin offers what its row offers
                 return true;
             }
             return IsSelecting;
@@ -437,6 +441,15 @@ namespace TheGreatestPortal
             }
         }
 
+        // ── renaming in the list ────────────────────────────────────────────────────
+
+        private static UiKit.RowHandle RowFor(long id)
+        {
+            for (int i = 0; i < _rowIds.Count; i++)
+                if (_rowIds[i] == id) return _rows[i];
+            return null;
+        }
+
         /// <summary>
         /// Puts the map over a portal and marks its row, without choosing it. This is what the pin
         /// button on a row does: while travelling, a click on the row itself sends you there, so
@@ -464,24 +477,18 @@ namespace TheGreatestPortal
             {
                 new KeyValuePair<string, Action>(pick, () => Select(p)),
                 new KeyValuePair<string, Action>("Center the map here", () => CenterOn(p)),
-                new KeyValuePair<string, Action>(Favorites.IsFavorite(p.Id) ? "Un-favorite" : "Favorite", () => ToggleFavorite(p)),
+                PortalMenu.FavoriteItem(p, Refresh),
             };
+            if (_rename.Ready && p.Id != 0L)
+            {
+                var row = RowFor(p.Id);
+                if (row != null) items.Add(PortalMenu.RenameItem(p, _rename, row));
+            }
             if (Current == Mode.Browse) items.RemoveAt(0);   // the first two would be the same act
             UiKit.ContextMenu.Show(parent, ZInput.pointerPosition, items);
         }
 
-        private static void ToggleFavorite(PortalInfo p)
-        {
-            if (p == null) return;
-            if (p.Id == 0L)
-            {
-                TheGreatestPortalMod.Message("That portal has no id yet; try again in a moment", always: true);
-                return;
-            }
-            bool on = Favorites.Toggle(p.Id);
-            TheGreatestPortalMod.Message(on ? "Favorite: " + p.DisplayName : "No longer a favorite: " + p.DisplayName);
-            Refresh();
-        }
+
 
         private static void OpenMapAt(Vector3 position)
         {
@@ -542,6 +549,7 @@ namespace TheGreatestPortal
                     break;
             }
 
+            _rename.Cancel();   // the row it is sitting on is about to go
             UiKit.ClearChildren(_listContent);
             _rows.Clear();
             _rowIds.Clear();
@@ -572,7 +580,7 @@ namespace TheGreatestPortal
                 // The star says whether it is a favorite and flips it; the name no longer has to.
                 var icons = new[]
                 {
-                    new UiKit.RowIcon(fav ? UiKit.Star() : UiKit.StarOutline(), () => ToggleFavorite(captured), fav ? UiKit.Gold : (Color?)null),
+                    new UiKit.RowIcon(fav ? UiKit.Star() : UiKit.StarOutline(), () => PortalMenu.ToggleFavorite(captured, Refresh), fav ? UiKit.Gold : (Color?)null),
                     new UiKit.RowIcon(UiKit.Pin(), () => CenterOn(captured)),
                 };
                 var row = UiKit.Row(_listContent, captured.DisplayName, dist, () => Select(captured), () => RowMenu(map, captured), 16f, fav ? UiKit.Gold : (Color?)null, null, PortalList.DestinationText(captured), icons);
@@ -600,9 +608,9 @@ namespace TheGreatestPortal
             rt.anchorMin = new Vector2(0f, 1f);
             rt.anchorMax = new Vector2(0f, 1f);
             rt.pivot = new Vector2(0f, 1f);
-            rt.anchoredPosition = new Vector2(20f, -12f);   // hard against the top of the map view
             _listRt = rt;
-            LoadListSize();
+            LoadListPlacement();
+            rt.anchoredPosition = _listPos;
             var bg = _list.GetComponent<Image>();
             bg.color = new Color(0f, 0f, 0f, 0.55f);
             bg.raycastTarget = true;
@@ -614,6 +622,14 @@ namespace TheGreatestPortal
             _hint.overflowMode = TextOverflowModes.Truncate;
 
             _search = UiKit.CloneInputField(_list.transform, "Search", "Search...", 40, text => { _query = (text ?? "").Trim(); RefreshList(map); }, null);
+            _rename.Build(_list.transform);
+            _rename.Refresh = Refresh;
+            _rename.Renamed = (p, name) =>
+            {
+                Spelling.Judge(name, p.Pos);
+                var me = Player.m_localPlayer;
+                if (me == null || me.IsDead()) End();
+            };
             _group = UiKit.SimpleToggle(_list.transform, "GroupByBiome", "By biome", TgpConfig.GroupByBiome.Value, on => { TgpConfig.GroupByBiome.Value = on; RefreshList(map); });
             _expandAll = UiKit.LinkButton(_list.transform, "ExpandAll", "Expand all", () => { PortalList.ExpandAll(); RefreshList(map); });
             _collapseAll = UiKit.LinkButton(_list.transform, "CollapseAll", "Collapse all", () => { PortalList.CollapseAll(_entries); RefreshList(map); });
@@ -641,7 +657,19 @@ namespace TheGreatestPortal
             gimg.raycastTarget = true;
             var handle = gripGo.GetComponent<UiKit.DragHandle>();
             handle.OnDrag = OnListGripDrag;
-            handle.OnEnd = SaveListSize;
+            handle.OnEnd = SaveListPlacement;
+
+            // The heading strip drags the whole list, as the panel's title does.
+            var moveGo = new GameObject("Mover", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(UiKit.DragHandle));
+            moveGo.transform.SetParent(_list.transform, false);
+            moveGo.transform.SetAsFirstSibling();   // behind the heading, which does not take the pointer anyway
+            _listMover = moveGo.GetComponent<RectTransform>();
+            var moveImg = moveGo.GetComponent<Image>();
+            moveImg.color = new Color(0f, 0f, 0f, 0f);   // invisible, but it catches the pointer
+            moveImg.raycastTarget = true;
+            var mover = moveGo.GetComponent<UiKit.DragHandle>();
+            mover.OnDrag = OnListMoveDrag;
+            mover.OnEnd = SaveListPlacement;
 
             LayoutList();
         }
@@ -661,6 +689,7 @@ namespace TheGreatestPortal
             if (_listRt == null) return;
             _listRt.sizeDelta = new Vector2(_listW, _listH);
             float inner = _listW - 24f;
+            if (_listMover != null) UiKit.Place(_listMover, 0f, 0f, _listW, 38f);
             if (_header != null) UiKit.Place(_header.rectTransform, 12f, 8f, inner, 30f);
             if (_hint != null) UiKit.Place(_hint.rectTransform, 12f, 40f, inner, 54f);
             if (_search != null) UiKit.Place(_search.GetComponent<RectTransform>(), 8f, 98f, _listW - 130f, 28f);
@@ -669,33 +698,75 @@ namespace TheGreatestPortal
             if (_collapseAll != null) UiKit.Place(_collapseAll.GetComponent<RectTransform>(), 114f, 132f, 100f, 22f);
         }
 
+        private static float CanvasScale()
+        {
+            var canvas = _list != null ? _list.GetComponentInParent<Canvas>() : null;
+            return canvas != null && canvas.scaleFactor > 0f ? canvas.scaleFactor : 1f;
+        }
+
         private static void OnListGripDrag(Vector2 screenDelta)
         {
             if (_list == null) return;
-            var canvas = _list.GetComponentInParent<Canvas>();
-            float scale = canvas != null && canvas.scaleFactor > 0f ? canvas.scaleFactor : 1f;
+            float scale = CanvasScale();
             _listW = Mathf.Clamp(_listW + screenDelta.x / scale, MinListW, MaxListW);
             _listH = Mathf.Clamp(_listH - screenDelta.y / scale, MinListH, MaxListH);   // it hangs from its top
             LayoutList();
+            ClampListToMap();
         }
 
-        private static void SaveListSize()
+        private static void OnListMoveDrag(Vector2 screenDelta)
+        {
+            if (_listRt == null) return;
+            float scale = CanvasScale();
+            _listPos += new Vector2(screenDelta.x / scale, screenDelta.y / scale);
+            ClampListToMap();
+        }
+
+        /// <summary>Keeps the list on the map: the heading has to stay reachable to drag it back.</summary>
+        private static void ClampListToMap()
+        {
+            if (_listRt == null) return;
+            var parent = _listRt.parent as RectTransform;
+            if (parent != null)
+            {
+                float w = parent.rect.width, h = parent.rect.height;
+                if (w > 0f && h > 0f)
+                {
+                    _listPos.x = Mathf.Clamp(_listPos.x, 0f, Mathf.Max(0f, w - _listW));
+                    _listPos.y = Mathf.Clamp(_listPos.y, -Mathf.Max(0f, h - _listH), 0f);
+                }
+            }
+            _listRt.anchoredPosition = _listPos;
+        }
+
+        private static void SaveListPlacement()
         {
             if (TgpConfig.MapListSize != null) TgpConfig.MapListSize.Value = $"{Mathf.RoundToInt(_listW)},{Mathf.RoundToInt(_listH)}";
+            if (TgpConfig.MapListPosition != null) TgpConfig.MapListPosition.Value = $"{Mathf.RoundToInt(_listPos.x)},{Mathf.RoundToInt(_listPos.y)}";
         }
 
-        private static void LoadListSize()
+        private static void LoadListPlacement()
         {
             _listW = ListW;
             _listH = ListH;
-            var parts = (TgpConfig.MapListSize != null ? TgpConfig.MapListSize.Value : "" ?? "").Split(',');
-            if (parts.Length == 2
-                && float.TryParse(parts[0].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float w)
-                && float.TryParse(parts[1].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float h))
+            if (TryPair(TgpConfig.MapListSize != null ? TgpConfig.MapListSize.Value : "", out float w, out float h))
             {
                 _listW = Mathf.Clamp(w, MinListW, MaxListW);
                 _listH = Mathf.Clamp(h, MinListH, MaxListH);
             }
+            _listPos = new Vector2(20f, -12f);   // hard against the top of the map view
+            if (TryPair(TgpConfig.MapListPosition != null ? TgpConfig.MapListPosition.Value : "", out float x, out float y))
+                _listPos = new Vector2(x, y);
+        }
+
+        private static bool TryPair(string raw, out float a, out float b)
+        {
+            a = 0f;
+            b = 0f;
+            var parts = (raw ?? "").Split(',');
+            return parts.Length == 2
+                && float.TryParse(parts[0].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out a)
+                && float.TryParse(parts[1].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out b);
         }
 
         private static void DestroyList()
@@ -704,12 +775,14 @@ namespace TheGreatestPortal
             if (_list != null) UnityEngine.Object.Destroy(_list);
             _list = null;
             _listRt = null;
+            _listMover = null;
             _listHover = null;
             _listContent = null;
             _scroll = null;
             _header = null;
             _hint = null;
             _search = null;
+            _rename.Clear();
             _group = null;
             _expandAll = null;
             _collapseAll = null;

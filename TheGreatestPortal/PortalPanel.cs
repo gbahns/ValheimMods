@@ -56,11 +56,7 @@ namespace TheGreatestPortal
         private static List<ListEntry> _entries = new List<ListEntry>();
 
         // Renaming a portal in the list: one text box that moves onto the row being edited.
-        private static TMP_InputField _renameField;
-        private static bool _renaming;
-        private static long _renameId;
-        private static UiKit.RowHandle _renameRow;
-        private static int _renameDoneFrame = -10;
+        private static readonly RowRename _rename = new RowRename();
 
         private static TeleportWorld _portal;
         private static ZDOID _zdo = ZDOID.None;
@@ -158,7 +154,7 @@ namespace TheGreatestPortal
 
         internal static void Close()
         {
-            CancelRename();
+            _rename.Cancel();
             UiKit.ContextMenu.Close();
             if (_root != null && _root.activeSelf)
             {
@@ -184,10 +180,10 @@ namespace TheGreatestPortal
                 return;
             }
             // The keys that end a rename must not also act on the panel that frame.
-            bool renameKeys = _renaming || Time.frameCount - _renameDoneFrame <= 1;
+            bool renameKeys = _rename.Active || _rename.JustEnded;
             if (ZInput.GetKeyDown(KeyCode.Escape))
             {
-                if (_renaming) CancelRename();
+                if (_rename.Active) _rename.Cancel();
                 else if (!renameKeys) Close();
                 return;
             }
@@ -222,7 +218,7 @@ namespace TheGreatestPortal
         private static void Populate()
         {
             if (_listContent == null) return;
-            CancelRename();   // the row being edited is about to be rebuilt
+            _rename.Cancel();   // the row being edited is about to be rebuilt
             UiKit.ContextMenu.Close();
             UiKit.ClearChildren(_listContent);
             _rows.Clear();
@@ -283,7 +279,7 @@ namespace TheGreatestPortal
             // The star both says whether it is a favorite and flips it, so the name need not.
             var icons = new[]
             {
-                new UiKit.RowIcon(fav ? UiKit.Star() : UiKit.StarOutline(), () => ToggleRowFavorite(captured), fav ? UiKit.Gold : (Color?)null),
+                new UiKit.RowIcon(fav ? UiKit.Star() : UiKit.StarOutline(), () => PortalMenu.ToggleFavorite(captured, Populate), fav ? UiKit.Gold : (Color?)null),
             };
             row = UiKit.Row(_listContent, p.DisplayName, dist,
                 () => Choose(captured.Id, index),
@@ -292,15 +288,6 @@ namespace TheGreatestPortal
                 () => { Choose(captured.Id, index); Apply(); },    // double-click: choose and confirm
                 PortalList.DestinationText(p), icons);
             AddRow(p.Id, row);
-        }
-
-        /// <summary>Stars or unstars a portal from its row, the same as the menu item does.</summary>
-        private static void ToggleRowFavorite(PortalInfo p)
-        {
-            if (p == null || p.Id == 0L) return;
-            bool on = Favorites.Toggle(p.Id);
-            TheGreatestPortalMod.Message(on ? "Favorite: " + p.DisplayName : "No longer a favorite: " + p.DisplayName);
-            Populate();
         }
 
         /// <summary>The right-click menu on a portal row.</summary>
@@ -319,18 +306,8 @@ namespace TheGreatestPortal
                     Travel.Go(p, allowAll, sourceId);
                 }));
             }
-            if (_renameField != null && p.Id != 0L)
-                items.Add(new KeyValuePair<string, Action>("Rename", () => BeginRename(p, row)));
-            if (p.Id != 0L)
-            {
-                bool fav = Favorites.IsFavorite(p.Id);
-                items.Add(new KeyValuePair<string, Action>(fav ? "Un-favorite" : "Favorite", () =>
-                {
-                    bool on = Favorites.Toggle(p.Id);
-                    TheGreatestPortalMod.Message(on ? "Favorite: " + p.DisplayName : "No longer a favorite: " + p.DisplayName);
-                    Populate();
-                }));
-            }
+            if (_rename.Ready && p.Id != 0L) items.Add(PortalMenu.RenameItem(p, _rename, row));
+            if (p.Id != 0L) items.Add(PortalMenu.FavoriteItem(p, Populate));
             items.Add(new KeyValuePair<string, Action>("Show on map", () =>
             {
                 Vector3 center = p.Pos;
@@ -341,27 +318,6 @@ namespace TheGreatestPortal
         }
 
         // ── renaming in the list ────────────────────────────────────────────────────
-
-        private static void BeginRename(PortalInfo p, UiKit.RowHandle row)
-        {
-            if (_renameField == null || p == null || row == null || row.Root == null) return;
-            CancelRename();
-            _renaming = true;
-            _renameId = p.Id;
-            _renameRow = row;
-            row.Label.gameObject.SetActive(false);
-            var rt = _renameField.GetComponent<RectTransform>();
-            rt.SetParent(row.Root.transform, false);
-            rt.anchorMin = Vector2.zero;
-            rt.anchorMax = Vector2.one;
-            rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.offsetMin = new Vector2(6f, 2f);
-            rt.offsetMax = new Vector2(row.Right != null ? -96f : -10f, -2f);
-            _renameField.gameObject.SetActive(true);
-            _renameField.characterLimit = TgpConfig.MaxNameLength.Value;
-            _renameField.text = p.Name ?? "";
-            _renameField.ActivateInputField();
-        }
 
         /// <summary>
         /// Judges a name against the portal's own position and returns whether the player lived.
@@ -376,43 +332,6 @@ namespace TheGreatestPortal
             if (me != null && !me.IsDead()) return true;
             if (IsOpen) Close();
             return false;
-        }
-
-        private static void CommitRename(string text)
-        {
-            if (!_renaming) return;
-            long id = _renameId;
-            string name = PortalData.CleanName(text, TgpConfig.MaxNameLength.Value);
-            var p = Catalog.Get(id);
-            string old = p != null ? p.Name : "";
-            EndRename();
-            if (p == null || name == old) return;
-            PortalNetwork.SendRename(id, name);
-            p.Name = name;   // shown at once; the server's next portal list confirms it
-            TheGreatestPortalMod.Message((string.IsNullOrEmpty(old) ? "Portal" : old) + " renamed to " + (string.IsNullOrEmpty(name) ? "(no name)" : name));
-            Populate();
-            Survived(name, p.Pos);
-        }
-
-        private static void CancelRename()
-        {
-            if (!_renaming) return;
-            EndRename();
-        }
-
-        /// <summary>Puts the text box away and the row's label back.</summary>
-        private static void EndRename()
-        {
-            _renaming = false;
-            _renameDoneFrame = Time.frameCount;
-            if (_renameRow != null && _renameRow.Label != null) _renameRow.Label.gameObject.SetActive(true);
-            _renameRow = null;
-            if (_renameField != null)
-            {
-                _renameField.DeactivateInputField();
-                _renameField.gameObject.SetActive(false);
-                if (_listContent != null) _renameField.transform.SetParent(_listContent.parent.parent, false);
-            }
         }
 
         private static void AddRow(long id, UiKit.RowHandle row)
@@ -730,12 +649,9 @@ namespace TheGreatestPortal
             UiKit.Place(_collapseAll.GetComponent<RectTransform>(), 564f, 150f, 86f, 22f);
             _listContent = UiKit.ScrollList(content.transform, "Destinations", out _scroll);
             UiKit.Place(_scroll.GetComponent<RectTransform>(), 30f, 176f, W - 60f, 230f);
-            _renameField = UiKit.CloneInputField(_scroll.transform, "Rename", "", TgpConfig.MaxNameLength.Value, null, CommitRename);
-            if (_renameField != null)
-            {
-                _renameField.onDeselect.AddListener(_ => CancelRename());   // clicking away cancels
-                _renameField.gameObject.SetActive(false);
-            }
+            _rename.Build(_scroll.transform);
+            _rename.Refresh = Populate;
+            _rename.Renamed = (portal, name) => Survived(name, portal.Pos);
 
             // Toggles and the redirect-all button
             _default = UiKit.SimpleToggle(content.transform, "Default", "Default new portals to point here", false, _ => UpdateRedirectButton());

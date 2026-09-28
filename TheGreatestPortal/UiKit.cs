@@ -335,6 +335,9 @@ namespace TheGreatestPortal
             public TextMeshProUGUI Middle;
             public TextMeshProUGUI Right;
             public Hover Hover;
+            /// <summary>How much of the right end the distance and the icons take, for anything
+            /// laid over the row: a rename box has to stop short of them.</summary>
+            public float RightInset;
             public bool Selected;
 
             public void SetSelected(bool on) { Selected = on; Refresh(); }
@@ -453,6 +456,7 @@ namespace TheGreatestPortal
                 ihover.OnRightClick = onRightClick;
                 ihover.OnHoverChanged = over => { if (iimg != null) iimg.color = over ? Color.white : rest; };
             }
+            handle.RightInset = (hasRight ? RightRoom : 10f) + room;
             handle.Refresh();
             return handle;
         }

@@ -9,13 +9,15 @@
   settings. Older clients and servers still understand the newer ones, in both directions.
 - Every row carries a star at its right end, filled when the portal is a favorite and hollow when
   it is not. Clicking it flips the favorite, and the name no longer needs a star in front of it.
-- Right-clicking a row on the map opens a menu instead of favoriting outright, which left no way
-  to ask for anything else and was easy to do by accident.
+- Right-clicking a row or a pin on the map opens a menu instead of favoriting outright, which left
+  no way to ask for anything else and was easy to do by accident. The menu can rename a portal from
+  the map, which until now meant walking to one and pressing Use.
 - A favorite keeps its ordinary place in the list as well as appearing under Favorites. Starring a
   portal used to take it out of its biome, which is exactly where you would go looking for it.
 
-- The portal list on the map can be resized by dragging the grip in its bottom-right corner, and
-  the size is remembered. It also starts at the top of the map view and a little wider than before.
+- The portal list on the map can be moved by dragging its heading and resized from the grip in its
+  bottom-right corner, and it stays where you put it. It also starts at the top of the map view and
+  a little wider than before.
 - Where a portal leads had been squeezed to a letter and an ellipsis in that list. The distance
   column now takes only the room it needs, and the rest goes to the destination; a wider list gives
   it more still.

@@ -45,7 +45,7 @@ can see what a click will do; hovering a row in the list lights up that portal's
 TheGreatestMap installed the pins wear the color it gives portals, pulse and all; without it they
 are white, as vanilla pins are. The list on the left starts with your recent portals, then favorites, then the rest
 alphabetically, each with where it leads and its distance; it has the same search box and biome
-grouping as the panel. Click a pin or a row to travel there. The pin button at the end of a row puts the map over that portal instead, for a look at where it is before you commit. Right-click marks a favorite. Esc, or stepping out of the doorway, closes the
+grouping as the panel. Click a pin or a row to travel there. The pin button at the end of a row puts the map over that portal instead, for a look at where it is before you commit. Right-click a pin or a row for a menu: travel there, center the map on it, favorite it, rename it. The list can be dragged by its heading and resized from the grip in its bottom-right corner, and stays where you put it. Esc, or stepping out of the doorway, closes the
 map and you stay. The usual rules apply: no traveling with ore, or during a boss fight if the world
 forbids it.
 
@@ -90,6 +90,7 @@ to mark a favorite.
 | Display | Other Players Recent Portals | 5 | How many portals other players have used lately to show in Others' Recents; 0 hides it |
 | Display | Recently Created Portals | 5 | How many newly built portals to show in Recently Created; 0 hides it |
 | Display | Map List Size | 380,660 | Width and height of the portal list on the map, remembered when you drag its corner |
+| Display | Map List Position | 20,-12 | Where that list sits, from the top-left of the map, remembered when you drag it by its heading |
 | Display | Group By Biome | false | Group the lists by biome; the switches on the panel and the map change it too |
 | Display | Panel Size | 680,600 | The portal panel's size, saved when you drag its corner |
 | Display | Panel Position | 0,0 | The panel's offset from the screen center, saved when you drag its title |
