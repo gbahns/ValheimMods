@@ -400,6 +400,12 @@ namespace TheGreatestPortal
                     Prefab = prefabName,
                 });
             }
+            // A stable order, because the snapshot is compared byte for byte to decide whether to
+            // send it. The list is built in ZDOMan.GetPortalList order, which walks a dictionary's
+            // values - an order nothing promises and that shifts as portals are built and torn
+            // down. Reordering alone would send a snapshot saying nothing changed, and every
+            // client redraws its portal pins when one arrives. Ids are unique and permanent.
+            _infos.Sort((a, b) => a.Id.CompareTo(b.Id));
             _sweptOnce = true;   // the first sweep is the world as it already was, and is not news
             ServerPortalCount = _infos.Count;
             ServerConnectionChanges += changes;

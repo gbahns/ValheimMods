@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.4.2 — unreleased
+
+- **Marker icon types stop short of 1000, which is reserved for other mods.** A pin type is only an
+  int, and this mod hands them out as it meets icons, counting up from 100 — so a map that had
+  recorded 900 kinds of thing would eventually reach a number another mod had taken. Taking a
+  number is not harmless: registering an icon for a type removes whatever entry was there, and the
+  "is there already a marker here?" check matches pins by type. TheGreatestPortal draws its portal
+  pins at 1000 and this stops below it. Reaching the ceiling is now a warning in the log and a
+  default pin, not a silent argument with another mod. Nothing is saved with a type in it — markers
+  carry an icon key — so no map changes.
+
 ## 1.4.1 — 2026-09-26
 
 Client-side; works with a 0.2.x server.

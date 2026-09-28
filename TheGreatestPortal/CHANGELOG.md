@@ -2,6 +2,25 @@
 
 ## 1.1.0 — unreleased
 
+- **Portal pins no longer blink when anybody builds or removes a portal.** The pins were cleared
+  and rebuilt from scratch on every catalog snapshot, which was fine when that only happened on
+  opening the map — but the server sends one whenever the world's portals change, so on a server
+  where portals come and go, every pin and every label on everyone's map was destroyed and
+  recreated each time. A portal that has not changed now keeps the pin it already had.
+
+- **The catalog is sent only when it really changed.** It was built in `ZDOMan.GetPortalList`
+  order, which walks a dictionary's values — an order nothing promises and that shifts as portals
+  are built and torn down. A reshuffle alone looked like a change and sent a snapshot to everybody.
+  It is sorted by portal id now.
+
+- **Portal pins moved from pin type 150 to 1000.** 150 was picked as "clear of TheGreatestMap's
+  100+ range", but that mod does not use a fixed range: it hands out one type per distinct icon
+  key a map has recorded, counting up from 100, so it reaches 150 on a map that has seen 51 kinds
+  of thing and then both mods own the same number — which means one mod's icon registration
+  deleting the other's, and its marker checks matching our pins. TheGreatestMap now refuses to
+  allocate at or above 1000, so this is the one number both agree on. These pins are never saved,
+  so nothing needs migrating.
+
 - Every portal in the destination list on the map now has a pin button at the end of its row that
   puts the map over that portal, without choosing it. Stepping into an open portal had no way to
   look at where a portal is before going there, because clicking its row is what sends you.

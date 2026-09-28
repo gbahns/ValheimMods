@@ -14,10 +14,22 @@ namespace TheGreatestMap
     internal static class IconRegistry
     {
         internal const int Base = 100;
+
+        /// <summary>
+        /// Types from here up belong to other mods and are never allocated here. TheGreatestPortal
+        /// draws its portal pins at 1000, and a pin type is only an int, so two mods can silently
+        /// pick the same one: registering an icon for a type removes any existing entry for it,
+        /// and the checks below match pins by type. Counting up from 100, one type per distinct
+        /// icon key, this would need a map that had recorded 900 kinds of thing to reach the
+        /// floor - so in practice the ceiling costs nothing and the collision cannot happen.
+        /// </summary>
+        internal const int ReservedFloor = 1000;
+
         internal const string FallbackKey = "pin:Icon3";
 
         private static readonly Dictionary<string, int> _typeByKey = new Dictionary<string, int>();
         private static readonly List<string> _keys = new List<string>();
+        private static bool _warnedFull;
 
         internal static int MaxType => Base + _keys.Count - 1;
 
@@ -52,6 +64,19 @@ namespace TheGreatestMap
             if (key.StartsWith("pin:")) return TryVanilla(key, out var vanilla) ? (int)vanilla : (int)Minimap.PinType.Icon3;
             if (_typeByKey.TryGetValue(key, out int type)) return type;
             type = Base + _keys.Count;
+            if (type >= ReservedFloor)
+            {
+                // Nothing sensible is left to allocate, and taking a reserved number would break
+                // another mod's pins rather than only this marker. Draw it with the fallback pin.
+                if (!_warnedFull)
+                {
+                    _warnedFull = true;
+                    TheGreatestMapMod.Log.LogWarning(
+                        $"[TheGreatestMap] {_keys.Count} icon types in use, which reaches the {ReservedFloor} reserved for other mods; " +
+                        "further icons will be drawn with the default pin.");
+                }
+                return (int)Minimap.PinType.Icon3;
+            }
             _keys.Add(key);
             _typeByKey[key] = type;
             Register(Minimap.instance, key, type);
