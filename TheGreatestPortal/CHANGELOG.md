@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.0 — unreleased
+## 1.1.0 — 2026-09-28
 
 - **Portal pins no longer blink when anybody builds or removes a portal.** The pins were cleared
   and rebuilt from scratch on every catalog snapshot, which was fine when that only happened on
