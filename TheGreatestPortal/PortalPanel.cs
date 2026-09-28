@@ -350,6 +350,21 @@ namespace TheGreatestPortal
             _renameField.ActivateInputField();
         }
 
+        /// <summary>
+        /// Judges a name against the portal's own position and returns whether the player lived.
+        /// Every path that saves a name calls this, and the position is always the portal's, never
+        /// the player's: a portal is renamed from the list wherever its namer happens to stand.
+        /// The blow lands within this call, so the panel is put away before anything else runs.
+        /// </summary>
+        private static bool Survived(string name, Vector3 portalPos)
+        {
+            Spelling.Judge(name, portalPos);
+            var me = Player.m_localPlayer;
+            if (me != null && !me.IsDead()) return true;
+            if (IsOpen) Close();
+            return false;
+        }
+
         private static void CommitRename(string text)
         {
             if (!_renaming) return;
@@ -363,7 +378,7 @@ namespace TheGreatestPortal
             p.Name = name;   // shown at once; the server's next portal list confirms it
             TheGreatestPortalMod.Message((string.IsNullOrEmpty(old) ? "Portal" : old) + " renamed to " + (string.IsNullOrEmpty(name) ? "(no name)" : name));
             Populate();
-            Spelling.Judge(name, p.Pos);
+            Survived(name, p.Pos);
         }
 
         private static void CancelRename()
@@ -446,7 +461,7 @@ namespace TheGreatestPortal
             TheGreatestPortalMod.Message(target == 0L ? shown + " is an open portal" : (t != null ? shown + " leads to " + t.DisplayName : shown + " saved"));
             Vector3 namedAt = _pos;
             Close();
-            Spelling.Judge(name, namedAt);
+            Survived(name, namedAt);
         }
 
         /// <summary>
@@ -494,6 +509,7 @@ namespace TheGreatestPortal
             ApplyToggles();
             Vector3 center = _pos;
             Close();
+            if (!Survived(name, center)) return;
             MapPicker.BeginPick(zdo, id, center, picked =>
             {
                 PortalNetwork.SendSetPortal(zdo, name, picked.Id);
@@ -546,9 +562,11 @@ namespace TheGreatestPortal
             _confirmUntil = -1f;
             UiKit.SetLabel(_redirectAll.gameObject, RedirectLabel);
             string name = PortalData.CleanName(_name.text, TgpConfig.MaxNameLength.Value);
+            Vector3 namedAt = _pos;
             PortalNetwork.SendSetPortal(_zdo, name, _selected);
             ApplyToggles();
             PortalNetwork.SendSetAll(_id);
+            Survived(name, namedAt);
         }
 
         // ── building the panel ──────────────────────────────────────────────────────

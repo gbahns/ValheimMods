@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0 — unreleased
+
+- Every portal in the destination list on the map now has a pin button at the end of its row that
+  puts the map over that portal, without choosing it. Stepping into an open portal had no way to
+  look at where a portal is before going there, because clicking its row is what sends you.
+
 ## 1.0.4 — 2026-09-27
 
 ## 1.0.3 — 2026-09-27

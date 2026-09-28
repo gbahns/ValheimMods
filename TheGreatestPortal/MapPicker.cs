@@ -424,11 +424,22 @@ namespace TheGreatestPortal
                     break;
                 }
                 default:
-                    _highlightId = p.Id;
-                    OpenMapAt(p.Pos);
-                    for (int i = 0; i < _rows.Count; i++) _rows[i].SetSelected(_rowIds[i] == p.Id);
+                    CenterOn(p);
                     break;
             }
+        }
+
+        /// <summary>
+        /// Puts the map over a portal and marks its row, without choosing it. This is what the pin
+        /// button on a row does: while travelling, a click on the row itself sends you there, so
+        /// looking at where a portal actually is needs a way of its own.
+        /// </summary>
+        private static void CenterOn(PortalInfo p)
+        {
+            if (p == null) return;
+            _highlightId = p.Id;
+            OpenMapAt(p.Pos);
+            for (int i = 0; i < _rows.Count; i++) _rows[i].SetSelected(_rowIds[i] == p.Id);
         }
 
         private static void ToggleFavorite(PortalInfo p)
@@ -489,13 +500,13 @@ namespace TheGreatestPortal
                     _header.text = _detour ? "Where to this time?" : "Where to?";
                     _hint.text = _detour
                         ? (string.IsNullOrEmpty(_usualDestination)
-                            ? "This trip only; the portal keeps the destination it is set to. Esc stays here."
-                            : $"This trip only; the portal still leads to {_usualDestination}. Esc stays here.")
-                        : "Click a portal here or on the map to travel. Right-click marks a favorite. Esc stays here.";
+                            ? "This trip only; the portal keeps the destination it is set to. The pin on a row shows where it is. Esc stays here."
+                            : $"This trip only; the portal still leads to {_usualDestination}. The pin on a row shows where it is. Esc stays here.")
+                        : "Click a portal here or on the map to travel. The pin on a row shows where it is. Right-click marks a favorite. Esc stays here.";
                     break;
                 case Mode.Pick:
                     _header.text = "Choose the destination";
-                    _hint.text = "Click a portal here or on the map. Right-click marks a favorite. Esc keeps the old destination.";
+                    _hint.text = "Click a portal here or on the map. The pin on a row shows where it is. Right-click marks a favorite. Esc keeps the old destination.";
                     break;
                 default:
                     _header.text = "Portals";
@@ -530,7 +541,8 @@ namespace TheGreatestPortal
                 var captured = e.Portal;
                 string label = e.Favorite ? "★ " + captured.DisplayName : captured.DisplayName;
                 string dist = TgpConfig.ShowDistances.Value && player != null ? UiKit.Distance(from, captured.Pos) : null;
-                var row = UiKit.Row(_listContent, label, dist, () => Select(captured), () => ToggleFavorite(captured), 16f, e.Favorite ? UiKit.Gold : (Color?)null, null, PortalList.DestinationText(captured));
+                var row = UiKit.Row(_listContent, label, dist, () => Select(captured), () => ToggleFavorite(captured), 16f, e.Favorite ? UiKit.Gold : (Color?)null, null, PortalList.DestinationText(captured),
+                                    UiKit.Pin(), () => CenterOn(captured));
                 row.SetSelected(captured.Id == _highlightId && _highlightId != 0L);
                 long rowId = captured.Id;
                 var rowHover = row.Hover.OnHoverChanged;

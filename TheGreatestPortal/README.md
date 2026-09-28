@@ -45,7 +45,7 @@ can see what a click will do; hovering a row in the list lights up that portal's
 TheGreatestMap installed the pins wear the color it gives portals, pulse and all; without it they
 are white, as vanilla pins are. The list on the left starts with your recent portals, then favorites, then the rest
 alphabetically, each with where it leads and its distance; it has the same search box and biome
-grouping as the panel. Click a pin or a row to travel there. Right-click marks a favorite. Esc, or stepping out of the doorway, closes the
+grouping as the panel. Click a pin or a row to travel there. The pin button at the end of a row puts the map over that portal instead, for a look at where it is before you commit. Right-click marks a favorite. Esc, or stepping out of the doorway, closes the
 map and you stay. The usual rules apply: no traveling with ore, or during a boss fight if the world
 forbids it.
 

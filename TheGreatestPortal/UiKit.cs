@@ -320,6 +320,7 @@ namespace TheGreatestPortal
             public TextMeshProUGUI Middle;
             public TextMeshProUGUI Right;
             public Hover Hover;
+            public Image Icon;
             public bool Selected;
 
             public void SetSelected(bool on) { Selected = on; Refresh(); }
@@ -334,7 +335,11 @@ namespace TheGreatestPortal
         /// <summary>Seconds between two clicks on a row for them to count as a double-click.</summary>
         internal const float DoubleClickSeconds = 0.35f;
 
-        internal static RowHandle Row(Transform content, string label, string right, Action onClick, Action onRightClick, float fontSize = 17f, Color? labelColor = null, Action onDoubleClick = null, string middle = null)
+        /// <summary>Room a row's icon button takes at its right edge, and the button's own size.</summary>
+        private const float IconRoom = 28f;
+        private const float IconSize = 20f;
+
+        internal static RowHandle Row(Transform content, string label, string right, Action onClick, Action onRightClick, float fontSize = 17f, Color? labelColor = null, Action onDoubleClick = null, string middle = null, Sprite icon = null, Action onIcon = null)
         {
             var go = new GameObject("Row", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button), typeof(LayoutElement), typeof(Hover));
             go.transform.SetParent(content, false);
@@ -369,12 +374,15 @@ namespace TheGreatestPortal
 
             bool hasRight = !string.IsNullOrEmpty(right);
             bool hasMiddle = !string.IsNullOrEmpty(middle);
+            bool hasIcon = icon != null && onIcon != null;
+            float room = hasIcon ? IconRoom : 0f;       // every other column ends short of the button
+            float textEnd = (hasRight ? -96f : -10f) - room;
             var lbl = Text(go.transform, "Label", label, fontSize, TextAlignmentOptions.Left, labelColor);
             var lrt = lbl.rectTransform;
             lrt.anchorMin = Vector2.zero;
             lrt.anchorMax = new Vector2(hasMiddle ? 0.5f : 1f, 1f);
             lrt.offsetMin = new Vector2(10f, 0f);
-            lrt.offsetMax = new Vector2(hasMiddle ? -4f : (hasRight ? -96f : -10f), 0f);
+            lrt.offsetMax = new Vector2(hasMiddle ? -4f : textEnd, 0f);
             handle.Label = lbl;
             if (hasMiddle)
             {
@@ -384,7 +392,7 @@ namespace TheGreatestPortal
                 mrt.anchorMin = new Vector2(0.5f, 0f);
                 mrt.anchorMax = Vector2.one;
                 mrt.offsetMin = new Vector2(4f, 0f);
-                mrt.offsetMax = new Vector2(hasRight ? -96f : -10f, 0f);
+                mrt.offsetMax = new Vector2(textEnd, 0f);
                 handle.Middle = mid;
             }
             if (hasRight)
@@ -394,9 +402,33 @@ namespace TheGreatestPortal
                 rrt.anchorMin = new Vector2(1f, 0f);
                 rrt.anchorMax = new Vector2(1f, 1f);
                 rrt.pivot = new Vector2(1f, 0.5f);
-                rrt.anchoredPosition = new Vector2(-10f, 0f);
+                rrt.anchoredPosition = new Vector2(-10f - room, 0f);
                 rrt.sizeDelta = new Vector2(84f, 0f);
                 handle.Right = r;
+            }
+            if (hasIcon)
+            {
+                // Its own button, so clicking it does not count as clicking the row. Right-clicking
+                // it is passed on, so the icon is not a dead spot in the row's own right-click.
+                var ic = new GameObject("Icon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button), typeof(Hover));
+                ic.transform.SetParent(go.transform, false);
+                var irt = ic.GetComponent<RectTransform>();
+                irt.anchorMin = new Vector2(1f, 0.5f);
+                irt.anchorMax = new Vector2(1f, 0.5f);
+                irt.pivot = new Vector2(1f, 0.5f);
+                irt.anchoredPosition = new Vector2(-6f, 0f);
+                irt.sizeDelta = new Vector2(IconSize, IconSize);
+                var iimg = ic.GetComponent<Image>();
+                iimg.sprite = icon;
+                iimg.color = Dim;
+                var ibtn = ic.GetComponent<Button>();
+                ibtn.transition = Selectable.Transition.None;
+                ibtn.targetGraphic = iimg;
+                ibtn.onClick.AddListener(() => onIcon());
+                var ihover = ic.GetComponent<Hover>();
+                ihover.OnRightClick = onRightClick;
+                ihover.OnHoverChanged = over => { if (iimg != null) iimg.color = over ? Color.white : Dim; };
+                handle.Icon = iimg;
             }
             handle.Refresh();
             return handle;
@@ -442,6 +474,52 @@ namespace TheGreatestPortal
             _star = Sprite.Create(tex, new Rect(0f, 0f, n, n), new Vector2(0.5f, 0.5f), 100f);
             _star.hideFlags = HideFlags.HideAndDontSave;
             return _star;
+        }
+
+        private static Sprite _pin;
+
+        /// <summary>
+        /// A map pin, point down, with a hole in its head and soft edges: a round head sitting on
+        /// a tapering tail, the shape a map marker has everywhere. Drawn, like the star, so the
+        /// button does not depend on the game's font carrying a glyph for it.
+        /// </summary>
+        internal static Sprite Pin()
+        {
+            if (_pin != null) return _pin;
+            const int n = 48;
+            float cx = n / 2f, cy = n * 0.66f;      // head centre, high up so the tail has room
+            float head = n * 0.29f, hole = head * 0.38f;
+            var tail = new[]                        // from the flanks of the head down to the point
+            {
+                new Vector2(cx, n * 0.04f),
+                new Vector2(cx - head * 0.78f, cy - head * 0.62f),
+                new Vector2(cx + head * 0.78f, cy - head * 0.62f),
+            };
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    int hit = 0;
+                    for (int sy = 0; sy < 3; sy++)
+                        for (int sx = 0; sx < 3; sx++)
+                        {
+                            float px3 = x + (sx + 0.5f) / 3f, py3 = y + (sy + 0.5f) / 3f;
+                            float dx = px3 - cx, dy = py3 - cy;
+                            float d2 = dx * dx + dy * dy;
+                            if (d2 <= hole * hole) continue;                       // the hole
+                            if (d2 <= head * head || InsidePolygon(tail, px3, py3)) hit++;
+                        }
+                    px[y * n + x] = new Color32(255, 255, 255, (byte)(hit * 255 / 9));
+                }
+            tex.SetPixels32(px);
+            tex.Apply(false, true);
+            tex.filterMode = FilterMode.Bilinear;
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.hideFlags = HideFlags.HideAndDontSave;
+            _pin = Sprite.Create(tex, new Rect(0f, 0f, n, n), new Vector2(0.5f, 0.5f), 100f);
+            _pin.hideFlags = HideFlags.HideAndDontSave;
+            return _pin;
         }
 
         private static bool InsidePolygon(Vector2[] poly, float x, float y)
