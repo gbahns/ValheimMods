@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.5 — unreleased
+## 0.9.5 — 2026-09-27
 
 **Breaking: the server and every player need 0.9.5. The Busse's hold changed size, so 0.9.4 and
 0.9.5 cannot share a server.**
