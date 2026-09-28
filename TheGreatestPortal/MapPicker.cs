@@ -50,6 +50,9 @@ namespace TheGreatestPortal
         private static TextMeshProUGUI _hint;
         private static TMP_InputField _search;
         private static readonly RowRename _rename = new RowRename();
+        private static bool _panning;
+        private static Vector3 _panFrom, _panTo, _panLast;
+        private static float _panStart;
         private static Toggle _group;
         private static Button _expandAll;
         private static Button _collapseAll;
@@ -210,6 +213,7 @@ namespace TheGreatestPortal
                 End();
                 return;
             }
+            UpdatePan(map);
             if (UiKit.ContextMenu.IsOpen)
             {
                 UiKit.ContextMenu.Update();   // it owns the keyboard and the mouse while it is up
@@ -459,8 +463,62 @@ namespace TheGreatestPortal
         {
             if (p == null) return;
             _highlightId = p.Id;
-            OpenMapAt(p.Pos);
+            PanTo(p.Pos);
             for (int i = 0; i < _rows.Count; i++) _rows[i].SetSelected(_rowIds[i] == p.Id);
+        }
+
+        // ── panning ─────────────────────────────────────────────────────────────────
+
+        /// <summary>How long the map takes to slide to a portal. Long enough to follow, short
+        /// enough not to be waited on.</summary>
+        private const float PanSeconds = 0.35f;
+
+        /// <summary>
+        /// Slides the map to a place rather than cutting to it, so the player can see where it is
+        /// in relation to where they were: a jump tells you where a portal is, a pan tells you
+        /// which way and how far. Falls back to the jump if the map's own centring cannot be
+        /// reached.
+        /// </summary>
+        private static void PanTo(Vector3 worldPos)
+        {
+            var map = Minimap.instance;
+            var player = Player.m_localPlayer;
+            if (map == null || player == null || !Access.CanPan)
+            {
+                OpenMapAt(worldPos);
+                return;
+            }
+            _panFrom = Access.MapOffset(map);
+            _panTo = worldPos - player.transform.position;
+            if ((_panTo - _panFrom).sqrMagnitude < 0.01f) return;   // already there
+            _panLast = _panFrom;
+            _panStart = Time.unscaledTime;
+            _panning = true;
+            Access.MoveInertia(map) = Vector3.zero;   // a fling still running would fight it
+        }
+
+        private static void UpdatePan(Minimap map)
+        {
+            if (!_panning) return;
+            var player = Player.m_localPlayer;
+            if (player == null)
+            {
+                _panning = false;
+                return;
+            }
+            // Anything else moving the map -- a drag, a zoom -- wins: stop rather than fight it.
+            if ((Access.MapOffset(map) - _panLast).sqrMagnitude > 0.01f)
+            {
+                _panning = false;
+                return;
+            }
+            float t = Mathf.Clamp01((Time.unscaledTime - _panStart) / PanSeconds);
+            float eased = t * t * (3f - 2f * t);   // slow at both ends, so it reads as movement
+            Vector3 offset = Vector3.Lerp(_panFrom, _panTo, eased);
+            Access.MapOffset(map) = offset;
+            _panLast = offset;
+            Access.CenterMap(map, player.transform.position + offset);
+            if (t >= 1f) _panning = false;
         }
 
         /// <summary>
@@ -771,6 +829,7 @@ namespace TheGreatestPortal
 
         private static void DestroyList()
         {
+            _panning = false;
             UiKit.ContextMenu.Close();
             if (_list != null) UnityEngine.Object.Destroy(_list);
             _list = null;

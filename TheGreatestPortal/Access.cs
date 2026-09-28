@@ -20,6 +20,14 @@ namespace TheGreatestPortal
         internal static readonly AccessTools.FieldRef<Minimap, bool> PinUpdateRequired =
             AccessTools.FieldRefAccess<Minimap, bool>("m_pinUpdateRequired");
 
+        /// <summary>Where the large map is looking, as an offset from the player.</summary>
+        internal static readonly AccessTools.FieldRef<Minimap, Vector3> MapOffset =
+            AccessTools.FieldRefAccess<Minimap, Vector3>("m_mapOffset");
+
+        /// <summary>What is left of a fling after the player lets go of a drag.</summary>
+        internal static readonly AccessTools.FieldRef<Minimap, Vector3> MoveInertia =
+            AccessTools.FieldRefAccess<Minimap, Vector3>("m_moveInertia");
+
         // Bound as a delegate rather than called through reflection: the hover highlight asks for
         // the world position under the pointer every frame, and Invoke would allocate every time.
         private delegate Vector3 ScreenToWorld(Minimap map, Vector3 screen);
@@ -111,6 +119,34 @@ namespace TheGreatestPortal
             if (_claimObituary == null) return;
             try { _claimObituary(line); }
             catch { _claimObituary = null; }
+        }
+
+        // Moving the map means setting its offset and telling it to look there, exactly as
+        // vanilla's own drag does. Bound as a delegate: a pan calls it every frame.
+        private delegate void CenterMapCall(Minimap map, Vector3 point);
+        private static readonly CenterMapCall _centerMap = BindCenterMap();
+
+        private static CenterMapCall BindCenterMap()
+        {
+            try
+            {
+                var method = AccessTools.Method(typeof(Minimap), "CenterMap", new[] { typeof(Vector3) });
+                if (method != null) return AccessTools.MethodDelegate<CenterMapCall>(method, null, virtualCall: false);
+                TheGreatestPortalMod.Log.LogWarning("[TheGreatestPortal] Minimap.CenterMap was not found; the map will jump to a portal rather than pan.");
+            }
+            catch (Exception e)
+            {
+                TheGreatestPortalMod.Log.LogWarning($"[TheGreatestPortal] Could not bind Minimap.CenterMap; the map will jump rather than pan: {e.Message}");
+            }
+            return null;
+        }
+
+        internal static bool CanPan => _centerMap != null;
+
+        internal static void CenterMap(Minimap map, Vector3 point)
+        {
+            if (map == null || _centerMap == null) return;
+            _centerMap(map, point);
         }
 
         /// <summary>Vanilla's click radius for pins on the large map, in world metres.</summary>

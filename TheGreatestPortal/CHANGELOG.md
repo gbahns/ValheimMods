@@ -9,6 +9,9 @@
   settings. Older clients and servers still understand the newer ones, in both directions.
 - Every row carries a star at its right end, filled when the portal is a favorite and hollow when
   it is not. Clicking it flips the favorite, and the name no longer needs a star in front of it.
+- Centering on a portal slides the map there instead of cutting to it, so you can see which way
+  and how far it is from where you are. A drag or a zoom during the slide stops it rather than
+  fighting it.
 - Right-clicking a row or a pin on the map opens a menu instead of favoriting outright, which left
   no way to ask for anything else and was easy to do by accident. The menu can rename a portal from
   the map, which until now meant walking to one and pressing Use.
