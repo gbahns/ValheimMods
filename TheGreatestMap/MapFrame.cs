@@ -1,5 +1,6 @@
 using System.Globalization;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace TheGreatestMap
@@ -32,6 +33,8 @@ namespace TheGreatestMap
         private static Vector2 _grow, _pos;
         private static bool _read;
         private static float _height = float.NaN;   // the rect height the zoom was last matched to
+        private static Vector2 _restoreGrow, _restorePos;
+        private static bool _restorable;
 
         internal static void Reset()
         {
@@ -69,6 +72,7 @@ namespace TheGreatestMap
             _mover.pivot = new Vector2(0.5f, 1f);
             _mover.sizeDelta = new Vector2(0f, MoverHeight);
             _mover.anchoredPosition = Vector2.zero;
+            _mover.gameObject.AddComponent<DoubleClick>().OnDouble = ToggleFullScreen;
 
             _grip = Handle(root, "TGM_MapGrip", new Color(1f, 0.85f, 0.45f, 0.65f), MenuKit.Grip(), OnResize);
             _grip.anchorMin = _grip.anchorMax = new Vector2(1f, 0f);
@@ -138,6 +142,39 @@ namespace TheGreatestMap
                 var want = -size;
                 if (outside.sizeDelta != want) outside.sizeDelta = want;
                 if (outside.anchoredPosition != -_pos) outside.anchoredPosition = -_pos;
+            }
+        }
+
+        /// <summary>Double-clicking the strip fills the screen, and doing it again goes back.</summary>
+        private static void ToggleFullScreen()
+        {
+            if (float.IsNaN(_base.x)) return;
+            var headroom = -_base;
+            bool full = _grow.x >= headroom.x - 1f && _grow.y >= headroom.y - 1f;
+            if (full)
+            {
+                // Back to where it was before, or to the size the game itself draws if this map has
+                // never been anywhere else.
+                _grow = _restorable ? _restoreGrow : Vector2.zero;
+                _pos = _restorable ? _restorePos : Vector2.zero;
+            }
+            else
+            {
+                _restoreGrow = _grow;
+                _restorePos = _pos;
+                _restorable = true;
+                _grow = headroom;
+                _pos = Vector2.zero;
+            }
+            Save();
+        }
+
+        internal sealed class DoubleClick : MonoBehaviour, IPointerClickHandler
+        {
+            public System.Action OnDouble;
+            void IPointerClickHandler.OnPointerClick(PointerEventData e)
+            {
+                if (e != null && e.clickCount == 2 && OnDouble != null) OnDouble();
             }
         }
 

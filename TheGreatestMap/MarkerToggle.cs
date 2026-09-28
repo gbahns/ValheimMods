@@ -221,6 +221,19 @@ namespace TheGreatestMap
             float dx = TgmConfig.MarkerButtonOffsetX != null ? TgmConfig.MarkerButtonOffsetX.Value : 0f;
             float dy = TgmConfig.MarkerButtonOffsetY != null ? TgmConfig.MarkerButtonOffsetY.Value : 0f;
             var want = new Vector2(_placed.x + dx, _placed.y + dy);
+            // The measured place can be above the map's own top edge -- vanilla's ping icon is
+            // anchored up there and the button is lifted clear of it -- which is fine on a map
+            // with room above it and not fine on one opened out to the whole screen. The pivot is
+            // the button's top-left corner, so its own y is the top: hold that on screen.
+            var parent = rect.parent as RectTransform;
+            if (parent != null)
+            {
+                var corners = new Vector3[4];
+                parent.GetWorldCorners(corners);
+                float scale = Mathf.Abs(parent.lossyScale.y) > 0.0001f ? parent.lossyScale.y : 1f;
+                float highest = (Screen.height - 2f - corners[1].y) / scale;
+                if (want.y > highest) want.y = highest;
+            }
             if (rect.anchoredPosition != want) rect.anchoredPosition = want;
         }
 

@@ -7,7 +7,8 @@ Client-side; works with a 0.2.x server.
 - **The large map can be made bigger and moved.** The game draws it inside a fixed margin, which on
   a wide screen leaves a good deal of map going spare. Drag the gold grip in the map's lower-right
   corner to open it out, up to the full screen, or pull it in smaller than the game draws it, and the
-  strip along its very top edge to move it.
+  strip along its very top edge to move it. Double-click that strip to fill the screen, and again to
+  go back to the size it was.
   Where you put it is remembered, in "Map Extra Size" and "Map Position" under Display.
   The map itself grows while the pin labels, the icon column and the buttons stay the size they
   were, so a bigger map is a less crowded one rather than a magnified copy of the same one. It
