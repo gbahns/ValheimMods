@@ -47,6 +47,7 @@ namespace TheGreatestMap
             Reveals.Reset();
             Portals.Reset();
             PlayerSpotlight.Reset();
+            MapFrame.Reset();
         }
 
         private static int LocalType(SharedPin shared)

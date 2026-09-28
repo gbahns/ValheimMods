@@ -43,6 +43,8 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> HighlightPlayersHidesOthers;
         internal static ConfigEntry<string> HighlightPlayersColor;
         internal static ConfigEntry<int> HighlightPlayersSize;
+        internal static ConfigEntry<string> MapExtraSize;
+        internal static ConfigEntry<string> MapPosition;
         internal static ConfigEntry<string> LegendSize;
         internal static ConfigEntry<string> LegendPosition;
         internal static ConfigEntry<bool> ShowAllMarkers;
@@ -257,6 +259,17 @@ namespace TheGreatestMap
             HighlightPlayersSize = mod.BindLocalRange("Display", "Highlight Players Size", 170, 100, 400,
                 "How large the player markers are drawn while lit up, as a percentage of their normal size. They also " +
                 "breathe slightly, so they read as alive rather than as another pin.");
+
+            MapExtraSize = mod.BindLocal("Display", "Map Extra Size", "0,0",
+                "How much larger than normal the large map is drawn, as width,height in UI pixels. The game leaves a " +
+                "margin of wasted screen around the map; 0,0 keeps it and the largest value fills the screen. Drag the " +
+                "gold grip in the map's lower-right corner rather than typing here.");
+            MapExtraSize.SettingChanged += (_, __) => MapFrame.Reload();
+            MapPosition = mod.BindLocal("Display", "Map Position", "0,0",
+                "Where the large map sits, measured from the middle of the screen in UI pixels. Drag the strip along " +
+                "the very top edge of the map. It cannot be dragged off the screen, and there is nowhere to move it " +
+                "once it fills the screen.");
+            MapPosition.SettingChanged += (_, __) => MapFrame.Reload();
 
             LegendSize = mod.BindLocal("Display", "Legend Size", "560,620",
                 "Width and height of the legend panel, in pixels. Dragging its corner grip changes this.");

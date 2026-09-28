@@ -174,6 +174,16 @@ namespace TheGreatestMap
                     }
                 }));
 
+            new Terminal.ConsoleCommand("tgm_mapui", "Measure the large map's own layout: how much screen it uses and how its parts are anchored (also written to the log)",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    foreach (var line in MapLayout.Describe())
+                    {
+                        args.Context.AddString(line);
+                        TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_mapui: " + line);
+                    }
+                }));
+
             new Terminal.ConsoleCommand("tgm_list", "List shared markers, nearest first (tgm_list 40 for more)",
                 (Terminal.ConsoleEvent)(args =>
                 {

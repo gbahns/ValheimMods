@@ -4,6 +4,11 @@ One shared, living map for your server, without the cartography table mess.
 
 - **Markers travel like exploration.** What you record or place goes onto your own map, saved with your character. At a cartography table your map and the shared map merge both ways, and others pick it up at their next table visit. Two players standing together with their maps out compare and merge their maps directly, markers and explored areas alike, no table needed. An erasure is a dated tombstone that wins over older copies of the marker, so erased markers stay erased instead of coming back from someone else's map. Erasing is off unless the server allows it, and then goes through the marker's right-click menu or Shift + right-click. A server can switch "Sharing Mode" to Instant to have every change go out at once instead.
 - **The cartography table only carries exploration.** Stand at it and it syncs the fog of war by itself (or press the sync key), and it stays quiet unless something is actually exchanged. Player-placed markers are no longer written to or read from tables, and old ones imported from tables are swept away.
+- **A map as big as your screen.** The game draws the large map inside a fixed margin, which on a wide screen wastes
+a lot of room. Drag the gold grip in its lower-right corner to open it out, up to the whole screen, and the strip
+along its very top edge to move it; where you leave it is remembered. The map grows but the pin labels, the icon
+column and the buttons stay the size they were, so a bigger map is a less crowded one rather than a magnified copy.
+
 - **Where is everybody?** On the large map, `P` lights up the other players: their markers grow, take a color of
 their own and breathe, and every other marker stops being drawn, so three moving dots are easy to find on a map
 carrying hundreds of them. Press `P` again, or close the map, to bring it all back exactly as it was, including
@@ -176,6 +181,7 @@ counts as well unless "Structures Include Unlisted" is off or its prefab name is
 | `tgm_items <word>` | List the game's items matching a word, for choosing a marker icon |
 | `tgm_legend` | Open the legend (same as the legend key) |
 | `tgm_show` | Show every hidden marker again (single markers, hidden icons, hidden kinds and hidden crossed-off markers) |
+| `tgm_mapui` | What the large map's layout measures: how much screen it uses and how its parts are anchored |
 
 ## Configuration
 

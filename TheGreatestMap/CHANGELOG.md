@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.6.0 — unreleased
+
+Client-side; works with a 0.2.x server.
+
+- **The large map can be made bigger and moved.** The game draws it inside a fixed margin, which on
+  a wide screen leaves a good deal of map going spare. Drag the gold grip in the map's lower-right
+  corner to open it out, up to the full screen, and the strip along its very top edge to move it.
+  Where you put it is remembered, in "Map Extra Size" and "Map Position" under Display.
+  The map itself grows while the pin labels, the icon column and the buttons stay the size they
+  were, so a bigger map is a less crowded one rather than a magnified copy of the same one. It
+  cannot be dragged off the screen, and there is nowhere to move it once it fills the screen.
+- New console command `tgm_mapui`: what the large map's layout measures, how much of the screen it
+  uses and how its parts are anchored.
+
 ## 1.5.0 — 2026-09-28
 
 Client-side; works with a 0.2.x server.

@@ -28,7 +28,7 @@ namespace TheGreatestMap
     {
         public const string ModGuid    = "DeathMonger.TheGreatestMap";
         public const string ModName    = "The Greatest Map";
-        public const string ModVersion = "1.5.0";
+        public const string ModVersion = "1.6.0";
 
         // Oldest version whose shared-marker wire format this build still speaks. ServerSync
         // refuses peers below this, so bump it only when the format or an RPC changes, not on
@@ -88,6 +88,7 @@ namespace TheGreatestMap
             if (Keys.IsDown(TgmConfig.LegendKey.Value) && Keys.CanTakeInput()) LegendPanel.Toggle();
             LegendPanel.Update();
             MarkerMenu.Update();
+            MapFrame.Update();
             MarkerToggle.Update();
             PlayerSpotlight.Update();
             MarkerTooltip.Update();
