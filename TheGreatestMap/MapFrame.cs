@@ -30,6 +30,7 @@ namespace TheGreatestMap
         private static Vector2 _base = new Vector2(float.NaN, float.NaN); // the game's own inset
         private static Vector2 _grow, _pos;
         private static bool _read;
+        private static float _height = float.NaN;   // the rect height the zoom was last matched to
 
         internal static void Reset()
         {
@@ -56,7 +57,7 @@ namespace TheGreatestMap
             }
             if (float.IsNaN(_base.x)) _base = root.sizeDelta; // whatever the game asks for, before we touch it
             if (!_read) { Load(); _read = true; }
-            Apply(root);
+            Apply(map, root);
         }
 
         private static void Build(RectTransform root)
@@ -95,7 +96,7 @@ namespace TheGreatestMap
         /// inset (sizeDelta) and its place is an offset from the middle. Growing the inset by d
         /// widens it by d/2 on each side, which is why moving one edge also moves the middle.
         /// </summary>
-        private static void Apply(RectTransform root)
+        private static void Apply(Minimap map, RectTransform root)
         {
             var parent = root.parent as RectTransform;
             var headroom = -_base;                                   // reaching 0,0 fills the screen
@@ -109,8 +110,17 @@ namespace TheGreatestMap
                 var slack = new Vector2(Mathf.Max(0f, -size.x) * 0.5f, Mathf.Max(0f, -size.y) * 0.5f);
                 _pos = new Vector2(Mathf.Clamp(_pos.x, -slack.x, slack.x), Mathf.Clamp(_pos.y, -slack.y, slack.y));
             }
-            if (root.sizeDelta != size) root.sizeDelta = size;
-            if (root.anchoredPosition != _pos) root.anchoredPosition = _pos;
+            if (root.sizeDelta != size || root.anchoredPosition != _pos)
+            {
+                root.sizeDelta = size;
+                root.anchoredPosition = _pos;
+                // The game lays the markers out only when it thinks something moved, and resizing
+                // the map is not one of the things it knows about. Without this they keep the
+                // places worked out for the old rect: measured from its lower-left corner, which
+                // the growing map carries down and to the left, taking every marker with it.
+                ClientPins.Restyle();
+                MatchZoom(map, parent, size);
+            }
 
             // The catcher that closes the map when you click beside it is stretched to the map and
             // cancels the game's own inset to cover the screen. Ours has to cancel what we did too,
@@ -122,6 +132,24 @@ namespace TheGreatestMap
                 if (outside.sizeDelta != want) outside.sizeDelta = want;
                 if (outside.anchoredPosition != -_pos) outside.anchoredPosition = -_pos;
             }
+        }
+
+        /// <summary>
+        /// Keep the map drawn at the same scale as it grows, so a bigger window shows more of the
+        /// world rather than the same world drawn bigger. The scale is the rect's height over the
+        /// zoom -- on both axes, since the visible width is derived from the rect's aspect -- so
+        /// holding it steady means letting the zoom out by exactly the proportion the height grew.
+        /// Widening alone already shows more and needs nothing.
+        /// </summary>
+        private static void MatchZoom(Minimap map, RectTransform parent, Vector2 size)
+        {
+            if (parent == null) return;
+            float height = parent.rect.height + size.y;
+            if (height <= 1f) return;
+            bool wanted = TgmConfig.MapResizeShowsMore == null || TgmConfig.MapResizeShowsMore.Value;
+            if (wanted && !float.IsNaN(_height) && _height > 1f && !Mathf.Approximately(height, _height))
+                map.LargeZoom *= height / _height;
+            _height = height;
         }
 
         private static float Scale()

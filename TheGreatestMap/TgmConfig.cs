@@ -44,6 +44,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<string> HighlightPlayersColor;
         internal static ConfigEntry<int> HighlightPlayersSize;
         internal static ConfigEntry<string> MapExtraSize;
+        internal static ConfigEntry<bool> MapResizeShowsMore;
         internal static ConfigEntry<string> MapPosition;
         internal static ConfigEntry<string> LegendSize;
         internal static ConfigEntry<string> LegendPosition;
@@ -270,6 +271,10 @@ namespace TheGreatestMap
                 "the very top edge of the map. It cannot be dragged off the screen, and there is nowhere to move it " +
                 "once it fills the screen.");
             MapPosition.SettingChanged += (_, __) => MapFrame.Reload();
+            MapResizeShowsMore = mod.BindLocal("Display", "Map Resize Shows More", true,
+                "Growing the map shows more of the world instead of drawing the same world larger. The map's scale " +
+                "comes from its height, so a taller map magnifies unless the zoom is let out to match; this lets it " +
+                "out. Off keeps the zoom where you set it and a taller map simply draws bigger.");
 
             LegendSize = mod.BindLocal("Display", "Legend Size", "560,620",
                 "Width and height of the legend panel, in pixels. Dragging its corner grip changes this.");

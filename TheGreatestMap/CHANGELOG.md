@@ -11,6 +11,9 @@ Client-side; works with a 0.2.x server.
   The map itself grows while the pin labels, the icon column and the buttons stay the size they
   were, so a bigger map is a less crowded one rather than a magnified copy of the same one. It
   cannot be dragged off the screen, and there is nowhere to move it once it fills the screen.
+  Growing it shows more of the world rather than drawing the same world larger: the map's scale
+  comes from its height, so the zoom is let out by however much the height grew. "Map Resize Shows
+  More" (Display, on) turns that off and leaves the zoom where you set it.
 - New console command `tgm_mapui`: what the large map's layout measures, how much of the screen it
   uses and how its parts are anchored.
 
