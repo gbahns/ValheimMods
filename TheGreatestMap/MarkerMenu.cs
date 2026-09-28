@@ -79,6 +79,31 @@ namespace TheGreatestMap
         }
 
         /// <summary>Reports pointer drags in screen pixels, for moving a panel or a resize grip.</summary>
+        /// <summary>
+        /// Remembers whether the pointer is over this thing, so whoever paints it can brighten it.
+        /// A flag rather than a color of its own, because these buttons are repainted every frame
+        /// from what they mean -- paused, hidden, shown -- and a color set here would be wiped.
+        /// </summary>
+        internal sealed class Glow : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+        {
+            internal bool Over;
+            void IPointerEnterHandler.OnPointerEnter(PointerEventData e) { Over = true; }
+            void IPointerExitHandler.OnPointerExit(PointerEventData e) { Over = false; }
+        }
+
+        /// <summary>The color of a map button the pointer is resting on: bright orange, whatever
+        /// it was showing before, so the answer to "which one am I about to press" needs no
+        /// comparing. It keeps its own color the moment the pointer leaves.</summary>
+        internal static readonly Color HoverColor = new Color(1f, 0.6f, 0.13f, 1f);
+
+        /// <summary>How much larger a map button is drawn while the pointer is on it.</summary>
+        internal const float HoverMagnify = 1.1f;
+
+        internal static Color Lit(Color c, bool lit) => lit ? HoverColor : c;
+
+        /// <summary>Grown by a tenth while hovered, from whatever size the button is normally.</summary>
+        internal static Vector3 Magnified(Vector3 normal, bool lit) => lit ? normal * HoverMagnify : normal;
+
         internal sealed class DragHandle : MonoBehaviour, IDragHandler, IEndDragHandler
         {
             public Action<Vector2> OnDrag;

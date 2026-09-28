@@ -24,10 +24,13 @@ namespace TheGreatestMap
     internal static class MapFrame
     {
         private const float GripSize = 22f;
+        internal const float ButtonSize = 28f;      // the pause mark's size; every button matches it
+        private const float ButtonGap = 8f;
+        private const float Margin = 16f;
         private const float MinWidth = 420f, MinHeight = 300f;   // small enough to tuck away, big enough to read
         private const float MoverHeight = 16f;
 
-        private static RectTransform _grip, _mover;
+        private static RectTransform _grip, _mover, _maximize;
         private static GameObject _root;          // the large root we built our handles into
         private static Vector2 _base = new Vector2(float.NaN, float.NaN); // the game's own inset
         private static Vector2 _grow, _pos;
@@ -36,10 +39,27 @@ namespace TheGreatestMap
         private static Vector2 _restoreGrow, _restorePos;
         private static bool _restorable;
 
+        /// <summary>
+        /// The middle of the nth button in the row along the map's top-right corner, counting from
+        /// the right: the map pin, then maximize, then the pause mark. One place decides the row so
+        /// the three cannot drift apart, and "Pause Button Offset" moves the whole row.
+        ///
+        /// The middle rather than a corner, because each button is pivoted there: growing one under
+        /// the pointer then swells it evenly instead of dragging it down and to the left.
+        /// </summary>
+        internal static Vector2 Slot(int index)
+        {
+            float dx = TgmConfig.PauseButtonOffsetX != null ? TgmConfig.PauseButtonOffsetX.Value : 0f;
+            float dy = TgmConfig.PauseButtonOffsetY != null ? TgmConfig.PauseButtonOffsetY.Value : 0f;
+            float half = ButtonSize * 0.5f;
+            return new Vector2(-Margin - half + dx - index * (ButtonSize + ButtonGap), -Margin - half + dy);
+        }
+
         internal static void Reset()
         {
             _grip = null;
             _mover = null;
+            _maximize = null;
             _root = null;
             _read = false;
         }
@@ -53,7 +73,7 @@ namespace TheGreatestMap
 
             // The HUD is rebuilt on every login, which takes the map with it, so handles built into
             // the old one are gone and the ones we hold are dead references.
-            if (_root != map.m_largeRoot || _grip == null || _mover == null)
+            if (_root != map.m_largeRoot || _grip == null || _mover == null || _maximize == null)
             {
                 _root = map.m_largeRoot;
                 _base = new Vector2(float.NaN, float.NaN);
@@ -74,6 +94,13 @@ namespace TheGreatestMap
             _mover.anchoredPosition = Vector2.zero;
             _mover.gameObject.AddComponent<DoubleClick>().OnDouble = ToggleFullScreen;
 
+            _maximize = Handle(root, "TGM_MapMaximize", MaximizeColor, Square(), null);
+            _maximize.anchorMin = _maximize.anchorMax = new Vector2(1f, 1f);
+            _maximize.pivot = new Vector2(0.5f, 0.5f);
+            _maximize.sizeDelta = new Vector2(ButtonSize, ButtonSize);
+            _maximize.gameObject.AddComponent<Click>().OnClick = ToggleFullScreen;
+            _maximize.gameObject.AddComponent<MenuKit.Glow>();
+
             _grip = Handle(root, "TGM_MapGrip", new Color(1f, 0.85f, 0.45f, 0.65f), MenuKit.Grip(), OnResize);
             _grip.anchorMin = _grip.anchorMax = new Vector2(1f, 0f);
             _grip.pivot = new Vector2(1f, 0f);
@@ -90,8 +117,8 @@ namespace TheGreatestMap
             if (sprite != null) img.sprite = sprite;
             img.raycastTarget = true;
             var handle = go.GetComponent<MenuKit.DragHandle>();
-            handle.OnDrag = onDrag;
-            handle.OnEnd = Save;
+            if (onDrag == null) Object.Destroy(handle);   // a plain button, nothing to drag
+            else { handle.OnDrag = onDrag; handle.OnEnd = Save; }
             go.transform.SetAsLastSibling(); // above the map image, so the drag is ours and not a pan
             return (RectTransform)go.transform;
         }
@@ -121,6 +148,19 @@ namespace TheGreatestMap
                 var slack = new Vector2(Mathf.Max(0f, -size.x) * 0.5f, Mathf.Max(0f, -size.y) * 0.5f);
                 _pos = new Vector2(Mathf.Clamp(_pos.x, -slack.x, slack.x), Mathf.Clamp(_pos.y, -slack.y, slack.y));
             }
+            if (_maximize != null)
+            {
+                if (_maximize.anchoredPosition != Slot(1)) _maximize.anchoredPosition = Slot(1);
+                var img = _maximize.GetComponent<Image>();
+                var hover = _maximize.GetComponent<MenuKit.Glow>();
+                bool lit = hover != null && hover.Over;
+                // Orange while the map is full, the same orange the pause mark wears while pausing
+                // is on, so "this is switched on" reads the same way along the whole row.
+                var normal = IsFull() ? PauseToggle.Paused : MaximizeColor;
+                if (img != null) img.color = MenuKit.Lit(normal, lit);
+                _maximize.localScale = MenuKit.Magnified(Vector3.one, lit);
+            }
+            MoveBiomeName(root);
             if (root.sizeDelta != size || root.anchoredPosition != _pos)
             {
                 root.sizeDelta = size;
@@ -145,13 +185,37 @@ namespace TheGreatestMap
             }
         }
 
+        private static readonly Color MaximizeColor = new Color(1f, 0.93f, 0.72f, 0.85f);
+
+        /// <summary>
+        /// The game writes the biome you are pointing at in the map's top-right corner, which is
+        /// where our own buttons want to be. Rather than crowd in beside it, the name is moved down
+        /// to sit under the row: it is a plain child of the map root, and the game only ever sets
+        /// its text, so where it sits is ours to decide.
+        /// </summary>
+        private static void MoveBiomeName(RectTransform root)
+        {
+            var biome = root.Find("large_biome") as RectTransform;
+            if (biome == null) return;
+            float want = Slot(0).y - ButtonSize - ButtonGap - biome.rect.height * 0.5f;
+            if (!Mathf.Approximately(biome.anchoredPosition.y, want))
+                biome.anchoredPosition = new Vector2(biome.anchoredPosition.x, want);
+        }
+
+        /// <summary>The map is as large as the screen allows.</summary>
+        internal static bool IsFull()
+        {
+            if (float.IsNaN(_base.x)) return false;
+            var headroom = -_base;
+            return _grow.x >= headroom.x - 1f && _grow.y >= headroom.y - 1f;
+        }
+
         /// <summary>Double-clicking the strip fills the screen, and doing it again goes back.</summary>
         private static void ToggleFullScreen()
         {
             if (float.IsNaN(_base.x)) return;
             var headroom = -_base;
-            bool full = _grow.x >= headroom.x - 1f && _grow.y >= headroom.y - 1f;
-            if (full)
+            if (IsFull())
             {
                 // Back to where it was before, or to the size the game itself draws if this map has
                 // never been anywhere else.
@@ -176,6 +240,42 @@ namespace TheGreatestMap
             {
                 if (e != null && e.clickCount == 2 && OnDouble != null) OnDouble();
             }
+        }
+
+        internal sealed class Click : MonoBehaviour, IPointerClickHandler
+        {
+            public System.Action OnClick;
+            void IPointerClickHandler.OnPointerClick(PointerEventData e)
+            {
+                if (OnClick != null) OnClick();
+            }
+        }
+
+        private static Sprite _square;
+
+        /// <summary>The usual maximize mark: an open square, drawn rather than shipped.</summary>
+        private static Sprite Square()
+        {
+            if (_square != null) return _square;
+            const int n = 24, border = 3, inset = 3;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    bool inside = x >= inset && x < n - inset && y >= inset && y < n - inset;
+                    bool hollow = x >= inset + border && x < n - inset - border
+                                  && y >= inset + border && y < n - inset - border;
+                    px[y * n + x] = new Color32(255, 255, 255, (byte)(inside && !hollow ? 255 : 0));
+                }
+            tex.SetPixels32(px);
+            tex.Apply(false, true);
+            tex.filterMode = FilterMode.Bilinear;
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.hideFlags = HideFlags.HideAndDontSave;
+            _square = Sprite.Create(tex, new Rect(0f, 0f, n, n), new Vector2(0.5f, 0.5f), 100f);
+            _square.hideFlags = HideFlags.HideAndDontSave;
+            return _square;
         }
 
         /// <summary>

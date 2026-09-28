@@ -77,10 +77,11 @@ namespace TheGreatestMap
         {
             var rect = toggle.Rect;
             if (rect == null || rect.parent as RectTransform == null) return;
-            const float margin = 16f;
-            float dx = TgmConfig.PauseButtonOffsetX != null ? TgmConfig.PauseButtonOffsetX.Value : 0f;
-            float dy = TgmConfig.PauseButtonOffsetY != null ? TgmConfig.PauseButtonOffsetY.Value : 0f;
-            var want = new Vector2(-margin + dx, -margin + dy);
+            // Pivoted in the middle like the rest of the row, so hovering swells it evenly. The
+            // legend has a pause mark of its own, built the same way, which keeps its own corner.
+            var center = new Vector2(0.5f, 0.5f);
+            if (rect.pivot != center) rect.pivot = center;
+            var want = MapFrame.Slot(2);   // leftmost of the row along the map's top edge
             if (rect.anchoredPosition != want) rect.anchoredPosition = want;
         }
     }
@@ -93,11 +94,12 @@ namespace TheGreatestMap
     internal sealed class PauseToggle
     {
         private static readonly Color Off = new Color(0.6f, 0.6f, 0.6f, 0.85f);
-        private static readonly Color Paused = new Color(1f, 0.63f, 0.24f, 1f); // Valheim orange
+        internal static readonly Color Paused = new Color(1f, 0.63f, 0.24f, 1f); // Valheim orange; the row's "on"
         private static readonly Color Refused = new Color(1f, 0.45f, 0.4f, 1f);
 
         private GameObject _root;
         private Image _left, _right, _slash;
+        private MenuKit.Glow _hover;
 
         internal bool Alive => _root != null;
         internal RectTransform Rect => _root != null ? (RectTransform)_root.transform : null;
@@ -124,6 +126,7 @@ namespace TheGreatestMap
             var hit = t._root.GetComponent<Image>();
             hit.color = new Color(1f, 1f, 1f, 0f); // invisible, but it is what catches the click
             hit.raycastTarget = true;
+            t._hover = t._root.AddComponent<MenuKit.Glow>();
 
             t._left = Bar(t._root.transform, new Vector2(6f, 18f), new Vector2(-5f, 0f));
             t._right = Bar(t._root.transform, new Vector2(6f, 18f), new Vector2(5f, 0f));
@@ -169,6 +172,9 @@ namespace TheGreatestMap
             if (!on) color = Off;
             else if (Game.IsPaused()) color = Paused;
             else { color = Refused; refused = true; }
+            bool lit = _hover != null && _hover.Over;
+            color = MenuKit.Lit(color, lit);
+            if (_root != null) _root.transform.localScale = MenuKit.Magnified(Vector3.one, lit);
             _left.color = color;
             _right.color = color;
             _slash.color = color;

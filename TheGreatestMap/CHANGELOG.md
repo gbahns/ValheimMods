@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.6.0 — unreleased
+## 1.6.0 — 2026-09-28
 
 Client-side; works with a 0.2.x server.
 
@@ -16,6 +16,15 @@ Client-side; works with a 0.2.x server.
   Growing it shows more of the world rather than drawing the same world larger: the map's scale
   comes from its height, so the zoom is let out by however much the height grew. "Map Resize Shows
   More" (Display, on) turns that off and leaves the zoom where you set it.
+- The map's buttons are one row in its top-right corner: the pause mark, a maximize square and the
+  map pin, all the same size. The pin used to be drawn large and hung off vanilla's icon column,
+  which is anchored to the map's bottom edge, so making the map taller carried it away downward.
+  "Pause Button Offset X" and "Y" now move the whole row; "Marker Button Offset X" and "Y" still
+  nudge the pin alone and default to 0. All three turn bright orange and grow a tenth under the
+  pointer, and wear the pause mark's orange while what they control is on: the maximize square
+  while the map is full, the map pin while its list is open. The biome name the
+  game writes in that same corner is moved down to sit under the row and follows it, rather than
+  the buttons having to dodge it.
 - New console command `tgm_mapui`: what the large map's layout measures, how much of the screen it
   uses and how its parts are anchored.
 

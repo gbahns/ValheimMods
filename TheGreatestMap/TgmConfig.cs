@@ -228,17 +228,17 @@ namespace TheGreatestMap
                 "or shows every marker from this mod at once, as right-clicking a vanilla icon does for that icon; " +
                 "left-clicking it opens the list of kinds, for hiding them one at a time. The pin is drawn gold while " +
                 "markers are shown and gray while they are hidden.");
-            MarkerButtonOffsetX = mod.BindLocal("Display", "Marker Button Offset X", 33f,
-                "Move the map-pin button sideways from vanilla's icon column, in pixels: positive right, negative left. " +
-                "The biome name the map writes while you point at it is drawn in the same corner, so the pin sits out " +
-                "of its way. Changes show at once with the map open.");
-            MarkerButtonOffsetY = mod.BindLocal("Display", "Marker Button Offset Y", 15f,
-                "Move the map-pin button up or down from above vanilla's icon column, in pixels: positive up, negative down.");
+            MarkerButtonOffsetX = mod.BindLocal("Display", "Marker Button Offset X", 0f,
+                "Move the map-pin button sideways from its place in the row, in pixels: positive right, negative left. " +
+                "0 leaves it beside the maximize square. Changes show at once with the map open.");
+            MarkerButtonOffsetY = mod.BindLocal("Display", "Marker Button Offset Y", 0f,
+                "Move the map-pin button up or down from its place in the row, in pixels: positive up, negative down.");
             PauseButtonOffsetX = mod.BindLocal("Display", "Pause Button Offset X", 0f,
-                "Move the pause mark sideways from the map's top-right corner, in pixels: positive right, negative left.");
-            PauseButtonOffsetY = mod.BindLocal("Display", "Pause Button Offset Y", -20f,
-                "Move the pause mark up or down, in pixels: negative down, positive up. It sits below the biome name " +
-                "rather than beside it, since both want the same corner.");
+                "Move the whole row of map buttons sideways from the map's top-right corner, in pixels: positive " +
+                "right, negative left. The pause mark, the maximize square and the map pin move together.");
+            PauseButtonOffsetY = mod.BindLocal("Display", "Pause Button Offset Y", 0f,
+                "Move the whole row of map buttons up or down, in pixels: negative down, positive up. The row sits in " +
+                "the map's top-right corner and the biome name is moved down to sit under it, so it follows the row.");
 
             ShowAllMarkers = mod.BindLocal("Display", "Show Markers", true,
                 "Draw this mod's markers on your map at all. Off hides every one of them, whatever the per-kind switches " +

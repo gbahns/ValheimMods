@@ -19,7 +19,8 @@ namespace TheGreatestMap
         private static GameObject _button;
         private static readonly List<Image> _tinted = new List<Image>();
         private static Sprite _pin;
-        private static Vector2 _placed;
+        private static MenuKit.Glow _hover;
+        private static Vector3 _normalScale = Vector3.one;
         private static bool _lastShown = true;
 
         private static readonly Color Gold = new Color(1f, 0.93f, 0.72f, 1f);
@@ -66,20 +67,6 @@ namespace TheGreatestMap
             return frame.transform.parent.gameObject;
         }
 
-        private static List<RectTransform> VanillaButtons(Minimap map)
-        {
-            var list = new List<RectTransform>();
-            void Add(Image frame)
-            {
-                if (frame == null || frame.transform.parent == null) return;
-                var rt = frame.transform.parent as RectTransform;
-                if (rt != null && !list.Contains(rt)) list.Add(rt);
-            }
-            Add(map.m_selectedIcon0); Add(map.m_selectedIcon1); Add(map.m_selectedIcon2); Add(map.m_selectedIcon3); Add(map.m_selectedIcon4);
-            Add(map.m_selectedIconDeath); Add(map.m_selectedIconBoss); Add(map.m_selectedIconPing);
-            return list;
-        }
-
         private static void Build(Minimap map)
         {
             var template = Template(map);
@@ -87,18 +74,6 @@ namespace TheGreatestMap
             var panel = template.transform.parent;
             if (panel == null) return;
             var templateRect = (RectTransform)template.transform;
-            float baseX = templateRect.anchoredPosition.x;
-
-            // The spacing vanilla uses between the buttons that share the template's parent.
-            float topY = templateRect.anchoredPosition.y;
-            float pitch = 0f;
-            var sameParent = new List<RectTransform>();
-            foreach (var rt in VanillaButtons(map))
-                if (rt.parent == panel && Mathf.Abs(rt.anchoredPosition.x - baseX) < 1f) sameParent.Add(rt);
-            sameParent.Sort((a, b) => b.anchoredPosition.y.CompareTo(a.anchoredPosition.y));
-            if (sameParent.Count > 0) topY = sameParent[0].anchoredPosition.y;
-            if (sameParent.Count >= 2) pitch = sameParent[0].anchoredPosition.y - sameParent[1].anchoredPosition.y;
-            if (pitch <= 0f) pitch = Mathf.Max(templateRect.rect.height, 24f) + 4f;
 
             var go = Object.Instantiate(template, panel);
             go.name = "TGM_MarkerToggle";
@@ -143,6 +118,7 @@ namespace TheGreatestMap
             clickImage.color = new Color(0f, 0f, 0f, 0f);
             clickImage.raycastTarget = true;
             click.AddComponent<ToggleButton>();
+            _hover = click.AddComponent<MenuKit.Glow>();
 
             var source = go.GetComponent<UITooltip>();
             if (source != null && source.m_tooltipPrefab != null)
@@ -157,55 +133,29 @@ namespace TheGreatestMap
             if (element == null) element = go.AddComponent<LayoutElement>();
             element.ignoreLayout = true;
 
-            // Above every vanilla button in this column, the death and boss icons included. Those
-            // two need not share the others' parent or anchoring, so the column is picked out by
-            // where the buttons actually are on screen and the clearance is measured there too.
-            var ourRect = (RectTransform)go.transform;
-            ourRect.anchoredPosition = new Vector2(baseX, topY + pitch);
-            float scale = Mathf.Abs(panel.lossyScale.y) > 0.0001f ? panel.lossyScale.y : 1f;
-            float columnX = WorldCenterX(templateRect);
-            float tolerance = Mathf.Max(templateRect.rect.width * Mathf.Abs(templateRect.lossyScale.x), 8f) * 0.75f;
-            float highest = float.MinValue;
-            foreach (var rt in VanillaButtons(map))
-            {
-                if (rt == ourRect || Mathf.Abs(WorldCenterX(rt) - columnX) > tolerance) continue;
-                float top = WorldTop(rt);
-                if (top > highest) highest = top;
-            }
-            if (highest > float.MinValue)
-            {
-                float gap = Mathf.Max(4f, pitch - Mathf.Max(templateRect.rect.height, 1f));
-                float lift = (highest + gap * scale - WorldBottom(ourRect)) / scale;
-                if (lift > 0f) ourRect.anchoredPosition += new Vector2(0f, lift);
-            }
-            HangFromTheTop(map, ourRect);
+            JoinTheRow(map, (RectTransform)go.transform, templateRect);
             go.transform.SetAsLastSibling();
             Recolor(force: true);
         }
 
         /// <summary>
-        /// Keep the button where it was measured, but hang it from the map's top-right corner
-        /// instead of vanilla's icon panel. That panel is anchored to the map's bottom edge, which
-        /// is right for a column that grows upward from the bottom but wrong for us: a map made
-        /// taller carried the button down with the bottom edge, away from the corner it belongs in.
-        /// The place is worked out in the panel first, so the measuring against vanilla's column
-        /// still decides it, and then carried across unchanged.
+        /// Take a place in the row of buttons along the map's top-right corner, beside the pause
+        /// mark and the maximize square, and shrink to their size. The clone comes from vanilla's
+        /// icon column, which is drawn large and anchored to the map's bottom edge -- both wrong
+        /// here, so it leaves that panel for the map root and is scaled down to match its
+        /// neighbors. Scaling rather than resizing keeps the button's own insides in proportion.
         /// </summary>
-        private static void HangFromTheTop(Minimap map, RectTransform ourRect)
+        private static void JoinTheRow(Minimap map, RectTransform ourRect, RectTransform templateRect)
         {
             var root = map.m_largeRoot != null ? map.m_largeRoot.transform as RectTransform : null;
-            if (root == null) { _placed = ourRect.anchoredPosition; return; }
-            var corners = new Vector3[4];
-            ourRect.GetWorldCorners(corners);
-            var world = corners[1]; // top-left, matching the pivot we are about to give it
-            ourRect.SetParent(root, true);
+            if (root == null) return;
+            ourRect.SetParent(root, false);
             ourRect.anchorMin = ourRect.anchorMax = new Vector2(1f, 1f);
-            ourRect.pivot = new Vector2(0f, 1f);
-            root.GetWorldCorners(corners);
-            var topRight = corners[2];
-            float scale = Mathf.Abs(root.lossyScale.y) > 0.0001f ? root.lossyScale.y : 1f;
-            _placed = new Vector2((world.x - topRight.x) / scale, (world.y - topRight.y) / scale);
-            ourRect.anchoredPosition = _placed;
+            ourRect.pivot = new Vector2(0.5f, 0.5f);
+            float side = Mathf.Max(1f, templateRect.rect.height);
+            float scale = MapFrame.ButtonSize / side;
+            _normalScale = new Vector3(scale, scale, 1f);
+            ourRect.localScale = _normalScale;
         }
 
         /// <summary>
@@ -220,42 +170,20 @@ namespace TheGreatestMap
             var rect = (RectTransform)_button.transform;
             float dx = TgmConfig.MarkerButtonOffsetX != null ? TgmConfig.MarkerButtonOffsetX.Value : 0f;
             float dy = TgmConfig.MarkerButtonOffsetY != null ? TgmConfig.MarkerButtonOffsetY.Value : 0f;
-            var want = new Vector2(_placed.x + dx, _placed.y + dy);
-            // The measured place can be above the map's own top edge -- vanilla's ping icon is
-            // anchored up there and the button is lifted clear of it -- which is fine on a map
-            // with room above it and not fine on one opened out to the whole screen. The pivot is
-            // the button's top-left corner, so its own y is the top: hold that on screen.
+            var want = MapFrame.Slot(0) + new Vector2(dx, dy);
+            // A large enough offset would push the button off the top of a map opened out to the
+            // whole screen. It is pivoted in its middle, so its top is half a button above its own
+            // y: hold that on screen whatever the offset asks for.
             var parent = rect.parent as RectTransform;
             if (parent != null)
             {
                 var corners = new Vector3[4];
                 parent.GetWorldCorners(corners);
                 float scale = Mathf.Abs(parent.lossyScale.y) > 0.0001f ? parent.lossyScale.y : 1f;
-                float highest = (Screen.height - 2f - corners[1].y) / scale;
+                float highest = (Screen.height - 2f - corners[1].y) / scale - MapFrame.ButtonSize * 0.5f;
                 if (want.y > highest) want.y = highest;
             }
             if (rect.anchoredPosition != want) rect.anchoredPosition = want;
-        }
-
-        private static readonly Vector3[] _corners = new Vector3[4];
-
-        /// <summary>Corners run bottom-left, top-left, top-right, bottom-right.</summary>
-        private static float WorldTop(RectTransform rt)
-        {
-            rt.GetWorldCorners(_corners);
-            return Mathf.Max(_corners[1].y, _corners[2].y);
-        }
-
-        private static float WorldBottom(RectTransform rt)
-        {
-            rt.GetWorldCorners(_corners);
-            return Mathf.Min(_corners[0].y, _corners[3].y);
-        }
-
-        private static float WorldCenterX(RectTransform rt)
-        {
-            rt.GetWorldCorners(_corners);
-            return (_corners[0].x + _corners[2].x) * 0.5f;
         }
 
         /// <summary>"Child/Grandchild" path from an ancestor to a descendant, or null if not related.</summary>
@@ -268,13 +196,22 @@ namespace TheGreatestMap
             return t == ancestor ? string.Join("/", parts) : null;
         }
 
+        private static bool _lastLit, _lastOpen;
+
         private static void Recolor(bool force = false)
         {
             bool shown = TgmConfig.ShowAllMarkers == null || TgmConfig.ShowAllMarkers.Value;
-            if (!force && shown == _lastShown) return;
+            bool lit = _hover != null && _hover.Over;
+            bool open = KindMenu.IsOpen;
+            if (!force && shown == _lastShown && lit == _lastLit && open == _lastOpen) return;
+            _lastLit = lit;
+            _lastOpen = open;
             _lastShown = shown;
-            var color = shown ? Gold : Off;
+            // Orange while the list is up, the same orange the pause mark wears while pausing is on:
+            // along this row, orange means this one is doing something.
+            var color = MenuKit.Lit(open ? PauseToggle.Paused : (shown ? Gold : Off), lit);
             foreach (var img in _tinted) if (img != null) img.color = color;
+            if (_button != null) _button.transform.localScale = MenuKit.Magnified(_normalScale, lit);
         }
 
         internal static void ToggleAll()
