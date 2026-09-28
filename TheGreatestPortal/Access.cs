@@ -51,6 +51,8 @@ namespace TheGreatestPortal
 
         private static Func<Color> _tgmPortalColor;
         private static bool _probedTgm;
+        private static Action<string> _claimObituary;
+        private static bool _probedObituaries;
 
         /// <summary>
         /// The color TheGreatestMap paints portal markers, so this mod's portal pins match the
@@ -80,6 +82,35 @@ namespace TheGreatestPortal
             if (_tgmPortalColor == null) return Color.white;
             try { return _tgmPortalColor(); }
             catch { _tgmPortalColor = null; return Color.white; }
+        }
+
+        /// <summary>
+        /// Says what this mod's own killing should read as, for TheObituaries. Valheim records
+        /// only the blow, so a death dealt by a mod carries no cause at all and would otherwise be
+        /// announced with the blank line kept for deaths nothing is known about. Found by name,
+        /// like the map color above: without that mod nothing is announced, which is how it was.
+        /// </summary>
+        internal static void ClaimObituary(string line)
+        {
+            if (!_probedObituaries)
+            {
+                _probedObituaries = true;
+                var type = AccessTools.TypeByName("TheObituaries.Api");
+                if (type != null)
+                {
+                    var method = AccessTools.Method(type, "NextDeath", new[] { typeof(string) });
+                    if (method != null)
+                    {
+                        try { _claimObituary = AccessTools.MethodDelegate<Action<string>>(method); }
+                        catch (Exception e) { TheGreatestPortalMod.Log.LogWarning($"[TheGreatestPortal] Could not reach TheObituaries; deaths are announced as it sees fit: {e.Message}"); }
+                    }
+                    // An older TheObituaries has no line to claim. Not a fault, just a plainer obituary.
+                    else TheGreatestPortalMod.Log.LogInfo("[TheGreatestPortal] TheObituaries is installed but takes no death line; deaths are announced as it sees fit.");
+                }
+            }
+            if (_claimObituary == null) return;
+            try { _claimObituary(line); }
+            catch { _claimObituary = null; }
         }
 
         /// <summary>Vanilla's click radius for pins on the large map, in world metres.</summary>

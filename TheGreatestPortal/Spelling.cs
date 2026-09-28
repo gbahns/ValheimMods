@@ -38,6 +38,7 @@ namespace TheGreatestPortal
             hit.m_dodgeable = false;
             hit.m_point = player.transform.position + Vector3.up;
             hit.m_dir = Vector3.down;
+            Access.ClaimObituary("{v} was smote for being an idiot.");
             player.Damage(hit);
         }
 
