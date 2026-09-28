@@ -173,12 +173,17 @@ namespace SpreadTheLoad
     }
 
     /// <summary>
-    /// Watches damage go past on its way to the object's owner. See <see cref="Attackers"/>.
+    /// Watches the traffic the server relays: damage on its way to an object's owner, and the
+    /// requests that open a container. See <see cref="Attackers"/> and <see cref="Containers"/>.
     /// A prefix rather than a postfix only so the timestamp is the moment the swing was relayed.
     /// </summary>
     [HarmonyPatch(typeof(ZRoutedRpc), "RouteRPC")]
     internal static class RouteRpcPatch
     {
-        private static void Prefix(ZRoutedRpc.RoutedRPCData rpcData) => Attackers.Note(rpcData);
+        private static void Prefix(ZRoutedRpc.RoutedRPCData rpcData)
+        {
+            Attackers.Note(rpcData);
+            Containers.Note(rpcData);
+        }
     }
 }

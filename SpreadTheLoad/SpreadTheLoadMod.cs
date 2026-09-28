@@ -197,6 +197,7 @@ namespace SpreadTheLoad
                 {
                     _nextJudge = Time.unscaledTime + 1f;
                     Detection.Tick(Time.unscaledTime, znet);
+                    Containers.Tick(Time.unscaledTime);
                 }
             }
             catch { /* the watch is a convenience; it must never take the server down */ }

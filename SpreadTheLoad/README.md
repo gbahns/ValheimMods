@@ -155,6 +155,17 @@ Which is better is an open question - reasoned about, not measured. Try both.
 An unattended ship has no captain, so it falls back to the ordinary yield rules and moves off a
 struggling machine like anything else.
 
+## Open chests
+
+A container someone has open stays with them, for the same reason a helm does. Vanilla's container
+code assumes whoever has the window open owns it: only the owner writes the chest back, and the
+panel is repainted from the network copy whenever the data revision moves. Move the chest to
+another machine mid-session and the stack they just dragged out reappears in the chest while the
+one they took sits in their inventory — nothing is duplicated, and closing the chest clears it, but
+it is not a thing anyone should have to see.
+
+There is no setting for this. A chest is released as soon as it is closed.
+
 ## Compatibility
 
 Known conflict: **ValheimPerformanceOptimizations** replaces `ZDOMan.ReleaseNearbyZDOS` with its own

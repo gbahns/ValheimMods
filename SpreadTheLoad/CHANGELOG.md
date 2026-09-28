@@ -10,6 +10,16 @@
   went black and they had to rejoin. The test is now `Character`, which every creature has too, so
   nothing living is ever moved.
 
+- **A chest stays with the player who has it open.** Vanilla's container code assumes whoever has
+  the window open owns the ZDO - `OnContainerChanged` saves only `if (IsOwner())`, and `Load()`
+  repaints the panel whenever the data revision moves. Steering a yielded player's chest away
+  mid-session broke both: the stack they dragged out reappeared in the chest a moment later while
+  the one they took sat in their inventory. Nothing was ever duplicated and closing the chest
+  cleared it, but it looked alarming. Open containers are now held with their user, the way a
+  ship is held with its captain. The open request names the chest - it is routed through the
+  server, and only travels at all when somebody else owns it - and the container's own `InUse`
+  flag says when to let go.
+
 ## 0.1.3
 
 - **A tree, rock or ore vein now goes to whoever is hitting it.** Vanilla never does this - TreeBase,

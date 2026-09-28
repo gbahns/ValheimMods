@@ -76,6 +76,11 @@ namespace SpreadTheLoad
                 if (_yielding.Count == 0) return false;
                 if (!_yielding.TryGetValue(ownerUid, out string who)) return false;
 
+                // A chest they have open stays theirs. Vanilla's container code assumes the person
+                // with the window open owns it, and taking it away mid-drag makes the stack they
+                // pulled reappear in the chest on their screen. See Containers.
+                if (Containers.IsHeld(point)) return false;
+
                 // Only ever a no when somebody else is genuinely in range. Without this the object
                 // would be left for whoever happened to be iterated next, or for nobody at all,
                 // and a creature with no owner runs no AI.
