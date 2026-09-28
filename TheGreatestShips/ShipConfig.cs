@@ -57,7 +57,8 @@ namespace TheGreatestShips
         //  17 (0.9.1): Small Byrding 12 Deer Hide, Byrding 15.
         //  18 (0.9.1): the Greater Byrding's Wood is 51, its pen's pieces with the gate.
         //  19 (0.9.1): ... and 50 with a gate each side.
-        private const int CurrentConfigVersion = 19;
+        //  20 (0.9.5): the Busse holds 48 (8 x 6, was 9 x 4), on a 1.4 x 1.25 hull with recipe and health to match.
+        private const int CurrentConfigVersion = 20;
 
         internal static void Bind(TheGreatestShipsMod mod)
         {

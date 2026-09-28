@@ -139,11 +139,12 @@ namespace TheGreatestShips
                 BaseName           = "Longship",
                 BaseTopSpeed       = 9.65f,
                 DisplayName        = "Busse",
-                Description        = "A longship built out further than the Knarr. Slower still and even clumsier, but holds more and shrugs off more damage.",
-                StorageWidth       = 9,
-                StorageHeight      = 4,
-                DefaultRecipe      = "FineWood:50,ElderBark:60,IronNails:140,DeerHide:15,TrollHide:15",   // weighs 335
-                OldDefaultRecipes  = new[] { "FineWood:50,ElderBark:30,IronNails:140,DeerHide:15,TrollHide:15,RoundLog:30",
+                Description        = "A longship built out further than the Knarr. Slower still and even clumsier, but holds half again as much and shrugs off more damage.",
+                StorageWidth       = 8,       // 32 / 48 / 64 up the cargo line; 9 wide (36) overflowed the panel
+                StorageHeight      = 6,
+                DefaultRecipe      = "FineWood:50,ElderBark:70,IronNails:150,DeerHide:15,TrollHide:15",   // weighs 360; ~1.05x a longship's per unit of planking
+                OldDefaultRecipes  = new[] { "FineWood:50,ElderBark:60,IronNails:140,DeerHide:15,TrollHide:15",
+                                             "FineWood:50,ElderBark:30,IronNails:140,DeerHide:15,TrollHide:15,RoundLog:30",
                                              "FineWood:50,ElderBark:40,IronNails:160,DeerHide:15,TrollHide:15,RoundLog:30",
                                              "FineWood:50,ElderBark:50,IronNails:240,DeerHide:15,TrollHide:15,RoundLog:40",
                                              "FineWood:50,ElderBark:60,IronNails:240,TrollHide:15,RoundLog:40",
@@ -152,14 +153,16 @@ namespace TheGreatestShips
                                              "FineWood:55,ElderBark:85,IronNails:250,DeerHide:15,RoundLog:45,Chain:4",
                                              "FineWood:55,ElderBark:85,IronNails:250,DeerHide:15,RoundLog:45" },
                 DefaultSpeed       = 0.83f,   // about 8.0
-                DefaultHealth      = 1400f,
-                OldDefaultHealths  = new[] { 1800f },
+                DefaultHealth      = 1500f,   // 1000 per 80 wood
+                OldDefaultHealths  = new[] { 1400f, 1800f },
                 DefaultRudderSpeed = 0.7f,
                 DefaultSailColor   = Amber,
                 DefaultHullColor   = Green,
                 DefaultHullStripes = 6,
-                DefaultWidth       = 1.3f,
-                DefaultLength      = 1.15f,
+                DefaultWidth       = 1.4f,    // between the Knarr (1.25 x 1.0) and the Big Busse (1.5 x 1.5), so 48
+                DefaultLength      = 1.25f,   // slots is ~1.5x a longship's cargo per deck area, like its neighbors
+                OldDefaultWidths   = new[] { 1.3f },
+                OldDefaultLengths  = new[] { 1.15f },
             },
             new ShipDefinition
             {

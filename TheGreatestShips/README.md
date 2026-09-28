@@ -14,7 +14,7 @@ New ships built on Valheim's own hulls. Install on the server and on every clien
 | Longship *(vanilla)* | | 9.65 | 1000 | normal | 18 | | | | | |
 | **Fast Longship** | Longship | 13.0 | 800 | normal | 12 | 0.85× | 1.1× | blue | red stripes | Fine Wood 40, Ancient Bark 40, Iron Nails 120, Deer Hide 10, Troll Hide 10 |
 | **Knarr** | Longship | 8.6 | 1100 | slower | 32 | 1.25× | | amber | green stripes | Fine Wood 40, Ancient Bark 50, Iron Nails 120, Deer Hide 10, Troll Hide 10 |
-| **Busse** | Longship | about 8.0 | 1400 | slower still | 36 | 1.3× | 1.15× | amber | green stripes | Fine Wood 50, Ancient Bark 60, Iron Nails 140, Deer Hide 15, Troll Hide 15 |
+| **Busse** | Longship | about 8.0 | 1500 | slower still | 48 | 1.4× | 1.25× | amber | green stripes | Fine Wood 50, Ancient Bark 70, Iron Nails 150, Deer Hide 15, Troll Hide 15 |
 | **Big Busse** | Longship | about 7.5 | 1900 | slowest | 64 | 1.5× | 1.5× | amber | green stripes | Fine Wood 60, Ancient Bark 90, Iron Nails 180, Deer Hide 20, Troll Hide 20 |
 | **Small Byrding** *(experimental)* | Longship | 8.6 | 1000 | normal | 12 | | | white | brown | Fine Wood 40, Ancient Bark 40, Iron Nails 100, Deer Hide 12, Wood 24 |
 | **Byrding** *(experimental)* | Longship, 1.25× | 8.3 | 1400 | a little slower | 18 | | | white | brown | Fine Wood 55, Ancient Bark 55, Iron Nails 150, Deer Hide 15, Wood 36 |
@@ -51,8 +51,8 @@ with swamp guck: the fastest ship here, with a lighter hull and two thirds of a 
 
 Three tiers of deep, heavy longship built to haul, named for real Norse cargo vessels. Each is
 slower and clumsier than a longship, but sturdier, and holds progressively more: the Knarr 32
-stacks, the Busse 36, the Big Busse 64. The Busse and Big Busse are also stretched bow-to-stern
-(1.15× and 1.5×), not just wider, so their bigger hold reads as a longer hull, not just a fatter
+stacks, the Busse 48, the Big Busse 64. The Busse and Big Busse are also stretched bow-to-stern
+(1.25× and 1.5×), not just wider, so their bigger hold reads as a longer hull, not just a fatter
 one; each holds about 1.4× as much per square meter of deck as a longship, which is what a hull
 with no rowing benches should manage.
 

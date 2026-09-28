@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.5 — unreleased
+
+**Breaking: the server and every player need 0.9.5. The Busse's hold changed size, so 0.9.4 and
+0.9.5 cannot share a server.**
+
+- The Busse holds 48 (8 × 6) instead of 36 (9 × 4): the cargo line now steps 32 → 48 → 64, and
+  no hold is wider than the inventory panel any more. Its hull grows to 1.4× wide and 1.25× long
+  to carry that at the same cargo density as its neighbors, and its recipe and health follow
+  the planking rule: 50 Fine Wood, 70 Ancient Bark, 150 Iron Nails, 15 Deer Hide, 15 Troll Hide;
+  health 1500. Anything that sat in an existing Busse's ninth column moves to a free slot the
+  first time the hold loads.
+
 ## 0.9.4 — 2026-09-25
 
 - Fixed: a burst of errors in the log when a pen ship's area unloaded -- a teleport, or sailing

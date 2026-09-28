@@ -76,6 +76,44 @@ namespace TheGreatestShips
     }
 
     /// <summary>
+    /// A hold that got narrower (the Busse went from 9 x 4 to 8 x 6) leaves the items that sat in
+    /// its last column outside the grid: still in the save, invisible in the panel.  After a
+    /// hold loads, anything outside the grid moves to a free slot.  Only the owner's copy is
+    /// touched, and Changed() makes the owner save it.
+    /// </summary>
+    [HarmonyPatch(typeof(Container), "Load")]
+    internal static class ContainerLoadFitPatch
+    {
+        static readonly HashSet<string> _ourShips =
+            new HashSet<string>(System.Linq.Enumerable.Select(ShipDefinitions.All, d => d.PrefabName));
+
+        [HarmonyPostfix]
+        static void Postfix(Container __instance, bool __result)
+        {
+            if (!__result || __instance == null || !__instance.IsOwner()) return;
+            if (!_ourShips.Contains(Utils.GetPrefabName(__instance.transform.root.gameObject))) return;
+
+            var inventory = __instance.GetInventory();
+            if (inventory == null) return;
+            int width = inventory.GetWidth(), height = inventory.GetHeight();
+            int moved = 0;
+            foreach (var item in new List<ItemDrop.ItemData>(inventory.GetAllItems()))
+            {
+                if (item.m_gridPos.x < width && item.m_gridPos.y < height) continue;
+                var slot = inventory.FindEmptySlot(true);
+                if (slot.x < 0) break;
+                item.m_gridPos = slot;
+                moved++;
+            }
+            if (moved > 0)
+            {
+                inventory.Changed();
+                Jotunn.Logger.LogInfo($"[TheGreatestShips] {__instance.m_name}: moved {moved} stack(s) that sat outside the hold's grid into free slots.");
+            }
+        }
+    }
+
+    /// <summary>
     /// A hold wider than the inventory panel (the Busse's is nine slots; vanilla never goes past
     /// eight) overflows it: InventoryGrid.UpdateGui centers the grid in the panel, so half a slot
     /// falls off each side.  The grid root is pinned every frame, so the slots themselves are
