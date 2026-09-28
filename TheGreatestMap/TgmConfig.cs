@@ -13,6 +13,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<KeyboardShortcut> TakeOutMapKey;
         internal static ConfigEntry<KeyboardShortcut> SyncTableKey;
         internal static ConfigEntry<KeyboardShortcut> LegendKey;
+        internal static ConfigEntry<KeyboardShortcut> HighlightPlayersKey;
         internal static ConfigEntry<bool> ShowMessages;
 
         // ── Sharing rules (server-synced) ───────────────────────────────────────────
@@ -39,6 +40,9 @@ namespace TheGreatestMap
         internal static ConfigEntry<float> PauseButtonOffsetY;
         internal static ConfigEntry<bool> MarkerTooltips;
         internal static ConfigEntry<bool> MapOutStatusIcon;
+        internal static ConfigEntry<bool> HighlightPlayersHidesOthers;
+        internal static ConfigEntry<string> HighlightPlayersColor;
+        internal static ConfigEntry<int> HighlightPlayersSize;
         internal static ConfigEntry<string> LegendSize;
         internal static ConfigEntry<string> LegendPosition;
         internal static ConfigEntry<bool> ShowAllMarkers;
@@ -170,6 +174,11 @@ namespace TheGreatestMap
             LegendKey = mod.BindLocal("Keys", "Legend", new KeyboardShortcut(KeyCode.L),
                 "Opens the legend: every marker this mod can draw and the thing it stands for, with the icon resolved " +
                 "the way recording resolves it. The console command tgm_legend does the same.");
+            HighlightPlayersKey = mod.BindLocal("Keys", "Highlight Players", new KeyboardShortcut(KeyCode.P),
+                "On the large map, light up the other players and put every other marker out, so you can find each " +
+                "other on a map carrying hundreds of markers. Press again, or close the map, to bring it all back. " +
+                "Only players who are sharing their position can be shown, which is all the game tells your client.");
+
             ShowMessages = mod.BindLocal("General", "Show Messages", true,
                 "Show small top-left messages when the map is taken out, a marker is recorded, and so on.");
 
@@ -240,6 +249,15 @@ namespace TheGreatestMap
             MapOutStatusIcon = mod.BindLocal("Display", "Map Out Status Icon", true,
                 "Show a folded-map icon among your status effects, beside Rested and Wet, while your pocket map is out, " +
                 "so a glance tells you whether what you find is being written down. Applies at once.");
+            HighlightPlayersHidesOthers = mod.BindLocal("Display", "Highlight Players Hides Others", true,
+                "While the players are lit up, draw nothing else at all. Off keeps the rest of the map and only grows " +
+                "and colors the player markers, which is gentler but harder to read on a crowded map.");
+            HighlightPlayersColor = mod.BindLocal("Display", "Highlight Players Color", "#66E0FF",
+                "Color of the player markers while they are lit up. A hex value such as #66E0FF, or a name such as cyan.");
+            HighlightPlayersSize = mod.BindLocalRange("Display", "Highlight Players Size", 170, 100, 400,
+                "How large the player markers are drawn while lit up, as a percentage of their normal size. They also " +
+                "breathe slightly, so they read as alive rather than as another pin.");
+
             LegendSize = mod.BindLocal("Display", "Legend Size", "560,620",
                 "Width and height of the legend panel, in pixels. Dragging its corner grip changes this.");
             LegendPosition = mod.BindLocal("Display", "Legend Position", "0,0",

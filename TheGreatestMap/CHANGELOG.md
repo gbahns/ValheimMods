@@ -1,6 +1,15 @@
 # Changelog
 
-## 1.4.2 — unreleased
+## 1.5.0 — unreleased
+
+Client-side; works with a 0.2.x server.
+
+- `P` on the large map lights up the other players and puts every other marker out. Their markers grow, take a color
+  of their own and breathe gently; press again, or close the map, and the map comes back exactly as it was, whatever
+  you had hidden yourself included. Nothing is written and nothing is shared. Only players sharing their position can
+  be shown, which is all the game tells your client, and you are told plainly when nobody is rather than being left
+  looking at an emptied map. New settings: "Highlight Players" (Keys, P), and in Display "Highlight Players Hides
+  Others" (on), "Highlight Players Color" (#66E0FF) and "Highlight Players Size" (170%).
 
 - Marker tooltips no longer appear for markers hidden behind TheGreatestPortal's portal list. The
   tooltip works from the map position under the cursor, which knows nothing about panels drawn on

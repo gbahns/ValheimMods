@@ -46,6 +46,7 @@ namespace TheGreatestMap
             IconRegistry.ForgetPicks();
             Reveals.Reset();
             Portals.Reset();
+            PlayerSpotlight.Reset();
         }
 
         private static int LocalType(SharedPin shared)
@@ -614,7 +615,9 @@ namespace TheGreatestMap
         internal static void StylePins(Minimap map)
         {
             bool smallMap = map != null && map.m_mode != Minimap.MapMode.Large;
-            bool hideEverything = TgmConfig.ShowAllMarkers != null && !TgmConfig.ShowAllMarkers.Value;
+            // The player spotlight puts the whole map out, including anything a reveal would have
+            // forced back on: while it is up, the only thing worth seeing is where people are.
+            bool hideEverything = (TgmConfig.ShowAllMarkers != null && !TgmConfig.ShowAllMarkers.Value) || PlayerSpotlight.On;
             _portalPins.Clear();
             foreach (var kv in _idByPin)
             {

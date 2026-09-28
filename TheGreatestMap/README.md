@@ -4,6 +4,14 @@ One shared, living map for your server, without the cartography table mess.
 
 - **Markers travel like exploration.** What you record or place goes onto your own map, saved with your character. At a cartography table your map and the shared map merge both ways, and others pick it up at their next table visit. Two players standing together with their maps out compare and merge their maps directly, markers and explored areas alike, no table needed. An erasure is a dated tombstone that wins over older copies of the marker, so erased markers stay erased instead of coming back from someone else's map. Erasing is off unless the server allows it, and then goes through the marker's right-click menu or Shift + right-click. A server can switch "Sharing Mode" to Instant to have every change go out at once instead.
 - **The cartography table only carries exploration.** Stand at it and it syncs the fog of war by itself (or press the sync key), and it stays quiet unless something is actually exchanged. Player-placed markers are no longer written to or read from tables, and old ones imported from tables are swept away.
+- **Where is everybody?** On the large map, `P` lights up the other players: their markers grow, take a color of
+their own and breathe, and every other marker stops being drawn, so three moving dots are easy to find on a map
+carrying hundreds of them. Press `P` again, or close the map, to bring it all back exactly as it was, including
+whatever you had hidden yourself. Nothing is written and nothing is shared; it is a way of looking. Only players who
+are sharing their position can be shown, since that is all the game tells your client, and you are told when nobody
+is. "Highlight Players Hides Others" keeps the rest of the map if you would rather it stayed, and the color and size
+are settings too.
+
 - **A map you carry in your pocket.** No inventory slot. Press the map key and your character unfolds a map in the left hand and takes a pencil in the right. Recording happens only while it is out, and a folded-map icon sits among your status effects to say so ("Map Out Status Icon"). Attacking, drawing a weapon, getting hit or swimming puts it away. Two server-synced settings control how strict the map is: "Require Map Out To Record" (on by default) and "Require Map Out To Edit" (off by default; when on, placing, erasing and crossing off markers on the map screen also need the map out).
 - **Honest auto-recording.** While the map is out, your character writes down the important things nearby that *you actually found*: berries, mushrooms, herbs, seeds, wild plants, ore deposits, Yggdrasil roots, dungeon entrances, runestones, camps, portals and campfires. Something counts as found only if you looked straight at it, had it under your crosshair, or interacted with it. There is no radar and nothing is ever revealed for you. Traders, boss altars and structures are off by default, the first two because the game already marks them itself.
 - **Markers that look like the thing.** A recorded marker uses the icon of the item it gives you: dandelion, thistle, raspberries, each mushroom, copper, tin, silver. Dungeons and camps use the trophy of what lives there, boss altars the boss trophy. With icons this clear, plant and ore markers carry no text label by default, which is what keeps the map readable. A deposit is recognized by what mining it yields rather than by a list of names, so an ore added by a later update or another mod is marked without anything being configured.
@@ -28,6 +36,7 @@ the top of its changelog entry.
 | `Y` | Take the map out of your pocket / put it away |
 | `U` | Read and write the nearest cartography table right now |
 | `L` | Open the legend: every marker and the thing it stands for |
+| `P` | On the large map: light up the other players and put every other marker out |
 
 Pick keys no other mod acts on. If another mod equips an item on the same key as the map, the
 map folds straight back up (equipping a hand item always puts it away).
