@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.6.1 — 2026-09-28
+
+Client-side; works with a 0.2.x server.
+
+- Markers and their labels stay inside the map, and stay drawn while any part of them is on it.
+  The game keeps a marker only while the point it stands on is inside the visible map, and draws it
+  centered on that point with its label beside it -- so a marker vanished whole while half of it was
+  still showing, and its words ran on past the frame over whatever lay beyond. Markers are now kept
+  while any of them is on the map, and whatever overhangs the frame is cut off at it. This was
+  always so; a map pulled in small only makes it easier to see.
+- Vanilla's icon buttons shrink to fit a small map. They are two panels of a fixed size anchored to
+  the map's bottom edge, some 480 units tall between them, so a map pulled in smaller than that was
+  shorter than its own buttons and they hung off both ends of it. They are scaled down, place and
+  all, and put back the moment there is room.
+
 ## 1.6.0 — 2026-09-28
 
 Client-side; works with a 0.2.x server.

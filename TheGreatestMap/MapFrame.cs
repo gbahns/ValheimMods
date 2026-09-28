@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.Globalization;
+using HarmonyLib;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -28,6 +30,8 @@ namespace TheGreatestMap
         private const float ButtonGap = 8f;
         private const float Margin = 16f;
         private const float MinWidth = 420f, MinHeight = 300f;   // small enough to tuck away, big enough to read
+        private const float TopReserve = Margin + ButtonSize + ButtonGap + 40f;  // our row and the biome name
+        private const float SmallestIcons = 0.4f;
         private const float MoverHeight = 16f;
 
         private static RectTransform _grip, _mover, _maximize;
@@ -36,6 +40,16 @@ namespace TheGreatestMap
         private static Vector2 _grow, _pos;
         private static bool _read;
         private static float _height = float.NaN;   // the rect height the zoom was last matched to
+        private static readonly List<Column> _columns = new List<Column>();
+
+        /// <summary>One of vanilla's icon panels, with the place and size it has when left alone.</summary>
+        private sealed class Column
+        {
+            internal RectTransform Rect;
+            internal Vector2 Pos;
+            internal Vector3 Scale;
+            internal float Reach;     // how far its top stands above the map's bottom edge
+        }
         private static Vector2 _restoreGrow, _restorePos;
         private static bool _restorable;
 
@@ -78,6 +92,8 @@ namespace TheGreatestMap
                 _root = map.m_largeRoot;
                 _base = new Vector2(float.NaN, float.NaN);
                 Build(root);
+                CaptureColumns(root);
+                ClipToMap(map);
             }
             if (float.IsNaN(_base.x)) _base = root.sizeDelta; // whatever the game asks for, before we touch it
             if (!_read) { Load(); _read = true; }
@@ -161,6 +177,7 @@ namespace TheGreatestMap
                 _maximize.localScale = MenuKit.Magnified(Vector3.one, lit);
             }
             MoveBiomeName(root);
+            FitColumns(parent, size);
             if (root.sizeDelta != size || root.anchoredPosition != _pos)
             {
                 root.sizeDelta = size;
@@ -186,6 +203,64 @@ namespace TheGreatestMap
         }
 
         private static readonly Color MaximizeColor = new Color(1f, 0.93f, 0.72f, 0.85f);
+
+        /// <summary>
+        /// Keep markers and their labels inside the map. Both are given a marker's own place, and
+        /// the game decides what to draw by asking whether that one point is on the visible map --
+        /// so a marker just inside the bottom edge is drawn with its icon and its words hanging off
+        /// the frame and over whatever lies beyond. Both roots cover exactly the map, so masking
+        /// them cuts anything that overhangs off at the edge. This is also what lets markers be
+        /// kept past the edge rather than culled at it: see Minimap_IsPointVisible_Patch.
+        /// </summary>
+        private static void ClipToMap(Minimap map)
+        {
+            foreach (var root in new[] { map.m_pinNameRootLarge, map.m_pinRootLarge })
+                if (root != null && root.GetComponent<RectMask2D>() == null)
+                    root.gameObject.AddComponent<RectMask2D>();
+        }
+
+        /// <summary>The icon panels as the game leaves them, before any shrinking of ours.</summary>
+        private static void CaptureColumns(RectTransform root)
+        {
+            _columns.Clear();
+            foreach (var name in new[] { "IconPanel", "IconPanel2" })
+            {
+                var rt = root.Find(name) as RectTransform;
+                if (rt == null) continue;
+                _columns.Add(new Column
+                {
+                    Rect = rt,
+                    Pos = rt.anchoredPosition,
+                    Scale = rt.localScale,
+                    Reach = Mathf.Abs(rt.anchoredPosition.y) + rt.rect.height * 0.5f,
+                });
+            }
+        }
+
+        /// <summary>
+        /// Vanilla's icon buttons are two panels of a fixed size, anchored to the map's bottom
+        /// edge, standing some 480 units tall between them. A map pulled in smaller than that is
+        /// shorter than its own buttons, and they hang off the top and bottom of it. They are
+        /// scaled down to fit, place and all, so the column keeps its proportions and its margin
+        /// from the right edge, and put back the moment there is room again.
+        /// </summary>
+        private static void FitColumns(RectTransform parent, Vector2 size)
+        {
+            if (_columns.Count == 0 || parent == null) return;
+            float reach = 0f;
+            foreach (var c in _columns) if (c.Reach > reach) reach = c.Reach;
+            if (reach <= 1f) return;
+            float room = Mathf.Max(0f, parent.rect.height + size.y - TopReserve);
+            float factor = Mathf.Clamp(room / reach, SmallestIcons, 1f);
+            foreach (var c in _columns)
+            {
+                if (c.Rect == null) continue;
+                var pos = c.Pos * factor;
+                var scale = c.Scale * factor;
+                if (c.Rect.anchoredPosition != pos) c.Rect.anchoredPosition = pos;
+                if (c.Rect.localScale != scale) c.Rect.localScale = scale;
+            }
+        }
 
         /// <summary>
         /// The game writes the biome you are pointing at in the map's top-right corner, which is
@@ -348,5 +423,35 @@ namespace TheGreatestMap
 
         private static string Text(Vector2 v) =>
             v.x.ToString("0.#", CultureInfo.InvariantCulture) + "," + v.y.ToString("0.#", CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// The game keeps a marker only while the point it stands on is inside the visible map, and a
+    /// marker is drawn centered on that point with its label beside it. So a marker vanished whole
+    /// while half of it was still on the map, and one with a label lost the words while they were
+    /// still perfectly readable. This widens the test by enough to cover an icon and a fair label;
+    /// what then overhangs the frame is cut off by the masks on the two pin roots rather than
+    /// drawn over the rest of the screen.
+    /// </summary>
+    [HarmonyPatch(typeof(Minimap), "IsPointVisible")]
+    internal static class Minimap_IsPointVisible_Patch
+    {
+        private const float EdgePixels = 220f;   // half an icon, and a label of ordinary length
+
+        private static void Postfix(Minimap __instance, Vector3 p, RawImage map, ref bool __result)
+        {
+            if (__result || map == null || __instance == null) return;
+            var rect = map.rectTransform.rect;
+            if (rect.width <= 1f || rect.height <= 1f) return;
+            var uv = map.uvRect;
+            // The same arithmetic as the game's own WorldToMapPoint, inlined: this runs for every
+            // marker off the map's edge, which is most of them on a map zoomed in.
+            float half = __instance.m_textureSize * 0.5f;
+            float mx = (p.x / __instance.m_pixelSize + half) / __instance.m_textureSize;
+            float my = (p.z / __instance.m_pixelSize + half) / __instance.m_textureSize;
+            float ex = EdgePixels / rect.width * uv.width;
+            float ey = EdgePixels / rect.height * uv.height;
+            __result = mx > uv.xMin - ex && mx < uv.xMax + ex && my > uv.yMin - ey && my < uv.yMax + ey;
+        }
     }
 }
