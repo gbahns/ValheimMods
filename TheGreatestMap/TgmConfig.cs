@@ -263,8 +263,9 @@ namespace TheGreatestMap
 
             MapExtraSize = mod.BindLocal("Display", "Map Extra Size", "0,0",
                 "How much larger than normal the large map is drawn, as width,height in UI pixels. The game leaves a " +
-                "margin of wasted screen around the map; 0,0 keeps it and the largest value fills the screen. Drag the " +
-                "gold grip in the map's lower-right corner rather than typing here.");
+                "margin of wasted screen around the map; 0,0 keeps it and the largest value fills the screen. Negative " +
+                "values make it smaller than the game draws it, down to a map still worth reading. Drag the gold grip " +
+                "in the map's lower-right corner rather than typing here.");
             MapExtraSize.SettingChanged += (_, __) => MapFrame.Reload();
             MapPosition = mod.BindLocal("Display", "Map Position", "0,0",
                 "Where the large map sits, measured from the middle of the screen in UI pixels. Drag the strip along " +

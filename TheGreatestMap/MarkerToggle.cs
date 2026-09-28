@@ -178,9 +178,34 @@ namespace TheGreatestMap
                 float lift = (highest + gap * scale - WorldBottom(ourRect)) / scale;
                 if (lift > 0f) ourRect.anchoredPosition += new Vector2(0f, lift);
             }
-            _placed = ourRect.anchoredPosition;
+            HangFromTheTop(map, ourRect);
             go.transform.SetAsLastSibling();
             Recolor(force: true);
+        }
+
+        /// <summary>
+        /// Keep the button where it was measured, but hang it from the map's top-right corner
+        /// instead of vanilla's icon panel. That panel is anchored to the map's bottom edge, which
+        /// is right for a column that grows upward from the bottom but wrong for us: a map made
+        /// taller carried the button down with the bottom edge, away from the corner it belongs in.
+        /// The place is worked out in the panel first, so the measuring against vanilla's column
+        /// still decides it, and then carried across unchanged.
+        /// </summary>
+        private static void HangFromTheTop(Minimap map, RectTransform ourRect)
+        {
+            var root = map.m_largeRoot != null ? map.m_largeRoot.transform as RectTransform : null;
+            if (root == null) { _placed = ourRect.anchoredPosition; return; }
+            var corners = new Vector3[4];
+            ourRect.GetWorldCorners(corners);
+            var world = corners[1]; // top-left, matching the pivot we are about to give it
+            ourRect.SetParent(root, true);
+            ourRect.anchorMin = ourRect.anchorMax = new Vector2(1f, 1f);
+            ourRect.pivot = new Vector2(0f, 1f);
+            root.GetWorldCorners(corners);
+            var topRight = corners[2];
+            float scale = Mathf.Abs(root.lossyScale.y) > 0.0001f ? root.lossyScale.y : 1f;
+            _placed = new Vector2((world.x - topRight.x) / scale, (world.y - topRight.y) / scale);
+            ourRect.anchoredPosition = _placed;
         }
 
         /// <summary>

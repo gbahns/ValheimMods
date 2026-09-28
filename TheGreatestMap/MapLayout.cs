@@ -47,6 +47,18 @@ namespace TheGreatestMap
                     : "the pin root does NOT match the map image: growing a rect would move the map out from under the pins, so scale instead");
             }
 
+            // The buttons this mod adds live inside vanilla's icon panels rather than at the root,
+            // so they need finding by name, alongside the vanilla button ours is cloned from.
+            lines.Add("buttons:");
+            Report(lines, root, "TGM_MarkerToggle");
+            Report(lines, root, "TGM_PauseToggle");
+            if (map.m_selectedIcon0 != null && map.m_selectedIcon0.transform.parent != null)
+            {
+                var vanilla = map.m_selectedIcon0.transform.parent as RectTransform;
+                if (vanilla != null)
+                    lines.Add("  vanilla icon button (the template) " + Describe(vanilla, Screen.width, Screen.height) + " parent: " + Name(vanilla.parent));
+            }
+
             lines.Add("children of the root:");
             foreach (Transform child in root)
             {
@@ -56,6 +68,24 @@ namespace TheGreatestMap
                     : "  " + child.name + " (not a RectTransform)");
             }
             return lines;
+        }
+
+        private static void Report(List<string> lines, Transform root, string name)
+        {
+            var found = Find(root, name);
+            if (found == null) { lines.Add("  " + name + ": not built"); return; }
+            lines.Add("  " + name + " " + Describe(found, Screen.width, Screen.height) + " parent: " + Name(found.parent));
+        }
+
+        private static RectTransform Find(Transform t, string name)
+        {
+            if (t.name == name) return t as RectTransform;
+            foreach (Transform child in t)
+            {
+                var hit = Find(child, name);
+                if (hit != null) return hit;
+            }
+            return null;
         }
 
         private static string Describe(RectTransform rt, int screenW, int screenH)

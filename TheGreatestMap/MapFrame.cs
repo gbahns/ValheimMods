@@ -23,6 +23,7 @@ namespace TheGreatestMap
     internal static class MapFrame
     {
         private const float GripSize = 22f;
+        private const float MinWidth = 420f, MinHeight = 300f;   // small enough to tuck away, big enough to read
         private const float MoverHeight = 16f;
 
         private static RectTransform _grip, _mover;
@@ -100,8 +101,14 @@ namespace TheGreatestMap
         {
             var parent = root.parent as RectTransform;
             var headroom = -_base;                                   // reaching 0,0 fills the screen
-            _grow = new Vector2(Mathf.Clamp(_grow.x, 0f, Mathf.Max(0f, headroom.x)),
-                                Mathf.Clamp(_grow.y, 0f, Mathf.Max(0f, headroom.y)));
+            // Smaller than the game's own size is allowed as well, down to something still worth
+            // looking at. The floor never pushes the map bigger, however little screen there is.
+            var floor = parent != null
+                ? new Vector2(Mathf.Min(0f, MinWidth - parent.rect.width - _base.x),
+                              Mathf.Min(0f, MinHeight - parent.rect.height - _base.y))
+                : Vector2.zero;
+            _grow = new Vector2(Mathf.Clamp(_grow.x, floor.x, Mathf.Max(floor.x, headroom.x)),
+                                Mathf.Clamp(_grow.y, floor.y, Mathf.Max(floor.y, headroom.y)));
             var size = _base + _grow;
             // Keep it on screen: at full size there is nowhere to go, and a map dragged off the
             // edge would take its own handles with it.
