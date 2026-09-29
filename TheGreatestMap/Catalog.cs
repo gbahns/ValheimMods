@@ -59,6 +59,17 @@ namespace TheGreatestMap
         /// marker means "cleared" for these, and "already searched" for a structure, which is why
         /// the two are shown and hidden separately.
         /// </summary>
+        /// <summary>
+        /// Things that grow, as opposed to ore in the ground. These are what a player plants, so
+        /// these are the ones worth leaving unrecorded inside a base: a deposit that happens to
+        /// stand in your yard is still a deposit, but your own carrots are not a discovery.
+        /// </summary>
+        internal static bool IsGrown(Category c)
+        {
+            return c == Category.Berries || c == Category.Mushrooms || c == Category.Herbs
+                || c == Category.Seeds || c == Category.Plants;
+        }
+
         internal static bool IsResource(Category c)
         {
             return c == Category.Berries || c == Category.Mushrooms || c == Category.Herbs
@@ -414,15 +425,22 @@ namespace TheGreatestMap
         /// resolved the way recording resolves it. The icon is the only thing on a stored dungeon
         /// marker that says which dungeon it is.
         /// </summary>
-        internal static List<KeyValuePair<string, string>> DungeonTypes()
+        /// <summary>
+        /// The kinds of thing a category holds, as (icon, name) pairs: burial chambers and sunken
+        /// crypts within dungeons, swamp huts and mountain graves within structures. A marker
+        /// stores neither its type nor, usually, a label, so its icon is the only handle on what it
+        /// is -- which is also how a player tells them apart on the map.
+        /// </summary>
+        internal static List<KeyValuePair<string, string>> TypesOf(Category cat)
         {
             if (!_built) Rebuild();
             var list = new List<KeyValuePair<string, string>>();
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             void Add(string prefab, Entry e)
             {
-                if (e.Cat != Category.Dungeon || string.IsNullOrEmpty(prefab)) return;
-                string icon = IconRegistry.Normalize(e.Icon ?? Categories.KnownIcon(prefab) ?? IconFromDungeonName(prefab));
+                if (e.Cat != cat || string.IsNullOrEmpty(prefab)) return;
+                string guess = cat == Category.Dungeon ? IconFromDungeonName(prefab) : null;
+                string icon = IconRegistry.Normalize(e.Icon ?? Categories.KnownIcon(prefab) ?? guess ?? Categories.DefaultIcon(cat));
                 if (icon == null || !seen.Add(icon)) return;
                 list.Add(new KeyValuePair<string, string>(icon, e.Name ?? Prettify(prefab)));
             }

@@ -283,6 +283,24 @@ namespace TheGreatestMap
         /// cleared is worth knowing, and "Show Cleared Deposits" decides whether it is drawn.
         /// Returns whether anything was crossed off.
         /// </summary>
+        /// <summary>
+        /// Cross off every marker of one kind around a spot, and say how many. A deposit mined out
+        /// is one marker, but a leviathan carries several barnacles and takes them all down at
+        /// once, so the nearest one is not the whole story. Markers already crossed off are left
+        /// alone, so nothing is dated twice.
+        /// </summary>
+        internal static int MarkClearedNear(Vector3 pos, float radius, Category kind)
+        {
+            var hits = new List<string>();
+            foreach (var pin in Store.Pins.Values)
+            {
+                if (!pin.Auto || pin.Checked || KindOf(pin) != kind) continue;
+                if (Geo.FlatDistance(pin.Pos, pos) <= radius) hits.Add(pin.Id);
+            }
+            foreach (var id in hits) SetChecked(id, true);
+            return hits.Count;
+        }
+
         internal static bool MarkCleared(string icon, Vector3 pos, float radius)
         {
             SharedPin best = null;

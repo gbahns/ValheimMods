@@ -194,22 +194,27 @@ namespace TheGreatestMap
                 y -= RowHeight;
             }
 
-            // Abandoned houses and the other buildings are not dungeons and stay out of that switch.
-            Group(Categories.Label(Category.Structure), 0f);
-
-            var dungeons = CrossedOff.DungeonGroups();
-            int dungeonCount = 0;
-            foreach (var group in dungeons)
-                if (searched.TryGetValue(group, out int n)) dungeonCount += n;
-            ActionRow(x, y, () => CrossedOff.SetDungeonsHidden(AnyDungeonShown()),
-                () => $"{(AnyDungeonShown() ? "Hide" : "Show")} searched dungeons ({dungeonCount})",
-                () => dungeonCount == 0);
-            y -= RowHeight;
-            foreach (var group in dungeons) Group(group, Indent);
+            // Dungeons and structures are each several things wearing one kind, so each gets a
+            // switch for the lot and a row per type under it.
+            foreach (var kind in Categories.All)
+            {
+                if (!CrossedOff.Splits(kind)) { Group(Categories.Label(kind), 0f); continue; }
+                var groups = CrossedOff.GroupsOf(kind);
+                int total = 0;
+                foreach (var group in groups)
+                    if (searched.TryGetValue(group, out int n)) total += n;
+                var owner = kind;
+                string label = Categories.Label(kind).ToLowerInvariant();
+                ActionRow(x, y, () => CrossedOff.SetTypesHidden(owner, AnyShown(owner)),
+                    () => $"{(AnyShown(owner) ? "Hide" : "Show")} searched {label} ({total})",
+                    () => total == 0);
+                y -= RowHeight;
+                foreach (var group in groups) Group(group, Indent);
+            }
 
             foreach (var kind in Categories.All)
             {
-                if (Categories.IsResource(kind) || kind == Category.Dungeon || kind == Category.Structure) continue;
+                if (Categories.IsResource(kind) || CrossedOff.HasTypes(kind)) continue;   // done above
                 Group(Categories.Label(kind), 0f);
             }
             Group(CrossedOff.Placed, 0f);
@@ -217,9 +222,9 @@ namespace TheGreatestMap
             return y;
         }
 
-        private static bool AnyDungeonShown()
+        private static bool AnyShown(Category cat)
         {
-            foreach (var group in CrossedOff.DungeonGroups())
+            foreach (var group in CrossedOff.GroupsOf(cat))
                 if (!CrossedOff.IsGroupHidden(group)) return true;
             return false;
         }

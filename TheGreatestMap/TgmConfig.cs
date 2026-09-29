@@ -153,6 +153,7 @@ namespace TheGreatestMap
         internal static readonly Dictionary<Category, ConfigEntry<string>> CategoryIcon = new Dictionary<Category, ConfigEntry<string>>();
         internal static ConfigEntry<bool> StructuresIncludeUnlisted;
         internal static ConfigEntry<string> StructuresExcludePrefixes;
+        internal static ConfigEntry<bool> RecordInBase;
         internal static ConfigEntry<bool> CrossOffStructuresOnChest;
         internal static ConfigEntry<bool> CrossOffMinedCopper;
         internal static ConfigEntry<bool> CrossOffMinedSilver;
@@ -425,6 +426,13 @@ namespace TheGreatestMap
                 "were written, such as bear caves. Only markers with that icon whose name says otherwise are touched, so a " +
                 "real sunken crypt keeps it. Runs when your map loads and after each merge, which also catches markers " +
                 "arriving from players still on an older version. The console command tgm_reicon does the same on demand.");
+            RecordInBase = mod.BindLocal("Recording", "Record Plants In Your Base", false,
+                "Write down berries, mushrooms, herbs, seeds and plants standing inside one of your own bases. Off by " +
+                "default: the carrots and turnips in your own garden are not a discovery, and a farm fills the map " +
+                "with markers for crops you planted and already know about. A base is the game's own idea of one, the " +
+                "ground a workbench or fire keeps monsters out of, so it covers the yard as well as the house. Ore " +
+                "deposits are not covered: one standing in your yard is still worth knowing about.");
+
             CrossOffStructuresOnChest = mod.BindSynced("Recording", "Cross Off Structures When Searched", true,
                 "Opening a chest inside a structure crosses its marker off for everyone. If the structure has no marker yet, " +
                 "it is remembered as searched and its marker starts crossed off when it is recorded.");

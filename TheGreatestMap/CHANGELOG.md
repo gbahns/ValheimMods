@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.7.0 — 2026-09-29
+
+Client-side; works with a 0.2.x server.
+
+- **The crops in your own base are not written down.** New setting "Record Plants In Your Base"
+  (Recording, off): berries, mushrooms, herbs, seeds and plants standing inside one of your own
+  bases are left unrecorded, so a farm no longer puts a marker on every carrot you planted. A base
+  is the game's own idea of one, the ground a workbench or fire keeps monsters out of, so it covers
+  the fields as well as the house. Ore deposits are not covered: one standing in your yard is still
+  worth knowing about. Markers already written stay; `tgm_erase Seeds 60` clears the ones near you.
+- **Barnacles are crossed off when the leviathan sinks.** A few hits and it dives, taking them with
+  it, so the marker pointed at open ocean. Sinking now counts as mining them out: the markers are
+  crossed off rather than erased, keeping the record of where a leviathan surfaced, and nothing is
+  suppressed, so one that surfaces there again is recorded again.
+- Crossed-off markers can be hidden by type for any kind that has types, not dungeons alone. A kind
+  splits only once its types wear different icons -- a type is read from a marker's icon -- so
+  structures stay one group until their icons tell them apart, and will split by themselves when
+  they do.
+
 ## 1.6.1 — 2026-09-28
 
 Client-side; works with a 0.2.x server.

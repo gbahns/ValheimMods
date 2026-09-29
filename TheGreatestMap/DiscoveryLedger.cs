@@ -102,9 +102,23 @@ namespace TheGreatestMap
             if (Catalog.TryClassify(go, out var found)) MarkFound(found);
         }
 
+        /// <summary>
+        /// Your own garden. What you planted you already know about, and a farm would otherwise put
+        /// a marker on every carrot. The test is the game's own: the area a workbench or fire holds
+        /// against monsters, which is the same ground a player thinks of as their base.
+        /// </summary>
+        private static bool InOwnBase(Found found)
+        {
+            if (TgmConfig.RecordInBase != null && TgmConfig.RecordInBase.Value) return false;
+            if (!Categories.IsGrown(found.Cat)) return false;
+            try { return EffectArea.IsPointInsideArea(found.Pos, EffectArea.Type.PlayerBase, 0f) != null; }
+            catch (Exception) { return false; }
+        }
+
         internal static void MarkFound(Found found)
         {
             if (found == null || string.IsNullOrEmpty(found.Key)) return;
+            if (InOwnBase(found)) return;
             // Correcting a marker that is already on the map is not recording a discovery, so it
             // does not wait for the pocket map to come out: the moment the place is seen, what the
             // map says about it can be made true. Writing a new marker still waits, as it should.

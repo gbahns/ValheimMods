@@ -21,15 +21,39 @@ namespace TheGreatestMap
         internal const string Placed = "Placed Markers";
         internal const string Unsorted = "Other Markers";
 
-        private static Dictionary<string, string> _dungeonTypeByIcon;
-        private static List<string> _dungeonGroups;
+        /// <summary>
+        /// Kinds whose markers are grouped by what they are rather than lumped together. Dungeons
+        /// and structures are both several things wearing one category: a player done with burial
+        /// chambers may still want their sunken crypts, and one done with swamp huts may still want
+        /// mountain graves.
+        /// </summary>
+        internal static bool HasTypes(Category c) => c == Category.Dungeon || c == Category.Structure;
+
+        /// <summary>
+        /// True once this kind's types are actually told apart on the map. A type is read from a
+        /// marker's icon, so a kind whose entries all wear one icon has nothing to split by, and
+        /// splitting it anyway would file every structure under whichever entry came first. It
+        /// stays one group until the catalog gives its types icons of their own, and splits by
+        /// itself when it does. More than one real type, that is, besides the catch-all.
+        /// </summary>
+        internal static bool Splits(Category c) => HasTypes(c) && GroupsOf(c).Count > 2;
+
+        /// <summary>The group for one of these whose icon the catalog does not know.</summary>
+        internal static string Catchall(Category c) => c == Category.Dungeon ? OtherDungeons : "Other " + Categories.Label(c);
+
+        private sealed class Types
+        {
+            internal Dictionary<string, string> ByIcon;
+            internal List<string> Groups;
+        }
+
+        private static readonly Dictionary<Category, Types> _types = new Dictionary<Category, Types>();
         private static HashSet<string> _hidden;
 
         /// <summary>Forget everything derived from the catalog, after it changes.</summary>
         internal static void Forget()
         {
-            _dungeonTypeByIcon = null;
-            _dungeonGroups = null;
+            _types.Clear();
         }
 
         /// <summary>Forget the parsed hidden list, after the setting changes.</summary>
@@ -49,21 +73,25 @@ namespace TheGreatestMap
             if (kind.HasValue)
             {
                 if (Categories.IsResource(kind.Value)) return null;
-                if (kind.Value == Category.Dungeon) return DungeonType(pin.Icon);
+                if (Splits(kind.Value)) return TypeOf(kind.Value, pin.Icon);
                 return Categories.Label(kind.Value);
             }
             return pin.Auto ? Unsorted : Placed;
         }
 
-        internal static bool IsDungeonGroup(string group)
+        /// <summary>The kind whose types this group belongs to, or null if it is not one of those.</summary>
+        internal static Category? OwnerOf(string group)
         {
-            return group != null && Contains(DungeonGroups(), group);
+            if (group == null) return null;
+            foreach (var cat in Categories.All)
+                if (Splits(cat) && Contains(GroupsOf(cat), group)) return cat;
+            return null;
         }
 
-        /// <summary>Every dungeon group there can be, in catalog order, ending with the catch-all.</summary>
-        internal static List<string> DungeonGroups()
+        /// <summary>Every group of this kind there can be, in catalog order, ending with the catch-all.</summary>
+        internal static List<string> GroupsOf(Category cat)
         {
-            Build(out _, out var groups);
+            Build(cat, out _, out var groups);
             return groups;
         }
 
@@ -91,11 +119,11 @@ namespace TheGreatestMap
             Save(set);
         }
 
-        /// <summary>All dungeon groups at once. Structures and the other kinds are not dungeons and are left alone.</summary>
-        internal static void SetDungeonsHidden(bool hide)
+        /// <summary>Every group of one kind at once. The other kinds are left alone.</summary>
+        internal static void SetTypesHidden(Category cat, bool hide)
         {
             var set = new HashSet<string>(Hidden(), StringComparer.OrdinalIgnoreCase);
-            foreach (var group in DungeonGroups())
+            foreach (var group in GroupsOf(cat))
             {
                 if (hide) set.Add(group);
                 else set.Remove(group);
@@ -109,25 +137,25 @@ namespace TheGreatestMap
             if (TgmConfig.HiddenSearched != null && !string.IsNullOrEmpty(TgmConfig.HiddenSearched.Value)) TgmConfig.HiddenSearched.Value = "";
         }
 
-        private static string DungeonType(string icon)
+        private static string TypeOf(Category cat, string icon)
         {
-            Build(out var byIcon, out _);
+            Build(cat, out var byIcon, out _);
             string key = IconRegistry.Normalize(icon);
             if (key != null && byIcon.TryGetValue(key, out var type)) return type;
-            return OtherDungeons;
+            return Catchall(cat);
         }
 
-        private static void Build(out Dictionary<string, string> byIcon, out List<string> groups)
+        private static void Build(Category cat, out Dictionary<string, string> byIcon, out List<string> groups)
         {
-            if (_dungeonTypeByIcon != null)
+            if (_types.TryGetValue(cat, out var cached))
             {
-                byIcon = _dungeonTypeByIcon;
-                groups = _dungeonGroups;
+                byIcon = cached.ByIcon;
+                groups = cached.Groups;
                 return;
             }
             byIcon = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             groups = new List<string>();
-            foreach (var kv in Catalog.DungeonTypes())
+            foreach (var kv in Catalog.TypesOf(cat))
             {
                 string group = Plural(kv.Value);
                 if (byIcon.ContainsKey(kv.Key)) continue;
@@ -137,19 +165,15 @@ namespace TheGreatestMap
             // Sunken crypts wore the swamp crypt key before they had a trophy, and markers written
             // then keep it: the repair only moves markers whose name says they are something else.
             string cryptKey = IconRegistry.Normalize("CryptKey");
-            if (!byIcon.ContainsKey(cryptKey))
+            if (cat == Category.Dungeon && !byIcon.ContainsKey(cryptKey))
             {
                 string sunken = groups.Find(g => g.StartsWith("Sunken", StringComparison.OrdinalIgnoreCase));
                 if (sunken != null) byIcon[cryptKey] = sunken;
             }
-            groups.Add(OtherDungeons);
+            groups.Add(Catchall(cat));
             // An icon the catalog does not spell out is worked out by looking items up, which needs
             // the item database. Without it the answer is used once rather than remembered.
-            if (ObjectDB.instance != null)
-            {
-                _dungeonTypeByIcon = byIcon;
-                _dungeonGroups = groups;
-            }
+            if (ObjectDB.instance != null) _types[cat] = new Types { ByIcon = byIcon, Groups = groups };
         }
 
         private static bool Contains(List<string> list, string value)

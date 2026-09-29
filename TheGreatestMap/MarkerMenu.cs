@@ -316,13 +316,17 @@ namespace TheGreatestMap
                     ClientPins.Restyle();
                     Note($"Hiding {what} (Display > Hidden Searched Places).");
                 }));
-                if (CrossedOff.IsDungeonGroup(group))
-                    items.Add(Item("Hide all searched dungeons", () =>
+                var owner = CrossedOff.OwnerOf(group);
+                if (owner.HasValue)
+                {
+                    string all = Categories.Label(owner.Value).ToLowerInvariant();
+                    items.Add(Item($"Hide all searched {all}", () =>
                     {
-                        CrossedOff.SetDungeonsHidden(true);
+                        CrossedOff.SetTypesHidden(owner.Value, true);
                         ClientPins.Restyle();
-                        Note("Hiding searched dungeons (Display > Hidden Searched Places).");
+                        Note($"Hiding searched {all} (Display > Hidden Searched Places).");
                     }));
+                }
             }
 
             // A note you wrote is yours to take back; a recorded marker stands for something real,
