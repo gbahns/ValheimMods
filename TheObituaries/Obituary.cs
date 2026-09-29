@@ -9,7 +9,7 @@ namespace TheObituaries
     internal enum WeaponKind
     {
         Unknown, Bow, Sword, Axe, Club, Spear, Knife, Fire, Frost, Lightning, Poison, Spirit,
-        Bite, Punch, Log, Rock, Magic, Pickaxe
+        Bite, Punch, Log, Rock, Magic, Pickaxe, Blast
     }
 
     /// <summary>
@@ -82,6 +82,7 @@ namespace TheObituaries
             { WeaponKind.Rock,      new[] { "{v} was stoned by {k}", "{v} caught {k}'s rock with {his} face", "{v} was brained with a boulder by {k}" } },
             { WeaponKind.Magic,     new[] { "{v} was melted by {k}'s staff", "{v} saw the pretty lights from {k}'s staff", "{v} was hexed by {k}", "{v} was blasted by {k}" } },
             { WeaponKind.Pickaxe,   new[] { "{v} was mined by {k}", "{v} was pickaxed by {k}" } },
+            { WeaponKind.Blast,     new[] { "{v} was blown up by {k}", "{v} was caught in {k}'s blast", "{v} stood too close to {k}", "{v} should have backed away from {k}", "{v} was blown to bits by {k}", "{v} didn't see {k} coming apart" } },
         };
 
         // When the weapon cannot be told: still not boring.
@@ -163,6 +164,8 @@ namespace TheObituaries
             ("FallenValkyrie",   new[] { "{v} was slain by {k}" }),
             ("Volture",          new[] { "{v} was fried by {k}" }),
             ("Asksvin",          new[] { "{v} was trampled by {k}" }),
+            // deep north
+            ("Writh",            new[] { "{v} delivered the final blow to {k} from too close", "{v} didn't back away from {k}", "{v} was blown up by {k}" }),
         };
 
         // ── composing ────────────────────────────────────────────────────────────────────
@@ -177,10 +180,45 @@ namespace TheObituaries
             ZDOID attackerId = hit != null ? hit.m_attacker : ZDOID.None;
             Character killer = hit?.GetAttacker();
             AttackerMemory.Entry remembered = AttackerMemory.Lookup(attackerId);
+            string credit = null;   // for the log: how a killer with no attacker on the hit was found
 
-            string weapon = remembered?.Weapon ?? WeaponName(killer);
-            WeaponKind kind = Classify(hit, weapon, killer is Player);
-            facts = Facts(type, killer, remembered, weapon, kind, hit);
+            // The body is gone and the hit was never remembered (it was the first and last):
+            // the ZDO may still say what it was.
+            if (killer == null && remembered == null && attackerId != ZDOID.None)
+            {
+                remembered = DescribeById(attackerId);
+                if (remembered != null) credit = "from its ZDO";
+            }
+
+            WeaponKind kind;
+            if (killer == null && remembered == null && hit != null && (type == HitData.HitType.Poisoned || type == HitData.HitType.Burning))
+            {
+                // The poison or fire a hit left behind: its ticks name no attacker, so credit
+                // whoever last dealt that element. Two of them inside a minute is rare.
+                bool poison = type == HitData.HitType.Poisoned;
+                remembered = AttackerMemory.LastWhere(e => poison ? e.Poison : e.Fire, 60f);
+                if (remembered != null)
+                {
+                    type = HitData.HitType.EnemyHit;
+                    credit = poison ? "last to poison us" : "last to burn us";
+                }
+                kind = poison ? WeaponKind.Poison : WeaponKind.Fire;
+            }
+            else if (killer == null && remembered == null && hit != null && attackerId == ZDOID.None
+                     && type == HitData.HitType.EnemyHit && hit.m_radius > 0f)
+            {
+                // A blast nobody owns (a creature's death explosion): the last thing that hit
+                // us in the seconds before is almost certainly what blew up.
+                remembered = AttackerMemory.LastWhere(e => !e.IsPlayer, 10f);
+                if (remembered != null) credit = "last to hit us, before an ownerless blast";
+                kind = WeaponKind.Blast;
+            }
+            else
+            {
+                string weapon = remembered?.Weapon ?? WeaponName(killer);
+                kind = Classify(hit, weapon, killer is Player || (remembered?.IsPlayer ?? false));
+            }
+            facts = Facts(type, killer, remembered, remembered?.Weapon ?? WeaponName(killer), kind, hit, credit);
 
             // A mod that dealt this death itself has already said what it should read as; the
             // hit it left behind says nothing, so there is nothing here worth working out.
@@ -331,19 +369,23 @@ namespace TheObituaries
             Consider(d.m_spirit,    WeaponKind.Spirit);
             Consider(d.m_pierce,    ranged ? WeaponKind.Bow : WeaponKind.Bite);
             Consider(d.m_slash,     WeaponKind.Bite);
-            Consider(d.m_blunt,     ranged ? WeaponKind.Rock : WeaponKind.Punch);
+            // An area hit that is mostly blunt is an explosion; a poison cloud or fire splash
+            // is still its element, taken above.
+            Consider(d.m_blunt,     hit.m_radius > 0f ? WeaponKind.Blast : ranged ? WeaponKind.Rock : WeaponKind.Punch);
             return best;
         }
 
         /// <summary>One log line with everything the killing hit said, for tuning the tables.</summary>
-        private static string Facts(HitData.HitType type, Character killer, AttackerMemory.Entry remembered, string weapon, WeaponKind kind, HitData hit)
+        private static string Facts(HitData.HitType type, Character killer, AttackerMemory.Entry remembered, string weapon, WeaponKind kind, HitData hit, string credit)
         {
             var sb = new StringBuilder("Killing hit: ");
-            sb.Append(type);
+            sb.Append(hit != null ? hit.m_hitType : type);
             string prefab = killer != null ? PrefabName(killer) : remembered?.Prefab;
-            if (!string.IsNullOrEmpty(prefab)) sb.Append(" by ").Append(prefab).Append(killer == null ? " (from memory)" : "");
+            if (!string.IsNullOrEmpty(prefab)) sb.Append(" by ").Append(prefab).Append(killer == null ? " (" + (credit ?? "from memory") + ")" : "");
+            else if (hit != null && hit.m_attacker != ZDOID.None) sb.Append(" by an attacker nothing is known about");
             if (!string.IsNullOrEmpty(weapon)) sb.Append(" with ").Append(weapon);
             sb.Append(" -> ").Append(kind);
+            if (hit != null && hit.m_radius > 0f) sb.Append("; area ").Append(hit.m_radius.ToString("0.#")).Append(" m");
             if (hit != null)
             {
                 sb.Append("; skill ").Append(hit.m_skill).Append(hit.m_ranged ? ", ranged" : "");
@@ -391,6 +433,50 @@ namespace TheObituaries
             if (level > 1 && TheObituariesMod.LevelStars.Value)
                 name = (level - 1) + "-star " + name;
             return Article(name) + " " + name;
+        }
+
+        /// <summary>
+        /// The attacker as far as its ZDO can say, for one whose body is already gone: a creature
+        /// that blew up as it died has no Character to ask, but the ZDO lingers a moment with
+        /// the prefab, the level and whether it was tamed. Null when even that is gone.
+        /// </summary>
+        internal static AttackerMemory.Entry DescribeById(ZDOID id)
+        {
+            try
+            {
+                if (id == ZDOID.None || ZDOMan.instance == null || ZNetScene.instance == null) return null;
+                ZDO zdo = ZDOMan.instance.GetZDO(id);
+                if (zdo == null) return null;
+                GameObject prefab = ZNetScene.instance.GetPrefab(zdo.GetPrefab());
+                if (prefab == null) return null;
+                var e = new AttackerMemory.Entry { Prefab = prefab.name ?? "", Weapon = "" };
+
+                if (prefab.GetComponent<Player>() != null)
+                {
+                    string pn = zdo.GetString(ZDOVars.s_playerName, "");
+                    e.Description = string.IsNullOrEmpty(pn) ? "someone" : pn;
+                    e.IsPlayer = true;
+                    return e;
+                }
+
+                var c = prefab.GetComponent<Character>();
+                string name = c != null ? Localization.instance.Localize(c.m_name ?? "").Trim() : "";
+                if (name.Length == 0) name = e.Prefab;
+
+                if (zdo.GetBool(ZDOVars.s_tamed))
+                {
+                    string pet = TheObituariesMod.TameNames.Value ? (zdo.GetString(ZDOVars.s_tamedName) ?? "").Trim() : "";
+                    e.Description = pet.Length > 0 ? pet + " the " + name : "a tame " + name;
+                    return e;
+                }
+                if (c != null && c.m_boss) { e.Description = name; return e; }
+
+                int level = zdo.GetInt(ZDOVars.s_level, 1);
+                if (level > 1 && TheObituariesMod.LevelStars.Value) name = (level - 1) + "-star " + name;
+                e.Description = Article(name) + " " + name;
+                return e;
+            }
+            catch { return null; }
         }
 
         internal static string Article(string name)

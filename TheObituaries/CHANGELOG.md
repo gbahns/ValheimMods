@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1 — 2026-09-29
+
+- A death by the poison or fire a hit left behind is credited to whoever dealt it. The poison ticks name no attacker, so "was poisoned to death" was all the mod could say when a Writhan's blast did the damage; now it is "was slimed by a Writhan", or one of the Writhan's own lines.
+- A creature that blows up as it dies has no body left to ask when its blast lands, so its identity is read off its network data instead, and a blast nobody owns is credited to the last creature that hit you in the seconds before.
+- Explosions read as explosions ("was blown up by", "stood too close to", "should have backed away from") rather than as a punch.
+- Writhan lines.
+
 ## 0.3.0 — 2026-09-28
 
 - A config file written by 0.1.0 or 0.2.0 kept the small top-left message and the old victim color, since a changed default never touches a value already in the file. Once per file, a value still at an old default now moves to the new one; anything you changed yourself is left alone.

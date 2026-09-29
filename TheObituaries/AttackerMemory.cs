@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using HarmonyLib;
 using UnityEngine;
@@ -5,7 +6,8 @@ using UnityEngine;
 namespace TheObituaries
 {
     /// <summary>
-    /// Who has hit the local player lately, by attacker id, and what it was holding.
+    /// Who has hit the local player lately, by attacker id, what it was holding and what the
+    /// hit did.
     ///
     /// A hit only carries its attacker as a ZDOID, and at death the game looks that id up in
     /// the local scene. When the creature has despawned or been killed in the meantime the
@@ -13,6 +15,9 @@ namespace TheObituaries
     /// present when the hit lands, so its description and weapon are taken then and kept for
     /// a while. The killing hit itself passes through here first, so at death the entry for
     /// the killer is from that very hit.
+    ///
+    /// The elements are kept so a death by the poison or fire a hit left behind, whose ticks
+    /// name no attacker, can be credited to whoever dealt that element last.
     /// </summary>
     internal static class AttackerMemory
     {
@@ -20,8 +25,11 @@ namespace TheObituaries
         {
             public string Description;   // "a 2-star Troll", "Marco", ...
             public string Prefab;        // for the creature table
-            public string Weapon;        // prefab name of what it was holding, "" if nothing
+            public string Weapon;        // prefab name of what it was holding, "" if nothing or unknown
             public bool   IsPlayer;
+            public bool   Poison;        // the hit carried poison
+            public bool   Fire;          // the hit carried fire
+            public bool   Blast;         // an area hit (an explosion, a fireball's splash)
             public float  Time;
         }
 
@@ -32,19 +40,36 @@ namespace TheObituaries
 
         internal static void Clear() => Recent.Clear();
 
-        internal static void Record(Character attacker)
+        /// <summary>
+        /// Remembers the attacker of this hit: from its Character when it is still in the scene,
+        /// from its ZDO when the body is already gone (a creature that blew up as it died).
+        /// </summary>
+        internal static void Record(HitData hit)
         {
-            if (attacker == null) return;
-            ZDOID id = attacker.GetZDOID();
-            if (id == ZDOID.None) return;
-            Recent[id] = new Entry
+            if (hit == null || !hit.HaveAttacker()) return;
+            ZDOID id = hit.m_attacker;
+            Entry e;
+            Character attacker = hit.GetAttacker();
+            if (attacker != null)
             {
-                Description = Obituary.Describe(attacker),
-                Prefab      = Obituary.PrefabName(attacker),
-                Weapon      = Obituary.WeaponName(attacker),
-                IsPlayer    = attacker is Player,
-                Time        = UnityEngine.Time.time,
-            };
+                e = new Entry
+                {
+                    Description = Obituary.Describe(attacker),
+                    Prefab      = Obituary.PrefabName(attacker),
+                    Weapon      = Obituary.WeaponName(attacker),
+                    IsPlayer    = attacker is Player,
+                };
+            }
+            else
+            {
+                e = Obituary.DescribeById(id);
+                if (e == null) return;
+            }
+            e.Poison = hit.m_damage.m_poison > 0f;
+            e.Fire   = hit.m_damage.m_fire > 0f;
+            e.Blast  = hit.m_radius > 0f;
+            e.Time   = UnityEngine.Time.time;
+            Recent[id] = e;
             Prune();
         }
 
@@ -52,6 +77,19 @@ namespace TheObituaries
         {
             if (id == ZDOID.None || !Recent.TryGetValue(id, out var e)) return null;
             return UnityEngine.Time.time - e.Time <= Retention ? e : null;
+        }
+
+        /// <summary>The most recent entry within maxAge seconds that the test accepts, or null.</summary>
+        internal static Entry LastWhere(Func<Entry, bool> test, float maxAge)
+        {
+            Entry best = null;
+            float now = UnityEngine.Time.time;
+            foreach (var e in Recent.Values)
+            {
+                if (now - e.Time > maxAge || !test(e)) continue;
+                if (best == null || e.Time > best.Time) best = e;
+            }
+            return best;
         }
 
         private static void Prune()
@@ -75,13 +113,12 @@ namespace TheObituaries
         private static void Prefix(Character __instance, HitData hit)
         {
             if (__instance == null || __instance != Player.m_localPlayer || hit == null) return;
-            if (!hit.HaveAttacker()) return;
+            if (!hit.HaveAttacker() || hit.m_attacker == __instance.GetZDOID()) return;
             try
             {
-                Character attacker = hit.GetAttacker();
-                if (attacker != null && attacker != __instance) AttackerMemory.Record(attacker);
+                AttackerMemory.Record(hit);
             }
-            catch (System.Exception e)
+            catch (Exception e)
             {
                 TheObituariesMod.Log.LogDebug("Could not remember an attacker: " + e.Message);
             }

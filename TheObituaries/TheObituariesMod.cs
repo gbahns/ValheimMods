@@ -25,7 +25,7 @@ namespace TheObituaries
     {
         public const string ModGuid    = "DeathMonger.TheObituaries";
         public const string ModName    = "The Obituaries";
-        public const string ModVersion = "0.3.0";
+        public const string ModVersion = "0.3.1";
 
         internal static ManualLogSource Log { get; private set; }
         internal static TheObituariesMod Instance { get; private set; }
