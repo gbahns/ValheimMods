@@ -36,7 +36,8 @@ namespace TheObituaries
             try
             {
                 HitData hit = LastHit(__instance);
-                Notice notice = Obituary.Compose(__instance, hit);
+                Notice notice = Obituary.Compose(__instance, hit, out string facts);
+                if (TheObituariesMod.LogKillingHit.Value) TheObituariesMod.Log.LogInfo(facts);
                 DeathNetwork.Send(notice);
             }
             catch (Exception e)

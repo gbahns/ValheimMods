@@ -5,12 +5,14 @@ using UnityEngine;
 namespace TheObituaries
 {
     /// <summary>
-    /// Who has hit the local player lately, by attacker id.
+    /// Who has hit the local player lately, by attacker id, and what it was holding.
     ///
     /// A hit only carries its attacker as a ZDOID, and at death the game looks that id up in
     /// the local scene. When the creature has despawned or been killed in the meantime the
     /// lookup fails and the obituary would have no name to give. The attacker is nearly always
-    /// present when the hit lands, so its description is taken then and kept for a while.
+    /// present when the hit lands, so its description and weapon are taken then and kept for
+    /// a while. The killing hit itself passes through here first, so at death the entry for
+    /// the killer is from that very hit.
     /// </summary>
     internal static class AttackerMemory
     {
@@ -18,6 +20,7 @@ namespace TheObituaries
         {
             public string Description;   // "a 2-star Troll", "Marco", ...
             public string Prefab;        // for the creature table
+            public string Weapon;        // prefab name of what it was holding, "" if nothing
             public bool   IsPlayer;
             public float  Time;
         }
@@ -38,6 +41,7 @@ namespace TheObituaries
             {
                 Description = Obituary.Describe(attacker),
                 Prefab      = Obituary.PrefabName(attacker),
+                Weapon      = Obituary.WeaponName(attacker),
                 IsPlayer    = attacker is Player,
                 Time        = UnityEngine.Time.time,
             };

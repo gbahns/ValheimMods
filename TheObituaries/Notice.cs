@@ -3,7 +3,8 @@ namespace TheObituaries
     /// <summary>
     /// One obituary as it travels between clients: who died, who (if anyone) did it, and the
     /// line with the names left as {v} and {k} so every client can color them its own way.
-    /// The victim's own game fills this in; everyone else only unpacks and shows it.
+    /// The victim's own game fills this in (pronouns included); everyone else only unpacks
+    /// and shows it.
     /// </summary>
     internal sealed class Notice
     {
@@ -45,10 +46,23 @@ namespace TheObituaries
         /// <summary>The line with plain names, for the log.</summary>
         public string Plain() => Fill(Victim, Killer);
 
-        /// <summary>The line with the names colored per config, for the screen.</summary>
-        public string Rich() => Fill(
-            TheObituariesMod.Colored(Victim, TheObituariesMod.VictimColor),
-            TheObituariesMod.Colored(Killer, TheObituariesMod.KillerColor));
+        /// <summary>
+        /// The line for the screen: the whole thing in the line color, the names in theirs,
+        /// and optionally scaled (the chat window; the center message is big already).
+        /// </summary>
+        public string Rich(bool sized)
+        {
+            string line = Fill(
+                TheObituariesMod.Colored(TheObituariesMod.Bold(Victim), TheObituariesMod.VictimColor),
+                TheObituariesMod.Colored(TheObituariesMod.Bold(Killer), TheObituariesMod.KillerColor));
+            line = TheObituariesMod.Colored(line, TheObituariesMod.LineColor);
+            if (sized)
+            {
+                int pct = TheObituariesMod.TextSize.Value;
+                if (pct != 100) line = "<size=" + pct + "%>" + line + "</size>";
+            }
+            return line;
+        }
 
         private string Fill(string victim, string killer)
         {
