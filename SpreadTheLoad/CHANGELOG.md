@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0 - unreleased
+## 0.2.0
 
 - **Every player is sent their world update each cycle, instead of one player per frame.** Vanilla
   serves exactly one peer per server frame, so each player hears from the server every

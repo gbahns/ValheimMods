@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.0 - unreleased
+## 0.10.0
 
 - **New line: `machine`** - how busy the whole computer is, and how much of that is not Valheim.
 
