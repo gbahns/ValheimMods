@@ -23,11 +23,19 @@ namespace DudeWhatAreMyStats
         internal const int Schema = 3;
 
         /// <summary>
-        /// The oldest layout this build can read. Anything below is refused outright, since the
-        /// fields are not where this build looks for them; anything at or above is read as far as it
-        /// goes.
+        /// The oldest layout this build can read: every version this mod has ever shipped.
+        ///
+        /// Version 1 wrote no <see cref="LastSeenUtc"/>, which is the one field ever inserted rather
+        /// than appended, so reading it costs a single branch. Everything after that only ever
+        /// appends. Refusing an old snapshot bought nothing and cost a great deal: five players on
+        /// two versions saw two separate scoreboards and nothing said why. Reading every version we
+        /// have ever written means an updated player always sees the whole table.
+        ///
+        /// The other direction cannot be fixed from here. A client built before this change refuses
+        /// anything but its own version, so it will not see us until it updates; that is baked into
+        /// the binary it is running. What this build can do is notice and say so.
         /// </summary>
-        internal const int MinSchema = 3;
+        internal const int MinSchema = 1;
 
         internal string Name = "";
         internal long ProfileId;
@@ -46,6 +54,13 @@ namespace DudeWhatAreMyStats
 
         /// <summary>True when this came out of the server's store rather than from the player just now.</summary>
         internal bool FromStore;
+
+        /// <summary>
+        /// The version this arrived as, so the panel can tell a player on an older build that they
+        /// are invisible to everyone still on it. Equal to <see cref="Schema"/> for anything this
+        /// build wrote itself.
+        /// </summary>
+        internal int WireSchema = Schema;
 
         internal readonly Dictionary<PlayerStatType, float> Stats = new Dictionary<PlayerStatType, float>();
         internal readonly List<KeyValuePair<Skills.SkillType, float>> Skills = new List<KeyValuePair<Skills.SkillType, float>>();
@@ -266,6 +281,28 @@ namespace DudeWhatAreMyStats
             }
         }
 
+        /// <summary>
+        /// The version stamped on a packed snapshot, or -1 if even that cannot be read. Leaves the
+        /// read position where it found it, so this is safe to call before Unpack.
+        ///
+        /// This exists so a dropped snapshot can say why it was dropped. Unpack returning null was
+        /// silent, which is how five players on two versions of the mod looked like a scoreboard
+        /// that had simply lost people.
+        /// </summary>
+        internal static int PeekSchema(ZPackage pkg)
+        {
+            if (pkg == null) return -1;
+            try
+            {
+                int pos = pkg.GetPos();
+                pkg.SetPos(0);
+                int schema = pkg.ReadInt();
+                pkg.SetPos(pos);
+                return schema;
+            }
+            catch { return -1; }
+        }
+
         /// <summary>Reads a snapshot off the wire. Returns null for a version this build cannot read.</summary>
         internal static Snapshot Unpack(ZPackage pkg)
         {
@@ -278,10 +315,12 @@ namespace DudeWhatAreMyStats
 
                 var snap = new Snapshot
                 {
+                    WireSchema = schema,
                     Name = pkg.ReadString(),
                     ProfileId = pkg.ReadLong(),
-                    LastSeenUtc = pkg.ReadLong(),
                 };
+                // The one field ever inserted rather than appended. Version 1 did not have it.
+                if (schema >= 2) snap.LastSeenUtc = pkg.ReadLong();
 
                 int stats = pkg.ReadInt();
                 for (int i = 0; i < stats; i++)

@@ -167,6 +167,12 @@ newest record per character and hands the lot to anyone who asks, which is what 
 board who were not playing when you were. A live answer always wins over the stored copy, so
 someone standing next to you is never shown from an old record.
 
+**About versions.** This mod reads every version of that message it has ever written, so keeping up
+to date means you see everyone whatever the rest of your group is running. A game older than 0.10.1
+is the other way about: it refuses anything but its own version, so until those players update you
+will not appear on *their* scoreboard, however new you are. The panel says so when it spots them.
+Nothing is ever enforced, and nobody is refused a connection over a scoreboard.
+
 This half needs the mod on the server, which is the only thing it is needed for. Without it,
 nothing breaks: the request goes unanswered and you see the players who are online. Run
 `dwams_status` in the console to see whether your server is answering.

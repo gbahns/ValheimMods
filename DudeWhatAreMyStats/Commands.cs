@@ -40,6 +40,10 @@ namespace DudeWhatAreMyStats
                 {
                     var sb = new StringBuilder();
                     sb.AppendLine($"panel: {(StatsPanel.IsOpen ? "open" : "closed")} | holding pause: {StatsPause.Holding} | answered live: {StatsNetwork.KnownCount + 1}");
+                    if (StatsNetwork.OtherVersionCount > 0)
+                        sb.AppendLine("version: " + StatsNetwork.OtherVersionText);
+                    if (StatsNetwork.StoredUnreadable > 0)
+                        sb.AppendLine($"version: the server holds {StatsNetwork.StoredUnreadable} record(s) this build cannot read, so nobody offline is shown");
                     sb.AppendLine(StatsNetwork.ServerHasStore
                         ? $"server store: answering, {StatsNetwork.StoredCount} character(s) remembered"
                         : "server store: no answer yet (the server may not run this mod, which only costs you offline players)");

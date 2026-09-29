@@ -491,7 +491,13 @@ namespace DudeWhatAreMyStats
                 string paused = StatsPause.Holding && ZNet.instance != null && Game.IsPaused() ? "  ·  game paused" : "";
                 string asking = DwamsConfig.AskOtherPlayers != null && !DwamsConfig.AskOtherPlayers.Value
                     ? "  ·  not asking other players" : "";
-                _subtitle.text = $"{online} player{(online == 1 ? "" : "s")}{paused}{asking}";
+                // A version boundary hides players from each other while everything else looks
+                // normal, so it is said here rather than left to be worked out from a short board.
+                string mismatch = StatsNetwork.OtherVersionText;
+                string warning = mismatch.Length > 0 ? "  ·  <color=#ff8a3d>" + mismatch + "</color>" : "";
+                if (warning.Length == 0 && StatsNetwork.StoredUnreadable > 0)
+                    warning = "  ·  <color=#ff8a3d>the server keeps records this version cannot read, so nobody offline is shown</color>";
+                _subtitle.text = $"{online} player{(online == 1 ? "" : "s")}{paused}{asking}{warning}";
             }
             if (_tabScore != null) UiKit.SetLabel(_tabScore.gameObject, _tab == Tab.Scoreboard ? "<b>Scoreboard</b>" : "Scoreboard");
             if (_tabDetails != null) UiKit.SetLabel(_tabDetails.gameObject, _tab == Tab.Details ? "<b>Details</b>" : "Details");

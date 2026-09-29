@@ -29,7 +29,7 @@ namespace DudeWhatAreMyStats
     {
         public const string ModGuid    = "DeathMonger.DudeWhatAreMyStats";
         public const string ModName    = "Dude What Are My Stats";
-        public const string ModVersion = "0.10.0";
+        public const string ModVersion = "0.10.1";
 
         internal static DudeWhatAreMyStatsMod Instance { get; private set; }
         internal static ManualLogSource Log { get; private set; }

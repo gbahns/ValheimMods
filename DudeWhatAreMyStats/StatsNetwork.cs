@@ -52,7 +52,115 @@ namespace DudeWhatAreMyStats
         private static bool _forgetSent;
         private static readonly Dictionary<long, float> _servedAt = new Dictionary<long, float>();
 
+        /// <summary>
+        /// What version each other player last answered in, where it is not ours.
+        ///
+        /// This build reads every version this mod has ever written, so an old player is visible to
+        /// us. The reverse is not true and cannot be made true: a client built before that change
+        /// refuses anything but its own version, so it cannot see us however new we are. Knowing
+        /// which players those are is the difference between "the scoreboard is missing people" and
+        /// "those two need to update", which is a conversation somebody can actually have.
+        /// </summary>
+        private sealed class OtherVersion
+        {
+            internal int Schema;
+            internal float At;
+        }
+
+        private static readonly Dictionary<long, OtherVersion> _otherVersions = new Dictionary<long, OtherVersion>();
+
+        /// <summary>Stored rows the server sent that this build could not read, and the version they were.</summary>
+        private static int _storedUnreadable;
+        private static int _storedSchema;
+        private static bool _warnedStore;
+
+        /// <summary>How many of the server's stored records this build cannot read.</summary>
+        internal static int StoredUnreadable => _storedUnreadable;
+
+        /// <summary>
+        /// How long a noted version counts for. Longer than any refresh interval, so somebody still
+        /// playing stays counted, and short enough that somebody who logged out drops off.
+        /// </summary>
+        private const float VersionMemory = 90f;
+
         internal static int KnownCount => _remote.Count;
+
+        /// <summary>How many players are on a version of this mod that is not this one.</summary>
+        internal static int OtherVersionCount
+        {
+            get
+            {
+                PruneVersions();
+                return _otherVersions.Count;
+            }
+        }
+
+        /// <summary>
+        /// One line for the panel and the console, or empty when everyone agrees.
+        ///
+        /// Two different problems, said differently: a player we cannot read at all is missing from
+        /// our board, and a player on an older build has us missing from theirs. The second is the
+        /// common one now, and from here it looks exactly like nothing being wrong.
+        /// </summary>
+        internal static string OtherVersionText
+        {
+            get
+            {
+                PruneVersions();
+                if (_otherVersions.Count == 0) return "";
+                int unreadable = 0, behind = 0;
+                foreach (var v in _otherVersions.Values)
+                {
+                    if (v.Schema < Snapshot.MinSchema) unreadable++;
+                    else behind++;
+                }
+                if (behind == 0)
+                    return Who(unreadable) + " sending stats this version cannot read and cannot be shown";
+                if (unreadable == 0)
+                    return Who(behind) + " on an older version, so you are not on their scoreboard until they update";
+                return Who(unreadable + behind) + " on a different version of this mod";
+            }
+        }
+
+        private static string Who(int n) => n == 1 ? "1 player is" : n + " players are";
+
+        /// <summary>Forgets players we have not heard from lately.</summary>
+        /// <summary>Forgets players we have not heard an unreadable answer from lately.</summary>
+        private static void PruneVersions()
+        {
+            if (_otherVersions.Count == 0) return;
+            float cutoff = Time.unscaledTime - VersionMemory;
+            List<long> stale = null;
+            foreach (var kv in _otherVersions)
+                if (kv.Value.At < cutoff) (stale ?? (stale = new List<long>())).Add(kv.Key);
+            if (stale == null) return;
+            foreach (long id in stale) _otherVersions.Remove(id);
+        }
+
+        /// <summary>
+        /// Notes what version a player answered in, and says so in the log the first time for each
+        /// player rather than every ten seconds for as long as they play.
+        /// </summary>
+        private static void NoteVersion(long sender, int schema)
+        {
+            if (schema == Snapshot.Schema)
+            {
+                _otherVersions.Remove(sender);
+                return;
+            }
+            bool first = !_otherVersions.ContainsKey(sender);
+            _otherVersions[sender] = new OtherVersion { Schema = schema, At = Time.unscaledTime };
+            if (!first) return;
+            if (schema < Snapshot.MinSchema)
+                DudeWhatAreMyStatsMod.Log.LogWarning(
+                    $"[DudeWhatAreMyStats] A player answered with stats version {schema}, which this build cannot " +
+                    "read, so they cannot appear on your scoreboard.");
+            else
+                DudeWhatAreMyStatsMod.Log.LogInfo(
+                    $"[DudeWhatAreMyStats] A player is on stats version {schema} and this build writes " +
+                    $"{Snapshot.Schema}. They are on your board, but their build refuses anything but its own " +
+                    "version, so you are not on theirs until they update.");
+        }
 
         internal static int StoredCount => _stored.Count;
 
@@ -107,6 +215,10 @@ namespace DudeWhatAreMyStats
             _serverAnswered = false;
             _forgetSent = false;
             _servedAt.Clear();
+            _otherVersions.Clear();
+            _storedUnreadable = 0;
+            _storedSchema = 0;
+            _warnedStore = false;
         }
 
         internal static void Update()
@@ -176,7 +288,12 @@ namespace DudeWhatAreMyStats
         private static void RPC_Response(long sender, ZPackage pkg)
         {
             var snap = Snapshot.Unpack(pkg);
-            if (snap == null) return;
+            if (snap == null)
+            {
+                NoteVersion(sender, Snapshot.PeekSchema(pkg));
+                return;
+            }
+            NoteVersion(sender, snap.WireSchema);
             snap.PeerId = sender;
             snap.IsLocal = false;
             snap.FromStore = false;
@@ -284,7 +401,13 @@ namespace DudeWhatAreMyStats
             {
                 if (!StatsStore.IsServer || !StatsStore.Loaded) return;
                 var snap = Snapshot.Unpack(pkg);
-                if (snap == null) return;
+                if (snap == null)
+                {
+                    // Worth saying on a server too: a client it cannot read is a player it cannot
+                    // remember, so they never appear to anyone once they log off.
+                    NoteVersion(sender, Snapshot.PeekSchema(pkg));
+                    return;
+                }
                 snap.PeerId = sender;
                 snap.IsLocal = false;
                 StatsStore.Put(snap);
@@ -355,10 +478,19 @@ namespace DudeWhatAreMyStats
                 // Built to one side and swapped in only once the whole message has been read:
                 // a truncated one would otherwise leave a half roster on screen until the next ask.
                 var fresh = new Dictionary<long, Snapshot>();
+                int unreadable = 0;
                 for (int i = 0; i < count; i++)
                 {
-                    var snap = Snapshot.Unpack(new ZPackage(pkg.ReadByteArray()));
-                    if (snap == null) continue;
+                    var one = new ZPackage(pkg.ReadByteArray());
+                    var snap = Snapshot.Unpack(one);
+                    if (snap == null)
+                    {
+                        // The server is keeping records this build cannot read, which is what an
+                        // un-updated server looks like from here: the board simply has no offline
+                        // players on it and nothing says why.
+                        if (unreadable++ == 0) _storedSchema = Snapshot.PeekSchema(one);
+                        continue;
+                    }
                     snap.IsLocal = false;
                     snap.FromStore = true;
                     snap.Online = false;
@@ -367,6 +499,15 @@ namespace DudeWhatAreMyStats
                 _stored.Clear();
                 foreach (var kv in fresh) _stored[kv.Key] = kv.Value;
                 _serverAnswered = true;
+                _storedUnreadable = unreadable;
+                if (unreadable > 0 && !_warnedStore)
+                {
+                    _warnedStore = true;
+                    DudeWhatAreMyStatsMod.Log.LogWarning(
+                        $"[DudeWhatAreMyStats] The server is holding {unreadable} record(s) at stats version " +
+                        $"{_storedSchema}, which this build cannot read, so players who are offline will not appear. " +
+                        "The server needs the same version as its players.");
+                }
                 StatsPanel.OnRosterRebuilt();
             }
             catch (Exception e)

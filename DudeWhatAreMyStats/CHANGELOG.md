@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.10.1
+
+Different versions of this mod no longer hide players from each other.
+
+Five players on two versions saw two separate scoreboards, each showing its own group and nobody
+else, with nothing anywhere to say why. Both sides asked and both sides answered; only the reading
+failed, so everything else looked perfectly normal.
+
+- **Reads every version of the stats message this mod has ever written.** Refusing an old one bought
+  nothing: the layout has only ever grown, apart from a single field added in 0.2.0, so an older
+  snapshot reads fine and simply has no death record on it. An updated player now sees the whole
+  table whoever else is running what.
+- **The other direction cannot be fixed from here, so it is said out loud instead.** A game built
+  before this change refuses anything but its own version, and that is baked into the copy they are
+  running, so you will not appear on their scoreboard until they update. The panel says
+  *2 players are on an older version, so you are not on their scoreboard until they update*,
+  `dwams_status` prints the same, and the log says it once per player rather than every ten seconds.
+- The same for the server's records. A store this version could not read left the board with no
+  offline players at all, which looked exactly like a server that does not run the mod. It now reads
+  those too, and says so if it ever cannot.
+- No version is enforced anywhere and none ever will be. Nobody is refused a connection over a
+  scoreboard; a version difference costs you rows on a table, not the game.
+
 ## 0.10.0
 
 The mod now records what kills you. Valheim counts your deaths and sorts them by category, but it
