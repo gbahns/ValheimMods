@@ -254,13 +254,16 @@ namespace DudeWhatAreMyStats
                 return;
             }
             int rowSchema = pkg.ReadInt();
-            if (rowSchema != Snapshot.Schema)
+            // Records from a later build are readable: a snapshot only ever gains sections on the
+            // end, and Unpack stops when the bytes run out. Records from before MinSchema are not,
+            // because their fields are not where this build looks for them.
+            if (rowSchema < Snapshot.MinSchema)
             {
                 Preserve("rowschema");
                 DudeWhatAreMyStatsMod.Log.LogWarning(
                     $"[DudeWhatAreMyStats] The stats store holds version {rowSchema} records and this build reads " +
-                    $"{Snapshot.Schema}, so none of them can be read. The old file has been kept alongside; starting " +
-                    "empty. Everyone is recorded again the next time they play.");
+                    $"{Snapshot.MinSchema} or later, so none of them can be read. The old file has been kept " +
+                    "alongside; starting empty. Everyone is recorded again the next time they play.");
                 return;
             }
             int count = pkg.ReadInt();

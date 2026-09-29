@@ -69,19 +69,23 @@ namespace DudeWhatAreMyStats
 
         private static readonly Column[] Columns =
         {
-            new Column { Key = "Player",  Header = "Player", Start = 0.00f, End = 0.26f, RightAlign = false,
+            new Column { Key = "Player",  Header = "Player", Start = 0.00f, End = 0.22f, RightAlign = false,
                          Sort = null, Text = s => s.Name },
-            new Column { Key = "Kills",   Header = "Kills",  Start = 0.26f, End = 0.38f,
+            new Column { Key = "Kills",   Header = "Kills",  Start = 0.22f, End = 0.32f,
                          Sort = s => s.Kills, Text = s => StatGroups.Count(s.Kills) },
-            new Column { Key = "Deaths",  Header = "Deaths", Start = 0.38f, End = 0.49f,
+            new Column { Key = "Deaths",  Header = "Deaths", Start = 0.32f, End = 0.42f,
                          Sort = s => s.Deaths, Text = s => StatGroups.Count(s.Deaths) },
-            new Column { Key = "K/D",     Header = "K/D",    Start = 0.49f, End = 0.59f,
+            new Column { Key = "K/D",     Header = "K/D",    Start = 0.42f, End = 0.51f,
                          Sort = s => s.KillDeath, Text = s => s.KillDeath.ToString("0.0") },
-            new Column { Key = "Bosses",  Header = "Bosses", Start = 0.59f, End = 0.70f,
+            new Column { Key = "Bosses",  Header = "Bosses", Start = 0.51f, End = 0.60f,
                          Sort = s => s.Bosses, Text = s => StatGroups.Count(s.Bosses) },
-            new Column { Key = "Played",  Header = "Played", Start = 0.70f, End = 0.84f,
+            new Column { Key = "Played",  Header = "Played", Start = 0.60f, End = 0.72f,
                          Sort = s => s.Played, Text = s => StatGroups.Duration(s.Played) },
-            new Column { Key = "Skill",   Header = "Best skill", Start = 0.84f, End = 1.00f,
+            // Empty until this mod has watched somebody die, which is the whole reason the column
+            // reads "-" rather than zero: the game keeps no record of what killed you.
+            new Column { Key = "Nemesis", Header = "Nemesis", Start = 0.72f, End = 0.87f,
+                         Sort = s => s.NemesisCount, Text = s => s.NemesisText },
+            new Column { Key = "Skill",   Header = "Best skill", Start = 0.87f, End = 1.00f,
                          Sort = s => s.BestSkillLevel, Text = s => s.BestSkillText },
         };
 
@@ -349,6 +353,26 @@ namespace DudeWhatAreMyStats
                     foreach (var kv in snap.Creatures)
                         UiKit.Row(_listContent, CreatureName(kv.Key), StatGroups.Count(kv.Value), null, null);
                 });
+
+            if (snap.KilledBy.Count > 0)
+                Section("Killed by", () =>
+                {
+                    foreach (var kv in snap.KilledBy)
+                        UiKit.Row(_listContent, DeathReport.CauseName(kv.Key), StatGroups.Count(kv.Value), null, null);
+                    // The game counted deaths long before this mod started watching them, and it
+                    // never recorded what did it. Saying so is better than a table that quietly
+                    // fails to add up to the death count two columns over.
+                    float missing = snap.UnrecordedDeaths;
+                    if (missing > 0f)
+                        UiKit.Row(_listContent, "Not recorded", StatGroups.Count(missing), null, null);
+                });
+
+            if (snap.FoughtWith.Count > 0)
+                Section("In the fight", () =>
+                {
+                    foreach (var kv in snap.FoughtWith)
+                        UiKit.Row(_listContent, DeathReport.CauseName(kv.Key), StatGroups.Count(kv.Value), null, null);
+                });
         }
 
         /// <summary>A collapsible section header plus its rows, remembering the fold between sessions.</summary>
@@ -593,6 +617,8 @@ namespace DudeWhatAreMyStats
                 _collapsed.Add("Summary");
                 _collapsed.Add("Skills");
                 _collapsed.Add("Creatures killed");
+                _collapsed.Add("Killed by");
+                _collapsed.Add("In the fight");
                 foreach (var s in StatGroups.Order) _collapsed.Add(s);
                 SaveCollapsed();
                 _dirty = true;

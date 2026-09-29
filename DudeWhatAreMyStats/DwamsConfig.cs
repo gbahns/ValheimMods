@@ -41,6 +41,15 @@ namespace DudeWhatAreMyStats
         internal static ConfigEntry<string> PlayerListOffset;
         internal static ConfigEntry<float> PlayerListFontSize;
 
+        // ── what killed you ────────────────────────────────────────────────────────
+        internal static ConfigEntry<bool> RecordDeaths;
+        internal static ConfigEntry<bool> RecordBystanders;
+        internal static ConfigEntry<float> BystanderSeconds;
+        internal static ConfigEntry<float> FightGapSeconds;
+        internal static ConfigEntry<int> KeepReports;
+        internal static ConfigEntry<int> TopDeathCauses;
+        internal static ConfigEntry<bool> LogDeaths;
+
         // ── fixes ───────────────────────────────────────────────────────────────────
         internal static ConfigEntry<bool> FixTreasureDiscoveryCount;
 
@@ -135,6 +144,36 @@ namespace DudeWhatAreMyStats
                 "overlaps something else on your screen.");
             PlayerListFontSize = mod.BindLocalRange("Player List", "Font Size", 16f, 10f, 30f,
                 "Text size of the player list.");
+
+            RecordDeaths = mod.BindLocal("Deaths", "Record Deaths", true,
+                "Keep track of what kills you: which creature, what it was holding, its star level, and everyone " +
+                "else who was in the fight. Valheim counts your deaths and sorts them by category but never records " +
+                "which creature, so this is the mod watching your fights as they happen. It runs entirely on your own " +
+                "game, costs nothing until you are actually in a fight, and needs nothing on the server. Off keeps no " +
+                "record and leaves the tables empty; what is already recorded is kept.");
+            RecordBystanders = mod.BindLocal("Deaths", "Record Bystanders", true,
+                "Also record creatures that were in the fight without landing a blow. Ten greydwarves that surround " +
+                "you and drain your stamina are part of why the troll got you, so they belong in the record. This is " +
+                "the one part that looks around rather than waiting to be hit: twice a second it checks which of the " +
+                "loaded creatures have you as their target. Off records only what actually reached you.");
+            BystanderSeconds = mod.BindLocalRange("Deaths", "Bystander Seconds", 3f, 0f, 30f,
+                "How long something must have you in its sights before it counts as having been in the fight. This " +
+                "keeps a boar that glanced at you from across a field out of the record. Anything that swung at you, " +
+                "hurt you or killed you is recorded however brief it was.");
+            FightGapSeconds = mod.BindLocalRange("Deaths", "Fight Gap Seconds", 10f, 2f, 60f,
+                "How long the fight has to go quiet before it counts as over. Nothing hitting you and nothing " +
+                "targeting you for this long starts the next fight from scratch, so a death is described by the fight " +
+                "it happened in and not by the one before it.");
+            KeepReports = mod.BindLocalRangeInt("Deaths", "Keep Reports", 20, 0, 200,
+                "How many deaths to keep the full story of, newest first, readable with the dwams_deaths console " +
+                "command. These stay on your own machine: they are far too big to hand around the way the scoreboard " +
+                "numbers are. 0 keeps none, and the running totals still count up.");
+            TopDeathCauses = mod.BindLocalRangeInt("Deaths", "Top Death Causes", 10, 0, 50,
+                "How many rows the Killed by and In the fight tables show in the Details tab, most often first. This " +
+                "is also how many travel to the other players, so the scoreboard message stays small. 0 hides them.");
+            LogDeaths = mod.BindLocal("Deaths", "Log Deaths", false,
+                "Write every death report to the BepInEx log as well, for the record. Off by default; the reports are " +
+                "kept either way and dwams_deaths prints them.");
 
             FixTreasureDiscoveryCount = mod.BindLocal("Fixes", "Fix Treasure Discovery Count", true,
                 "Correct a bug in Valheim itself that counts a treasure chest as newly found every time it is " +

@@ -20,6 +20,7 @@ namespace DudeWhatAreMyStats
         private static bool _warnedLayout;
         private static bool _warnedSkills;
         private static bool _warnedRead;
+        private static bool _warnedDeaths;
 
         /// <summary>
         /// The local character's stats, or null if there is no profile loaded yet. Never throws:
@@ -78,7 +79,37 @@ namespace DudeWhatAreMyStats
             }
 
             ReadSkills(snap);
+            ReadDeaths(snap);
             return snap;
+        }
+
+        /// <summary>
+        /// Adds what this mod has watched kill this character, which the game itself does not record.
+        ///
+        /// Only the top few travel: these ride the same message as everything else, and the store
+        /// hands every character it holds to a client in one send. The full reports never leave the
+        /// machine that made them.
+        /// </summary>
+        private static void ReadDeaths(Snapshot snap)
+        {
+            try
+            {
+                if (DwamsConfig.RecordDeaths == null || !DwamsConfig.RecordDeaths.Value) return;
+                int top = DwamsConfig.TopDeathCauses != null ? DwamsConfig.TopDeathCauses.Value : 10;
+                snap.RecordedDeaths = DeathLog.Recorded;
+                if (top <= 0) return;
+                snap.KilledBy.AddRange(DeathLog.KilledBy(top));
+                snap.FoughtWith.AddRange(DeathLog.FoughtWith(top));
+            }
+            catch (Exception e)
+            {
+                if (!_warnedDeaths)
+                {
+                    _warnedDeaths = true;
+                    DudeWhatAreMyStatsMod.Log.LogWarning(
+                        $"[DudeWhatAreMyStats] Could not read the death log; the rest of the stats still work. {e.Message}");
+                }
+            }
         }
 
         /// <summary>

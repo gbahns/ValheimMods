@@ -7,6 +7,8 @@
 - The **Scoreboard** tab ranks everyone who runs this mod, online now or not. Click a column to sort by it.
 - The **Details** tab breaks one player's stats into sections, with their skills and the creatures
   they have killed most.
+- It **records what kills you** -- which creature, what it was holding, and everyone else who was
+  in the fight. Valheim never writes that down.
 - Optionally, a small **always-on player list** with everyone's death count.
 
 Install it on your own game and the server needs nothing: everyone online who also runs the mod
@@ -23,6 +25,7 @@ online, each marked with how long ago they were last seen. Players without the m
 | K/D | Kills per death. With no deaths yet this is simply your kill count, the way scoreboards usually show it. |
 | Bosses | Boss kills. |
 | Played | Active play time. Valheim only counts this while you are moving about, so it runs behind wall-clock time, and standing in a base AFK adds nothing. |
+| Nemesis | The creature that has killed you most, and how often. Empty until the mod has watched a death: see below. |
 | Best skill | Your highest skill and its level. |
 
 Click any row to open that player's Details. Click a column header to sort by it, and again to
@@ -33,6 +36,56 @@ numbers are current. Anyone else is shown from the server's last record of them,
 or similar, so nobody argues over a number that turns out to be a fortnight stale. If the server
 does not run the mod there is nowhere to keep those records, and the board shows only the players
 online to answer.
+
+## What killed you
+
+Valheim counts your deaths and sorts them by category -- enemy hit, fall, drowning -- but it never
+records **which** creature. So this watches your fights as they happen, and when you lose one it
+writes down what happened.
+
+The **Nemesis** column and the **Killed by** table in Details are the short version: a running tally
+of what has killed this character, most often first. Falls, drowning, lava and the edge of the world
+are in the same table, so it accounts for every death it saw. It starts empty, since there is no old
+record to read: deaths from before this was installed show as *Not recorded* rather than leaving the
+table quietly short.
+
+The long version is the last few deaths in full, printed by `dwams_deaths`:
+
+```
+just now - 1-star Troll (Troll club), with 12 others in the fight (day 84, Black Forest)
+  blow: 94 damage (blunt 94), EnemyHit, unblockable
+  you: 125 max health, 41 armor, holding Iron sword, Rested + Wet
+  fight: 38s, 9 hit(s) taken, worst 94, 61 stamina blocking
+  killed you: 1-star Troll: 94 damage, 1 hit(s)
+  Greydwarf: 22 damage, 2 hit(s), 4 blocked, 31 stamina
+  Greydwarf Shaman: 14 damage (inferred), 1 hit(s)
+  Greydwarf: 6 blocked, 18 stamina
+  Greydwarf: on you 22s
+```
+
+**Everything in the fight is in there, not just the killer.** Ten greydwarves that surround you and
+drain your stamina are part of why the troll got you, so each is listed with what it actually did:
+damage dealt, blows you blocked and what they cost in stamina, blows you dodged, and how long it had
+you in its sights. One that never landed a blow still appears, marked as having been there. The
+**In the fight** table in Details counts those over time, so you can see which creature keeps turning
+up at your deaths without ever being the one to finish you.
+
+A blow you blocked to nothing credits the creature with the swing and with none of the damage, which
+is the distinction the whole record rests on. Poison and burning ticks are a genuine gap: the game
+deals them from the effect rather than the creature and attaches no attacker at all, so they are
+credited to whoever last dealt that kind of damage and marked *(inferred)*. That is what puts a death
+by Blob poison down to the Blob, several seconds after the Blob itself is dead.
+
+**The reports stay on your machine.** The tallies are small and travel with the rest of your stats,
+which is what fills in the Nemesis column for everyone else. A full report is far too big to hand
+around, so `dwams_deaths` shows your own. Settings live under `[Deaths]`: *Keep Reports* is how many
+to keep, *Record Bystanders* turns off the part that looks around for creatures that never hit you,
+*Bystander Seconds* is how long something must have you in its sights to count, *Fight Gap Seconds*
+is how long the quiet has to last before the next fight starts fresh, and *Log Deaths* copies each
+report into the BepInEx log. *Record Deaths* turns the whole thing off.
+
+Nothing goes on the server for this. Only your own game can see what hit you, so only your own game
+could record it.
 
 ## The details tab
 
@@ -143,6 +196,7 @@ the keep window runs out.
 | `dwams` | Open or close the panel. |
 | `dwams_hud` | Show or hide the always-on player list. |
 | `dwams_refresh` | Ask everyone online, and the server, for stats again. |
+| `dwams_deaths` | What has killed you, and the last few deaths in full. Add a number for one of them. |
 | `dwams_status` | Print the scoreboard, and say whether the server is keeping records. |
 
 ## Configuration
@@ -150,8 +204,8 @@ the keep window runs out.
 `BepInEx/config/DeathMonger.DudeWhatAreMyStats.cfg`, or press F1 in game if you have a
 configuration manager. Notable settings: the open key, *Pause While Open*, *Ask Other Players*,
 *Refresh Seconds*, *Show Offline Players*, *Push Minutes*, *Show Zero Stats*, *Top Creature Count*
-and *Fix Treasure Discovery Count*, the `[Player List]` section for the always-on list, plus
-*Server Store Enabled* and *Server Keep Days* on a server.
+and *Fix Treasure Discovery Count*, the `[Deaths]` section for the death record, the `[Player List]`
+section for the always-on list, plus *Server Store Enabled* and *Server Keep Days* on a server.
 
 ## A vanilla bug it fixes
 
@@ -175,6 +229,9 @@ Count* to leave the game exactly as it ships.
   answers, so it is a scoreboard among friends rather than an audited one.
 - A character is only remembered once they have played with the mod installed on both ends, so the
   board fills in over the first few sessions rather than arriving complete.
+- What killed you is recorded from the moment this version is installed and no earlier. Nothing can
+  reconstruct it: the game kept no record to read.
+- A fight can hold two dozen creatures in the record. A raid bigger than that is noted as capped.
 - Valheim keeps ten sets of stats per character, one per difficulty. This mod reads the raw
   lifetime set, so the numbers include every run regardless of difficulty, and cheated runs too.
 - `Food Eaten` is bugged in vanilla and does not count up.

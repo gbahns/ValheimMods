@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.10.0
+
+The mod now records what kills you. Valheim counts your deaths and sorts them by category, but it
+has never recorded which creature did it; this watches your fights as they happen and keeps the
+answer.
+
+**Update together.** The message players' games use to exchange stats has grown, so a 0.9.0 game and
+a 0.10.0 game will not show each other on the board, and a server on 0.9.0 starts its store over.
+Nothing breaks and nobody is refused a connection. This is the last time: from this version the
+format only ever gains sections on the end, and a build reads as much of a newer one as it
+understands, so later additions cost nobody anything.
+
+- **A Nemesis column** on the scoreboard: the creature that has killed you most, and how often. It
+  reads "-" until this version has watched somebody die, because there is no old record to draw on.
+- **Killed by** and **In the fight** tables in the Details tab. Deaths from before the mod was
+  watching are shown as *Not recorded* rather than quietly leaving the table short of the death
+  count two columns over.
+- **The whole story of your last few deaths**, kept on your own machine and printed by the new
+  `dwams_deaths` console command: the killing blow split by damage type, what the killer was holding
+  and how many stars it had, the armor and weapon you had on and the effects you were under, the
+  biome and the day, how long the fight ran, and a line for every creature that was in it. Add a
+  number, as in `dwams_deaths 2`, for one death in full.
+- **Everything in the fight is recorded, not just the killer.** Ten greydwarves that surround you and
+  drain your stamina are part of why the troll got you, so each one is listed with what it actually
+  did: the damage it dealt, the blows you blocked and what they cost you in stamina, the ones you
+  dodged, and how long it had you in its sights. A creature that never landed a blow still appears,
+  marked as having been there.
+- Deaths nothing dealt are recorded too, so falls, drowning, lava and the edge of the world sit in
+  the same table as the creatures. Poison and burning ticks carry no attacker at all, so they are
+  credited to whoever last dealt that kind of damage and marked *(inferred)* rather than presented
+  as certain. That is what puts a death by Blob poison down to the Blob after the Blob itself is
+  dead.
+- New settings under `[Deaths]`: *Record Deaths*, *Record Bystanders*, *Bystander Seconds*,
+  *Fight Gap Seconds*, *Keep Reports*, *Top Death Causes* and *Log Deaths*. The reports live in
+  `BepInEx/config/DudeWhatAreMyStats/`, one file per character, beside the server's store.
+- Nothing new is needed on the server. Only your own game can see what hit you, so only your own
+  game can record it, and the totals travel to everyone else exactly as the rest of your stats do.
+
 ## 0.9.0
 
 Plays together with 0.2.0: the stats messages are unchanged, so players on either version see

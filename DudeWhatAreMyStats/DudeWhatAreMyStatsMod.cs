@@ -29,7 +29,7 @@ namespace DudeWhatAreMyStats
     {
         public const string ModGuid    = "DeathMonger.DudeWhatAreMyStats";
         public const string ModName    = "Dude What Are My Stats";
-        public const string ModVersion = "0.9.0";
+        public const string ModVersion = "0.10.0";
 
         internal static DudeWhatAreMyStatsMod Instance { get; private set; }
         internal static ManualLogSource Log { get; private set; }
@@ -66,6 +66,7 @@ namespace DudeWhatAreMyStats
             UiKit.ObserveFocus();   // every frame, before any key is read, so the typing check's tail holds
             StatsNetwork.Update();
             StatsStore.Update();
+            DeathLog.Update();
             if (Player.m_localPlayer == null)
             {
                 // Logged out with the panel up: drop the pause and the roster with the world.
@@ -75,6 +76,7 @@ namespace DudeWhatAreMyStats
             }
             StatsPanel.Update();
             PlayerListHud.Update();
+            DeathWatch.Update();
         }
 
         private void OnDestroy()

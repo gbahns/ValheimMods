@@ -347,8 +347,64 @@ The three things this mod is for:
 - The panel clones the game's own text prompt for its frame, font and buttons, reusing `UiKit.cs` from
   The Greatest Portal. No Jotunn, no asset bundle.
 
+### What killed you (0.10.0)
+
+Valheim records that you died and, by category, what sort of thing did it, but never which creature.
+Nothing else fills that gap either: The Obituaries works the killer out at the moment of death and
+announces it, then forgets it. So DWAMS watches fights as they happen and keeps the answer. Designed
+with Greg 2026-09-28; the point he pushed back on is the one the design now rests on, below.
+
+**Three hooks, doing different jobs. The difference is the whole design.**
+
+- `Character.Damage` (not virtual, so one patch catches everything) sees a blow *before* block,
+  resistance and armor, and before the early return at the top that drops a hit you dodged. It is
+  therefore the only place that sees an attempt that came to nothing, and the only place that still
+  sees the poison, fire and spirit components: `Damage` strips those out into over-time effects
+  before passing the rest on. It is the wrong place to read damage numbers from.
+- `Character.ApplyDamage` sees what the blow actually cost, after everything. `BlockAttack` runs
+  mid-flow in `Damage`, not as an early exit, so a hit you blocked to nothing still arrives here --
+  worth nothing. The Draugr gets the swing and none of the damage. `ApplyDamage` applies
+  `Game.m_localDamgeTakenRate` itself, so the ledger multiplies by it to get the health that is about
+  to go; a health-delta postfix would be truer still but `OnDeath` fires from inside `ApplyDamage`,
+  which would seal the report before the postfix ran.
+- `Humanoid.BlockAttack` spends the stamina itself and is handed the attacker, so stamina can be
+  charged to the creature that forced it. Prefix and postfix around `Player.GetStamina()`, because a
+  perfect block hands stamina back.
+
+**Everyone in the fight, not just who did damage.** Greg's point, and it is right: ten greydwarves
+that pin you down and drain your stamina are why the troll got you. `Character.GetAllCharacters()` is
+public static and holds only loaded characters, and `BaseAI.GetTargetCreature()` is public, so a
+twice-a-second sweep picks up everything that has you as its target whether or not it ever connects.
+Participants are filed under the highest of four tiers they earn over the fight -- Present, Pressed,
+Hurt, Killer -- so one creature is one row.
+
+**The over-time gap, which cannot be closed properly.** `StatusEffect.SetAttacker` is an empty
+virtual and neither `SE_Poison` nor `SE_Burning` overrides it, so every poison and burning tick
+arrives with no attacker at all, only a hit type. The ticks are charged to whoever last dealt that
+kind of damage -- known from the `Damage` hook, before the components were stripped -- and marked
+inferred rather than presented as fact. It is nearly always right, and it is what credits a death by
+Blob poison to the Blob after the Blob is dead.
+
+**Two features, kept apart on purpose.** The per-cause totals are small, bounded and interesting to
+other people, so they ride the snapshot and the server store and feed the Nemesis column. A full
+report is per death and unbounded and never goes near that message: the store travels to a client in
+one routed RPC, and `ZSteamSocket.SendQueuedPackages` leaves an oversized send at the head of that
+peer's queue and stops draining it, which stalls everything else going to that player. Reports stay
+local, one file per character.
+
+**Snapshot schema 3 is the last breaking bump.** `Unpack` now refuses anything below `MinSchema` and
+otherwise reads until the bytes run out, and additions only ever append, so a build reads as much of
+a later one as it understands. `StatsStore` accepts row schemas at or above `MinSchema` for the same
+reason. Aggregate keys are `Character.m_name` (`$enemy_troll`), which is exactly what vanilla keys
+its own kill tally by, so "killed by Troll" reads against "Trolls killed" without translation;
+`@HitType` covers deaths nothing dealt and `#Name` another player.
+
 ### Possible follow-ups
 
+- A panel view for the death reports. 0.10.0 prints them with `dwams_deaths`; the tallies are in the
+  Details tab but the full story is console-only.
+- Damage dealt *to* a creature over a fight, the mirror of this, which would answer "how much did we
+  actually do to that boss". The hooks are the same two, pointed the other way.
 - Explored map percentage by biome, the one ReportCard feature nothing else replaces. Greg does not need it
   ("nice to have, no need to base decisions on it"), so it was left out of 0.1.0. ReportCard's approach:
   walk `Minimap.m_explored` against `WorldGenerator.GetBiome` and tally.
