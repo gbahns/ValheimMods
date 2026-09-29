@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.10.0 - unreleased
+
+- **New line: `machine`** - how busy the whole computer is, and how much of that is not Valheim.
+
+  Everything else here measures this process, which is the right thing for "is the game heavy" and
+  the wrong thing entirely for "is something else eating my computer". The two produce different
+  signatures and only a machine-wide figure separates them: a stall with Valheim's own CPU
+  unchanged is the game pausing itself, while a stall with Valheim's CPU *dropping* against a
+  pegged machine is something else taking the processor away.
+
+  It was added because a player's 78 stall seconds could not be attributed. His CPU held steady
+  through them, which ruled out the background process he suspected, but nothing on hand could say
+  what the rest of the machine was doing.
+
+  `GetSystemTimes` on Windows, `/proc/stat` on Linux, so it works on the clients and on the
+  dedicated server. Both are cumulative counters, so the figure is the change between samples and
+  the first reading after startup reports unavailable rather than guessing. `system_cpu_pct` is in
+  the group capture, so the same question can be asked of everybody at once.
+
+- Wire layout 8. **Update the server before the clients.**
+
 ## 0.9.10
 
 - **New setting: `Show My Own Ownership`**, off by default. The owner labels stay silent about

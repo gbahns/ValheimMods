@@ -342,6 +342,10 @@ namespace DiagnoseServerLag
 
             CountOwnedAI(ref s);
 
+            // The whole machine, not just this process - the only figure that separates the game
+            // pausing itself from something else taking the processor away.
+            s.SystemCpu = SystemCpu.Read();
+
             // The machine-level half: CPU, memory and collections. This is the part that still
             // means something on a frame-capped server, where tick time is constant by
             // construction and says nothing about how much room is left.

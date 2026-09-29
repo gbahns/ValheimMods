@@ -115,6 +115,13 @@ namespace DiagnoseServerLag
         /// <summary>Of those, how many are creatures - the ones running no AI at all.</summary>
         internal int UnownedAI;
 
+        /// <summary>
+        /// The whole machine's busy share, 0 to 1, or -1 when it cannot be read. Everything else
+        /// here measures this process; this is the only figure that can tell "the game paused
+        /// itself" from "something else took the processor away".
+        /// </summary>
+        internal float SystemCpu;
+
         // ── what the process costs the machine ──────────────────────────────────────
         // The measurements that survive a frame cap. See Machine for why tick time does not.
         /// <summary>Milliseconds of CPU burned per second of wall clock. 1000 is one core fully busy.</summary>
@@ -143,7 +150,7 @@ namespace DiagnoseServerLag
     {
         internal static void Write(ZPackage pkg, Sample s)
         {
-            // Layout 7 appends UnownedAI, 6 appended UnownedObjects, 5 appended OwnedObjects/NearbyObjects, 4 appended FeedMs, 3 OwnedAI/NearbyAI. Writers always write the
+            // Layout 8 appends SystemCpu, 7 appended UnownedAI, 6 appended UnownedObjects, 5 appended OwnedObjects/NearbyObjects, 4 appended FeedMs, 3 OwnedAI/NearbyAI. Writers always write the
             // newest shape; readers
             // are told which one they are looking at, so an older client stays readable instead
             // of being misparsed into nonsense.
@@ -183,6 +190,7 @@ namespace DiagnoseServerLag
             pkg.Write(s.NearbyObjects);
             pkg.Write(s.UnownedObjects);
             pkg.Write(s.UnownedAI);
+            pkg.Write(s.SystemCpu);
         }
 
         internal static Sample Read(ZPackage pkg, int layout)
@@ -237,6 +245,10 @@ namespace DiagnoseServerLag
             if (layout >= 7)
             {
                 s.UnownedAI = pkg.ReadInt();
+            }
+            if (layout >= 8)
+            {
+                s.SystemCpu = pkg.ReadSingle();
             }
             return s;
         }

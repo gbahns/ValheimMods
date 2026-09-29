@@ -152,6 +152,17 @@ namespace DiagnoseServerLag
                 lines.Add(Line("cpu", $"{Machine.CoreShare(s.CpuMsPerSec) * 100f:0}% of a core" +
                                       $"  ({machine * 100f:0}% of {Machine.ProcessorCount})",
                     Rank(machine, 0.5f, 0.8f)));
+
+                // The rest of the machine. The line worth reading is what is NOT Valheim: the game
+                // being heavy is a different problem from something else taking the processor, and
+                // every other number here measures only this process.
+                if (s.SystemCpu >= 0f)
+                {
+                    float others = Mathf.Max(0f, s.SystemCpu - machine);
+                    lines.Add(Line("machine", $"{s.SystemCpu * 100f:0}% busy" +
+                                              $"  ({others * 100f:0}% not Valheim)",
+                        Rank(others, 0.25f, 0.5f)));
+                }
             }
 
             // A round trip and a socket ping are different numbers; the label says which this is.
