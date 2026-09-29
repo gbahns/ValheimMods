@@ -1,8 +1,9 @@
 # Changelog
 
-## 0.3.0 — unreleased
+## 0.3.0 — 2026-09-28
 
-- **Louder.** The whole line is orange in the chat window (Line Color), a little bigger (Text Size), and the window stays up 30 seconds for it (Chat Seconds). The on-screen message now defaults to the center of the screen and stays 8 seconds (Center Seconds) instead of fading after 4.
+- A config file written by 0.1.0 or 0.2.0 kept the small top-left message and the old victim color, since a changed default never touches a value already in the file. Once per file, a value still at an old default now moves to the new one; anything you changed yourself is left alone.
+- **Louder.** The whole line is orange in the chat window (Line Color), a little bigger (Text Size), and the window stays up 30 seconds for it (Chat Seconds). The on-screen message now defaults to the center of the screen and stays 15 seconds (Center Seconds), which covers the 10 you lie there before the respawn starts, instead of fading after 4.
 - **The weapon matters.** A Draugr with a bow reads "accepted the Draugr's shaft" or "ate the Draugr's arrow"; one with an axe "was sliced in half"; a Fuling with a spear "was skewered"; a Skeleton with a mace "got his head bashed in"; a Troll with a log "was swatted by the Troll's log". Every weapon kind has a pool of lines, and the creature's own lines are mixed in.
 - **Pronouns.** His or her from the character's body type, or set Pronouns to He, She or They.
 - **More entertaining everywhere.** An unidentified weapon reads "got jacked up by" rather than "was killed by".

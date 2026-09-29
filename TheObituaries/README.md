@@ -20,7 +20,7 @@ Kill another player and you get Quake III's **You fragged Marco** across the mid
 ## What you see
 
 - **In the chat window**, in orange and a little bigger than chat, and the window stays up half a minute for it.
-- **In the center of the screen**, for eight seconds. Can be moved to the small top-left messages, or turned off.
+- **In the center of the screen**, for fifteen seconds, which is all of the ten you lie there before the respawn starts. Can be moved to the small top-left messages, or turned off.
 - **In the BepInEx log**, plain text, for the record.
 
 The dead player's name is yellow, the killer's red; the line, both names and all the timings are configurable.
@@ -56,7 +56,7 @@ The game does not say what a creature's weapon is; the mod reads it off the weap
 | Chat Seconds | 30 | How long the chat window stays up for it (the game's own messages get 10). |
 | Text Size | 115 | Size of the line in the chat window, as a percentage of chat text. |
 | On Screen | Center | Also show it as an on-screen message: Center, TopLeft or Off. |
-| Center Seconds | 8 | How long a center message stays (the game's fade out over 4). |
+| Center Seconds | 15 | How long a center message stays (the game's own fade out over 4). You lie there 10 seconds before the respawn starts; the rest is under the loading screen. |
 | You Fragged | true | "You fragged <name>" in the center of your screen when you kill a player. |
 | Pronouns | Auto | His/her from the character's body type, or He, She, They. |
 | Level Stars | true | "a 2-star Troll" rather than "a Troll". |

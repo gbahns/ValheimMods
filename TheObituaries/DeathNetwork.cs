@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using TMPro;
 using HarmonyLib;
 using UnityEngine;
 
@@ -92,9 +93,11 @@ namespace TheObituaries
         }
 
         /// <summary>
-        /// The center message fades out over four seconds and there is no duration to set,
-        /// so a longer stay is a repeat: show it again every few seconds until the time is up.
-        /// A newer message cancels the repeat of the one before it.
+        /// The center message has no duration to set: ShowMessage queues two alpha crossfades on
+        /// its text, to 1 at once and then to 0 over four seconds, one applied per frame. So a
+        /// longer stay is: let those two land, cancel the fade by crossfading to 1 in no time,
+        /// hold, and start the same four-second fade ourselves when the time is up. If another
+        /// center message replaces the text meanwhile, it takes over and the hold stops.
         /// </summary>
         private static void ShowCenter(string text, float seconds)
         {
@@ -102,23 +105,30 @@ namespace TheObituaries
             if (hud == null) return;
             hud.ShowMessage(MessageHud.MessageType.Center, text);
             var host = TheObituariesMod.Instance;
-            if (host == null || seconds <= 4f) return;
+            if (host == null || seconds <= FadeSeconds) return;
             if (_centerRepeat != null) host.StopCoroutine(_centerRepeat);
-            _centerRepeat = host.StartCoroutine(RepeatCenter(text, seconds));
+            _centerRepeat = host.StartCoroutine(HoldCenter(text, seconds));
         }
 
-        private static IEnumerator RepeatCenter(string text, float seconds)
+        private const float FadeSeconds = 4f;   // the game's own fade-out
+
+        private static IEnumerator HoldCenter(string text, float seconds)
         {
-            float shown = 0f;
-            const float step = 3f;   // re-show a little before the four-second fade finishes
-            while (shown + step < seconds)
+            // The two queued crossfades are applied on the next two frames the HUD updates.
+            yield return new WaitForSecondsRealtime(0.25f);
+            var label = MessageHud.instance != null ? MessageHud.instance.m_messageCenterText : null;
+            if (label == null || label.text != text) { _centerRepeat = null; yield break; }
+            label.CrossFadeAlpha(1f, 0f, ignoreTimeScale: true);
+
+            float hold = seconds - FadeSeconds - 0.25f;
+            float elapsed = 0f;
+            while (elapsed < hold)
             {
-                yield return new WaitForSecondsRealtime(step);
-                shown += step;
-                var hud = MessageHud.instance;
-                if (hud == null) yield break;
-                hud.ShowMessage(MessageHud.MessageType.Center, text, log: false);
+                yield return null;
+                elapsed += Time.unscaledDeltaTime;
+                if (label.text != text) { _centerRepeat = null; yield break; }
             }
+            label.CrossFadeAlpha(0f, FadeSeconds, ignoreTimeScale: true);
             _centerRepeat = null;
         }
     }

@@ -88,10 +88,11 @@ namespace TheObituaries
             OnScreen = Config.Bind("Display", "On Screen", ScreenSpot.Center,
                 "Also show the obituary as an on-screen message: Center (big, in the middle of the " +
                 "screen), TopLeft (the small messages next to the minimap), or Off.");
-            CenterSeconds = Config.Bind("Display", "Center Seconds", 8f,
+            CenterSeconds = Config.Bind("Display", "Center Seconds", 15f,
                 new ConfigDescription(
                     "How long a center message stays on screen. The game's own center messages fade " +
-                    "out over 4 seconds; a longer stay is done by showing it again until the time is up. " +
+                    "out over 4 seconds; this holds it up and fades it out at the end. You lie there 10 " +
+                    "seconds before the respawn starts, and a loading screen covers the rest. " +
                     "Also the stay of 'You fragged'.",
                     new AcceptableValueRange<float>(4f, 60f)));
             YouFragged = Config.Bind("Display", "You Fragged", true,
@@ -114,6 +115,8 @@ namespace TheObituaries
             KillerColor = Config.Bind("Colors", "Killer Color", "#ff5e5e",
                 "Color of the killer's name, as an HTML color. Empty for the line color.");
 
+            MigrateOldDefaults();
+
             _harmony = new Harmony(ModGuid);
             _harmony.PatchAll();
 
@@ -125,6 +128,28 @@ namespace TheObituaries
         private void OnDestroy()
         {
             _harmony?.UnpatchSelf();
+        }
+
+        /// <summary>
+        /// A changed default never touches a value already in the config file, so a file
+        /// written by 0.1.0 or 0.2.0 kept the small top-left message and the old victim color,
+        /// and 0.3.0's louder display never showed. Once per file: a value still at an old
+        /// default moves to the new one; a value the player changed is left alone.
+        /// </summary>
+        private void MigrateOldDefaults()
+        {
+            var configVersion = Config.Bind("General", "Config Version", 0,
+                "Which version's defaults this file was last brought up to. Internal; leave it alone.");
+            if (configVersion.Value >= 2) return;
+            if (configVersion.Value < 1)
+            {
+                // 0.1.0 and 0.2.0 files
+                if (OnScreen.Value == ScreenSpot.TopLeft) OnScreen.Value = ScreenSpot.Center;
+                if (VictimColor.Value == "#ffa640") VictimColor.Value = "#ffe66d";
+            }
+            // early 0.3.0 builds defaulted the center stay to 8 and then 10
+            if (CenterSeconds.Value == 8f || CenterSeconds.Value == 10f) CenterSeconds.Value = 15f;
+            configVersion.Value = 2;
         }
 
         /// <summary>Wraps text in a color tag if the configured color parses; the bare text otherwise.</summary>

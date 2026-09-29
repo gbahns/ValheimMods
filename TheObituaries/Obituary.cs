@@ -107,7 +107,7 @@ namespace TheObituaries
             ("SeekerQueen",      new[] { "{v} was eviscerated by {k}", "{v} became one with {k}" }),
             ("Fader",            new[] { "{v} was incinerated by {k}", "{v} became one with {k}" }),
             // meadows, black forest
-            ("Boar",             new[] { "{v} was gored by {k}" }),
+            ("Boar",             new[] { "{v} was gored by {k}", "{v} was mauled by {k}", "{v} was tusked by {k}" }),
             ("Neck",             new[] { "{v} was nibbled to death by {k}" }),
             ("Greyling",         new[] { "{v} was scragged by {k}" }),
             ("Greydwarf_Shaman", new[] { "{v} was vomited on by {k}" }),
@@ -222,12 +222,27 @@ namespace TheObituaries
             => ByKind.TryGetValue(kind, out var lines) ? lines : ByAnything;
 
         /// <summary>The creature's own lines plus the weapon's, so both get a turn.</summary>
+        // Beasts whose attack the damage types would file under a fist or a hoof (blunt, no
+        // weapon) but which read as an animal savaging you: a boar "pummeling" someone is wrong.
+        private static readonly (string prefix, WeaponKind kind)[] KindOverrides =
+        {
+            ("Boar", WeaponKind.Bite),
+            ("Neck", WeaponKind.Bite),
+            ("Wolf", WeaponKind.Bite),
+            ("Ulv",  WeaponKind.Bite),
+            ("Bat",  WeaponKind.Bite),
+        };
+
         internal static string[] CreatureLines(string prefab, WeaponKind kind)
         {
+            prefab = prefab ?? "";
+            foreach (var (prefix, forced) in KindOverrides)
+                if (prefab.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) { kind = forced; break; }
+
             var pool = new List<string>();
             foreach (var (prefix, lines) in Creatures)
             {
-                if (!(prefab ?? "").StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+                if (!prefab.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
                 pool.AddRange(lines);
                 break;
             }
