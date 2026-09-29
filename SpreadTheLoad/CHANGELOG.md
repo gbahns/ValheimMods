@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.2.0 - unreleased
+
+- **Every player is sent their world update each cycle, instead of one player per frame.** Vanilla
+  serves exactly one peer per server frame, so each player hears from the server every
+  (players + 1) frames. Measured on bahnsheim at its 30 Hz cap, and the model is exact at both
+  ends: one player `(1+1) x 33.3 = 67 ms`, measured 67; five players `(5+1) x 33.3 = 200 ms`,
+  measured 199, 200, 201 and 204.
+
+  Five updates a second, with four other people in the world. Everything a player does not own -
+  where everyone else is, what their creatures are doing, the ship they are standing on - arrives
+  at that rate and is interpolated in between. It is the one cost that grows with the size of the
+  group, and it is invisible to every other measurement: in that same capture the server held a
+  perfect 33.3 ms tick on 17% of one core and stalled 3 times in 1800 seconds.
+
+  The 50 ms gate in the vanilla loop never signifies, because `m_sendTimer` keeps accumulating
+  during the serving frames and is always long past 0.05 by the end of a cycle. But it reads like
+  an intended 20 updates a second, which the per-frame loop quietly turns into 20/N. This restores
+  that intent: `Updates Per Second`, default 20, no longer divided by the player count.
+
+  Safe because the real flow control is untouched. `SendZDOs` refuses outright when the socket's
+  send queue is backed up and caps each package at what is left of 10 KB, so the socket's capacity
+  still decides and the gain is self-limiting rather than a flood. On bahnsheim that queue sits at
+  a median 3.7 KB against a refusal threshold near 8 KB, so expect real improvement rather than a
+  clean six times.
+
 ## 0.1.4
 
 - **A player being hit is no longer treated like a tree.** The attacker rule skipped creatures by

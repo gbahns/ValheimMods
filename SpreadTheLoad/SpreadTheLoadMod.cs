@@ -35,7 +35,7 @@ namespace SpreadTheLoad
     {
         public const string ModGuid = "DeathMonger.SpreadTheLoad";
         public const string ModName = "Spread The Load";
-        public const string ModVersion = "0.1.4";
+        public const string ModVersion = "0.2.0";
 
         internal static ManualLogSource Log;
         internal static ConfigEntry<bool> Enabled;
@@ -46,6 +46,8 @@ namespace SpreadTheLoad
         internal static ConfigEntry<int> StallsPerMinute;
         internal static ConfigEntry<bool> OwnershipFollowsAttacker;
         internal static ConfigEntry<float> AttackerDwellSeconds;
+        internal static ConfigEntry<bool> SendToEveryPeer;
+        internal static ConfigEntry<int> UpdatesPerSecond;
         internal static ConfigEntry<bool> AssignShipToCaptain;
         internal static ConfigEntry<bool> YieldingRetainsHelm;
 
@@ -106,6 +108,20 @@ namespace SpreadTheLoad
             AttackerDwellSeconds = Config.Bind("Interacting", "Attacker Dwell Seconds", 5f,
                 "How long an object stays put after being handed to somebody, so two players " +
                 "working the same tree cannot bounce it back and forth between them.");
+
+            SendToEveryPeer = Config.Bind("Pacing", "Send To Every Peer Each Cycle", true,
+                "Send every player their world update on each cycle, instead of one player per " +
+                "server frame. Vanilla serves one peer per frame, so each player hears from the " +
+                "server every (players + 1) frames - measured at 67 ms with one player and 200 ms " +
+                "with five, on a 30 Hz server. Everything a player does not own arrives at that " +
+                "rate and is interpolated in between, which is the one cost that grows with the " +
+                "size of the group. Turn this off to get vanilla pacing back.");
+
+            UpdatesPerSecond = Config.Bind("Pacing", "Updates Per Second", 20,
+                "How often each player is sent an update, once the setting above is on. Twenty is " +
+                "what vanilla's own 50 ms gate implies it was aiming for before the per-frame loop " +
+                "divided it by the player count. Higher costs upload bandwidth and a little server " +
+                "CPU; the socket refuses anything it cannot drain, so this cannot flood a client.");
 
             AssignShipToCaptain = Config.Bind("Ships", "Assign Ship To Captain", true,
                 "Give a ship to whoever is steering it. Vanilla only moves a ship when its owner " +
