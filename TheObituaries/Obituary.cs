@@ -182,6 +182,15 @@ namespace TheObituaries
             WeaponKind kind = Classify(hit, weapon, killer is Player);
             facts = Facts(type, killer, remembered, weapon, kind, hit);
 
+            // A mod that dealt this death itself has already said what it should read as; the
+            // hit it left behind says nothing, so there is nothing here worth working out.
+            string claimed = Api.Take();
+            if (claimed != null)
+            {
+                n.Template = Pronouns.Fill(claimed, Pronouns.For(victim));
+                return n;
+            }
+
             if (attackerId != ZDOID.None && victim != null && attackerId == victim.GetZDOID())
             {
                 n.Template = Pick(type == HitData.HitType.Self ? Environment[HitData.HitType.Self] : SelfInflicted);
