@@ -122,6 +122,13 @@ namespace DiagnoseServerLag
         /// </summary>
         internal float SystemCpu;
 
+        /// <summary>
+        /// How many of the nearby objects are player-built pieces, as opposed to trees, rocks and
+        /// the rest of the world. The plain object count cannot answer "how big is our base",
+        /// because a quiet stretch of forest loads thousands of things too.
+        /// </summary>
+        internal int NearbyPieces;
+
         // ── what the process costs the machine ──────────────────────────────────────
         // The measurements that survive a frame cap. See Machine for why tick time does not.
         /// <summary>Milliseconds of CPU burned per second of wall clock. 1000 is one core fully busy.</summary>
@@ -150,7 +157,7 @@ namespace DiagnoseServerLag
     {
         internal static void Write(ZPackage pkg, Sample s)
         {
-            // Layout 8 appends SystemCpu, 7 appended UnownedAI, 6 appended UnownedObjects, 5 appended OwnedObjects/NearbyObjects, 4 appended FeedMs, 3 OwnedAI/NearbyAI. Writers always write the
+            // Layout 9 appends NearbyPieces, 8 appended SystemCpu, 7 appended UnownedAI, 6 appended UnownedObjects, 5 appended OwnedObjects/NearbyObjects, 4 appended FeedMs, 3 OwnedAI/NearbyAI. Writers always write the
             // newest shape; readers
             // are told which one they are looking at, so an older client stays readable instead
             // of being misparsed into nonsense.
@@ -191,6 +198,7 @@ namespace DiagnoseServerLag
             pkg.Write(s.UnownedObjects);
             pkg.Write(s.UnownedAI);
             pkg.Write(s.SystemCpu);
+            pkg.Write(s.NearbyPieces);
         }
 
         internal static Sample Read(ZPackage pkg, int layout)
@@ -256,6 +264,10 @@ namespace DiagnoseServerLag
             if (layout >= 8)
             {
                 s.SystemCpu = pkg.ReadSingle();
+            }
+            if (layout >= 9)
+            {
+                s.NearbyPieces = pkg.ReadInt();
             }
             return s;
         }

@@ -92,6 +92,28 @@ namespace DiagnoseServerLag
         /// already follows: publicized members compile and then throw at runtime.
         /// </summary>
         private static System.Reflection.FieldInfo _instancesField;
+
+        /// <summary>
+        /// Prefab hash -> whether it is something a player built. Worked out once per type from the
+        /// prefab, never per object: the loop below runs over every loaded thing once a second, and
+        /// a GetComponent on each would make this measurement a cost of its own.
+        /// </summary>
+        private static readonly Dictionary<int, bool> _isPiece = new Dictionary<int, bool>();
+
+        private static bool IsPiece(ZDO zdo)
+        {
+            int hash = zdo.GetPrefab();
+            if (_isPiece.TryGetValue(hash, out bool known)) return known;
+            bool piece = false;
+            try
+            {
+                var prefab = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(hash) : null;
+                if (prefab != null) piece = prefab.GetComponent<Piece>() != null;
+            }
+            catch { }
+            _isPiece[hash] = piece;
+            return piece;
+        }
         private static readonly List<ZNet.PlayerInfo> _playerList = new List<ZNet.PlayerInfo>();
 
         /// <summary>
@@ -586,13 +608,14 @@ namespace DiagnoseServerLag
                 var instances = _instancesField.GetValue(scene) as Dictionary<ZDO, ZNetView>;
                 if (instances == null) return;
 
-                int owned = 0, near = 0, unowned = 0;
+                int owned = 0, near = 0, unowned = 0, pieces = 0;
                 _otherObjectOwners.Clear();
                 foreach (var kv in instances)
                 {
                     var zdo = kv.Key;
                     if (zdo == null) continue;
                     near++;
+                    if (IsPiece(zdo)) pieces++;
                     if (zdo.IsOwner()) { owned++; continue; }
                     long other = zdo.GetOwner();
                     if (other == 0L) { unowned++; continue; }
@@ -602,6 +625,7 @@ namespace DiagnoseServerLag
                 s.OwnedObjects = owned;
                 s.NearbyObjects = near;
                 s.UnownedObjects = unowned;
+                s.NearbyPieces = pieces;
             }
             catch { /* the creature count still works; this is the richer answer, not the only one */ }
         }

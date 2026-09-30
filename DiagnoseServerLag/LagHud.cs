@@ -224,6 +224,11 @@ namespace DiagnoseServerLag
                     lines.Add(Line("unowned", Holding(s.UnownedObjects, s.UnownedAI, null), 0));
 
                 lines.Add(Line("total", Holding(s.NearbyObjects, s.NearbyAI, null), 0));
+
+                // How much of that is built rather than grown. The object count alone cannot say
+                // whether you are standing in a large base or an ordinary forest.
+                if (s.NearbyPieces > 0)
+                    lines.Add(Line("built", $"{s.NearbyPieces} pieces", 0));
             }
 
             // How often the server actually reaches this client. Shown next to what the send

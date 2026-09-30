@@ -2,6 +2,17 @@
 
 ## 0.10.1 - unreleased
 
+- **New line: `built`** - how many of the nearby objects are player-built pieces, rather than
+  trees, rocks and scenery. The plain object count could not answer "how big is our base": around
+  Greg's, 5,094 objects were loaded, but a quiet stretch of swamp loaded 4,233, so the count alone
+  says almost nothing about what anybody built. `nearby_pieces` is in the group capture too.
+
+  Worked out once per prefab type and remembered, never per object: the loop it lives in runs over
+  every loaded thing once a second, and a GetComponent on each would have made the measurement a
+  cost of its own.
+
+- Wire layout 9. **Update the server before the clients.**
+
 - **A missing machine-CPU reading now says so, instead of reading as an idle machine.** A client too
   old to send the field had it default to 0, and 0 is a perfectly plausible busy figure - so in the
   first capture that used it, one player showed 0.0% machine busy for all 1800 seconds while
