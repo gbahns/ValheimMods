@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.7.1 — 2026-09-29
+
+Client-side; works with a 0.2.x server.
+
+- "Highlight Players" moves from P to T, for team. P is the busiest key in a modded Valheim -- The
+  Greatest Portal, Portal Rules, Target Portal and others all want it -- so pressing it opened a
+  portal list over the players you were looking for. If you had already set it yourself, your own
+  choice stands.
+- A keybind with no modifier no longer answers a press that has one. The check asked only that the
+  modifiers a binding listed were held, so a plain key fired while Shift or Ctrl was down: Shift+Y
+  for the legend also took the map out on plain Y, and a plain key of this mod's answered another
+  mod's chord on the same letter. It now wants exactly the modifiers asked for and no others, which
+  is what BepInEx's own shortcut check does.
+- Marker labels no longer blink while the players are lit up. Zooming or panning makes the game
+  build its markers afresh, and a new one starts visible, so they showed for the frame before the
+  spotlight put them out again. They are put out as part of that same rebuild now.
+- Marker labels no longer appear beside the minimap. Keeping markers drawn past the map's edge,
+  added in 1.6.1, was applied to whichever map was asking -- and the minimap asks the same
+  question. It has no mask of its own, so the markers kept past its edge drew their labels onto the
+  HUD next to it. Only the large map, whose pin roots are masked, is generous now; the minimap is
+  back to the game's own behavior.
+
 ## 1.7.0 — 2026-09-29
 
 Client-side; works with a 0.2.x server.

@@ -178,7 +178,7 @@ namespace TheGreatestMap
             LegendKey = mod.BindLocal("Keys", "Legend", new KeyboardShortcut(KeyCode.L),
                 "Opens the legend: every marker this mod can draw and the thing it stands for, with the icon resolved " +
                 "the way recording resolves it. The console command tgm_legend does the same.");
-            HighlightPlayersKey = mod.BindLocal("Keys", "Highlight Players", new KeyboardShortcut(KeyCode.P),
+            HighlightPlayersKey = mod.BindLocal("Keys", "Highlight Players", new KeyboardShortcut(KeyCode.T),
                 "On the large map, light up the other players and put every other marker out, so you can find each " +
                 "other on a map carrying hundreds of markers. Press again, or close the map, to bring it all back. " +
                 "Only players who are sharing their position can be shown, which is all the game tells your client.");

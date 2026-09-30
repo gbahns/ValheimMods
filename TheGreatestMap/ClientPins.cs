@@ -914,6 +914,14 @@ namespace TheGreatestMap
     [HarmonyPatch(typeof(Minimap), "UpdatePins")]
     internal static class Minimap_UpdatePins_Style_Patch
     {
-        private static void Postfix(Minimap __instance) => ClientPins.StylePins(__instance);
+        private static void Postfix(Minimap __instance)
+        {
+            ClientPins.StylePins(__instance);
+            // Vanilla has just built markers afresh, and a new one starts visible. Putting the
+            // spotlight's out here rather than waiting for our own Update keeps them from showing
+            // for the frame between: the two Updates have no order between them, so zooming or
+            // panning -- which is what makes vanilla rebuild -- made every label blink.
+            PlayerSpotlight.AfterLayout(__instance);
+        }
     }
 }

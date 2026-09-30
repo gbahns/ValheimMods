@@ -42,6 +42,12 @@ namespace TheGreatestMap
             if (_on) Paint(map);
         }
 
+        /// <summary>Vanilla has just laid the markers out again; put the hidden ones back out.</summary>
+        internal static void AfterLayout(Minimap map)
+        {
+            if (_on && map != null) Paint(map);
+        }
+
         private static void Start(Minimap map)
         {
             int players = Count(map);

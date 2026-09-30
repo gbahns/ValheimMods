@@ -441,6 +441,10 @@ namespace TheGreatestMap
         private static void Postfix(Minimap __instance, Vector3 p, RawImage map, ref bool __result)
         {
             if (__result || map == null || __instance == null) return;
+            // The minimap asks this too, and it has no mask of its own: keeping markers past its
+            // edge puts their labels on the HUD beside it. Only the large map, whose pin roots are
+            // masked, can afford to be generous.
+            if (map != __instance.m_mapImageLarge) return;
             var rect = map.rectTransform.rect;
             if (rect.width <= 1f || rect.height <= 1f) return;
             var uv = map.uvRect;

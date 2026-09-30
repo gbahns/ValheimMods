@@ -41,7 +41,7 @@ the top of its changelog entry.
 | `Y` | Take the map out of your pocket / put it away |
 | `U` | Read and write the nearest cartography table right now |
 | `L` | Open the legend: every marker and the thing it stands for |
-| `P` | On the large map: light up the other players and put every other marker out |
+| `T` | On the large map: light up the other players and put every other marker out (T for team) |
 
 Pick keys no other mod acts on. If another mod equips an item on the same key as the map, the
 map folds straight back up (equipping a hand item always puts it away).
