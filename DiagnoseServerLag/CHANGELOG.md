@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.1 - unreleased
+## 0.10.1
 
 - **New line: `built`** - how many of the nearby objects are player-built pieces, rather than
   trees, rocks and scenery. The plain object count could not answer "how big is our base": around

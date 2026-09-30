@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.1 - unreleased
+## 0.2.1
 
 - **An object goes to the player standing on it when its owner is nowhere near.** Greg's rule, and
   it fixes the case people actually feel: shoving a boar toward its pen. Every push travels to
