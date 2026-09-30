@@ -46,6 +46,9 @@ namespace SpreadTheLoad
         internal static ConfigEntry<int> StallsPerMinute;
         internal static ConfigEntry<bool> OwnershipFollowsAttacker;
         internal static ConfigEntry<float> AttackerDwellSeconds;
+        internal static ConfigEntry<bool> ProximityTransfer;
+        internal static ConfigEntry<float> ProximityNearMeters;
+        internal static ConfigEntry<float> ProximityFarMeters;
         internal static ConfigEntry<bool> SendToEveryPeer;
         internal static ConfigEntry<int> UpdatesPerSecond;
         internal static ConfigEntry<bool> AssignShipToCaptain;
@@ -108,6 +111,22 @@ namespace SpreadTheLoad
             AttackerDwellSeconds = Config.Bind("Interacting", "Attacker Dwell Seconds", 5f,
                 "How long an object stays put after being handed to somebody, so two players " +
                 "working the same tree cannot bounce it back and forth between them.");
+
+            ProximityTransfer = Config.Bind("Interacting", "Ownership Follows Proximity", true,
+                "Give an object to a player standing on top of it when its owner is nowhere near. " +
+                "Pushing a boar you do not own is the clearest case: every shove travels to the " +
+                "owner and the corrected position comes back, so the animal lurches - and the owner " +
+                "may be a hundred metres away with no interest in it. Nothing to do with anyone's " +
+                "machine being slow; the object is simply in the wrong hands.");
+
+            ProximityNearMeters = Config.Bind("Interacting", "Proximity Near Meters", 2f,
+                "How close a player must be to take an object this way.");
+
+            ProximityFarMeters = Config.Bind("Interacting", "Proximity Far Meters", 5f,
+                "How far the current owner must be for it to be taken from them. The gap between " +
+                "this and Near is what stops an object flitting between two people: once the near " +
+                "player owns it they are at zero distance, so the rule cannot fire again until " +
+                "somebody else is nearer than Near while they are further than Far.");
 
             SendToEveryPeer = Config.Bind("Pacing", "Send To Every Peer Each Cycle", true,
                 "Send every player their world update on each cycle, instead of one player per " +

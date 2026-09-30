@@ -2,6 +2,30 @@
 
 ## 0.2.1 - unreleased
 
+- **An object goes to the player standing on it when its owner is nowhere near.** Greg's rule, and
+  it fixes the case people actually feel: shoving a boar toward its pen. Every push travels to
+  whoever owns the boar and the corrected position comes back, so the animal lurches - and the
+  owner may be a hundred metres away with no interest in it. The same goes for opening somebody's
+  chest, or anything you are standing over.
+
+  Take at 2 m, give up only at 5 m. That gap is what stops an object flitting between two people:
+  once the near player owns it they are at zero distance, so the rule cannot fire again until
+  somebody else is nearer than 2 m while they are further than 5. It settles by construction rather
+  than by a cooldown.
+
+  Nothing to do with anyone's machine being slow, unlike everything else here - the object is
+  simply in the wrong hands. Distances come from each player's character ZDO, which syncs every
+  67 ms since the pacing change, rather than the zone-grained peer reference position.
+
+  The active-area predicate is only told an object's position and its *owner*, never which player
+  is being offered it, so a small patch on `ReleaseNearbyZDOS` records whose pass is running.
+  Without it the rule could tell that the owner was far away but not that *this* player was close,
+  and vanilla would have handed the object to whichever peer happened to be iterating.
+
+- **The guards now apply to every rule, not just the yield one.** The open-container and combat
+  checks sat inside the yield branch, so the rule above would have bypassed both - handing away a
+  chest somebody had open, or a creature mid-fight.
+
 - **Ownership is frozen near fighting.** The attacker rule already refused to move anything living,
   because a creature's target, path and alert timers are not all replicated and the new owner
   restarts its AI from whatever the ZDO holds - which in play is a boss that stops attacking. The

@@ -73,9 +73,11 @@ namespace SpreadTheLoad
                 if (SpreadTheLoadMod.Enabled == null || !SpreadTheLoadMod.Enabled.Value) return false;
 
                 Refresh();
-                if (_yielding.Count == 0) return false;
-                if (!_yielding.TryGetValue(ownerUid, out string who)) return false;
 
+                // The guards come first and apply to every reason an object might move. They used
+                // to sit inside the yield branch, which meant a second rule added later would have
+                // quietly bypassed all of them.
+                //
                 // A chest they have open stays theirs. Vanilla's container code assumes the person
                 // with the window open owns it, and taking it away mid-drag makes the stack they
                 // pulled reappear in the chest on their screen. See Containers.
@@ -89,16 +91,24 @@ namespace SpreadTheLoad
                 // when rebalancing has nothing to offer.
                 if (Combat.Nearby(point)) return false;
 
-                // Only ever a no when somebody else is genuinely in range. Without this the object
-                // would be left for whoever happened to be iterated next, or for nobody at all,
-                // and a creature with no owner runs no AI.
-                for (int i = 0; i < _capable.Count; i++)
+                // Reason one: the owner is a machine being steered away from.
+                if (_yielding.TryGetValue(ownerUid, out string who))
                 {
-                    if (!ZNetScene.InActiveArea(point, _capable[i].RefPos)) continue;
-                    Note(who);
-                    return true;
+                    // Only ever a no when somebody else is genuinely in range. Without this the
+                    // object would be left for whoever happened to be iterated next, or for nobody
+                    // at all, and a creature with no owner runs no AI.
+                    for (int i = 0; i < _capable.Count; i++)
+                    {
+                        if (!ZNetScene.InActiveArea(point, _capable[i].RefPos)) continue;
+                        Note(who);
+                        return true;
+                    }
+                    return false;
                 }
-                return false;
+
+                // Reason two: somebody is standing on it and the owner is not. Nothing to do with
+                // anyone's machine - the object is simply in the wrong hands.
+                return Proximity.ShouldTake(point, ownerUid);
             }
             catch
             {
