@@ -196,6 +196,13 @@ namespace DiagnoseServerLag
         internal static Sample Read(ZPackage pkg, int layout)
         {
             var s = new Sample();
+
+            // Unavailable, not idle. A struct field defaults to 0, and 0 is a perfectly plausible
+            // machine-busy reading - so a client too old to send this one looked like a completely
+            // idle computer, which is both wrong and the most interesting thing it could have said.
+            // Anything added later that has a "no answer" value should be set here too.
+            s.SystemCpu = -1f;
+
             s.At = pkg.ReadSingle();
             s.UtcTicks = pkg.ReadLong();
             s.FrameMsAvg = pkg.ReadSingle();

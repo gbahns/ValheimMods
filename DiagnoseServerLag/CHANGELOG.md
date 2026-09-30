@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.1 - unreleased
+
+- **A missing machine-CPU reading now says so, instead of reading as an idle machine.** A client too
+  old to send the field had it default to 0, and 0 is a perfectly plausible busy figure - so in the
+  first capture that used it, one player showed 0.0% machine busy for all 1800 seconds while
+  burning 254% of a core. The most misleading value it could have chosen, and indistinguishable
+  from a real measurement without checking that every second held the same number. Anything absent
+  now reads as unavailable.
+
 ## 0.10.0
 
 - **New line: `machine`** - how busy the whole computer is, and how much of that is not Valheim.
