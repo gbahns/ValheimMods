@@ -74,6 +74,17 @@ namespace SpreadTheLoad
                 var znet = ZNet.instance;
                 if (znet == null || !znet.IsServer()) return;
 
+                // Every blow, wherever it lands and whoever owns the target: this is the only
+                // place the server learns that a fight is happening somewhere, and Combat uses it
+                // to freeze ownership there. Recorded before any of the attacker rule's own
+                // conditions, which would otherwise filter out most fights.
+                var zdoMan0 = ZDOMan.instance;
+                if (zdoMan0 != null)
+                {
+                    var hit = zdoMan0.GetZDO(data.m_targetZDO);
+                    if (hit != null && hit.IsValid()) Combat.Note(hit.GetPosition());
+                }
+
                 long attacker = data.m_senderPeerID;
                 if (attacker == 0L || attacker == data.m_targetPeerID) return;
 

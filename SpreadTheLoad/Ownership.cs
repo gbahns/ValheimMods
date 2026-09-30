@@ -81,6 +81,14 @@ namespace SpreadTheLoad
                 // pulled reappear in the chest on their screen. See Containers.
                 if (Containers.IsHeld(point)) return false;
 
+                // Never rebalance where people are fighting. Moving a creature between machines
+                // restarts its AI on the new owner from whatever the ZDO holds, which is a boss
+                // that stops attacking - and this predicate is never told which object it is being
+                // asked about, so it cannot spare the creature and move the fence post. Freezing
+                // the whole area is coarse and errs the safe way; a fight is also the one moment
+                // when rebalancing has nothing to offer.
+                if (Combat.Nearby(point)) return false;
+
                 // Only ever a no when somebody else is genuinely in range. Without this the object
                 // would be left for whoever happened to be iterated next, or for nobody at all,
                 // and a creature with no owner runs no AI.

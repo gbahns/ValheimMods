@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.1 - unreleased
+
+- **Ownership is frozen near fighting.** The attacker rule already refused to move anything living,
+  because a creature's target, path and alert timers are not all replicated and the new owner
+  restarts its AI from whatever the ZDO holds - which in play is a boss that stops attacking. The
+  yield rule had no such guard, which was an inconsistency rather than a decision: it works through
+  a predicate that is handed a position and an owner and never learns which object it is being
+  asked about, so it cannot tell a troll from a fence post.
+
+  Greg reported exactly that symptom after a Gerhaffa fight, and it does not need the yielded player
+  to have arrived first - ownership moves whenever an owner leaves an object's active area, so
+  simply walking through was enough to acquire the boss and have it taken away again.
+
+  Since the object cannot be identified, the guard is spatial: every damage RPC the server relays
+  marks a place and a time, and ownership stops moving within 40 m of recent blows until 15 quiet
+  seconds have passed. Coarse - it protects the fence posts in the fight too - but it errs the safe
+  way, and a fight is the one moment when rebalancing has nothing to offer.
+
 ## 0.2.0
 
 - **Every player is sent their world update each cycle, instead of one player per frame.** Vanilla
