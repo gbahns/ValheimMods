@@ -89,7 +89,7 @@ namespace TheGreatestMap
         private static readonly Dictionary<string, string> KnownIcons = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             { "Crypt2", "TrophySkeleton" }, { "Crypt3", "TrophySkeleton" }, { "Crypt4", "TrophySkeleton" },
-            { "SunkenCrypt4", "TrophyDraugr" }, { "MountainCave02", "TrophyCultist" }, { "TrollCave02", "TrophyFrostTroll" },
+            { "SunkenCrypt4", "TrophyDraugr" }, { "MountainCave02", "FreezeGland" }, { "TrollCave02", "TrophyFrostTroll" },
             { "BearCave", "TrophyBjorn" }, { "Mistlands_DvergrTownEntrance1", "TrophySeeker" }, { "Mistlands_DvergrTownEntrance2", "TrophySeeker" },
             { "Vendor_BlackForest", "Coins" }, { "Hildir_camp", "Coins" }, { "BogWitch_Camp", "Coins" },
             { "GoblinCamp2", "TrophyGoblin" }, { "Spawner_GreydwarfNest", "TrophyGreydwarfBrute" }, { "WoodVillage1", "TrophyDraugr" }, // WoodFarm1 is the abandoned farm: a structure, not a camp
@@ -222,7 +222,7 @@ namespace TheGreatestMap
                            "YggdrasilRoot*=Yggdrasil Root|Sap";
                 case Category.Dungeon:
                     return "Crypt2=Burial Chambers|TrophySkeleton,Crypt3=Burial Chambers|TrophySkeleton,Crypt4=Burial Chambers|TrophySkeleton," +
-                           "SunkenCrypt4=Sunken Crypt|TrophyDraugr,MountainCave02=Frost Cave|TrophyCultist,TrollCave02=Troll Cave|TrophyFrostTroll," +
+                           "SunkenCrypt4=Sunken Crypt|TrophyDraugr,MountainCave02=Frost Cave|FreezeGland,TrollCave02=Troll Cave|TrophyFrostTroll," +
                            "Mistlands_DvergrTownEntrance1=Infested Mine|TrophySeeker,Mistlands_DvergrTownEntrance2=Infested Mine|TrophySeeker," +
                            "BearCave=Bear Cave|TrophyBjorn";
                 case Category.Trader:
@@ -237,7 +237,7 @@ namespace TheGreatestMap
                 case Category.Structure:
                     return "WoodFarm1=Abandoned Farm,WoodHouse*=Abandoned House,AbandonedLogCabin*=Log Cabin,StoneTowerRuins*=Stone Tower Ruins,StoneHouse*=Stone House," +
                            "Ruin*=Ruins,SwampHut*=Swamp Hut,SwampRuin*=Swamp Ruins,SwampWell*=Swamp Well,StoneHenge*=Stonehenge,StoneTower*=Stone Tower," +
-                           "StoneCircle*=Stone Circle,Dolmen*=Dolmen,MountainGrave*=Mountain Grave,MountainWell*=Mountain Well,DrakeNest*=Drake Nest," +
+                           "StoneCircle*=Stone Circle,Dolmen*=Dolmen,MountainGrave*=Mountain Grave,MountainWell*=Mountain Well,DrakeNest*=Drake Nest|DragonEgg," +
                            "Greydwarf_camp*=Greydwarf Nest,ShipSetting*=Ship Setting,Waymarker*=Waymarker,InfestedTree*=Infested Tree," +
                            "Mistlands_GuardTower*=Dvergr Guard Tower,Mistlands_Excavation*=Dvergr Excavation,Mistlands_Harbour*=Dvergr Harbour," +
                            "Mistlands_Lighthouse*=Dvergr Lighthouse,Mistlands_Giant*=Giant Remains,Mistlands_Swords*=Petrified Swords," +

@@ -31,12 +31,12 @@ namespace TheGreatestMap
 
         /// <summary>
         /// True once this kind's types are actually told apart on the map. A type is read from a
-        /// marker's icon, so a kind whose entries all wear one icon has nothing to split by, and
-        /// splitting it anyway would file every structure under whichever entry came first. It
-        /// stays one group until the catalog gives its types icons of their own, and splits by
-        /// itself when it does. More than one real type, that is, besides the catch-all.
+        /// marker's icon, so a kind whose entries all wear the kind's fallback icon has nothing to
+        /// split by: those all land in the catch-all, leaving one group, and the kind stays whole.
+        /// Give one of them an icon of its own and it becomes a group, and the kind splits by
+        /// itself -- which is what happened the day drake nests took the dragon egg.
         /// </summary>
-        internal static bool Splits(Category c) => HasTypes(c) && GroupsOf(c).Count > 2;
+        internal static bool Splits(Category c) => HasTypes(c) && GroupsOf(c).Count > 1;
 
         /// <summary>The group for one of these whose icon the catalog does not know.</summary>
         internal static string Catchall(Category c) => c == Category.Dungeon ? OtherDungeons : "Other " + Categories.Label(c);
@@ -155,9 +155,16 @@ namespace TheGreatestMap
             }
             byIcon = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             groups = new List<string>();
+            // Everything still wearing the kind's own fallback icon is not a type, it is the
+            // remainder: one house pin covers abandoned farms, swamp huts and stone towers alike,
+            // and naming that group after whichever of them the catalog happened to list first
+            // would be a lie. They go to the catch-all until the catalog tells them apart.
+            string fallback = IconRegistry.Normalize(Categories.DefaultIcon(cat));
             foreach (var kv in Catalog.TypesOf(cat))
             {
-                string group = Plural(kv.Value);
+                string group = string.Equals(kv.Key, fallback, StringComparison.OrdinalIgnoreCase)
+                    ? Catchall(cat)
+                    : Plural(kv.Value);
                 if (byIcon.ContainsKey(kv.Key)) continue;
                 byIcon[kv.Key] = group;
                 if (!Contains(groups, group)) groups.Add(group);
@@ -170,7 +177,7 @@ namespace TheGreatestMap
                 string sunken = groups.Find(g => g.StartsWith("Sunken", StringComparison.OrdinalIgnoreCase));
                 if (sunken != null) byIcon[cryptKey] = sunken;
             }
-            groups.Add(Catchall(cat));
+            if (!Contains(groups, Catchall(cat))) groups.Add(Catchall(cat));
             // An icon the catalog does not spell out is worked out by looking items up, which needs
             // the item database. Without it the answer is used once rather than remembered.
             if (ObjectDB.instance != null) _types[cat] = new Types { ByIcon = byIcon, Groups = groups };

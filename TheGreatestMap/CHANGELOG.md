@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.7.2 — unreleased
+
+Client-side; works with a 0.2.x server.
+
+- Frost caves wear a freeze gland instead of the cultist trophy. A trophy is a dark, busy little
+  silhouette and it was lost among everything else on the map; the gland is one bright shape, and
+  the name says frost. Markers already written keep the trophy, and still group as frost caves.
+- Drake nests wear a dragon egg instead of the house pin every structure shares. A house on a
+  mountain peak told you nothing about what was up there; the egg says it plainly. Markers already
+  written keep the house -- an icon is stored with the marker -- so `tgm_erase Structures 100` near
+  a nest lets it be recorded again.
+- Crossed-off structures hide by type now that one of them has an icon of its own: the marker
+  button's list grows a "Drake Nests" row and an "Other Structures" row. Whatever still wears the
+  kind's fallback icon stays in the catch-all rather than being named after whichever catalog entry
+  happened to come first, so this grows one row at a time as types are given icons.
+
 ## 1.7.1 — 2026-09-29
 
 Client-side; works with a 0.2.x server.
