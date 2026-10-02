@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
@@ -28,7 +30,7 @@ namespace TheGreatestMap
     {
         public const string ModGuid    = "DeathMonger.TheGreatestMap";
         public const string ModName    = "The Greatest Map";
-        public const string ModVersion = "1.7.3";
+        public const string ModVersion = "1.7.4";
 
         // Oldest version whose shared-marker wire format this build still speaks. ServerSync
         // refuses peers below this, so bump it only when the format or an RPC changes, not on
@@ -70,9 +72,55 @@ namespace TheGreatestMap
             };
 
             TgmConfig.Bind(this);
+            WatchConfigFile();
             Commands.Register();
             _harmony.PatchAll();
             Log.LogInfo($"[TheGreatestMap] {ModVersion} loaded.");
+        }
+
+        /// <summary>
+        /// Read the config file again when it changes on disk, so an edit made in a text editor
+        /// while the game is running takes effect. BepInEx reads the file once at startup and
+        /// writes it from memory afterwards, so without this an edit is not merely ignored -- it
+        /// is overwritten the next time anything saves a setting, which is how an afternoon's
+        /// careful catalog edits disappear.
+        ///
+        /// Settings carry their own change hooks, so a reload rebuilds the catalog, restyles the
+        /// markers and repositions the map by itself. Server-synced settings are safe: ServerSync
+        /// patches the re-read so a value from the file lands in the local copy rather than over
+        /// what the server said.
+        /// </summary>
+        private FileSystemWatcher _configWatcher;
+
+        private void WatchConfigFile()
+        {
+            try
+            {
+                _configWatcher = new FileSystemWatcher(Paths.ConfigPath, Path.GetFileName(Config.ConfigFilePath));
+                _configWatcher.Changed += OnConfigFileChanged;
+                _configWatcher.Created += OnConfigFileChanged;
+                _configWatcher.Renamed += OnConfigFileChanged;
+                _configWatcher.SynchronizingObject = ThreadingHelper.SynchronizingObject; // back on the main thread
+                _configWatcher.EnableRaisingEvents = true;
+            }
+            catch (Exception ex)
+            {
+                Log.LogWarning($"[TheGreatestMap] Cannot watch the config file for changes: {ex.Message}");
+            }
+        }
+
+        private void OnConfigFileChanged(object sender, FileSystemEventArgs e)
+        {
+            if (!File.Exists(Config.ConfigFilePath)) return;
+            try
+            {
+                Config.Reload();
+                Log.LogInfo("[TheGreatestMap] Config file changed on disk; settings reloaded.");
+            }
+            catch (Exception ex)
+            {
+                Log.LogError($"[TheGreatestMap] Config file changed but could not be read: {ex.Message}");
+            }
         }
 
         private void Update()

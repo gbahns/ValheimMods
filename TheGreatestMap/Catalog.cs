@@ -89,9 +89,20 @@ namespace TheGreatestMap
         private static readonly Dictionary<string, string> KnownIcons = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             { "Crypt2", "TrophySkeleton" }, { "Crypt3", "TrophySkeleton" }, { "Crypt4", "TrophySkeleton" },
-            { "SunkenCrypt4", "TrophyDraugr" }, { "MountainCave02", "FreezeGland" }, { "TrollCave02", "TrophyFrostTroll" },
+            { "SunkenCrypt4", "TrophyDraugr" }, { "MountainCave02", "TrophyCultist" }, { "TrollCave02", "TrophyFrostTroll" },
             { "BearCave", "TrophyBjorn" }, { "Mistlands_DvergrTownEntrance1", "TrophySeeker" }, { "Mistlands_DvergrTownEntrance2", "TrophySeeker" },
             { "Vendor_BlackForest", "Coins" }, { "Hildir_camp", "Coins" }, { "BogWitch_Camp", "Coins" },
+            // Deposits whose own entry may predate its |Icon: without one the icon falls back to
+            // what the deposit drops, and then to the kind's own fallback, which is copper ore --
+            // so a scrap pile and a giant's bones both came out looking like copper.
+            { "mudpile", "IronScrap" }, { "mudpile2", "IronScrap" }, { "mudpile_beacon", "IronScrap" },
+            { "silvervein", "SilverOre" },
+            // A giant's remains are not one thing: the swords and armor give copper scrap, the
+            // skull and ribs black marble, so each wears what it actually yields.
+            { "giant_brain", "SoftTissue" },
+            { "giant_helmet1", "CopperScrap" }, { "giant_helmet2", "CopperScrap" },
+            { "giant_sword1", "CopperScrap" }, { "giant_sword2", "CopperScrap" },
+            { "giant_ribs", "BlackMarble" }, { "giant_skull", "BlackMarble" },
             { "GoblinCamp2", "TrophyGoblin" }, { "Spawner_GreydwarfNest", "TrophyGreydwarfBrute" }, { "WoodVillage1", "TrophyDraugr" }, // WoodFarm1 is the abandoned farm: a structure, not a camp
             { "Eikthyrnir", "TrophyEikthyr" }, { "GDKing", "TrophyTheElder" }, { "Bonemass", "TrophyBonemass" },
             { "Dragonqueen", "TrophyDragonQueen" }, { "GoblinKing", "TrophyGoblinKing" },
@@ -217,12 +228,12 @@ namespace TheGreatestMap
                 case Category.Ore:
                     return "rock4_copper=Copper,MineRock_Tin=Tin,silvervein=Silver|SilverOre,MineRock_Obsidian=Obsidian,MineRock_Meteorite=Meteorite," +
                            "mudpile_beacon=Scrap Pile|IronScrap,mudpile2=Scrap Pile|IronScrap,mudpile=Scrap Pile|IronScrap,Pickable_Tar=Tar Pit," +
-                           "giant_brain=Petrified Bone,giant_helmet1=Petrified Bone,giant_helmet2=Petrified Bone,giant_ribs=Petrified Bone," +
-                           "giant_skull=Petrified Bone,giant_sword1=Petrified Bone,giant_sword2=Petrified Bone," +
+                           "giant_brain=Giant Brain|SoftTissue,giant_helmet1=Giant Helmet|CopperScrap,giant_helmet2=Giant Helmet|CopperScrap,giant_ribs=Giant Ribs|BlackMarble," +
+                           "giant_skull=Giant Skull|BlackMarble,giant_sword1=Giant Sword|CopperScrap,giant_sword2=Giant Sword|CopperScrap," +
                            "YggdrasilRoot*=Yggdrasil Root|Sap";
                 case Category.Dungeon:
                     return "Crypt2=Burial Chambers|TrophySkeleton,Crypt3=Burial Chambers|TrophySkeleton,Crypt4=Burial Chambers|TrophySkeleton," +
-                           "SunkenCrypt4=Sunken Crypt|TrophyDraugr,MountainCave02=Frost Cave|FreezeGland,TrollCave02=Troll Cave|TrophyFrostTroll," +
+                           "SunkenCrypt4=Sunken Crypt|TrophyDraugr,MountainCave02=Frost Cave|TrophyCultist,TrollCave02=Troll Cave|TrophyFrostTroll," +
                            "Mistlands_DvergrTownEntrance1=Infested Mine|TrophySeeker,Mistlands_DvergrTownEntrance2=Infested Mine|TrophySeeker," +
                            "BearCave=Bear Cave|TrophyBjorn";
                 case Category.Trader:
@@ -238,11 +249,11 @@ namespace TheGreatestMap
                     return "WoodFarm1=Abandoned Farm,WoodHouse*=Abandoned House,AbandonedLogCabin*=Log Cabin,StoneTowerRuins*=Stone Tower Ruins,StoneHouse*=Stone House," +
                            "Ruin*=Ruins,SwampHut*=Swamp Hut,SwampRuin*=Swamp Ruins,SwampWell*=Swamp Well,StoneHenge*=Stonehenge,StoneTower*=Stone Tower," +
                            "StoneCircle*=Stone Circle,Dolmen*=Dolmen,MountainGrave*=Mountain Grave,MountainWell*=Mountain Well,DrakeNest*=Drake Nest|DragonEgg," +
-                           "Greydwarf_camp*=Greydwarf Nest,ShipSetting*=Ship Setting,Waymarker*=Waymarker,InfestedTree*=Infested Tree," +
-                           "Mistlands_GuardTower*=Dvergr Guard Tower,Mistlands_Excavation*=Dvergr Excavation,Mistlands_Harbour*=Dvergr Harbour," +
-                           "Mistlands_Lighthouse*=Dvergr Lighthouse,Mistlands_Giant*=Giant Remains,Mistlands_Swords*=Petrified Swords," +
-                           "Mistlands_Statue*=Dvergr Statue,Mistlands_Viaduct*=Viaduct,CharredRuins*=Charred Ruins,AshlandRuins*=Ashlands Ruins," +
-                           "FortressRuins*=Fortress Ruins,PlaceofMystery*=Place of Mystery";
+                           "Greydwarf_camp*=Greydwarf Nest|TrophyGreydwarfBrute,ShipSetting*=Ship Setting,Waymarker*=Waymarker,InfestedTree*=Infested Tree|TrophySeeker," +
+                           "Mistlands_GuardTower*=Dvergr Guard Tower|TrophyDvergr,Mistlands_Excavation*=Dvergr Excavation|TrophyDvergr,Mistlands_Harbour*=Dvergr Harbour|TrophyDvergr," +
+                           "Mistlands_Lighthouse*=Dvergr Lighthouse|TrophyDvergr,Mistlands_Giant*=Giant Remains,Mistlands_Swords*=Petrified Swords," +
+                           "Mistlands_Statue*=Dvergr Statue|TrophyDvergr,Mistlands_Viaduct*=Viaduct|TrophyDvergr,CharredRuins*=Charred Ruins,AshlandRuins*=Ashlands Ruins," +
+                           "FortressRuins*=Fortress Ruins|TrophyCharredMage,PlaceofMystery*=Place of Mystery";
                 case Category.Campfire:
                     return "fire_pit=Campfire|piece:fire_pit";
                 default:
@@ -369,6 +380,42 @@ namespace TheGreatestMap
         }
 
         /// <summary>One catalog line, with the icon it will actually draw and where that came from.</summary>
+        /// <summary>
+        /// Write an icon into the player's own catalog line for one prefab, as the legend's editor
+        /// does. An entry the player does not have -- most of them, since the shipped list is only
+        /// a fallback -- is added rather than silently ignored, keeping the name the legend shows
+        /// so the line still reads as a sentence. An empty icon takes the override off again and
+        /// lets the icon be worked out as before.
+        /// </summary>
+        internal static bool SetIcon(Category cat, string prefab, string name, string icon)
+        {
+            if (string.IsNullOrEmpty(prefab) || !TgmConfig.CategoryPrefabs.TryGetValue(cat, out var setting)) return false;
+            icon = (icon ?? "").Trim();
+            var parts = new List<string>((setting.Value ?? "").Split(','));
+            bool done = false;
+            for (int i = 0; i < parts.Count && !done; i++)
+            {
+                string part = parts[i].Trim();
+                if (part.Length == 0) continue;
+                int bar = part.IndexOf('|');
+                string head = bar >= 0 ? part.Substring(0, bar) : part;
+                int eq = head.IndexOf('=');
+                string key = (eq >= 0 ? head.Substring(0, eq) : head).Trim();
+                if (!string.Equals(key, prefab, StringComparison.OrdinalIgnoreCase)) continue;
+                parts[i] = icon.Length == 0 ? head : head + "|" + icon;
+                done = true;
+            }
+            if (!done)
+            {
+                string head = string.IsNullOrEmpty(name) ? prefab : prefab + "=" + name;
+                parts.Add(icon.Length == 0 ? head : head + "|" + icon);
+            }
+            var kept = new List<string>();
+            foreach (var p in parts) if (p.Trim().Length > 0) kept.Add(p.Trim());
+            setting.Value = string.Join(",", kept.ToArray());   // SettingChanged rebuilds the catalog
+            return true;
+        }
+
         internal sealed class LegendRow
         {
             public Category Cat;
@@ -376,6 +423,7 @@ namespace TheGreatestMap
             public string Name;
             public string Icon;
             public string Source;
+            public bool Configured;   // the player's own line names this icon, not a fallback
             public bool Missing;    // the icon key names an item this game does not have
             public bool NoPrefab;   // nothing by that name exists in this game at all
         }
@@ -404,12 +452,13 @@ namespace TheGreatestMap
                     Name = e.Name ?? Prettify(prefab.TrimEnd('*')),
                     Icon = icon,
                     Source = source,
+                    Configured = source == "catalog",
                     Missing = icon != null && (icon.StartsWith("item:") ? !ItemExists(icon.Substring(5))
                         : icon.StartsWith("piece:") && ZNetScene.instance != null && ZNetScene.instance.GetPrefab(icon.Substring(6)) == null),
                     // A catalog line for something the game does not have is dead weight, and is
                     // invisible otherwise: onion seeds, for instance, come out of chests rather
                     // than the ground, so there may be nothing in the world to ever mark.
-                    NoPrefab = !prefab.EndsWith("*") && ZNetScene.instance != null && ZNetScene.instance.GetPrefab(prefab) == null,
+                    NoPrefab = !prefab.EndsWith("*") && !ExistsInGame(prefab),
                 });
             }
             foreach (var kv in _byPrefab) Add(kv.Key, kv.Value);
@@ -451,9 +500,43 @@ namespace TheGreatestMap
             return list;
         }
 
+        private static HashSet<string> _locationNames;
+        private static int _locationsCounted = -1;
+
+        /// <summary>
+        /// Is there anything in this game by that name? Dungeons, camps, traders, boss altars and
+        /// most structures are locations, which the world places rather than spawns, and they are
+        /// not in ZNetScene at all -- so asking it alone called every one of them missing and put
+        /// twenty honest catalog lines in the legend's "not in this game" count.
+        /// </summary>
+        private static bool ExistsInGame(string prefab)
+        {
+            if (string.IsNullOrEmpty(prefab)) return false;
+            try
+            {
+                if (ZNetScene.instance != null && ZNetScene.instance.GetPrefab(prefab) != null) return true;
+                var zone = ZoneSystem.instance;
+                var locations = zone != null ? zone.m_locations : null;
+                if (locations == null) return ZNetScene.instance == null;   // nothing loaded: do not accuse
+                if (_locationNames == null || _locationsCounted != locations.Count)
+                {
+                    _locationNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var loc in locations)
+                    {
+                        if (loc == null) continue;
+                        if (!string.IsNullOrEmpty(loc.m_prefabName)) _locationNames.Add(loc.m_prefabName);
+                        if (!string.IsNullOrEmpty(loc.m_name)) _locationNames.Add(loc.m_name);
+                    }
+                    _locationsCounted = locations.Count;
+                }
+                return _locationNames.Contains(prefab);
+            }
+            catch (Exception) { return true; }   // cannot tell, so do not cry wolf
+        }
+
         private static bool ItemExists(string name)
         {
-            try { return ObjectDB.instance != null && ObjectDB.instance.GetItemPrefab(name) != null; }
+            try { return IconRegistry.ItemPrefab(name) != null; }
             catch (Exception) { return false; }
         }
 

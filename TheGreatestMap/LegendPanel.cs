@@ -23,6 +23,9 @@ namespace TheGreatestMap
         private const float HeaderHeight = 24f;
         private const float IconSize = 22f;
         private const float DetailWidth = 330f;
+        private const float ColumnMin = 470f;   // a name and its detail, below which a column is unreadable
+        private const float ColumnGap = 14f;
+        private const int MaxColumns = 3;
         private const float Pad = 10f;
         private const float TitleHeight = 28f;
         private const float HintHeight = 16f;
@@ -36,6 +39,17 @@ namespace TheGreatestMap
         private static float _contentHeight;
         private static float _scroll;
         private static float _wheel;
+        private static Catalog.LegendRow _picked;
+        private static TMP_InputField _field;
+        private static TextMeshProUGUI _editLabel;
+        private const float EditHeight = 24f;
+        private static readonly List<KeyValuePair<Catalog.LegendRow, Image>> _rowBacks =
+            new List<KeyValuePair<Catalog.LegendRow, Image>>();
+        private static bool _rebuildWanted;
+        private static int _builtColumns = 1;
+
+        /// <summary>True while the icon box has the keyboard, so our own keys stand down.</summary>
+        internal static bool Typing => _field != null && _field.isFocused;
 
         internal static bool IsOpen => _root != null;
 
@@ -96,33 +110,178 @@ namespace TheGreatestMap
             _content.anchorMax = new Vector2(1f, 1f);
             _content.pivot = new Vector2(0f, 1f);
 
-            float y = 0f;
+            _rowBacks.Clear();
+            // Wide enough for two or three readable columns? Then use them: this list is long and
+            // mostly read by scanning, which a tall thin column makes needlessly slow.
+            float inner = _w - 2f * Pad;
+            int columns = ColumnsFor(_w);
+            _builtColumns = columns;
+            float columnWidth = (inner - ColumnGap * (columns - 1)) / columns;
+
+            float total = 0f;
+            Category? counting = null;
+            foreach (var row in rows)
+            {
+                if (counting != row.Cat) { counting = row.Cat; total += HeaderHeight; }
+                total += RowHeight;
+            }
+            float target = total / columns;
+
+            float y = 0f, tallest = 0f;
+            int column = 0;
             Category? group = null;
             foreach (var row in rows)
             {
+                // A new column starts at a row rather than mid-header, and the kind's name is
+                // written again at the top of it so a column never opens with unlabelled rows.
+                if (column < columns - 1 && y >= target)
+                {
+                    tallest = Mathf.Max(tallest, y);
+                    column++;
+                    y = 0f;
+                    group = null;
+                }
                 if (group != row.Cat)
                 {
                     group = row.Cat;
                     var header = MenuKit.Text(_content, "Header", Categories.Label(row.Cat), 14f, MenuKit.Header);
-                    Stretch(header.rectTransform, 2f, -y, -4f, HeaderHeight);
+                    Stretch(header.rectTransform, ColumnX(column, columnWidth) + 2f, -y, -(inner - columnWidth) - 4f, HeaderHeight);
                     header.alignment = TextAlignmentOptions.MidlineLeft;
                     y += HeaderHeight;
                 }
-                AddRow(row, y);
+                AddRow(row, ColumnX(column, columnWidth), y, columnWidth, inner);
                 y += RowHeight;
             }
-            _contentHeight = y;
-            _content.sizeDelta = new Vector2(0f, y);
+            _contentHeight = Mathf.Max(tallest, y);
+            _content.sizeDelta = new Vector2(0f, _contentHeight);
 
-            _hint = MenuKit.Text(_root.transform, "Hint", "wheel to scroll · drag the title to move · drag the corner to resize · Esc to close", 12f, MenuKit.Dim);
+            BuildEditor();
+
+            _hint = MenuKit.Text(_root.transform, "Hint", "wheel to scroll · drag the title to move · drag the corner to resize · widen for more columns · Esc to close", 12f, MenuKit.Dim);
             _hint.alignment = TextAlignmentOptions.MidlineLeft;
 
             // The title strip drags the panel; the corner grip resizes it.
             _mover = Handle("Mover", new Color(0f, 0f, 0f, 0f), null, OnMoveDrag);
             _grip = Handle("Grip", new Color(1f, 0.85f, 0.45f, 0.75f), MenuKit.Grip(), OnGripDrag);
+            // The columns are laid out once, so a resize that changes their number or width has to
+            // lay them out again; doing it when the grip is let go keeps the drag itself smooth.
+            _grip.GetComponent<MenuKit.DragHandle>().OnEnd = () => { SavePlacement(); _rebuildWanted = true; };
 
             _pause = PauseToggle.Build(_rect, new Vector2(-10f, -8f));
             Layout();
+        }
+
+        /// <summary>
+        /// A box at the foot of the panel holding the icon of whichever row was last clicked.
+        /// Change it and the catalog changes, which rebuilds the list in front of you -- the whole
+        /// point, since an icon key can only be judged by looking at the picture it gives.
+        /// </summary>
+        private static void BuildEditor()
+        {
+            _editLabel = MenuKit.Text(_root.transform, "EditLabel", "Click a row to change its icon.", 12f, MenuKit.Dim);
+            _editLabel.alignment = TextAlignmentOptions.MidlineLeft;
+
+            var go = new GameObject("IconField", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(TMP_InputField));
+            go.transform.SetParent(_root.transform, false);
+            var back = go.GetComponent<Image>();
+            back.color = new Color(1f, 1f, 1f, 0.14f);
+
+            var text = MenuKit.Text(go.transform, "Text", "", 13f, MenuKit.Body);
+            text.alignment = TextAlignmentOptions.MidlineLeft;
+            text.enableWordWrapping = false;
+            Stretch(text.rectTransform, 6f, 0f, -12f, EditHeight);
+
+            _field = go.GetComponent<TMP_InputField>();
+            _field.textViewport = (RectTransform)go.transform;
+            _field.textComponent = text;
+            _field.lineType = TMP_InputField.LineType.SingleLine;
+            _field.restoreOriginalTextOnEscape = true;
+            // TextMeshPro draws its caret in its own dark default and ignores caretColor until it
+            // is told to use a custom one, which on a dark panel leaves you typing blind.
+            _field.customCaretColor = true;
+            _field.caretColor = new Color(1f, 0.85f, 0.45f, 1f);
+            _field.caretWidth = 2;
+            _field.caretBlinkRate = 0.8f;
+            _field.selectionColor = new Color(1f, 0.85f, 0.45f, 0.45f);
+            _field.interactable = false;   // nothing picked yet
+            _field.onSubmit.AddListener(Apply);
+        }
+
+        private static void Pick(Catalog.LegendRow row)
+        {
+            _picked = row;
+            if (_field == null) return;
+            _field.interactable = true;
+            _field.SetTextWithoutNotify(IconRegistry.Short(row.Icon));
+            _editLabel.text = $"{row.Prefab} ({Categories.Label(row.Cat)}) — icon:";
+            _editLabel.color = MenuKit.Body;
+            _field.ActivateInputField();
+            Highlight();
+        }
+
+        private static void Highlight()
+        {
+            foreach (var kv in _rowBacks)
+            {
+                if (kv.Value == null) continue;
+                bool here = _picked != null && kv.Key.Prefab == _picked.Prefab && kv.Key.Cat == _picked.Cat;
+                kv.Value.color = here ? new Color(1f, 0.85f, 0.45f, 0.14f) : new Color(0f, 0f, 0f, 0f);
+            }
+        }
+
+        /// <summary>
+        /// Put the typed icon into the player's own catalog line. The setting's own change hook
+        /// throws the catalog away and builds it again, so reopening the list here shows the new
+        /// picture -- or shows it in red, which is the answer to "is that the right name?".
+        /// </summary>
+        private static void Apply(string typed)
+        {
+            if (_picked == null) return;
+            var row = _picked;
+            if (!Catalog.SetIcon(row.Cat, row.Prefab, row.Name, typed))
+            {
+                TheGreatestMapMod.Message($"{Categories.Label(row.Cat)} has no catalog line to write to.");
+                return;
+            }
+            ClientPins.Restyle();
+            _rebuildWanted = true;
+        }
+
+        /// <summary>
+        /// Draw the list again, keeping the panel where it is and the scroll where it was. Done
+        /// between frames rather than from the icon box's own callback, which would destroy the box
+        /// while it was still handling the keystroke that asked for this.
+        /// </summary>
+        private static void Rebuild()
+        {
+            if (_root == null) return;
+            var picked = _picked;
+            float scroll = _scroll;
+            float w = _w, h = _h;
+            var where = _rect != null ? _rect.anchoredPosition : Vector2.zero;
+            Open();                       // which loads the saved placement, so put ours back
+            _w = w;
+            _h = h;
+            if (_rect != null) _rect.anchoredPosition = where;
+            _picked = picked;
+            _scroll = scroll;
+            if (picked != null && _field != null)
+            {
+                _field.interactable = true;
+                _field.SetTextWithoutNotify(IconRegistry.Short(FreshIcon(picked)));
+                _editLabel.text = $"{picked.Prefab} ({Categories.Label(picked.Cat)}) — icon:";
+                _editLabel.color = MenuKit.Body;
+            }
+            Highlight();
+            Layout();
+        }
+
+        /// <summary>The icon that row resolves to now, after the catalog was changed under it.</summary>
+        private static string FreshIcon(Catalog.LegendRow picked)
+        {
+            foreach (var row in Catalog.Legend())
+                if (row.Prefab == picked.Prefab && row.Cat == picked.Cat) return row.Icon;
+            return picked.Icon;
         }
 
         private static RectTransform Handle(string name, Color color, Sprite sprite, System.Action<Vector2> onDrag)
@@ -147,7 +306,11 @@ namespace TheGreatestMap
             Stretch(_title.rectTransform, Pad, -Pad, -2f * Pad - 34f, TitleHeight);
             Stretch(_hint.rectTransform, Pad, -(_h - Pad - HintHeight), -2f * Pad - GripSize, HintHeight);
 
-            float viewportHeight = Mathf.Max(0f, _h - TitleHeight - HintHeight - 3f * Pad);
+            float editY = _h - Pad - HintHeight - EditHeight - 4f;
+            Stretch(_editLabel.rectTransform, Pad, -editY, -(_h * 0f) - 2f * Pad - 240f, EditHeight);
+            Stretch((RectTransform)_field.transform, _w - Pad - 240f, -editY, -(_w - 240f), EditHeight);
+
+            float viewportHeight = Mathf.Max(0f, _h - TitleHeight - HintHeight - EditHeight - 4f * Pad);
             Stretch(_viewport, Pad, -(Pad + TitleHeight + Pad * 0.5f), -2f * Pad, viewportHeight);
 
             // The title strip catches drags, but not the pause button sitting in its corner.
@@ -168,11 +331,28 @@ namespace TheGreatestMap
             if (_content != null) _content.anchoredPosition = new Vector2(0f, _scroll);
         }
 
-        private static void AddRow(Catalog.LegendRow row, float y)
+        private static int ColumnsFor(float width)
         {
-            var go = new GameObject("Row", typeof(RectTransform));
+            float inner = width - 2f * Pad;
+            return Mathf.Clamp(Mathf.FloorToInt((inner + ColumnGap) / (ColumnMin + ColumnGap)), 1, MaxColumns);
+        }
+
+        private static float ColumnX(int column, float columnWidth) => column * (columnWidth + ColumnGap);
+
+        private static void AddRow(Catalog.LegendRow row, float x, float y, float columnWidth, float inner)
+        {
+            var go = new GameObject("Row", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
             go.transform.SetParent(_content, false);
-            Stretch((RectTransform)go.transform, 0f, -y, 0f, RowHeight);
+            Stretch((RectTransform)go.transform, x, -y, -(inner - columnWidth), RowHeight);
+            var back = go.GetComponent<Image>();
+            bool here = _picked != null && _picked.Prefab == row.Prefab && _picked.Cat == row.Cat;
+            back.color = here ? new Color(1f, 0.85f, 0.45f, 0.14f) : new Color(0f, 0f, 0f, 0f);
+            back.raycastTarget = true;
+            var button = go.GetComponent<Button>();
+            button.transition = Selectable.Transition.None;
+            var chosen = row;
+            button.onClick.AddListener(() => Pick(chosen));
+            _rowBacks.Add(new KeyValuePair<Catalog.LegendRow, Image>(row, back));
 
             var sprite = IconRegistry.Resolve(Minimap.instance, row.Icon);
             if (sprite != null)
@@ -190,20 +370,22 @@ namespace TheGreatestMap
                 img.raycastTarget = false;
             }
 
+            float detailWidth = Mathf.Min(DetailWidth, Mathf.Max(140f, columnWidth * 0.55f));
             var color = row.Missing ? new Color(1f, 0.45f, 0.4f) : row.NoPrefab ? MenuKit.Dim : MenuKit.Body;
             var name = MenuKit.Text(go.transform, "Name", row.Name, 14f, color);
-            Stretch(name.rectTransform, IconSize + 14f, 0f, -(IconSize + 14f) - DetailWidth, RowHeight);
+            Stretch(name.rectTransform, IconSize + 14f, 0f, -(IconSize + 14f) - detailWidth, RowHeight);
             name.alignment = TextAlignmentOptions.MidlineLeft;
 
-            string detail = row.Missing ? $"{row.Prefab} — icon '{row.Icon}' is not in this game"
+            string key = IconRegistry.Short(row.Icon);
+            string detail = row.Missing ? $"{row.Prefab} — '{key}' is not in this game"
                 : row.NoPrefab ? $"{row.Prefab} — nothing by that name exists in this game"
-                : $"{row.Prefab} — {row.Source}";
+                : $"{row.Prefab} — {key} ({row.Source})";
             var info = MenuKit.Text(go.transform, "Detail", detail, 12f, row.Missing ? new Color(1f, 0.45f, 0.4f) : MenuKit.Dim);
             var irt2 = info.rectTransform;
             irt2.anchorMin = irt2.anchorMax = new Vector2(1f, 0.5f);
             irt2.pivot = new Vector2(1f, 0.5f);
             irt2.anchoredPosition = new Vector2(-8f, 0f);
-            irt2.sizeDelta = new Vector2(DetailWidth, RowHeight);
+            irt2.sizeDelta = new Vector2(detailWidth, RowHeight);
             info.alignment = TextAlignmentOptions.MidlineRight;
         }
 
@@ -281,7 +463,10 @@ namespace TheGreatestMap
         internal static void Update()
         {
             if (_root == null) return;
-            if (ZInput.GetKeyDown(KeyCode.Escape)) { Close(); return; }
+            if (_rebuildWanted) { _rebuildWanted = false; Rebuild(); return; }
+            // Escape leaves the icon box first, as it does in every other text field, so a typo
+            // can be abandoned without the whole panel going with it.
+            if (ZInput.GetKeyDown(KeyCode.Escape) && !Typing) { Close(); return; }
             _pause?.Paint();
             float wheel = _wheel;
             _wheel = 0f;

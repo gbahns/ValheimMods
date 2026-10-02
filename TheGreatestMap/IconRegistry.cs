@@ -139,7 +139,7 @@ namespace TheGreatestMap
             }
             try
             {
-                var prefab = ObjectDB.instance != null ? ObjectDB.instance.GetItemPrefab(raw) : null;
+                var prefab = ItemPrefab(raw);
                 var drop = prefab != null ? prefab.GetComponent<ItemDrop>() : null;
                 string name = drop != null && drop.m_itemData != null && drop.m_itemData.m_shared != null ? drop.m_itemData.m_shared.m_name : null;
                 if (!string.IsNullOrEmpty(name) && Localization.instance != null)
@@ -166,7 +166,7 @@ namespace TheGreatestMap
                 if (string.IsNullOrEmpty(name)) continue;
                 try
                 {
-                    var prefab = ObjectDB.instance.GetItemPrefab(name);
+                    var prefab = ItemPrefab(name);
                     if (prefab != null && prefab.GetComponent<ItemDrop>() != null) return "item:" + name;
                 }
                 catch (Exception) { }
@@ -350,7 +350,7 @@ namespace TheGreatestMap
             try
             {
                 if (ObjectDB.instance == null) return null;
-                var prefab = ObjectDB.instance.GetItemPrefab(key.Substring(5));
+                var prefab = ItemPrefab(key.Substring(5));
                 var drop = prefab != null ? prefab.GetComponent<ItemDrop>() : null;
                 return drop != null && drop.m_itemData != null ? drop.m_itemData.GetIcon() : null;
             }
@@ -359,6 +359,49 @@ namespace TheGreatestMap
                 TheGreatestMapMod.Log.LogWarning($"[TheGreatestMap] Could not load icon '{key}': {e.Message}");
                 return null;
             }
+        }
+
+        /// <summary>
+        /// An icon key as a player would type it: a plain item name has no prefix, the other forms
+        /// keep theirs. This is what the legend shows and what its editor writes back, so what is
+        /// read off the screen can be typed in again.
+        /// </summary>
+        internal static string Short(string iconKey)
+        {
+            string key = Normalize(iconKey);
+            if (key == null) return "";
+            return key.StartsWith("item:") ? key.Substring(5) : key;
+        }
+
+        private static Dictionary<string, GameObject> _itemsByName;
+        private static int _itemsCounted = -1;
+
+        /// <summary>
+        /// An item prefab by name, allowing for the case being wrong. The game hashes the name, so
+        /// its own lookup is exact, and an icon typed as "Softtissue" rather than "SoftTissue" then
+        /// resolves to nothing and falls back to the kind's own picture -- which looks like the
+        /// icon being wrong rather than the spelling. Built once from the item list and rebuilt if
+        /// that list changes.
+        /// </summary>
+        internal static GameObject ItemPrefab(string name)
+        {
+            if (string.IsNullOrEmpty(name) || ObjectDB.instance == null) return null;
+            try
+            {
+                var exact = ObjectDB.instance.GetItemPrefab(name);
+                if (exact != null) return exact;
+                var items = ObjectDB.instance.m_items;
+                if (items == null) return null;
+                if (_itemsByName == null || _itemsCounted != items.Count)
+                {
+                    _itemsByName = new Dictionary<string, GameObject>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var go in items)
+                        if (go != null && !_itemsByName.ContainsKey(go.name)) _itemsByName[go.name] = go;
+                    _itemsCounted = items.Count;
+                }
+                return _itemsByName.TryGetValue(name, out var hit) ? hit : null;
+            }
+            catch (Exception) { return null; }
         }
 
         /// <summary>The Piece on a world prefab, for pieces that draw their build-menu picture.</summary>

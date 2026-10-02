@@ -484,10 +484,15 @@ namespace TheGreatestMap
         {
             if (string.IsNullOrEmpty(s)) return fallback;
             var parts = s.Split(',');
-            if (parts.Length != 3) return fallback;
-            if (float.TryParse(parts[0].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float x) &&
-                float.TryParse(parts[1].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float y) &&
-                float.TryParse(parts[2].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float z))
+            // Two is as valid as three: a panel's size and place are written as "width,height",
+            // and insisting on three quietly threw them away and handed back the fallback, so the
+            // legend forgot where it was every time it opened.
+            if (parts.Length != 2 && parts.Length != 3) return fallback;
+            if (!float.TryParse(parts[0].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float x) ||
+                !float.TryParse(parts[1].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float y))
+                return fallback;
+            if (parts.Length == 2) return new Vector3(x, y, 0f);
+            if (float.TryParse(parts[2].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float z))
                 return new Vector3(x, y, z);
             return fallback;
         }

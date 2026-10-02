@@ -1,5 +1,46 @@
 # Changelog
 
+## 1.7.4 — unreleased
+
+Client-side; works with a 0.2.x server.
+
+- **The legend edits the catalog.** Click any row and its icon appears in a box at the foot of the
+  panel; type another and the list redraws with the new picture, in red if that name is not a real
+  item. An entry your own catalog line does not have is added rather than ignored, and clearing the
+  box takes the override off again. An icon can only really be judged by looking at it, so this is
+  the shortest path between wondering and knowing.
+- The legend says what each icon *is*, not only where it came from: every row now reads
+  `prefab — IconKey (source)`, with the key in the form you would type.
+- The legend lays itself out in two or three columns when you widen it, balanced by height, with a
+  kind's heading repeated at the top of a column it spills into.
+- **The legend remembers its size and place again.** It always saved them; it could not read them
+  back, because the parser insisted on three numbers and a panel's size is two. Every open quietly
+  fell back to 560x620 in the middle of the screen.
+- **Settings are re-read when the file changes on disk**, so an edit made in a text editor while the
+  game runs takes effect. BepInEx reads the file once at startup and writes it from memory after
+  that, so an edit was not merely ignored, it was overwritten the next time anything saved.
+- An icon name's capitals no longer have to be right. The game hashes the name, so `Softtissue`
+  found nothing and fell back to the kind's own picture, which looks like a wrong icon rather than
+  a wrong capital.
+- The legend stops calling locations missing. Dungeons, camps, traders, boss altars and most
+  structures are placed by the world rather than spawned, so they are not in ZNetScene at all, and
+  asking it alone put twenty honest catalog lines under "not in this game".
+- Icons for things that had none: dragon eggs for drake nests, the greydwarf trophy for greydwarf
+  camps, the seeker for infested trees, the dvergr trophy for all six dvergr structures, and the
+  charred mage for fortress ruins. Each giant's remains are named for what they are -- sword,
+  helmet, ribs, skull, brain -- rather than all seven reading "Petrified Bone", and wear what they
+  yield: copper scrap, black marble, and soft tissue for the brain.
+- Scrap piles wear iron scrap and petrified bone wears bone, instead of both coming out as copper
+  ore. A deposit whose catalog entry carries no icon falls back to what it drops, and then to the
+  kind's own fallback, which is copper -- so anything the game would not name a drop for looked
+  like copper. The answers are now in the table the code keeps for exactly this, which means a
+  catalog line saved before those icons existed gets them too, without editing the line. Silver
+  veins are covered the same way.
+- Frost caves go back to the cultist trophy. The freeze gland tried in 1.7.2 was not an improvement.
+- Markers already written keep the icon they were written with. For dungeons, walking past the
+  place with your map out corrects it; for deposits, `tgm_erase Ore 100` near one lets it be
+  recorded afresh.
+
 ## 1.7.3 — 2026-10-02
 
 Client-side; works with a 0.2.x server.
