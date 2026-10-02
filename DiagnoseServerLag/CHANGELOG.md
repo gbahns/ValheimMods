@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.10.2 - unreleased
+
+- **Stalls while the world is loading are counted separately and no longer set off the warning.**
+  A hitch as a zone streams in is the cost of going somewhere, not a fault, and colouring it red
+  teaches people to ignore the one line that matters. The readout now reads
+  `stalls  0 in 10s   +12 loading`, with the colour judged only on the stalls you can act on.
+
+  Nothing is hidden: the loading figure is shown, and `loading` is a column in the group capture,
+  because a machine that takes fifteen seconds to load an area has a real problem worth seeing.
+
+  Streaming is detected from the loaded-object count changing sharply between seconds - a measured
+  teleport went from 280 objects to 4,600 in six, while standing still moves none and ordinary
+  running a few dozen. The threshold is `Loading Objects Per Second`, default 300. Either direction
+  counts, since unloading an area hitches as much as loading one.
+
+  This came out of reading three captures in a row where the biggest frames were all portal
+  arrivals, and having to say "ignore those" by hand every time.
+
+- Wire layout 10. **Update the server before the clients.**
+
 ## 0.10.1
 
 - **New line: `built`** - how many of the nearby objects are player-built pieces, rather than

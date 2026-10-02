@@ -129,6 +129,14 @@ namespace DiagnoseServerLag
         /// </summary>
         internal int NearbyPieces;
 
+        /// <summary>
+        /// The world was streaming in or out during this second, so its stalls are the cost of
+        /// loading rather than a fault. Counted and reported, never hidden - a machine that takes
+        /// fifteen seconds to load an area has a real problem - but kept out of the figure the
+        /// readout colours, which otherwise cries wolf every time somebody steps through a portal.
+        /// </summary>
+        internal bool Loading;
+
         // ── what the process costs the machine ──────────────────────────────────────
         // The measurements that survive a frame cap. See Machine for why tick time does not.
         /// <summary>Milliseconds of CPU burned per second of wall clock. 1000 is one core fully busy.</summary>
@@ -157,7 +165,7 @@ namespace DiagnoseServerLag
     {
         internal static void Write(ZPackage pkg, Sample s)
         {
-            // Layout 9 appends NearbyPieces, 8 appended SystemCpu, 7 appended UnownedAI, 6 appended UnownedObjects, 5 appended OwnedObjects/NearbyObjects, 4 appended FeedMs, 3 OwnedAI/NearbyAI. Writers always write the
+            // Layout 10 appends Loading, 9 appended NearbyPieces, 8 appended SystemCpu, 7 appended UnownedAI, 6 appended UnownedObjects, 5 appended OwnedObjects/NearbyObjects, 4 appended FeedMs, 3 OwnedAI/NearbyAI. Writers always write the
             // newest shape; readers
             // are told which one they are looking at, so an older client stays readable instead
             // of being misparsed into nonsense.
@@ -199,6 +207,7 @@ namespace DiagnoseServerLag
             pkg.Write(s.UnownedAI);
             pkg.Write(s.SystemCpu);
             pkg.Write(s.NearbyPieces);
+            pkg.Write(s.Loading);
         }
 
         internal static Sample Read(ZPackage pkg, int layout)
@@ -268,6 +277,10 @@ namespace DiagnoseServerLag
             if (layout >= 9)
             {
                 s.NearbyPieces = pkg.ReadInt();
+            }
+            if (layout >= 10)
+            {
+                s.Loading = pkg.ReadBool();
             }
             return s;
         }

@@ -93,6 +93,9 @@ namespace DiagnoseServerLag
         /// </summary>
         private static System.Reflection.FieldInfo _instancesField;
 
+        /// <summary>Last second's loaded-object count, so a sharp change can be spotted.</summary>
+        private static int _lastNearbyObjects = -1;
+
         /// <summary>
         /// Prefab hash -> whether it is something a player built. Worked out once per type from the
         /// prefab, never per object: the loop below runs over every loaded thing once a second, and
@@ -626,6 +629,18 @@ namespace DiagnoseServerLag
                 s.NearbyObjects = near;
                 s.UnownedObjects = unowned;
                 s.NearbyPieces = pieces;
+
+                // Streaming, if the loaded world changed sharply since last second. A teleport
+                // moves thousands - one measured arrival went 280 to 4,600 in six seconds - while
+                // standing still moves none and ordinary running a few dozen. Either direction
+                // counts: unloading an area hitches as much as loading one.
+                if (_lastNearbyObjects >= 0)
+                {
+                    int moved = near - _lastNearbyObjects;
+                    if (moved < 0) moved = -moved;
+                    s.Loading = moved >= DslConfig.LoadingObjectsPerSecond.Value;
+                }
+                _lastNearbyObjects = near;
             }
             catch { /* the creature count still works; this is the richer answer, not the only one */ }
         }

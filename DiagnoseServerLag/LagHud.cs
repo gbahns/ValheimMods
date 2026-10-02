@@ -131,15 +131,25 @@ namespace DiagnoseServerLag
             if (!Sampler.TryNewest(out var s)) return;
             var report = LagNetwork.Latest;
             var window = Sampler.History.Recent(DslConfig.WindowSeconds.Value);
-            int stalls = 0;
-            foreach (var w in window) stalls += w.Stalls;
+            // Split, so streaming does not set off the warning. A hitch while the world loads is
+            // the cost of going somewhere, not a fault, and colouring it red teaches people to
+            // ignore the line that matters. Still shown, never hidden: a machine that takes fifteen
+            // seconds to load an area has a real problem worth seeing.
+            int stalls = 0, loading = 0;
+            foreach (var w in window)
+            {
+                if (w.Loading) loading += w.Stalls;
+                else stalls += w.Stalls;
+            }
 
             var lines = new List<string>();
 
             lines.Add(Line("frames", $"{s.FrameMsAvg:0} ms  {1000f / Mathf.Max(0.01f, s.FrameMsAvg):0}/s",
                 Rank(s.FrameMsAvg, DslConfig.ClientFrameWarnMs.Value, DslConfig.ClientFrameWarnMs.Value * 2f)));
 
-            lines.Add(Line("stalls", $"{stalls} in {window.Count}s", stalls > 0 ? (stalls > 2 ? 2 : 1) : 0));
+            lines.Add(Line("stalls", $"{stalls} in {window.Count}s" +
+                                     (loading > 0 ? $"   +{loading} loading" : ""),
+                stalls > 0 ? (stalls > 2 ? 2 : 1) : 0));
 
             if (Machine.Readable && s.HasCpu)
             {

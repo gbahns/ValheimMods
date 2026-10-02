@@ -36,6 +36,7 @@ namespace DiagnoseServerLag
 
         // ── what counts as a stall, and over what span ──────────────────────────────
         internal static ConfigEntry<float> StallMs;
+        internal static ConfigEntry<int> LoadingObjectsPerSecond;
         internal static ConfigEntry<int> WindowSeconds;
         internal static ConfigEntry<int> BaselineSeconds;
         internal static ConfigEntry<int> HistoryMinutes;
@@ -143,6 +144,12 @@ namespace DiagnoseServerLag
                 "A frame longer than this counts as a stall. 100 ms is a single frame at 10 per second, which " +
                 "is comfortably past the point where a person notices. Lower it to catch smaller hitches; " +
                 "raise it if a machine that plays fine is reporting stalls constantly.");
+            LoadingObjectsPerSecond = mod.BindRangeInt("Measurement", "Loading Objects Per Second", 300, 50, 5000,
+                "How much the loaded world has to change in a second for it to count as streaming rather than " +
+                "playing. Stalls during streaming are still counted and reported, but separately, so the " +
+                "readout does not warn about hitches that are the unavoidable cost of walking somewhere. A " +
+                "teleport moves thousands of objects a second; standing still moves none.");
+
             WindowSeconds = mod.BindRangeInt("Measurement", "Window Seconds", 10, 3, 120,
                 "How many recent seconds the verdict is made from. Short enough that a bad patch is not " +
                 "diluted by the good minute after it.");

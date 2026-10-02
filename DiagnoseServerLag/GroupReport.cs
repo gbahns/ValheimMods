@@ -230,7 +230,7 @@ namespace DiagnoseServerLag
                             + "ping_round_trip,quality_local,quality_remote,in_bytes_sec,out_bytes_sec,"
                             + "send_queue_bytes,send_rate_bytes_sec,zdos,instances,zdos_sent_sec,zdos_recv_sec,"
                             + "change_queue,peers,cpu_ms_per_sec,cpu_measured,gc0,gc1,gc2,collections,"
-                            + "heap_bytes,working_set_bytes,owned_ai,nearby_ai,feed_ms,owned_objects,nearby_objects,unowned_objects,unowned_ai,system_cpu_pct,nearby_pieces");
+                            + "heap_bytes,working_set_bytes,owned_ai,nearby_ai,feed_ms,owned_objects,nearby_objects,unowned_objects,unowned_ai,system_cpu_pct,nearby_pieces,loading");
 
                 foreach (var s in window) sb.AppendLine(Row("server", s, c));
 
@@ -288,7 +288,7 @@ namespace DiagnoseServerLag
                 s.OwnedObjects.ToString(c), s.NearbyObjects.ToString(c),
                 s.UnownedObjects.ToString(c), s.UnownedAI.ToString(c),
                 s.SystemCpu >= 0f ? (s.SystemCpu * 100f).ToString("0.0", c) : "",
-                s.NearbyPieces.ToString(c),
+                s.NearbyPieces.ToString(c), s.Loading ? "1" : "0",
             });
 
         private static string Iso(long ticks) =>
