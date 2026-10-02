@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace HungryViking
 {
-    [BepInPlugin(ModGuid, "Hungry Viking", "1.3.0")]
+    [BepInPlugin(ModGuid, "Hungry Viking", "1.4.0")]
     [BepInProcess("valheim.exe")]
     public class HungryVikingMod : BaseUnityPlugin
     {
@@ -25,6 +25,9 @@ namespace HungryViking
         public ConfigEntry<float> SmokedVignetteExtent;
         public ConfigEntry<float> PoisonedVignetteIntensity;
         public ConfigEntry<float> PoisonedVignetteExtent;
+        public ConfigEntry<float> FreezingVignetteIntensity;
+        public ConfigEntry<float> FreezingVignetteExtent;
+        public ConfigEntry<bool>  WarnOnCold;
         public ConfigEntry<LabelPlacement> LabelPlacementMode;
         public ConfigEntry<int>   ManualLabelOffset;
 
@@ -32,6 +35,7 @@ namespace HungryViking
         private VignetteOverlay    _vignette;
         private SmokedOverlay      _smokedOverlay;
         private SmokedOverlay      _poisonedOverlay;
+        private SmokedOverlay      _freezingOverlay;
         private IWarningLabel[]    _labels;
         private LabelPlacer        _labelPlacer;
         private HungerStatusEffect _statusEffect;
@@ -42,6 +46,8 @@ namespace HungryViking
         // name, not m_name), so read them from it rather than hardcoding the numbers.
         private static int SmokedHash   => SEMan.s_statusEffectSmoked;
         private static int PoisonedHash => SEMan.s_statusEffectPoison;
+        private static int ColdHash     => SEMan.s_statusEffectCold;
+        private static int FreezingHash => SEMan.s_statusEffectFreezing;
 
         // Hunger acknowledgment: the player can press DismissKey to clear the vignette and
         // label while still hungry. The warning re-arms automatically if hunger worsens (a
@@ -52,10 +58,12 @@ namespace HungryViking
 
         private bool  _smokedTestActive;
         private bool  _poisonedTestActive;
+        private bool  _freezingTestActive;
         private bool  _hungerTestActive;
         private float _hungerPreviewTimer;
         private float _smokedPreviewTimer;
         private float _poisonedPreviewTimer;
+        private float _freezingPreviewTimer;
 
         public string HungerMessage { get; private set; } = "";
 
@@ -69,8 +77,11 @@ namespace HungryViking
             _smokedOverlay   = gameObject.AddComponent<SmokedOverlay>();
             _poisonedOverlay = gameObject.AddComponent<SmokedOverlay>();
             _poisonedOverlay.SetLabelBaseColor(new Color(0.2f, 0.75f, 0.2f, 1f));
-            _labels      = new IWarningLabel[] { _vignette, _smokedOverlay, _poisonedOverlay };
-            _labelPlacer = new LabelPlacer(_vignette.Canvas, _smokedOverlay.Canvas, _poisonedOverlay.Canvas);
+            _freezingOverlay = gameObject.AddComponent<SmokedOverlay>();
+            _freezingOverlay.SetLabelBaseColor(new Color(0.55f, 0.8f, 1f, 1f));
+            _labels      = new IWarningLabel[] { _vignette, _freezingOverlay, _smokedOverlay, _poisonedOverlay };
+            _labelPlacer = new LabelPlacer(_vignette.Canvas, _smokedOverlay.Canvas,
+                                           _poisonedOverlay.Canvas, _freezingOverlay.Canvas);
             _foodMonitor  = new FoodMonitor(this);
             _statusEffect = HungerStatusEffect.Create();
 
@@ -83,6 +94,8 @@ namespace HungryViking
             SmokedVignetteExtent.SettingChanged     += (_, __) => _smokedPreviewTimer   = 2f;
             PoisonedVignetteIntensity.SettingChanged += (_, __) => _poisonedPreviewTimer = 2f;
             PoisonedVignetteExtent.SettingChanged   += (_, __) => _poisonedPreviewTimer = 2f;
+            FreezingVignetteIntensity.SettingChanged += (_, __) => _freezingPreviewTimer = 2f;
+            FreezingVignetteExtent.SettingChanged   += (_, __) => _freezingPreviewTimer = 2f;
             LabelPlacementMode.SettingChanged       += (_, __) => _hungerPreviewTimer   = 2f;
             ManualLabelOffset.SettingChanged        += (_, __) => _hungerPreviewTimer   = 2f;
 
@@ -182,6 +195,14 @@ namespace HungryViking
                     Log.LogInfo($"hv_testsmoked: smoked overlay {(_smokedTestActive ? "ON" : "OFF")}");
                 });
 
+            new Terminal.ConsoleCommand("hv_testfreezing",
+                "[Hungry Viking] Toggles the freezing vignette overlay on/off for visual testing.",
+                _ =>
+                {
+                    _freezingTestActive = !_freezingTestActive;
+                    Log.LogInfo($"hv_testfreezing: freezing overlay {(_freezingTestActive ? "ON" : "OFF")}");
+                });
+
             new Terminal.ConsoleCommand("hv_labels",
                 "[Hungry Viking] Lists the HUD elements the warning labels move down to avoid, and where they end up.",
                 _ =>
@@ -260,6 +281,20 @@ namespace HungryViking
                     "How far from the screen center the poison vignette reaches. 0 = invisible, 1 = covers the full screen.",
                     new AcceptableValueRange<float>(0f, 1f)));
 
+            FreezingVignetteIntensity = Config.Bind("Freezing", "Vignette Intensity", 0.25f,
+                new ConfigDescription(
+                    "Maximum opacity of the center cold vignette. 0 = off, 1 = fully opaque.",
+                    new AcceptableValueRange<float>(0f, 1f)));
+
+            FreezingVignetteExtent = Config.Bind("Freezing", "Vignette Extent", 0.55f,
+                new ConfigDescription(
+                    "How far from the screen center the cold vignette reaches. 0 = invisible, 1 = covers the full screen.",
+                    new AcceptableValueRange<float>(0f, 1f)));
+
+            WarnOnCold = Config.Bind("Freezing", "Warn When Cold", true,
+                "Also warn at the milder Cold effect, before it becomes Freezing. Cold alone does not hurt you, " +
+                "but it is the warning that there is still time to do something about it.");
+
             LabelPlacementMode = Config.Bind("Labels", "Placement", LabelPlacement.Automatic,
                 "Automatic: the warning labels sit near the top of the screen and move down below anything else there, " +
                 "such as a compass mod or the boss health bar. Manual: they sit at Manual Y Offset.");
@@ -331,6 +366,8 @@ namespace HungryViking
                 _smokedOverlay.SetLabel(null);
                 _poisonedOverlay.SetBase(0f, Color.white);
                 _poisonedOverlay.SetLabel(null);
+                _freezingOverlay.SetBase(0f, Color.white);
+                _freezingOverlay.SetLabel(null);
                 return;
             }
 
@@ -380,6 +417,7 @@ namespace HungryViking
 
             UpdateSmokedOverlay(player);
             UpdatePoisonedOverlay(player);
+            UpdateFreezingOverlay(player);
 
             // Status effect driven by real hunger state only, not test mode.
             HungerMessage   = anyEmpty ? "Hungry" : "Getting Hungry";
@@ -491,6 +529,34 @@ namespace HungryViking
                 if (!label.LabelVisible) continue;
                 label.SetLabelTop(top);
                 top += WarningLabel.Height;
+            }
+        }
+
+        // Cold comes first and does no damage; Freezing is the one that kills. Both get the same
+        // blue vignette, with the label and its color swing escalating from one to the other.
+        private void UpdateFreezingOverlay(Player player)
+        {
+            if (_freezingPreviewTimer > 0f) _freezingPreviewTimer -= Time.deltaTime;
+            bool test       = _freezingTestActive || _freezingPreviewTimer > 0f;
+            bool isFreezing = player.GetSEMan().HaveStatusEffect(FreezingHash);
+            bool isCold     = WarnOnCold.Value && player.GetSEMan().HaveStatusEffect(ColdHash);
+
+            _freezingOverlay.SetOuterBoundary(FreezingVignetteExtent.Value);
+
+            if (test || isFreezing)
+            {
+                _freezingOverlay.SetBase(FreezingVignetteIntensity.Value, new Color(0.45f, 0.7f, 1f));
+                _freezingOverlay.SetLabel("You are freezing!", 1f);
+            }
+            else if (isCold)
+            {
+                _freezingOverlay.SetBase(FreezingVignetteIntensity.Value * 0.5f, new Color(0.45f, 0.7f, 1f));
+                _freezingOverlay.SetLabel("You are cold.", 0.35f);
+            }
+            else
+            {
+                _freezingOverlay.SetBase(0f, Color.white);
+                _freezingOverlay.SetLabel(null);
             }
         }
 

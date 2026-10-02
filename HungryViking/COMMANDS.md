@@ -36,6 +36,13 @@ Writes to the BepInEx log every HUD element Automatic placement would move the l
 hv_labels
 ```
 
+### `hv_testfreezing`
+Toggles the freezing vignette and label on/off.
+
+```
+hv_testfreezing
+```
+
 ---
 
 ## Food Status (cheat)

@@ -8,7 +8,7 @@ Some will say I should have noticed and it's on me - fair enough - but I say it'
 
 ## What This Mod Does
 
-Adds escalating visual warnings when your food buffs approach expiry, and overlays for smoke and poison exposure. It does not eat for you. It does not automate anything. It respects your agency completely — it just makes sure *you know what your character knows.*
+Adds escalating visual warnings when your food buffs approach expiry, and overlays for smoke, poison and cold. It does not eat for you. It does not automate anything. It respects your agency completely — it just makes sure *you know what your character knows.*
 
 ### Hunger
 
@@ -31,6 +31,13 @@ Warnings only track food you've actually eaten this session: a fresh character w
 
 - **Center vignette** — a green haze appears from the center of the screen outward when you are poisoned. Same fade behavior as smoke.
 - **On-screen label** — "You are poisoned." The text oscillates from green toward red.
+- No extra HUD icon — the game already shows one.
+
+### Freezing
+
+- **Center vignette** — a blue haze appears from the center of the screen outward when you are cold, and deepens when you are freezing. Same fade behavior as smoke.
+- **On-screen label** — "You are cold." while it is only cold, "You are freezing!" once Freezing sets in, oscillating from blue toward red.
+- Cold does no damage by itself, so it is the early warning; Freezing is the one that kills. Turn off **Warn When Cold** if you only want to hear about the dangerous one.
 - No extra HUD icon — the game already shows one.
 
 ### Warning labels
@@ -71,6 +78,14 @@ Open `BepInEx/config/DeathMonger.HungryViking.cfg` to adjust settings. Changing 
 | Vignette Intensity | `0.25` | Max center opacity (0–1) |
 | Vignette Extent | `0.55` | How far the vignette reaches from center outward (0–1) |
 
+**[Freezing]**
+
+| Setting | Default | Description |
+|---|---|---|
+| Vignette Intensity | `0.25` | Max center opacity (0–1); the Cold warning uses half of it |
+| Vignette Extent | `0.55` | How far the vignette reaches from center outward (0–1) |
+| Warn When Cold | `true` | Also warn at the milder Cold effect, before it becomes Freezing |
+
 **[Labels]**
 
 | Setting | Default | Description |
@@ -89,6 +104,7 @@ Open the console with **F5**. Commands marked **(cheat)** require `devcommands` 
 | `hv_testhunger` | No | Toggle hunger vignette on/off for visual testing |
 | `hv_testsmoked` | No | Toggle smoke vignette on/off for visual testing |
 | `hv_testpoisoned` | No | Toggle poison vignette on/off for visual testing |
+| `hv_testfreezing` | No | Toggle freezing vignette on/off for visual testing |
 | `hv_labels` | No | List the HUD elements the labels are avoiding, and where Automatic placement puts them |
 | `hv_foodstatus` | Yes | Print name and remaining time for each food slot |
 | `hv_drainfood <slot> [seconds]` | Yes | Subtract seconds from one slot (default 60s) |

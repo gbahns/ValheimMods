@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.0 — 2026-10-02
+
+- **Freezing warning.** A blue center vignette and a label when the mountains start killing you: "You are cold." as soon as you are cold, "You are freezing!" once Freezing sets in. Cold does no damage on its own, so it is the warning that there is still time to get to a fire.
+- New **[Freezing]** settings: Vignette Intensity, Vignette Extent, and **Warn When Cold** to skip the mild stage and only warn when it is dangerous.
+- `hv_testfreezing` toggles the new overlay for visual testing.
+
 ## 1.3.0 — 2026-09-21
 
 - The warning labels no longer cover other things at the top of the screen, such as a compass mod or the boss health bar. They move down below whatever is there, and back up a few seconds after it goes away.
