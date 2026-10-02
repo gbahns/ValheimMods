@@ -235,12 +235,12 @@ namespace TheGreatestMap
                     return "Crypt2=Burial Chambers|TrophySkeleton,Crypt3=Burial Chambers|TrophySkeleton,Crypt4=Burial Chambers|TrophySkeleton," +
                            "SunkenCrypt4=Sunken Crypt|TrophyDraugr,MountainCave02=Frost Cave|TrophyCultist,TrollCave02=Troll Cave|TrophyFrostTroll," +
                            "Mistlands_DvergrTownEntrance1=Infested Mine|TrophySeeker,Mistlands_DvergrTownEntrance2=Infested Mine|TrophySeeker," +
-                           "BearCave=Bear Cave|TrophyBjorn";
+                           "BearCave=Bear Cave|TrophyBjorn,MorgenHole*=Putrid Hole|TrophyMorgen";
                 case Category.Trader:
                     return "Vendor_BlackForest=Haldor|Coins,Hildir_camp=Hildir|Coins,BogWitch_Camp=Bog Witch|Coins";
                 case Category.Camp:
                     return "GoblinCamp2=Fuling Village|TrophyGoblin,WoodVillage1=Draugr Village|TrophyDraugr," +
-                           "Spawner_GreydwarfNest=Greydwarf Nest|TrophyGreydwarfBrute";
+                           "Spawner_GreydwarfNest=Greydwarf Nest|TrophyGreydwarfBrute,CharredStone_Spawner*=Charred Spawner|TrophyCharredMelee";
                 case Category.BossAltar:
                     return "Eikthyrnir=Eikthyr|TrophyEikthyr,GDKing=The Elder|TrophyTheElder,Bonemass=Bonemass|TrophyBonemass," +
                            "Dragonqueen=Moder|TrophyDragonQueen,GoblinKing=Yagluth|TrophyGoblinKing," +
