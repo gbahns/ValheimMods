@@ -38,6 +38,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<float> MarkerButtonOffsetY;
         internal static ConfigEntry<float> PauseButtonOffsetX;
         internal static ConfigEntry<float> PauseButtonOffsetY;
+        internal static ConfigEntry<bool> ClipMinimapMarkers;
         internal static ConfigEntry<bool> MarkerTooltips;
         internal static ConfigEntry<bool> MapOutStatusIcon;
         internal static ConfigEntry<bool> HighlightPlayersHidesOthers;
@@ -246,6 +247,14 @@ namespace TheGreatestMap
                 "say, including markers that have no kind; they stay on your map and keep syncing. This is what the " +
                 "map-pin button on the map screen toggles.");
             ShowAllMarkers.SettingChanged += (_, __) => ClientPins.Restyle();
+            ClipMinimapMarkers = mod.BindLocal("Display", "Clip Minimap Markers", true,
+                "Hide any marker that falls outside the minimap's circle, whichever mod drew it. Only applies when " +
+                "something has made the minimap round, such as the Round Minimap mod: the game still decides what to " +
+                "draw by the square the minimap used to be, so markers in the corners stand on the HUD outside the " +
+                "circle with nothing under them. The game's own square minimap is left alone, corners and all. This " +
+                "only ever hides, and only ever shows again what it hid itself, so nothing another mod wanted hidden " +
+                "is disturbed.");
+
             MarkerTooltips = mod.BindLocal("Display", "Marker Tooltips", true,
                 "Hovering a marker on the large map names it: what it is, its icon, whether it has been cleared or " +
                 "searched, and who recorded it and when. Most markers carry no label on purpose, which is what keeps a " +

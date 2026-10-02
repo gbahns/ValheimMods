@@ -101,6 +101,19 @@ namespace TheGreatestMap
             SyncEngine.Update();
         }
 
+        /// <summary>
+        /// Clipping the minimap happens here, after every Update in the frame has run. The game
+        /// lays its markers out from Minimap.Update, and other mods add theirs from a patch on that
+        /// same pass -- so anything we hid from our own Update was turned back on by whoever ran
+        /// after us. That only showed while moving, because the layout pass runs when the map moves
+        /// and not while you stand still. LateUpdate is after all of them, whatever the order.
+        /// </summary>
+        private void LateUpdate()
+        {
+            if (!ModEnabled.Value) return;
+            MinimapClip.Update();
+        }
+
         private void OnDestroy()
         {
             _harmony.UnpatchSelf();

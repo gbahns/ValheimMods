@@ -1,9 +1,18 @@
 # Changelog
 
-## 1.7.2 — unreleased
+## 1.7.2 — 2026-10-02
 
 Client-side; works with a 0.2.x server.
 
+- **Markers stay inside a round minimap.** New setting "Clip Minimap Markers" (Display, on): any
+  marker falling outside the circle is hidden, whoever drew it -- this mod's, the game's own deaths
+  and pings, and other mods' markers such as HUD Compass's boats. Vanilla's minimap is square and
+  everything on it belongs there, so none of this happens unless something has actually made the
+  minimap round, as the Round Minimap mod does: the game carries on reasoning about the square it
+  used to be, and markers in the corners end up on the HUD outside the circle with nothing under
+  them. Markers are found in the roots they are drawn in rather than in the game's list of pins,
+  since a mod can parent its own markers there and those are not pins. It only ever hides, and only
+  ever shows again what it hid itself, so nothing another mod wanted hidden is disturbed.
 - Frost caves wear a freeze gland instead of the cultist trophy. A trophy is a dark, busy little
   silhouette and it was lost among everything else on the map; the gland is one bright shape, and
   the name says frost. Markers already written keep the trophy, and still group as frost caves.

@@ -47,6 +47,7 @@ namespace TheGreatestMap
             Reveals.Reset();
             Portals.Reset();
             PlayerSpotlight.Reset();
+            MinimapClip.Reset();
             MapFrame.Reset();
         }
 
@@ -691,6 +692,7 @@ namespace TheGreatestMap
             foreach (var pin in _portalPins)
                 if (pin != null && pin.m_iconElement != null) pin.m_iconElement.color = color;
         }
+
 
         private static void SetMarkerActive(Minimap.PinData pin, bool active)
         {
