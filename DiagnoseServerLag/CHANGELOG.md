@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.2 - unreleased
+## 0.10.2
 
 - **Stalls while the world is loading are counted separately and no longer set off the warning.**
   A hitch as a zone streams in is the cost of going somewhere, not a fault, and colouring it red
