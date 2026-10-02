@@ -1,9 +1,10 @@
 # Copies a freshly built mod DLL (and its .pdb) into the Gale profiles that take dev builds.
 #
-# Which profiles those are is decided in Directory.Build.targets, not here: by default only
-# "Default SD Test". "Default SD" is deliberately NOT one of them -- it is the production
-# profile and gets these mods from Gale the way players do, so that what is played there is
-# what was actually published.
+# Which profiles those are is decided in Directory.Build.targets, not here: by default both
+# "Default SD Test" and "Default HD Test", because Greg plays either one and a build that
+# reached only one of them leaves half his sessions running code nobody changed.
+# "Default SD" is deliberately NOT one of them -- it is the production profile and gets these
+# mods from Gale the way players do, so that what is played there is what was actually published.
 #
 # Invoked from the build; run it by hand only to test the copying itself:
 #   .\deploy-to-profile.ps1 -TargetName TheGreatestMap -TargetPath .\TheGreatestMap\bin\Release\net48\TheGreatestMap.dll
@@ -11,7 +12,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$TargetName,
     [Parameter(Mandatory = $true)][string]$TargetPath,
-    [string]$Profiles = "Default SD Test",
+    [string]$Profiles = "Default SD Test;Default HD Test",
     [string]$GaleProfiles = (Join-Path $env:APPDATA "com.kesomannen.gale\valheim\profiles")
 )
 

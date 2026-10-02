@@ -9,9 +9,12 @@
 
        Now there is one list, here:
 
-         Default SD Test   THE PROFILE GREG PLAYS. Builds land here, deliberately: he wants a
+         Default SD Test   A PROFILE GREG PLAYS. Builds land here, deliberately: he wants a
                            build in his game without a round trip through Gale, and accepts that
                            what he is playing is whatever was last compiled.
+         Default HD Test   THE SAME, with the HD texture set. Builds land here too (asked for on
+                           2026-10-02): he moves between the two, and a build that reached only one
+                           of them means half his play sessions run code nobody changed.
          Default SD        a Gale-managed reference copy, kept honest so it can be compared with
                            what players actually receive. NEVER deploy here - anything loose in it
                            is a mistake, not a feature.
@@ -27,7 +30,7 @@
 
   <PropertyGroup>
     <GaleProfiles>$(APPDATA)\com.kesomannen.gale\valheim\profiles</GaleProfiles>
-    <DeployProfiles Condition="'$(DeployProfiles)' == ''">Default SD Test</DeployProfiles>
+    <DeployProfiles Condition="'$(DeployProfiles)' == ''">Default SD Test;Default HD Test</DeployProfiles>
   </PropertyGroup>
 
   <!-- Only for mods: a project with a manifest.json is one, the test projects are not. -->
