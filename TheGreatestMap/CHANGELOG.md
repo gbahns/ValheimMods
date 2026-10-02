@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.7.3 — 2026-10-02
+
+Client-side; works with a 0.2.x server.
+
+- Every marker now carries a name, even the ones that draw no label. Most markers are drawn without
+  a word on the map on purpose -- that is what keeps a crowded map readable -- but the name was
+  being thrown away rather than merely not drawn, which left other mods nothing to recognise them
+  by. HUD Compass filters its band by pin name, so there was no way to keep campfires, berries or
+  mushrooms off it. Naming them changes nothing on the map: the game draws a label only for a pin
+  created with one, so this names them afterwards. Existing markers are covered too.
+
 ## 1.7.2 — 2026-10-02
 
 Client-side; works with a 0.2.x server.

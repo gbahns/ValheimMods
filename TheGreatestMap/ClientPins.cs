@@ -543,6 +543,11 @@ namespace TheGreatestMap
             // check off) ignores unsaved pins. The GetMapData patch below keeps them out of the profile.
             var pin = Map.AddPin(shared.Pos, (Minimap.PinType)LocalType(shared), shared.Name ?? "", true, shared.Checked, 0L);
             if (pin == null) return;
+            // A marker that carries no label still has a name; it is simply not written on the map.
+            // Vanilla builds a label only for a pin added with a name, so naming it afterwards puts
+            // no word on the map and still gives anything that reads a pin's name something to know
+            // it by -- which is how a compass mod is told to leave the mushrooms off its band.
+            if (string.IsNullOrEmpty(pin.m_name)) pin.m_name = IconRegistry.DisplayName(shared.Icon) ?? "";
             _pinById[shared.Id] = pin;
             _idByPin[pin] = shared.Id;
         }
