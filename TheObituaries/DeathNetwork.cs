@@ -32,11 +32,17 @@ namespace TheObituaries
             rpc.Register<ZPackage>(RpcName, RPC_Obituary);
         }
 
+        // A routed RPC to Everybody is handed to our own handler synchronously, inside the
+        // Invoke call, before it goes out; this flag is how the handler knows the death is ours.
+        private static bool _sendingOwn;
+
         internal static void Send(Notice notice)
         {
             var rpc = ZRoutedRpc.instance;
             if (rpc == null || notice == null) return;
-            rpc.InvokeRoutedRPC(ZRoutedRpc.Everybody, RpcName, notice.Pack());
+            _sendingOwn = true;
+            try { rpc.InvokeRoutedRPC(ZRoutedRpc.Everybody, RpcName, notice.Pack()); }
+            finally { _sendingOwn = false; }
         }
 
         private static void RPC_Obituary(long sender, ZPackage pkg)
@@ -44,7 +50,7 @@ namespace TheObituaries
             try
             {
                 var notice = Notice.Unpack(pkg);
-                if (notice != null) Show(notice);
+                if (notice != null) Show(notice, own: _sendingOwn);
             }
             catch (Exception e)
             {
@@ -52,9 +58,14 @@ namespace TheObituaries
             }
         }
 
-        /// <summary>Shows an obituary here, per the display settings. Also used by the console preview.</summary>
-        internal static void Show(Notice notice)
+        /// <summary>
+        /// Shows an obituary here, per the display settings. <paramref name="own"/> is the
+        /// local player's own death, which gets the longer center stay: they are lying there
+        /// anyway, while everyone else is busy. Also used by the console preview.
+        /// </summary>
+        internal static void Show(Notice notice, bool own = false)
         {
+            float centerStay = own ? TheObituariesMod.CenterSeconds.Value : TheObituariesMod.CenterSecondsOthers.Value;
             if (!TheObituariesMod.ModEnabled.Value) return;
 
             if (TheObituariesMod.ShowInChat.Value && Chat.instance != null)
@@ -75,7 +86,7 @@ namespace TheObituaries
                         hud.ShowMessage(MessageHud.MessageType.TopLeft, rich);
                         break;
                     case TheObituariesMod.ScreenSpot.Center:
-                        ShowCenter(rich, TheObituariesMod.CenterSeconds.Value);
+                        ShowCenter(rich, centerStay);
                         break;
                 }
 
@@ -84,7 +95,7 @@ namespace TheObituaries
                     && notice.KillerId == Player.m_localPlayer.GetZDOID())
                 {
                     ShowCenter("You fragged " + TheObituariesMod.Colored(TheObituariesMod.Bold(notice.Victim), TheObituariesMod.VictimColor),
-                        TheObituariesMod.CenterSeconds.Value);
+                        TheObituariesMod.CenterSecondsOthers.Value);
                 }
             }
 

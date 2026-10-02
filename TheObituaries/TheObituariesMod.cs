@@ -25,7 +25,7 @@ namespace TheObituaries
     {
         public const string ModGuid    = "DeathMonger.TheObituaries";
         public const string ModName    = "The Obituaries";
-        public const string ModVersion = "0.3.1";
+        public const string ModVersion = "0.3.2";
 
         internal static ManualLogSource Log { get; private set; }
         internal static TheObituariesMod Instance { get; private set; }
@@ -44,6 +44,7 @@ namespace TheObituaries
         internal static ConfigEntry<int>        TextSize;
         internal static ConfigEntry<ScreenSpot> OnScreen;
         internal static ConfigEntry<float>      CenterSeconds;
+        internal static ConfigEntry<float>      CenterSecondsOthers;
         internal static ConfigEntry<bool>       YouFragged;
 
         // [Wording]
@@ -91,9 +92,13 @@ namespace TheObituaries
             CenterSeconds = Config.Bind("Display", "Center Seconds", 15f,
                 new ConfigDescription(
                     "How long a center message stays on screen. The game's own center messages fade " +
-                    "out over 4 seconds; this holds it up and fades it out at the end. You lie there 10 " +
-                    "seconds before the respawn starts, and a loading screen covers the rest. " +
-                    "Also the stay of 'You fragged'.",
+                    "out over 4 seconds; this holds it up and fades it out at the end. For your own death: you lie there 10 " +
+                    "seconds before the respawn starts, and a loading screen covers the rest.",
+                    new AcceptableValueRange<float>(4f, 60f)));
+            CenterSecondsOthers = Config.Bind("Display", "Center Seconds Others", 5f,
+                new ConfigDescription(
+                    "How long another player's obituary stays in the center of your screen. Shorter " +
+                    "than your own: you are lying there anyway, they are busy. Also the stay of 'You fragged'.",
                     new AcceptableValueRange<float>(4f, 60f)));
             YouFragged = Config.Bind("Display", "You Fragged", true,
                 "When you kill another player, show Quake III's 'You fragged <name>' in the " +

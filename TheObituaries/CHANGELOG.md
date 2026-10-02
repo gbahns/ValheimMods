@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2 — 2026-10-01
+
+- Another player's death stays in the center of your screen for 5 seconds (Center Seconds Others) rather than the 15 your own does. You are lying there anyway; they are busy.
+
 ## 0.3.1 — 2026-09-29
 
 - A death by the poison or fire a hit left behind is credited to whoever dealt it. The poison ticks name no attacker, so "was poisoned to death" was all the mod could say when a Writhan's blast did the damage; now it is "was slimed by a Writhan", or one of the Writhan's own lines.

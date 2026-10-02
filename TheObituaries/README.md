@@ -56,7 +56,8 @@ The game does not say what a creature's weapon is; the mod reads it off the weap
 | Chat Seconds | 30 | How long the chat window stays up for it (the game's own messages get 10). |
 | Text Size | 115 | Size of the line in the chat window, as a percentage of chat text. |
 | On Screen | Center | Also show it as an on-screen message: Center, TopLeft or Off. |
-| Center Seconds | 15 | How long a center message stays (the game's own fade out over 4). You lie there 10 seconds before the respawn starts; the rest is under the loading screen. |
+| Center Seconds | 15 | How long the center message stays for your own death (the game's own fade out over 4). You lie there 10 seconds before the respawn starts; the rest is under the loading screen. |
+| Center Seconds Others | 5 | How long another player's obituary stays in the center of your screen. Also the stay of "You fragged". |
 | You Fragged | true | "You fragged <name>" in the center of your screen when you kill a player. |
 | Pronouns | Auto | His/her from the character's body type, or He, She, They. |
 | Level Stars | true | "a 2-star Troll" rather than "a Troll". |
