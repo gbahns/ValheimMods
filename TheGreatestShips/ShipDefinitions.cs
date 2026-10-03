@@ -140,8 +140,8 @@ namespace TheGreatestShips
                 BaseTopSpeed       = 9.65f,
                 DisplayName        = "Busse",
                 Description        = "A longship built out further than the Knarr. Slower still and even clumsier, but holds half again as much and shrugs off more damage.",
-                StorageWidth       = 8,       // 32 / 48 / 64 up the cargo line; 9 wide (36) overflowed the panel
-                StorageHeight      = 6,
+                StorageWidth       = 10,      // 32 / 50 / 66 up the cargo line, every hold 2:1 like the panel (8 x 4 at
+                StorageHeight      = 5,       // full size), so each fills it edge to edge at a smaller scale
                 DefaultRecipe      = "FineWood:50,ElderBark:70,IronNails:150,DeerHide:15,TrollHide:15",   // weighs 360; ~1.05x a longship's per unit of planking
                 OldDefaultRecipes  = new[] { "FineWood:50,ElderBark:60,IronNails:140,DeerHide:15,TrollHide:15",
                                              "FineWood:50,ElderBark:30,IronNails:140,DeerHide:15,TrollHide:15,RoundLog:30",
@@ -172,8 +172,8 @@ namespace TheGreatestShips
                 BaseTopSpeed       = 9.65f,
                 DisplayName        = "Big Busse",
                 Description        = "The largest hold of the three cargo tiers. Slow and hard to turn, but tougher than the Busse and hauls far more.",
-                StorageWidth       = 8,
-                StorageHeight      = 8,
+                StorageWidth       = 11,      // 66: 2:1 like the panel; 8 x 8 drew at half size with the sides empty
+                StorageHeight      = 6,
                 DefaultRecipe      = "FineWood:60,ElderBark:90,IronNails:180,DeerHide:20,TrollHide:20",   // weighs 450
                 OldDefaultRecipes  = new[] { "FineWood:60,ElderBark:50,IronNails:180,DeerHide:20,TrollHide:20,RoundLog:40",
                                              "FineWood:60,ElderBark:50,IronNails:190,DeerHide:20,TrollHide:20,RoundLog:30",

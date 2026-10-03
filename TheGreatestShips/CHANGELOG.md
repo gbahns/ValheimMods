@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.7 — unreleased
+
+- The cargo holds are now all the panel's own shape, two wide to one tall, so each fills it edge
+  to edge at a smaller scale: Knarr 8 × 4 = 32 (unchanged), Busse 10 × 5 = 50 (was 8 × 6 = 48),
+  Big Busse 11 × 6 = 66 (was 8 × 8 = 64, which drew at half size with the sides empty). Holds
+  only grow, so nothing is lost and nothing is breaking.
+
 ## 0.9.6 — 2026-10-03
 
 - A hold with more rows than the inventory panel shows (the Big Busse's 8 × 8) no longer
