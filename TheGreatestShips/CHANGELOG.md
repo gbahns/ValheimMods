@@ -4,8 +4,9 @@
 
 - The cargo holds are now all the panel's own shape, two wide to one tall, so each fills it edge
   to edge at a smaller scale: Knarr 8 × 4 = 32 (unchanged), Busse 10 × 5 = 50 (was 8 × 6 = 48),
-  Big Busse 11 × 6 = 66 (was 8 × 8 = 64, which drew at half size with the sides empty). Holds
-  only grow, so nothing is lost and nothing is breaking.
+  Big Busse 11 × 6 = 66 (was 8 × 8 = 64, which drew at half size with the sides empty). Items
+  that sat in a row or column the new shape no longer has move into free slots the first time
+  the hold loads, so nothing is lost; not a breaking change.
 
 ## 0.9.6 — 2026-10-03
 
