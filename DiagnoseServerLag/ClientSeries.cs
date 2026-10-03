@@ -57,6 +57,7 @@ namespace DiagnoseServerLag
         internal int RamMB;
         internal int ScreenWidth;
         internal int ScreenHeight;
+        internal string Graphics = "";
         internal readonly List<Second> Seconds = new List<Second>();
 
         /// <summary>The full per-second record. Empty when an older client sent layout 1.</summary>
@@ -95,6 +96,7 @@ namespace DiagnoseServerLag
             pkg.Write(RamMB);
             pkg.Write(ScreenWidth);
             pkg.Write(ScreenHeight);
+            pkg.Write(Graphics ?? "");
             // The series goes in compressed: it is the bulk of the message, and it is the part
             // that squeezes, being mostly slowly-changing or repeated numbers.
             var inner = new ZPackage();
@@ -133,6 +135,7 @@ namespace DiagnoseServerLag
                     c.RamMB = pkg.ReadInt();
                     c.ScreenWidth = pkg.ReadInt();
                     c.ScreenHeight = pkg.ReadInt();
+                    c.Graphics = pkg.ReadString();
                 }
                 if (layout >= 2)
                 {
@@ -222,6 +225,7 @@ namespace DiagnoseServerLag
             c.RamMB = Hardware.RamMB;
             c.ScreenWidth = Hardware.ScreenWidth;
             c.ScreenHeight = Hardware.ScreenHeight;
+            c.Graphics = GraphicsConfig.Describe();
             return c;
         }
     }

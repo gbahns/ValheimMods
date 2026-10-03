@@ -71,6 +71,10 @@ namespace DiagnoseServerLag
                 string vram = c.VramMB > 0 ? $" {c.VramMB / 1024f:0.#} GB" : "";
                 string ram = c.RamMB > 0 ? $", {c.RamMB / 1024f:0.#} GB RAM" : "";
                 sb.AppendLine($"  {Trim(c.Name, 16),-16} {c.CpuName} ({c.Cores}c){ram}, {c.Gpu}{vram}, {res}");
+                // The settings on their own line: it is long, and it is the half that explains a
+                // frame time once the hardware has been accounted for.
+                if (!string.IsNullOrEmpty(c.Graphics))
+                    sb.AppendLine($"  {"",-16} {c.Graphics}");
             }
 
             int reduced = 0;
