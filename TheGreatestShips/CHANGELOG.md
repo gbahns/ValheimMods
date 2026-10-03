@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.6 — unreleased
+## 0.9.6 — 2026-10-03
 
 - A hold with more rows than the inventory panel shows (the Big Busse's 8 × 8) no longer
   scrolls: its slots are drawn smaller so the whole hold is in view at once, the same way a hold
