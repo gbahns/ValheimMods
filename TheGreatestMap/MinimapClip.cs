@@ -41,8 +41,10 @@ namespace TheGreatestMap
             if (radius <= 1f) { ShowAgain(); return; }
             var middle = size * 0.5f;
 
+            // Only the markers. The game draws no labels on the minimap at all, so there is
+            // nothing of theirs to clip -- and touching them risks switching on a label it had
+            // deliberately switched off.
             Sweep(root, middle, radius);
-            Sweep(map.m_pinNameRootSmall, middle, radius);
         }
 
         private static void Sweep(RectTransform root, Vector2 middle, float radius)

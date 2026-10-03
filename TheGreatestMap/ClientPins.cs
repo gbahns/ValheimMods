@@ -699,12 +699,21 @@ namespace TheGreatestMap
         }
 
 
+        /// <summary>
+        /// Show or hide one marker. Hiding takes its label with it; showing does not bring the
+        /// label back, because whether a label belongs is the game's decision and not ours -- it
+        /// draws them on the large map only, and works that out afresh every time it lays the
+        /// markers out, which is just before this runs. Switching labels on here put words on the
+        /// minimap that the game had deliberately turned off a moment earlier. Only portals showed
+        /// it, because portals are nearly the only markers that carry a label at all.
+        /// </summary>
         private static void SetMarkerActive(Minimap.PinData pin, bool active)
         {
             var icon = pin.m_uiElement.gameObject;
             if (icon.activeSelf != active) icon.SetActive(active);
+            if (active) return;
             var label = pin.m_NamePinData != null ? pin.m_NamePinData.PinNameGameObject : null;
-            if (label != null && label.activeSelf != active) label.SetActive(active);
+            if (label != null && label.activeSelf) label.SetActive(false);
         }
     }
 

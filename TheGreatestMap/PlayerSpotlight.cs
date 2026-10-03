@@ -73,7 +73,11 @@ namespace TheGreatestMap
             foreach (var pin in Access.Pins(map))
             {
                 if (pin == null || pin.m_uiElement == null) continue;
-                Show(pin, true);
+                // The marker comes back, the label does not: the game decides whether a label is
+                // drawn, and only ever draws one on the large map. This runs as the map closes, so
+                // switching labels on here writes words across the minimap, where they sit until
+                // something moves and the game lays the markers out again.
+                if (!pin.m_uiElement.gameObject.activeSelf) pin.m_uiElement.gameObject.SetActive(true);
                 if (pin.m_type == Minimap.PinType.Player) pin.m_uiElement.localScale = Vector3.one;
             }
             ClientPins.Restyle();
