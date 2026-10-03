@@ -137,6 +137,13 @@ namespace DiagnoseServerLag
         /// </summary>
         internal bool Loading;
 
+        /// <summary>
+        /// Free physical memory in MB, or -1 when unavailable. A machine short of memory pages to
+        /// disk, which shows as a long frame at low CPU - and telling that apart from an ordinary
+        /// stall needs to know whether memory was actually short at the time.
+        /// </summary>
+        internal int FreeMemoryMB;
+
         // ── what the process costs the machine ──────────────────────────────────────
         // The measurements that survive a frame cap. See Machine for why tick time does not.
         /// <summary>Milliseconds of CPU burned per second of wall clock. 1000 is one core fully busy.</summary>
@@ -165,7 +172,7 @@ namespace DiagnoseServerLag
     {
         internal static void Write(ZPackage pkg, Sample s)
         {
-            // Layout 10 appends Loading, 9 appended NearbyPieces, 8 appended SystemCpu, 7 appended UnownedAI, 6 appended UnownedObjects, 5 appended OwnedObjects/NearbyObjects, 4 appended FeedMs, 3 OwnedAI/NearbyAI. Writers always write the
+            // Layout 11 appends FreeMemoryMB, 10 appended Loading, 9 appended NearbyPieces, 8 appended SystemCpu, 7 appended UnownedAI, 6 appended UnownedObjects, 5 appended OwnedObjects/NearbyObjects, 4 appended FeedMs, 3 OwnedAI/NearbyAI. Writers always write the
             // newest shape; readers
             // are told which one they are looking at, so an older client stays readable instead
             // of being misparsed into nonsense.
@@ -208,6 +215,7 @@ namespace DiagnoseServerLag
             pkg.Write(s.SystemCpu);
             pkg.Write(s.NearbyPieces);
             pkg.Write(s.Loading);
+            pkg.Write(s.FreeMemoryMB);
         }
 
         internal static Sample Read(ZPackage pkg, int layout)
@@ -219,6 +227,7 @@ namespace DiagnoseServerLag
             // idle computer, which is both wrong and the most interesting thing it could have said.
             // Anything added later that has a "no answer" value should be set here too.
             s.SystemCpu = -1f;
+            s.FreeMemoryMB = -1;
 
             s.At = pkg.ReadSingle();
             s.UtcTicks = pkg.ReadLong();
@@ -281,6 +290,10 @@ namespace DiagnoseServerLag
             if (layout >= 10)
             {
                 s.Loading = pkg.ReadBool();
+            }
+            if (layout >= 11)
+            {
+                s.FreeMemoryMB = pkg.ReadInt();
             }
             return s;
         }

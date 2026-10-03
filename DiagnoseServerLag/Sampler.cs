@@ -370,6 +370,7 @@ namespace DiagnoseServerLag
             // The whole machine, not just this process - the only figure that separates the game
             // pausing itself from something else taking the processor away.
             s.SystemCpu = SystemCpu.Read();
+            s.FreeMemoryMB = SystemMemory.FreeMB();
 
             // The machine-level half: CPU, memory and collections. This is the part that still
             // means something on a frame-capped server, where tick time is constant by

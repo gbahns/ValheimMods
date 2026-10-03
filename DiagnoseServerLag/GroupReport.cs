@@ -56,6 +56,23 @@ namespace DiagnoseServerLag
                               (c.RoundTripMs > 0 ? $"   rt {c.RoundTripMs} ms" : "") + ai);
             }
 
+            // What these machines actually are. Comparing two players' frame times without it
+            // invites the wrong conclusion: one capture had two clients doing identical CPU work
+            // for double the frame time, which read as a hardware fault until it turned out one
+            // was rendering 5120x1440 with texture mods.
+            sb.AppendLine();
+            sb.AppendLine("MACHINES");
+            string me = Hardware.Describe();
+            if (!string.IsNullOrEmpty(me)) sb.AppendLine($"  {"server",-16} {me}");
+            foreach (var c in clients)
+            {
+                if (string.IsNullOrEmpty(c.Gpu) && c.RamMB == 0) continue;
+                string res = c.ScreenWidth > 0 ? $"{c.ScreenWidth}x{c.ScreenHeight}" : "?";
+                string vram = c.VramMB > 0 ? $" {c.VramMB / 1024f:0.#} GB" : "";
+                string ram = c.RamMB > 0 ? $", {c.RamMB / 1024f:0.#} GB RAM" : "";
+                sb.AppendLine($"  {Trim(c.Name, 16),-16} {c.CpuName} ({c.Cores}c){ram}, {c.Gpu}{vram}, {res}");
+            }
+
             int reduced = 0;
             foreach (var c2 in clients) if (!c2.Full) reduced++;
             if (reduced > 0)
@@ -230,7 +247,7 @@ namespace DiagnoseServerLag
                             + "ping_round_trip,quality_local,quality_remote,in_bytes_sec,out_bytes_sec,"
                             + "send_queue_bytes,send_rate_bytes_sec,zdos,instances,zdos_sent_sec,zdos_recv_sec,"
                             + "change_queue,peers,cpu_ms_per_sec,cpu_measured,gc0,gc1,gc2,collections,"
-                            + "heap_bytes,working_set_bytes,owned_ai,nearby_ai,feed_ms,owned_objects,nearby_objects,unowned_objects,unowned_ai,system_cpu_pct,nearby_pieces,loading");
+                            + "heap_bytes,working_set_bytes,owned_ai,nearby_ai,feed_ms,owned_objects,nearby_objects,unowned_objects,unowned_ai,system_cpu_pct,nearby_pieces,loading,free_memory_mb");
 
                 foreach (var s in window) sb.AppendLine(Row("server", s, c));
 
@@ -289,6 +306,7 @@ namespace DiagnoseServerLag
                 s.UnownedObjects.ToString(c), s.UnownedAI.ToString(c),
                 s.SystemCpu >= 0f ? (s.SystemCpu * 100f).ToString("0.0", c) : "",
                 s.NearbyPieces.ToString(c), s.Loading ? "1" : "0",
+                s.FreeMemoryMB >= 0 ? s.FreeMemoryMB.ToString(c) : "",
             });
 
         private static string Iso(long ticks) =>

@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.10.3 - unreleased
+
+- **The capture now says what each machine is.** CPU and cores, RAM, GPU and its memory, and the
+  screen resolution, in a `MACHINES` block at the top of the report. Static for the session, so it
+  travels in the header rather than being repeated in every one of eighteen hundred samples.
+
+  This came out of a comparison that looked damning and was not. Two players doing identical CPU
+  work - 222% of a core against 219% - for 27 ms frames and 52 ms frames reads as one machine being
+  broken, right up until you learn the faster one was rendering 5120x1440 with HD texture mods and
+  near-maximum settings. Same work in, half the frames out, is a hardware finding or a settings
+  finding depending entirely on facts the mod was not recording.
+
+- **New: free physical memory, once a second.** `GlobalMemoryStatusEx` on Windows, `MemAvailable`
+  from `/proc/meminfo` on Linux. It shares the `machine` line and takes over its colour below 2 GB.
+
+  This answers a question nothing here could: is a machine slow because it is paging? That has a
+  distinctive shape - a long frame at *low* CPU, because the process is blocked on a disk rather
+  than computing - but telling it from an ordinary stall needs to know whether memory was short at
+  the time. `Process.WorkingSet64` reads zero under this Mono, so even the game's own footprint was
+  unavailable; free physical memory is both more reliable and the better question, since paging is
+  a property of the machine rather than of one process.
+
+- Wire layout 11, and the client series header grew too. **Update the server before the clients.**
+
 ## 0.10.2
 
 - **Stalls while the world is loading are counted separately and no longer set off the warning.**

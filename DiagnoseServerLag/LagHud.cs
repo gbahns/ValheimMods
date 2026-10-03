@@ -169,9 +169,16 @@ namespace DiagnoseServerLag
                 if (s.SystemCpu >= 0f)
                 {
                     float others = Mathf.Max(0f, s.SystemCpu - machine);
+                    // Free memory rides on the same line, and takes over the colour when it is
+                    // genuinely short: a machine that has started paging is a different and worse
+                    // problem than one that is merely busy, and it is the explanation for a long
+                    // frame at low CPU that nothing here could offer before.
+                    string free = s.FreeMemoryMB >= 0 ? $"   {s.FreeMemoryMB / 1024f:0.#} GB free" : "";
+                    int rank = Rank(others, 0.25f, 0.5f);
+                    if (s.FreeMemoryMB >= 0 && s.FreeMemoryMB < 2048)
+                        rank = Mathf.Max(rank, s.FreeMemoryMB < 1024 ? 2 : 1);
                     lines.Add(Line("machine", $"{s.SystemCpu * 100f:0}% busy" +
-                                              $"  ({others * 100f:0}% not Valheim)",
-                        Rank(others, 0.25f, 0.5f)));
+                                              $"  ({others * 100f:0}% not Valheim){free}", rank));
                 }
             }
 

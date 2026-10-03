@@ -33,7 +33,7 @@ namespace DiagnoseServerLag
         // 1: five columns, uncompressed. 2: every field, compressed. Both are still read,
         // because clients update on their own schedule and an old one should be diminished
         // rather than refused.
-        private const byte Layout = 10;
+        private const byte Layout = 11;
 
         /// <summary>One second, as much of it as the group view needs.</summary>
         internal struct Second
@@ -50,6 +50,13 @@ namespace DiagnoseServerLag
         internal string CpuName = "";
         internal int Cores;
         internal bool HasCpu;
+
+        // Static for the session, so these ride in the header rather than in every sample.
+        internal string Gpu = "";
+        internal int VramMB;
+        internal int RamMB;
+        internal int ScreenWidth;
+        internal int ScreenHeight;
         internal readonly List<Second> Seconds = new List<Second>();
 
         /// <summary>The full per-second record. Empty when an older client sent layout 1.</summary>
@@ -83,6 +90,11 @@ namespace DiagnoseServerLag
             pkg.Write(RoundTripMs);
             pkg.Write(OwnedAI);
             pkg.Write(NearbyAI);
+            pkg.Write(Gpu ?? "");
+            pkg.Write(VramMB);
+            pkg.Write(RamMB);
+            pkg.Write(ScreenWidth);
+            pkg.Write(ScreenHeight);
             // The series goes in compressed: it is the bulk of the message, and it is the part
             // that squeezes, being mostly slowly-changing or repeated numbers.
             var inner = new ZPackage();
@@ -113,6 +125,14 @@ namespace DiagnoseServerLag
                 {
                     c.OwnedAI = pkg.ReadInt();
                     c.NearbyAI = pkg.ReadInt();
+                }
+                if (layout >= 11)
+                {
+                    c.Gpu = pkg.ReadString();
+                    c.VramMB = pkg.ReadInt();
+                    c.RamMB = pkg.ReadInt();
+                    c.ScreenWidth = pkg.ReadInt();
+                    c.ScreenHeight = pkg.ReadInt();
                 }
                 if (layout >= 2)
                 {
@@ -195,6 +215,13 @@ namespace DiagnoseServerLag
             }
             c.FrameMedianMs = Stats.Median(window, x => x.FrameMsAvg);
             c.CpuMedianMsPerSec = Stats.Median(window, x => x.CpuMsPerSec);
+
+            Hardware.Refresh();
+            c.Gpu = Hardware.Gpu;
+            c.VramMB = Hardware.VramMB;
+            c.RamMB = Hardware.RamMB;
+            c.ScreenWidth = Hardware.ScreenWidth;
+            c.ScreenHeight = Hardware.ScreenHeight;
             return c;
         }
     }
