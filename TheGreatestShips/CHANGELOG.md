@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.7 — unreleased
+## 0.9.7 — 2026-10-03
 
 - The cargo holds are now all the panel's own shape, two wide to one tall, so each fills it edge
   to edge at a smaller scale: Knarr 8 × 4 = 32 (unchanged), Busse 10 × 5 = 50 (was 8 × 6 = 48),
