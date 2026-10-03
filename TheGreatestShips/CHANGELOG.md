@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.6 — unreleased
+
+- A hold with more rows than the inventory panel shows (the Big Busse's 8 × 8) no longer
+  scrolls: its slots are drawn smaller so the whole hold is in view at once, the same way a hold
+  wider than the panel already was. Holds that fit are drawn as before. Not a breaking change.
+
 ## 0.9.5 — 2026-09-27
 
 **Breaking: the server and every player need 0.9.5. The Busse's hold changed size, so 0.9.4 and

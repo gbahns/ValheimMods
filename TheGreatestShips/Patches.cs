@@ -114,11 +114,12 @@ namespace TheGreatestShips
     }
 
     /// <summary>
-    /// A hold wider than the inventory panel (the Busse's is nine slots; vanilla never goes past
-    /// eight) overflows it: InventoryGrid.UpdateGui centers the grid in the panel, so half a slot
-    /// falls off each side.  The grid root is pinned every frame, so the slots themselves are
-    /// scaled down and re-spaced to fit the panel's width, keeping the same centering.  Runs only
-    /// after UpdateGui has (re)built the elements: they come back at scale 1.
+    /// A hold bigger than the inventory panel -- wider than its eight columns, or taller than the
+    /// rows it shows, as the Big Busse's 8 x 8 is -- either overflows it (InventoryGrid.UpdateGui
+    /// centers the grid, so half a slot falls off each side) or scrolls.  The slots are drawn
+    /// smaller instead, square, at whatever scale fits both ways, re-spaced about the same
+    /// center; the grid root, which UpdateGui sizes to the full grid every call (that is what
+    /// makes it scroll), is sized to the drawn grid.  A hold that fits is left alone.
     /// </summary>
     [HarmonyPatch(typeof(InventoryGrid), "UpdateGui")]
     internal static class InventoryGridFitPatch
@@ -140,11 +141,19 @@ namespace TheGreatestShips
             if (width <= 0 || height <= 0) return;
 
             var panel = __instance.transform as RectTransform;
-            float space     = _space(__instance);
-            float gridWidth = width * space;
-            if (panel == null || panel.rect.width <= 0f || gridWidth <= panel.rect.width) return;
+            float space      = _space(__instance);
+            float gridWidth  = width * space;
+            float gridHeight = height * space;
+            if (panel == null || panel.rect.width <= 0f || panel.rect.height <= 0f) return;
 
-            float scale = panel.rect.width / gridWidth;
+            float scale = Mathf.Min(1f, panel.rect.width / gridWidth, panel.rect.height / gridHeight);
+            if (scale >= 1f) return;
+
+            // UpdateGui just sized the grid root to the full grid; size it to the drawn one so
+            // nothing is left to scroll.
+            if (__instance.m_gridRoot != null)
+                __instance.m_gridRoot.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, gridHeight * scale);
+
             var first = elements[0].transform as RectTransform;
             if (first == null || Mathf.Approximately(first.localScale.x, scale)) return; // already fitted
 
@@ -157,7 +166,7 @@ namespace TheGreatestShips
                 rect.localScale       = new Vector3(scale, scale, 1f);
                 rect.anchoredPosition = new Vector2(start + x * space * scale, -y * space * scale);
             }
-            Jotunn.Logger.LogInfo($"[TheGreatestShips] Inventory grid {width}x{height} is wider than its panel; slots drawn at {scale:0.00} scale to fit.");
+            Jotunn.Logger.LogInfo($"[TheGreatestShips] Inventory grid {width}x{height} is bigger than its panel ({panel.rect.width:0}x{panel.rect.height:0}); slots drawn at {scale:0.00} scale to fit.");
         }
     }
 
