@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.3 - unreleased
+## 0.10.3
 
 - **The capture now says what each machine is.** CPU and cores, RAM, GPU and its memory, and the
   screen resolution, in a `MACHINES` block at the top of the report. Static for the session, so it
