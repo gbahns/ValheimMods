@@ -76,10 +76,14 @@ namespace TheGreatestShips
     }
 
     /// <summary>
-    /// A hold that got narrower (the Busse went from 9 x 4 to 8 x 6) leaves the items that sat in
-    /// its last column outside the grid: still in the save, invisible in the panel.  After a
-    /// hold loads, anything outside the grid moves to a free slot.  Only the owner's copy is
-    /// touched, and Changed() makes the owner save it.
+    /// Items are saved by grid position, and the grid's size is not saved: it comes from the
+    /// prefab on every load.  So a hold that changed shape leaves some items outside the new
+    /// grid.  Vanilla half-covers this: Container.UpdateRows, run after every load, grows the
+    /// inventory's height to the lowest row with an item in it (an 8 x 8 hold that became 11 x 6
+    /// came back as 11 x 8), but nothing covers a lost column.  After a hold loads, anything
+    /// outside the intended grid (the Container's own width and height) moves into a free slot
+    /// inside it, and the height is set back.  Only the owner's copy is touched, and Changed()
+    /// makes the owner save it.
     /// </summary>
     [HarmonyPatch(typeof(Container), "Load")]
     internal static class ContainerLoadFitPatch
@@ -95,20 +99,33 @@ namespace TheGreatestShips
 
             var inventory = __instance.GetInventory();
             if (inventory == null) return;
-            int width = inventory.GetWidth(), height = inventory.GetHeight();
+            int width = __instance.m_width, height = __instance.m_height;   // the intended grid, not the grown one
+            var items = inventory.GetAllItems();
+            var taken = new HashSet<Vector2i>();
+            foreach (var item in items) taken.Add(item.m_gridPos);
+
             int moved = 0;
-            foreach (var item in new List<ItemDrop.ItemData>(inventory.GetAllItems()))
+            bool stranded = false;
+            foreach (var item in new List<ItemDrop.ItemData>(items))
             {
                 if (item.m_gridPos.x < width && item.m_gridPos.y < height) continue;
-                var slot = inventory.FindEmptySlot(true);
-                if (slot.x < 0) break;
+                var slot = new Vector2i(-1, -1);
+                for (int y = 0; y < height && slot.x < 0; y++)
+                    for (int x = 0; x < width; x++)
+                        if (!taken.Contains(new Vector2i(x, y))) { slot = new Vector2i(x, y); break; }
+                if (slot.x < 0) { stranded = true; break; }   // no room: leave it where vanilla's grown rows show it
+                taken.Remove(item.m_gridPos);
+                taken.Add(slot);
                 item.m_gridPos = slot;
                 moved++;
             }
-            if (moved > 0)
+            if (!stranded && inventory.GetHeight() != height)
+                inventory.SetHeight(height);   // undo UpdateRows now that nothing sits below the grid
+            if (moved > 0 || inventory.GetHeight() == height)
             {
-                inventory.Changed();
-                Jotunn.Logger.LogInfo($"[TheGreatestShips] {__instance.m_name}: moved {moved} stack(s) that sat outside the hold's grid into free slots.");
+                if (moved > 0) inventory.Changed();
+                if (moved > 0)
+                    Jotunn.Logger.LogInfo($"[TheGreatestShips] {__instance.m_name}: moved {moved} stack(s) that sat outside the {width}x{height} hold into free slots.");
             }
         }
     }
