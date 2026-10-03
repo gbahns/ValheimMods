@@ -73,6 +73,8 @@ namespace DiagnoseServerLag
                 sb.AppendLine($"  {Trim(c.Name, 16),-16} {c.CpuName} ({c.Cores}c){ram}, {c.Gpu}{vram}, {res}");
                 // The settings on their own line: it is long, and it is the half that explains a
                 // frame time once the hardware has been accounted for.
+                if (!string.IsNullOrEmpty(c.GpuDetail))
+                    sb.AppendLine($"  {"",-16} {c.GpuDetail}");
                 if (!string.IsNullOrEmpty(c.Graphics))
                     sb.AppendLine($"  {"",-16} {c.Graphics}");
             }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace DiagnoseServerLag
 {
@@ -58,6 +59,7 @@ namespace DiagnoseServerLag
         internal int ScreenWidth;
         internal int ScreenHeight;
         internal string Graphics = "";
+        internal string GpuDetail = "";
         internal readonly List<Second> Seconds = new List<Second>();
 
         /// <summary>The full per-second record. Empty when an older client sent layout 1.</summary>
@@ -97,6 +99,7 @@ namespace DiagnoseServerLag
             pkg.Write(ScreenWidth);
             pkg.Write(ScreenHeight);
             pkg.Write(Graphics ?? "");
+            pkg.Write(GpuDetail ?? "");
             // The series goes in compressed: it is the bulk of the message, and it is the part
             // that squeezes, being mostly slowly-changing or repeated numbers.
             var inner = new ZPackage();
@@ -136,6 +139,7 @@ namespace DiagnoseServerLag
                     c.ScreenWidth = pkg.ReadInt();
                     c.ScreenHeight = pkg.ReadInt();
                     c.Graphics = pkg.ReadString();
+                    c.GpuDetail = pkg.ReadString();
                 }
                 if (layout >= 2)
                 {
@@ -226,6 +230,13 @@ namespace DiagnoseServerLag
             c.ScreenWidth = Hardware.ScreenWidth;
             c.ScreenHeight = Hardware.ScreenHeight;
             c.Graphics = GraphicsConfig.Describe();
+            c.GpuDetail = string.Join(", ", new[]
+            {
+                string.IsNullOrEmpty(Hardware.GpuVendor) ? null : Hardware.GpuVendor,
+                string.IsNullOrEmpty(Hardware.GpuDriver) ? null : Hardware.GpuDriver,
+                Hardware.ShaderLevel > 0 ? $"shader {Hardware.ShaderLevel / 10f:0.0}" : null,
+                string.IsNullOrEmpty(Hardware.GraphicsApi) ? null : Hardware.GraphicsApi,
+            }.Where(x => x != null).ToArray());
             return c;
         }
     }

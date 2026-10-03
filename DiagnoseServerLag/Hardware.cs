@@ -30,6 +30,9 @@ namespace DiagnoseServerLag
         internal static int ScreenHeight { get; private set; }
         internal static string Os { get; private set; } = "";
         internal static string GraphicsApi { get; private set; } = "";
+        internal static string GpuVendor { get; private set; } = "";
+        internal static string GpuDriver { get; private set; } = "";
+        internal static int ShaderLevel { get; private set; }
 
         private static bool _done;
 
@@ -54,6 +57,13 @@ namespace DiagnoseServerLag
                 RamMB = SystemInfo.systemMemorySize;
                 Os = SystemInfo.operatingSystem ?? "";
                 GraphicsApi = SystemInfo.graphicsDeviceType.ToString();
+                // Vendor and driver separately from the device name. A laptop quietly running on
+                // its integrated chip reads as vendor Intel while the machine has a discrete card,
+                // which is the single likeliest explanation for good hardware and bad frames - and
+                // a years-old driver string is the next.
+                GpuVendor = SystemInfo.graphicsDeviceVendor ?? "";
+                GpuDriver = SystemInfo.graphicsDeviceVersion ?? "";
+                ShaderLevel = SystemInfo.graphicsShaderLevel;
             }
             catch (Exception e)
             {
@@ -69,7 +79,9 @@ namespace DiagnoseServerLag
             string res = ScreenWidth > 0 ? $"{ScreenWidth}x{ScreenHeight}" : "?";
             string vram = VramMB > 0 ? $" {VramMB / 1024f:0.#} GB" : "";
             string ram = RamMB > 0 ? $", {RamMB / 1024f:0.#} GB RAM" : "";
-            return $"{Cpu} ({Cores}c){ram}, {Gpu}{vram}, {res}";
+            string vendor = string.IsNullOrEmpty(GpuVendor) ? "" : $" [{GpuVendor}]";
+            string drv = string.IsNullOrEmpty(GpuDriver) ? "" : $", {GpuDriver}";
+            return $"{Cpu} ({Cores}c){ram}, {Gpu}{vendor}{vram}, {res}{drv}";
         }
     }
 }

@@ -22,6 +22,17 @@
   unavailable; free physical memory is both more reliable and the better question, since paging is
   a property of the machine rather than of one process.
 
+- **And what each player has their graphics set to** - every slider and toggle, on its own line
+  under that machine, taken from the game's own `GraphicsSettingInt` and `GraphicsSettingBool`
+  enums rather than written out here, so a setting Iron Gate adds appears by itself. Valheim stores
+  each under `PlatformPrefs` keyed by the enum member's name, which is what makes walking the enums
+  work. A key that cannot be read is left out rather than guessed at.
+
+- **GPU detail beyond the name**: video memory, vendor, driver version, shader level and graphics
+  API. A laptop quietly running on its integrated chip reads as vendor Intel while the machine has
+  a discrete card - the likeliest explanation for good hardware and bad frames - and a years-old
+  driver string is the next.
+
 - Wire layout 11, and the client series header grew too. **Update the server before the clients.**
 
 ## 0.10.2
