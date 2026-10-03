@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.7.5 — 2026-10-03
+## 1.7.6 — 2026-10-03
 
 Client-side; works with a 0.2.x server.
 
@@ -11,11 +11,16 @@ Client-side; works with a 0.2.x server.
   portals showed it, because a portal is nearly the only marker that carries a label at all: their
   label spacing is 0 and almost everything else is -1. Hiding a marker still hides its label;
   showing one now leaves the label to the game, which decides afresh every pass.
-- Two adjacent holes of the same kind, closed while looking for the one above. Lighting up the
-  players restored every label as the map closed -- which is to say onto the minimap. And the
-  minimap clipping added in 1.7.2 swept the label root as well as the marker root, so a label it
-  had put out could be handed back; there are no labels on the minimap to clip, so it leaves them
-  alone.
+
+## 1.7.5 — 2026-10-03
+
+Client-side; works with a 0.2.x server.
+
+- Two things that could put a label on the minimap, found while looking for the one 1.7.6 fixes.
+  Lighting up the players restored every label as the map closed -- which is to say onto the
+  minimap. And the minimap clipping added in 1.7.2 swept the label root as well as the marker root,
+  so a label it had put out could be handed back; there are no labels on the minimap to clip, so it
+  leaves them alone. Neither was the cause of the portal labels.
 
 ## 1.7.4 — 2026-10-02
 
