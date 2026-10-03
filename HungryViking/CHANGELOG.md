@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.0 — 2026-10-03
+
+- **The Cold warning is off by default.** Cold does no damage, so the warning worth having is the Freezing one. Turn on **Warn When Cold** if you want the earlier heads-up.
+- When it is on it is now subtle by default: new **Cold Warning Strength** (default `0.30`) scales the Cold vignette and how far its label swings toward red, as a fraction of the Freezing warning. `0` leaves a steady label and no vignette at all.
+- Existing config files keep whatever **Warn When Cold** they already hold; set it to `false` by hand if 1.4.0 turned it on for you.
+
 ## 1.4.0 — 2026-10-02
 
 - **Freezing warning.** A blue center vignette and a label when the mountains start killing you: "You are cold." as soon as you are cold, "You are freezing!" once Freezing sets in. Cold does no damage on its own, so it is the warning that there is still time to get to a fire.

@@ -36,8 +36,8 @@ Warnings only track food you've actually eaten this session: a fresh character w
 ### Freezing
 
 - **Center vignette** — a blue haze appears from the center of the screen outward when you are cold, and deepens when you are freezing. Same fade behavior as smoke.
-- **On-screen label** — "You are cold." while it is only cold, "You are freezing!" once Freezing sets in, oscillating from blue toward red.
-- Cold does no damage by itself, so it is the early warning; Freezing is the one that kills. Turn off **Warn When Cold** if you only want to hear about the dangerous one.
+- **On-screen label** — "You are freezing!" once Freezing sets in, oscillating from blue toward red.
+- Freezing is the one that kills. Cold does no damage at all, so the Cold warning is **off by default**; turn on **Warn When Cold** if you want the earlier heads-up, and it stays deliberately quiet — **Cold Warning Strength** scales it to a fraction of the Freezing warning.
 - No extra HUD icon — the game already shows one.
 
 ### Warning labels
@@ -82,9 +82,10 @@ Open `BepInEx/config/DeathMonger.HungryViking.cfg` to adjust settings. Changing 
 
 | Setting | Default | Description |
 |---|---|---|
-| Vignette Intensity | `0.25` | Max center opacity (0–1); the Cold warning uses half of it |
+| Vignette Intensity | `0.25` | Max center opacity (0–1) |
 | Vignette Extent | `0.55` | How far the vignette reaches from center outward (0–1) |
-| Warn When Cold | `true` | Also warn at the milder Cold effect, before it becomes Freezing |
+| Warn When Cold | `false` | Also warn at the milder Cold effect, before it becomes Freezing |
+| Cold Warning Strength | `0.30` | How loud that Cold warning is, as a fraction of the Freezing one; `0` = steady label only, no vignette |
 
 **[Labels]**
 

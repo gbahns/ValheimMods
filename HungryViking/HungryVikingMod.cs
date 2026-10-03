@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace HungryViking
 {
-    [BepInPlugin(ModGuid, "Hungry Viking", "1.4.0")]
+    [BepInPlugin(ModGuid, "Hungry Viking", "1.5.0")]
     [BepInProcess("valheim.exe")]
     public class HungryVikingMod : BaseUnityPlugin
     {
@@ -28,6 +28,7 @@ namespace HungryViking
         public ConfigEntry<float> FreezingVignetteIntensity;
         public ConfigEntry<float> FreezingVignetteExtent;
         public ConfigEntry<bool>  WarnOnCold;
+        public ConfigEntry<float> ColdWarningStrength;
         public ConfigEntry<LabelPlacement> LabelPlacementMode;
         public ConfigEntry<int>   ManualLabelOffset;
 
@@ -96,6 +97,7 @@ namespace HungryViking
             PoisonedVignetteExtent.SettingChanged   += (_, __) => _poisonedPreviewTimer = 2f;
             FreezingVignetteIntensity.SettingChanged += (_, __) => _freezingPreviewTimer = 2f;
             FreezingVignetteExtent.SettingChanged   += (_, __) => _freezingPreviewTimer = 2f;
+            ColdWarningStrength.SettingChanged      += (_, __) => _freezingPreviewTimer = 2f;
             LabelPlacementMode.SettingChanged       += (_, __) => _hungerPreviewTimer   = 2f;
             ManualLabelOffset.SettingChanged        += (_, __) => _hungerPreviewTimer   = 2f;
 
@@ -291,9 +293,16 @@ namespace HungryViking
                     "How far from the screen center the cold vignette reaches. 0 = invisible, 1 = covers the full screen.",
                     new AcceptableValueRange<float>(0f, 1f)));
 
-            WarnOnCold = Config.Bind("Freezing", "Warn When Cold", true,
-                "Also warn at the milder Cold effect, before it becomes Freezing. Cold alone does not hurt you, " +
-                "but it is the warning that there is still time to do something about it.");
+            WarnOnCold = Config.Bind("Freezing", "Warn When Cold", false,
+                "Also warn at the milder Cold effect, before it becomes Freezing. Off by default: Cold does no " +
+                "damage and nobody has ever died of it, so the warning that matters is the Freezing one.");
+
+            ColdWarningStrength = Config.Bind("Freezing", "Cold Warning Strength", 0.3f,
+                new ConfigDescription(
+                    "How loud the Cold warning is, as a fraction of the Freezing one, when Warn When Cold is on. " +
+                    "Deliberately low: it scales the vignette and how far the label's color swings toward red. " +
+                    "0 = label only, held steady, no vignette at all.",
+                    new AcceptableValueRange<float>(0f, 1f)));
 
             LabelPlacementMode = Config.Bind("Labels", "Placement", LabelPlacement.Automatic,
                 "Automatic: the warning labels sit near the top of the screen and move down below anything else there, " +
@@ -550,8 +559,9 @@ namespace HungryViking
             }
             else if (isCold)
             {
-                _freezingOverlay.SetBase(FreezingVignetteIntensity.Value * 0.5f, new Color(0.45f, 0.7f, 1f));
-                _freezingOverlay.SetLabel("You are cold.", 0.35f);
+                float strength = ColdWarningStrength.Value;
+                _freezingOverlay.SetBase(FreezingVignetteIntensity.Value * strength, new Color(0.45f, 0.7f, 1f));
+                _freezingOverlay.SetLabel("You are cold.", strength);
             }
             else
             {
