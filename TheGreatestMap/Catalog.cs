@@ -247,11 +247,11 @@ namespace TheGreatestMap
                            "Mistlands_DvergrBossEntrance1=The Queen|TrophySeekerQueen,FaderLocation=Fader|TrophyFader";
                 case Category.Structure:
                     return "WoodFarm1=Abandoned Farm,WoodHouse*=Abandoned House,AbandonedLogCabin*=Log Cabin,StoneTowerRuins*=Stone Tower Ruins,StoneHouse*=Stone House," +
-                           "Ruin*=Ruins,SwampHut*=Swamp Hut,SwampRuin*=Swamp Ruins,SwampWell*=Swamp Well,StoneHenge*=Stonehenge,StoneTower*=Stone Tower," +
-                           "StoneCircle*=Stone Circle,Dolmen*=Dolmen,MountainGrave*=Mountain Grave,MountainWell*=Mountain Well,DrakeNest*=Drake Nest|DragonEgg," +
-                           "Greydwarf_camp*=Greydwarf Nest|TrophyGreydwarfBrute,ShipSetting*=Ship Setting,Waymarker*=Waymarker,InfestedTree*=Infested Tree|TrophySeeker," +
+                           "Ruin*=Ruins,SwampHut*=Swamp Hut,SwampRuin*=Swamp Ruins,SwampWell*=Swamp Well,StoneHenge*=Stonehenge|pin:Memorial,StoneTower*=Stone Tower," +
+                           "StoneCircle*=Stone Circle|pin:Memorial,Dolmen*=Dolmen|pin:Memorial,DrakeNest*=Drake Nest|DragonEgg," +
+                           "Greydwarf_camp*=Greydwarf Nest|TrophyGreydwarfBrute,ShipSetting*=Ship Setting|pin:Memorial,Waymarker*=Waymarker|pin:Memorial,InfestedTree*=Infested Tree|TrophySeeker," +
                            "Mistlands_GuardTower*=Dvergr Guard Tower|TrophyDvergr,Mistlands_Excavation*=Dvergr Excavation|TrophyDvergr,Mistlands_Harbour*=Dvergr Harbour|TrophyDvergr," +
-                           "Mistlands_Lighthouse*=Dvergr Lighthouse|TrophyDvergr,Mistlands_Giant*=Giant Remains,Mistlands_Swords*=Petrified Swords," +
+                           "Mistlands_Lighthouse*=Dvergr Lighthouse|TrophyDvergr," +
                            "Mistlands_Statue*=Dvergr Statue|TrophyDvergr,Mistlands_Viaduct*=Viaduct|TrophyDvergr,CharredRuins*=Charred Ruins,AshlandRuins*=Ashlands Ruins," +
                            "FortressRuins*=Fortress Ruins|TrophyCharredMage,PlaceofMystery*=Place of Mystery";
                 case Category.Campfire:

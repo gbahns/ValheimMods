@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.7.4 — unreleased
+## 1.7.4 — 2026-10-02
 
 Client-side; works with a 0.2.x server.
 
@@ -25,6 +25,18 @@ Client-side; works with a 0.2.x server.
 - The legend stops calling locations missing. Dungeons, camps, traders, boss altars and most
   structures are placed by the world rather than spawned, so they are not in ZNetScene at all, and
   asking it alone put twenty honest catalog lines under "not in this game".
+- Putrid holes and charred spawners are known by name, with the morgen and charred melee trophies.
+  A putrid hole was already marked, as an unlisted location with an interior, which makes it a
+  dungeon with a plain dot and a prefab for a name.
+- Standing stones, stone circles, dolmens, ship settings and waymarkers share the memorial pin.
+  They are landmarks with nothing in them to search, and since crossed-off markers group by icon
+  they are now one row in the list rather than lost among the buildings.
+- Mountain graves and mountain wells are not marked at all. Note that dropping a catalog entry is
+  not enough by itself: an outdoor location with no entry is still recorded as a structure, so
+  these are in "Structures Exclude Prefixes" as well, which is what actually stops it.
+- Giant remains and petrified swords are no longer marked as places. Each piece -- sword, helmet,
+  ribs, skull, brain -- is already recorded where it stands, wearing what it yields, so the site
+  marker was a house pin sitting among five better ones.
 - Icons for things that had none: dragon eggs for drake nests, the greydwarf trophy for greydwarf
   camps, the seeker for infested trees, the dvergr trophy for all six dvergr structures, and the
   charred mage for fortress ruins. Each giant's remains are named for what they are -- sword,

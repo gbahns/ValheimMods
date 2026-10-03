@@ -424,7 +424,7 @@ namespace TheGreatestMap
             StructuresIncludeUnlisted = mod.BindLocal("Catalog", "Structures Include Unlisted", true,
                 "Treat any outdoor location that is not listed under another kind as a structure (the location's prefab name, " +
                 "tidied up, becomes the marker text). Turn off to record only the listed structure prefixes.");
-            StructuresExcludePrefixes = mod.BindLocal("Catalog", "Structures Exclude Prefixes", "Vegvisir_,Runestone_,Meteorite,TarPit,Rock,Hugin,StartTemple,Pickable,Vegetation,Tree,Bush",
+            StructuresExcludePrefixes = mod.BindLocal("Catalog", "Structures Exclude Prefixes", "Vegvisir_,Runestone_,Meteorite,TarPit,Rock,Hugin,StartTemple,Pickable,Vegetation,Tree,Bush,MountainGrave,MountainWell",
                 "Comma-separated prefab name prefixes never recorded as structures.");
             ApplyLabelRulesOnSync = mod.BindSynced("Recording", "Apply Label Rules To Existing Markers", true,
                 "After each sync, apply the label rules above to recorded markers that already exist: within each kind, the " +
