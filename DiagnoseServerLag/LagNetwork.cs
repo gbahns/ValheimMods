@@ -35,6 +35,17 @@ namespace DiagnoseServerLag
         private const string RpcReport  = "DSL_Report";    // server -> the client that asked
         private const string RpcCapture = "DSL_Capture";       // admin client -> server: take a capture
         private const string RpcCaptureResult = "DSL_CaptureResult";   // server -> that client, as text
+        // The group CSV itself, server -> the client that asked for it.
+        //
+        // Added because the capture was useless to the person who ran it. dsl_bench asks the
+        // server, the server gathers every client's window and writes group-<stamp>.csv - on the
+        // server. On a dedicated host that is a filesystem the admin has no shell on, so three
+        // hour-long captures of a four-player session produced, locally, three files describing
+        // one machine. The text summary came back; the data did not.
+        //
+        // A separate RPC rather than extra fields on the text reply, so an old client simply never
+        // receives it instead of mis-reading a message whose shape changed.
+        private const string RpcCaptureCsv = "DSL_CaptureCsv";          // server -> that client, the CSV
         private const string RpcCaptureAll = "DSL_CaptureAll";         // server -> every client: send your window
         private const string RpcClientSeries = "DSL_ClientSeries";     // client -> server, its window
         private const string RpcEcho = "DSL_Echo";                     // client -> an object owner
@@ -118,6 +129,7 @@ namespace DiagnoseServerLag
                 rpc.Register<ZPackage>(RpcReport, RPC_Report);
                 rpc.Register<ZPackage>(RpcCapture, RPC_Capture);
                 rpc.Register<ZPackage>(RpcCaptureResult, RPC_CaptureResult);
+                rpc.Register<ZPackage>(RpcCaptureCsv, RPC_CaptureCsv);
                 rpc.Register<ZPackage>(RpcCaptureAll, RPC_CaptureAll);
                 rpc.Register<ZPackage>(RpcClientSeries, RPC_ClientSeries);
                 rpc.Register<ZPackage>(RpcEcho, RPC_Echo);
@@ -274,11 +286,15 @@ namespace DiagnoseServerLag
         /// Admin only: it writes a file on the server, and that is not something any player passing
         /// through should be able to ask for repeatedly.
         /// </summary>
+        /// <summary>When this client last asked, so an unsolicited group CSV can be refused.</summary>
+        private static float _askedAt = -1f;
+
         internal static void AskCapture(int seconds)
         {
             var rpc = ZRoutedRpc.instance;
             var znet = ZNet.instance;
             if (rpc == null || znet == null) return;
+            _askedAt = Time.realtimeSinceStartup;
 
             // Hosting: the server is this process, so there is nobody to ask for the server's half -
             // but the other players still have to be asked, so this goes through the same gather.
@@ -333,6 +349,40 @@ namespace DiagnoseServerLag
             catch { return; }
             if (string.IsNullOrEmpty(text)) return;
             Print(text);
+        }
+
+        /// <summary>
+        /// The group CSV arrived. Written next to this machine's own captures, under the name the
+        /// server gave it, so a group capture and the local one sit side by side.
+        ///
+        /// Only ever sent to the client that asked, and only after that client's own request was
+        /// accepted as admin, so this is not a channel anybody can push a file down.
+        /// </summary>
+        private static void RPC_CaptureCsv(long sender, ZPackage pkg)
+        {
+            try
+            {
+                if (ZNet.instance == null) return;
+                // Only accepted as the answer to a capture this client asked for, and only
+                // briefly. The gather waits on every client before replying, so the window is
+                // generous; without it any peer could route one of these and drop a file here.
+                if (_askedAt < 0f || Time.realtimeSinceStartup - _askedAt > 300f) return;
+                _askedAt = -1f;
+
+                string csv = pkg.ReadCompressedPackage().ReadString();
+                if (string.IsNullOrEmpty(csv)) return;
+
+                string dir = System.IO.Path.Combine(BepInEx.Paths.ConfigPath, "DiagnoseServerLag");
+                System.IO.Directory.CreateDirectory(dir);
+                string path = System.IO.Path.Combine(dir, $"group-{DateTime.Now:yyyyMMdd-HHmmss}.csv");
+                System.IO.File.WriteAllText(path, csv);
+                Print("wrote " + path);
+                DiagnoseServerLagMod.Log.LogInfo($"[DiagnoseServerLag] group capture written to {path}");
+            }
+            catch (Exception e)
+            {
+                DiagnoseServerLagMod.Log.LogWarning($"[DiagnoseServerLag] Could not save the group capture: {e.Message}");
+            }
         }
 
         private static ZPackage Wrap(string text)
@@ -592,9 +642,10 @@ namespace DiagnoseServerLag
         {
             _gathering = false;
             string text;
+            string csv = null;
             try
             {
-                text = GroupReport.Build(_gatherSeconds, _gathered, _gatherExpected, out string path);
+                text = GroupReport.Build(_gatherSeconds, _gathered, _gatherExpected, out string path, out csv);
                 if (path != null) text += "\nwrote " + path + " on the server";
                 DiagnoseServerLagMod.Log.LogInfo("[DiagnoseServerLag] group capture\n" + text);
             }
@@ -605,9 +656,23 @@ namespace DiagnoseServerLag
             }
 
             if (Sampler.IsServerHere && Player.m_localPlayer != null && _gatherFor == ZDOMan.GetSessionID())
-                Print(text);                                  // hosting: the admin is here
+            {
+                Print(text);                                  // hosting: the admin is here, and so is the file
+            }
             else
+            {
                 ZRoutedRpc.instance?.InvokeRoutedRPC(_gatherFor, RpcCaptureResult, Wrap(text));
+                // Compressed: an hour of per-second rows per machine is the same order of
+                // magnitude each client just sent inbound, and it squeezes the same way.
+                if (!string.IsNullOrEmpty(csv))
+                {
+                    var payload = new ZPackage();
+                    var inner = new ZPackage();
+                    inner.Write(csv);
+                    payload.WriteCompressed(inner);
+                    ZRoutedRpc.instance?.InvokeRoutedRPC(_gatherFor, RpcCaptureCsv, payload);
+                }
+            }
             _gathered.Clear();
         }
 

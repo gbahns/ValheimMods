@@ -35,7 +35,7 @@ namespace SpreadTheLoad
     {
         public const string ModGuid = "DeathMonger.SpreadTheLoad";
         public const string ModName = "Spread The Load";
-        public const string ModVersion = "0.2.1";
+        public const string ModVersion = "0.2.2";
 
         internal static ManualLogSource Log;
         internal static ConfigEntry<bool> Enabled;

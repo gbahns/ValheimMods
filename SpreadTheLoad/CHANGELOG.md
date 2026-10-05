@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.2.2 - unreleased
+
+- **A client being sent the world is no longer mistaken for a struggling one.** The detector counts
+  gaps in the updates a client sends, and a client loading a region stops sending for stretches at
+  a time. To the server that looks exactly like a machine failing to keep up, and it was counted: a
+  capture on 2026-10-04 had the admin's own login produce 68 stalls in six minutes - 11.3 a minute
+  against a threshold of 6 - which flagged the fastest machine on the server as the one to steer
+  work away from, during the one stretch when it was not even playing yet. Single gaps over five
+  seconds were already ignored for this reason; what that missed is that loading is mostly made of
+  the shorter gaps, dozens of them.
+
+  A grace period after joining was the obvious fix and the wrong one: that same login streamed for
+  five minutes, so a window long enough to cover it would be long enough to miss a genuinely bad
+  machine, and would still not cover a portal into unexplored ground. So the server measures the
+  thing itself - how fast each peer's ZDO set is still being filled in - and while that is climbing
+  quickly, the client's silences are treated as the cost of receiving rather than as evidence about
+  its hardware. It lasts exactly as long as the streaming does, whether that is twenty seconds
+  through a portal or five minutes at login.
+
+  Loading is not a verdict either way: it neither flags a client nor counts towards the clean run
+  that clears a flag. Where the per-peer counts cannot be read, this reports nobody streaming, so
+  the detector behaves as it did before rather than failing.
+
 ## 0.2.1
 
 - **An object goes to the player standing on it when its owner is nowhere near.** Greg's rule, and

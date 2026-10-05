@@ -60,6 +60,9 @@ namespace DiagnoseServerLag
         internal int ScreenHeight;
         internal string Graphics = "";
         internal string GpuDetail = "";
+
+        /// <summary>Which build of this mod the client is running, or "" if it is old enough not to say.</summary>
+        internal string ModVersion = "";
         internal readonly List<Second> Seconds = new List<Second>();
 
         /// <summary>The full per-second record. Empty when an older client sent layout 1.</summary>
@@ -106,6 +109,13 @@ namespace DiagnoseServerLag
             inner.Write(Samples.Count);
             foreach (var s in Samples) SampleWire.Write(inner, s);
             pkg.WriteCompressed(inner);
+            // Appended past the compressed block rather than slotted in with the other header
+            // fields, and so without a layout bump. A reader that predates this stops after the
+            // samples and never notices the tail; one that knows about it reads on. Inserting it
+            // higher up would have made an older server mis-read the compressed block that
+            // follows and drop that client from the capture entirely - which is the same
+            // partition-by-wire-version trap as refusing the message outright, just quieter.
+            pkg.Write(ModVersion ?? "");
             return pkg;
         }
 
@@ -167,6 +177,8 @@ namespace DiagnoseServerLag
                         });
                     }
                 }
+                // The tail, if this client was new enough to send it. Absent is not an error.
+                try { c.ModVersion = pkg.ReadString(); } catch { c.ModVersion = ""; }
                 return c;
             }
             catch (Exception e)
@@ -205,6 +217,7 @@ namespace DiagnoseServerLag
                 CpuName = UnityEngine.SystemInfo.processorType,
                 Cores = Machine.ProcessorCount,
                 RoundTripMs = UnityEngine.Mathf.RoundToInt(LagNetwork.RoundTripMs),
+                ModVersion = DiagnoseServerLagMod.ModVersion,
             };
 
             foreach (var s in window)

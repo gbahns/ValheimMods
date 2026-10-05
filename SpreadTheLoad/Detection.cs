@@ -86,6 +86,9 @@ namespace SpreadTheLoad
 
             float gap = now - p.LastArrival;
             p.LastArrival = now;
+            // A client being sent the world goes quiet in bursts, and those silences are the
+            // cost of receiving rather than evidence about its machine. See Streaming.
+            if (Streaming.IsLoading(uid)) return;
             if (gap > StallGapSeconds && gap < IgnoreGapSeconds) p.Stalls.Enqueue(now);
         }
 
@@ -101,6 +104,9 @@ namespace SpreadTheLoad
             int threshold = Mathf.Max(1, SpreadTheLoadMod.StallsPerMinute.Value);
             var connected = new HashSet<long>();
 
+            // Before judging anybody, find out who is still being sent the world.
+            Streaming.Tick(now);
+
             foreach (var peer in znet.GetConnectedPeers())
             {
                 if (peer == null || !peer.IsReady()) continue;
@@ -109,6 +115,11 @@ namespace SpreadTheLoad
                 p.Name = peer.m_playerName ?? "";
 
                 while (p.Stalls.Count > 0 && now - p.Stalls.Peek() > WindowSeconds) p.Stalls.Dequeue();
+
+                // Loading is not a verdict either way: it neither flags a client nor counts
+                // towards the clean run that clears a flag. Whatever was banked before the
+                // streaming started simply ages out of the window while we wait.
+                if (Streaming.IsLoading(peer.m_uid)) continue;
 
                 // Per minute, from a two-minute window, so one bad moment does not flag anybody.
                 float perMinute = p.Stalls.Count / (WindowSeconds / 60f);

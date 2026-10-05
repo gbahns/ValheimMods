@@ -310,28 +310,10 @@ namespace DiagnoseServerLag
                 sb.AppendLine($"# working_set_readable,{(Machine.HasWorkingSet ? 1 : 0)}");
                 sb.AppendLine("#");
 
-                sb.AppendLine("second,frames,frame_avg_ms,frame_max_ms,stalls,ping_ms,ping_measured,ping_round_trip,quality_local,quality_remote," +
-                              "in_bytes_sec,out_bytes_sec,send_queue_bytes,send_rate_bytes_sec,zdos,instances,zdos_sent_sec,zdos_recv_sec,change_queue,peers,owned_ai,nearby_ai," +
-                              "cpu_ms_per_sec,cpu_measured,gc0,gc1,gc2,heap_bytes,working_set_bytes");
-
-                foreach (var s in window)
-                {
-                    sb.AppendLine(string.Join(",", new[]
-                    {
-                        s.At.ToString("0.0", c), s.Frames.ToString(c),
-                        s.FrameMsAvg.ToString("0.00", c), s.FrameMsMax.ToString("0.00", c), s.Stalls.ToString(c),
-                        s.Ping.ToString(c), s.HasPing ? "1" : "0", s.PingFromRoundTrip ? "1" : "0",
-                        s.LocalQuality.ToString("0.0000", c), s.RemoteQuality.ToString("0.0000", c),
-                        s.InByteSec.ToString("0", c), s.OutByteSec.ToString("0", c),
-                        s.SendQueue.ToString(c), s.SendRate.ToString(c),
-                        s.Zdos.ToString(c), s.Instances.ToString(c),
-                        s.ZdosSent.ToString(c), s.ZdosRecv.ToString(c), s.ChangeQueue.ToString(c),
-                        s.Peers.ToString(c), s.OwnedAI.ToString(c), s.NearbyAI.ToString(c),
-                        s.CpuMsPerSec.ToString("0.0", c), s.HasCpu ? "1" : "0",
-                        s.Gc0.ToString(c), s.Gc1.ToString(c), s.Gc2.ToString(c),
-                        s.HeapBytes.ToString(c), s.WorkingSetBytes.ToString(c),
-                    }));
-                }
+                // The same columns the group capture writes - see CaptureCsv for why there is only
+                // one layout now.
+                sb.AppendLine(CaptureCsv.Header);
+                foreach (var s in window) sb.AppendLine(CaptureCsv.Row(role, s, c));
 
                 File.WriteAllText(path, sb.ToString());
                 DiagnoseServerLagMod.Log.LogInfo($"[DiagnoseServerLag] Wrote {window.Count} seconds to {path}");

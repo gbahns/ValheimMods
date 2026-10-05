@@ -2,6 +2,39 @@
 
 ## 0.10.6 - unreleased
 
+- **The group capture comes back to the client that asked for it.** `dsl_bench` asks the server,
+  the server gathers every connected client and writes `group-<stamp>.csv` - on the server. On a
+  dedicated host that is a filesystem the admin has no shell on, so three hour-long captures of a
+  four-player session produced, locally, three files describing one machine. The summary text came
+  back; the data did not. The CSV is now sent to whoever asked and written next to their own
+  captures, compressed, on its own RPC so an older client simply never receives it rather than
+  mis-reading a message whose shape changed.
+
+- **One column layout for every capture.** The group capture wrote forty columns and the local one
+  stopped at twenty-nine, because every field added while chasing a problem - `feed_ms`, `loading`,
+  `system_cpu_pct`, `free_memory_mb`, `owned_objects`, `nearby_pieces` - went into the group writer
+  and not into its twin. `dsl_bench` on a client was therefore missing exactly the measurements it
+  had been extended to take, which cost an evening: three captures of a laggy session and not one
+  of them could say whether a 570-stall stretch was loading. There is one `Header` and one `Row`
+  now, in `CaptureCsv`, so a field added once appears everywhere. The layout is the union of the
+  two, so anything that could read either can still read it.
+
+- **Each client's version is in the capture**, and clients behind the server are named. Nothing is
+  refused and nobody is blocked from joining - refusing a message shape partitions players into
+  groups that cannot see each other - but a missing column now reads as "that client has not
+  updated" instead of starting an investigation. The version rides past the compressed block, so it
+  needs no layout bump and no particular update order.
+
+- **`TOGETHER` replaces `SHARED`, and is judged against chance.** The old block counted seconds
+  where two machines stalled at once and then asserted that machines do not hitch together by
+  chance. On real data the arithmetic ran the other way: a capture with 46 shared seconds, where
+  unrelated machines at those rates would have produced about 61, was reported as proof of a shared
+  cause. It goes wrong whenever one machine stalls far more than the rest, since a machine stalling
+  in half of all seconds collides with everybody by accident - which is exactly the case that
+  prompted the block. It now states each machine's rate over the seconds they all reported, works
+  out how many coincidences those rates predict, and only points at the server when the count is
+  well above it.
+
 - **`zdos held` on the readout.** The only ZDO count on screen was the server's, on the
   `server tick` line; the client's own never appeared anywhere but the CSV. It is the one number
   that tracked frame time across an evening of captures once nearby objects and creature count

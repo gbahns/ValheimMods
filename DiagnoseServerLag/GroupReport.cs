@@ -27,7 +27,7 @@ namespace DiagnoseServerLag
         /// <summary>Seconds in which this many machines stalled together count as one shared event.</summary>
         private const int Together = 2;
 
-        internal static string Build(int seconds, List<ClientSeries> clients, int expected, out string csvPath)
+        internal static string Build(int seconds, List<ClientSeries> clients, int expected, out string csvPath, out string csvText)
         {
             csvPath = null;
             var sb = new StringBuilder();
@@ -54,6 +54,21 @@ namespace DiagnoseServerLag
                 string ai = c.NearbyAI > 0 ? $"   simulating {c.OwnedAI}/{c.NearbyAI} creatures" : "";
                 sb.AppendLine($"  {Trim(c.Name, 16),-16} frame {c.FrameMedianMs,5:0.0} ms   stalls {c.TotalStalls,3}   {cpu}" +
                               (c.RoundTripMs > 0 ? $"   rt {c.RoundTripMs} ms" : "") + ai);
+            }
+
+            // Who is running what. A client on an older build is not refused anything - refusing a
+            // message shape partitions players into groups that cannot see each other - but it is
+            // the first thing to check when a row is missing a column, because a field added last
+            // week is simply absent from a client that has not updated. Saying so here turns "why
+            // is there no GPU for Brane" into a fact rather than an investigation.
+            var stale = new List<string>();
+            foreach (var c in clients)
+                if (string.IsNullOrEmpty(c.ModVersion)) stale.Add($"{Trim(c.Name, 16)} (before 0.10.6)");
+                else if (c.ModVersion != DiagnoseServerLagMod.ModVersion) stale.Add($"{Trim(c.Name, 16)} {c.ModVersion}");
+            if (stale.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine($"  server is {DiagnoseServerLagMod.ModVersion}; behind it: {string.Join(", ", stale.ToArray())}");
             }
 
             // What these machines actually are. Comparing two players' frame times without it
@@ -94,7 +109,7 @@ namespace DiagnoseServerLag
             string ownership = Ownership(clients);
             if (ownership != null) { sb.AppendLine(); sb.AppendLine(ownership); }
 
-            csvPath = WriteCsv(window, clients);
+            csvPath = WriteCsv(window, clients, out csvText);
             return sb.ToString().TrimEnd();
         }
 
@@ -105,66 +120,154 @@ namespace DiagnoseServerLag
         /// client stalled with it is the strongest evidence this mod can produce for a server-side
         /// cause, and it is not reachable from any one capture.
         /// </summary>
+        /// <summary>
+        /// Whether the stalls happened together, judged against how often they would land together
+        /// by chance.
+        ///
+        /// Counting co-occurrences alone is not evidence, and asserting it confidently is worse
+        /// than saying nothing. The previous version printed "machines do not hitch in the same
+        /// second by chance" whenever two ever did - and on real data the arithmetic ran the other
+        /// way: one capture had 46 shared seconds where unrelated machines at those rates would
+        /// have produced about 60, so the honest reading was that the stalls were *less* connected
+        /// than coincidence, and the report declared the opposite. That failure is not a corner
+        /// case either. It appears whenever one machine stalls far more than the rest, because a
+        /// machine stalling in a third of all seconds collides with everybody by accident.
+        ///
+        /// So: take the seconds every machine actually reported, measure how often each stalled
+        /// within them, and work out how many of those seconds would hold two or more stalls if the
+        /// machines were unrelated - exactly, from the per-machine rates, since there are only ever
+        /// a handful of machines. Then compare. Only a count well above that prediction says
+        /// anything about the server or the path everyone shares.
+        /// </summary>
         private static string Correlate(List<Sample> window, List<ClientSeries> clients)
         {
-            // Who stalled, by UTC second. The server first, then each client.
-            var stalledBy = new Dictionary<long, List<string>>();
-            void Mark(long second, string who)
+            // Which seconds each machine reported at all, and which of those it stalled in. The
+            // first set is what makes a rate mean anything: a client that sent ten minutes cannot
+            // be measured against an hour as though the other fifty were quiet.
+            var reported = new Dictionary<string, HashSet<long>>();
+            var stalled = new Dictionary<string, HashSet<long>>();
+
+            void Note(string who, long second, bool didStall)
             {
-                if (!stalledBy.TryGetValue(second, out var list)) stalledBy[second] = list = new List<string>();
-                if (!list.Contains(who)) list.Add(who);
+                if (!reported.TryGetValue(who, out var r)) reported[who] = r = new HashSet<long>();
+                r.Add(second);
+                if (!didStall) return;
+                if (!stalled.TryGetValue(who, out var t)) stalled[who] = t = new HashSet<long>();
+                t.Add(second);
             }
 
             foreach (var s in window)
-                if (s.Stalls > 0 && s.UtcTicks > 0) Mark(ToSecond(s.UtcTicks), "server");
+                if (s.UtcTicks > 0) Note("server", ToSecond(s.UtcTicks), s.Stalls > 0);
             foreach (var c in clients)
                 foreach (var sec in c.Seconds)
-                    if (sec.Stalls > 0 && sec.UtcTicks > 0) Mark(ToSecond(sec.UtcTicks), Trim(c.Name, 16));
+                    if (sec.UtcTicks > 0) Note(Trim(c.Name, 16), ToSecond(sec.UtcTicks), sec.Stalls > 0);
 
-            int machines = clients.Count + 1;
-            var shared = new List<KeyValuePair<long, List<string>>>();
-            var alone = new Dictionary<string, int>();
-            foreach (var kv in stalledBy)
+            int machines = reported.Count;
+            if (machines <= 1)
+                return "Only this machine reported, so nothing can be told apart. Ask again with players connected.";
+
+            // The seconds every machine covered. Anything outside it cannot be judged together.
+            HashSet<long> common = null;
+            foreach (var kv in reported)
             {
-                if (kv.Value.Count >= Together) shared.Add(kv);
-                else
-                {
-                    string who = kv.Value[0];
-                    alone[who] = alone.TryGetValue(who, out int n) ? n + 1 : 1;
-                }
+                if (common == null) { common = new HashSet<long>(kv.Value); continue; }
+                common.IntersectWith(kv.Value);
+            }
+            int n = common == null ? 0 : common.Count;
+            if (n == 0)
+                return "These windows do not overlap, so nothing can be compared. Capture again while " +
+                       "everyone is connected.";
+
+            var names = new List<string>(reported.Keys);
+            var rate = new Dictionary<string, double>();
+            var hits = new Dictionary<string, int>();
+            foreach (string who in names)
+            {
+                int inCommon = 0;
+                if (stalled.TryGetValue(who, out var t))
+                    foreach (long sec in t) if (common.Contains(sec)) inCommon++;
+                hits[who] = inCommon;
+                rate[who] = (double)inCommon / n;
             }
 
-            if (stalledBy.Count == 0)
-                return "Nobody stalled. Nothing to attribute.";
+            // Observed: seconds inside the overlap where two or more machines stalled.
+            var togetherAt = new List<KeyValuePair<long, List<string>>>();
+            foreach (long sec in common)
+            {
+                List<string> who = null;
+                foreach (string name in names)
+                    if (stalled.TryGetValue(name, out var t) && t.Contains(sec))
+                    {
+                        if (who == null) who = new List<string>();
+                        who.Add(name);
+                    }
+                if (who != null && who.Count >= Together)
+                    togetherAt.Add(new KeyValuePair<long, List<string>>(sec, who));
+            }
+
+            // Expected, were the machines unrelated: the chance that two or more stall in the same
+            // second, which is one minus the chance none does minus the chance exactly one does.
+            double noneP = 1.0;
+            foreach (string who in names) noneP *= 1.0 - rate[who];
+            double exactlyOne = 0.0;
+            bool certain = false;
+            foreach (string who in names) if (rate[who] >= 1.0) certain = true;
+            if (!certain)
+                foreach (string who in names)
+                    exactlyOne += noneP * rate[who] / (1.0 - rate[who]);
+            double expected = n * Math.Max(0.0, 1.0 - noneP - exactlyOne);
 
             var sb = new StringBuilder();
-            if (shared.Count > 0)
+            sb.AppendLine($"Compared over {n} second(s) that every machine reported.");
+            foreach (string who in names)
+                sb.AppendLine($"  {who,-16} stalled in {hits[who],4} of them ({rate[who] * 100:0.0}%)");
+            sb.AppendLine();
+            sb.AppendLine($"TOGETHER: {togetherAt.Count} second(s) with two or more machines stalling; " +
+                          $"unrelated machines at these rates would give about {expected:0}.");
+
+            if (togetherAt.Count > 0)
             {
-                shared.Sort((a, b) => a.Key.CompareTo(b.Key));
-                sb.AppendLine($"SHARED: {shared.Count} second(s) where two or more machines stalled together.");
+                togetherAt.Sort((a, b) => a.Key.CompareTo(b.Key));
                 int shown = 0;
-                foreach (var kv in shared)
+                foreach (var kv in togetherAt)
                 {
-                    if (shown++ >= 5) { sb.AppendLine($"  ... and {shared.Count - 5} more"); break; }
+                    if (shown++ >= 5) { sb.AppendLine($"  ... and {togetherAt.Count - 5} more"); break; }
                     sb.AppendLine($"  {new DateTime(kv.Key * TimeSpan.TicksPerSecond, DateTimeKind.Utc).ToLocalTime():HH:mm:ss}  " +
                                   string.Join(", ", kv.Value.ToArray()));
                 }
-                sb.AppendLine("  Machines do not hitch in the same second by chance. Look at the server and at the");
-                sb.AppendLine("  network path everyone shares, not at any one computer.");
             }
 
+            // The verdict is the comparison, never the count. The thresholds are deliberately wide:
+            // this is a handful of machines over an hour, not a sample that supports a fine call.
+            if (expected < 0.5 && togetherAt.Count == 0)
+                sb.AppendLine("  Too few stalls anywhere to tell. Nothing points at the server.");
+            else if (togetherAt.Count >= expected * 2.0 && togetherAt.Count >= 3)
+                sb.AppendLine("  Well above chance. Look at the server and at the network path everyone " +
+                              "shares, not at any one computer.");
+            else if (togetherAt.Count <= expected * 0.5)
+                sb.AppendLine("  Below chance: these machines stall independently, and whoever stalls most " +
+                              "is not dragging the others down with them.");
+            else
+                sb.AppendLine("  About what chance predicts, so the overlap is coincidence. Read these as " +
+                              "local stalls that happened to land in the same second.");
+
+            // Solitary counts still earn their place: they say who to look at.
+            var alone = new Dictionary<string, int>();
+            foreach (long sec in common)
+            {
+                string only = null;
+                int count = 0;
+                foreach (string name in names)
+                    if (stalled.TryGetValue(name, out var t) && t.Contains(sec)) { only = name; count++; }
+                if (count == 1) alone[only] = alone.TryGetValue(only, out int k) ? k + 1 : 1;
+            }
             if (alone.Count > 0)
             {
-                if (shared.Count > 0) sb.AppendLine();
-                sb.AppendLine("ALONE: stalls nobody else had, which are local to that machine.");
+                sb.AppendLine();
+                sb.AppendLine("ALONE: stalls nobody else had that second, which are local to that machine.");
                 foreach (var kv in alone)
                     sb.AppendLine($"  {kv.Key,-16} {kv.Value} second(s) stalling by itself");
-                if (shared.Count == 0 && machines > 1)
-                    sb.AppendLine("  No second had two machines stalling together, so nothing here points at the server.");
             }
-
-            if (machines == 1)
-                sb.AppendLine("Only this machine reported, so nothing can be told apart. Ask again with players connected.");
             return sb.ToString().TrimEnd();
         }
 
@@ -236,8 +339,14 @@ namespace DiagnoseServerLag
         /// full record leaves the extra columns empty rather than zero, so a gap is never read as a
         /// measurement.
         /// </summary>
-        private static string WriteCsv(List<Sample> window, List<ClientSeries> clients)
+        /// <summary>
+        /// Writes the group CSV here and hands back its text, so the same bytes can be sent to
+        /// whoever asked for the capture. On a dedicated server "here" is a filesystem the person
+        /// who typed the command cannot reach, which is the whole reason the text travels.
+        /// </summary>
+        private static string WriteCsv(List<Sample> window, List<ClientSeries> clients, out string csvText)
         {
+            csvText = null;
             try
             {
                 string dir = Path.Combine(BepInEx.Paths.ConfigPath, "DiagnoseServerLag");
@@ -249,36 +358,33 @@ namespace DiagnoseServerLag
                 sb.AppendLine($"# captured,{DateTime.Now:yyyy-MM-dd HH:mm:ss}");
                 sb.AppendLine($"# machines,{clients.Count + 1}");
                 sb.AppendLine("#");
-                sb.AppendLine("utc,machine,frame_avg_ms,frame_max_ms,stalls,frames,ping_ms,ping_measured,"
-                            + "ping_round_trip,quality_local,quality_remote,in_bytes_sec,out_bytes_sec,"
-                            + "send_queue_bytes,send_rate_bytes_sec,zdos,instances,zdos_sent_sec,zdos_recv_sec,"
-                            + "change_queue,peers,cpu_ms_per_sec,cpu_measured,gc0,gc1,gc2,collections,"
-                            + "heap_bytes,working_set_bytes,owned_ai,nearby_ai,feed_ms,owned_objects,nearby_objects,unowned_objects,unowned_ai,system_cpu_pct,nearby_pieces,loading,free_memory_mb");
+                sb.AppendLine(CaptureCsv.Header);
 
-                foreach (var s in window) sb.AppendLine(Row("server", s, c));
+                foreach (var s in window) sb.AppendLine(CaptureCsv.Row("server", s, c));
 
                 foreach (var cl in clients)
                 {
                     if (cl.Full)
                     {
-                        foreach (var s in cl.Samples) sb.AppendLine(Row(Csv(cl.Name), s, c));
+                        foreach (var s in cl.Samples) sb.AppendLine(CaptureCsv.Row(cl.Name, s, c));
                     }
                     else
                     {
                         // Layout 1: only the correlation columns exist. The rest are left empty,
                         // which a reader can tell apart from a measured zero.
                         foreach (var sec in cl.Seconds)
-                            sb.AppendLine(string.Join(",", new[]
-                            {
-                                Iso(sec.UtcTicks), Csv(cl.Name), "", sec.FrameMaxMs.ToString("0.00", c),
-                                sec.Stalls.ToString(c), "", "", "", "", "", "", "", "", "", "", "", "",
-                                "", "", "", "", sec.CpuMsPerSec.ToString("0.0", c), "", "", "", "",
-                                sec.Collections.ToString(c), "", "", "", "",
-                            }));
+                            sb.AppendLine(CaptureCsv.Sparse(
+                                "utc", CaptureCsv.Iso(sec.UtcTicks),
+                                "machine", CaptureCsv.Csv(cl.Name),
+                                "frame_max_ms", sec.FrameMaxMs.ToString("0.00", c),
+                                "stalls", sec.Stalls.ToString(c),
+                                "cpu_ms_per_sec", sec.CpuMsPerSec.ToString("0.0", c),
+                                "collections", sec.Collections.ToString(c)));
                     }
                 }
 
-                File.WriteAllText(path, sb.ToString());
+                csvText = sb.ToString();
+                File.WriteAllText(path, csvText);
                 return path;
             }
             catch (Exception e)
@@ -288,37 +394,5 @@ namespace DiagnoseServerLag
             }
         }
 
-        /// <summary>One machine-second, every column, in the order the header declares.</summary>
-        private static string Row(string machine, Sample s, CultureInfo c) =>
-            string.Join(",", new[]
-            {
-                Iso(s.UtcTicks), machine,
-                s.FrameMsAvg.ToString("0.00", c), s.FrameMsMax.ToString("0.00", c),
-                s.Stalls.ToString(c), s.Frames.ToString(c),
-                s.Ping.ToString(c), s.HasPing ? "1" : "0", s.PingFromRoundTrip ? "1" : "0",
-                s.LocalQuality.ToString("0.0000", c), s.RemoteQuality.ToString("0.0000", c),
-                s.InByteSec.ToString("0", c), s.OutByteSec.ToString("0", c),
-                s.SendQueue.ToString(c), s.SendRate.ToString(c),
-                s.Zdos.ToString(c), s.Instances.ToString(c),
-                s.ZdosSent.ToString(c), s.ZdosRecv.ToString(c), s.ChangeQueue.ToString(c),
-                s.Peers.ToString(c),
-                s.CpuMsPerSec.ToString("0.0", c), s.HasCpu ? "1" : "0",
-                s.Gc0.ToString(c), s.Gc1.ToString(c), s.Gc2.ToString(c),
-                Machine.Collections(s).ToString(c),
-                s.HeapBytes.ToString(c), s.WorkingSetBytes.ToString(c),
-                s.OwnedAI.ToString(c), s.NearbyAI.ToString(c),
-                s.FeedMs.ToString("0", c),
-                s.OwnedObjects.ToString(c), s.NearbyObjects.ToString(c),
-                s.UnownedObjects.ToString(c), s.UnownedAI.ToString(c),
-                s.SystemCpu >= 0f ? (s.SystemCpu * 100f).ToString("0.0", c) : "",
-                s.NearbyPieces.ToString(c), s.Loading ? "1" : "0",
-                s.FreeMemoryMB >= 0 ? s.FreeMemoryMB.ToString(c) : "",
-            });
-
-        private static string Iso(long ticks) =>
-            ticks <= 0 ? "" : new DateTime(ticks, DateTimeKind.Utc).ToString("yyyy-MM-ddTHH:mm:ssZ");
-
-        private static string Csv(string s) =>
-            string.IsNullOrEmpty(s) ? "" : (s.IndexOf(',') >= 0 ? "\"" + s.Replace("\"", "\"\"") + "\"" : s);
     }
 }
