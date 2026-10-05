@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.10.5 - unreleased
+
+- **The capture window is minutes now.** `dsl_bench 30` is half an hour. The history this reads
+  from was always configured in minutes, so the command asking for seconds meant doing arithmetic
+  mid-session to express a round number - 1800 for half an hour, 3600 for the whole ring.
+
+  A suffix forces the unit either way: `dsl_bench 90s` for a tight window around one freeze you
+  just felt, `dsl_bench 30m` when the habit wants spelling out. The default is 2 minutes, as
+  before.
+
+  A bare number larger than the history can hold is **refused**, not clamped. `dsl_bench 1800`
+  was written when this took seconds, and silently handing back 60 minutes instead of the 30 that
+  was meant is the same failure as a help line disagreeing with its body. It says so, offers both
+  readings, and captures nothing.
+
 ## 0.10.4 - 2026-10-04
 
 - **One capture command.** `dsl_bench` and `dsl_bench_server` did different things for reasons

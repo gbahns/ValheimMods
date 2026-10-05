@@ -90,17 +90,19 @@ server      33.3 ms  412669 obj
 | `dsl_why` | Print the verdict and its evidence as text |
 | `dsl_now` | The last second measured on this machine |
 | `dsl_server` | What the server last reported about itself, including the per-player table |
-| `dsl_bench [seconds]` | Summarize the last N seconds (default 120) on **this machine** and write a CSV |
-| `dsl_bench_server [seconds]` | Ask the **server** to capture itself and print its reply here (admin only) |
+| `dsl_bench [minutes]` | Capture the last N minutes (default 2) on **this machine**, ask the server for the group capture, and write a CSV |
+| `dsl_bench 90s` | The same over a tight window, in seconds, for one freeze you just felt |
+| `dsl_bench 30 local` | This machine only - skip asking the server |
+| `dsl_bench_server [minutes]` | The same command under its old name |
 | `dsl_cpu` | What this process is costing the machine, and how much headroom is left |
 | `dsl_dump` | Write every measured second to a CSV under `BepInEx/config/DiagnoseServerLag/` |
 | `dsl_reset` | Forget the history and rebuild the baseline |
 
-A Valheim dedicated server has no console to type into — it reads nothing from stdin — so every command here runs on a **client**. To measure the server itself, an admin runs `dsl_bench_server`, which asks the server to capture itself and prints its reply in your console.
+A Valheim dedicated server has no console to type into — it reads nothing from stdin — so every command here runs on a **client**. To measure the server itself, an admin runs `dsl_bench`, which asks the server to capture itself and prints its reply in your console alongside the local capture.
 
 ## Diagnosing a session, not just a machine
 
-`dsl_bench_server` captures the server **and every connected client over the same seconds**, then says the one thing no single capture can:
+`dsl_bench` captures the server **and every connected client over the same seconds**, then says the one thing no single capture can:
 
 ```
   server           tick   33.3 ms   stalls   0   CPU  20.3% of a core   412669 objects
@@ -124,19 +126,17 @@ Tick time cannot tell you how a server is doing if it runs a frame limiter, and 
 
 What survives the cap is **CPU time consumed per second of wall clock**, so that is what the mod records. It also gives you a headroom figure: how many times the current load the server could carry before one core is full. One core, not the machine — Valheim's simulation is effectively single threaded, so spare cores do not raise the ceiling.
 
-For your own machine, or a server you are hosting, run:
+From a client, run:
 
 ```
-dsl_bench 300
+dsl_bench 5
 ```
 
-For a dedicated server, which has no console of its own, an admin runs this from a connected client:
+That captures the last five minutes of your own machine and, if the server is running this mod, asks it for the
+group capture at the same time. Add `local` to skip the server. For a window around a single freeze, give
+seconds instead: `dsl_bench 90s`.
 
-```
-dsl_bench_server 300
-```
-
-Either prints a summary and writes `BepInEx/config/DiagnoseServerLag/lag-<role>-<timestamp>.csv`. Then compare the two:
+It prints a summary and writes `BepInEx/config/DiagnoseServerLag/lag-<role>-<timestamp>.csv`. Then compare the two:
 
 ```powershell
 .\compare-servers.ps1 -A dathost -B "C:\path\to\local\lag-dedicated-....csv"
@@ -153,7 +153,7 @@ Either prints a summary and writes `BepInEx/config/DiagnoseServerLag/lag-<role>-
 
 The ones worth knowing about:
 
-- **History Minutes** (60) — how much per-second history to keep, and so the longest capture `dsl_bench` can summarize. Up to 180. Longer is not automatically better: the summary reports medians over the whole window, so match the capture to the activity rather than maximizing it.
+- **History Minutes** (60) — how much per-second history to keep, and so the largest window `dsl_bench` will accept. Up to 180. Longer is not automatically better: the summary reports medians over the whole window, so match the capture to the activity rather than maximizing it.
 - **Stall Milliseconds** (100) — a frame longer than this counts as a stall.
 - **Window Seconds** (10) — how many recent seconds the verdict is made from.
 - **Baseline Seconds** (60) — how much history counts as "normal for this server".

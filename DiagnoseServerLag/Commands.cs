@@ -83,13 +83,9 @@ namespace DiagnoseServerLag
             // mod to ask. Merged that way, the single command is never the weaker option.
             Terminal.ConsoleEvent bench = args =>
             {
-                int seconds = 120;
-                bool localOnly = false;
-                for (int i = 1; i < args.Length; i++)
-                {
-                    if (int.TryParse(args[i], out int n)) seconds = Mathf.Clamp(n, 5, Sampler.History.Capacity);
-                    else if (string.Equals(args[i], "local", StringComparison.OrdinalIgnoreCase)) localOnly = true;
-                }
+                int seconds;
+                bool localOnly;
+                if (!ParseWindow(args, out seconds, out localOnly)) return;
                 string text = Bench(seconds, out string path);
                 // Logged as well as printed: on a dedicated server the console scrolls, and the
                 // log file is what survives to be compared with the other machine later.
@@ -109,7 +105,7 @@ namespace DiagnoseServerLag
                 args.Context?.AddString("Also asked the server for a group capture; its reply prints here when it arrives.");
             };
 
-            new Terminal.ConsoleCommand("dsl_bench", "Diagnose Server Lag: capture the last N seconds (default 120). Add 'local' to skip asking the server", bench);
+            new Terminal.ConsoleCommand("dsl_bench", "Diagnose Server Lag: capture the last N minutes (default 2). 30 is half an hour, 90s a tight window, 'local' skips asking the server", bench);
 
             // Kept as an alias rather than removed: it is in the readme, in a week of notes, and in
             // the fingers of everybody who has been testing this. It runs the same delegate rather than
@@ -139,6 +135,72 @@ namespace DiagnoseServerLag
                     Sampler.Reset();
                     args.Context?.AddString("History cleared. The baseline rebuilds over the next minute.");
                 }));
+        }
+
+        /// <summary>
+        /// Reads the window and the "local" flag off a dsl_bench line.
+        ///
+        /// Minutes, because the history this reads from is configured in minutes and because
+        /// nobody wants to work out that half an hour is 1800 of something while a fight is
+        /// happening. A suffix still forces the unit: 90s for a tight window around one freeze,
+        /// 30m when the habit wants spelling out.
+        ///
+        /// The one thing it will not do is quietly reinterpret the old seconds form. A bare number
+        /// bigger than the history can hold was written when this took seconds, and clamping it
+        /// would hand back a different window than was asked for without saying so - the same
+        /// failure as an alias whose help line disagreed with its body. So it says what it thinks
+        /// happened, offers both readings, and captures nothing.
+        /// </summary>
+        private static bool ParseWindow(Terminal.ConsoleEventArgs args, out int seconds, out bool localOnly)
+        {
+            int maxSeconds = Sampler.History.Capacity;
+            int maxMinutes = maxSeconds / 60;
+            seconds = 120;
+            localOnly = false;
+
+            for (int i = 1; i < args.Length; i++)
+            {
+                string a = args[i];
+                if (string.IsNullOrEmpty(a)) continue;
+                if (string.Equals(a, "local", StringComparison.OrdinalIgnoreCase)) { localOnly = true; continue; }
+
+                int cut = a.Length;
+                while (cut > 0 && !char.IsDigit(a[cut - 1])) cut--;
+                string digits = a.Substring(0, cut);
+                string suffix = a.Substring(cut).ToLowerInvariant();
+
+                if (!int.TryParse(digits, out int n) || n <= 0)
+                {
+                    args.Context?.AddString("dsl_bench: " + a + " is not a duration. Give minutes (dsl_bench 30), " +
+                                            "or seconds with an s (dsl_bench 90s).");
+                    return false;
+                }
+
+                int unit;
+                if (suffix.Length == 0) unit = 60;
+                else if (suffix == "m" || suffix == "min" || suffix == "mins" || suffix == "minute" || suffix == "minutes") unit = 60;
+                else if (suffix == "s" || suffix == "sec" || suffix == "secs" || suffix == "second" || suffix == "seconds") unit = 1;
+                else
+                {
+                    args.Context?.AddString("dsl_bench: " + suffix + " is not a unit. Use m for minutes or s for seconds.");
+                    return false;
+                }
+
+                if (suffix.Length == 0 && n > maxMinutes)
+                {
+                    args.Context?.AddString(
+                        "dsl_bench takes minutes now, and " + n + " minutes is more than the " + maxMinutes +
+                        " this client keeps. If you meant seconds - this command used to take them - " + n + "s is " +
+                        (n / 60) + " minutes, or ask for " + maxMinutes + " to get everything there is. Nothing captured.");
+                    return false;
+                }
+
+                long total = (long)n * unit;
+                if (total < 5L) total = 5L;
+                if (total > maxSeconds) total = maxSeconds;
+                seconds = (int)total;
+            }
+            return true;
         }
 
         /// <summary>
