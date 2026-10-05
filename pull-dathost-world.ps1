@@ -54,9 +54,14 @@ function Get-WorldFiles {
     foreach ($e in @($all)) {
         if ($e.deleted) { continue }
         if ($e.path -notlike "$remoteDir/*") { continue }
+        if ($e.path.EndsWith("/")) { continue }   # a directory, not a file
         $leaf = $e.path.Substring($remoteDir.Length + 1)
+        # The world folder itself is listed too, with a size, so an empty leaf is a directory and
+        # not a zero-byte file. Letting it through built an output path that was just the staging
+        # folder and the download failed on it.
+        if ([string]::IsNullOrEmpty($leaf)) { continue }
         if ($leaf -match "/") { continue }        # a nested backup folder, not this world
-        if (-not $e.size) { continue }            # the folder entry itself
+        if ($e.size -eq $null) { continue }
         $want[$leaf] = [int64]$e.size
     }
     return $want
