@@ -71,9 +71,10 @@ namespace TheGreatestShips
 
             // Cosmetic and applied at the main menu, so not synced.
             BoatCameraDistance = mod.Config.Bind("General", "Boat Camera Max Distance", 0f,
-                "How far back the camera may pull while you steer a ship, in meters. 0 uses the game's own " +
-                "limit (the log says what that is). The limit is the same for every ship, so a hull half again " +
-                "a longship's size fills that much more of the frame; raise this to see all of a big ship. " +
+                "The farthest the camera can be from you while you steer a ship, in meters -- how far you can " +
+                "zoom out. The game's own limit is 16 (on foot it is 8); 0 keeps that. It is the same limit for " +
+                "every ship, so a hull half again a longship's size fills that much more of the frame at full " +
+                "zoom-out: try 24 to see the whole of a Big Busse or Greater Byrding, 20 for a Busse. " +
                 "Yours alone; applies at once.");
             BoatCameraDistance.SettingChanged += (_, __) => SailLook.ApplyCamera(GameCamera.instance);
 
