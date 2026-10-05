@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.7 - unreleased
+## 0.10.7 - 2026-10-05
 
 - **Vegetation, LOD and FpsLimit appear in the capture now.** They had been missing since the
   settings block was added, and walking the two enums was never the problem: the enum member and
