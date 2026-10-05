@@ -69,6 +69,21 @@ Then, **after Greg confirms**, publish to both sites:
 `-Publish` needs `TCLI_AUTH_TOKEN` in the environment; `-Hexium` reads the token from
 `%USERPROFILE%\.hexium_token`. Never print either token.
 
+A published version is **not** visible in Gale for about half an hour. Gale reads a pre-built
+listing index rather than querying Thunderstore, and that index is rebuilt on a schedule - two
+rebuilds timed on 2026-10-04 were 29m53s apart. Nothing about the publish is wrong while that is
+happening, and clearing Gale's cache early only re-caches a listing that predates the publish.
+
+- `.\package.ps1 -Version <x.y.z> -Publish -Hexium -ClearGaleCache` waits for the index to
+  actually carry the new version, then clears Gale's cached listing so the next launch refetches.
+  It needs Gale closed, and it never fails the publish if the refresh cannot finish.
+- `.\refresh-gale.ps1 -Mod <Folder>` does the same thing on its own, later.
+- If somebody needs the mod immediately, skip all of it - the direct download URL reads the live
+  database and works the moment a publish finishes:
+  `https://thunderstore.io/package/download/<namespace>/<name>/<version>/`
+- You never need any of this to test your own build; `dotnet build -c Release` already deploys
+  into both test profiles.
+
 Hexium used to hide every version uploaded through the API until Greg unhid it on the site, so a
 successful publish was not yet a visible listing. He found the setting that turns that off and
 enabled it on 2026-09-14, so new versions should now appear by themselves. Don't assume either

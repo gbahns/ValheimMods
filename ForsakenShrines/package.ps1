@@ -14,7 +14,8 @@
 param(
     [string]$Version = "0.8.2",
     [switch]$Publish,
-    [switch]$Hexium
+    [switch]$Hexium,
+    [switch]$ClearGaleCache
 )
 
 Add-Type -AssemblyName System.IO.Compression
@@ -120,4 +121,24 @@ if ($Hexium) {
     tcli publish --file "$zipPath" --config-path "$projectDir\hexium.toml" --repository "https://valheim.hexium.gg" --token $hexToken
     if ($LASTEXITCODE -ne 0) { Write-Error "Hexium publish failed."; exit 1 }
     Write-Host "Published to Hexium."
+}
+
+if ($ClearGaleCache) {
+    # Gale does not notice a new version promptly: it reads a pre-built listing index rather than
+    # querying Thunderstore, and keeps its own copy of the result. refresh-gale.ps1 waits for that
+    # index to actually carry this version before clearing the copy - clearing it sooner just
+    # re-caches a listing that predates the publish, which looks like the clear not working.
+    $refresh = Join-Path (Split-Path $PSScriptRoot -Parent) "refresh-gale.ps1"
+    if (-not (Test-Path $refresh)) {
+        Write-Warning "refresh-gale.ps1 not found at $refresh - skipping the Gale refresh."
+    } else {
+        & $refresh -Mod (Split-Path $PSScriptRoot -Leaf)
+        # Deliberately not propagated. By this point the publish has already succeeded, and a
+        # non-zero exit here - Gale still open, the listing index not rebuilt yet - would read as
+        # the publish having failed. The refresh is a convenience after the fact, not part of it.
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "The Gale refresh did not complete, but the publish above did succeed."
+            $global:LASTEXITCODE = 0
+        }
+    }
 }
