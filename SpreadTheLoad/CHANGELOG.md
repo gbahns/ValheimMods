@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.2 - unreleased
+## 0.2.2 - 2026-10-05
 
 - **A client being sent the world is no longer mistaken for a struggling one.** The detector counts
   gaps in the updates a client sends, and a client loading a region stops sending for stretches at

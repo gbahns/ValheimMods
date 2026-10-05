@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.6 - unreleased
+## 0.10.6 - 2026-10-05
 
 - **The group capture comes back to the client that asked for it.** `dsl_bench` asks the server,
   the server gathers every connected client and writes `group-<stamp>.csv` - on the server. On a
