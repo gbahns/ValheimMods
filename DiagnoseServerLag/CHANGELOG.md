@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.5 - unreleased
+## 0.10.5 - 2026-10-04
 
 - **The capture window is minutes now.** `dsl_bench 30` is half an hour. The history this reads
   from was always configured in minutes, so the command asking for seconds meant doing arithmetic
