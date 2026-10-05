@@ -10,7 +10,9 @@
 
   `dsl_bench 1800 local` skips asking the server. On a server without the mod it says so rather
   than appearing to do nothing. `dsl_bench_server` still works - it is in the readme, in a week of
-  notes, and in the fingers of everybody who has been testing this.
+  notes, and in the fingers of everybody who has been testing this - and it now runs the same
+  code, rather than the shorter body it was left with, which skipped the local capture and the
+  duration clamp while its help line claimed the two commands were the same.
 
 ## 0.10.3
 

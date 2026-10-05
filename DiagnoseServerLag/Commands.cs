@@ -81,46 +81,42 @@ namespace DiagnoseServerLag
             // happens, because it is cheap, instant, and lands on the machine of whoever typed it;
             // and the group capture is asked for as well whenever there is a server running this
             // mod to ask. Merged that way, the single command is never the weaker option.
-            new Terminal.ConsoleCommand("dsl_bench", "Diagnose Server Lag: capture the last N seconds (default 120). Add 'local' to skip asking the server",
-                (Terminal.ConsoleEvent)(args =>
+            Terminal.ConsoleEvent bench = args =>
+            {
+                int seconds = 120;
+                bool localOnly = false;
+                for (int i = 1; i < args.Length; i++)
                 {
-                    int seconds = 120;
-                    bool localOnly = false;
-                    for (int i = 1; i < args.Length; i++)
-                    {
-                        if (int.TryParse(args[i], out int n)) seconds = Mathf.Clamp(n, 5, Sampler.History.Capacity);
-                        else if (string.Equals(args[i], "local", StringComparison.OrdinalIgnoreCase)) localOnly = true;
-                    }
-                    string text = Bench(seconds, out string path);
-                    // Logged as well as printed: on a dedicated server the console scrolls, and the
-                    // log file is what survives to be compared with the other machine later.
-                    DiagnoseServerLagMod.Log.LogInfo("[DiagnoseServerLag] bench\n" + text);
-                    args.Context?.AddString(text + (path == null ? "" : "\nwrote " + path));
+                    if (int.TryParse(args[i], out int n)) seconds = Mathf.Clamp(n, 5, Sampler.History.Capacity);
+                    else if (string.Equals(args[i], "local", StringComparison.OrdinalIgnoreCase)) localOnly = true;
+                }
+                string text = Bench(seconds, out string path);
+                // Logged as well as printed: on a dedicated server the console scrolls, and the
+                // log file is what survives to be compared with the other machine later.
+                DiagnoseServerLagMod.Log.LogInfo("[DiagnoseServerLag] bench\n" + text);
+                args.Context?.AddString(text + (path == null ? "" : "\nwrote " + path));
 
-                    if (localOnly) return;
-                    // Only worth asking when somebody can answer. A server without the mod never
-                    // replies, and saying so beats a prompt that appears to have done nothing.
-                    if (Sampler.IsServerHere) return;
-                    if (LagNetwork.Module == ServerModule.Absent)
-                    {
-                        args.Context?.AddString("The server is not running this mod, so only this machine was captured.");
-                        return;
-                    }
-                    LagNetwork.AskCapture(seconds);
-                    args.Context?.AddString("Also asked the server for a group capture; its reply prints here when it arrives.");
-                }));
+                if (localOnly) return;
+                // Only worth asking when somebody can answer. A server without the mod never
+                // replies, and saying so beats a prompt that appears to have done nothing.
+                if (Sampler.IsServerHere) return;
+                if (LagNetwork.Module == ServerModule.Absent)
+                {
+                    args.Context?.AddString("The server is not running this mod, so only this machine was captured.");
+                    return;
+                }
+                LagNetwork.AskCapture(seconds);
+                args.Context?.AddString("Also asked the server for a group capture; its reply prints here when it arrives.");
+            };
+
+            new Terminal.ConsoleCommand("dsl_bench", "Diagnose Server Lag: capture the last N seconds (default 120). Add 'local' to skip asking the server", bench);
 
             // Kept as an alias rather than removed: it is in the readme, in a week of notes, and in
-            // the fingers of everybody who has been testing this.
-            new Terminal.ConsoleCommand("dsl_bench_server", "Diagnose Server Lag: same as dsl_bench, kept for habit",
-                (Terminal.ConsoleEvent)(args =>
-                {
-                    int seconds = 120;
-                    if (args.Length > 1 && int.TryParse(args[1], out int n)) seconds = n;
-                    LagNetwork.AskCapture(seconds);
-                    args.Context?.AddString("Asked the server for a capture; its reply prints here when it arrives. " +
-                                            "dsl_bench now does this and captures your own machine too.");
-                }));
+            // the fingers of everybody who has been testing this. It runs the same delegate rather than
+            // a copy of it: the first attempt at an alias was a second, shorter body that skipped the
+            // local capture and the duration clamp while its help line said "same as dsl_bench", so the
+            // two commands quietly disagreed about what they did.
+            new Terminal.ConsoleCommand("dsl_bench_server", "Diagnose Server Lag: same as dsl_bench, kept for habit", bench);
 
             new Terminal.ConsoleCommand("dsl_cpu", "Diagnose Server Lag: what this process is costing the machine",
                 (Terminal.ConsoleEvent)(args =>
