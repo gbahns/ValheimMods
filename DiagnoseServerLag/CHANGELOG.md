@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.10.4 - unreleased
+
+- **One capture command.** `dsl_bench` and `dsl_bench_server` did different things for reasons
+  nobody could be expected to hold in their head mid-session, so `dsl_bench` now does both: it
+  always captures this machine, because that is cheap, instant and lands on the machine of whoever
+  typed it, and it also asks the server for a group capture whenever there is a server running this
+  mod to ask. Merged that way the single command is never the weaker option.
+
+  `dsl_bench 1800 local` skips asking the server. On a server without the mod it says so rather
+  than appearing to do nothing. `dsl_bench_server` still works - it is in the readme, in a week of
+  notes, and in the fingers of everybody who has been testing this.
+
 ## 0.10.3
 
 - **The capture now says what each machine is.** CPU and cores, RAM, GPU and its memory, and the
