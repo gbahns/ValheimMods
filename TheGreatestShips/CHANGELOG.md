@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.8 — unreleased
+## 0.9.8 — 2026-10-04
 
 - Fixed: the slot-shrinking that fits a big hold into the inventory panel was applied to every
   inventory grid, including the player's -- which, with AzuExtendedPlayerInventory's extra rows,
