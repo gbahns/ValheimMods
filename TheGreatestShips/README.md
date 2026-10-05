@@ -86,8 +86,8 @@ file (or just the entries you want reset) and start the game.
 | Setting | | |
 |---|---|---|
 | Lock Configuration (General) | While on, only the server's admins can change the synced settings, from their game; others see them read-only | Synced with the server |
-| Boat Camera Max Distance (General) | The farthest the camera can be from you while steering, in meters -- how far you can zoom out. The game's limit is 16 (8 on foot); 0 keeps that. Try 24 for the biggest ships | Yours alone; applies at once |
-| Sail Opacity (General) | 1 draws sails as the game does, lower draws them see-through, 0 hides them; this mod's ships and the vanilla ones | Yours alone; applies at once |
+| Boat Camera Max Distance (General) | The farthest the camera can be from you while steering, in meters -- how far you can zoom out. 8 to 40; 16 is the game's own limit (8 on foot). Try 24 for the biggest ships | Yours alone; applies at once |
+| Sail Opacity (General) | 0 to 1: 1 draws sails as the game does, lower draws them see-through, 0 hides them; this mod's ships and the vanilla ones | Yours alone; applies at once |
 | Name Vanilla Ships (General) | Label the vanilla ships' rudders and holds too | Needs a restart |
 | Recipe | Comma-separated `ItemName:Amount` prefab names, at most five: the build HUD has room for five plus the crafting station (a sixth is shown, but the station's icon hangs off the panel) | Synced with the server |
 | Top Speed Multiplier | Relative to the vanilla ship it is based on | Synced with the server |

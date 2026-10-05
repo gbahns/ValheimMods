@@ -41,8 +41,7 @@ namespace TheGreatestShips
                 _vanillaBoatDistance = camera.m_maxDistanceBoat;
                 Jotunn.Logger.LogInfo($"[TheGreatestShips] The game's boat camera limit is {_vanillaBoatDistance} m (on foot {camera.m_maxDistance} m).");
             }
-            float wanted = ShipConfig.BoatCameraDistance.Value;
-            camera.m_maxDistanceBoat = wanted > 0f ? Mathf.Clamp(wanted, 2f, 60f) : _vanillaBoatDistance;
+            camera.m_maxDistanceBoat = Mathf.Clamp(ShipConfig.BoatCameraDistance.Value, 8f, 40f);
         }
 
         // ── Sails ───────────────────────────────────────────────────────────────────
@@ -66,7 +65,9 @@ namespace TheGreatestShips
                 return;
             }
 
-            var shader = Shader.Find("Standard TwoSided") ?? Shader.Find("Standard");
+            // Shader.Find only sees shaders Unity marks "always included"; the game's own come
+            // from its bundles, so look through what is loaded instead.
+            var shader = FindLoadedShader("Standard TwoSided") ?? FindLoadedShader("Standard") ?? Shader.Find("Standard");
             if (shader == null)
             {
                 Jotunn.Logger.LogWarning("[TheGreatestShips] No Standard shader found; Sail Opacity can't be applied.");
@@ -91,6 +92,13 @@ namespace TheGreatestShips
                 material.color = new Color(color.r, color.g, color.b, opacity);
             }
             Jotunn.Logger.LogInfo($"[TheGreatestShips] Sails at {opacity:0.00} opacity ({materials.Count} material(s), {shader.name}).");
+        }
+
+        private static Shader FindLoadedShader(string name)
+        {
+            foreach (var shader in Resources.FindObjectsOfTypeAll<Shader>())
+                if (shader != null && shader.name == name) return shader;
+            return null;
         }
 
         private static bool Restore(Material material)

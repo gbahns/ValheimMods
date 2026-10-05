@@ -70,18 +70,22 @@ namespace TheGreatestShips
                 "Used by the mod to update old defaults. Do not change.");
 
             // Cosmetic and applied at the main menu, so not synced.
-            BoatCameraDistance = mod.Config.Bind("General", "Boat Camera Max Distance", 0f,
-                "The farthest the camera can be from you while you steer a ship, in meters -- how far you can " +
-                "zoom out. The game's own limit is 16 (on foot it is 8); 0 keeps that. It is the same limit for " +
-                "every ship, so a hull half again a longship's size fills that much more of the frame at full " +
-                "zoom-out: try 24 to see the whole of a Big Busse or Greater Byrding, 20 for a Busse. " +
-                "Yours alone; applies at once.");
+            BoatCameraDistance = mod.Config.Bind("General", "Boat Camera Max Distance", 16f,
+                new ConfigDescription(
+                    "The farthest the camera can be from you while you steer a ship, in meters -- how far you can " +
+                    "zoom out. 16 is the game's own limit (on foot it is 8). It is the same limit for every ship, " +
+                    "so a hull half again a longship's size fills that much more of the frame at full zoom-out: " +
+                    "try 24 to see the whole of a Big Busse or Greater Byrding, 20 for a Busse. Yours alone; " +
+                    "applies at once.",
+                    new AcceptableValueRange<float>(8f, 40f)));
             BoatCameraDistance.SettingChanged += (_, __) => SailLook.ApplyCamera(GameCamera.instance);
 
             SailOpacity = mod.Config.Bind("General", "Sail Opacity", 1f,
-                "How solid the sails are, 1 (as the game draws them) down to 0 (invisible), on this mod's " +
-                "ships and the vanilla ones. Below 1 the sail is drawn see-through so you can watch the " +
-                "water ahead through it. Yours alone; applies at once, to ships already afloat too.");
+                new ConfigDescription(
+                    "How solid the sails are, 1 (as the game draws them) down to 0 (invisible), on this mod's " +
+                    "ships and the vanilla ones. Below 1 the sail is drawn see-through so you can watch the " +
+                    "water ahead through it. Yours alone; applies at once, to ships already afloat too.",
+                    new AcceptableValueRange<float>(0f, 1f)));
             SailOpacity.SettingChanged += (_, __) => SailLook.ApplySails();
 
             LockConfiguration = mod.BindLocking("General", "Lock Configuration", true,
