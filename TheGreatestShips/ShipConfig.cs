@@ -31,6 +31,8 @@ namespace TheGreatestShips
 
         internal static ConfigEntry<bool> NameVanillaShips;
         internal static ConfigEntry<bool> LockConfiguration;
+        internal static ConfigEntry<float> BoatCameraDistance;
+        internal static ConfigEntry<float> SailOpacity;
 
         // Raised when a release changes defaults that saved configs should follow.
         //   2 (0.9.1): speeds rebased on logged top speeds, Cargo Longship recipe.
@@ -68,6 +70,19 @@ namespace TheGreatestShips
                 "Used by the mod to update old defaults. Do not change.");
 
             // Cosmetic and applied at the main menu, so not synced.
+            BoatCameraDistance = mod.Config.Bind("General", "Boat Camera Max Distance", 0f,
+                "How far back the camera may pull while you steer a ship, in meters. 0 uses the game's own " +
+                "limit (the log says what that is). The limit is the same for every ship, so a hull half again " +
+                "a longship's size fills that much more of the frame; raise this to see all of a big ship. " +
+                "Yours alone; applies at once.");
+            BoatCameraDistance.SettingChanged += (_, __) => SailLook.ApplyCamera(GameCamera.instance);
+
+            SailOpacity = mod.Config.Bind("General", "Sail Opacity", 1f,
+                "How solid the sails are, 1 (as the game draws them) down to 0 (invisible), on this mod's " +
+                "ships and the vanilla ones. Below 1 the sail is drawn see-through so you can watch the " +
+                "water ahead through it. Yours alone; applies at once, to ships already afloat too.");
+            SailOpacity.SettingChanged += (_, __) => SailLook.ApplySails();
+
             LockConfiguration = mod.BindLocking("General", "Lock Configuration", true,
                 "While on, the settings marked as synced can be changed only by the server's admins " +
                 "(adminlist.txt), from their game; everyone else sees them read-only. Off, any player can " +

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.10 — unreleased
+
+- New "Boat Camera Max Distance" setting (General, yours alone): how far the camera may pull
+  back while steering, in meters; 0 keeps the game's own limit, which the log reports. The
+  game's limit is one number for every ship, so a hull half again a longship's size fills that
+  much more of the frame at full zoom-out -- raise this to see the whole of a Big Busse.
+- New "Sail Opacity" setting (General, yours alone): 1 draws sails as the game does, lower draws
+  them see-through, 0 hides them -- on this mod's ships and the vanilla ones, applied at once to
+  ships already afloat. Not a breaking change.
+
 ## 0.9.9 — 2026-10-04
 
 - Fixed: 0.9.8 threw an error every frame the inventory was open (FieldAccessException in the

@@ -48,6 +48,8 @@ namespace TheGreatestShips
                 }
             }
 
+            SailLook.ApplySails();
+
             if (!_vanillaLabeled && ShipConfig.NameVanillaShips.Value)
             {
                 _vanillaLabeled = true;
@@ -67,6 +69,18 @@ namespace TheGreatestShips
         // labels follow the player's language.
         private static readonly string[] VanillaShips = { "Raft", "Karve", "VikingShip", "VikingShip_Ashlands" };
         private static bool _vanillaLabeled;
+
+        // Every ship prefab the sail look applies to: this mod's clones and the vanilla hulls.
+        internal static IEnumerable<GameObject> AllShipPrefabs()
+        {
+            foreach (var built in _built.Values)
+                if (built.Clone != null) yield return built.Clone;
+            foreach (var name in VanillaShips)
+            {
+                var prefab = PrefabManager.Instance.GetPrefab(name);
+                if (prefab != null) yield return prefab;
+            }
+        }
         private const string RudderToken  = "$piece_ship_rudder";   // "Use rudder"
         private const string StorageToken = "$msg_cart_storage";    // "Storage" (the cart's)
 

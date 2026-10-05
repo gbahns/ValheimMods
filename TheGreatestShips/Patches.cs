@@ -16,6 +16,14 @@ namespace TheGreatestShips
         static void Postfix() => ShipPrefabs.OnObjectDBAwake();
     }
 
+    /// <summary>The camera's boat zoom limit, from the config, once the camera exists.</summary>
+    [HarmonyPatch(typeof(GameCamera), "Awake")]
+    internal static class GameCameraAwakePatch
+    {
+        [HarmonyPostfix]
+        static void Postfix(GameCamera __instance) => SailLook.ApplyCamera(__instance);
+    }
+
     [HarmonyPatch(typeof(ZNetScene), "Awake")]
     internal static class ZNetSceneAwakePatch
     {
