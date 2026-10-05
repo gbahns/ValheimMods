@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.4 - unreleased
+## 0.10.4 - 2026-10-04
 
 - **One capture command.** `dsl_bench` and `dsl_bench_server` did different things for reasons
   nobody could be expected to hold in their head mid-session, so `dsl_bench` now does both: it
