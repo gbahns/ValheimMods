@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.10.7 - unreleased
+
+- **Vegetation, LOD and FpsLimit appear in the capture now.** They had been missing since the
+  settings block was added, and walking the two enums was never the problem: the enum member and
+  the key the setting is stored under are spelled differently, and since these land in PlayerPrefs,
+  whose keys are case sensitive, a lookup for one is not a lookup for the other. Read off the keys
+  Unity had actually written rather than guessed - `Vegetation` is kept under `VegetationPatched`,
+  `LOD` under `LodBias`, `FpsLimit` under `FPSLimit`, and `Vsync` under `VSync`, which was quietly
+  missing for the same reason and nobody had noticed because Unity's own `vsyncCount` was printing
+  beside it.
+
+  Each is still reported under its enum name, because that is what the settings screen calls it and
+  nobody comparing two machines should need to know the alias.
+
+- **SSAO may have been reporting a stale value.** Both `SSAO` and `SSAO_2` exist and hold different
+  numbers, which reads like the setting having been migrated to a new key and a new scale. The
+  newer key is now preferred, and whenever the two disagree the log says so once, naming both - so
+  if an SSAO value ever looks wrong, the assumption behind it leaves a trail instead of being
+  silently believed.
+
 ## 0.10.6 - 2026-10-05
 
 - **The group capture comes back to the client that asked for it.** `dsl_bench` asks the server,

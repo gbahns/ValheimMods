@@ -74,6 +74,53 @@ namespace DiagnoseServerLag
         }
 
         /// <summary>
+        /// The key a setting is really stored under, where that is not its enum member name.
+        ///
+        /// Three settings never appeared in a capture - Vegetation, LOD and FpsLimit - and walking
+        /// the enums was not the problem. The enum member and the stored key are simply spelled
+        /// differently, and because these end up in PlayerPrefs, whose keys are case sensitive,
+        /// "Vsync" and "VSync" are two unrelated lookups as far as a read is concerned. Taken from
+        /// the keys Unity had actually written, not guessed:
+        ///
+        ///   Vegetation -> VegetationPatched,  LOD -> LodBias,
+        ///   FpsLimit   -> FPSLimit,           Vsync -> VSync
+        ///
+        /// SSAO is a different case and the reason this prefers the alias rather than only falling
+        /// back to it: both SSAO and SSAO_2 exist, holding different values, which reads like the
+        /// setting having been migrated to a new key and a new scale. The newer key is taken as the
+        /// live one. If an SSAO value here ever looks wrong, that assumption is the first thing to
+        /// check - and the log says so whenever the two disagree.
+        /// </summary>
+        private static readonly Dictionary<string, string> Aliases = new Dictionary<string, string>
+        {
+            { "Vegetation", "VegetationPatched" },
+            { "LOD",        "LodBias" },
+            { "FpsLimit",   "FPSLimit" },
+            { "Vsync",      "VSync" },
+            { "SSAO",       "SSAO_2" },
+        };
+
+        private static string Alias(string name)
+        {
+            string a;
+            return Aliases.TryGetValue(name, out a) ? a : null;
+        }
+
+        /// <summary>
+        /// Notes once, per setting, that the enum-named key and the aliased one disagree - so a
+        /// value that turns out to be stale leaves a trail instead of being silently preferred.
+        /// </summary>
+        private static readonly HashSet<string> _reported = new HashSet<string>();
+
+        private static void NoteDisagreement(string name, string alias, object underName, object underAlias)
+        {
+            if (!_reported.Add(name)) return;
+            DiagnoseServerLagMod.Log.LogInfo(
+                $"[DiagnoseServerLag] {name} is stored twice: {name}={underName} and {alias}={underAlias}. " +
+                $"Reporting {alias}, on the assumption it is the current key.");
+        }
+
+        /// <summary>
         /// Every graphics setting this machine has, as one compact line, or "" if none can be read.
         /// </summary>
         internal static string Describe()
@@ -89,14 +136,26 @@ namespace DiagnoseServerLag
                 {
                     string name = v.ToString();
                     if (name == "None") continue;
-                    int? got = Int(name);
+                    string alias = Alias(name);
+                    int? plain = Int(name);
+                    int? aliased = alias == null ? null : Int(alias);
+                    if (plain.HasValue && aliased.HasValue && plain.Value != aliased.Value)
+                        NoteDisagreement(name, alias, plain.Value, aliased.Value);
+                    // Reported under the enum name either way: that is what the settings screen
+                    // calls it, and nobody comparing two machines should have to know the alias.
+                    int? got = aliased ?? plain;
                     if (got.HasValue) parts.Add($"{name}={got.Value}");
                 }
                 foreach (var v in Enum.GetValues(typeof(GraphicsSettingBool)))
                 {
                     string name = v.ToString();
                     if (name == "None") continue;
-                    bool? got = Bool(name);
+                    string alias = Alias(name);
+                    bool? plain = Bool(name);
+                    bool? aliased = alias == null ? null : Bool(alias);
+                    if (plain.HasValue && aliased.HasValue && plain.Value != aliased.Value)
+                        NoteDisagreement(name, alias, plain.Value, aliased.Value);
+                    bool? got = aliased ?? plain;
                     if (got.HasValue) parts.Add($"{name}={(got.Value ? "on" : "off")}");
                 }
 
