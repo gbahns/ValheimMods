@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.9 — 2026-10-04
+
+- Fixed: 0.9.8 threw an error every frame the inventory was open (FieldAccessException in the
+  hold-fitting patch), which could leave the inventory not updating. Update from 0.9.8 straight
+  away.
+
 ## 0.9.8 — 2026-10-04
 
 - Fixed: the slot-shrinking that fits a big hold into the inventory panel was applied to every

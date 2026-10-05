@@ -149,7 +149,12 @@ namespace TheGreatestShips
         static readonly HashSet<string> _ourShips =
             new HashSet<string>(System.Linq.Enumerable.Select(ShipDefinitions.All, d => d.PrefabName));
 
-        // Private in the game; the publicized reference assembly only makes them compile.
+        // Private in the game; the publicized reference assembly only makes them compile, and
+        // Mono refuses them at runtime (FieldAccessException, every frame the inventory is open).
+        static readonly AccessTools.FieldRef<InventoryGui, InventoryGrid> _containerGrid =
+            AccessTools.FieldRefAccess<InventoryGui, InventoryGrid>("m_containerGrid");
+        static readonly AccessTools.FieldRef<InventoryGui, Container> _currentContainer =
+            AccessTools.FieldRefAccess<InventoryGui, Container>("m_currentContainer");
         static readonly AccessTools.FieldRef<InventoryGrid, List<InventoryElement>> _elements =
             AccessTools.FieldRefAccess<InventoryGrid, List<InventoryElement>>("m_elements");
         static readonly AccessTools.FieldRef<InventoryGrid, int> _width  = AccessTools.FieldRefAccess<InventoryGrid, int>("m_width");
@@ -160,8 +165,8 @@ namespace TheGreatestShips
         static void Postfix(InventoryGrid __instance)
         {
             var gui = InventoryGui.instance;
-            if (gui == null || __instance != gui.m_containerGrid) return;
-            var container = gui.m_currentContainer;
+            if (gui == null || __instance != _containerGrid(gui)) return;
+            var container = _currentContainer(gui);
             if (container == null || !_ourShips.Contains(Utils.GetPrefabName(container.transform.root.gameObject))) return;
 
             var elements = _elements(__instance);
