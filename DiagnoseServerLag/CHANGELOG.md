@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.10.6 - unreleased
+
+- **`zdos held` on the readout.** The only ZDO count on screen was the server's, on the
+  `server tick` line; the client's own never appeared anywhere but the CSV. It is the one number
+  that tracked frame time across an evening of captures once nearby objects and creature count
+  were held fixed - 33 fps under 20k, 25 fps around 45k, 18 fps past 70k, standing in the same
+  base - and it only ever climbs, because a client never prunes its ZDO set. Both routines that
+  prune are inside `ZDOMan.Update`'s `if (IsServer())`, so the only way a record leaves
+  `m_objectsByID` on a client is the server announcing that object was destroyed. A relog is what
+  clears them, which makes this the number you would check to decide whether to relog.
+
+  Shown with how far it has grown since login, from the session's low-water mark rather than a
+  world-load hook: a new session starts far below the old baseline, so the baseline follows it
+  down. Read it as how far the session has drifted rather than as the cost itself - nothing in
+  the client's per-frame work iterates that dictionary, so it is a marker, not a proven cause.
+
 ## 0.10.5 - 2026-10-04
 
 - **The capture window is minutes now.** `dsl_bench 30` is half an hour. The history this reads

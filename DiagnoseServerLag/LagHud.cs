@@ -248,6 +248,31 @@ namespace DiagnoseServerLag
                     lines.Add(Line("built", $"{s.NearbyPieces} pieces", 0));
             }
 
+            // The whole session's accumulation, which none of the rows above can show.
+            //
+            // Everything else here answers "how busy is it right now" and moves both ways. This
+            // one only climbs: a client never prunes its ZDO set, because the two routines that
+            // do - ReleaseZDOS and RemoveOrphanNonPersistentZDOS - are both inside
+            // ZDOMan.Update's if (IsServer()). The only way a record leaves m_objectsByID on a
+            // client is the server announcing that object was actually destroyed. So walking
+            // around adds records for the rest of the session and a relog is what clears them.
+            //
+            // Worth a line of its own because it is the one number that tracked frame time across
+            // a whole evening of captures once nearby objects and creature count were held fixed
+            // - 33 fps under 20k, 25 fps around 45k, 18 fps past 70k, in the same base. It is a
+            // marker rather than a proven cause: nothing in the client's per-frame work iterates
+            // that dictionary, so read it as how far the session has drifted, not as the cost
+            // itself. The thresholds come from those measurements and are worth revisiting.
+            if (s.Zdos > 0)
+            {
+                // The low-water mark stands in for "at login" without hooking world load: a new
+                // session starts far below the old baseline, so the baseline follows it down.
+                if (_zdosFloor < 0 || s.Zdos < _zdosFloor) _zdosFloor = s.Zdos;
+                int grown = s.Zdos - _zdosFloor;
+                lines.Add(Line("zdos held", $"{s.Zdos}" + (grown > 0 ? $"   +{grown} since login" : ""),
+                    Rank(s.Zdos, 45000f, 65000f)));
+            }
+
             // How often the server actually reaches this client. Shown next to what the send
             // cycle predicts, because the number alone means nothing - 200 ms is fine at eight
             // players and a fault at two. A server can hold a perfect tick on 14% of a core and
@@ -302,6 +327,8 @@ namespace DiagnoseServerLag
         }
 
         /// <summary>0 normal, 1 past the warning threshold, 2 past the severe one.</summary>
+        private static int _zdosFloor = -1;
+
         private static int Rank(float value, float warn, float severe) =>
             value >= severe ? 2 : value >= warn ? 1 : 0;
 
