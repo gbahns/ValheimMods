@@ -137,10 +137,18 @@ namespace TheGreatestShips
     /// smaller instead, square, at whatever scale fits both ways, re-spaced about the same
     /// center; the grid root, which UpdateGui sizes to the full grid every call (that is what
     /// makes it scroll), is sized to the drawn grid.  A hold that fits is left alone.
+    ///
+    /// Only the container grid, and only while one of this mod's ships is open: the player's
+    /// grid is another mod's to extend (AzuExtendedPlayerInventory lays its extra rows out
+    /// itself, and re-spacing them scrambled its equipment slots), and other containers are
+    /// their own mods' business.
     /// </summary>
     [HarmonyPatch(typeof(InventoryGrid), "UpdateGui")]
     internal static class InventoryGridFitPatch
     {
+        static readonly HashSet<string> _ourShips =
+            new HashSet<string>(System.Linq.Enumerable.Select(ShipDefinitions.All, d => d.PrefabName));
+
         // Private in the game; the publicized reference assembly only makes them compile.
         static readonly AccessTools.FieldRef<InventoryGrid, List<InventoryElement>> _elements =
             AccessTools.FieldRefAccess<InventoryGrid, List<InventoryElement>>("m_elements");
@@ -151,6 +159,11 @@ namespace TheGreatestShips
         [HarmonyPostfix]
         static void Postfix(InventoryGrid __instance)
         {
+            var gui = InventoryGui.instance;
+            if (gui == null || __instance != gui.m_containerGrid) return;
+            var container = gui.m_currentContainer;
+            if (container == null || !_ourShips.Contains(Utils.GetPrefabName(container.transform.root.gameObject))) return;
+
             var elements = _elements(__instance);
             if (elements == null || elements.Count == 0) return;
             int width  = _width(__instance);

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.8 — unreleased
+
+- Fixed: the slot-shrinking that fits a big hold into the inventory panel was applied to every
+  inventory grid, including the player's -- which, with AzuExtendedPlayerInventory's extra rows,
+  shrank the player inventory and scrambled its equipment slots. It now applies only to the
+  hold of one of this mod's ships while that hold is open.
+
 ## 0.9.7 — 2026-10-03
 
 - The cargo holds are now all the panel's own shape, two wide to one tall, so each fills it edge
