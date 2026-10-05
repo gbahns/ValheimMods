@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Merges two of TheGreatestMap's pin stores outside the game. See README.md.
+
+       MapStore.cs and SharedPin.cs are LINKED from the mod rather than copied, so this tool can
+       never merge by rules that have drifted from the ones the game uses. If a change to the mod
+       breaks this project, that is the point: build-all compiles it, so the break surfaces here
+       rather than the next time a world is moved.
+
+       No manifest.json in this directory, so Directory.Build.targets does not try to deploy an
+       exe into a Gale profile. -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>12</LangVersion>
+    <AssemblyName>pinmerge</AssemblyName>
+    <RootNamespace>TheGreatestMap</RootNamespace>
+    <!-- The mod's files are written for a plugin, not an exe: unused private fields and the
+         nullable annotations it carries are not findings here. -->
+    <NoWarn>CS0649;CS0169;CS0414;CS8632;CS0108</NoWarn>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\TheGreatestMap\MapStore.cs"  Link="TheGreatestMap\MapStore.cs" />
+    <Compile Include="..\..\TheGreatestMap\SharedPin.cs" Link="TheGreatestMap\SharedPin.cs" />
+  </ItemGroup>
+
+  <!-- Private=true: these have to sit beside the exe at run time, not just at compile time.
+       netstandard.dll is the easy one to forget - the Unity assemblies are built against
+       netstandard 2.1 and net48 ships only the 2.0 facade, so without it every run dies with
+       "Could not load file or assembly 'netstandard, Version=2.1.0.0'". -->
+  <ItemGroup>
+    <Reference Include="assembly_valheim">
+      <HintPath>..\..\Libs\assembly_valheim.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="assembly_utils">
+      <HintPath>..\..\Libs\assembly_utils.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>..\..\Libs\UnityEngine.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>..\..\Libs\UnityEngine.CoreModule.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="netstandard">
+      <HintPath>..\..\Libs\netstandard.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>
