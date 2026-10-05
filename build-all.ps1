@@ -10,7 +10,12 @@ param(
 $projects = Get-ChildItem -Path $PSScriptRoot -Recurse -Filter *.csproj |
     Where-Object {
         $_.FullName -notmatch '\\(\.claude|bin|obj)\\' -and
-        $_.Name -notmatch 'Broke|Tests|^TestMod'
+        # Anchored to the end of the file name on purpose. The old pattern was a bare
+        # 'Tests', and -notmatch is case insensitive, so TheGreatestShips - The-Grea-tests-hips
+        # - matched it and was silently never built. A substring test on a project name is
+        # too loose to be safe here.
+        $_.Name -notmatch '(Tests\d*|TestsBroke|Broke)\.csproj$' -and
+        $_.Name -notmatch '^TestMod\.csproj$'
     }
 
 foreach ($csproj in $projects) {
