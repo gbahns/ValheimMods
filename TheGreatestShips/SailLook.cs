@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using HarmonyLib;
 using Jotunn.Managers;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -30,17 +31,27 @@ namespace TheGreatestShips
     internal sealed class SailWatch : MonoBehaviour
     {
         private float _next;
+        private bool _failed;
         private void Update()
         {
-            if (Time.time < _next) return;
+            if (_failed || Time.time < _next) return;
             _next = Time.time + 0.25f;
-            SailLook.Update();
+            try { SailLook.Update(); }
+            catch (System.Exception e)
+            {
+                _failed = true;   // once, not every tick
+                Jotunn.Logger.LogError($"[TheGreatestShips] Sail opacity stopped: {e}");
+            }
         }
     }
 
     internal static class SailLook
     {
         private static float _vanillaBoatDistance = -1f;
+
+        // Private in the game; the publicized reference assembly only makes it compile.
+        private static readonly AccessTools.FieldRef<Player, Transform> _attachPoint =
+            AccessTools.FieldRefAccess<Player, Transform>("m_attachPoint");
 
         // ── Camera ──────────────────────────────────────────────────────────────────
 
@@ -78,8 +89,11 @@ namespace TheGreatestShips
                 // game's standing-on test comes up empty: the ship you steer counts first, then
                 // the one under your feet, then whatever you are attached to (a rudder, a seat).
                 ship = player.GetControlledShip() ?? player.GetStandingOnShip();
-                if (ship == null && player.IsAttached() && player.m_attachPoint != null)
-                    ship = player.m_attachPoint.GetComponentInParent<Ship>();
+                if (ship == null && player.IsAttached())
+                {
+                    var attachPoint = _attachPoint(player);
+                    if (attachPoint != null) ship = attachPoint.GetComponentInParent<Ship>();
+                }
             }
             float opacity = Mathf.Clamp01(ShipConfig.SailOpacity.Value);
             if (opacity >= 0.999f) ship = null;
