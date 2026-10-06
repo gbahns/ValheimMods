@@ -10,7 +10,8 @@
   its sail as the game does, lower draws the side you see from the tiller see-through, 0 hides
   it; other ships are drawn as the game draws them. Works on this mod's ships and the vanilla
   ones, and applies at once. From the bow the sail still looks normal unless "Sail Opacity Both
-  Sides" is on. Not a breaking change.
+  Sides" is on; it always applies at the rudder, and "Sail Opacity On Deck" (on by default) says
+  whether it also applies anywhere else on the deck. Not a breaking change.
 
 ## 0.9.9 — 2026-10-04
 

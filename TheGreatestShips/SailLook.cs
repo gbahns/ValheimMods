@@ -86,13 +86,17 @@ namespace TheGreatestShips
             if (player != null)
             {
                 // At the tiller you are attached to the rudder, not standing on the deck, so the
-                // game's standing-on test comes up empty: the ship you steer counts first, then
-                // the one under your feet, then whatever you are attached to (a rudder, a seat).
-                ship = player.GetControlledShip() ?? player.GetStandingOnShip();
-                if (ship == null && player.IsAttached())
+                // game's standing-on test comes up empty: the ship you steer always counts; the
+                // one under your feet, or the one you sit on, only if "Sail Opacity On Deck" says so.
+                ship = player.GetControlledShip();
+                if (ship == null && ShipConfig.SailOpacityOnDeck.Value)
                 {
-                    var attachPoint = _attachPoint(player);
-                    if (attachPoint != null) ship = attachPoint.GetComponentInParent<Ship>();
+                    ship = player.GetStandingOnShip();
+                    if (ship == null && player.IsAttached())
+                    {
+                        var attachPoint = _attachPoint(player);
+                        if (attachPoint != null) ship = attachPoint.GetComponentInParent<Ship>();
+                    }
                 }
             }
             float opacity = Mathf.Clamp01(ShipConfig.SailOpacity.Value);
