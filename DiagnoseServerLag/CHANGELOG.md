@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.10.8 - unreleased
+
+- **`zdos held` meant two different things and only one of them was labelled.** On a client the
+  count is what the server has sent you, it only climbs, and a relog resets it - which is what the
+  line was built to show. Hosting or on a dedicated server, `ZDOMan` holds the entire world
+  instead: large, flat, and nothing to do with session drift. A single-player capture read
+  **993,655 objects at 29 fps with 2 stalls a minute**, which the client thresholds painted deep
+  red and the delta described as having grown by 986,000. Both were meaningless.
+
+  Hosting now reports `world zdos` with no colour and no "since login" figure, because that is
+  what the number is. The client line is unchanged.
+
+- That capture also settles what the count costs: thirty times the ZDOs of the laggiest session
+  measured, on the same machine, running faster with a quarter the stalls - while simulating 95
+  creatures with 111 nearby. The dictionary size is not the expense, and neither is owning the
+  creatures. Read the client line as how far a session has drifted, nothing more.
+
 ## 0.10.7 - 2026-10-05
 
 - **Vegetation, LOD and FpsLimit appear in the capture now.** They had been missing since the

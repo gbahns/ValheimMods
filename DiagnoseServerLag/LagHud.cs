@@ -263,7 +263,17 @@ namespace DiagnoseServerLag
             // marker rather than a proven cause: nothing in the client's per-frame work iterates
             // that dictionary, so read it as how far the session has drifted, not as the cost
             // itself. The thresholds come from those measurements and are worth revisiting.
-            if (s.Zdos > 0)
+            if (s.Zdos > 0 && Sampler.IsServerHere)
+            {
+                // Hosting, so this is not the same measurement at all: ZDOMan holds the whole
+                // world rather than the part a server has sent us, and it is large and flat by
+                // nature. A single-player capture read 993,655 at 29 fps and 2 stalls a minute,
+                // which the client thresholds painted deep red and a "since login" figure
+                // described as having grown by 986,000. Neither meant anything. So in this mode it
+                // is reported as what it is - the world's size - with no colour and no delta.
+                lines.Add(Line("world zdos", $"{s.Zdos}", 0));
+            }
+            else if (s.Zdos > 0)
             {
                 // The low-water mark stands in for "at login" without hooking world load: a new
                 // session starts far below the old baseline, so the baseline follows it down.
