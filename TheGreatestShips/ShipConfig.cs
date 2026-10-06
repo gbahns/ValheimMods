@@ -33,6 +33,7 @@ namespace TheGreatestShips
         internal static ConfigEntry<bool> LockConfiguration;
         internal static ConfigEntry<float> BoatCameraDistance;
         internal static ConfigEntry<float> SailOpacity;
+        internal static ConfigEntry<bool>  SailOpacityBothSides;
 
         // Raised when a release changes defaults that saved configs should follow.
         //   2 (0.9.1): speeds rebased on logged top speeds, Cargo Longship recipe.
@@ -83,10 +84,16 @@ namespace TheGreatestShips
             SailOpacity = mod.Config.Bind("General", "Sail Opacity", 1f,
                 new ConfigDescription(
                     "How solid the sails are, 1 (as the game draws them) down to 0 (invisible), on this mod's " +
-                    "ships and the vanilla ones. Below 1 the sail is drawn see-through so you can watch the " +
-                    "water ahead through it. Yours alone; applies at once, to ships already afloat too.",
+                    "ships and the vanilla ones. Below 1 the side of the sail you see from the tiller is drawn " +
+                    "see-through, so you can watch the water ahead through it (see Sail Opacity Both Sides). " +
+                    "Yours alone; applies at once, to ships already afloat too.",
                     new AcceptableValueRange<float>(0f, 1f)));
             SailOpacity.SettingChanged += (_, __) => SailLook.ApplySails();
+
+            SailOpacityBothSides = mod.Config.Bind("General", "Sail Opacity Both Sides", false,
+                "Off: only the side of the sail you see from the tiller is see-through; from the bow it looks as " +
+                "the game draws it. On: both sides. Yours alone; applies at once.");
+            SailOpacityBothSides.SettingChanged += (_, __) => SailLook.ApplySails();
 
             LockConfiguration = mod.BindLocking("General", "Lock Configuration", true,
                 "While on, the settings marked as synced can be changed only by the server's admins " +
