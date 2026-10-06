@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.8 - unreleased
+## 0.10.8 - 2026-10-05
 
 - **`zdos held` meant two different things and only one of them was labelled.** On a client the
   count is what the server has sent you, it only climbs, and a relog resets it - which is what the
