@@ -23,6 +23,7 @@
 param(
     [string]$SecretsPath = (Join-Path $env:USERPROFILE ".dathost"),
     [string]$LocalConfig = "C:\ValheimServer\server\BepInEx\config",
+    [string]$LocalSaveDir = "C:/ValheimServer/data",
     [string]$ServerScript = "C:\ValheimServer\scripts\valheim.ps1",
     [switch]$SettingsOnly,
     [switch]$WhatIf
@@ -85,6 +86,61 @@ $takeMB = (($take | Measure-Object Size -Sum).Sum) / 1MB
 $skipMB = (($skip | Measure-Object Size -Sum).Sum) / 1MB
 Write-Host ("  taking  {0,3} files, {1,6:n1} MB" -f $take.Count, $takeMB)
 Write-Host ("  leaving {0,3} files, {1,6:n1} MB" -f $skip.Count, $skipMB)
+
+
+# ── the server's player lists: compared, never copied ──────────────────────────
+#
+# adminlist, permittedlist and bannedlist live in SaveDir, as siblings of worlds_local - one level
+# above any world. One server applies the same lists to every world it hosts, so they belong to
+# the destination server rather than to the world being moved, and copying them with a world would
+# be actively wrong: it would overwrite the destination's own admins with the source's.
+#
+# But leaving them unmentioned is how somebody ends up without admin on the new server and nobody
+# notices until a command is refused - dsl_bench's server capture needs admin, for one. So they
+# are read and compared, and a difference is reported for a person to act on.
+function Compare-PlayerLists {
+    $remoteSaveDir = "SaveDir"
+    $localSaveDir = $LocalSaveDir
+    if (-not (Test-Path $localSaveDir)) {
+        Write-Warning "No local save directory at $localSaveDir - skipping the player list check."
+        return
+    }
+    Write-Host ""
+    Write-Host "Player lists (server-level, not copied):"
+    foreach ($leaf in @("adminlist.txt", "permittedlist.txt", "bannedlist.txt")) {
+        $ids = @()
+        try {
+            $enc = [uri]::EscapeDataString("$remoteSaveDir/$leaf")
+            $r = Invoke-WebRequest -Method Get -Uri "$base/game-servers/$id/files/$enc" `
+                -Headers $headers -TimeoutSec 60 -UseBasicParsing
+            $ids = @([Text.Encoding]::UTF8.GetString($r.Content) -split "`r?`n" |
+                     ForEach-Object { $_.Trim() } |
+                     Where-Object { $_ -and -not $_.StartsWith("//") })
+        } catch {
+            Write-Host ("  {0,-18} could not be read from the source server" -f $leaf)
+            continue
+        }
+
+        $localPath = Join-Path $localSaveDir $leaf
+        $mine = @()
+        if (Test-Path $localPath) {
+            $mine = @(Get-Content $localPath | ForEach-Object { $_.Trim() } |
+                      Where-Object { $_ -and -not $_.StartsWith("//") })
+        }
+        $missing = @($ids | Where-Object { $mine -notcontains $_ })
+
+        if (-not (Test-Path $localPath)) {
+            Write-Warning ("  {0,-18} does not exist here; the source lists {1} id(s)" -f $leaf, $ids.Count)
+        } elseif ($missing.Count -eq 0) {
+            Write-Host ("  {0,-18} source {1}, here {2} - nothing missing" -f $leaf, $ids.Count, $mine.Count)
+        } else {
+            Write-Warning ("  {0,-18} {1} id(s) on the source are not here: {2}" -f $leaf, $missing.Count, ($missing -join ", "))
+            Write-Warning ("  {0,-18} server-level, so add them by hand if they should apply here: {1}" -f "", $localPath)
+        }
+    }
+}
+
+Compare-PlayerLists
 
 if ($WhatIf) {
     Write-Host ""

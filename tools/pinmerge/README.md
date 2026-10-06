@@ -79,6 +79,14 @@ In order. Each step is safe to re-run.
    captures, runtime state and client-side assets are left behind. The whole previous config
    folder is copied to `_before-dathost-copy-<stamp>` first.
 
+   It also **compares** the source's `adminlist.txt`, `permittedlist.txt` and `bannedlist.txt`
+   against the destination's and reports any id the destination is missing. Those live in
+   `SaveDir`, as siblings of `worlds_local` rather than inside a world, so one server applies the
+   same lists to every world it hosts: they belong to the destination server, not to the world
+   being moved, and copying them would overwrite that server's own admins with the source's. They
+   are never copied - but an admin silently absent on the new server is not noticed until a
+   command is refused, and `dsl_bench`'s server capture is one of the things that refuses.
+
 3. **The mods themselves**, if the destination does not already have them:
    `.\deploy-dathost.ps1 -Mod <Folder> -Published` for DatHost, or
    `valheim.ps1 deploy -Dll <path>` for the local server.
