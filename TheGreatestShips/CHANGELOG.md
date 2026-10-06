@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.10 — unreleased
+## 0.9.10 — 2026-10-05
 
 - New "Boat Camera Max Distance" setting (General, yours alone): the farthest the camera can be
   from you while steering, in meters -- how far you can zoom out: 8 to 40, and 16 is the game's
