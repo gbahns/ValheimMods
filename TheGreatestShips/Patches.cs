@@ -99,6 +99,10 @@ namespace TheGreatestShips
         static readonly HashSet<string> _ourShips =
             new HashSet<string>(System.Linq.Enumerable.Select(ShipDefinitions.All, d => d.PrefabName));
 
+        // Private in the game (the publicized reference only makes it compile): marks the
+        // inventory dirty so the owner saves it.
+        static readonly System.Reflection.MethodInfo _changed = AccessTools.Method(typeof(Inventory), "Changed");
+
         [HarmonyPostfix]
         static void Postfix(Container __instance, bool __result)
         {
@@ -131,7 +135,7 @@ namespace TheGreatestShips
                 inventory.SetHeight(height);   // undo UpdateRows now that nothing sits below the grid
             if (moved > 0 || inventory.GetHeight() == height)
             {
-                if (moved > 0) inventory.Changed();
+                if (moved > 0) _changed?.Invoke(inventory, null);
                 if (moved > 0)
                     Jotunn.Logger.LogInfo($"[TheGreatestShips] {__instance.m_name}: moved {moved} stack(s) that sat outside the {width}x{height} hold into free slots.");
             }
