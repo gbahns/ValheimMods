@@ -31,7 +31,15 @@ namespace TheGreatestShips
 
         internal static ConfigEntry<bool> NameVanillaShips;
         internal static ConfigEntry<bool> LockConfiguration;
-        internal static ConfigEntry<float> BoatCameraDistance;
+        internal static ConfigEntry<int> BoatCameraDistance;
+
+        // Configuration Manager reads tags of this shape by field name: Browsable hides an entry
+        // from its window (the file keeps it), ReadOnly greys it.
+        private sealed class ManagerTags
+        {
+            public bool? Browsable;
+            public bool? ReadOnly;
+        }
         internal static ConfigEntry<float> SailOpacity;
         internal static ConfigEntry<bool>  SailOpacityBothSides;
 
@@ -67,18 +75,20 @@ namespace TheGreatestShips
         {
             // Not synced: it records what this machine's file has been migrated to.  0.9.0 did not
             // write it, so a file without it is from 0.9.0 (or new, where migration is a no-op).
+            // Hidden from Configuration Manager: it's the mod's migration counter, not a setting.
             var configVersion = mod.Config.Bind("General", "Config Version", 1,
-                "Used by the mod to update old defaults. Do not change.");
+                new ConfigDescription("Used by the mod to update old defaults. Do not change.", null,
+                    new ManagerTags { Browsable = false, ReadOnly = true }));
 
             // Cosmetic and applied at the main menu, so not synced.
-            BoatCameraDistance = mod.Config.Bind("General", "Boat Camera Max Distance", 16f,
+            BoatCameraDistance = mod.Config.Bind("General", "Boat Camera Max Distance", 16,
                 new ConfigDescription(
                     "The farthest the camera can be from you while you steer a ship, in meters -- how far you can " +
                     "zoom out. 16 is the game's own limit (on foot it is 8). It is the same limit for every ship, " +
                     "so a hull half again a longship's size fills that much more of the frame at full zoom-out: " +
                     "try 24 to see the whole of a Big Busse or Greater Byrding, 20 for a Busse. Yours alone; " +
                     "applies at once.",
-                    new AcceptableValueRange<float>(8f, 40f)));
+                    new AcceptableValueRange<int>(8, 40)));
             BoatCameraDistance.SettingChanged += (_, __) => SailLook.ApplyCamera(GameCamera.instance);
 
             SailOpacity = mod.Config.Bind("General", "Sail Opacity", 1f,
@@ -88,7 +98,14 @@ namespace TheGreatestShips
                     "see-through, so you can watch the water ahead through it (see Sail Opacity Both Sides). " +
                     "Yours alone; applies at once, to ships already afloat too.",
                     new AcceptableValueRange<float>(0f, 1f)));
-            SailOpacity.SettingChanged += (_, __) => SailLook.ApplySails();
+            SailOpacity.SettingChanged += (_, __) =>
+            {
+                // One decimal is plenty for a slider: round, and write the rounded value back so
+                // the file and the slider show it (setting an unchanged value raises no event).
+                float rounded = Mathf.Round(SailOpacity.Value * 10f) / 10f;
+                if (!Mathf.Approximately(rounded, SailOpacity.Value)) { SailOpacity.Value = rounded; return; }
+                SailLook.ApplySails();
+            };
 
             SailOpacityBothSides = mod.Config.Bind("General", "Sail Opacity Both Sides", false,
                 "Off: only the side of the sail you see from the tiller is see-through; from the bow it looks as " +

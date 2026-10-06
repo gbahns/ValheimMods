@@ -39,7 +39,7 @@ namespace TheGreatestShips
                 _vanillaBoatDistance = camera.m_maxDistanceBoat;
                 Jotunn.Logger.LogInfo($"[TheGreatestShips] The game's boat camera limit is {_vanillaBoatDistance} m (on foot {camera.m_maxDistance} m).");
             }
-            camera.m_maxDistanceBoat = Mathf.Clamp(ShipConfig.BoatCameraDistance.Value, 8f, 40f);
+            camera.m_maxDistanceBoat = Mathf.Clamp(ShipConfig.BoatCameraDistance.Value, 8, 40);
         }
 
         // ── Sails ───────────────────────────────────────────────────────────────────
