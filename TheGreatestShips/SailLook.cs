@@ -81,13 +81,12 @@ namespace TheGreatestShips
                     _original[renderer] = renderer.sharedMaterials;
                 var originals = _original[renderer];
 
-                // The cloth's normals: toward the bow, or toward the stern?  The side seen from the
-                // tiller is the one facing aft.  Mesh normals run along the renderer's local X.
-                bool normalsToBow = Vector3.Dot(renderer.transform.right, ship.transform.forward) >= 0f;
-                CullMode showFront = CullMode.Back;    // culls back faces: the face the normals point out of is drawn
-                CullMode showBack  = CullMode.Front;
-                CullMode aftFace   = normalsToBow ? showBack : showFront;
-                CullMode foreFace  = normalsToBow ? showFront : showBack;
+                // Which face looks aft, toward the tiller?  Judged from the renderer's local X
+                // against the ship's bow -- the sign was settled by looking: with X toward the
+                // bow, the face seen from the tiller is Unity's front face (drawn by Cull Back).
+                bool xToBow = Vector3.Dot(renderer.transform.right, ship.transform.forward) >= 0f;
+                CullMode aftFace  = xToBow ? CullMode.Back  : CullMode.Front;
+                CullMode foreFace = xToBow ? CullMode.Front : CullMode.Back;
 
                 var materials = new List<Material>();
                 foreach (var source in originals)
