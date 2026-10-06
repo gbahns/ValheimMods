@@ -6,10 +6,11 @@
   from you while steering, in meters -- how far you can zoom out: 8 to 40, and 16 is the game's
   own limit (8 on foot). It is one number for every ship, so a hull half again a longship's size
   fills that much more of the frame at full zoom-out -- try 24 to see the whole of a Big Busse.
-- New "Sail Opacity" setting (General, yours alone): 1 draws sails as the game does, lower draws
-  the side of the sail you see from the tiller see-through, 0 hides it -- on this mod's ships and
-  the vanilla ones, applied at once to ships already afloat. From the bow the sail still looks
-  normal unless "Sail Opacity Both Sides" is on. Not a breaking change.
+- New "Sail Opacity" setting (General, yours alone), for the ship you are standing on: 1 draws
+  its sail as the game does, lower draws the side you see from the tiller see-through, 0 hides
+  it; other ships are drawn as the game draws them. Works on this mod's ships and the vanilla
+  ones, and applies at once. From the bow the sail still looks normal unless "Sail Opacity Both
+  Sides" is on. Not a breaking change.
 
 ## 0.9.9 — 2026-10-04
 

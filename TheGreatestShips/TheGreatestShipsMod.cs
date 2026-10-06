@@ -43,6 +43,7 @@ namespace TheGreatestShips
 
             ShipConfig.Bind(this);
             _harmony.PatchAll();
+            gameObject.AddComponent<SailWatch>();
 
             // Clone the vanilla hull once vanilla prefabs can be resolved (main menu).  The rest
             // -- recipe, Hammer table, ZNetScene -- runs from the ObjectDB/ZNetScene postfixes in

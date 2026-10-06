@@ -48,8 +48,6 @@ namespace TheGreatestShips
                 }
             }
 
-            SailLook.ApplySails();
-
             if (!_vanillaLabeled && ShipConfig.NameVanillaShips.Value)
             {
                 _vanillaLabeled = true;

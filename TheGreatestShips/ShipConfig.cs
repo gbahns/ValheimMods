@@ -93,10 +93,10 @@ namespace TheGreatestShips
 
             SailOpacity = mod.Config.Bind("General", "Sail Opacity", 1f,
                 new ConfigDescription(
-                    "How solid the sails are, 1 (as the game draws them) down to 0 (invisible), on this mod's " +
-                    "ships and the vanilla ones. Below 1 the side of the sail you see from the tiller is drawn " +
-                    "see-through, so you can watch the water ahead through it (see Sail Opacity Both Sides). " +
-                    "Yours alone; applies at once, to ships already afloat too.",
+                    "How solid the sails of the ship you are on are, 1 (as the game draws them) down to 0 " +
+                    "(invisible); other ships are drawn as the game draws them. Below 1 the side of the sail you " +
+                    "see from the tiller is drawn see-through, so you can watch the water ahead through it (see " +
+                    "Sail Opacity Both Sides). Works on this mod's ships and the vanilla ones. Yours alone; applies at once.",
                     new AcceptableValueRange<float>(0f, 1f)));
             SailOpacity.SettingChanged += (_, __) =>
             {

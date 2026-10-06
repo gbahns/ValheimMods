@@ -21,10 +21,23 @@ namespace TheGreatestShips
     /// normal, and the fade copy, culled to the other, makes the side seen from the tiller
     /// see-through; "Sail Opacity Both Sides" uses the fade copy alone, both faces.  Which face
     /// is which is measured from the renderer's orientation against the ship's bow, so the Karve
-    /// and the Longship need no special cases.  Ships already afloat are changed too, and
-    /// everything is put back when opacity returns to 1.  Vanilla ships' sails are included: the
-    /// point is to see past the sail, whichever ship it is on.
+    /// and the Longship need no special cases.  Only the ship the local player is standing on is
+    /// changed (SailWatch follows them aboard and off), so other ships look as the game draws
+    /// them; everything is put back on leaving, or when opacity returns to 1.  Vanilla ships are
+    /// included: the point is to see past the sail, whichever ship you are on.
     /// </summary>
+    /// <summary>Keeps the faded sails on the ship the local player is standing on, and only there.</summary>
+    internal sealed class SailWatch : MonoBehaviour
+    {
+        private float _next;
+        private void Update()
+        {
+            if (Time.time < _next) return;
+            _next = Time.time + 0.25f;
+            SailLook.Update();
+        }
+    }
+
     internal static class SailLook
     {
         private static float _vanillaBoatDistance = -1f;
@@ -52,21 +65,37 @@ namespace TheGreatestShips
         private static readonly Dictionary<(Material, CullMode), Material> _cutoutCopies = new Dictionary<(Material, CullMode), Material>();
         private static readonly Dictionary<(Material, CullMode), Material> _fadeCopies   = new Dictionary<(Material, CullMode), Material>();
 
-        internal static void ApplySails()
+        private static Ship _current;   // the ship whose sails are faded: the one the local player stands on
+
+        /// <summary>Called a few times a second (SailWatch) and on every setting change.</summary>
+        internal static void Update()
         {
-            float opacity  = Mathf.Clamp01(ShipConfig.SailOpacity.Value);
-            bool bothSides = ShipConfig.SailOpacityBothSides.Value;
+            var player = Player.m_localPlayer;
+            var ship = player != null ? player.GetStandingOnShip() : null;
+            float opacity = Mathf.Clamp01(ShipConfig.SailOpacity.Value);
+            if (opacity >= 0.999f) ship = null;
 
-            if (opacity >= 0.999f)
+            if (ship != _current)
             {
-                int restored = 0;
-                foreach (var pair in _original)
-                    if (pair.Key != null) { pair.Key.sharedMaterials = pair.Value; restored++; }
-                _original.Clear();
-                if (restored > 0) Jotunn.Logger.LogInfo($"[TheGreatestShips] Sails opaque again ({restored} renderer(s) restored).");
-                return;
+                RestoreAll();
+                _current = ship;
             }
+            if (_current != null) ApplySails(_current, opacity, ShipConfig.SailOpacityBothSides.Value);
+        }
 
+        internal static void ApplySails() => Update();
+
+        private static void RestoreAll()
+        {
+            int restored = 0;
+            foreach (var pair in _original)
+                if (pair.Key != null) { pair.Key.sharedMaterials = pair.Value; restored++; }
+            _original.Clear();
+            if (restored > 0) Jotunn.Logger.LogInfo($"[TheGreatestShips] Sails opaque again ({restored} renderer(s) restored).");
+        }
+
+        private static void ApplySails(Ship ship, float opacity, bool bothSides)
+        {
             var fadeShader = FindLoadedShader(FadeShaderName);
             if (fadeShader == null)
             {
@@ -75,7 +104,7 @@ namespace TheGreatestShips
             }
 
             int changed = 0;
-            foreach (var (ship, renderer) in SailRenderers())
+            foreach (var renderer in Sails(ship.gameObject))
             {
                 if (!_original.ContainsKey(renderer))
                     _original[renderer] = renderer.sharedMaterials;
@@ -102,24 +131,18 @@ namespace TheGreatestShips
                         materials.Add(FadeCopy(source, fadeShader, aftFace, opacity));
                     }
                 }
+                var current = renderer.sharedMaterials;
+                bool same = current.Length == materials.Count;
+                for (int i = 0; same && i < current.Length; i++) same = current[i] == materials[i];
+                if (same) continue;   // already as wanted (the watcher runs often)
                 renderer.sharedMaterials = materials.ToArray();
                 changed++;
             }
-            Jotunn.Logger.LogInfo($"[TheGreatestShips] Sails at {opacity:0.00} opacity, {(bothSides ? "both sides" : "the side seen from the tiller")} ({changed} renderer(s)).");
+            if (changed > 0)
+                Jotunn.Logger.LogInfo($"[TheGreatestShips] Sails of the ship you're on at {opacity:0.00} opacity, {(bothSides ? "both sides" : "the side seen from the tiller")} ({changed} renderer(s)).");
         }
 
         private static bool IsSail(Material m) => m.name.StartsWith("sail", System.StringComparison.OrdinalIgnoreCase);
-
-        // Sail renderers on every ship prefab (this mod's and the vanilla hulls) and on every ship
-        // afloat, each with the ship it belongs to.
-        private static IEnumerable<(GameObject ship, Renderer renderer)> SailRenderers()
-        {
-            foreach (var prefab in ShipPrefabs.AllShipPrefabs())
-                foreach (var r in Sails(prefab)) yield return (prefab, r);
-            foreach (var updater in Ship.Instances)
-                if (updater is Ship ship && ship != null)
-                    foreach (var r in Sails(ship.gameObject)) yield return (ship.gameObject, r);
-        }
 
         private static IEnumerable<Renderer> Sails(GameObject root)
         {
