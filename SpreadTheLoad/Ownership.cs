@@ -29,6 +29,41 @@ namespace SpreadTheLoad
     ///
     /// IsInPeerActiveArea has precisely one caller - the line above - which is what makes this
     /// safe to answer dishonestly. It is not a general-purpose predicate other systems rely on.
+    ///
+    /// ── what ownership actually costs, and so what the rules should weigh ───────────────────
+    ///
+    /// Measured 2026-10-05, because two plausible reasons to move an object turned out to be
+    /// worth nothing and a third turned out to be worth double what was assumed.
+    ///
+    /// Owning objects is not expensive. A single-player capture simulated 95 creatures, with 111
+    /// nearby and 993,655 ZDOs held, at 29 fps and 2 stalls a minute - faster than the same
+    /// machine as a client holding 32,000 ZDOs and owning 6 creatures. So neither the size of the
+    /// ZDO set nor the number of owned creatures is a reason to move anything, and any rule
+    /// justified by "spreading the CPU cost" is solving a problem that was not measured.
+    ///
+    /// What ownership decides is how stale everyone else's view of the object is:
+    ///
+    ///     owner's send cadence  +  owner to server  +  server's feed  +  server to observer
+    ///
+    /// Both cadence terms are the (peers + 1) x frameMs round robin described in Pacing. A client
+    /// has one peer, so the owner's term is 2 x ownerFrameMs. That gives the ordering:
+    ///
+    ///   1. proximity        - whoever is interacting. Their own view becomes immediate, and they
+    ///                         are the one person who notices. This is Proximity, and it is right.
+    ///   2. owner frame rate - 2 x frameMs means a 15 fps owner adds ~133 ms against ~67 ms for a
+    ///                         30 fps one. Worth about 66 ms. This is Detection, and it turns out
+    ///                         to have been aimed at the largest movable term by luck rather than
+    ///                         by design.
+    ///   3. owner ping       - one way, so 20-40 ms for an off-LAN owner against ~0 on the same
+    ///                         box or LAN. Worth 13-23% of a ~155 ms budget. Not built: it is the
+    ///                         smallest term, Valheim's ping is a keepalive with no timestamp so
+    ///                         it would need measuring from scratch, and between two players on
+    ///                         the same LAN it buys nothing at all.
+    ///
+    /// If ping is ever added it belongs as a tie-break *under* the two above, never over them.
+    /// Preferring a low-ping owner over the player swinging at the thing trades that player's
+    /// responsiveness for a spectator's, and concentrating ownership on one machine couples
+    /// everybody to its hitches - which is the opposite of why this mod exists.
     /// </summary>
     internal static class Ownership
     {
