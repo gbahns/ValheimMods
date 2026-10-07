@@ -311,6 +311,70 @@ Idea dump from Greg + Marco, 2026-09-10, refined the same day. More to come.
   recorder and the pocket-map ritual. The closest pieces are OneMapToRuleThemAll's sharing and
   DiscoveryPins' triggers.
 
+### Later Idea — Manual TGM Markers, and the Serpent Case (2026-10-06)
+
+Greg wanted serpent markers: mark where a serpent was spotted, to hunt them for meat, scales and
+trophies. Since the spawn point is unknown, a sighting approximates it — and two sightings close
+together (say 30 m apart) suggest a spawn point between them, so markers should merge rather than
+pile up.
+
+**Serpents have no spawn points** (verified against assembly_valheim, 2026-10-06).
+`SpawnSystem.FindBaseSpawnPoint` picks a random player, a random compass direction and a random
+40–80 m, then tests whether that point satisfies the spawner's conditions (biome, altitude — so
+water depth — day/night flags, required weather, chance, a per-zone cap, and no other instance
+within `m_spawnDistance`):
+
+```
+Player player = allPlayers[Random.Range(0, allPlayers.Count)];
+Vector3 dir = Quaternion.Euler(0, Random.Range(0f, 360f), 0) * Vector3.forward;
+Vector3 spawnPoint = player.transform.position + dir * Random.Range(40f, 80f);
+```
+
+So a sighting records where *the player* was, ±40–80 m, plus however far the serpent swam before it
+was seen — and serpents set `m_huntPlayer`, so it was closing on the player the whole time. A
+cluster of sightings therefore measures where the crew sails, not where serpents originate.
+Averaging two nearby sightings converges on the sailing line while looking increasingly
+authoritative. There is nothing to triangulate.
+
+**Rejected: shading the water that qualifies for serpent spawns.** The obvious alternative is to
+evaluate the spawn conditions against the world and shade the qualifying ocean. Worth recording why
+not, because the idea will occur again:
+
+- It is not actually a knowledge leak. `Minimap`'s generator writes per-pixel biome colour *and*
+  terrain height into `_HeightTex`, sampled by both map shaders, and the whole map is generated from
+  the seed at world creation rather than by exploring. Ocean extent and depth are already on the
+  player's map; fog hides only where they have not been. An overlay would do the arithmetic, not
+  reveal the inputs.
+- The real objection: an overlay that is always right and instantly complete makes the empirical
+  path pointless. Nobody would record a sighting again, and the thing that makes this map worth
+  having — that it holds what the crew found — becomes decoration beside a solved answer. A feature
+  that outcompetes the mod's own premise is a bad trade even when it is fair.
+
+**Accepted instead: let the player place TGM marker kinds by hand.** Manual placement is currently
+limited to the five vanilla pin types, while this mod's kinds, icons, tooltips, crossed-off state,
+store and sharing are reachable only when the recorder classifies something itself.
+
+- Solves serpents honestly: the player saw it, the player marks it. No inference to defend.
+- Covers everything the Catalog will never classify: suspected spawn areas, good fishing, troll
+  patrols, "come back with a pickaxe".
+- Needs no new knowledge from the game, so there is no fair-or-unfair question to settle.
+- Broadest reach per unit of work: kinds, icons, store and sharing all exist. Only the placement UI
+  is missing.
+
+**Still open**
+- **What actually gates serpent spawns.** The values live in a `SpawnSystemList` Unity asset, not in
+  code, so they cannot be read from the DLL — a few lines in a mod can dump the live `SpawnData` for
+  Serpent at runtime (biome, depth range, day/night, required environments, interval, per-zone cap).
+  Worth knowing: with the conditions in hand, the mod could say "serpent conditions are live right
+  now", which beats any pin.
+- **Sighting pins as a hunting log**, if wanted: "seen here" with a count and a last-seen date,
+  deduplicated by a coarse radius so a cluster reads as a danger or luck rating rather than noise.
+  Honest about being a record of the crew's luck, not a spawn table.
+- **Erase semantics for a merged pin.** The standing rule is that erased markers stay erased. A
+  hazard or hunting marker arguably should return on a fresh sighting; if so it needs to be an
+  explicit setting, not a surprise resurrection — that behaviour is what drove us off Better
+  Cartography Table in the first place.
+
 ---
 
 ## Mod 9 — Dude, What Are My Stats?
