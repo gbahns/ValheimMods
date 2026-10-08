@@ -29,6 +29,7 @@ namespace TheGreatestMap
         Seeds,
         Plants,
         Campfire,
+        Sighting,
     }
 
     /// <summary>Static facts about each category: defaults, labels.</summary>
@@ -36,7 +37,16 @@ namespace TheGreatestMap
     {
         internal static readonly Category[] All = (Category[])Enum.GetValues(typeof(Category));
 
-        internal static bool UsesPrefabList(Category c) => c != Category.Runestone && c != Category.Portal;
+        internal static bool UsesPrefabList(Category c) =>
+            c != Category.Runestone && c != Category.Portal && !IsPlacedOnly(c);
+
+        /// <summary>
+        /// A kind nothing in the world can be classified as: it exists so a player can mark
+        /// something the catalog will never know about -- a serpent surfacing, a bay that fishes
+        /// well, where the trolls walk. Nothing records one, so the settings about recording would
+        /// all be answers to a question never asked, and it is not listed in any prefab catalog.
+        /// </summary>
+        internal static bool IsPlacedOnly(Category c) => c == Category.Sighting;
 
         internal static string Label(Category c)
         {
@@ -50,6 +60,7 @@ namespace TheGreatestMap
                 case Category.Portal:    return "Portals";
                 case Category.Structure: return "Structures";
                 case Category.Campfire:  return "Campfires";
+                case Category.Sighting:  return "Sightings";
                 default:                 return c.ToString();
             }
         }
@@ -133,6 +144,7 @@ namespace TheGreatestMap
                 case Category.Portal:    return "pin:Icon4";
                 case Category.Structure: return "pin:Icon1";
                 case Category.Campfire:  return "piece:fire_pit"; // the campfire's own build-menu picture
+                case Category.Sighting:  return "TrophySerpent";
                 default:                 return "pin:Icon3";
             }
         }

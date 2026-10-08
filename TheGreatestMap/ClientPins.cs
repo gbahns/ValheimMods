@@ -106,7 +106,13 @@ namespace TheGreatestMap
         /// <summary>Turns a vanilla local pin (a vanilla icon) into a personal-map marker in place.</summary>
         internal static SharedPin AdoptLocalPin(Minimap.PinData pinData, bool auto)
         {
-            if (pinData == null || IsOurs(pinData) || PinTypes.IsCustom((int)pinData.m_type)) return null;
+            if (pinData == null || IsOurs(pinData)) return null;
+            // A custom type is normally one of our own markers drawn from the store, which must
+            // never be adopted a second time -- hence the refusal. The exception is a marker the
+            // player asked for by kind: that one is theirs, and it is spent as it is taken, so the
+            // refusal still stands for everything else.
+            var placing = PinTypes.IsCustom((int)pinData.m_type) ? ManualPlace.Take((int)pinData.m_type) : null;
+            if (placing == null && PinTypes.IsCustom((int)pinData.m_type)) return null;
             var player = Player.m_localPlayer;
             var pin = new SharedPin
             {
@@ -116,11 +122,14 @@ namespace TheGreatestMap
                 Name = pinData.m_name ?? "",
                 Pos = pinData.m_pos,
                 Type = (int)pinData.m_type,
-                Icon = IconRegistry.KeyForVanilla((int)pinData.m_type),
+                Icon = placing != null ? placing.Icon : IconRegistry.KeyForVanilla((int)pinData.m_type),
                 Checked = pinData.m_checked,
                 Auto = auto,
                 Created = MapStore.Now,
             };
+            // Placed by hand, but still of a kind, so it hides and groups with its fellows. A kind
+            // is otherwise only ever inferred, and only for markers this mod recorded itself.
+            if (placing != null) pin.SetKind(placing.Kind.ToString());
             pinData.m_save = true;
             pinData.m_ownerID = 0L;
             Store.Upsert(pin);
@@ -878,17 +887,25 @@ namespace TheGreatestMap
 
     // Writing to a cartography table: hide player-placed pins from the serializer by clearing
     // m_save for the duration of the call, then restore.
+    //
+    // A marker of one of this mod's own kinds never goes to a table, even when the table is set to
+    // carry player markers. Its type is a number this mod made up: a client without the mod looks
+    // that number up in the game's icon list, finds nothing, and indexes its visibility array past
+    // the end. Nothing is lost by holding them back -- such a client could not draw them anyway --
+    // and the table is the one place a marker of ours can reach somebody who is not running this.
     [HarmonyPatch(typeof(Minimap), nameof(Minimap.GetSharedMapData))]
     internal static class Minimap_GetSharedMapData_Patch
     {
         private static void Prefix(Minimap __instance, ref List<Minimap.PinData> __state)
         {
-            __state = null;
-            if (TgmConfig.TableCarriesPins.Value) return;
+            bool carry = TgmConfig.TableCarriesPins.Value;
             __state = new List<Minimap.PinData>();
             foreach (var pin in Access.Pins(__instance))
             {
-                if (!pin.m_save || !PinTypes.IsPlayerPlaceable((int)pin.m_type)) continue;
+                if (!pin.m_save) continue;
+                int type = (int)pin.m_type;
+                bool hold = PinTypes.IsCustom(type) || (!carry && PinTypes.IsPlayerPlaceable(type));
+                if (!hold) continue;
                 pin.m_save = false;
                 __state.Add(pin);
             }

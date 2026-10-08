@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.8.0 — 2026-10-08
+
+Client-side; works with a 0.2.x server.
+
+- **Place this mod's own markers by hand.** The map button's list of kinds grows a small `+` on
+  each row: press it, then right-click the map as you always would, and the marker you place is of
+  that kind -- with its icon, its tooltip, and a place in the hide and crossed-off lists, shared
+  with everyone like any other. Until now a hand-placed marker could only be one of vanilla's five
+  plain icons, and this mod's kinds existed only for things the recorder classified itself.
+  Nothing is detected or inferred: the player saw it, the player marks it, so the "found, not
+  detected" rule is untouched.
+- **A "Sightings" kind, for what the map can never work out by itself.** Nothing records one --
+  there is nothing in the world to classify -- so it exists purely to be placed: a serpent
+  surfacing, a bay that fishes well, where the trolls walk. It wears the serpent trophy by default,
+  which is a setting like any other kind's, and it hides and groups as its own row. Because nothing
+  records it, it has none of the recording settings the other kinds carry.
+- A marker of one of this mod's kinds is never written to a cartography table, even where the
+  table is set to carry player markers. Its pin type is a number this mod invented; a client
+  without the mod finds no icon for it and indexes its visibility array past the end. Nothing is
+  lost -- such a client could not draw them anyway -- and the table is the one place a marker of
+  ours can reach somebody not running it.
+- The arming is spent by the next marker placed and no other, so a kind chosen and forgotten does
+  not quietly claim every pin placed afterwards.
+
 ## 1.7.6 — 2026-10-03
 
 Client-side; works with a 0.2.x server.

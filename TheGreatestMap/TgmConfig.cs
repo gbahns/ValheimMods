@@ -380,6 +380,10 @@ namespace TheGreatestMap
             foreach (var cat in Categories.All)
             {
                 string label = Categories.Label(cat);
+                // A kind only ever placed by hand is never recorded, so none of the recording
+                // settings would mean anything for it.
+                if (!Categories.IsPlacedOnly(cat))
+                {
                 CategoryEnabled[cat] = mod.BindLocal("Recording", "Record " + label, Categories.DefaultEnabled(cat),
                     "Record " + label.ToLowerInvariant() + " you have found." +
                     (cat == Category.Structure ? " Off by default: useful if you like to track which ruins and abandoned houses you have already searched (click a marker on the map to cross it off)." : ""));
@@ -394,6 +398,7 @@ namespace TheGreatestMap
                 LookDistance[cat] = mod.BindLocal("Recording", label + " Look Distance", Categories.DefaultLookDistance(cat),
                     "How far away " + label.ToLowerInvariant() + " can be and still count as seen when you look straight at them " +
                     "with clear line of sight. Interacting, or having them under the crosshair within reach, always counts.");
+                }
                 MarkerSize[cat] = mod.BindLocalRange("Recording", label + " Marker Size", Categories.DefaultSize(cat), 20, 100,
                     "Size of recorded " + label.ToLowerInvariant() + " markers on the map, as a percentage of the normal marker size.");
                 ShowOnMinimap[cat] = mod.BindLocal("Recording", label + " On Minimap", true,

@@ -136,7 +136,7 @@ namespace TheGreatestMap
         {
             const float x = 0f;
             float y = -Pad;
-            Header("Marker kinds", x, y);
+            Header("Marker kinds   +  places one by hand", x, y);
             y -= HeaderHeight;
 
             // The master, so it is reachable from this list too, not only from a right click on the button.
@@ -152,11 +152,17 @@ namespace TheGreatestMap
             // every pin with that icon, while this one covers only the markers this mod recorded.
             foreach (var kind in Categories.All)
             {
-                if (!seen.Contains(kind)) continue;
+                // A kind that is only ever placed by hand has no markers until one is placed, so
+                // it must be listed anyway -- it is the list that places it.
+                if (!seen.Contains(kind) && !Categories.IsPlacedOnly(kind)) continue;
                 var k = kind;
                 SwitchRow(map, x, y, 0f, IconKeyFor(k), Categories.Label(k),
                     () => { if (TgmConfig.ShowKind.TryGetValue(k, out var e)) e.Value = !e.Value; },
-                    () => AllShown && IsShown(k));
+                    () => AllShown && IsShown(k),
+                    // The small pin at the row's end arms that kind for placing by hand. It is a
+                    // button of its own rather than another meaning for the row, which already
+                    // means "show or hide these".
+                    () => { if (ManualPlace.Arm(map, k)) Close(); });
                 y -= RowHeight;
             }
             return y;
@@ -229,6 +235,37 @@ namespace TheGreatestMap
             return false;
         }
 
+        /// <summary>
+        /// A small pin at the end of a kind's row: press it and the next marker placed by hand is
+        /// one of that kind. Its own button, so the row keeps meaning what it meant.
+        /// </summary>
+        private static void PlaceButton(RectTransform row, Action onPlace)
+        {
+            var go = new GameObject("Place", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+            go.transform.SetParent(row, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = rt.anchorMax = new Vector2(1f, 0.5f);
+            rt.pivot = new Vector2(1f, 0.5f);
+            rt.anchoredPosition = new Vector2(-6f, 0f);
+            rt.sizeDelta = new Vector2(RowHeight - 8f, RowHeight - 8f);
+            var img = go.GetComponent<Image>();
+            img.color = new Color(1f, 1f, 1f, 0.07f);
+            img.raycastTarget = true;
+            var button = go.GetComponent<Button>();
+            button.transition = Selectable.Transition.None;
+            button.targetGraphic = img;
+            button.onClick.AddListener(() => onPlace());
+
+            var glyph = MenuKit.Text(go.transform, "Glyph", "+", 15f, new Color(1f, 0.85f, 0.45f, 0.9f));
+            glyph.alignment = TextAlignmentOptions.Center;
+            glyph.raycastTarget = false;
+            var grt = glyph.rectTransform;
+            grt.anchorMin = Vector2.zero;
+            grt.anchorMax = Vector2.one;
+            grt.offsetMin = Vector2.zero;
+            grt.offsetMax = Vector2.zero;
+        }
+
         private static void Header(string text, float x, float y)
         {
             var header = MenuKit.Text(_root.transform, "Header", text, 15f, MenuKit.Header);
@@ -250,7 +287,7 @@ namespace TheGreatestMap
             _entries.Add(new Entry { Text = text, Quiet = quiet ?? (() => false), Label = label });
         }
 
-        private static void SwitchRow(Minimap map, float x, float y, float indent, string iconKey, string text, Action onClick, Func<bool> shown)
+        private static void SwitchRow(Minimap map, float x, float y, float indent, string iconKey, string text, Action onClick, Func<bool> shown, Action onPlace = null)
         {
             var row = MenuKit.Row(_root.transform, "", true, () =>
             {
@@ -274,6 +311,8 @@ namespace TheGreatestMap
             entry.Icon.sprite = sprite;
             entry.Icon.raycastTarget = false;
             entry.Icon.preserveAspect = true;
+
+            if (onPlace != null) PlaceButton(row, onPlace);
 
             entry.Label = row.GetComponentInChildren<TextMeshProUGUI>();
             if (entry.Label != null)
