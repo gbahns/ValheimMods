@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.9 - unreleased
+## 0.10.9 - 2026-10-09
 
 - **A group capture no longer disconnects whoever asked for it.** `dsl_bench 60` across six
   machines produced a 3.8 MB CSV; 0.10.6 added sending that CSV back to the client that asked, and
