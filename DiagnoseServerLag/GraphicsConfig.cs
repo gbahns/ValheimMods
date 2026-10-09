@@ -76,28 +76,41 @@ namespace DiagnoseServerLag
         /// <summary>
         /// The key a setting is really stored under, where that is not its enum member name.
         ///
-        /// Three settings never appeared in a capture - Vegetation, LOD and FpsLimit - and walking
-        /// the enums was not the problem. The enum member and the stored key are simply spelled
-        /// differently, and because these end up in PlayerPrefs, whose keys are case sensitive,
-        /// "Vsync" and "VSync" are two unrelated lookups as far as a read is concerned. Taken from
-        /// the keys Unity had actually written, not guessed:
+        /// Taken from GraphicsSettingsManager's own reads - every PlatformPrefs.GetInt/GetBool it
+        /// makes when it loads settings - rather than from the enum names or from guessing. That
+        /// distinction is not pedantic: the first version of this table mapped Vegetation to
+        /// VegetationPatched because that key existed and looked right, and it was wrong. The game
+        /// stores vegetation quality under ClutterQuality; VegetationPatched is a separate flag
+        /// that happened to sit nearby in the registry. So the capture reported Vegetation=1 for a
+        /// machine actually running quality 3, which is worse than the missing value it replaced,
+        /// and is the exact failure the rest of this file is written to avoid.
         ///
-        ///   Vegetation -> VegetationPatched,  LOD -> LodBias,
-        ///   FpsLimit   -> FPSLimit,           Vsync -> VSync
+        /// Checking the whole set against the loader instead of one setting at a time also turned
+        /// up two that had been silently absent from every capture since the settings block was
+        /// added, for the same reason and unnoticed because nobody had asked after them:
+        /// DepthOfField is stored as DOF and SoftParticles as SoftPart.
         ///
-        /// SSAO is a different case and the reason this prefers the alias rather than only falling
-        /// back to it: both SSAO and SSAO_2 exist, holding different values, which reads like the
-        /// setting having been migrated to a new key and a new scale. The newer key is taken as the
-        /// live one. If an SSAO value here ever looks wrong, that assumption is the first thing to
-        /// check - and the log says so whenever the two disagree.
+        /// PlayerPrefs keys are case sensitive, which is why Vsync and VSync are two different
+        /// lookups and why FpsLimit finds nothing under its own name.
+        ///
+        /// SSAO is the one entry that is not a rename. Both SSAO and SSAO_2 exist, holding
+        /// different values on the same machine, which reads like a migration to a new key and a
+        /// new scale - the loader confirms it, reading SSAO_2 first and only falling back to the
+        /// old boolean SSAO when it is absent. The newer key wins here too, and the log says so
+        /// whenever the two disagree.
+        ///
+        /// If a setting ever stops appearing in a capture, check it against the loader before
+        /// assuming the machine did not report it.
         /// </summary>
         private static readonly Dictionary<string, string> Aliases = new Dictionary<string, string>
         {
-            { "Vegetation", "VegetationPatched" },
-            { "LOD",        "LodBias" },
-            { "FpsLimit",   "FPSLimit" },
-            { "Vsync",      "VSync" },
-            { "SSAO",       "SSAO_2" },
+            { "Vegetation",    "ClutterQuality" },
+            { "LOD",           "LodBias" },
+            { "FpsLimit",      "FPSLimit" },
+            { "Vsync",         "VSync" },
+            { "DepthOfField",  "DOF" },
+            { "SoftParticles", "SoftPart" },
+            { "SSAO",          "SSAO_2" },
         };
 
         private static string Alias(string name)

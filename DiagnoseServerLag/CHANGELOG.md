@@ -2,6 +2,18 @@
 
 ## 0.10.10 - unreleased
 
+- **`Vegetation` was reporting the wrong number, and two more settings were missing.** 0.10.7
+  mapped it to `VegetationPatched`, a key that exists and looked right. The game stores vegetation
+  quality under `ClutterQuality`; `VegetationPatched` is a separate flag that happens to sit beside
+  it in the registry. So captures reported `Vegetation=1` for a machine running quality 3 - worse
+  than the missing value it replaced, and the exact failure the rest of that file is written to
+  avoid.
+
+  The whole table is now derived from `GraphicsSettingsManager`'s own `PlatformPrefs` reads rather
+  than from enum names, which also turned up two settings absent from every capture since the
+  settings block was added, unnoticed because nobody had asked after them: `DepthOfField` is stored
+  as `DOF`, and `SoftParticles` as `SoftPart`. Both now appear.
+
 - **The capture says what simulation distance the server actually granted**, not just what the
   client asked for. "Draw distance" in the graphics menu is this setting, and the capture reads it
   from each client's own prefs - so it reports a request. The server answers
