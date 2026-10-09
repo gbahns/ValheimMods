@@ -256,8 +256,9 @@ namespace GrabMaterials
 			var containerInventory = container.GetInventory();
 			int countGrabbed = 0;
 			var items = containerInventory.GetAllItems().ToArray();
-			// Claim the container up front, before any item moves: a removal from a container this
-			// machine does not own is never saved, and the item would come back on the next sync.
+			// Never write to a container this machine does not own: the removal would not save and
+			// the item would come back on the next sync.  Ownership was obtained up front through
+			// the open handshake in ContainerAccess; this is the last check before the write.
 			if (items.Any(item => item.isMatch(name)) && !ContainerAccess.EnsureOwned(container))
 			{
 				Log.LogWarning($"could not take ownership of {container.name} {container.GetInstanceID()}; leaving its {name} alone");

@@ -783,10 +783,21 @@ namespace GrabMaterialsMod
 		static void StoreItemsInNearbyContainers()
 		{
 			var radius = Range;
-			var nearbyContainers = Boxes.GetOpenableContainers(radius);
-			if (nearbyContainers.Count == 0)
+			var candidates = Boxes.GetOpenableContainers(radius);
+			if (candidates.Count == 0)
 			{
 				Player.m_localPlayer?.Message(MessageHud.MessageType.Center, "No container you can open within range");
+				return;
+			}
+			// Own every container before putting anything in it; see ContainerAccess.
+			ContainerAccess.Acquire(candidates, owned => StoreItemsInContainers(owned, radius));
+		}
+
+		static void StoreItemsInContainers(List<Container> nearbyContainers, float radius)
+		{
+			if (nearbyContainers.Count == 0)
+			{
+				Player.m_localPlayer?.Message(MessageHud.MessageType.Center, "No container would hand itself over");
 				return;
 			}
 			var player = Player.m_localPlayer;

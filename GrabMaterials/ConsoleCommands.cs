@@ -440,8 +440,23 @@ namespace GrabMaterials
 		static void GrabItemsFromNearbyContainers(List<ItemToGrab> itemsToGrab, float radius, string requestLabel = null, bool grabDelta = false)
 		{
 			// Only containers the player could open, so a locked chest's stock is neither counted
-			// in the pre-flight nor taken from.
-			var nearbyContainers = Boxes.GetOpenableContainers(radius);
+			// in the pre-flight nor taken from.  Of those, only the ones holding something asked
+			// for are worth owning, and ownership of each is obtained through the game's own open
+			// request before anything is counted or taken.
+			var wanted = new List<Container>();
+			foreach (var container in Boxes.GetOpenableContainers(radius))
+			{
+				var inventory = container.GetInventory();
+				if (inventory == null) continue;
+				if (inventory.GetAllItems().Any(item => itemsToGrab.Any(want => item.isMatch(want.Name))))
+					wanted.Add(container);
+			}
+			ContainerAccess.Acquire(wanted, owned => GrabItemsFromContainers(itemsToGrab, owned, requestLabel, grabDelta));
+		}
+
+		// The grab proper, over containers this machine owns.
+		static void GrabItemsFromContainers(List<ItemToGrab> itemsToGrab, List<Container> nearbyContainers, string requestLabel, bool grabDelta)
+		{
 			var player = Player.m_localPlayer;
 
 			// Aggregate duplicate requests so a pack with several pieces sharing
@@ -567,7 +582,7 @@ namespace GrabMaterials
 				var remaining = effectiveNeed[i];
 				if (remaining > 0)
 				{
-					Log.LogInfo($"grabbing {remaining} {itemToGrab.Name} from {nearbyContainers.Count} containers within {radius} meters");
+					Log.LogInfo($"grabbing {remaining} {itemToGrab.Name} from {nearbyContainers.Count} containers");
 					for (int j = 0; j < nearbyContainers.Count && remaining > 0; j++)
 					{
 						int countGrabbed = nearbyContainers[j].GrabItemFromContainer(itemToGrab.Name, remaining);
