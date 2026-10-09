@@ -256,6 +256,13 @@ namespace GrabMaterials
 			var containerInventory = container.GetInventory();
 			int countGrabbed = 0;
 			var items = containerInventory.GetAllItems().ToArray();
+			// Claim the container up front, before any item moves: a removal from a container this
+			// machine does not own is never saved, and the item would come back on the next sync.
+			if (items.Any(item => item.isMatch(name)) && !ContainerAccess.EnsureOwned(container))
+			{
+				Log.LogWarning($"could not take ownership of {container.name} {container.GetInstanceID()}; leaving its {name} alone");
+				return 0;
+			}
 			for (int i = 0; i < items.Count() && count > 0; i++)
 			{
 				var item = items[i];
@@ -296,6 +303,13 @@ namespace GrabMaterials
 			if (!containerInventory.CanAddItem(item))
 			{
 				Log.LogWarning("Container's inventory full.");
+				return false;
+			}
+			// Same as the grab: an item put into a container this machine does not own would leave
+			// the player's inventory (saved) and land in a copy that is not.  That is a loss, not a dupe.
+			if (!ContainerAccess.EnsureOwned(container))
+			{
+				Log.LogWarning($"could not take ownership of {container.name} {container.GetInstanceID()}; not storing into it");
 				return false;
 			}
 			Log.LogInfo($"moving {item.Name()} {item.Count()}");

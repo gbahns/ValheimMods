@@ -19,7 +19,7 @@ using UnityEngine;
 namespace GrabMaterialsMod
 {
 
-	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.4.1")]
+	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.4.2")]
 	[BepInProcess("valheim.exe")]
 	public class GrabMaterialsMod : BaseUnityPlugin
 	{
@@ -783,7 +783,12 @@ namespace GrabMaterialsMod
 		static void StoreItemsInNearbyContainers()
 		{
 			var radius = Range;
-			var nearbyContainers = Boxes.GetNearbyContainers(radius);
+			var nearbyContainers = Boxes.GetOpenableContainers(radius);
+			if (nearbyContainers.Count == 0)
+			{
+				Player.m_localPlayer?.Message(MessageHud.MessageType.Center, "No container you can open within range");
+				return;
+			}
 			var player = Player.m_localPlayer;
 			var playerInventory = player.GetInventory();
 			var itemsToMove = new List<ItemDrop.ItemData>();

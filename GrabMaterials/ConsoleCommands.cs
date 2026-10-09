@@ -194,7 +194,7 @@ namespace GrabMaterials
 
 			var seen = new HashSet<string>();
 			var itemsToGrab = new List<ItemToGrab>();
-			foreach (var container in Boxes.GetNearbyContainers(radius))
+			foreach (var container in Boxes.GetOpenableContainers(radius))
 			{
 				var inventory = container.GetInventory();
 				if (inventory == null) continue;
@@ -439,7 +439,9 @@ namespace GrabMaterials
 
 		static void GrabItemsFromNearbyContainers(List<ItemToGrab> itemsToGrab, float radius, string requestLabel = null, bool grabDelta = false)
 		{
-			var nearbyContainers = Boxes.GetNearbyContainers(radius);
+			// Only containers the player could open, so a locked chest's stock is neither counted
+			// in the pre-flight nor taken from.
+			var nearbyContainers = Boxes.GetOpenableContainers(radius);
 			var player = Player.m_localPlayer;
 
 			// Aggregate duplicate requests so a pack with several pieces sharing

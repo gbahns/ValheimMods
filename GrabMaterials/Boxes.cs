@@ -123,6 +123,29 @@ namespace GrabMaterials
 			return nearby;
 		}
 
+		// The nearby containers the local player may actually take from or put into: the ones
+		// vanilla would open.  Reads (/i, /search, highlighting) keep using GetNearbyContainers;
+		// anything that changes a container's contents goes through this.
+		internal static List<Container> GetOpenableContainers(float radius)
+		{
+			var nearby = GetNearbyContainers(radius);
+			var openable = new List<Container>(nearby.Count);
+			var skipped = new Dictionary<string, int>();
+			foreach (var container in nearby)
+			{
+				if (ContainerAccess.CanOpen(container, out var reason))
+				{
+					openable.Add(container);
+					continue;
+				}
+				skipped.TryGetValue(reason, out var n);
+				skipped[reason] = n + 1;
+			}
+			foreach (var kv in skipped)
+				Log.LogInfo($"skipping {kv.Value} {kv.Key} container(s) within {radius} m");
+			return openable;
+		}
+
 		internal static List<Container> GetNearbyContainers(float radius)
 		{
 			List<Container> nearbyContainers = new List<Container>();

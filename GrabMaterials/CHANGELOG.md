@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.4.2 — unreleased
+
+- **Fixed: grabbing from a container you could not open duplicated the item, and storing into one lost it.** The game only checks who may open a chest at the moment you press Use, and it only saves a chest's contents from the machine that currently owns it, which is usually whoever is standing nearest. This mod reached into chests directly, so a Personal container, a chest inside someone else's ward, or one another player had open was taken from like any other, and if another machine owned it the removal never saved: you kept the copy and the chest got its item back. Grabs and `/store` now skip every container the game would refuse to open for you, and take ownership of a container before changing it, the same way opening it does. `/i` and `/search` still list what is nearby.
+
 ## 2.4.1 — 2026-09-20
 
 - **One configurable container range.** "Container Range" under [Client config] is how far away a container can be for every command in the mod. It was hardcoded and inconsistent: `/g`, `/i` and `/search` reached 50 m while the build-piece hotkey only reached 10 m, so materials the panel counted could be out of the hotkey's reach. The default is 20 m to match AzuCraftyBoxes' default pull range; set it to whatever your craft-from-containers and auto-store mods use so one distance means "in reach" everywhere. Anyone used to the old 50 m grab can set it back.
