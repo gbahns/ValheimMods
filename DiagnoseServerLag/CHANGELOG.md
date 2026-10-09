@@ -2,6 +2,21 @@
 
 ## 0.10.10 - unreleased
 
+- **`dsl_bench_server` is gone.** It had done exactly what `dsl_bench` does since 0.10.4, and two
+  names for one command imply a difference that is not there - which is the same confusion that
+  produced the bug the merge fixed. Anyone who types it will find `dsl_bench` obvious.
+
+- **The settings line reports what is actually in force**, not only what the menu was told. A mod
+  that overrides a quality setting at runtime never touches the pref, so the capture read the
+  menu's value and missed the one doing the work: GraphicsConfigPlus states plainly that it takes
+  over LOD, shadows and vsync. Two captures twenty minutes apart came back byte-identical in this
+  block while the frame time moved 2.7 ms, and nothing in them could say what had changed.
+
+  Added as `live:lodBias`, `live:shadowDist`, `live:cascades`, `live:shadowRes`,
+  `live:pixelLights`, `live:aniso`, `live:softParticles`, read off Unity. The expected LOD bias is
+  computable from the menu value, so where the two disagree the line says
+  `(menu implies 5 - overridden)` outright.
+
 - **The hardware line records the display refresh rate** (`5120x1440@60Hz`). It is what decides
   whether vsync costs anything: with vsync on, frames quantise to divisions of the refresh, so a
   60 Hz machine producing 23 fps is pushed down to 20, while at 144 Hz the steps near 30 fps are

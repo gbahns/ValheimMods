@@ -93,7 +93,6 @@ server      33.3 ms  412669 obj
 | `dsl_bench [minutes]` | Capture the last N minutes (default 2) on **this machine**, ask the server for the group capture, and write a CSV |
 | `dsl_bench 90s` | The same over a tight window, in seconds, for one freeze you just felt |
 | `dsl_bench 30 local` | This machine only - skip asking the server |
-| `dsl_bench_server [minutes]` | The same command under its old name |
 | `dsl_cpu` | What this process is costing the machine, and how much headroom is left |
 | `dsl_dump` | Write every measured second to a CSV under `BepInEx/config/DiagnoseServerLag/` |
 | `dsl_reset` | Forget the history and rebuild the baseline |

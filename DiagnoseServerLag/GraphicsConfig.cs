@@ -175,6 +175,34 @@ namespace DiagnoseServerLag
                 // Unity's own, which the game's enums do not cover.
                 parts.Add($"vsyncCount={QualitySettings.vSyncCount}");
                 if (Application.targetFrameRate > 0) parts.Add($"fpsCap={Application.targetFrameRate}");
+
+                // What is ACTUALLY in force, read off Unity rather than off the prefs.
+                //
+                // Everything above is what the settings menu was told. A mod that overrides a
+                // quality setting at runtime - GraphicsConfigPlus does exactly this for LOD,
+                // shadows and vsync, and says so - never touches the pref, so the capture reports
+                // the menu's value and misses the one doing the work. Two captures twenty minutes
+                // apart once came back byte-identical in this block while the frame time moved
+                // 2.7 ms, and nothing here could say what had changed.
+                //
+                // The expected lodBias is computable from the menu value (0 -> 1.0, 1 -> 1.5,
+                // 2 -> 2.0, 3 -> 5.0), so a disagreement there is worth naming outright: it means
+                // something other than the menu is deciding. The rest are printed plainly for
+                // comparison rather than guessed at.
+                parts.Add($"live:lodBias={QualitySettings.lodBias:0.##}");
+                int? lodLevel = Int("LodBias") ?? Int("LOD");
+                if (lodLevel.HasValue)
+                {
+                    float expect = lodLevel.Value == 0 ? 1f : lodLevel.Value == 1 ? 1.5f : lodLevel.Value == 3 ? 5f : 2f;
+                    if (Mathf.Abs(QualitySettings.lodBias - expect) > 0.01f)
+                        parts.Add($"(menu implies {expect:0.##} - overridden)");
+                }
+                parts.Add($"live:shadowDist={QualitySettings.shadowDistance:0}");
+                parts.Add($"live:cascades={QualitySettings.shadowCascades}");
+                parts.Add($"live:shadowRes={QualitySettings.shadowResolution}");
+                parts.Add($"live:pixelLights={QualitySettings.pixelLightCount}");
+                parts.Add($"live:aniso={QualitySettings.anisotropicFiltering}");
+                parts.Add($"live:softParticles={(QualitySettings.softParticles ? "on" : "off")}");
             }
             catch (Exception e)
             {

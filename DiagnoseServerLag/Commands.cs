@@ -107,13 +107,6 @@ namespace DiagnoseServerLag
 
             new Terminal.ConsoleCommand("dsl_bench", "Diagnose Server Lag: capture the last N minutes (default 2). 30 is half an hour, 90s a tight window, 'local' skips asking the server", bench);
 
-            // Kept as an alias rather than removed: it is in the readme, in a week of notes, and in
-            // the fingers of everybody who has been testing this. It runs the same delegate rather than
-            // a copy of it: the first attempt at an alias was a second, shorter body that skipped the
-            // local capture and the duration clamp while its help line said "same as dsl_bench", so the
-            // two commands quietly disagreed about what they did.
-            new Terminal.ConsoleCommand("dsl_bench_server", "Diagnose Server Lag: same as dsl_bench, kept for habit", bench);
-
             new Terminal.ConsoleCommand("dsl_cpu", "Diagnose Server Lag: what this process is costing the machine",
                 (Terminal.ConsoleEvent)(args =>
                 {
