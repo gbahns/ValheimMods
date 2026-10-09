@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
 
 namespace TheGreatestMap
@@ -101,23 +102,52 @@ namespace TheGreatestMap
             if (peer == 0L) return;
             if (_lastExchange.TryGetValue(peer, out float last) && Time.time - last < TgmConfig.ExchangeCooldown.Value) return;
             _lastExchange[peer] = Time.time;
-            PinNetwork.SendExchange(peer, PersonalMap.Store, reply: true, MyExploration());
+            var clock = Stopwatch.StartNew();
+            var mine = MyExploration();
+            PinNetwork.SendExchange(peer, PersonalMap.Store, reply: true, mine);
+            TheGreatestMapMod.Log.LogInfo(
+                $"[TheGreatestMap] Offered our map to {Name(other)}: {PersonalMap.Store.Pins.Count} markers, " +
+                $"{Bytes(mine)} of explored area, packed in {clock.ElapsedMilliseconds} ms.");
         }
 
         internal static void OnExchange(long sender, string theirName, bool reply, MapStore theirs, byte[] exploration)
         {
+            var clock = Stopwatch.StartNew();
             var result = ClientPins.ApplyMerge(theirs);
             AfterMerge(result);
+            long merged = clock.ElapsedMilliseconds;
             bool newAreas = ApplyExploration(exploration);
+            long applied = clock.ElapsedMilliseconds;
+            long packed = 0L;
             if (reply)
             {
                 _lastExchange[sender] = Time.time;
-                PinNetwork.SendExchange(sender, PersonalMap.Store, reply: false, MyExploration());
+                var mine = MyExploration();
+                PinNetwork.SendExchange(sender, PersonalMap.Store, reply: false, mine);
+                packed = clock.ElapsedMilliseconds;
+                TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Sent our map back to {theirName}: {Bytes(mine)} of explored area.");
             }
+            // Timed because this is the one routine heavy enough to be felt: applying another
+            // player's explored area is the same work as reading a cartography table, and it runs
+            // on the main thread. A long one here is a frame the game did not draw, which is worth
+            // knowing about if anything odd happened at that moment.
+            TheGreatestMapMod.Log.LogInfo(
+                $"[TheGreatestMap] Compared maps with {theirName}: {(result.Any ? result.ToString() : "no marker changes")}, " +
+                $"{Bytes(exploration)} of their explored area{(newAreas ? " (new ground)" : "")}. " +
+                $"Markers {merged} ms, exploration {applied - merged} ms" +
+                (reply ? $", packing ours {packed - applied} ms" : "") + $", {clock.ElapsedMilliseconds} ms in all.");
             string what = result.Any ? result.ToString() : "";
             if (newAreas) what = what.Length > 0 ? what + ", new map areas" : "new map areas";
             if (what.Length > 0) TheGreatestMapMod.Message($"Compared maps with {theirName}: {what}.");
             else if (_quietOnce.Add(sender)) TheGreatestMapMod.Message($"Compared maps with {theirName}: nothing new.");
+        }
+
+        private static string Bytes(byte[] data) => data == null ? "none" : $"{data.Length / 1024f:0.#} KB";
+
+        private static string Name(Player other)
+        {
+            try { return other != null ? other.GetPlayerName() : "someone"; }
+            catch (System.Exception) { return "someone"; }
         }
 
         /// <summary>My explored area in the cartography-table format (markers stripped by the table patches), compressed.</summary>

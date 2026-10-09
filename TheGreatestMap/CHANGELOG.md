@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.8.1 — 2026-10-09
+
+Client-side; works with a 0.2.x server.
+
+- Comparing maps with another player is written to the log, with timings. Two players taking their
+  maps out together exchange markers and explored area, and applying someone's explored area is the
+  same work as reading a cartography table, on the main thread -- so a slow one is a frame the game
+  did not draw. None of it left any trace before: the "Compared maps with" line is a message on
+  screen and nowhere else, so there was nothing to look at afterwards. The log now says who, how
+  many markers, how much explored area each way, and how long each part took.
+
 ## 1.8.0 — 2026-10-08
 
 Client-side; works with a 0.2.x server.
