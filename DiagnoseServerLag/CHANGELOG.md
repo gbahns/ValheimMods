@@ -2,6 +2,12 @@
 
 ## 0.10.10 - unreleased
 
+- **The hardware line records the display refresh rate** (`5120x1440@60Hz`). It is what decides
+  whether vsync costs anything: with vsync on, frames quantise to divisions of the refresh, so a
+  60 Hz machine producing 23 fps is pushed down to 20, while at 144 Hz the steps near 30 fps are
+  close enough together to cost about one. Without it the advice is guesswork, and `FpsLimit` is a
+  poor stand-in - it is what somebody typed, not what the panel does.
+
 - **`Vegetation` was reporting the wrong number, and two more settings were missing.** 0.10.7
   mapped it to `VegetationPatched`, a key that exists and looked right. The game stores vegetation
   quality under `ClutterQuality`; `VegetationPatched` is a separate flag that happens to sit beside

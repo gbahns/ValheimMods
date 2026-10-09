@@ -28,6 +28,7 @@ namespace DiagnoseServerLag
         internal static int RamMB { get; private set; }
         internal static int ScreenWidth { get; private set; }
         internal static int ScreenHeight { get; private set; }
+        internal static int RefreshHz { get; private set; }
         internal static string Os { get; private set; } = "";
         internal static string GraphicsApi { get; private set; } = "";
         internal static string GpuVendor { get; private set; } = "";
@@ -47,6 +48,13 @@ namespace DiagnoseServerLag
             {
                 ScreenWidth = Screen.width;
                 ScreenHeight = Screen.height;
+                // Re-read with the resolution, and for the same reason: it changes without a
+                // restart. It is also what decides whether vsync costs anything. With vsync on,
+                // frames quantise to divisions of the refresh - at 60 Hz a machine producing 23
+                // fps is pushed to 20, while at 144 Hz the steps near 30 fps are close enough
+                // together to cost about one. Without this the advice is guesswork, and FpsLimit
+                // is a poor stand-in: it is what somebody typed, not what the panel does.
+                RefreshHz = Screen.currentResolution.refreshRate;
                 if (_done) return;
                 _done = true;
 
@@ -76,7 +84,9 @@ namespace DiagnoseServerLag
         {
             Refresh();
             if (string.IsNullOrEmpty(Gpu) && string.IsNullOrEmpty(Cpu)) return "";
-            string res = ScreenWidth > 0 ? $"{ScreenWidth}x{ScreenHeight}" : "?";
+            string res = ScreenWidth > 0
+                ? $"{ScreenWidth}x{ScreenHeight}" + (RefreshHz > 0 ? $"@{RefreshHz}Hz" : "")
+                : "?";
             string vram = VramMB > 0 ? $" {VramMB / 1024f:0.#} GB" : "";
             string ram = RamMB > 0 ? $", {RamMB / 1024f:0.#} GB RAM" : "";
             string vendor = string.IsNullOrEmpty(GpuVendor) ? "" : $" [{GpuVendor}]";
