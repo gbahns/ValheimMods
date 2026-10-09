@@ -643,9 +643,11 @@ namespace DiagnoseServerLag
             _gathering = false;
             string text;
             string csv = null;
+            string csvPath = null;
             try
             {
                 text = GroupReport.Build(_gatherSeconds, _gathered, _gatherExpected, out string path, out csv);
+                csvPath = path;
                 if (path != null) text += "\nwrote " + path + " on the server";
                 DiagnoseServerLagMod.Log.LogInfo("[DiagnoseServerLag] group capture\n" + text);
             }
@@ -670,7 +672,42 @@ namespace DiagnoseServerLag
                     var inner = new ZPackage();
                     inner.Write(csv);
                     payload.WriteCompressed(inner);
-                    ZRoutedRpc.instance?.InvokeRoutedRPC(_gatherFor, RpcCaptureCsv, payload);
+
+                    // Never hand a socket a package it cannot send. Steam's ceiling is 512 KiB,
+                    // and ZSteamSocket.Send has no guard: it passes the array straight to
+                    // SendMessageToConnection and, on any result but OK, logs "Failed to send
+                    // data" and breaks - leaving the oversized package at the head of the queue to
+                    // be retried forever. So one too-large package does not fail, it wedges that
+                    // peer's socket until the connection dies.
+                    //
+                    // Which is exactly what happened: dsl_bench 60 across six machines produced a
+                    // 3.8 MB CSV, Steam refused it with k_EResultInvalidParam, and thirty seconds
+                    // later the admin who asked for the capture was disconnected. Every earlier
+                    // group CSV was between 115 and 758 KB and sent fine, so the feature looked
+                    // healthy right up to the first full-hour capture with everybody on - the one
+                    // capture worth having.
+                    //
+                    // Capped well under the ceiling, because the routed RPC wraps this payload
+                    // again and the margin is free. When it does not fit, the path is sent instead;
+                    // chunking would be the richer answer, but a diagnostic convenience is not
+                    // worth a protocol that can drop players.
+                    const int maxPayload = 256 * 1024;
+                    if (payload.Size() <= maxPayload)
+                    {
+                        ZRoutedRpc.instance?.InvokeRoutedRPC(_gatherFor, RpcCaptureCsv, payload);
+                    }
+                    else
+                    {
+                        string where = csvPath == null ? "on the server" : csvPath;
+                        ZRoutedRpc.instance?.InvokeRoutedRPC(_gatherFor, RpcCaptureResult, Wrap(
+                            $"The group CSV is {csv.Length / 1024}" + " KB, too big to send over the game's " +
+                            $"network (the limit is 512 KB and this compresses to {payload.Size() / 1024} KB). " +
+                            $"It is on the server at {where} - copy it from there, or capture a shorter " +
+                            "window next time."));
+                        DiagnoseServerLagMod.Log.LogWarning(
+                            $"[DiagnoseServerLag] group CSV not sent: {payload.Size()} bytes compressed " +
+                            $"exceeds the {maxPayload} byte cap. It is at {where}.");
+                    }
                 }
             }
             _gathered.Clear();

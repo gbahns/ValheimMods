@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.10.9 - unreleased
+
+- **A group capture no longer disconnects whoever asked for it.** `dsl_bench 60` across six
+  machines produced a 3.8 MB CSV; 0.10.6 added sending that CSV back to the client that asked, and
+  compressed it still exceeded Steam's 512 KiB message ceiling. `ZSteamSocket.Send` has no size
+  guard - it hands the array straight to `SendMessageToConnection` and, on any result but OK, logs
+  "Failed to send data" and breaks, leaving the oversized package at the head of the queue to be
+  retried forever. So an over-large package does not merely fail to send, it wedges that peer's
+  socket until the connection dies, which is what happened: `k_EResultInvalidParam` at 23:10:35,
+  `k_EResultNoConnection` and a closed socket thirty seconds later.
+
+  Every earlier group CSV was between 115 and 758 KB and went through, so the feature looked
+  healthy right up to the first full-hour capture with everybody connected - the one capture worth
+  having.
+
+  The payload is now capped at 256 KiB, well under the ceiling because the routed RPC wraps it
+  again. Past that the server sends the file's own path instead and logs why. Measured at 43
+  compressed bytes per machine-second, the cap allows about 17 minutes with five players, 25 with
+  three, 34 with two. Chunking would be the richer answer; a diagnostic convenience is not worth a
+  protocol that can drop players, and a locally hosted server writes the file where its admin can
+  already reach it.
+
 ## 0.10.8 - 2026-10-05
 
 - **`zdos held` meant two different things and only one of them was labelled.** On a client the
