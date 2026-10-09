@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.10.10 - unreleased
+
+- **The capture says what simulation distance the server actually granted**, not just what the
+  client asked for. "Draw distance" in the graphics menu is this setting, and the capture reads it
+  from each client's own prefs - so it reports a request. The server answers
+  `RPC_RequestValidSimulationDistance` with `min(request, its own)` and stores that on the peer, so
+  a client asking for a wide area on a narrowly configured server is simply running narrow, and
+  nothing anywhere said so.
+
+  That mattered immediately: one capture had two players reading `SimulationDistance=6` against
+  everyone else's 2, which looked like it explained who owned what - a wider active area claims more
+  objects - and could not be checked, because the granted value is not logged by Valheim and was not
+  captured here. The per-client line now reads `sim <near>/<far>`, and adds `(asked N, capped by the
+  server)` when the two disagree. Printed plainly when they agree, since that is the ordinary case.
+
 ## 0.10.9 - 2026-10-09
 
 - **A group capture no longer disconnects whoever asked for it.** `dsl_bench 60` across six

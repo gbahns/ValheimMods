@@ -53,7 +53,7 @@ namespace DiagnoseServerLag
                     : "CPU n/a";
                 string ai = c.NearbyAI > 0 ? $"   simulating {c.OwnedAI}/{c.NearbyAI} creatures" : "";
                 sb.AppendLine($"  {Trim(c.Name, 16),-16} frame {c.FrameMedianMs,5:0.0} ms   stalls {c.TotalStalls,3}   {cpu}" +
-                              (c.RoundTripMs > 0 ? $"   rt {c.RoundTripMs} ms" : "") + ai);
+                              (c.RoundTripMs > 0 ? $"   rt {c.RoundTripMs} ms" : "") + ai + Granted(c));
             }
 
             // Who is running what. A client on an older build is not refused anything - refusing a
@@ -139,6 +139,55 @@ namespace DiagnoseServerLag
         /// a handful of machines. Then compare. Only a count well above that prediction says
         /// anything about the server or the path everyone shares.
         /// </summary>
+        /// <summary>
+        /// The simulation distance the server actually granted this client, which is not the same
+        /// as the one its settings ask for.
+        ///
+        /// "Draw distance" in the graphics menu is this setting; the capture reads it from the
+        /// client's own prefs, so it reports the *request*. The server answers
+        /// RPC_RequestValidSimulationDistance with min(request, its own) and stores the result on
+        /// the peer, so a client asking for a wide area on a server configured narrow is simply
+        /// running narrow - and nothing anywhere said so. Two players in one capture read
+        /// SimulationDistance=6 against everyone else's 2, which looked like it explained who owned
+        /// what, and could not be checked.
+        ///
+        /// Printed only when it differs from the request, since agreeing is the ordinary case and a
+        /// line per client that always says the same thing stops being read.
+        /// </summary>
+        private static string Granted(ClientSeries c)
+        {
+            try
+            {
+                var znet = ZNet.instance;
+                if (znet == null) return "";
+                var peer = znet.GetPeer(c.Uid);
+                if (peer == null) return "";
+                var granted = peer.m_simulationDistance;
+                int near = granted.NearSimulationDistance;
+                if (near <= 0) return "";
+
+                // What the client asked for, out of the settings line it already sends.
+                int asked = -1;
+                if (!string.IsNullOrEmpty(c.Graphics))
+                {
+                    const string key = "SimulationDistance=";
+                    int at = c.Graphics.IndexOf(key, StringComparison.Ordinal);
+                    if (at >= 0)
+                    {
+                        int end = at + key.Length;
+                        while (end < c.Graphics.Length && char.IsDigit(c.Graphics[end])) end++;
+                        int.TryParse(c.Graphics.Substring(at + key.Length, end - at - key.Length), out asked);
+                    }
+                }
+
+                string classic = granted.IsClassic ? " classic" : "";
+                if (asked >= 0 && asked != near)
+                    return $"   sim {near}/{granted.FarSimulationDistance}{classic} (asked {asked}, capped by the server)";
+                return $"   sim {near}/{granted.FarSimulationDistance}{classic}";
+            }
+            catch { return ""; }
+        }
+
         private static string Correlate(List<Sample> window, List<ClientSeries> clients)
         {
             // Which seconds each machine reported at all, and which of those it stalled in. The
