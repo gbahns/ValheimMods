@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.10 - unreleased
+## 0.10.10 - 2026-10-13
 
 - **`dsl_bench_server` is gone.** It had done exactly what `dsl_bench` does since 0.10.4, and two
   names for one command imply a difference that is not there - which is the same confusion that
