@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.4.2 — unreleased
+## 2.4.2 — 2026-10-13
 
 - **Fixed: grabbing from a container you could not open duplicated the item, and storing into one lost it.** The game only checks who may open a chest at the moment you press Use, and it only saves a chest's contents from the machine that currently owns it, which is usually whoever is standing nearest. This mod reached into chests directly, so a Personal container, a chest inside someone else's ward, or one another player had open was taken from like any other, and if another machine owned it the removal never saved: you kept the copy and the chest got its item back. Grabs and `/store` now go through the game's own open request for every container another machine owns: that machine checks whether you may open it and whether it is in use, hands it over, and only then does the grab touch it, exactly as pressing Use would. One machine writes a chest at a time, so two players racing a chest can no longer come away with the same item. Chests you already own, which is nearly all of them when playing alone, skip the exchange, and a chest whose owner does not answer within a moment is left alone. `/i` and `/search` still list what is nearby.
 
