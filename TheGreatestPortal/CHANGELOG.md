@@ -1,5 +1,7 @@
 # Changelog
 
+## 1.2.1 — 2026-10-13
+
 ## 1.2.0 — 2026-09-28
 
 - Two new sections at the top of both destination lists. **Others' Recents** shows where everyone

@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Text;
 using UnityEngine;
 
@@ -43,39 +44,126 @@ namespace TheGreatestPortal
         }
 
         /// <summary>
-        /// Whether a name misspells the place. The word counts wherever it appears as a word of
-        /// its own, so "The Alter", "Alter Portal" and "the alter 2" are all caught, and so does
-        /// the whole name with everything but its letters taken out, which catches "Alter!",
-        /// "a l t e r" and "TheAlter". A longer word that merely contains the letters is not a
-        /// misspelling of anything and passes: "Altered", "Alternate", "Walter's place".
+        /// Whether a name misspells the place. The word counts wherever it stands on its own, in
+        /// any case: "The Alter", "Alter Portal", "the alter 2". It also counts when it has been
+        /// dressed up, because every reading is tried with the dressing taken off -- punctuation
+        /// and spaces removed ("Alt-er Portal", "a l t e r", "A-L-T-E-R"), accents flattened
+        /// ("áltér"), letters that merely look Latin put back ("аltеr" in Cyrillic), and digits and
+        /// symbols read as the letters they stand in for ("a1ter", "4lt3r", "@lter").
+        ///
+        /// A longer word that merely contains the letters is not a misspelling of anything and
+        /// passes: "Altered", "Alternate", "Walter's place". That is the line, and it is why this
+        /// works word by word rather than looking for the letters anywhere in the name.
         /// </summary>
         private static bool Counts(string name)
         {
             if (string.IsNullOrEmpty(name)) return false;
-            if (IsMisspelling(LettersOnly(name))) return true;
-            var word = new StringBuilder();
-            foreach (char c in name)
-            {
-                if (char.IsLetter(c)) { word.Append(c); continue; }
-                if (IsMisspelling(word.ToString())) return true;
-                word.Length = 0;
-            }
-            return IsMisspelling(word.ToString());
+            if (Hits(name)) return true;   // the whole name, spaces and all: "a l t e r"
+            foreach (var word in name.Split((char[])null, StringSplitOptions.RemoveEmptyEntries))
+                if (Hits(word)) return true;   // or any one word of it: "Alt-er Portal"
+            return false;
         }
 
+        /// <summary>
+        /// Does this read as the word once it is stripped back? Tried both ways round, because the
+        /// two readings disagree: "Alter 4" is the word with a number after it, while "4lter" is
+        /// the word with a number inside it, and no single pass can take both.
+        /// </summary>
+        private static bool Hits(string text)
+        {
+            for (int pass = 0; pass < 2; pass++)
+            {
+                string reduced = Reduce(text, pass == 1);
+                if (IsMisspelling(reduced)) return true;
+                if (IsMisspelling(Squeeze(reduced))) return true;   // a letter leant on: "allterr"
+            }
+            return false;
+        }
+
+        /// <summary>A run of the same letter read as one of it, so a stutter is no escape.</summary>
+        private static string Squeeze(string word)
+        {
+            var sb = new StringBuilder(word.Length);
+            foreach (char c in word)
+                if (sb.Length == 0 || sb[sb.Length - 1] != c) sb.Append(c);
+            return sb.ToString();
+        }
+
+        /// <summary>The word itself, or its plural: "Alters" misspells "Altars" just as surely.</summary>
         private static bool IsMisspelling(string word)
+        {
+            if (Same(word)) return true;
+            int last = word.Length - 1;
+            return last > 0 && (word[last] == 's' || word[last] == 'S') && Same(word.Substring(0, last));
+        }
+
+        private static bool Same(string word)
         {
             return string.Equals(word, Misspelling, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(word, WithThe, StringComparison.OrdinalIgnoreCase);
         }
 
-        private static string LettersOnly(string text)
+        /// <summary>
+        /// The letters of a piece of text and nothing else, lowercased, with accents flattened and
+        /// look-alike letters from other alphabets put back. With <paramref name="leet"/>, digits
+        /// and symbols that stand in for letters are read as those letters first.
+        /// </summary>
+        private static string Reduce(string text, bool leet)
         {
-            if (string.IsNullOrEmpty(text)) return "";
-            var letters = new StringBuilder(text.Length);
-            foreach (char c in text)
-                if (char.IsLetter(c)) letters.Append(c);
-            return letters.ToString();
+            string decomposed = text;
+            try { decomposed = text.Normalize(NormalizationForm.FormD); }
+            catch (ArgumentException) { }   // a lone surrogate; the raw text will do
+            var sb = new StringBuilder(decomposed.Length);
+            foreach (char raw in decomposed)
+            {
+                if (CharUnicodeInfo.GetUnicodeCategory(raw) == UnicodeCategory.NonSpacingMark) continue;   // the accent itself
+                char c = Latin(raw);
+                if (leet) c = Spelt(c);
+                if (char.IsLetter(c)) sb.Append(char.ToLowerInvariant(c));
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>Letters from other alphabets, and full-width ones, that are Latin to the eye.</summary>
+        private static char Latin(char c)
+        {
+            if (c >= '\uFF21' && c <= '\uFF3A') return (char)(c - 0xFF21 + 'A');   // full-width capitals
+            if (c >= '\uFF41' && c <= '\uFF5A') return (char)(c - 0xFF41 + 'a');   // and smalls
+            switch (c)
+            {
+                case '\u0430': return 'a';   // Cyrillic a
+                case '\u0435': return 'e';   // Cyrillic e
+                case '\u043E': return 'o';   // Cyrillic o
+                case '\u0441': return 'c';   // Cyrillic s, which looks like c
+                case '\u0440': return 'p';   // Cyrillic r, which looks like p
+                case '\u0445': return 'x';   // Cyrillic h, which looks like x
+                case '\u0442': return 't';   // Cyrillic t
+                case '\u0456': return 'i';   // Ukrainian i
+                case '\u04CF': return 'l';   // Cyrillic palochka
+                case '\u03B1': return 'a';   // Greek alpha
+                case '\u03B5': return 'e';   // Greek epsilon
+                case '\u03BF': return 'o';   // Greek omicron
+                case '\u03C4': return 't';   // Greek tau
+                case '\u03B9': return 'i';   // Greek iota
+                default: return c;
+            }
+        }
+
+        /// <summary>Digits and symbols read as the letters they are standing in for.</summary>
+        private static char Spelt(char c)
+        {
+            switch (c)
+            {
+                case '0': return 'o';
+                case '1': case '|': return 'l';
+                case '3': return 'e';
+                case '4': return 'a';
+                case '5': case '$': return 's';
+                case '7': return 't';
+                case '@': return 'a';
+                case '!': return 'i';
+                default: return c;
+            }
         }
 
         /// <summary>
