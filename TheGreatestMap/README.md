@@ -134,7 +134,7 @@ sharing their map with you. The extra portals are drawn only, never saved and ne
 
 Portals get their own color, since they are the points you travel between and are worth spotting at
 a glance. By default they fade slowly between two shades of orange, which reads as a gentle pulse rather
-than a colour change; set "Portal Marker Color" and
+than a color change; set "Portal Marker Color" and
 "Portal Pulse Color" to any hex value or color name, clear the pulse color for a steady one, and
 use "Portal Pulse Seconds" for the speed.
 

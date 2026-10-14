@@ -58,6 +58,13 @@ namespace TheGreatestMap
             Show(map, shared);
         }
 
+        /// <summary>Everything the tooltip reads, so any change to it is a change on screen.</summary>
+        private static string Describes(SharedPin shared)
+        {
+            return shared.Id + "|" + (shared.Checked ? "1" : "0") + "|" + shared.Name + "|" + shared.Icon
+                 + "|" + shared.Author + "|" + shared.Created;
+        }
+
         private static void Hide()
         {
             if (_root != null && _root.activeSelf) _root.SetActive(false);
@@ -71,9 +78,13 @@ namespace TheGreatestMap
             if (_root == null) Build(parent);
             if (_root == null) return;
 
-            if (shared.Id != _shownId)
+            // Keyed on what the tooltip says, not on which marker it is: crossing one off while
+            // the pointer rests on it changes the words without changing the marker, and the
+            // tooltip would go on claiming the opposite of what was just clicked.
+            string key = Describes(shared);
+            if (key != _shownId)
             {
-                _shownId = shared.Id;
+                _shownId = key;
                 Fill(shared);
             }
             if (!_root.activeSelf) _root.SetActive(true);
@@ -83,20 +94,24 @@ namespace TheGreatestMap
         /// <summary>Title plus up to three quiet lines; unused ones are switched off rather than rebuilt.</summary>
         private static void Fill(SharedPin shared)
         {
-            string title = !string.IsNullOrEmpty(shared.Name) ? shared.Name : null;
             var kind = ClientPins.KindOf(shared);
-            if (title == null) title = kind.HasValue ? Categories.Label(kind.Value) : IconRegistry.DisplayName(shared.Icon);
+            // What this one is, which for a dungeon or a structure is not the same as its kind: a
+            // frost cave, not "Dungeons". Most markers carry no label on the map, so the tooltip is
+            // where a player reads it, and naming the kind alone told them what they could see.
+            string what = kind.HasValue ? Catalog.TypeNameFor(kind.Value, shared.Icon) : null;
+            if (what == null && kind.HasValue) what = Categories.Label(kind.Value);
+
+            string title = !string.IsNullOrEmpty(shared.Name) ? shared.Name
+                : (what ?? IconRegistry.DisplayName(shared.Icon));
             _title.text = title;
 
             var lines = new List<string>();
-            string what = kind.HasValue ? Categories.Label(kind.Value) : "Marker";
-            // The icon is worth naming when it is the only thing telling the kinds apart, which is
-            // exactly the case the map's missing labels create.
-            string iconName = IconRegistry.DisplayName(shared.Icon);
-            if (!string.Equals(iconName, title, StringComparison.OrdinalIgnoreCase))
-                lines.Add(shared.Auto ? $"{what} · {iconName}" : $"Placed · {iconName}");
-            else
-                lines.Add(shared.Auto ? what : "Placed marker");
+            // A second line only when it says something the title does not. A marker named by its
+            // finder keeps that name above and says what it is below; one already titled by what
+            // it is has nothing left to repeat.
+            bool said = what == null || string.Equals(what, title, StringComparison.OrdinalIgnoreCase);
+            if (!shared.Auto) lines.Add(said ? "Placed marker" : "Placed - " + what);
+            else if (!said) lines.Add(what);
 
             if (shared.Checked)
                 lines.Add(kind.HasValue && Categories.IsResource(kind.Value) ? "Cleared" : "Searched");

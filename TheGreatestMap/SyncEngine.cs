@@ -79,6 +79,17 @@ namespace TheGreatestMap
         internal static void AfterMerge(MergeResult result)
         {
             if (result.Added + result.Updated == 0) return;
+            // Markers that arrived standing on ones already here. Recording checks for a marker
+            // already in the way, but only against this map: another player who recorded the same
+            // cave before our maps met wrote theirs just as honestly, and both survive a merge,
+            // because by id they are two different markers. Folding here is the only place that
+            // sees both. Every map folds a pair the same way round, so this converges rather than
+            // each side erasing the other's.
+            if (TgmConfig.FoldDuplicates == null || TgmConfig.FoldDuplicates.Value)
+            {
+                int folded = Duplicates.Fold();
+                if (folded > 0) TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Folded {folded} marker(s) that arrived standing on ones already here.");
+            }
             // Markers can still arrive with the old wrong icon from players on an older version.
             if (TgmConfig.RepairDungeonIcons.Value)
             {

@@ -1,5 +1,44 @@
 # Changelog
 
+## 1.8.2 — 2026-10-13
+
+Client-side; works with a 0.2.x server.
+
+- **A crossed-off marker now fades, rather than only wearing a small cross.** That cross is drawn
+  over the picture at the marker's own size, so a dark or busy icon swallows it -- the cultist
+  trophy on a frost cave especially -- and a neighboring marker's label, a portal's for instance,
+  can cover it outright. The marker itself washes toward gray and goes part transparent, which
+  reads as done at any distance and whatever is drawn on top of it. "Crossed Off Fade" (Display,
+  70) sets how far, and 0 keeps them as bright as before. Most of the effect is in darkening the
+  marker rather than in transparency: these sit on a dark map, so washing a gold icon toward pale
+  barely changes it.
+- The cross itself is painted a clear red and drawn last, so nothing of this mod's sits over it.
+- **Two markers on one thing fold into one.** Recording refuses to write a marker where one of the
+  same kind already stands, but that test can only be made against your own map. Five players
+  walking into the same silver vein each wrote one honestly, none of them had synced, and when the
+  maps met both survived -- different markers by id, and nothing downstream looked at where they
+  were. The pair then sat one exactly on top of the other, invisible except that there were two of
+  them to cross off, and crossing one left a bright marker wearing a red cross, because the cross
+  belonged to the one underneath. Markers arriving from the shared map or another player are now
+  folded against the ones already here, which is the only place that sees both. The survivor is
+  chosen by something every map agrees on, so two clients fold a pair the same way round rather
+  than each erasing the other's. What the losers knew is carried over first: crossed off if any of
+  them was, and a name if the survivor had none. "Fold Markers Standing On One Another"
+  (Recording) turns it off.
+- A name keeps two markers apart. The same kind, close enough together, is not quite enough to
+  call them one thing: two names side by side are two things somebody meant to tell apart, however
+  near they sit. A name against a blank is still one thing, and the name carries onto the survivor.
+- `tgm_dedupe` lists the markers standing on one another -- how many, how far apart, and who wrote
+  each one -- and `tgm_dedupe apply` folds them. A map that has been shared for a while has a
+  backlog of these, worth reading before anything is erased.
+- **A marker's tooltip is headed by what the thing is, not by what kind it is.** A frost cave was
+  headed "Dungeons", which is the name of its row in the legend and tells a player standing outside
+  the cave nothing they did not know. It now reads "Frost Caves", and the line beneath it repeating
+  the kind and the icon's name is gone.
+- The tooltip keeps up when a marker is crossed off while it is open. It was built once and left
+  alone, so clicking to mark something searched changed the map underneath a tooltip that still
+  said otherwise.
+
 ## 1.8.1 — 2026-10-09
 
 Client-side; works with a 0.2.x server.

@@ -19,9 +19,13 @@ namespace TheGreatestMap
         private static readonly Dictionary<Minimap.PinData, string> _idByPin = new Dictionary<Minimap.PinData, string>();
         private static readonly Color AutoTint = new Color(1f, 0.93f, 0.72f, 1f);
         private static readonly Color FireTint = new Color(1f, 0.5f, 0.12f, 1f);
+        private static readonly Color CrossTint = new Color(1f, 0.33f, 0.28f, 1f);   // the cross over a crossed-off marker
         // The portal markers currently drawn, rebuilt by each styling pass. Portals are painted
         // every frame instead of here, because their color can fade over time.
         private static readonly List<Minimap.PinData> _portalPins = new List<Minimap.PinData>();
+        // Crossed-off markers, so the portal painter can fade its own the same way. Portals are
+        // painted every frame rather than here, because their color moves.
+        private static readonly HashSet<Minimap.PinData> _fadedPins = new HashSet<Minimap.PinData>();
         private static bool _applyingRemote;
 
         internal static bool InTableRead;
@@ -263,6 +267,15 @@ namespace TheGreatestMap
             ReplacePinData(best);
             PersonalMap.Touch();
             return true;
+        }
+
+        /// <summary>Write a changed record back and redraw it; the change merges like any other.</summary>
+        internal static void UpdateMarker(SharedPin shared)
+        {
+            if (shared == null || !Store.Pins.ContainsKey(shared.Id)) return;
+            Store.Upsert(shared);
+            ReplacePinData(shared);
+            PersonalMap.Touch();
         }
 
         /// <summary>Rename a marker on the personal map (the portal reconciler; the change merges like any other).</summary>
@@ -653,6 +666,7 @@ namespace TheGreatestMap
             // forced back on: while it is up, the only thing worth seeing is where people are.
             bool hideEverything = (TgmConfig.ShowAllMarkers != null && !TgmConfig.ShowAllMarkers.Value) || PlayerSpotlight.On;
             _portalPins.Clear();
+            _fadedPins.Clear();
             foreach (var kv in _idByPin)
             {
                 var pin = kv.Key;
@@ -683,15 +697,27 @@ namespace TheGreatestMap
                 if (kind.HasValue && TgmConfig.MarkerSize.TryGetValue(kind.Value, out var size))
                     scale = Mathf.Clamp(size.Value, 20, 100) / 100f;
                 pin.m_uiElement.localScale = new Vector3(scale, scale, 1f);
+                // Crossed off: the marker itself goes pale, not only the little mark over it.
+                // That mark is drawn on top of the picture, so a busy one swallows it and a label
+                // from a neighboring marker can cover it outright; a faded marker still reads as
+                // done at a glance, and from any distance.
+                // Either says crossed off. The cross the game draws comes from the pin's own flag
+                // while the record keeps its own, and the two are brought together by separate
+                // paths -- so a marker can wear the cross before the record has caught up, or the
+                // other way about. Keying the fade to one of them alone is how two frost caves,
+                // both crossed off, ended up looking different from each other.
+                bool faded = shared.Checked || pin.m_checked;
+                if (faded) _fadedPins.Add(pin);
+                MarkChecked(pin, faded);
                 if (kind == Category.Portal) { _portalPins.Add(pin); continue; }
-                if (pin.m_iconElement == null || !shared.Auto) continue;
+                if (pin.m_iconElement == null || !shared.Auto) { if (faded && pin.m_iconElement != null) pin.m_iconElement.color = Faded(pin.m_iconElement.color); continue; }
                 // A campfire wears its own build-menu picture, which is already the color of fire,
                 // so it keeps its colors. Should it fall back to vanilla's white fire pin, that
                 // is painted orange instead.
-                if (kind == Category.Campfire)
-                    pin.m_iconElement.color = IconRegistry.IsVanillaPin(shared.Icon) ? FireTint : Color.white;
-                else
-                    pin.m_iconElement.color = AutoTint;
+                var tint = kind == Category.Campfire
+                    ? (IconRegistry.IsVanillaPin(shared.Icon) ? FireTint : Color.white)
+                    : AutoTint;
+                pin.m_iconElement.color = faded ? Faded(tint) : tint;
             }
             // Vanilla lays the pins out again whenever the map moves, which on the minimap is every
             // step the player takes, and a freshly built icon starts at the prefab's plain white.
@@ -701,10 +727,60 @@ namespace TheGreatestMap
         }
 
         /// <summary>Paint the portal markers on this map; called every frame so their color can fade.</summary>
+        /// <summary>
+        /// What is actually true of one marker as it is drawn right now, for tgm_list: the record's
+        /// crossed-off flag, the game's own, whether we are drawing it at all, and the color on its
+        /// icon this moment. A marker that says it is crossed off and is not pale has to be one of
+        /// those four disagreeing, and this says which.
+        /// </summary>
+        internal static string DrawnState(SharedPin shared)
+        {
+            if (shared == null) return "";
+            if (!_pinById.TryGetValue(shared.Id, out var pin) || pin == null) return "not drawn";
+            string color = pin.m_iconElement != null
+                ? $"{pin.m_iconElement.color.r:0.00}/{pin.m_iconElement.color.g:0.00}/{pin.m_iconElement.color.b:0.00} a{pin.m_iconElement.color.a:0.00}"
+                : "no icon";
+            return $"crossed {(shared.Checked ? "yes" : "no")}/{(pin.m_checked ? "yes" : "no")}, " +
+                   $"{(_fadedPins.Contains(pin) ? "faded" : "not faded")}, {color}, " +
+                   $"{(pin.m_uiElement != null && pin.m_uiElement.gameObject.activeSelf ? "shown" : "hidden")}";
+        }
+
         internal static void TintPortals(Color color)
         {
             foreach (var pin in _portalPins)
-                if (pin != null && pin.m_iconElement != null) pin.m_iconElement.color = color;
+                if (pin != null && pin.m_iconElement != null)
+                    pin.m_iconElement.color = _fadedPins.Contains(pin) ? Faded(color) : color;
+        }
+
+        /// <summary>
+        /// A crossed-off marker, washed out: toward gray so a colorful icon stops competing with
+        /// the ones still to do, and part-transparent so the map beneath shows through. How far is
+        /// the player's to set, because how crowded a map gets is theirs too.
+        /// </summary>
+        private static Color Faded(Color color)
+        {
+            float f = TgmConfig.CrossedOffFade != null ? Mathf.Clamp01(TgmConfig.CrossedOffFade.Value / 100f) : 0.6f;
+            if (f <= 0f) return color;
+            // Toward a dark gray rather than a light one: these markers sit on a dark map, so
+            // washing a gold icon toward pale barely changes it. Most of the effect is in the
+            // darkening; the alpha only softens the edge.
+            var washed = Color.Lerp(color, new Color(0.34f, 0.33f, 0.31f, color.a), f);
+            washed.a = color.a * (1f - 0.45f * f);
+            return washed;
+        }
+
+        /// <summary>
+        /// Vanilla's little cross, made to stand out: it is drawn at the marker's own size in its
+        /// own pale color, which disappears into a dark or busy picture. Painted here instead, and
+        /// drawn last so nothing of ours sits over it.
+        /// </summary>
+        private static void MarkChecked(Minimap.PinData pin, bool crossed)
+        {
+            var mark = pin.m_checkedElement;
+            if (mark == null || !crossed) return;
+            var image = mark.GetComponent<UnityEngine.UI.Image>();
+            if (image != null) image.color = CrossTint;
+            mark.transform.SetAsLastSibling();
         }
 
 

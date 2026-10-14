@@ -428,6 +428,22 @@ namespace TheGreatestMap
             return true;
         }
 
+        /// <summary>
+        /// What one marker of this kind actually is, read from its icon: a frost cave rather than
+        /// a dungeon. Dungeons and structures are several things wearing one kind, and the icon is
+        /// the only thing on a marker that says which -- the same reading the hide list uses to
+        /// group them. Null for a kind that is only ever itself.
+        /// </summary>
+        internal static string TypeNameFor(Category cat, string icon)
+        {
+            if (!CrossedOff.HasTypes(cat)) return null;
+            string key = IconRegistry.Normalize(icon);
+            if (key == null) return null;
+            foreach (var kv in TypesOf(cat))
+                if (string.Equals(kv.Key, key, StringComparison.OrdinalIgnoreCase)) return kv.Value;
+            return null;
+        }
+
         internal sealed class LegendRow
         {
             public Category Cat;

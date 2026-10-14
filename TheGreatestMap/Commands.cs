@@ -184,6 +184,43 @@ namespace TheGreatestMap
                     }
                 }));
 
+            new Terminal.ConsoleCommand("tgm_dedupe", "Markers standing on one another: lists them, and tgm_dedupe apply folds each group into one",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    bool apply = args.Args.Length >= 2 && args.Args[1].ToLowerInvariant() == "apply";
+                    var groups = Duplicates.Find();
+                    if (groups.Count == 0) { args.Context.AddString("No markers are standing on one another."); return; }
+                    int extra = 0;
+                    foreach (var g in groups)
+                    {
+                        extra += g.Drop.Count;
+                        string name = string.IsNullOrEmpty(g.Keep.Name) ? IconRegistry.DisplayName(g.Keep.Icon) : g.Keep.Name;
+                        float worst = 0f;
+                        foreach (var d in g.Drop) { float gap = Geo.FlatDistance(g.Keep.Pos, d.Pos); if (gap > worst) worst = gap; }
+                        var authors = new List<string>();
+                        foreach (var p in g.Members)
+                        {
+                            string by = string.IsNullOrEmpty(p.Author) ? "?" : p.Author;
+                            if (!authors.Contains(by)) authors.Add(by);
+                        }
+                        // Who wrote them is the whole story of how the pair came about: one marker
+                        // each from several players is the crew recording the same find at once,
+                        // while several from one player is a marker being written down twice.
+                        string line = $"{name} ({g.Keep.Icon}): {g.Drop.Count + 1} markers within {worst:0.#} m" +
+                                      (g.Keep.Checked || g.Drop.Exists(d => d.Checked) ? ", one crossed off" : "") +
+                                      ", by " + string.Join(", ", authors.ToArray());
+                        args.Context.AddString("  " + line);
+                        TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_dedupe: " + line);
+                    }
+                    if (!apply)
+                    {
+                        args.Context.AddString($"{groups.Count} group(s), {extra} marker(s) would go. Run tgm_dedupe apply to fold them.");
+                        return;
+                    }
+                    int gone = Duplicates.Fold();
+                    args.Context.AddString($"Folded {groups.Count} group(s); {gone} marker(s) erased. The erasures travel like any other.");
+                }));
+
             new Terminal.ConsoleCommand("tgm_list", "List shared markers, nearest first (tgm_list 40 for more)",
                 (Terminal.ConsoleEvent)(args =>
                 {
@@ -199,6 +236,8 @@ namespace TheGreatestMap
                         if (shown++ >= limit) break;
                         string dist = player != null ? $"{Geo.FlatDistance(pin.Pos, player.transform.position):0}m" : "";
                         args.Context.AddString($"{dist,6} {(pin.Auto ? "[rec]" : "[pin]")} {pin.Name} ({pin.Icon}) by {pin.Author}");
+                        args.Context.AddString($"       {ClientPins.DrawnState(pin)}");
+                        TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] tgm_list: {dist} {(pin.Auto ? "[rec]" : "[pin]")} {pin.Name} ({pin.Icon}) - {ClientPins.DrawnState(pin)}");
                     }
                     if (pins.Count == 0) args.Context.AddString("No shared markers.");
                 }));

@@ -50,6 +50,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<string> LegendSize;
         internal static ConfigEntry<string> LegendPosition;
         internal static ConfigEntry<bool> ShowAllMarkers;
+        internal static ConfigEntry<int> CrossedOffFade;
         internal static ConfigEntry<bool> ShowClearedDeposits;
         internal static ConfigEntry<string> HiddenSearched;
         internal static ConfigEntry<float> RevealNewMarkers;
@@ -159,6 +160,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> CrossOffMinedCopper;
         internal static ConfigEntry<bool> CrossOffMinedSilver;
         internal static ConfigEntry<bool> ApplyLabelRulesOnSync;
+        internal static ConfigEntry<bool> FoldDuplicates;
         internal static ConfigEntry<bool> RepairDungeonIcons;
         internal static ConfigEntry<float> ServerAutosaveMinutes;
 
@@ -291,6 +293,14 @@ namespace TheGreatestMap
                 "Width and height of the legend panel, in pixels. Dragging its corner grip changes this.");
             LegendPosition = mod.BindLocal("Display", "Legend Position", "0,0",
                 "Where the legend sits, measured from the middle of the screen. Dragging its title bar changes this.");
+            CrossedOffFade = mod.BindLocalRange("Display", "Crossed Off Fade", 70, 0, 100,
+                "How far a crossed-off marker fades, as a percentage: it washes toward gray and goes part " +
+                "transparent, so what is done stops competing with what is not. The small cross the game draws " +
+                "over it is easy to lose on a dark or busy picture, and a neighboring marker's label can cover it " +
+                "outright, which is why the marker itself changes too. 0 leaves crossed-off markers as bright as " +
+                "the rest. Applies at once.");
+            CrossedOffFade.SettingChanged += (_, __) => ClientPins.Restyle();
+
             ShowClearedDeposits = mod.BindLocal("Display", "Show Cleared Deposits", true,
                 "Keep drawing berry bushes, mushrooms, herbs and ore deposits after they have been used up, crossed " +
                 "off, so you can see which ground has already been worked. Off hides them once cleared. The record is " +
@@ -431,6 +441,17 @@ namespace TheGreatestMap
                 "tidied up, becomes the marker text). Turn off to record only the listed structure prefixes.");
             StructuresExcludePrefixes = mod.BindLocal("Catalog", "Structures Exclude Prefixes", "Vegvisir_,Runestone_,Meteorite,TarPit,Rock,Hugin,StartTemple,Pickable,Vegetation,Tree,Bush,MountainGrave,MountainWell",
                 "Comma-separated prefab name prefixes never recorded as structures.");
+            FoldDuplicates = mod.BindSynced("Recording", "Fold Markers Standing On One Another", true,
+                "After markers arrive from somebody else, fold any that stand on one another into one. Recording " +
+                "already refuses to write a marker where one of the same icon is in the way, but it can only check " +
+                "this map -- another player who found the same cave first wrote theirs just as honestly, and a merge " +
+                "keeps both, so the pair sits one on top of the other and crossing one off leaves a bright marker " +
+                "wearing a red cross. What the folded ones knew is kept: crossed off if any of them was, and a name " +
+                "if the survivor had none. Two markers that carry different names are left alone, since two names " +
+                "side by side are two things somebody meant to tell apart. Every map folds a pair the same way " +
+                "round, so they agree rather than " +
+                "erasing each other's. The console command tgm_dedupe does the same on demand, and lists first.");
+
             ApplyLabelRulesOnSync = mod.BindSynced("Recording", "Apply Label Rules To Existing Markers", true,
                 "After each sync, apply the label rules above to recorded markers that already exist: within each kind, the " +
                 "oldest marker of a same-named cluster keeps its label and the others lose theirs, for everyone. Labels are only " +
