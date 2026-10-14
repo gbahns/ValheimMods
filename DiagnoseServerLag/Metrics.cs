@@ -129,6 +129,10 @@ namespace DiagnoseServerLag
         /// </summary>
         internal int NearbyPieces;
 
+        /// <summary>Zones nearby that carry terrain edits, and how many bytes those edits take.</summary>
+        internal int TerrainZones;
+        internal long TerrainBytes;
+
         /// <summary>
         /// The world was streaming in or out during this second, so its stalls are the cost of
         /// loading rather than a fault. Counted and reported, never hidden - a machine that takes
@@ -216,6 +220,8 @@ namespace DiagnoseServerLag
             pkg.Write(s.NearbyPieces);
             pkg.Write(s.Loading);
             pkg.Write(s.FreeMemoryMB);
+            pkg.Write(s.TerrainZones);
+            pkg.Write(s.TerrainBytes);
         }
 
         internal static Sample Read(ZPackage pkg, int layout)
@@ -295,6 +301,15 @@ namespace DiagnoseServerLag
             {
                 s.FreeMemoryMB = pkg.ReadInt();
             }
+            // Appended rather than gated behind a new layout number: a reader that
+            // predates these simply stops here, and the compressed block they sit in is
+            // the last thing in the message, so nothing after them can be mis-read.
+            try
+            {
+                s.TerrainZones = pkg.ReadInt();
+                s.TerrainBytes = pkg.ReadLong();
+            }
+            catch { s.TerrainZones = 0; s.TerrainBytes = 0; }
             return s;
         }
     }

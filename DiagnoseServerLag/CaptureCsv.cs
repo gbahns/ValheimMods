@@ -30,7 +30,7 @@ namespace DiagnoseServerLag
             "zdos,instances,zdos_sent_sec,zdos_recv_sec,change_queue,peers," +
             "cpu_ms_per_sec,cpu_measured,gc0,gc1,gc2,collections,heap_bytes,working_set_bytes," +
             "owned_ai,nearby_ai,feed_ms,owned_objects,nearby_objects,unowned_objects,unowned_ai," +
-            "system_cpu_pct,nearby_pieces,loading,free_memory_mb";
+            "system_cpu_pct,nearby_pieces,loading,free_memory_mb,terrain_zones,terrain_bytes";
 
         internal static readonly string[] Columns = Header.Split(',');
 
@@ -89,6 +89,7 @@ namespace DiagnoseServerLag
                 s.SystemCpu >= 0f ? (s.SystemCpu * 100f).ToString("0.0", c) : "",
                 s.NearbyPieces.ToString(c), s.Loading ? "1" : "0",
                 s.FreeMemoryMB >= 0 ? s.FreeMemoryMB.ToString(c) : "",
+                s.TerrainZones.ToString(c), s.TerrainBytes.ToString(c),
             });
 
         internal static string Iso(long ticks) =>

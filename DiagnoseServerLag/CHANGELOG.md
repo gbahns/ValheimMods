@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.10.11 - unreleased
+
+- **The capture measures dug ground.** Terrain edits are not objects: every change to the
+  landscape - a mine shaft, a levelled building site, a road - lives on one `TerrainCompiler` per
+  zone as a compressed byte array under `ZDOVars.s_TCData`, carrying a level and smooth delta for
+  every modified vertex. So a deeply dug area looked identical to untouched forest by every count
+  this mod took, while costing far more to receive and rebuild into a mesh.
+
+  That gap mattered: built pieces were ruled out as the cause of a hitch *because* they were
+  counted, and the same could not be done for dug ground. Now `terrain_zones` and `terrain_bytes`
+  travel with every sample, and the byte length is the measurement - it grows with each vertex dug,
+  so it reads as how much landscape has been reshaped rather than how many zones carry any edit at
+  all.
+
 ## 0.10.10 - 2026-10-13
 
 - **`dsl_bench_server` is gone.** It had done exactly what `dsl_bench` does since 0.10.4, and two

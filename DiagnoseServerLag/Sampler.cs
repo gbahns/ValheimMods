@@ -117,6 +117,35 @@ namespace DiagnoseServerLag
             _isPiece[hash] = piece;
             return piece;
         }
+        /// <summary>
+        /// Prefab hash -> whether it is the object that holds a zone's terrain edits.
+        ///
+        /// Dug ground is not an object. Every change to the landscape - a mine shaft, a levelled
+        /// building site, a road - is stored on one TerrainCompiler per zone, as a compressed byte
+        /// array under ZDOVars.s_TCData holding a level and smooth delta for every modified vertex.
+        /// So a heavily dug area looks identical to untouched forest by every count this mod
+        /// already takes, while costing far more to receive and to rebuild into a mesh.
+        ///
+        /// That mattered: built pieces were ruled out as the cause of a hitch by counting them, and
+        /// the same could not be done for dug ground because nothing here measured it.
+        /// </summary>
+        private static readonly Dictionary<int, bool> _isTerrain = new Dictionary<int, bool>();
+
+        private static bool IsTerrain(ZDO zdo)
+        {
+            int hash = zdo.GetPrefab();
+            if (_isTerrain.TryGetValue(hash, out bool known)) return known;
+            bool terrain = false;
+            try
+            {
+                var prefab = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(hash) : null;
+                if (prefab != null) terrain = prefab.GetComponent<TerrainComp>() != null;
+            }
+            catch { }
+            _isTerrain[hash] = terrain;
+            return terrain;
+        }
+
         private static readonly List<ZNet.PlayerInfo> _playerList = new List<ZNet.PlayerInfo>();
 
         /// <summary>
@@ -612,7 +641,8 @@ namespace DiagnoseServerLag
                 var instances = _instancesField.GetValue(scene) as Dictionary<ZDO, ZNetView>;
                 if (instances == null) return;
 
-                int owned = 0, near = 0, unowned = 0, pieces = 0;
+                int owned = 0, near = 0, unowned = 0, pieces = 0, terrainZones = 0;
+                long terrainBytes = 0;
                 _otherObjectOwners.Clear();
                 foreach (var kv in instances)
                 {
@@ -620,6 +650,19 @@ namespace DiagnoseServerLag
                     if (zdo == null) continue;
                     near++;
                     if (IsPiece(zdo)) pieces++;
+                    // The byte length is the measurement: it grows with every vertex dug,
+                    // so it reads as how much landscape has been reshaped here rather than
+                    // how many zones happen to carry any edit at all.
+                    else if (IsTerrain(zdo))
+                    {
+                        terrainZones++;
+                        try
+                        {
+                            var tc = zdo.GetByteArray(ZDOVars.s_TCData);
+                            if (tc != null) terrainBytes += tc.Length;
+                        }
+                        catch { }
+                    }
                     if (zdo.IsOwner()) { owned++; continue; }
                     long other = zdo.GetOwner();
                     if (other == 0L) { unowned++; continue; }
@@ -630,6 +673,8 @@ namespace DiagnoseServerLag
                 s.NearbyObjects = near;
                 s.UnownedObjects = unowned;
                 s.NearbyPieces = pieces;
+                s.TerrainZones = terrainZones;
+                s.TerrainBytes = terrainBytes;
 
                 // Streaming, if the loaded world changed sharply since last second. A teleport
                 // moves thousands - one measured arrival went 280 to 4,600 in six seconds - while
