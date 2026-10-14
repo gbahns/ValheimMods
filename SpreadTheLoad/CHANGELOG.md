@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.3.0 - unreleased
+
+- **`Max Simulation Distance`: the server's draw-distance ceiling as a setting.** "Draw distance" in
+  the client menu is Valheim 1.0's SimulationDistance, and it is negotiated - a client asks, the
+  server answers `RPC_RequestValidSimulationDistance` with `min(request, its own)`. The ceiling is
+  therefore the server's own graphics setting, which on a dedicated server comes from PlayerPrefs:
+  HKCU for whatever account the service runs as.
+
+  That is a bad place to keep a server setting. A service under a virtual account
+  (`NT SERVICE\<name>`, which is what nssm creates) has no profile directory, so there may be no
+  mounted hive to read: a value written there is never seen. Three attempts to raise the ceiling by
+  hand left every capture still reporting `asked 6, capped by the server` at the compiled default
+  of 2, with nothing to say why.
+
+  The handler is now answered directly from this setting, so the server's own pref stops mattering.
+  `-1` leaves it to vanilla. Levels as the slider shows them: 0 Low (square 224 m), 1 Medium (288),
+  2 Classic (square 288, the game default), 3 High (352), 4 Very High (416), 5 Ultra (480),
+  6 Extreme (544); reach is (level + 2.5) x 64 m.
+
+  It is still a minimum, so a client asking for less than the ceiling keeps its own choice - a slow
+  machine lowering its draw distance is never overridden into loading more than it asked for. And
+  it still caps, which is the point: a client's simulation distance is a cost the *server* pays,
+  since it sends each peer the objects in that peer's active area. Raise it a step at a time.
+
 ## 0.2.2 - 2026-10-05
 
 - **A client being sent the world is no longer mistaken for a struggling one.** The detector counts

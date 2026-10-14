@@ -35,7 +35,7 @@ namespace SpreadTheLoad
     {
         public const string ModGuid = "DeathMonger.SpreadTheLoad";
         public const string ModName = "Spread The Load";
-        public const string ModVersion = "0.2.2";
+        public const string ModVersion = "0.3.0";
 
         internal static ManualLogSource Log;
         internal static ConfigEntry<bool> Enabled;
@@ -44,6 +44,8 @@ namespace SpreadTheLoad
         internal static ConfigEntry<bool> RememberIds;
         internal static ConfigEntry<bool> AutoDetect;
         internal static ConfigEntry<int> StallsPerMinute;
+
+        internal static ConfigEntry<int> MaxSimulationDistance;
         internal static ConfigEntry<bool> OwnershipFollowsAttacker;
         internal static ConfigEntry<float> AttackerDwellSeconds;
         internal static ConfigEntry<bool> ProximityTransfer;
@@ -81,6 +83,18 @@ namespace SpreadTheLoad
                 "SpreadTheLoad-known-ids.txt beside this file; delete a line there to forget " +
                 "one. Turn this off to match strictly on what is typed above.");
 
+
+            MaxSimulationDistance = Config.Bind("General", "Max Simulation Distance", -1,
+                "The highest simulation distance this server will grant a client, or -1 to leave it to "
+                + "the server's own graphics setting. \"Draw distance\" in the client menu is this "
+                + "setting, and the server answers every client with the lower of what they asked for "
+                + "and this. A client asking for less still gets what it asked for. "
+                + "0 Low (square 224 m), 1 Medium (288), 2 Classic (square 288, the game default), "
+                + "3 High (352), 4 Very High (416), 5 Ultra (480), 6 Extreme (544). Reach is "
+                + "(level + 2.5) x 64 m. "
+                + "Raising this costs the SERVER as well as the client: it sends each peer the objects "
+                + "in that peer's active area, so a high ceiling multiplies that for everyone who asks "
+                + "for it. Raise it a step at a time and measure.");
             AutoDetect = Config.Bind("Auto Detect", "Auto Detect Struggling Players", false,
                 "Work out for itself which machines are struggling and steer objects away from " +
                 "them, without naming anyone. Detection is by stalls: the server times the gaps " +
