@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.11 - unreleased
+## 0.10.11 - 2026-10-14
 
 - **The capture measures dug ground.** Terrain edits are not objects: every change to the
   landscape - a mine shaft, a levelled building site, a road - lives on one `TerrainCompiler` per

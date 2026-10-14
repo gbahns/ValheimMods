@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 - unreleased
+## 0.3.0 - 2026-10-14
 
 - **`Max Simulation Distance`: the server's draw-distance ceiling as a setting.** "Draw distance" in
   the client menu is Valheim 1.0's SimulationDistance, and it is negotiated - a client asks, the
