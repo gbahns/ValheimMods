@@ -55,6 +55,20 @@ Music and video are detected the same way the Windows volume mixer shows a movin
 | Sound Threshold | 0.005 | The meter reading (0 to 1) that counts as sound. Music at any listenable volume is far above it. |
 | Sound Delay Seconds | 0.3 | How long a program must have been making sound before the game goes quiet. |
 | Silence Grace Seconds | 2 | How long everything must have been silent before the sound comes back. Covers the gap between songs and a video buffering. |
+| Quiet Missing Location Music | true | Stop the game asking for location music it does not have. See below. |
+
+## The log line it quiets
+
+A music volume names the track it wants, and names it again every tick you stand inside it. When
+that track is not loaded, the game writes `Location music missing: <name>` each time — thousands of
+lines for standing in one room.
+
+Valheim ships at least one: the frost cave sanctum asks for `frostcaves`, and no track of that name
+exists, nor any frost cave music anywhere in the game's audio. So a name the game cannot play is
+dropped before it is set. Nothing that could have played is silenced, because the only names dropped
+are the ones whose lookup can only fail — and if a future Valheim ships the missing track, the name
+is found and this stops doing anything. Turn *Quiet Missing Location Music* off to leave the game as
+it ships.
 
 ## Notes
 

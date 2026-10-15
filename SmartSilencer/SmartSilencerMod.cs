@@ -4,6 +4,7 @@ using System.Text;
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
+using HarmonyLib;
 using UnityEngine;
 
 namespace SmartSilencer
@@ -28,7 +29,7 @@ namespace SmartSilencer
     {
         public const string ModGuid    = "DeathMonger.SmartSilencer";
         public const string ModName    = "Smart Silencer";
-        public const string ModVersion = "1.1.1";
+        public const string ModVersion = "1.2.0";
 
         internal static ManualLogSource Log { get; private set; }
         internal static SmartSilencerMod Instance { get; private set; }
@@ -54,6 +55,9 @@ namespace SmartSilencer
         internal static ConfigEntry<string> MusicApps;
         internal static ConfigEntry<string> VideoApps;
         internal static ConfigEntry<string> IgnoredApps;
+
+        // [Fixes]
+        internal static ConfigEntry<bool> QuietMissingLocationMusic;
 
         // [Detection]
         internal static ConfigEntry<float> PollInterval;
@@ -88,6 +92,8 @@ namespace SmartSilencer
         private bool   _focusWants;
         private bool   _pauseWants;
         private bool   _menuWants;
+
+        private Harmony _harmony;
 
         private bool   _quiet;                   // the verdict currently being acted on
         private string _quietReason = "";
@@ -171,18 +177,32 @@ namespace SmartSilencer
                     "keeps peeking through.",
                     new AcceptableValueRange<float>(0f, 30f)));
 
+            QuietMissingLocationMusic = Config.Bind("Fixes", "Quiet Missing Location Music", true,
+                "Stop the game asking for location music it does not have. A music volume names the " +
+                "track it wants and re-names it every tick you stand in it, so when that track is not " +
+                "loaded the game writes 'Location music missing: <name>' to the log at frame rate. " +
+                "Valheim ships at least one: the frost cave sanctum asks for 'frostcaves', and no such " +
+                "track exists. A name the game cannot play is dropped before it is set, which silences " +
+                "the log without silencing any music that could have played. Turn off to leave the game " +
+                "as it ships.");
+
             MusicApps.SettingChanged   += (_, __) => RebuildLists();
             VideoApps.SettingChanged   += (_, __) => RebuildLists();
             IgnoredApps.SettingChanged += (_, __) => RebuildLists();
             RebuildLists();
 
             Commands.Register();
+            // The one patch this mod has: see LocationMusic. Everything else it does, it does from
+            // its own Update.
+            _harmony = new Harmony(ModGuid);
+            _harmony.PatchAll(typeof(SmartSilencerMod).Assembly);
             Log.LogInfo($"{ModName} {ModVersion} loaded.");
         }
 
         private void OnDestroy()
         {
             if (_touched) AudioListener.volume = 1f;
+            _harmony?.UnpatchSelf();
             if (Instance == this) Instance = null;
         }
 
