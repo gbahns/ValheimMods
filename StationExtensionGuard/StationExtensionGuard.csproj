@@ -8,6 +8,21 @@
     <Deterministic>true</Deterministic>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <NoWarn>$(NoWarn);MSB3277</NoWarn>
+
+    <!-- Shelved: builds, but does not install itself.
+
+         This is a diagnostic for one NRE, written to be removed once that NRE was understood. It
+         was taken out of every Gale profile on 2026-09-26 and came straight back on 2026-10-05,
+         because build-all.ps1 builds every project and the shared DeployToProfiles target copies
+         whatever it built into both test profiles. Deleting the DLL by hand cannot win against
+         that: the next build-all puts it back, silently, and it ran unnoticed for nine days.
+
+         So the opt-out lives here, next to the project it is about, rather than as a deletion
+         somebody has to remember to repeat. The source still compiles - which is the point of
+         keeping it - it just stops arriving in the game. An explicit
+         -p:DeployProfiles="Default SD Test" on the command line still overrides this, which is how
+         to put it back in if the leaked-StationExtension NRE ever returns. -->
+    <DeployProfiles Condition="'$(DeployProfiles)' == ''">none</DeployProfiles>
   </PropertyGroup>
 
   <ItemGroup>

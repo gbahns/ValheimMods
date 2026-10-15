@@ -396,6 +396,17 @@ namespace DiagnoseServerLag
 
             CountOwnedAI(ref s);
 
+            // Where the frame's time went. Sampled here rather than per frame because the engine
+            // keeps its own history of completed frames and hands over the whole second at once.
+            FrameTimings.Sample();
+            s.GpuMs = FrameTimings.GpuMs;
+            s.CpuMainMs = FrameTimings.CpuMainMs;
+            s.CpuRenderMs = FrameTimings.CpuRenderMs;
+
+            // The fallback for when the engine will not say, which in Valheim is always. Read on
+            // the main thread, which is what identifies it - see MainThreadCpu.
+            s.MainCpuMsPerSec = MainThreadCpu.MsPerSec(now);
+
             // The whole machine, not just this process - the only figure that separates the game
             // pausing itself from something else taking the processor away.
             s.SystemCpu = SystemCpu.Read();

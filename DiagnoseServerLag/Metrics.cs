@@ -157,6 +157,28 @@ namespace DiagnoseServerLag
         internal int Gc0, Gc1, Gc2;
         internal long HeapBytes;
         internal long WorkingSetBytes;
+
+        // ── where the frame's time went ────────────────────────────────────────
+        // FrameMsAvg says how long a frame took. These say what it was waiting for. A long frame
+        // with a high GpuMs is a graphics cost and comes down with resolution or shadows; a long
+        // frame with a high CpuMainMs is computation and does not. -1 where the build does not
+        // report them - see FrameTimings for why that is a real possibility and not a bug.
+        /// <summary>Milliseconds the graphics card spent on the average frame this second.</summary>
+        internal float GpuMs;
+        /// <summary>Milliseconds the main thread spent on it, and the render thread.</summary>
+        internal float CpuMainMs;
+        internal float CpuRenderMs;
+
+        /// <summary>
+        /// Milliseconds of CPU the MAIN THREAD burned per second of wall clock, or -1. The three
+        /// fields above come from the engine and are blank in a build without frame timing
+        /// statistics, which Valheim's is; this one is measured from the thread itself and always
+        /// answers on Windows. Divided by Frames it gives main-thread CPU in the average frame,
+        /// and the gap between that and FrameMsAvg is time the thread spent waiting rather than
+        /// computing. Distinct from CpuMsPerSec, which sums every thread and therefore cannot
+        /// separate the two. See MainThreadCpu.
+        /// </summary>
+        internal float MainCpuMsPerSec;
     }
 
     /// <summary>
@@ -222,6 +244,10 @@ namespace DiagnoseServerLag
             pkg.Write(s.FreeMemoryMB);
             pkg.Write(s.TerrainZones);
             pkg.Write(s.TerrainBytes);
+            pkg.Write(s.GpuMs);
+            pkg.Write(s.CpuMainMs);
+            pkg.Write(s.CpuRenderMs);
+            pkg.Write(s.MainCpuMsPerSec);
         }
 
         internal static Sample Read(ZPackage pkg, int layout)
@@ -234,6 +260,10 @@ namespace DiagnoseServerLag
             // Anything added later that has a "no answer" value should be set here too.
             s.SystemCpu = -1f;
             s.FreeMemoryMB = -1;
+            s.GpuMs = -1f;
+            s.CpuMainMs = -1f;
+            s.CpuRenderMs = -1f;
+            s.MainCpuMsPerSec = -1f;
 
             s.At = pkg.ReadSingle();
             s.UtcTicks = pkg.ReadLong();
@@ -308,8 +338,12 @@ namespace DiagnoseServerLag
             {
                 s.TerrainZones = pkg.ReadInt();
                 s.TerrainBytes = pkg.ReadLong();
+                s.GpuMs = pkg.ReadSingle();
+                s.CpuMainMs = pkg.ReadSingle();
+                s.CpuRenderMs = pkg.ReadSingle();
+                s.MainCpuMsPerSec = pkg.ReadSingle();
             }
-            catch { s.TerrainZones = 0; s.TerrainBytes = 0; }
+            catch { }
             return s;
         }
     }

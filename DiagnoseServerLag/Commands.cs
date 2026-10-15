@@ -231,6 +231,45 @@ namespace DiagnoseServerLag
             sb.AppendLine($"  tick            {tickMed:0.0} ms median, {tickWorst:0} ms worst, {stalls} stalls"
                           + (capped ? "   (capped - not a load measurement)" : ""));
 
+            // What the frame was waiting for, where the build will say. Printed right under the
+            // tick because it is the first thing anyone asks next, and because the two numbers are
+            // only meaningful together: 41 ms with the card at 38 comes down with resolution and
+            // shadows, 41 ms with the main thread at 39 does not, and the tick alone cannot tell
+            // you which one you have. The larger of the two is named outright rather than left for
+            // the reader to compare, since getting it backwards sends you tuning the wrong half.
+            if (FrameTimings.Available == true)
+            {
+                float gpu = Stats.Median(window, x => x.GpuMs);
+                float main = Stats.Median(window, x => x.CpuMainMs);
+                float rend = Stats.Median(window, x => x.CpuRenderMs);
+                string bound = gpu > main * 1.15f ? "graphics card"
+                             : main > gpu * 1.15f ? "main thread"
+                             : "neither clearly";
+                sb.AppendLine($"  frame split     GPU {gpu:0.0} ms, main thread {main:0.0} ms, render thread {rend:0.0} ms   (limited by the {bound})");
+            }
+            else
+            {
+                // The engine refuses, so the split is reconstructed from the main thread's own CPU
+                // total. This cannot name what was waited on - a graphics card, vsync, a lock -
+                // only that the thread was not computing. That is still the half of the question
+                // that decides whether turning settings down can help.
+                float mainPerSec = Stats.Median(window, x => x.MainCpuMsPerSec);
+                float frames = Stats.Median(window, x => (float)x.Frames);
+                if (mainPerSec >= 0f && frames > 0f)
+                {
+                    float busy = mainPerSec / frames;          // ms of CPU in the average frame
+                    float waited = tickMed - busy;
+                    if (waited < 0f) waited = 0f;
+                    string reading = busy >= tickMed * 0.8f
+                        ? "computing - turning graphics settings down will not help much"
+                        : waited >= tickMed * 0.5f
+                            ? "waiting, not computing - a graphics or display limit, so settings and resolution are the lever"
+                            : "part computing, part waiting";
+                    sb.AppendLine($"  frame split     main thread computed {busy:0.0} ms of the {tickMed:0.0} ms frame, waited {waited:0.0} ms");
+                    sb.AppendLine($"                  mostly {reading}");
+                }
+            }
+
             bool haveCpu = false;
             foreach (var w in window) if (w.HasCpu) { haveCpu = true; break; }
             if (Machine.Readable && haveCpu)

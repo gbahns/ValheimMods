@@ -30,7 +30,8 @@ namespace DiagnoseServerLag
             "zdos,instances,zdos_sent_sec,zdos_recv_sec,change_queue,peers," +
             "cpu_ms_per_sec,cpu_measured,gc0,gc1,gc2,collections,heap_bytes,working_set_bytes," +
             "owned_ai,nearby_ai,feed_ms,owned_objects,nearby_objects,unowned_objects,unowned_ai," +
-            "system_cpu_pct,nearby_pieces,loading,free_memory_mb,terrain_zones,terrain_bytes";
+            "system_cpu_pct,nearby_pieces,loading,free_memory_mb,terrain_zones,terrain_bytes," +
+            "gpu_ms,cpu_main_ms,cpu_render_ms,main_cpu_ms_sec";
 
         internal static readonly string[] Columns = Header.Split(',');
 
@@ -90,6 +91,14 @@ namespace DiagnoseServerLag
                 s.NearbyPieces.ToString(c), s.Loading ? "1" : "0",
                 s.FreeMemoryMB >= 0 ? s.FreeMemoryMB.ToString(c) : "",
                 s.TerrainZones.ToString(c), s.TerrainBytes.ToString(c),
+                // Blank, not zero, where the build does not count them: a measured 0 ms on the
+                // graphics card is a meaningful reading and an absent one is not, and a column
+                // that cannot tell them apart would have made this instrument useless for the
+                // one question it was added to answer.
+                s.GpuMs >= 0f ? s.GpuMs.ToString("0.00", c) : "",
+                s.CpuMainMs >= 0f ? s.CpuMainMs.ToString("0.00", c) : "",
+                s.CpuRenderMs >= 0f ? s.CpuRenderMs.ToString("0.00", c) : "",
+                s.MainCpuMsPerSec >= 0f ? s.MainCpuMsPerSec.ToString("0.0", c) : "",
             });
 
         internal static string Iso(long ticks) =>

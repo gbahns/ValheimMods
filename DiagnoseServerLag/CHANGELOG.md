@@ -1,5 +1,60 @@
 # Changelog
 
+## 0.10.13 - 2026-10-15
+
+- **Main-thread CPU time, because the engine will not give the frame split.** 0.10.12 added
+  `gpu_ms` on the strength of Unity's `FrameTimingManager`, and the first capture proved Valheim
+  ships with frame timing statistics *disabled*: `GetLatestTimings` returns no frames at all, so
+  the columns were blank in all 2279 rows. Blank was the right answer - a fabricated `0.00` would
+  have read as "the graphics card is idle" on a machine that might be card-bound - but the code
+  returned without logging why, so a missing engine feature and a bug in this mod looked identical.
+  That path now says which it is.
+
+  The split is instead reconstructed from the one side that can always be measured:
+  `GetCurrentThreadId` on the main thread, then `GetThreadTimes` on a handle kept open. New column
+  `main_cpu_ms_sec`, and divided by the frame count it gives main-thread CPU *in* the average
+  frame - the gap to the frame time being how long the thread spent waiting rather than computing.
+  It cannot name what was waited on, where the engine would have. It does separate the two cases
+  that decide whether turning graphics settings down can help at all.
+
+  Not `Process.Threads`, which snapshots every thread in the process to read one of them. And not
+  the existing `cpu_ms_per_sec`, which sums all threads: through the 27-second stall burst that
+  prompted this it fell 40% while frame time doubled, which sounds conclusive until you divide by
+  the frame count and find per-frame process CPU *rose* 26%. Summed across threads the measurement
+  cannot tell "the main thread waited" from "the job workers did more".
+
+  Versioned separately from 0.10.12 rather than folded into it: the two shipped as different DLLs
+  under one version number for an afternoon, and a capture whose header says 0.10.12 may or may
+  not have this column.
+
+## 0.10.12 - not released; superseded by 0.10.13 the same day
+
+- **The capture says whether a frame was waiting on the processor or on the graphics card.**
+  Every frame measurement in this mod until now reported how LONG a frame took, which is enough to
+  say a machine is slow and never enough to say why - a main thread with too much to compute and a
+  main thread sitting idle waiting for the graphics card look identical from the outside, and only
+  one of them is fixed by turning settings down.
+
+  The gap was exposed by a 27-second stretch where a client's frame time doubled, its total
+  processor use *fell* by 40%, and objects, creatures, pieces, heap, free memory, send queue, send
+  rate and bytes-in were all identical before, during and after. Nothing recorded could name what
+  the machine had been waiting for. The broader question - whether a 41 ms frame was
+  processor-bound or card-bound - had been answered by inference from how the frame responded to
+  resolution changes rather than by measuring it.
+
+  Unity's `FrameTimingManager` answers it directly, and reading it costs one call per second and no
+  instrumentation of the game. New columns `gpu_ms`, `cpu_main_ms` and `cpu_render_ms`, and a
+  `frame split` line in the report that names the slower half outright rather than leaving two
+  numbers to be compared - getting that comparison backwards sends you tuning the wrong thing.
+
+  It can be unavailable. The engine only fills these in when the player build was made with frame
+  timing statistics enabled, which is Iron Gate's decision and cannot be changed from a mod; with
+  it off the API still succeeds and returns zeros. So a frame whose main-thread, render-thread and
+  card times are *all* zero is treated as unmeasured rather than fast, because a frame that really
+  happened took a nonzero amount of time somewhere. The columns then stay blank - never 0.00, which
+  on a card-bound machine would read as the exact opposite of the truth - and the log says once
+  that the split is missing while frame times themselves still are not.
+
 ## 0.10.11 - 2026-10-14
 
 - **The capture measures dug ground.** Terrain edits are not objects: every change to the
