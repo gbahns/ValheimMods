@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.2 — 2026-10-16
+
+- **Naming a portal no longer runs the game's own text prompt as well.** The panel is a copy of
+  that prompt, and its name box is the game's `GuiInputField`, which subscribes its submit handler
+  in `Awake` rather than in the prefab. The prompt is hidden when the panel is built, so the copy
+  started inactive and that `Awake` waited until the first time the panel opened — long after the
+  panel had detached the box from the prompt's wiring. From then on every Enter in the panel also
+  ran `TextInput.OnInput`, which reads the *real* prompt's text box and hands that text to whatever
+  was waiting on it: another mod's sign, ship or cart, or one that no longer exists. With Neobotics'
+  HUD Compass installed that last case threw a `NullReferenceException` on every portal rename. The
+  copy is now woken as it is made, so detaching it sticks.
+
 ## 1.2.1 — 2026-10-13
 
 ## 1.2.0 — 2026-09-28

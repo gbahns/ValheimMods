@@ -534,6 +534,23 @@ namespace TheGreatestPortal
 
             _root = UnityEngine.Object.Instantiate(src.m_panel, src.m_panel.transform.parent);
             _root.name = "TGP_PortalPanel";
+            // Awake the clone here, before anything below detaches it from the game's prompt.
+            //
+            // The name box is the game's own GuiInputField, and that class subscribes its submit
+            // handler in Awake rather than in the prefab:
+            //
+            //     protected override void Awake() { base.Awake(); ... base.onSubmit.AddListener(onInputSubmit); }
+            //
+            // and onInputSubmit drives TextInput.OnInput - the real prompt, not this copy. The
+            // prompt is hidden when the panel is built, so the clone starts inactive and that Awake
+            // waits for the first open, which is long after PrepareInput has taken the listeners
+            // off. It was being re-added behind our backs, and from then on every Enter in this
+            // panel also ran the game's prompt: TextInput.OnInput reads the real input field and
+            // hands that text to whatever TextReceiver was queued, which is somebody else's sign,
+            // ship or cart, or a dead one. Activating now runs Awake now, and PrepareInput's
+            // RemoveAllListeners below takes the listener off for good. CloneInputField has always
+            // done this in the right order, which is why the search box was never affected.
+            _root.SetActive(true);
             _root.SetActive(false);
             // Debug, not Info: this only matters when a Valheim update rearranges the
             // prompt and the clone can no longer find its pieces. BepInEx keeps Debug
