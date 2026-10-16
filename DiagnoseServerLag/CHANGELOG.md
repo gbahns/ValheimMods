@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.10.14 - 2026-10-16
+
+- **`dsl_sim`: the draw distance actually in effect, not the one requested.** "Draw distance" in
+  Valheim's graphics menu is a *request*. The server answers with min(request, its own ceiling) and
+  the client applies min() again, so the menu can read "Extreme (circular 544m)" while the session
+  runs Classic at 288 m, and nothing on screen says otherwise. Hours of tuning went into a draw
+  distance that had never once taken effect.
+
+  Until now the only way to see the real figure was a group capture - a one-minute round trip to
+  the server to read a number the client already has. `ZNet.GetSyncedSimulationDistance()` is
+  public and returns exactly it, so the command is instant and needs no server, no admin rights
+  and no capture window.
+
+  It also names the common failure: when the menu is asking for more than it is getting, it says
+  the server's ceiling is lower and that the request is only re-sent when something changes - so
+  raising the ceiling server-side does nothing for an already-connected client until a graphics
+  setting changes or it reconnects (`ZNet` subscribes `SimulationDistanceServerHandshake` to
+  `GraphicsSettingsChanged`, and that handler returns early when desired already equals current).
+
+  Reach is reported as `(near + 2.5) x 64` m, which reproduces the menu's own labels exactly:
+  near 1 -> 224 m, 2 -> 288, 3 -> 352, 4 -> 416, 6 -> 544. Taken from the near distance in zones
+  rather than from the slider level, because level 0 grants near 1 and the two stop agreeing there.
+
 ## 0.10.13 - 2026-10-15
 
 - **Main-thread CPU time, because the engine will not give the frame split.** 0.10.12 added

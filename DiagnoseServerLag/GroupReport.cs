@@ -167,6 +167,15 @@ namespace DiagnoseServerLag
                 if (near <= 0) return "";
 
                 // What the client asked for, out of the settings line it already sends.
+                //
+                // That value is the SLIDER LEVEL, not a zone count, and the two are not the same
+                // number: level 0 grants near 1 and level 1 grants near 2, while levels 2 to 6
+                // happen to grant their own value. Comparing the level directly against the
+                // granted near distance therefore works for five of the seven settings and lies
+                // about the other two - which it duly did, reporting "asked 1, capped by the
+                // server" for a client on Medium that had been granted exactly what it wanted.
+                // SimulationDistance.GetSimulationDistance is the game's own mapping, so the
+                // comparison is made in zones at both ends.
                 int asked = -1;
                 if (!string.IsNullOrEmpty(c.Graphics))
                 {
@@ -180,9 +189,20 @@ namespace DiagnoseServerLag
                     }
                 }
 
+                int askedNear = -1;
+                if (asked >= 0)
+                {
+                    try { askedNear = SimulationDistance.GetSimulationDistance(asked).NearSimulationDistance; }
+                    catch { askedNear = -1; }
+                }
+
+                // "classic" is the square: it skips the radius test in ZDOMan.FindSectorObjects and
+                // takes whole square rings, so it loads the corners too. Worth naming, because
+                // Classic and Medium are both near 2 and only this tells them apart - and the
+                // corners are objects loaded for no extra view in any direction you face.
                 string classic = granted.IsClassic ? " classic" : "";
-                if (asked >= 0 && asked != near)
-                    return $"   sim {near}/{granted.FarSimulationDistance}{classic} (asked {asked}, capped by the server)";
+                if (askedNear >= 0 && askedNear != near)
+                    return $"   sim {near}/{granted.FarSimulationDistance}{classic} (asked {askedNear}, capped by the server)";
                 return $"   sim {near}/{granted.FarSimulationDistance}{classic}";
             }
             catch { return ""; }

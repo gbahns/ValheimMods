@@ -51,6 +51,53 @@ namespace DiagnoseServerLag
                         $"peers {s.Peers}, history {Sampler.History.Count}s");
                 }));
 
+            // The one number the graphics menu will not tell you the truth about.
+            //
+            // "Draw distance" in the menu is a REQUEST. The server answers with
+            // min(request, its own ceiling) and the client applies min() again, so the menu can say
+            // Extreme (544 m) while the session is running Classic (288 m) and nothing on screen
+            // says otherwise. Hours went into tuning a draw distance that had never once taken
+            // effect, and the only way to see the real figure was a group capture - a one-minute
+            // round trip to the server to read a value the client already knows.
+            //
+            // ZNet.GetSyncedSimulationDistance() is public and returns exactly that value, so this
+            // costs nothing and answers instantly.
+            //
+            // Reach is (near + 2.5) x 64 m - the near distance in zones, zones being 64 m, plus the
+            // half-zone either side of the one you stand in. That reproduces the menu's own labels
+            // exactly: near 1 -> 224 m, 2 -> 288, 3 -> 352, 4 -> 416, 6 -> 544.
+            new Terminal.ConsoleCommand("dsl_sim", "Diagnose Server Lag: the draw distance actually in effect, not the one requested",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    var znet = ZNet.instance;
+                    if (znet == null) { args.Context?.AddString("Not in a world."); return; }
+                    try
+                    {
+                        var live = znet.GetSyncedSimulationDistance();
+                        int near = live.NearSimulationDistance;
+                        float reach = (near + 2.5f) * 64f;
+
+                        int wanted = -1;
+                        var gsm = GraphicsSettingsManager.Instance;
+                        if (gsm != null) wanted = gsm.GetSimulationDistance().NearSimulationDistance;
+
+                        args.Context?.AddString(
+                            $"draw distance in effect: near {near}, far {live.FarSimulationDistance}" +
+                            (live.IsClassic ? " (classic)" : "") + $" - about {reach:0} m");
+                        if (wanted >= 0 && wanted != near)
+                            args.Context?.AddString(
+                                $"the menu is asking for {wanted} (about {(wanted + 2.5f) * 64f:0} m) and not getting it: " +
+                                "the server's ceiling is lower. Raise it there, then change any graphics " +
+                                "setting or reconnect - the request is only re-sent when something changes.");
+                        else if (wanted >= 0)
+                            args.Context?.AddString("the menu asked for this and got it.");
+                    }
+                    catch (Exception e)
+                    {
+                        args.Context?.AddString("Could not read it: " + e.Message);
+                    }
+                }));
+
             new Terminal.ConsoleCommand("dsl_server", "Diagnose Server Lag: what the server last reported about itself",
                 (Terminal.ConsoleEvent)(args =>
                 {
