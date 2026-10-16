@@ -53,6 +53,7 @@ namespace TheGreatestMap
             PlayerSpotlight.Reset();
             MinimapClip.Reset();
             MapFrame.Reset();
+            Focus.Clear();
         }
 
         private static int LocalType(SharedPin shared)
@@ -691,6 +692,11 @@ namespace TheGreatestMap
                 // Crossed off, and the player would rather not see that kind of crossed-off marker
                 // any more: used-up deposits, or searched places by type.
                 if (!hidden && CrossedOff.IsHidden(shared)) hidden = true;
+                // Looking for one thing: it wins over every switch above, since a player who asks
+                // for frost caves means the frost caves whether or not dungeons are switched off.
+                // Not over the master switch or a marker put out by hand, which both mean "not
+                // this one" rather than "not right now".
+                if (Focus.On && !hideEverything && !hiddenByHand) hidden = !Focus.Shows(shared);
                 SetMarkerActive(pin, !hidden);
                 if (hidden) continue;
                 float scale = 1f;

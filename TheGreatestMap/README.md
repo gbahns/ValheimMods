@@ -86,6 +86,22 @@ described below: cleared deposits as one switch, then searched places by type, w
 The list also carries the hide-all row and a "Show all" row that turns everything in both columns
 back on. Config "Marker Button On Map" turns the button off.
 
+**Finding one thing.** At the top of that list is a find box. Type into it and the map keeps only
+the markers mentioning what you typed, as the letters go in: "frost" leaves the frost caves,
+"eggs" leaves the portal you named 3 Eggs, "ore" leaves the ore. It reads the words written on a
+marker, the type it is, and the name of its kind, so you need not know which of those your word
+lives in. Press Enter and what matched becomes rows, one per type with a count, and clicking one
+narrows the map to exactly that. Every kind's row also ends in **only**, which does the same for
+the whole kind in one press, and takes it back when pressed again.
+
+None of this is remembered or written to the config. It sits over the hide switches rather than
+among them: whatever you had hidden stays hidden and is still hidden when you stop looking, and
+there is no list of kinds to switch back on afterwards. While it lasts it overrides those
+switches, because asking for frost caves means the frost caves whether or not dungeons are
+switched off -- though a marker you hid by hand stays hidden, since that means "not this one"
+rather than "not right now". The row under the box says what the map is showing and puts it all
+back when clicked, and `tgm_find` does the same from the console for a map that is not even out.
+
 A marker you have just recorded is drawn on both maps for thirty seconds even when its kind or its
 icon is hidden, so writing something down always shows you what you wrote ("Reveal New Markers
 Seconds", 0 turns it off). It does not override the button's own hide-all or a marker you hid by
@@ -164,6 +180,8 @@ counts as well unless "Structures Include Unlisted" is off or its prefab name is
 |---|---|
 | `tgm_status` | Counts of shared markers, erased spots and pending discoveries |
 | `tgm_list [n]` | Nearest shared markers |
+| `tgm_find [text]` | Show only the markers mentioning some text, and list the types that matched; on its own, show everything again |
+| `tgm_dedupe [apply]` | List markers standing on one another, or fold each group into one |
 | `tgm_import` | Share your existing local markers (the five standard icons) with everyone |
 | `tgm_clearlocal` | Delete your local, non-shared player markers, including stale ones imported from tables |
 | `tgm_sync` | Sync the nearest cartography table now |

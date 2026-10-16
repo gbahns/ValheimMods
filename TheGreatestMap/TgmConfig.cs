@@ -103,6 +103,7 @@ namespace TheGreatestMap
         /// <summary>Clear the hidden icons, switch every kind back on and undo the master hide.</summary>
         internal static void ShowEverything()
         {
+            Focus.Clear();
             if (!string.IsNullOrEmpty(HiddenIcons.Value)) HiddenIcons.Value = "";
             foreach (var entry in ShowKind.Values) if (!entry.Value) entry.Value = true;
             if (ShowAllMarkers != null && !ShowAllMarkers.Value) ShowAllMarkers.Value = true;
@@ -114,6 +115,7 @@ namespace TheGreatestMap
         {
             if (ShowAllMarkers != null && !ShowAllMarkers.Value) return true;
             if (ShowClearedDeposits != null && !ShowClearedDeposits.Value) return true;
+            if (Focus.On) return true;
             if (CrossedOff.HiddenGroupCount() > 0) return true;
             return HiddenIconCount() > 0 || HiddenKindCount() > 0;
         }

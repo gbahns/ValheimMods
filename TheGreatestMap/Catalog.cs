@@ -432,13 +432,21 @@ namespace TheGreatestMap
         /// What one marker of this kind actually is, read from its icon: a frost cave rather than
         /// a dungeon. Dungeons and structures are several things wearing one kind, and the icon is
         /// the only thing on a marker that says which -- the same reading the hide list uses to
-        /// group them. Null for a kind that is only ever itself.
+        /// group them. Null for a kind that is only ever itself, and null for a marker still
+        /// wearing the kind's fallback icon, which says nothing about which of them it is.
         /// </summary>
         internal static string TypeNameFor(Category cat, string icon)
         {
             if (!CrossedOff.HasTypes(cat)) return null;
             string key = IconRegistry.Normalize(icon);
             if (key == null) return null;
+            // One house pin covers abandoned farms, swamp huts and stone towers alike, so the
+            // catalog holds a line mapping that pin to each of them, and the first one found wins
+            // a race it should never have been entered in. Naming them all after it -- every
+            // structure in the game an "Abandoned Farm" -- is worse than saying nothing. The hide
+            // list draws the same line, where these all go to the catch-all group.
+            if (string.Equals(key, IconRegistry.Normalize(Categories.DefaultIcon(cat)), StringComparison.OrdinalIgnoreCase))
+                return null;
             foreach (var kv in TypesOf(cat))
                 if (string.Equals(kv.Key, key, StringComparison.OrdinalIgnoreCase)) return kv.Value;
             return null;

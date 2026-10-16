@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using HarmonyLib;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -45,8 +46,21 @@ namespace TheGreatestMap
         private static Camera _camera;
         private static int _openedFrame = -10;
         private static int _closedFrame = -10;
+        private static TMP_InputField _find;
+        private static Vector2 _screenPos;
+        private static List<Focus.TypeCount> _results;
+        private static string _pendingText;
+        private static bool _rebuilding;
+        private static bool _rebuildWanted;
 
         internal static bool IsOpen => _root != null;
+
+        /// <summary>
+        /// True while the find box has the keyboard. Every hotkey in this mod is gated on it, and
+        /// the game's own are too, by way of the TextInput patch below -- otherwise searching for
+        /// a frost cave takes the map out, opens the inventory and lights a torch on the way.
+        /// </summary>
+        internal static bool Typing => _find != null && _find.isFocused;
 
         private static bool AllShown => TgmConfig.ShowAllMarkers == null || TgmConfig.ShowAllMarkers.Value;
 
@@ -57,6 +71,8 @@ namespace TheGreatestMap
             // closed this frame cannot be reopened by the same click.
             if (Time.frameCount == _closedFrame) return;
             Close();
+            _screenPos = screenPos;
+            if (!_rebuilding) _results = null;
             var map = Minimap.instance;
             if (map == null || map.m_largeRoot == null) return;
             var parent = map.m_largeRoot.transform as RectTransform;
@@ -107,6 +123,7 @@ namespace TheGreatestMap
                 foreach (var k in Categories.All)
                     if (TgmConfig.ShowKind.TryGetValue(k, out var e) && !e.Value) e.Value = true;
                 if (TgmConfig.ShowAllMarkers != null) TgmConfig.ShowAllMarkers.Value = true;
+                Focus.Clear();
                 CrossedOff.ShowAll();
                 ClientPins.Restyle();
                 Refresh();
@@ -128,7 +145,32 @@ namespace TheGreatestMap
             _rect.anchoredPosition = new Vector2(x, -top);
             _root.transform.SetAsLastSibling();
             _openedFrame = Time.frameCount;
+            if (_pendingText != null && _find != null)
+            {
+                _find.SetTextWithoutNotify(_pendingText);
+                _find.ActivateInputField();
+            }
+            _pendingText = null;
             Refresh();
+        }
+
+        /// <summary>
+        /// Draw the list again in place, keeping what was typed. Used when the rows themselves have
+        /// to change rather than only their colors -- showing the types that matched instead of the
+        /// kinds. The close is ours rather than a click elsewhere, so it must not count as the
+        /// click-away that stops the list reopening in the same frame.
+        /// </summary>
+        private static void Rebuild()
+        {
+            if (_root == null) return;
+            _rebuildWanted = false;
+            _pendingText = _find != null ? _find.text : null;
+            var pos = _screenPos;
+            _rebuilding = true;
+            Close();
+            _closedFrame = -10;
+            try { Open(pos); }
+            finally { _rebuilding = false; }
         }
 
         /// <summary>The left column. Returns the y below its last row.</summary>
@@ -136,13 +178,62 @@ namespace TheGreatestMap
         {
             const float x = 0f;
             float y = -Pad;
-            Header("Marker kinds   +  places one by hand", x, y);
+            Header(_results != null
+                ? "Matches   click one to see only it"
+                : "Marker kinds   +  places one by hand", x, y);
             y -= HeaderHeight;
+
+            FindBox(x, y);
+            y -= RowHeight;
+
+            // What the map is showing, which is also how to stop: the row is the way back to
+            // everything. It is built whether or not anything is focused, because focusing happens
+            // by typing in the box above it and the row has to be there to say so.
+            ActionRow(x, y, Focus.Clear, () =>
+                {
+                    Focus.Tally(out int shown, out int all);
+                    return Focus.On
+                        ? $"Only {Focus.What()} — {shown} of {all}, click for all"
+                        : $"Showing all {all} markers";
+                },
+                () => !Focus.On);
+            y -= RowHeight;
 
             // The master, so it is reachable from this list too, not only from a right click on the button.
             ActionRow(x, y, () => { MarkerToggle.ToggleAll(); Refresh(); },
                 () => AllShown ? "Hide all markers" : "Show all markers", null);
             y -= RowHeight;
+
+            if (_results != null)
+            {
+                ActionRow(x, y, () =>
+                    {
+                        // Empty the box as well, or the kinds come back with a search still
+                        // written above them and nothing being searched for.
+                        if (_find != null) _find.SetTextWithoutNotify("");
+                        Focus.Clear();
+                        _results = null;
+                        _rebuildWanted = true;
+                    },
+                    () => "Back to the kinds", null);
+                y -= RowHeight;
+                if (_results.Count == 0)
+                {
+                    var none = MenuKit.Text(_root.transform, "None", "Nothing on the map matches.", 13f, MenuKit.Dim);
+                    Place(none.rectTransform, x + 10f, y, ColumnWidth - 20f, RowHeight);
+                    none.alignment = TextAlignmentOptions.MidlineLeft;
+                    y -= RowHeight;
+                }
+                foreach (var match in _results)
+                {
+                    var m = match;
+                    SwitchRow(map, x, y, 0f, m.Icon, $"{m.Label} ({m.Count})",
+                        () => Focus.SetIcon(m.Icon),
+                        () => Focus.Icon != null && IconRegistry.SameKey(Focus.Icon, m.Icon));
+                    y -= RowHeight;
+                }
+                return y;
+            }
 
             // Every kind that has markers, vanilla-icon ones included. Structures, portals, camps
             // and boss altars are also hidden and shown by vanilla's own icon buttons, so listing
@@ -162,7 +253,10 @@ namespace TheGreatestMap
                     // The small pin at the row's end arms that kind for placing by hand. It is a
                     // button of its own rather than another meaning for the row, which already
                     // means "show or hide these".
-                    () => { if (ManualPlace.Arm(map, k)) Close(); });
+                    () => { if (ManualPlace.Arm(map, k)) Close(); },
+                    // And "only": the same row's switch would need twenty others turned off to say
+                    // this, so it says it in one press, and says it again to take it back.
+                    () => Focus.SetKind(k));
                 y -= RowHeight;
             }
             return y;
@@ -236,34 +330,85 @@ namespace TheGreatestMap
         }
 
         /// <summary>
-        /// A small pin at the end of a kind's row: press it and the next marker placed by hand is
-        /// one of that kind. Its own button, so the row keeps meaning what it meant.
+        /// A button of its own at the end of a row, so the row keeps meaning what it meant: a small
+        /// pin that arms the kind for placing by hand, and "only", which narrows the map to it.
+        /// Written rather than drawn as a glyph, because the game's font is a display face and what
+        /// it has beyond the Latin alphabet cannot be relied on.
         /// </summary>
-        private static void PlaceButton(RectTransform row, Action onPlace)
+        private static void RowButton(RectTransform row, string glyph, float size, float right, float width, Action onClick)
         {
-            var go = new GameObject("Place", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+            var go = new GameObject("RowButton", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
             go.transform.SetParent(row, false);
             var rt = (RectTransform)go.transform;
             rt.anchorMin = rt.anchorMax = new Vector2(1f, 0.5f);
             rt.pivot = new Vector2(1f, 0.5f);
-            rt.anchoredPosition = new Vector2(-6f, 0f);
-            rt.sizeDelta = new Vector2(RowHeight - 8f, RowHeight - 8f);
+            rt.anchoredPosition = new Vector2(-right, 0f);
+            rt.sizeDelta = new Vector2(width, RowHeight - 8f);
             var img = go.GetComponent<Image>();
             img.color = new Color(1f, 1f, 1f, 0.07f);
             img.raycastTarget = true;
             var button = go.GetComponent<Button>();
             button.transition = Selectable.Transition.None;
             button.targetGraphic = img;
-            button.onClick.AddListener(() => onPlace());
+            button.onClick.AddListener(() => onClick());
 
-            var glyph = MenuKit.Text(go.transform, "Glyph", "+", 15f, new Color(1f, 0.85f, 0.45f, 0.9f));
-            glyph.alignment = TextAlignmentOptions.Center;
-            glyph.raycastTarget = false;
-            var grt = glyph.rectTransform;
+            var text = MenuKit.Text(go.transform, "Glyph", glyph, size, new Color(1f, 0.85f, 0.45f, 0.9f));
+            text.alignment = TextAlignmentOptions.Center;
+            text.raycastTarget = false;
+            var grt = text.rectTransform;
             grt.anchorMin = Vector2.zero;
             grt.anchorMax = Vector2.one;
             grt.offsetMin = Vector2.zero;
             grt.offsetMax = Vector2.zero;
+        }
+
+        /// <summary>
+        /// The find box. Typing narrows the map as the letters go in, so the map answers before the
+        /// word is finished; Enter turns what matched into rows, one per type, to pick exactly one
+        /// of them. Emptying the box shows everything again, which is why there is no clear button.
+        /// </summary>
+        private static void FindBox(float x, float y)
+        {
+            var go = new GameObject("Find", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(TMP_InputField));
+            go.transform.SetParent(_root.transform, false);
+            Place((RectTransform)go.transform, x + 8f, y - 2f, ColumnWidth - 16f, RowHeight - 6f);
+            go.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.14f);
+
+            var text = MenuKit.Text(go.transform, "Text", "", 13f, MenuKit.Body);
+            text.alignment = TextAlignmentOptions.MidlineLeft;
+            var trt = text.rectTransform;
+            trt.anchorMin = Vector2.zero;
+            trt.anchorMax = Vector2.one;
+            trt.offsetMin = new Vector2(6f, 0f);
+            trt.offsetMax = new Vector2(-6f, 0f);
+
+            var hint = MenuKit.Text(go.transform, "Hint", "find a marker...", 13f, MenuKit.Dim);
+            hint.alignment = TextAlignmentOptions.MidlineLeft;
+            var hrt = hint.rectTransform;
+            hrt.anchorMin = Vector2.zero;
+            hrt.anchorMax = Vector2.one;
+            hrt.offsetMin = new Vector2(6f, 0f);
+            hrt.offsetMax = new Vector2(-6f, 0f);
+
+            _find = go.GetComponent<TMP_InputField>();
+            _find.textViewport = (RectTransform)go.transform;
+            _find.textComponent = text;
+            _find.placeholder = hint;
+            _find.lineType = TMP_InputField.LineType.SingleLine;
+            // TextMeshPro draws its caret in its own dark default and ignores caretColor until it
+            // is told to use a custom one, which on a dark panel leaves you typing blind.
+            _find.customCaretColor = true;
+            _find.caretColor = new Color(1f, 0.85f, 0.45f, 1f);
+            _find.caretWidth = 2;
+            _find.caretBlinkRate = 0.8f;
+            _find.selectionColor = new Color(1f, 0.85f, 0.45f, 0.45f);
+            _find.onValueChanged.AddListener(typed => { Focus.Search(typed); Refresh(); });
+            _find.onSubmit.AddListener(typed =>
+            {
+                Focus.Search(typed);
+                _results = Focus.Types(typed);
+                _rebuildWanted = true;
+            });
         }
 
         private static void Header(string text, float x, float y)
@@ -287,7 +432,7 @@ namespace TheGreatestMap
             _entries.Add(new Entry { Text = text, Quiet = quiet ?? (() => false), Label = label });
         }
 
-        private static void SwitchRow(Minimap map, float x, float y, float indent, string iconKey, string text, Action onClick, Func<bool> shown, Action onPlace = null)
+        private static void SwitchRow(Minimap map, float x, float y, float indent, string iconKey, string text, Action onClick, Func<bool> shown, Action onPlace = null, Action onOnly = null)
         {
             var row = MenuKit.Row(_root.transform, "", true, () =>
             {
@@ -312,7 +457,10 @@ namespace TheGreatestMap
             entry.Icon.raycastTarget = false;
             entry.Icon.preserveAspect = true;
 
-            if (onPlace != null) PlaceButton(row, onPlace);
+            if (onPlace != null) RowButton(row, "+", 15f, 6f, RowHeight - 8f, onPlace);
+            if (onOnly != null)
+                RowButton(row, "only", 11f, onPlace != null ? RowHeight + 2f : 6f, 34f,
+                    () => { onOnly(); Refresh(); });
 
             entry.Label = row.GetComponentInChildren<TextMeshProUGUI>();
             if (entry.Label != null)
@@ -370,6 +518,7 @@ namespace TheGreatestMap
             _root = null;
             _rect = null;
             _entries.Clear();
+            _find = null;
             _closedFrame = Time.frameCount;
         }
 
@@ -377,10 +526,33 @@ namespace TheGreatestMap
         {
             if (_root == null) return;
             var map = Minimap.instance;
-            if (map == null || map.m_mode != Minimap.MapMode.Large || ZInput.GetKeyDown(KeyCode.Escape)) { Close(); return; }
+            if (map == null || map.m_mode != Minimap.MapMode.Large) { Close(); return; }
+            // Asked for between frames rather than from the find box's own callback, which would
+            // destroy the box while it was still handling the Enter that asked for this.
+            if (_rebuildWanted) { Rebuild(); return; }
+            // Escape leaves the find box first, as it does in every other text field, so a search
+            // can be abandoned without the whole list going with it.
+            if (ZInput.GetKeyDown(KeyCode.Escape) && !Typing) { Close(); return; }
+            // A click lands in the box as a click in the panel, so the list stays open and the
+            // click-away test below is never reached while typing.
             if (Time.frameCount - _openedFrame <= 1) return; // the click that opened it
             if (ZInput.GetMouseButtonDown(0) || ZInput.GetMouseButtonDown(1))
                 if (!RectTransformUtility.RectangleContainsScreenPoint(_rect, ZInput.pointerPosition, _camera)) Close();
+        }
+    }
+
+    /// <summary>
+    /// While the find box has the keyboard, the game is told a text input is up, which is how it
+    /// already knows to leave its own keys alone. Only while typing: the list is full of clickable
+    /// rows the rest of the time, and claiming a text input throughout would take keys the player
+    /// still wants. The same trick the legend uses, for the same reason.
+    /// </summary>
+    [HarmonyPatch(typeof(TextInput), nameof(TextInput.IsVisible))]
+    internal static class TextInput_IsVisible_KindMenu_Patch
+    {
+        private static void Postfix(ref bool __result)
+        {
+            if (KindMenu.Typing) __result = true;
         }
     }
 }

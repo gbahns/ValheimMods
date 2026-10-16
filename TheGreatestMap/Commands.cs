@@ -184,6 +184,25 @@ namespace TheGreatestMap
                     }
                 }));
 
+            new Terminal.ConsoleCommand("tgm_find", "Show only the markers mentioning some text (tgm_find frost); tgm_find on its own shows everything again",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    string text = args.Args.Length >= 2 ? string.Join(" ", args.Args, 1, args.Args.Length - 1).Trim() : "";
+                    if (text.Length == 0)
+                    {
+                        bool was = Focus.On;
+                        Focus.Clear();
+                        args.Context.AddString(was ? "Showing every marker again." : "Nothing was being singled out.");
+                        return;
+                    }
+                    Focus.Search(text);
+                    Focus.Tally(out int shown, out int all);
+                    args.Context.AddString($"Showing {shown} of {all} markers mentioning \"{text}\".");
+                    foreach (var match in Focus.Types(text))
+                        args.Context.AddString($"  {match.Label} ({match.Count})");
+                    if (shown == 0) args.Context.AddString("  nothing matches -- tgm_find on its own puts the map back.");
+                }));
+
             new Terminal.ConsoleCommand("tgm_dedupe", "Markers standing on one another: lists them, and tgm_dedupe apply folds each group into one",
                 (Terminal.ConsoleEvent)(args =>
                 {

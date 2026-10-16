@@ -1,5 +1,37 @@
 # Changelog
 
+## 1.9.0 — 2026-10-16
+
+Client-side; works with a 0.2.x server.
+
+- **Look for one thing, and see only that.** A map shared for a few weeks carries hundreds of
+  markers, and finding the frost caves among them means reading past everything else. The marker
+  list has a find box at the top: type "frost" and the map keeps the frost caves and puts the rest
+  away, as the letters go in. It reads what is written on a marker as well as what the marker is,
+  so "eggs" finds the portal somebody named 3 Eggs, and the kind's own name works too -- "ore"
+  leaves the ore. Press Enter and what matched becomes rows, one per type with a count, to pick
+  exactly one of them. Empty the box and everything comes back.
+- **"only", at the end of every kind's row**, for the same thing in one press: show the portals and
+  nothing else. Press it again to take it back.
+- None of this is written down. It sits over the hide switches rather than among them, so whatever
+  you had hidden stays hidden and comes back untouched -- there is no list of twenty kinds to
+  switch on again afterwards. For the same reason it overrides them while it lasts: asking for
+  frost caves means the frost caves whether or not dungeons happen to be switched off. A marker
+  hidden by hand stays hidden, since that one means "not this one" rather than "not right now".
+- The row under the find box says what the map is showing -- "Only Frost Caves — 7 of 412" -- and
+  clicking it shows everything again. The marker menu's "Show all hidden" clears it too.
+- `tgm_find frost` does the same from the console, and lists the types that matched with their
+  counts; `tgm_find` on its own puts the map back. Useful when the map is not even out.
+- While the find box has the keyboard, the game's keys and this mod's are left alone, so searching
+  for a frost cave no longer takes the map out and opens the inventory on the way.
+- **Fixed every structure outside the meadows calling itself an "Abandoned Farm"** in its tooltip,
+  which 1.8.2 introduced when it started heading a tooltip with what the thing is. One house pin
+  covers abandoned farms, swamp huts and stone towers alike, so the catalog maps that pin to each
+  of them and the lookup took whichever was listed first. A marker still wearing its kind's
+  fallback icon now says nothing about which of them it is, and the tooltip falls back to the kind
+  -- "Structures" -- as it did before. The hide list already drew that line, where these all go to
+  the catch-all group; this is the same rule in the one place that had missed it.
+
 ## 1.8.2 — 2026-10-13
 
 Client-side; works with a 0.2.x server.
