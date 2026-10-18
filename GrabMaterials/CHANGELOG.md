@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.5.0 — unreleased
+
+- `/i` now counts the material in **stacks and piles**: wood stacks, stone piles, coal piles, Ashwood stacks, black marble piles, coin piles and the rest. Tearing one down returns its full material, so a wood stack is 50 wood on your plot as surely as a chest of it. The amount is noted on the row the way a smelter's queue is, as "(50 in stack)" or "(150 in stacks)", and the stacks flash with the containers, both when the panel opens and when you click the row. Anything a mod adds that is named like a stack or pile and returns one material is counted too.
+- When a material sits in more than one kind of place, the row now names them, as in "(60 in kiln and stacks)", instead of the old "(60 in processing)".
+
 ## 2.4.2 — 2026-10-13
 
 - **Fixed: grabbing from a container you could not open duplicated the item, and storing into one lost it.** The game only checks who may open a chest at the moment you press Use, and it only saves a chest's contents from the machine that currently owns it, which is usually whoever is standing nearest. This mod reached into chests directly, so a Personal container, a chest inside someone else's ward, or one another player had open was taken from like any other, and if another machine owned it the removal never saved: you kept the copy and the chest got its item back. Grabs and `/store` now go through the game's own open request for every container another machine owns: that machine checks whether you may open it and whether it is in use, hands it over, and only then does the grab touch it, exactly as pressing Use would. One machine writes a chest at a time, so two players racing a chest can no longer come away with the same item. Chests you already own, which is nearly all of them when playing alone, skip the exchange, and a chest whose owner does not answer within a moment is left alone. `/i` and `/search` still list what is nearby.

@@ -19,7 +19,7 @@ using UnityEngine;
 namespace GrabMaterialsMod
 {
 
-	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.4.2")]
+	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.5.0")]
 	[BepInProcess("valheim.exe")]
 	public class GrabMaterialsMod : BaseUnityPlugin
 	{
@@ -461,6 +461,24 @@ namespace GrabMaterialsMod
 			// lives in one type of station, and fall back to "(N in processing)" when
 			// it's spread across multiple.
 			var inProcessByNameByLoc = new Dictionary<string, Dictionary<string, int>>();
+			// How many separate stacks or piles each item sits in, per kind, so the label can read
+			// "stack" for one and "stacks" for several.
+			var pileCountByNameByKind = new Dictionary<string, Dictionary<string, int>>();
+
+			// The same filter for an item wherever it sits: chest, smelter queue, or a pile.
+			GrabMaterials.Extensions.ItemCategory searchCategory = GrabMaterials.Extensions.ItemCategory.None;
+			var isCategorySearch = text != null ? Enum.TryParse(text, true, out searchCategory) : false;
+			bool Matches(ItemDrop.ItemData itemData)
+			{
+				var itemName = itemData.m_shared.m_name;
+				if (isNewSearch) return player != null && !player.IsMaterialKnown(itemName);
+				var itemCategory = itemData.GetCategory();
+				if (isCategorySearch) return itemCategory == searchCategory;
+				if (text == null) return true;
+				var localizedName = GrabMaterials.Extensions.Localize(itemName).ToLower();
+				return itemData.Name().Contains(text) || itemName.Contains(text) || localizedName.Contains(text) || itemCategory.ToString().ToLower().Contains(text);
+			}
+
 			foreach (var container in nearbyContainers)
 			{
 				var inventory = container.GetInventory();
@@ -468,19 +486,9 @@ namespace GrabMaterialsMod
 				var alreadyHighlighted = false;
 				foreach (var item in inventory.GetAllItems())
 				{
+					if (!Matches(item)) continue;
 					var itemName = item.m_shared.m_name;
-					var localizedName = GrabMaterials.Extensions.Localize(itemName).ToLower();
 					var itemCategory = item.GetCategory();
-					var itemCategoryString = itemCategory.ToString().ToLower();
-					GrabMaterials.Extensions.ItemCategory searchCategory = GrabMaterials.Extensions.ItemCategory.None;
-					var isCategorySearch = text != null ? Enum.TryParse(text, true, out searchCategory) : false;
-
-					var matches = isNewSearch
-						? (player != null && !player.IsMaterialKnown(itemName))
-						: isCategorySearch
-						? itemCategory == searchCategory
-						: text == null || item.Name().Contains(text) || itemName.Contains(text) || localizedName.Contains(text) || itemCategoryString.Contains(text);
-					if (!matches) continue;
 
 					if (!byCategory.TryGetValue(itemCategory, out var byName))
 					{
@@ -520,19 +528,9 @@ namespace GrabMaterialsMod
 					var itemDrop = prefab.GetComponent<ItemDrop>();
 					if (itemDrop == null) continue;
 					var itemData = itemDrop.m_itemData;
+					if (!Matches(itemData)) continue;
 					var itemName = itemData.m_shared.m_name;
-					var localizedName = GrabMaterials.Extensions.Localize(itemName).ToLower();
 					var itemCategory = itemData.GetCategory();
-					var itemCategoryString = itemCategory.ToString().ToLower();
-					GrabMaterials.Extensions.ItemCategory searchCategory = GrabMaterials.Extensions.ItemCategory.None;
-					var isCategorySearch = text != null ? Enum.TryParse(text, true, out searchCategory) : false;
-
-					var matches = isNewSearch
-						? (player != null && !player.IsMaterialKnown(itemName))
-						: isCategorySearch
-						? itemCategory == searchCategory
-						: text == null || itemData.Name().Contains(text) || itemName.Contains(text) || localizedName.Contains(text) || itemCategoryString.Contains(text);
-					if (!matches) continue;
 
 					if (!byCategory.TryGetValue(itemCategory, out var byName))
 					{
@@ -563,9 +561,53 @@ namespace GrabMaterialsMod
 				}
 			}
 
+			// Stacks and piles: a wood stack is 50 wood on the plot, returned in full when it is
+			// torn down.  Counted like a smelter's queue, labeled "in stack" / "in piles", and
+			// flashed like a container.
+			var nearbyPiles = GrabMaterials.Piles.GetNearby(radius);
+			Log.LogInfo($"and {nearbyPiles.Count} stacks or piles");
+			foreach (var pile in nearbyPiles)
+			{
+				var itemData = pile.Item;
+				if (itemData == null || !Matches(itemData)) continue;
+				var itemName = itemData.m_shared.m_name;
+				var itemCategory = itemData.GetCategory();
+
+				if (!byCategory.TryGetValue(itemCategory, out var byName))
+				{
+					byName = new SortedDictionary<string, int>();
+					byCategory[itemCategory] = byName;
+				}
+				if (byName.ContainsKey(itemName)) byName[itemName] += pile.Amount;
+				else byName[itemName] = pile.Amount;
+
+				if (!inProcessByNameByLoc.TryGetValue(itemName, out var byLoc))
+				{
+					byLoc = new Dictionary<string, int>();
+					inProcessByNameByLoc[itemName] = byLoc;
+				}
+				byLoc.TryGetValue(pile.Kind, out var priorAtLoc);
+				byLoc[pile.Kind] = priorAtLoc + pile.Amount;
+
+				if (!pileCountByNameByKind.TryGetValue(itemName, out var byKind))
+				{
+					byKind = new Dictionary<string, int>();
+					pileCountByNameByKind[itemName] = byKind;
+				}
+				byKind.TryGetValue(pile.Kind, out var piles);
+				byKind[pile.Kind] = piles + 1;
+
+				if (!iconsByName.ContainsKey(itemName) && itemData.m_shared.m_icons != null && itemData.m_shared.m_icons.Length > 0)
+				{
+					iconsByName[itemName] = itemData.m_shared.m_icons[0];
+				}
+
+				GrabMaterials.Piles.Highlight(pile.Piece);
+			}
+
 			if (byCategory.Count == 0)
 			{
-				var emptyMsg = string.IsNullOrEmpty(text) ? "No items in nearby containers"
+				var emptyMsg = string.IsNullOrEmpty(text) ? "No items in nearby containers, processors, stacks or piles"
 					: isNewSearch ? "Nothing here you have not held before"
 					: $"No items match '{text}'";
 				Player.m_localPlayer.Message(MessageHud.MessageType.Center, emptyMsg);
@@ -591,22 +633,24 @@ namespace GrabMaterialsMod
 					Log.LogInfo($"{kvp.Value} {localizedName} [{cat}]{(isNew ? " (new, never held)" : "")}");
 					iconsByName.TryGetValue(kvp.Key, out var icon);
 
-					// Sum per-station tallies into a total + single label. If the item
-					// sits in only one type of station ("kiln"), use that; if it's split
-					// across multiple types, fall back to the generic "processing".
+					// Sum the per-place tallies into a total and a label naming every place:
+					// "kiln", "stacks", "kiln and stacks", "kiln, smelter and piles".  A stack or
+					// pile label is plural only when the item sits in more than one of them.
 					var inProcess = 0;
 					string locLabel = null;
 					if (inProcessByNameByLoc.TryGetValue(kvp.Key, out var byLoc))
 					{
-						foreach (var entry in byLoc) inProcess += entry.Value;
-						if (byLoc.Count == 1)
+						var places = new List<string>();
+						pileCountByNameByKind.TryGetValue(kvp.Key, out var pileKinds);
+						foreach (var entry in byLoc)
 						{
-							foreach (var entry in byLoc) { locLabel = entry.Key; break; }
+							inProcess += entry.Value;
+							var place = entry.Key;
+							if (pileKinds != null && pileKinds.TryGetValue(place, out var n) && n > 1) place += "s";
+							places.Add(place);
 						}
-						else
-						{
-							locLabel = "processing";
-						}
+						locLabel = places.Count == 1 ? places[0]
+							: string.Join(", ", places.GetRange(0, places.Count - 1)) + " and " + places[places.Count - 1];
 					}
 
 					items.Add(new GrabMaterials.MaterialsPanel.InventoryItem { Name = localizedName, Count = kvp.Value, InProcess = inProcess, InProcessLocation = locLabel, Icon = icon, SharedName = kvp.Key, Undiscovered = isNew });

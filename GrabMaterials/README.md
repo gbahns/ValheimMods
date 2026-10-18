@@ -68,6 +68,7 @@ Quickly pull materials from nearby chests into your inventory without having to 
 <li>Configure how long containers are highlighted when you pull items from them or search for items
 <li>Configure how far away a container can be and still be used ("Container Range", default 20 m); match it to your craft-from-containers and auto-store mods
 <li>'/inventory [search-text]' to count the number of items within range; if search-text specifies, looks for items that match on name or category
+<li>'/inventory' also counts what is queued in kilns, smelters and the like, and what is in wood stacks, stone piles, coal piles and other stacks and piles, and notes it on the row
 
 <h3>Fixes in version 1.0.0</h3>
 

@@ -668,6 +668,8 @@ namespace GrabMaterials
 		public static void HighlightContainersHolding(string sharedName)
 		{
 			if (string.IsNullOrEmpty(sharedName)) return;
+			foreach (var pile in Piles.GetNearby(GrabMaterialsMod.GrabMaterialsMod.Range))
+				if (pile.Item?.m_shared?.m_name == sharedName) Piles.Highlight(pile.Piece);
 			var nearbyContainers = Boxes.GetNearbyContainers(GrabMaterialsMod.GrabMaterialsMod.Range);
 			foreach (var container in nearbyContainers)
 			{
@@ -691,6 +693,8 @@ namespace GrabMaterials
 		{
 			if (sharedNames == null || sharedNames.Count == 0) return;
 			var nameSet = sharedNames as HashSet<string> ?? new HashSet<string>(sharedNames);
+			foreach (var pile in Piles.GetNearby(GrabMaterialsMod.GrabMaterialsMod.Range))
+				if (pile.Item?.m_shared?.m_name != null && nameSet.Contains(pile.Item.m_shared.m_name)) Piles.Highlight(pile.Piece);
 			var nearbyContainers = Boxes.GetNearbyContainers(GrabMaterialsMod.GrabMaterialsMod.Range);
 			foreach (var container in nearbyContainers)
 			{
