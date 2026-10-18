@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.5.1 — unreleased
+
+- Bear Hide is listed under Skins in `/i` and the inventory panel. It was falling through to the generic Material group.
+
 ## 2.5.0 — 2026-10-18
 
 - `/i` now counts the material in **stacks and piles**: wood stacks, stone piles, coal piles, Ashwood stacks, black marble piles, coin piles and the rest. Tearing one down returns its full material, so a wood stack is 50 wood on your plot as surely as a chest of it. The amount is noted on the row the way a smelter's queue is, as "(50 in stack)" or "(150 in stacks)", and the stacks flash with the containers, both when the panel opens and when you click the row. Anything a mod adds that is named like a stack or pile and returns one material is counted too.
