@@ -835,7 +835,7 @@ namespace GrabMaterials
 			_shownAt = Time.time;
 			_fadeStart = -1f;
 			_dismissArmed = false;
-			LogShown(title);
+			LogShown(_titleText != null ? _titleText.text : string.Empty);
 		}
 
 		// =========================================================================
