@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.5.1 — unreleased
+## 2.5.1 — 2026-10-18
 
 - Bear Hide and Bear Paw are listed under Skins in `/i` and the inventory panel, with the other creature parts. They were falling through to the generic Material group.
 
