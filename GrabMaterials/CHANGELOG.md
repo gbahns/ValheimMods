@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.5.3 — unreleased
+
+- **Fixed: `/i` showed no panel when a nearby chest held an item with no prefab.** Sorting an item into a category read its prefab name, and an item the game could not pair with a prefab, such as one left behind by a mod that is no longer installed, threw and took the whole panel with it after the chests had already flashed. Such items are now sorted by their name instead.
+
 ## 2.5.2 — 2026-10-19
 
 - **Fixed: an "Idle Timeout" of 0 removed the panel before it was drawn.** The setting was taken literally, so the fade began on the first frame, and with a "Fade Duration" of 0 it also ended there. 0 now means the panel never fades on its own, which is what anyone setting it meant, and a fade of 0 hides the panel at once when the idle timeout ends.

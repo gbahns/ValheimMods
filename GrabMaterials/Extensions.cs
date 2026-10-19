@@ -140,8 +140,15 @@ namespace GrabMaterials
 		/// <returns>A string representing the item's category.</returns>
 		public static ItemCategory GetCategory(this ItemDrop.ItemData self)
 		{
-			var shared = self.m_shared;
-			string prefabName = self.m_dropPrefab.name.ToLowerInvariant();
+			var shared = self?.m_shared;
+			if (shared == null) return ItemCategory.None;
+			// m_dropPrefab is null for an item the game could not pair with a prefab: one from a mod
+			// that is no longer installed, or one a mod built by hand.  Such an item used to throw
+			// here and take the whole /i panel with it.  Fall back to the name token, which is the
+			// same word as the prefab for nearly every vanilla item (LeatherScraps / $item_leatherscraps).
+			string prefabName = self.m_dropPrefab != null
+				? self.m_dropPrefab.name.ToLowerInvariant()
+				: TokenName(shared.m_name).ToLowerInvariant();
 
 			// 1. Check by ItemType enum for clear-cut categories.
 			// These are checked first because they are unambiguous.
