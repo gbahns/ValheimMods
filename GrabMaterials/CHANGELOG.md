@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.5.2 — unreleased
+
+- **Fixed: an "Idle Timeout" of 0 removed the panel before it was drawn.** The setting was taken literally, so the fade began on the first frame, and with a "Fade Duration" of 0 it also ended there. 0 now means the panel never fades on its own, which is what anyone setting it meant, and a fade of 0 hides the panel at once when the idle timeout ends.
+- The log now has one line each time a panel is shown, with its timers, and a warning if the panel cannot be created because Jotunn's GUI layer is missing. A "the panel never shows" report can be answered from the log.
+
 ## 2.5.1 — 2026-10-18
 
 - Bear Hide and Bear Paw are listed under Skins in `/i` and the inventory panel, with the other creature parts. They were falling through to the generic Material group.

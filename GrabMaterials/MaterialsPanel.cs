@@ -97,8 +97,19 @@ namespace GrabMaterials
 		private static readonly Color CategoryColor = new Color(1f, 0.847f, 0.42f);          // #ffd86b
 		private static readonly Color UnderlineColor = new Color(1f, 0.847f, 0.42f, 0.55f);
 
-		private static float IdleTimeoutSeconds => GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelIdleTimeout?.Value ?? 15f;
-		private static float FadeDurationSeconds => GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelFadeDuration?.Value ?? 3f;
+		// An idle timeout of zero or less means the panel never fades on its own.  Taken literally
+		// it started the fade on the first frame, and with a fade of zero the panel was removed
+		// before it was ever drawn: a player who set either to 0 expecting "never" saw nothing.
+		private static float IdleTimeoutSeconds
+		{
+			get
+			{
+				var v = GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelIdleTimeout?.Value ?? 15f;
+				return v > 0f ? v : float.PositiveInfinity;
+			}
+		}
+		// Never zero: the fade progress divides by it.  A tiny value is an instant hide after the idle timeout.
+		private static float FadeDurationSeconds => Mathf.Max(0.05f, GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelFadeDuration?.Value ?? 3f);
 		private static bool DismissOnMovement => GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelDismissOnMovement?.Value ?? true;
 		private static bool ShowCategoryUnderlines => GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelCategoryUnderlines?.Value ?? true;
 		private static bool ShowItemIcons => GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelShowItemIcons?.Value ?? true;
@@ -290,6 +301,7 @@ namespace GrabMaterials
 			UpdatePauseButton();
 			_fadeStart = -1f;
 			_dismissArmed = false;
+			LogShown(title);
 		}
 
 		private class DeltaCycleState { public GrabMaterialsMod.GrabMaterialsMod.DeltaSetting Value; }
@@ -823,6 +835,7 @@ namespace GrabMaterials
 			_shownAt = Time.time;
 			_fadeStart = -1f;
 			_dismissArmed = false;
+			LogShown(title);
 		}
 
 		// =========================================================================
@@ -1404,6 +1417,7 @@ namespace GrabMaterials
 			_shownAt = Time.time;
 			_fadeStart = -1f;
 			_dismissArmed = false;
+			LogShown(title);
 		}
 
 		private static bool HasGameplayInput()
@@ -1415,10 +1429,25 @@ namespace GrabMaterials
 			return false;
 		}
 
+		// What the log says when a panel goes up: the title, its timers, and whether the fade
+		// will ever start.  Enough to read a "the panel never shows" report off the log alone.
+		private static void LogShown(string title)
+		{
+			var idle = IdleTimeoutSeconds;
+			var idleText = float.IsPositiveInfinity(idle) ? "never fades" : $"fades after {idle:0.#} s over {FadeDurationSeconds:0.##} s";
+			Jotunn.Logger.LogInfo($"[Grab Materials] panel shown: \"{title}\" ({idleText}{(DismissOnMovement ? ", dismissed by movement" : "")})");
+		}
+
 		private static void EnsureCreated()
 		{
 			if (_panel != null) return;
-			if (GUIManager.Instance == null || GUIManager.CustomGUIFront == null) return;
+			if (GUIManager.Instance == null || GUIManager.CustomGUIFront == null)
+			{
+				// Jotunn builds its GUI layer when the game scene loads; without it there is nowhere
+				// to put the panel.  Say so, rather than silently showing nothing.
+				Jotunn.Logger.LogWarning("[Grab Materials] cannot show a panel: Jotunn's GUI layer is not available (GUIManager " + (GUIManager.Instance == null ? "missing" : "present") + ", CustomGUIFront " + (GUIManager.CustomGUIFront == null ? "missing" : "present") + ")");
+				return;
+			}
 
 			// Top-center anchored, pivot at top-center so resize grows downward.
 			_panel = GUIManager.Instance.CreateWoodpanel(

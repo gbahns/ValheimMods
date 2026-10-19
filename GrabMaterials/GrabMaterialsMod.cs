@@ -19,7 +19,7 @@ using UnityEngine;
 namespace GrabMaterialsMod
 {
 
-	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.5.1")]
+	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.5.2")]
 	[BepInProcess("valheim.exe")]
 	public class GrabMaterialsMod : BaseUnityPlugin
 	{
@@ -174,8 +174,8 @@ namespace GrabMaterialsMod
 			GrabDeltaGlobal = Config.Bind("Client config", "Grab Delta (default)", true, new ConfigDescription("If true, all grabs (packs, individual build pieces, /grab <piece>) only grab the shortfall between what you already have and what's needed. Per-pack settings can override this."));
 			GrabDeltaLedgerTimeout = Config.Bind("Client config", "Grab Delta Ledger Timeout (seconds)", 30f, new ConfigDescription("Back-to-back delta grabs share a ledger so the same inventory isn't credited toward two different builds (e.g. /g cart then /g explore won't both 'see' the same 10 wood). After this many seconds without a delta grab, the ledger clears so the next grab considers only what's currently in your inventory. Set to 0 to effectively disable cross-grab tracking."));
 
-			PanelIdleTimeout = Config.Bind("Panel UI", "Idle Timeout (seconds)", 15f, new ConfigDescription("Seconds the grab-results panel stays fully visible before fading out automatically."));
-			PanelFadeDuration = Config.Bind("Panel UI", "Fade Duration (seconds)", 3f, new ConfigDescription("Seconds the grab-results panel takes to fade out."));
+			PanelIdleTimeout = Config.Bind("Panel UI", "Idle Timeout (seconds)", 15f, new ConfigDescription("Seconds the grab-results panel stays fully visible before fading out automatically. 0 means it never fades on its own."));
+			PanelFadeDuration = Config.Bind("Panel UI", "Fade Duration (seconds)", 3f, new ConfigDescription("Seconds the grab-results panel takes to fade out. 0 hides it at once when the idle timeout ends."));
 			PanelDismissOnMovement = Config.Bind("Panel UI", "Dismiss On Movement", true, new ConfigDescription("Start fading the panel when the player begins moving, attacking, blocking, or jumping. If false, only the idle timeout dismisses the panel."));
 			InventoryStyle = Config.Bind("Panel UI", "Inventory Style", GrabMaterials.MaterialsPanel.InventoryStyle.List, new ConfigDescription("Display style for the /inventory panel. List = grouped by category, count + name per row (counts right-aligned). Table = flat 3-column table with Category / Item / Count headers."));
 			PanelCategoryUnderlines = Config.Bind("Panel UI", "Category Underlines", true, new ConfigDescription("In List mode, draw a thin orange line under each category name. Has no effect in Table mode."));
