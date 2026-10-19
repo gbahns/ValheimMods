@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.5.3 — unreleased
+## 2.5.3 — 2026-10-19
 
 - **Fixed: `/i` showed no panel when a nearby chest held an item with no prefab.** Sorting an item into a category read its prefab name, and an item the game could not pair with a prefab, such as one left behind by a mod that is no longer installed, threw and took the whole panel with it after the chests had already flashed. Such items are now sorted by their name instead.
 
