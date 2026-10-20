@@ -184,6 +184,33 @@ namespace TheGreatestMap
                     }
                 }));
 
+            new Terminal.ConsoleCommand("tgm_identify", "Tell markers written by older versions what they are, so their icons follow the catalog; lists first, tgm_identify apply writes it",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    bool apply = args.Args.Length >= 2 && args.Args[1].ToLowerInvariant() == "apply";
+                    var result = Identify.Run(apply);
+                    foreach (var line in Identify.Describe(result, apply))
+                    {
+                        args.Context.AddString(line);
+                        TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_identify: " + line);
+                    }
+                    if (!apply && result.Matched > 0)
+                        args.Context.AddString("Run tgm_identify apply to write it. The change travels like any other edit.");
+                    // The ones no icon can settle are put to the server, which holds the list of
+                    // every building the world generator placed. The answer comes back a moment
+                    // later, so it prints itself rather than joining the report above.
+                    var ctx = args.Context;
+                    if (Identify.AskTheWorld(result, apply, lines =>
+                        {
+                            foreach (var line in lines)
+                            {
+                                if (ctx != null) ctx.AddString(line);
+                                TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_identify: " + line);
+                            }
+                        }))
+                        args.Context.AddString($"Asking the world about {result.Ambiguous + result.Lost} more...");
+                }));
+
             new Terminal.ConsoleCommand("tgm_transports", "What the mod knows about ships and carts, and why one near you is or is not drawn",
                 (Terminal.ConsoleEvent)(args =>
                 {

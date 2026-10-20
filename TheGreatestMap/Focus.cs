@@ -44,14 +44,16 @@ namespace TheGreatestMap
         internal static string TypeLabel(SharedPin pin)
         {
             if (pin == null) return "marker";
+            string named = Catalog.NameForSource(pin.Source);
+            if (!string.IsNullOrEmpty(named)) return named;
             var kind = ClientPins.KindOf(pin);
             if (kind.HasValue)
             {
-                string type = Catalog.TypeNameFor(kind.Value, pin.Icon);
+                string type = Catalog.TypeNameFor(kind.Value, ClientPins.IconOf(pin));
                 if (!string.IsNullOrEmpty(type)) return type;
                 if (CrossedOff.HasTypes(kind.Value)) return Categories.Label(kind.Value);
             }
-            return IconRegistry.DisplayName(pin.Icon);
+            return IconRegistry.DisplayName(ClientPins.IconOf(pin));
         }
 
         /// <summary>What is being looked for, for a row or a message to say.</summary>
@@ -66,7 +68,7 @@ namespace TheGreatestMap
         private static string LabelForIcon(string icon)
         {
             foreach (var pin in ClientPins.All)
-                if (IconRegistry.SameKey(pin.Icon, icon)) return TypeLabel(pin);
+                if (IconRegistry.SameKey(ClientPins.IconOf(pin), icon)) return TypeLabel(pin);
             return IconRegistry.DisplayName(icon);
         }
 
@@ -135,7 +137,7 @@ namespace TheGreatestMap
         internal static bool Shows(SharedPin pin)
         {
             if (!On || pin == null) return true;
-            if (_icon != null) return IconRegistry.SameKey(pin.Icon, _icon);
+            if (_icon != null) return IconRegistry.SameKey(ClientPins.IconOf(pin), _icon);
             if (_kind.HasValue)
             {
                 var kind = ClientPins.KindOf(pin);
@@ -154,14 +156,15 @@ namespace TheGreatestMap
         {
             if (string.IsNullOrEmpty(needle)) return true;
             if (Has(pin.Name, needle)) return true;
+            if (Has(Catalog.NameForSource(pin.Source), needle)) return true;
             var kind = ClientPins.KindOf(pin);
             if (kind.HasValue)
             {
                 if (Has(Categories.Label(kind.Value), needle)) return true;
-                string type = Catalog.TypeNameFor(kind.Value, pin.Icon);
+                string type = Catalog.TypeNameFor(kind.Value, ClientPins.IconOf(pin));
                 if (type != null && Has(type, needle)) return true;
             }
-            return Has(IconRegistry.DisplayName(pin.Icon), needle);
+            return Has(IconRegistry.DisplayName(ClientPins.IconOf(pin)), needle);
         }
 
         private static bool Has(string haystack, string needle)
@@ -203,7 +206,7 @@ namespace TheGreatestMap
             foreach (var pin in ClientPins.All)
             {
                 if (needle.Length > 0 && !Mentions(pin, needle)) continue;
-                string key = IconRegistry.Normalize(pin.Icon) ?? IconRegistry.FallbackKey;
+                string key = IconRegistry.Normalize(ClientPins.IconOf(pin)) ?? IconRegistry.FallbackKey;
                 if (!byIcon.TryGetValue(key, out var entry))
                     byIcon[key] = entry = new TypeCount { Icon = key, Label = TypeLabel(pin), Kind = ClientPins.KindOf(pin) };
                 entry.Count++;

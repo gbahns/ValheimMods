@@ -1,5 +1,67 @@
 # Changelog
 
+## 3.0.0 — 2026-10-20
+
+**Everyone needs this together, the server included.** The saved format has changed, and versions
+before this one refuse a format they do not know rather than read around it. Mixed versions will
+not see each other's maps until everybody has updated. This should be the last time that is true:
+from this version on, a marker travels as its own length-counted record, so a future field is
+stepped over instead of losing the reader its place, and an unknown version is read for what it
+does understand instead of being refused.
+
+- **A marker now remembers what it is, not just the picture it was drawn with.** Decide that a
+  sunken crypt suits a draugr trophy better than a swamp key and every sunken crypt on the map
+  changes at once -- yours, and the ones other people wrote. The icon is worked out when the map
+  is drawn, from the same catalog that recording and the legend read, so all three always agree.
+- It follows that an icon is now a matter of taste rather than a thing written into the shared
+  map. Changing one costs nothing, travels nowhere, and two players can disagree about what a
+  frost cave looks like without either of them being wrong.
+- **`tgm_identify` tells older markers what they are.** It matches each one against the catalog by
+  its kind, its icon and its name, reports what it found, and writes nothing until
+  `tgm_identify apply`. Worth running once, and worth running *before* changing any more icons:
+  it reads markers back through the icons they were written with, so it gets harder the more those
+  move. Markers it cannot place keep the icon they have.
+- **Where the icon cannot settle it, the world is asked.** A dozen catalog lines share the house
+  pin, and the names that told them apart were erased by the label rules long ago, so there is
+  nothing left on a structure's marker to read. The building is still standing, though, and the
+  server holds the list the world generator placed: every location, where it is and what it is
+  called. `tgm_identify` puts the ones it cannot account for to the server and reads the answer
+  off the world, so an abandoned farm is recorded as an abandoned farm because that is what
+  stands there -- not because it was the first line in the catalog wearing that icon.
+- **"locate" on every row in the marker list.** Press it and that kind's markers swell and
+  brighten twice a second for a few seconds, then settle. It answers "where are all the dungeons"
+  without putting anything else away, which is what separates it from the find box: nothing is
+  hidden, nothing is changed, and the rest of the map stays where you can see it. A row in the
+  find results locates that one type instead. "Locate Seconds" (Display) sets how long.
+- A marker placed by hand follows its kind's icon, since its kind is all it ever claimed to be.
+- Markers of a kind the catalog does not divide -- portals, runestones -- follow their kind's icon
+  directly. There is only one sort of each, so there was never anything to tell apart.
+- **Guck is recorded**, as a deposit, so a worked-out sack crosses off like a vein. There is a lot
+  of it -- this world holds over 1,300 sacks -- so a swamp will read as a dense patch of markers.
+  Turn "Show Ore" off, add `Guck` to "Hidden Icons", widen the ore marker spacing, or take the two
+  guck lines back out of the catalog, whichever suits.
+- Changing a kind's fallback icon now redraws the map, which it did not before.
+
+## 2.2.0 — 2026-10-20
+
+Client-side.
+
+- **A tar pit is marked once, on the pit, instead of on each pool of tar in it.** The pit is the
+  thing worth sailing to; the tar in it is what you go there for, and scattering markers across
+  one is a poor way of saying "tar here". This world holds 30 pits and 224 pools, which is the
+  whole argument. Pits now record as a kind of deposit, so a worked-out one crosses off like any
+  other and the marker stays to say it is done.
+- **If you have been playing a while, this will not reach you on its own.** The catalog lives in
+  your config file, and a config file always wins over a changed default -- that is what makes it
+  yours. Replace `Pickable_Tar=Tar Pit` in "Ore" with `TarPit*=Tar Pit|Tar` to pick it up. The
+  same goes for the Yggdrasil roots added in 1.3.0: a file written before then has never recorded
+  one, and `YggdrasilRoot*=Yggdrasil Root|Sap` on the end of that line fixes it.
+- Guck is still not recorded, and that is deliberate rather than an omission: this world has 1,307
+  guck sacks in it against 3,536 markers on the whole map, so recording them would roughly double
+  everything you see. Anyone who wants them can add `GuckSack=Guck|Guck,GuckSack_small=Guck|Guck`
+  to a catalog line -- "Ore" treats them as a supply that runs out -- and raise that kind's marker
+  spacing so a swamp reads as a few patches rather than a thousand sacks.
+
 ## 2.1.0 — 2026-10-20
 
 Client-side. Needs a 2.0.0 server for ships and carts, as 2.0.0 did.

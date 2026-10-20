@@ -55,11 +55,38 @@ namespace TheGreatestMap
             MinimapClip.Reset();
             MapFrame.Reset();
             Focus.Clear();
+            Locate.Reset();
+        }
+
+        /// <summary>
+        /// The icon a marker wears now. A recorded marker that remembers what it is wears
+        /// whatever the catalog says that thing wears today; one placed by hand follows its
+        /// kind, since that is all it ever claimed to be. Everything else keeps the icon written
+        /// on it -- markers from before this was recorded, vanilla pins adopted as they were, and
+        /// anything whose catalog line has since been removed.
+        /// </summary>
+        internal static string IconOf(SharedPin shared)
+        {
+            if (shared == null) return IconRegistry.FallbackKey;
+            string fromCatalog = Catalog.IconFor(shared.Source);
+            if (!string.IsNullOrEmpty(fromCatalog)) return fromCatalog;
+            var kind = KindOf(shared);
+            // The kind answers for two sorts of marker: one placed by hand, which never claimed
+            // to be anything more than its kind, and one of a kind the catalog does not divide at
+            // all. A portal is a portal and a runestone is a runestone -- there is no list of
+            // types for either, so the kind's own icon is the whole answer and these follow it
+            // without ever needing to be told what they are.
+            if (kind.HasValue && (!shared.Auto || !Categories.UsesPrefabList(kind.Value))
+                && TgmConfig.CategoryIcon.TryGetValue(kind.Value, out var cfg)
+                && !string.IsNullOrEmpty(cfg.Value))
+                return IconRegistry.Normalize(cfg.Value) ?? shared.Icon;
+            return shared.Icon;
         }
 
         private static int LocalType(SharedPin shared)
         {
-            if (!string.IsNullOrEmpty(shared.Icon)) return IconRegistry.TypeFor(shared.Icon);
+            string icon = IconOf(shared);
+            if (!string.IsNullOrEmpty(icon)) return IconRegistry.TypeFor(icon);
             return PinTypes.IsCustom(shared.Type) ? (int)Minimap.PinType.Icon3 : shared.Type;
         }
 
@@ -84,7 +111,7 @@ namespace TheGreatestMap
         // ── local edits ─────────────────────────────────────────────────────────────
 
         /// <summary>Record or place a marker on the personal map.</summary>
-        internal static SharedPin CreateShared(string name, Vector3 pos, string icon, string kind, bool auto, bool isChecked = false)
+        internal static SharedPin CreateShared(string name, Vector3 pos, string icon, string kind, bool auto, bool isChecked = false, string source = "")
         {
             var player = Player.m_localPlayer;
             string key = IconRegistry.Normalize(icon) ?? IconRegistry.FallbackKey;
@@ -98,6 +125,7 @@ namespace TheGreatestMap
                 Type = IconRegistry.TypeFor(key),
                 Icon = key,
                 Kind = kind ?? "",
+                Source = source ?? "",
                 Checked = isChecked,
                 Auto = auto,
                 Created = MapStore.Now,
@@ -453,6 +481,24 @@ namespace TheGreatestMap
 
         internal static bool IsOurs(Minimap.PinData pin) => pin != null && _idByPin.ContainsKey(pin);
 
+        /// <summary>Every marker drawn on the map, with the record behind it.</summary>
+        internal static IEnumerable<KeyValuePair<Minimap.PinData, string>> Drawn => _idByPin;
+
+        internal static bool TryGet(string id, out SharedPin shared)
+        {
+            shared = null;
+            return id != null && Store.Pins.TryGetValue(id, out shared);
+        }
+
+        /// <summary>The size this kind of marker is configured to be drawn at.</summary>
+        internal static float ScaleOf(SharedPin shared)
+        {
+            var kind = KindOf(shared);
+            if (kind.HasValue && TgmConfig.MarkerSize.TryGetValue(kind.Value, out var size))
+                return Mathf.Clamp(size.Value, 20, 100) / 100f;
+            return 1f;
+        }
+
         /// <summary>The marker behind one of our vanilla pins, or null for a pin that is not ours.</summary>
         internal static SharedPin SharedFor(Minimap.PinData pin)
         {
@@ -677,7 +723,7 @@ namespace TheGreatestMap
                 if (!Store.Pins.TryGetValue(kv.Value, out var shared)) continue;
                 var kind = KindOf(shared);
                 bool hiddenByHand = ViewPrefs.IsHidden(kv.Value);
-                bool hidden = hideEverything || hiddenByHand || TgmConfig.IsIconHidden(shared.Icon);
+                bool hidden = hideEverything || hiddenByHand || TgmConfig.IsIconHidden(IconOf(shared));
                 if (!hidden && kind.HasValue)
                 {
                     if (TgmConfig.ShowKind.TryGetValue(kind.Value, out var showKind) && !showKind.Value) hidden = true;
@@ -701,9 +747,7 @@ namespace TheGreatestMap
                 if (Focus.On && !hideEverything && !hiddenByHand) hidden = !Focus.Shows(shared);
                 SetMarkerActive(pin, !hidden);
                 if (hidden) continue;
-                float scale = 1f;
-                if (kind.HasValue && TgmConfig.MarkerSize.TryGetValue(kind.Value, out var size))
-                    scale = Mathf.Clamp(size.Value, 20, 100) / 100f;
+                float scale = ScaleOf(shared);
                 pin.m_uiElement.localScale = new Vector3(scale, scale, 1f);
                 // Crossed off: the marker itself goes pale, not only the little mark over it.
                 // That mark is drawn on top of the picture, so a busy one swallows it and a label

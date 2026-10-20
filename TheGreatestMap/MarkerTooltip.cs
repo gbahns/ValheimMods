@@ -67,7 +67,7 @@ namespace TheGreatestMap
         /// <summary>Everything the tooltip reads, so any change to it is a change on screen.</summary>
         private static string Describes(SharedPin shared)
         {
-            return shared.Id + "|" + (shared.Checked ? "1" : "0") + "|" + shared.Name + "|" + shared.Icon
+            return shared.Id + "|" + (shared.Checked ? "1" : "0") + "|" + shared.Name + "|" + ClientPins.IconOf(shared)
                  + "|" + shared.Author + "|" + shared.Created;
         }
 
@@ -129,11 +129,14 @@ namespace TheGreatestMap
             // What this one is, which for a dungeon or a structure is not the same as its kind: a
             // frost cave, not "Dungeons". Most markers carry no label on the map, so the tooltip is
             // where a player reads it, and naming the kind alone told them what they could see.
-            string what = kind.HasValue ? Catalog.TypeNameFor(kind.Value, shared.Icon) : null;
+            // What it is, preferred over what its icon suggests: a marker that remembers its own
+            // prefab can say "Swamp Hut" where the house pin could only ever say "Structures".
+            string what = Catalog.NameForSource(shared.Source);
+            if (what == null && kind.HasValue) what = Catalog.TypeNameFor(kind.Value, ClientPins.IconOf(shared));
             if (what == null && kind.HasValue) what = Categories.Label(kind.Value);
 
             string title = !string.IsNullOrEmpty(shared.Name) ? shared.Name
-                : (what ?? IconRegistry.DisplayName(shared.Icon));
+                : (what ?? IconRegistry.DisplayName(ClientPins.IconOf(shared)));
 
             var lines = new List<string>();
             // A second line only when it says something the title does not. A marker named by its
@@ -150,7 +153,7 @@ namespace TheGreatestMap
             // is usually one whose key names an item this game does not have, and nothing else on
             // screen says so. The prefab it came from is not stored on a marker, so that level of
             // detail lives in the legend rather than here.
-            lines.Add(shared.Icon);
+            lines.Add(ClientPins.IconOf(shared));
 
             string who = !string.IsNullOrEmpty(shared.Author) ? shared.Author : null;
             string when = When(shared.Created);

@@ -49,7 +49,18 @@ namespace TheGreatestMap
     internal sealed class MapStore
     {
         // 1: original. 2: icon keys. 3: kind. 4: modified time on markers, tombstones.
-        public const int FormatVersion = 4;
+        /// <summary>
+        /// 5 adds what a marker stands for, and the framing that should make this the last
+        /// version anybody has to upgrade in step for. Up to 4 a marker was written straight into
+        /// the stream, so a reader that did not know the newest field lost its place and every
+        /// marker after it came out as nonsense -- which is why those readers refuse a newer
+        /// format outright, and why each bump split the group until everyone updated. From 5 on
+        /// each marker travels as its own length-counted blob: an older reader takes the fields
+        /// it knows and steps over the rest, and an unknown section at the end is simply not
+        /// read. Append to the end of a marker and to the end of the stream and nothing breaks;
+        /// reorder or remove, and all of this is void.
+        /// </summary>
+        public const int FormatVersion = 5;
 
         public readonly Dictionary<string, SharedPin> Pins = new Dictionary<string, SharedPin>();
         public readonly Dictionary<string, long> Tombstones = new Dictionary<string, long>();
@@ -143,22 +154,37 @@ namespace TheGreatestMap
         {
             pkg.Write(FormatVersion);
             pkg.Write(Pins.Count);
-            foreach (var p in Pins.Values) p.Write(pkg);
+            foreach (var p in Pins.Values) pkg.Write(Blob(p.Write));
             pkg.Write(Tombstones.Count);
             foreach (var t in Tombstones) { pkg.Write(t.Key); pkg.Write(t.Value); }
             pkg.Write(Suppressions.Count);
-            foreach (var s in Suppressions) s.Write(pkg);
+            foreach (var s in Suppressions) pkg.Write(Blob(s.Write));
+        }
+
+        /// <summary>One record on its own, so a reader can step over what it does not understand.</summary>
+        private static byte[] Blob(System.Action<ZPackage> write)
+        {
+            var inner = new ZPackage();
+            write(inner);
+            return inner.GetArray();
         }
 
         public static MapStore Read(ZPackage pkg)
         {
             int version = pkg.ReadInt();
-            if (version < 1 || version > FormatVersion) throw new InvalidDataException("Unsupported map format " + version);
+            // No upper bound. A version beyond this one is readable because of the framing from 5
+            // on: every record is length-counted, so the fields we know are taken and the rest is
+            // stepped over. Refusing it instead would leave the player with no shared map at all
+            // and split the group in two, which is the one failure worth going out of the way to
+            // avoid -- read every shape, enforce none.
+            if (version < 1) throw new InvalidDataException("Unsupported map format " + version);
             var store = new MapStore();
             int n = pkg.ReadInt();
             for (int i = 0; i < n; i++)
             {
-                var p = SharedPin.Read(pkg, version);
+                var p = version >= 5
+                    ? SharedPin.Read(new ZPackage(pkg.ReadByteArray()), version)
+                    : SharedPin.Read(pkg, version);
                 if (!string.IsNullOrEmpty(p.Id)) store.Pins[p.Id] = p;
             }
             if (version >= 4)
@@ -172,7 +198,10 @@ namespace TheGreatestMap
                 }
             }
             int m = pkg.ReadInt();
-            for (int i = 0; i < m; i++) store.Suppressions.Add(Suppression.Read(pkg, version));
+            for (int i = 0; i < m; i++)
+                store.Suppressions.Add(version >= 5
+                    ? Suppression.Read(new ZPackage(pkg.ReadByteArray()), version)
+                    : Suppression.Read(pkg, version));
             return store;
         }
 

@@ -96,7 +96,7 @@ namespace TheGreatestMap
                 string group = CrossedOff.GroupOf(pin);
                 searched.TryGetValue(group, out int n);
                 searched[group] = n + 1;
-                if (!groupIcon.ContainsKey(group)) groupIcon[group] = pin.Icon;
+                if (!groupIcon.ContainsKey(group)) groupIcon[group] = ClientPins.IconOf(pin);
             }
 
             var panel = MenuKit.Panel(parent, "TGM_KindMenu");
@@ -179,8 +179,8 @@ namespace TheGreatestMap
             const float x = 0f;
             float y = -Pad;
             Header(_results != null
-                ? "Matches   click one to see only it"
-                : "Marker kinds   +  places one by hand", x, y);
+                ? "Matches   only / locate"
+                : "Marker kinds   + place, only, locate", x, y);
             y -= HeaderHeight;
 
             FindBox(x, y);
@@ -229,7 +229,8 @@ namespace TheGreatestMap
                     var m = match;
                     SwitchRow(map, x, y, 0f, m.Icon, $"{m.Label} ({m.Count})",
                         () => Focus.SetIcon(m.Icon),
-                        () => Focus.Icon != null && IconRegistry.SameKey(Focus.Icon, m.Icon));
+                        () => Focus.Icon != null && IconRegistry.SameKey(Focus.Icon, m.Icon),
+                        onLocate: () => Locate.Icon(m.Icon, m.Label));
                     y -= RowHeight;
                 }
                 return y;
@@ -261,7 +262,10 @@ namespace TheGreatestMap
                     Categories.IsLive(k) ? (Action)null : () => { if (ManualPlace.Arm(map, k)) Close(); },
                     // And "only": the same row's switch would need twenty others turned off to say
                     // this, so it says it in one press, and says it again to take it back.
-                    () => Focus.SetKind(k));
+                    () => Focus.SetKind(k),
+                    // And "locate", which answers the same question the other way round: leave
+                    // the map as it is and make these ones wave.
+                    Categories.IsLive(k) ? (Action)null : () => Locate.Kind(k));
                 y -= RowHeight;
             }
             return y;
@@ -437,7 +441,7 @@ namespace TheGreatestMap
             _entries.Add(new Entry { Text = text, Quiet = quiet ?? (() => false), Label = label });
         }
 
-        private static void SwitchRow(Minimap map, float x, float y, float indent, string iconKey, string text, Action onClick, Func<bool> shown, Action onPlace = null, Action onOnly = null)
+        private static void SwitchRow(Minimap map, float x, float y, float indent, string iconKey, string text, Action onClick, Func<bool> shown, Action onPlace = null, Action onOnly = null, Action onLocate = null)
         {
             var row = MenuKit.Row(_root.transform, "", true, () =>
             {
@@ -462,10 +466,17 @@ namespace TheGreatestMap
             entry.Icon.raycastTarget = false;
             entry.Icon.preserveAspect = true;
 
-            if (onPlace != null) RowButton(row, "+", 15f, 6f, RowHeight - 8f, onPlace);
+            float right = 6f;
+            if (onPlace != null) { RowButton(row, "+", 15f, right, RowHeight - 8f, onPlace); right += RowHeight - 4f; }
             if (onOnly != null)
-                RowButton(row, "only", 11f, onPlace != null ? RowHeight + 2f : 6f, 34f,
-                    () => { onOnly(); Refresh(); });
+            {
+                RowButton(row, "only", 11f, right, 34f, () => { onOnly(); Refresh(); });
+                right += 38f;
+            }
+            // Locating leaves the list open and changes nothing, so unlike the others there is
+            // nothing to redraw afterwards -- the pulse paints itself.
+            if (onLocate != null) { RowButton(row, "locate", 11f, right, 44f, onLocate); right += 48f; }
+            float buttons = right;
 
             entry.Label = row.GetComponentInChildren<TextMeshProUGUI>();
             if (entry.Label != null)
@@ -473,6 +484,10 @@ namespace TheGreatestMap
                 entry.Label.text = text;
                 entry.Label.alignment = TextAlignmentOptions.MidlineLeft;
                 entry.Label.rectTransform.offsetMin = new Vector2(indent + IconSize + 14f, 0f);
+                // Keep the name clear of the buttons rather than letting a long kind run under
+                // them, where it reads as part of the word on the button.
+                entry.Label.rectTransform.offsetMax = new Vector2(-buttons, 0f);
+                entry.Label.overflowMode = TextOverflowModes.Ellipsis;
             }
             _entries.Add(entry);
         }

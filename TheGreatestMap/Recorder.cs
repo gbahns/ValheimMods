@@ -93,7 +93,7 @@ namespace TheGreatestMap
                 float labelRadius = labelSpacing > 0f ? Mathf.Max(labelSpacing, found.Radius) : labelSpacing;
                 bool label = labelSpacing >= 0f && !ClientPins.HasLabeledPinNear(found.Icon, found.Name, dedupeAt, labelRadius);
                 DiscoveryLedger.MarkRecorded(found.Key);
-                ClientPins.CreateShared(label ? found.Name : "", found.Pos, found.Icon, found.Cat.ToString(), auto: true,
+                ClientPins.CreateShared(label ? found.Name : "", found.Pos, found.Icon, found.Cat.ToString(), auto: true, source: found.Source,
                     isChecked: found.Cleared || Searched.WasSearched(found.Key));
                 TheGreatestMapMod.Message((found.Cleared ? "Recorded, cleared: " : "Recorded: ") + found.Name);
             }

@@ -167,6 +167,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<float> ServerAutosaveMinutes;
         internal static ConfigEntry<float> TransportSweepSeconds;
         internal static ConfigEntry<bool> ShowTransportLabels;
+        internal static ConfigEntry<float> LocateSeconds;
 
         /// <summary>
         /// Settings for markers the server finds and the client draws, rather than markers written
@@ -511,6 +512,14 @@ namespace TheGreatestMap
             foreach (var entry in CategoryPrefabs.Values)
                 entry.SettingChanged += (_, __) => { Catalog.Invalidate(); KindInference.Invalidate(); };
             StructuresExcludePrefixes.SettingChanged += (_, __) => Catalog.Invalidate();
+            // A kind's fallback icon is the last step of working out what a marker wears, so a
+            // change to one has to throw the worked-out answers away and redraw.
+            foreach (var entry in CategoryIcon.Values)
+                entry.SettingChanged += (_, __) => { Catalog.Invalidate(); ClientPins.Restyle(); };
+
+            LocateSeconds = mod.BindLocal("Display", "Locate Seconds", 6f,
+                "How long markers pulse after you press \"locate\" on their row in the marker list. They swell and " +
+                "brighten twice a second and fade back over the last second; nothing is hidden and nothing is changed.");
 
             ShowTransportLabels = mod.BindMoved("Display", Dynamic, "Show Transport Labels", false,
                 "Write the name of each ship and cart beside its pin on the large map. Off by default: a harbor of six " +

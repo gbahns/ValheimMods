@@ -249,7 +249,7 @@ namespace TheGreatestMap
             {
                 if (Geo.FlatDistance(pin.Pos, pos) > MatchRadius) continue;
                 if (ClientPins.KindOf(pin) == Category.Portal) return true;
-                if (!pin.Auto && IconRegistry.SameKey(pin.Icon, iconKey)) return true;
+                if (!pin.Auto && IconRegistry.SameKey(ClientPins.IconOf(pin), iconKey)) return true;
             }
             return false;
         }

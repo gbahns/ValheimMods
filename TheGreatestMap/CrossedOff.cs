@@ -73,7 +73,7 @@ namespace TheGreatestMap
             if (kind.HasValue)
             {
                 if (Categories.IsResource(kind.Value)) return null;
-                if (Splits(kind.Value)) return TypeOf(kind.Value, pin.Icon);
+                if (Splits(kind.Value)) return TypeOf(kind.Value, ClientPins.IconOf(pin));
                 return Categories.Label(kind.Value);
             }
             return pin.Auto ? Unsorted : Placed;

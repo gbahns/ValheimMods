@@ -68,7 +68,7 @@ namespace TheGreatestMap
             var byIcon = new Dictionary<string, List<SharedPin>>(System.StringComparer.OrdinalIgnoreCase);
             foreach (var pin in ClientPins.All)
             {
-                string icon = IconRegistry.Normalize(pin.Icon) ?? "";
+                string icon = IconRegistry.Normalize(ClientPins.IconOf(pin)) ?? "";
                 if (!byIcon.TryGetValue(icon, out var list)) byIcon[icon] = list = new List<SharedPin>();
                 list.Add(pin);
             }

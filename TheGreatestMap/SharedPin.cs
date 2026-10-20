@@ -14,6 +14,11 @@ namespace TheGreatestMap
         public int Type;        // the creating client's local pin type; receivers recompute from Icon
         public string Icon = ""; // "item:Dandelion" or "pin:Boss" (see IconRegistry)
         public string Kind = ""; // Category name for recorded markers ("Herbs"); "" for placed ones
+        // What the marker stands for: the prefab the catalog matched when it was recorded
+        // ("SunkenCrypt4"), empty for one placed by hand. The icon above is how it was drawn at
+        // the time; this is what it IS, which is the part that does not change when somebody
+        // decides a draugr trophy suits a sunken crypt better than a swamp key.
+        public string Source = "";
         public bool Checked;
         public bool Auto;       // recorded automatically (erasing it suppresses re-recording there)
         public long Created;    // DateTime.UtcNow.Ticks
@@ -52,6 +57,7 @@ namespace TheGreatestMap
             {
                 Id = Id, OwnerId = OwnerId, Author = Author, Name = Name, Pos = Pos, Type = Type, Icon = Icon,
                 Kind = Kind, Checked = Checked, Auto = Auto, Created = Created, Modified = Modified,
+                Source = Source,
             };
         }
 
@@ -69,6 +75,7 @@ namespace TheGreatestMap
             pkg.Write(Auto);
             pkg.Write(Created);
             pkg.Write(Modified);
+            pkg.Write(Source ?? "");
         }
 
         public static SharedPin Read(ZPackage pkg, int version)
@@ -88,6 +95,10 @@ namespace TheGreatestMap
             pin.Auto     = pkg.ReadBool();
             pin.Created  = pkg.ReadLong();
             pin.Modified = version >= 4 ? pkg.ReadLong() : pin.Created;
+            // What the thing is, as opposed to the picture standing for it. Guarded on what is
+            // left in the package rather than on the version alone, so a marker written by a
+            // later version that has grown another field still reads correctly up to here.
+            pin.Source = version >= 5 && pkg.GetPos() < pkg.Size() ? pkg.ReadString() : "";
             return pin;
         }
     }

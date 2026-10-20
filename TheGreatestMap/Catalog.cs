@@ -254,10 +254,10 @@ namespace TheGreatestMap
                     return "Pickable_Flax_Wild=Wild Flax,Pickable_Barley_Wild=Wild Barley,Pickable_Fiddlehead=Fiddlehead";
                 case Category.Ore:
                     return "rock4_copper=Copper,MineRock_Tin=Tin,silvervein=Silver|SilverOre,MineRock_Obsidian=Obsidian,MineRock_Meteorite=Meteorite," +
-                           "mudpile_beacon=Scrap Pile|IronScrap,mudpile2=Scrap Pile|IronScrap,mudpile=Scrap Pile|IronScrap,Pickable_Tar=Tar Pit," +
+                           "mudpile_beacon=Scrap Pile|IronScrap,mudpile2=Scrap Pile|IronScrap,mudpile=Scrap Pile|IronScrap,TarPit*=Tar Pit|Tar," +
                            "giant_brain=Giant Brain|SoftTissue,giant_helmet1=Giant Helmet|CopperScrap,giant_helmet2=Giant Helmet|CopperScrap,giant_ribs=Giant Ribs|BlackMarble," +
                            "giant_skull=Giant Skull|BlackMarble,giant_sword1=Giant Sword|CopperScrap,giant_sword2=Giant Sword|CopperScrap," +
-                           "YggdrasilRoot*=Yggdrasil Root|Sap";
+                           "YggdrasilRoot*=Yggdrasil Root|Sap,GuckSack=Guck|Guck,GuckSack_small=Guck|Guck";
                 case Category.Dungeon:
                     return "Crypt2=Burial Chambers|TrophySkeleton,Crypt3=Burial Chambers|TrophySkeleton,Crypt4=Burial Chambers|TrophySkeleton," +
                            "SunkenCrypt4=Sunken Crypt|TrophyDraugr,MountainCave02=Frost Cave|TrophyCultist,TrollCave02=Troll Cave|TrophyFrostTroll," +
@@ -306,6 +306,8 @@ namespace TheGreatestMap
     {
         public string Key;
         public Category Cat;
+        /// <summary>The prefab the catalog matched, or empty when the kind alone says what this is.</summary>
+        public string Source = "";
         public string Icon;
         public string Name;
         public Vector3 Pos;      // where the marker goes
@@ -345,11 +347,37 @@ namespace TheGreatestMap
         internal static void Invalidate()
         {
             _built = false;
+            _iconBySource.Clear();
             CrossedOff.Forget();
+        }
+
+        private static readonly Dictionary<string, string> _iconBySource =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// What a thing wears now, worked out from what it is rather than read off the marker.
+        /// This is the whole point of a marker remembering its prefab: decide tomorrow that a
+        /// sunken crypt suits a draugr trophy better than a swamp key, and every sunken crypt
+        /// already on the map changes with it, including the ones other people wrote. Resolved
+        /// exactly the way recording and the legend resolve it, so all three agree.
+        ///
+        /// Null when the prefab is not in the catalog at all, which leaves the marker wearing
+        /// what it was drawn with -- a thing somebody has since removed from their catalog should
+        /// not lose its picture.
+        /// </summary>
+        internal static string IconFor(string source)
+        {
+            if (string.IsNullOrEmpty(source)) return null;
+            if (!_built) Rebuild();
+            if (_iconBySource.TryGetValue(source, out var cached)) return cached;
+            string icon = Lookup(source, out var e) ? ResolveLegendIcon(source, e, out _) : null;
+            _iconBySource[source] = icon;
+            return icon;
         }
 
         private static void Rebuild()
         {
+            _iconBySource.Clear();
             _byPrefab.Clear();
             _byPrefix.Clear();
             _builtInByPrefab.Clear();
@@ -450,6 +478,20 @@ namespace TheGreatestMap
         /// group them. Null for a kind that is only ever itself, and null for a marker still
         /// wearing the kind's fallback icon, which says nothing about which of them it is.
         /// </summary>
+        /// <summary>
+        /// What a thing is called, from what it is. A marker that knows its own prefab can be
+        /// named exactly -- a swamp hut rather than "Structures" -- which the icon could never
+        /// do, because a dozen buildings share the house pin. Null when the catalog has no line
+        /// for it, which leaves the icon to answer as before.
+        /// </summary>
+        internal static string NameForSource(string source)
+        {
+            if (string.IsNullOrEmpty(source)) return null;
+            if (!_built) Rebuild();
+            if (!Lookup(source, out var e)) return null;
+            return e.Name ?? Prettify(source);
+        }
+
         internal static string TypeNameFor(Category cat, string icon)
         {
             if (!CrossedOff.HasTypes(cat)) return null;
@@ -753,13 +795,13 @@ namespace TheGreatestMap
             if (Lookup(prefab, out var e))
             {
                 string icon = e.Icon ?? Categories.KnownIcon(prefab) ?? drop;
-                found = Make(e.Cat, e.Name ?? Loc(displayName, Prettify(prefab)), icon, owner.transform.position, KeyOf(owner, prefab));
+                found = Make(e.Cat, e.Name ?? Loc(displayName, Prettify(prefab)), icon, owner.transform.position, KeyOf(owner, prefab), prefab);
                 return true;
             }
             if (!WorthMining(drop)) return false;
             if (_unlistedDeposits.Add(prefab ?? ""))
                 TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Deposit '{prefab}' is not in the catalog; marking it anyway because it yields {drop}.");
-            found = Make(Category.Ore, Loc(displayName, Prettify(prefab)), drop, owner.transform.position, KeyOf(owner, prefab));
+            found = Make(Category.Ore, Loc(displayName, Prettify(prefab)), drop, owner.transform.position, KeyOf(owner, prefab), prefab);
             return true;
         }
 
@@ -845,7 +887,7 @@ namespace TheGreatestMap
                 string prefab = PrefabName(fire.gameObject);
                 if (piece != null && piece.IsPlacedByPlayer() && Lookup(prefab, out var e) && e.Cat == Category.Campfire)
                 {
-                    found = Make(Category.Campfire, e.Name ?? Loc(piece.m_name, "Campfire"), e.Icon, fire.transform.position, KeyOf(fire.gameObject, prefab));
+                    found = Make(Category.Campfire, e.Name ?? Loc(piece.m_name, "Campfire"), e.Icon, fire.transform.position, KeyOf(fire.gameObject, prefab), prefab);
                     return true;
                 }
             }
@@ -871,7 +913,7 @@ namespace TheGreatestMap
                 if (Lookup(prefab, out var e))
                 {
                     string icon = e.Icon ?? Categories.KnownIcon(prefab) ?? IconRegistry.ItemKey(pickable.m_itemPrefab);
-                    found = Make(e.Cat, e.Name ?? Loc(pickable.GetHoverName(), Prettify(prefab)), icon, pickable.transform.position, KeyOf(pickable.gameObject, prefab));
+                    found = Make(e.Cat, e.Name ?? Loc(pickable.GetHoverName(), Prettify(prefab)), icon, pickable.transform.position, KeyOf(pickable.gameObject, prefab), prefab);
                     return true;
                 }
             }
@@ -890,7 +932,7 @@ namespace TheGreatestMap
                 {
                     var drops = destructible.GetComponent<DropOnDestroyed>();
                     string icon = e.Icon ?? Categories.KnownIcon(prefab) ?? (drops != null ? FirstDrop(drops.m_dropWhenDestroyed) : null);
-                    found = Make(e.Cat, e.Name ?? Prettify(prefab), icon, destructible.transform.position, KeyOf(destructible.gameObject, prefab));
+                    found = Make(e.Cat, e.Name ?? Prettify(prefab), icon, destructible.transform.position, KeyOf(destructible.gameObject, prefab), prefab);
                     return true;
                 }
             }
@@ -909,7 +951,7 @@ namespace TheGreatestMap
                     if (Lookup(prefab, out var e) && IsLooseObjectKind(e.Cat))
                     {
                         found = Make(e.Cat, e.Name ?? Prettify(prefab), e.Icon ?? Categories.KnownIcon(prefab),
-                            view.transform.position, KeyOf(view.gameObject, prefab));
+                            view.transform.position, KeyOf(view.gameObject, prefab), prefab);
                         return true;
                     }
                 }
@@ -993,7 +1035,7 @@ namespace TheGreatestMap
             {
                 return false;
             }
-            found = Make(cat, name, icon, cat == Category.Structure ? hitPos : center, key);
+            found = Make(cat, name, icon, cat == Category.Structure ? hitPos : center, key, prefab);
             found.Center = center;
             found.Radius = Mathf.Max(radius, 4f);
             return true;
@@ -1063,10 +1105,10 @@ namespace TheGreatestMap
                 || go.GetComponentInParent<Door>() != null;
         }
 
-        private static Found Make(Category cat, string name, string icon, Vector3 pos, string key)
+        private static Found Make(Category cat, string name, string icon, Vector3 pos, string key, string source = "")
         {
             string resolved = IconRegistry.Normalize(icon) ?? FallbackIcon(cat);
-            return new Found { Key = key, Cat = cat, Icon = resolved, Name = name ?? "", Pos = pos };
+            return new Found { Key = key, Cat = cat, Icon = resolved, Name = name ?? "", Pos = pos, Source = source ?? "" };
         }
 
         // What a deposit yields besides the thing you went there for. A copper vein drops stone as
