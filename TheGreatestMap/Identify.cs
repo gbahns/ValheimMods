@@ -33,6 +33,9 @@ namespace TheGreatestMap
             internal int Ambiguous;      // several, drawing differently: left alone
             internal int Lost;           // nothing in the catalog wears this
             internal int Placed;         // put down by hand: its kind is all it ever claimed
+            internal int Corrected;      // told it was a building when it is a supply of something
+            internal int Refiled;        // the catalog files this thing under a different kind now
+            internal readonly Dictionary<string, int> RefiledAs = new Dictionary<string, int>();
             internal readonly Dictionary<string, int> ByType = new Dictionary<string, int>();
             internal readonly Dictionary<string, int> LostBy = new Dictionary<string, int>();
             /// <summary>The ones the icon could not settle, for the world to be asked about.</summary>
@@ -73,6 +76,28 @@ namespace TheGreatestMap
                         return row;
             }
             return null;
+        }
+
+        /// <summary>What kind the catalog files a thing under now, or null if it has no line for it.</summary>
+        private static Category? Filed(string source, Dictionary<string, Category> byPrefab)
+        {
+            if (string.IsNullOrEmpty(source)) return null;
+            return byPrefab.TryGetValue(source, out var cat) ? cat : (Category?)null;
+        }
+
+        /// <summary>
+        /// A marker whose remembered identity contradicts its kind. The one way that happens is a
+        /// resource named after the building it stands in, which an earlier pass of this could do
+        /// before it learned to leave supplies alone.
+        /// </summary>
+        private static bool Mistaken(SharedPin pin, Dictionary<string, Category> byPrefab)
+        {
+            var kind = ClientPins.KindOf(pin);
+            if (!kind.HasValue || !Categories.IsResource(kind.Value)) return false;
+            var filed = Filed(pin.Source, byPrefab);
+            // Named after something the catalog has no line for at all, which for a resource can
+            // only be a building the world answered with.
+            return !filed.HasValue || !Categories.IsResource(filed.Value);
         }
 
         private static void Count(Dictionary<string, int> into, string key)
@@ -133,9 +158,44 @@ namespace TheGreatestMap
         {
             var result = new Result();
             var rows = Rows();
+            var byPrefab = new Dictionary<string, Category>(StringComparer.OrdinalIgnoreCase);
+            foreach (var row in rows)
+            {
+                string key = row.Prefab.TrimEnd('*');
+                if (!byPrefab.ContainsKey(key)) byPrefab[key] = row.Cat;
+            }
             foreach (var pin in new List<SharedPin>(ClientPins.All))
             {
-                if (!string.IsNullOrEmpty(pin.Source)) { result.Known++; continue; }
+                if (!string.IsNullOrEmpty(pin.Source))
+                {
+                    // A supply of something that was told it is a building: that can only have
+                    // come from standing inside one, and it makes the marker draw as a house.
+                    // Forgetting the answer puts it back to the icon it was written with.
+                    if (Mistaken(pin, byPrefab))
+                    {
+                        result.Corrected++;
+                        if (apply) { pin.Source = ""; ClientPins.UpdateMarker(pin); }
+                        continue;
+                    }
+                    result.Known++;
+                    // The catalog may have been reorganized since this was written -- a greydwarf
+                    // nest filed under camps until nests got a kind of their own. A marker that
+                    // knows what it is should be filed where that thing is filed now, rather than
+                    // where it happened to belong the day somebody walked past it.
+                    var filedAs = Filed(pin.Source, byPrefab);
+                    var was = ClientPins.KindOf(pin);
+                    if (filedAs.HasValue && was.HasValue && filedAs.Value != was.Value)
+                    {
+                        result.Refiled++;
+                        Count(result.RefiledAs, $"{Categories.Label(was.Value)} -> {Categories.Label(filedAs.Value)}");
+                        if (apply)
+                        {
+                            pin.SetKind(filedAs.Value.ToString());
+                            ClientPins.UpdateMarker(pin);
+                        }
+                    }
+                    continue;
+                }
                 if (!pin.Auto) { result.Placed++; continue; }
                 var kind = ClientPins.KindOf(pin);
                 if (!kind.HasValue) { result.Lost++; Count(result.LostBy, "no kind"); continue; }
@@ -188,7 +248,18 @@ namespace TheGreatestMap
         internal static bool AskTheWorld(Result result, bool apply, Action<List<string>> report)
         {
             if (result == null || result.Unsettled.Count == 0) return false;
-            var pins = new List<SharedPin>(result.Unsettled);
+            // Only kinds that can be a building get to be named by one. A patch of carrot seeds
+            // standing inside a ruin's footprint is not that ruin, and asking would have the
+            // world answer confidently about a thing it was never asked to account for: the
+            // marker would come back a house and draw as one.
+            var pins = new List<SharedPin>();
+            foreach (var pin in result.Unsettled)
+            {
+                var kind = ClientPins.KindOf(pin);
+                if (kind.HasValue && Categories.IsResource(kind.Value)) continue;
+                pins.Add(pin);
+            }
+            if (pins.Count == 0) return false;
             var places = new List<Vector3>(pins.Count);
             foreach (var pin in pins) places.Add(pin.Pos);
             return LocationNames.Ask(places, names =>
@@ -223,6 +294,13 @@ namespace TheGreatestMap
                 $"{r.Matched} marker(s) {(applied ? "now know" : "could be told")} what they are; " +
                 $"{r.Known} already did, {r.Placed} follow their kind and need no telling.",
             };
+            if (r.Corrected > 0) lines.Add($"{r.Corrected} had been told they were a building they merely stand in; " +
+                                           (applied ? "forgotten." : "run apply to forget it."));
+            if (r.Refiled > 0)
+            {
+                lines.Add($"{r.Refiled} {(applied ? "were refiled" : "would be refiled")} under the kind the catalog uses now:");
+                foreach (var kv in r.RefiledAs) lines.Add($"  {kv.Key}: {kv.Value}");
+            }
             if (r.Ambiguous > 0) lines.Add($"{r.Ambiguous} could be several different things and were left alone.");
             if (r.Lost > 0) lines.Add($"{r.Lost} match nothing in the catalog and keep the icon they were drawn with.");
             foreach (var kv in r.ByType) lines.Add($"  {kv.Key}: {kv.Value}");

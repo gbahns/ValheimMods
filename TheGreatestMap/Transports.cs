@@ -50,7 +50,16 @@ namespace TheGreatestMap
         }
 
         private static readonly List<Live> _live = new List<Live>();
-        private static readonly List<Minimap.PinData> _drawn = new List<Minimap.PinData>();
+        /// <summary>A pin we drew, and whether it is a cart, so anything painting over them knows which is which.</summary>
+        internal sealed class Shown
+        {
+            public Minimap.PinData Pin;
+            public bool Cart;
+        }
+
+        private static readonly List<Shown> _drawn = new List<Shown>();
+
+        internal static IEnumerable<Shown> DrawnPins => _drawn;
         private static bool _haveList;
         private static float _nextRequest;
         private static bool _redrawWanted;
@@ -380,7 +389,7 @@ namespace TheGreatestMap
             _redrawWanted = false;
             var map = Minimap.instance;
             if (map == null) return;
-            foreach (var pin in _drawn) if (Access.Pins(map).Contains(pin)) map.RemovePin(pin);
+            foreach (var shown in _drawn) if (Access.Pins(map).Contains(shown.Pin)) map.RemovePin(shown.Pin);
             _drawn.Clear();
             bool ships = _drawnShips = Wanted(Category.Ship);
             bool carts = _drawnCarts = Wanted(Category.Cart);
@@ -400,7 +409,7 @@ namespace TheGreatestMap
                 string label = TgmConfig.ShowTransportLabels != null && TgmConfig.ShowTransportLabels.Value
                     ? Label(v.Name) : "";
                 var pin = map.AddPin(v.Pos, (Minimap.PinType)type, label, false, false, 0L);
-                if (pin != null) _drawn.Add(pin);
+                if (pin != null) _drawn.Add(new Shown { Pin = pin, Cart = v.Cart });
             }
         }
 

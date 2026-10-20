@@ -55,6 +55,119 @@ namespace TheGreatestMap
 
         internal static bool IsOpen => _root != null;
 
+        private static bool Pinned => TgmConfig.PinMarkerMenu != null && TgmConfig.PinMarkerMenu.Value;
+
+        /// <summary>
+        /// Where a pinned list sits, as a fraction of the map so it lands in the same place on
+        /// any screen. Remembered across sessions, because the point of pinning it is not having
+        /// to put it back.
+        /// </summary>
+        private static Vector2 PinnedSpot
+        {
+            get
+            {
+                var v = TgmConfig.PinnedMenuSpot != null ? TgmConfig.PinnedMenuSpot.Value : Vector2.zero;
+                return v;
+            }
+            set { if (TgmConfig.PinnedMenuSpot != null) TgmConfig.PinnedMenuSpot.Value = value; }
+        }
+
+        /// <summary>
+        /// Put a pinned list back when the map opens, without a click. Called while the large map
+        /// is up; does nothing once it is already there.
+        /// </summary>
+        internal static void Restore(Minimap map)
+        {
+            if (!Pinned || _root != null || map == null || map.m_largeRoot == null) return;
+            if (ClientPins.Count == 0) return;
+            var parent = map.m_largeRoot.transform as RectTransform;
+            if (parent == null) return;
+            var spot = PinnedSpot;
+            var rect = parent.rect;
+            // A spot of nothing means it has never been pinned anywhere: open where the button is.
+            var screen = spot == Vector2.zero
+                ? new Vector2(Screen.width * 0.72f, Screen.height * 0.75f)
+                : new Vector2(spot.x * Screen.width, spot.y * Screen.height);
+            _closedFrame = -10;
+            Open(screen);
+        }
+
+        private static Image _pinImage;
+        private static MenuKit.Glow _pinGlow;
+
+        /// <summary>
+        /// The stick pin in the corner: pressed, the list stops closing when you click elsewhere
+        /// and comes back by itself with the map. A picture rather than a row because it is about
+        /// the list itself rather than about any of the markers in it, and because the corner is
+        /// where a window's own controls belong.
+        /// </summary>
+        private static void BuildPin()
+        {
+            // Two objects, because a rect turns about its pivot and this one's pivot is its
+            // top right corner -- that is how it is pinned to the corner of the panel. Rotating
+            // that rect swings the whole icon out of the panel instead of turning it. So the
+            // outer one only places and catches the click, and the picture inside it, centered in
+            // its own square, is what turns.
+            var go = new GameObject("Pin", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image),
+                                    typeof(Button), typeof(MenuKit.Glow));
+            go.transform.SetParent(_root.transform, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(1f, 1f);
+            rt.anchoredPosition = new Vector2(-6f, -6f);
+            rt.sizeDelta = new Vector2(22f, 22f);
+            var hit = go.GetComponent<Image>();
+            hit.color = new Color(1f, 1f, 1f, 0.07f);
+            hit.raycastTarget = true;
+
+            var face = new GameObject("Tack", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            face.transform.SetParent(go.transform, false);
+            var frt = (RectTransform)face.transform;
+            frt.anchorMin = frt.anchorMax = frt.pivot = new Vector2(0.5f, 0.5f);
+            frt.anchoredPosition = Vector2.zero;
+            frt.sizeDelta = new Vector2(16f, 16f);
+            _pinImage = face.GetComponent<Image>();
+            _pinImage.sprite = MenuKit.Tack();
+            _pinImage.preserveAspect = true;
+            _pinImage.raycastTarget = false;
+
+            _pinGlow = go.GetComponent<MenuKit.Glow>();
+
+            var button = go.GetComponent<Button>();
+            button.transition = Selectable.Transition.None;
+            button.targetGraphic = hit;
+            button.onClick.AddListener(() =>
+            {
+                if (TgmConfig.PinMarkerMenu == null) return;
+                bool now = !TgmConfig.PinMarkerMenu.Value;
+                TgmConfig.PinMarkerMenu.Value = now;
+                if (now) RememberSpot();
+                PaintPin();
+            });
+            PaintPin();
+        }
+
+        private static void PaintPin()
+        {
+            if (_pinImage == null) return;
+            bool over = _pinGlow != null && _pinGlow.Over;
+            _pinImage.color = over ? MenuKit.HoverColor
+                : Pinned ? new Color(1f, 0.85f, 0.45f, 1f)
+                : new Color(0.75f, 0.73f, 0.7f, 0.55f);
+            ((RectTransform)_pinImage.transform).localRotation = Quaternion.Euler(0f, 0f, Pinned ? 0f : -90f);
+        }
+
+        /// <summary>Remember where it is now, so pinning it puts it back here next time.</summary>
+        private static void RememberSpot()
+        {
+            if (_rect == null || _camera != null) { }
+            if (_rect == null) return;
+            var corners = new Vector3[4];
+            _rect.GetWorldCorners(corners);
+            var top = RectTransformUtility.WorldToScreenPoint(_camera, corners[1]);
+            if (Screen.width > 0 && Screen.height > 0)
+                PinnedSpot = new Vector2(top.x / Screen.width, top.y / Screen.height);
+        }
+
         /// <summary>
         /// True while the find box has the keyboard. Every hotkey in this mod is gated on it, and
         /// the game's own are too, by way of the TextInput patch below -- otherwise searching for
@@ -131,8 +244,12 @@ namespace TheGreatestMap
             Place(showAll, 0f, y, Width, RowHeight);
             y -= RowHeight;
 
+            // Pinning is about this list's own behavior rather than about the markers, so it sits
+            // apart from them at the foot, next to the other row that acts on the whole list.
+
             float height = -y + Pad;
             _rect.sizeDelta = new Vector2(Width, height);
+            BuildPin();
 
             var canvas = parent.GetComponentInParent<Canvas>();
             _camera = canvas != null && canvas.rootCanvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.rootCanvas.worldCamera : null;
@@ -179,8 +296,8 @@ namespace TheGreatestMap
             const float x = 0f;
             float y = -Pad;
             Header(_results != null
-                ? "Matches   only / locate"
-                : "Marker kinds   + place, only, locate", x, y);
+                ? "Matches   only / ping"
+                : "Marker kinds   + place, only, ping", x, y);
             y -= HeaderHeight;
 
             FindBox(x, y);
@@ -249,7 +366,8 @@ namespace TheGreatestMap
                 // markers ever, its pins being the server's answer, so it is listed as soon as
                 // there is an answer to draw from.
                 bool live = Categories.IsLive(kind) && Transports.HaveList;
-                if (!seen.Contains(kind) && !Categories.IsPlacedOnly(kind) && !live) continue;
+                if (!seen.Contains(kind) && !Categories.IsPlacedOnly(kind) && !live
+                    && !Categories.VanillaMarks(kind)) continue;
                 var k = kind;
                 SwitchRow(map, x, y, 0f, IconKeyFor(k), Categories.Label(k),
                     () => { if (TgmConfig.ShowKind.TryGetValue(k, out var e)) e.Value = !e.Value; },
@@ -259,15 +377,37 @@ namespace TheGreatestMap
                     // means "show or hide these". A live kind cannot be placed: a hand-written
                     // ship would be a memory of a thing that moves, which is the whole reason
                     // these are not recorded.
-                    Categories.IsLive(k) ? (Action)null : () => { if (ManualPlace.Arm(map, k)) Close(); },
+                    Categories.IsLive(k) || Categories.VanillaMarks(k)
+                        ? (Action)null
+                        : () => { if (ManualPlace.Arm(map, k)) Close(); },
                     // And "only": the same row's switch would need twenty others turned off to say
                     // this, so it says it in one press, and says it again to take it back.
                     () => Focus.SetKind(k),
-                    // And "locate", which answers the same question the other way round: leave
-                    // the map as it is and make these ones wave.
-                    Categories.IsLive(k) ? (Action)null : () => Locate.Kind(k));
+                    // And the ping, which answers the same question the other way round: leave
+                    // the map as it is and make these ones wave. Live kinds answer it too, even
+                    // though the server drew those pins rather than this map.
+                    () => Locate.Kind(k));
                 y -= RowHeight;
             }
+
+            // The other players, which are vanilla's markers rather than ours: nothing here
+            // records them and nothing hides them, but "where is everybody" is the same question
+            // this column answers for everything else, so it belongs in the same place. The row
+            // itself is the spotlight the H key gives; the ping only makes them wave.
+            int players = PlayerSpotlight.Players(map);
+            // Shown even when there are none, dimmed, saying so. Leaving the row out entirely
+            // when nobody is sharing looks exactly like the feature not existing, which is how
+            // it read the first time somebody went looking for it.
+            SwitchRow(map, x, y, 0f, "pin:Player",
+                players > 0 ? $"Players ({players})" : "Players (none sharing)",
+                () =>
+                {
+                    if (players > 0) PlayerSpotlight.Toggle(map);
+                    else TheGreatestMapMod.Message("No other players are sharing their position.");
+                },
+                () => players > 0,
+                onLocate: players > 0 ? (Action)(() => Locate.Players(map)) : null);
+            y -= RowHeight;
             return y;
         }
 
@@ -344,6 +484,37 @@ namespace TheGreatestMap
         /// Written rather than drawn as a glyph, because the game's font is a display face and what
         /// it has beyond the Latin alphabet cannot be relied on.
         /// </summary>
+        /// <summary>The same button with a picture in it, for an action a word would only clutter.</summary>
+        private static void RowIcon(RectTransform row, Sprite sprite, float right, float width, Action onClick)
+        {
+            var go = new GameObject("RowIcon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+            go.transform.SetParent(row, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = rt.anchorMax = new Vector2(1f, 0.5f);
+            rt.pivot = new Vector2(1f, 0.5f);
+            rt.anchoredPosition = new Vector2(-right, 0f);
+            rt.sizeDelta = new Vector2(width, RowHeight - 8f);
+            var back = go.GetComponent<Image>();
+            back.color = new Color(1f, 1f, 1f, 0.07f);
+            back.raycastTarget = true;
+            var button = go.GetComponent<Button>();
+            button.transition = Selectable.Transition.None;
+            button.targetGraphic = back;
+            button.onClick.AddListener(() => onClick());
+
+            var icon = new GameObject("Glyph", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            icon.transform.SetParent(go.transform, false);
+            var irt = (RectTransform)icon.transform;
+            irt.anchorMin = irt.anchorMax = irt.pivot = new Vector2(0.5f, 0.5f);
+            irt.anchoredPosition = Vector2.zero;
+            irt.sizeDelta = new Vector2(RowHeight - 13f, RowHeight - 13f);
+            var img = icon.GetComponent<Image>();
+            img.sprite = sprite;
+            img.preserveAspect = true;
+            img.raycastTarget = false;
+            img.color = new Color(1f, 0.85f, 0.45f, 0.9f);
+        }
+
         private static void RowButton(RectTransform row, string glyph, float size, float right, float width, Action onClick)
         {
             var go = new GameObject("RowButton", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
@@ -466,16 +637,22 @@ namespace TheGreatestMap
             entry.Icon.raycastTarget = false;
             entry.Icon.preserveAspect = true;
 
+            // Each button keeps its own column, so a row missing one leaves a gap rather than
+            // sliding the others along: ships have no "place by hand", and their only and ping
+            // should still sit under everyone else's.
+            bool anyButton = onPlace != null || onOnly != null || onLocate != null;
             float right = 6f;
-            if (onPlace != null) { RowButton(row, "+", 15f, right, RowHeight - 8f, onPlace); right += RowHeight - 4f; }
-            if (onOnly != null)
+            if (anyButton)
             {
-                RowButton(row, "only", 11f, right, 34f, () => { onOnly(); Refresh(); });
+                if (onPlace != null) RowButton(row, "+", 15f, right, RowHeight - 8f, onPlace);
+                right += RowHeight - 4f;
+                if (onOnly != null) RowButton(row, "only", 11f, right, 34f, () => { onOnly(); Refresh(); });
                 right += 38f;
+                // Pinging leaves the list open and changes nothing, so unlike the others there
+                // is nothing to redraw afterwards -- the pulse paints itself.
+                if (onLocate != null) RowIcon(row, MenuKit.Ping(), right, 22f, onLocate);
+                right += 26f;
             }
-            // Locating leaves the list open and changes nothing, so unlike the others there is
-            // nothing to redraw afterwards -- the pulse paints itself.
-            if (onLocate != null) { RowButton(row, "locate", 11f, right, 44f, onLocate); right += 48f; }
             float buttons = right;
 
             entry.Label = row.GetComponentInChildren<TextMeshProUGUI>();
@@ -539,6 +716,8 @@ namespace TheGreatestMap
             _rect = null;
             _entries.Clear();
             _find = null;
+            _pinImage = null;
+            _pinGlow = null;
             _closedFrame = Time.frameCount;
         }
 
@@ -550,13 +729,18 @@ namespace TheGreatestMap
             // Asked for between frames rather than from the find box's own callback, which would
             // destroy the box while it was still handling the Enter that asked for this.
             if (_rebuildWanted) { Rebuild(); return; }
+            PaintPin();
             // Escape leaves the find box first, as it does in every other text field, so a search
             // can be abandoned without the whole list going with it.
+            // Escape still closes it, pinned or not: a player reaching for Escape wants the
+            // thing in front of them gone, and unpinning to do that would be a poor answer.
             if (ZInput.GetKeyDown(KeyCode.Escape) && !Typing) { Close(); return; }
             // A click lands in the box as a click in the panel, so the list stays open and the
             // click-away test below is never reached while typing.
             if (Time.frameCount - _openedFrame <= 1) return; // the click that opened it
-            if (ZInput.GetMouseButtonDown(0) || ZInput.GetMouseButtonDown(1))
+            // Pinned, a click elsewhere on the map is just a click on the map -- placing a
+            // marker, dragging, reading something -- and the list stays where it was put.
+            if (!Pinned && (ZInput.GetMouseButtonDown(0) || ZInput.GetMouseButtonDown(1)))
                 if (!RectTransformUtility.RectangleContainsScreenPoint(_rect, ZInput.pointerPosition, _camera)) Close();
         }
     }

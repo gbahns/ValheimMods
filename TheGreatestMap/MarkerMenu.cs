@@ -45,6 +45,96 @@ namespace TheGreatestMap
             _fontMaterial = any.material;
         }
 
+        private static Sprite _tack;
+
+        /// <summary>
+        /// A stick pin: round head, collar, needle. Drawn here rather than taken from the game,
+        /// which has no such picture, and deliberately not the map-pin shape the marker button
+        /// wears -- that one means "a marker", and this one means "stay put".
+        /// </summary>
+        internal static Sprite Tack()
+        {
+            if (_tack != null) return _tack;
+            const int n = 64;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+            {
+                for (int x = 0; x < n; x++)
+                {
+                    int hits = 0;
+                    // Sampled nine times a pixel, as the map pin is, so the round head and the
+                    // taper of the needle come out smooth at the size this is actually drawn.
+                    for (int sy = 0; sy < 3; sy++)
+                        for (int sx = 0; sx < 3; sx++)
+                            if (InTack(x + (sx + 0.5f) / 3f, y + (sy + 0.5f) / 3f)) hits++;
+                    px[y * n + x] = new Color32(255, 255, 255, (byte)(255 * hits / 9));
+                }
+            }
+            tex.SetPixels32(px);
+            tex.Apply();
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.hideFlags = HideFlags.HideAndDontSave;
+            _tack = Sprite.Create(tex, new Rect(0f, 0f, n, n), new Vector2(0.5f, 0.5f), 100f);
+            _tack.hideFlags = HideFlags.HideAndDontSave;
+            return _tack;
+        }
+
+        private static Sprite _ping;
+
+        /// <summary>
+        /// A ping: a point with two rings going out from it, which is what the button does to
+        /// the markers it names. Drawn rather than written because a word in a row of rows reads
+        /// as another name, while a picture reads as a thing to press.
+        /// </summary>
+        internal static Sprite Ping()
+        {
+            if (_ping != null) return _ping;
+            const int n = 64;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+            {
+                for (int x = 0; x < n; x++)
+                {
+                    int hits = 0;
+                    for (int sy = 0; sy < 3; sy++)
+                        for (int sx = 0; sx < 3; sx++)
+                            if (InPing(x + (sx + 0.5f) / 3f, y + (sy + 0.5f) / 3f)) hits++;
+                    px[y * n + x] = new Color32(255, 255, 255, (byte)(255 * hits / 9));
+                }
+            }
+            tex.SetPixels32(px);
+            tex.Apply();
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.hideFlags = HideFlags.HideAndDontSave;
+            _ping = Sprite.Create(tex, new Rect(0f, 0f, n, n), new Vector2(0.5f, 0.5f), 100f);
+            _ping.hideFlags = HideFlags.HideAndDontSave;
+            return _ping;
+        }
+
+        private static bool InPing(float x, float y)
+        {
+            float d = Mathf.Sqrt((x - 32f) * (x - 32f) + (y - 32f) * (y - 32f));
+            if (d <= 7f) return true;                       // the point itself
+            if (d >= 14f && d <= 17.5f) return true;        // the near ring
+            if (d >= 24f && d <= 27.5f) return true;        // and the far one
+            return false;
+        }
+
+        private static bool InTack(float x, float y)
+        {
+            float dx = x - 32f;
+            if (dx * dx + (y - 45f) * (y - 45f) <= 12f * 12f) return true;    // head
+            if (y >= 29f && y <= 35f && dx >= -10f && dx <= 10f) return true; // collar
+            if (y >= 7f && y < 29f)                                           // needle, tapering to a point
+            {
+                float half = 3.2f * (y - 7f) / 22f;
+                return dx >= -half && dx <= half;
+            }
+            return false;
+        }
+
         internal static TextMeshProUGUI Text(Transform parent, string name, string text, float size, Color color)
         {
             EnsureFont();

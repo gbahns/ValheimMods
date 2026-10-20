@@ -745,6 +745,11 @@ namespace TheGreatestMap
                 // Not over the master switch or a marker put out by hand, which both mean "not
                 // this one" rather than "not right now".
                 if (Focus.On && !hideEverything && !hiddenByHand) hidden = !Focus.Shows(shared);
+                // Being asked where something is outranks having switched it off: the markers
+                // come back for the few seconds the pulse lasts and hide themselves again after.
+                // Still not past the master switch or a marker put away by hand, which mean "not
+                // this one" rather than "not just now".
+                if (hidden && !hideEverything && !hiddenByHand && Locate.On && Locate.Matches(shared)) hidden = false;
                 SetMarkerActive(pin, !hidden);
                 if (hidden) continue;
                 float scale = ScaleOf(shared);
@@ -771,6 +776,7 @@ namespace TheGreatestMap
                     : AutoTint;
                 pin.m_iconElement.color = faded ? Faded(tint) : tint;
             }
+            PortalsToFront();
             // Vanilla lays the pins out again whenever the map moves, which on the minimap is every
             // step the player takes, and a freshly built icon starts at the prefab's plain white.
             // Painting here, right after that rebuild, is what stops portals flashing white while
@@ -795,6 +801,22 @@ namespace TheGreatestMap
             return $"crossed {(shared.Checked ? "yes" : "no")}/{(pin.m_checked ? "yes" : "no")}, " +
                    $"{(_fadedPins.Contains(pin) ? "faded" : "not faded")}, {color}, " +
                    $"{(pin.m_uiElement != null && pin.m_uiElement.gameObject.activeSelf ? "shown" : "hidden")}";
+        }
+
+        /// <summary>
+        /// Portals last in their root, so they are drawn over everything else at the same spot.
+        /// Crews put a portal beside a trader and name it after them, and vanilla draws a
+        /// trader's own icon at double size: the portal ended up underneath it, barely visible,
+        /// at exactly the place a player most wants to see one.
+        ///
+        /// Safe to do on every layout because vanilla only lays the pins out when something has
+        /// changed -- a pin added or removed, the map moved or zoomed -- rather than every frame.
+        /// </summary>
+        private static void PortalsToFront()
+        {
+            foreach (var pin in _portalPins)
+                if (pin != null && pin.m_uiElement != null)
+                    pin.m_uiElement.SetAsLastSibling();
         }
 
         internal static void TintPortals(Color color)

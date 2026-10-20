@@ -56,6 +56,8 @@ namespace TheGreatestMap
             if (_button == null) Build(map);
             Position();
             Recolor();
+            // A pinned list is put back as soon as the map is up, so the player never reopens it.
+            KindMenu.Restore(map);
             KindMenu.Update();
         }
 

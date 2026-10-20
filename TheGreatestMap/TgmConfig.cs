@@ -168,6 +168,8 @@ namespace TheGreatestMap
         internal static ConfigEntry<float> TransportSweepSeconds;
         internal static ConfigEntry<bool> ShowTransportLabels;
         internal static ConfigEntry<float> LocateSeconds;
+        internal static ConfigEntry<bool> PinMarkerMenu;
+        internal static ConfigEntry<Vector2> PinnedMenuSpot;
 
         /// <summary>
         /// Settings for markers the server finds and the client draws, rather than markers written
@@ -412,7 +414,7 @@ namespace TheGreatestMap
                 string label = Categories.Label(cat);
                 // A kind only ever placed by hand, or drawn live from the server, is never
                 // recorded, so none of the recording settings would mean anything for it.
-                if (!Categories.IsPlacedOnly(cat) && !Categories.IsLive(cat))
+                if (!Categories.IsPlacedOnly(cat) && !Categories.IsLive(cat) && !Categories.VanillaMarks(cat))
                 {
                 CategoryEnabled[cat] = mod.BindLocal("Recording", "Record " + label, Categories.DefaultEnabled(cat),
                     "Record " + label.ToLowerInvariant() + " you have found." +
@@ -516,6 +518,14 @@ namespace TheGreatestMap
             // change to one has to throw the worked-out answers away and redraw.
             foreach (var entry in CategoryIcon.Values)
                 entry.SettingChanged += (_, __) => { Catalog.Invalidate(); ClientPins.Restyle(); };
+
+            PinMarkerMenu = mod.BindLocal("Display", "Pin Marker List Open", false,
+                "Keep the marker button's list open: it stops closing when you click elsewhere on the map, and comes " +
+                "back by itself each time you open the map. Escape still closes it. The pin is the row at the foot of " +
+                "the list, so it can be set without leaving the map.");
+            PinnedMenuSpot = mod.BindLocal("Display", "Pinned Marker List Spot", Vector2.zero,
+                "Where a pinned marker list sits, as a fraction of the screen. Set when you pin it; zero means it has " +
+                "not been pinned anywhere yet.");
 
             LocateSeconds = mod.BindLocal("Display", "Locate Seconds", 6f,
                 "How long markers pulse after you press \"locate\" on their row in the marker list. They swell and " +

@@ -28,14 +28,54 @@ does understand instead of being refused.
   called. `tgm_identify` puts the ones it cannot account for to the server and reads the answer
   off the world, so an abandoned farm is recorded as an abandoned farm because that is what
   stands there -- not because it was the first line in the catalog wearing that icon.
-- **"locate" on every row in the marker list.** Press it and that kind's markers swell and
+- **The marker list can be pinned open**, by the stick pin in its top right corner. Pinned, it
+  stops closing when you click elsewhere on the map and comes back by itself every time you open
+  the map, in the place you left it. The pin stands upright and gold when it is holding, and lies
+  over at an angle, dim, when it is not, so its state reads without a word beside it. Escape
+  still closes the list either way, because a key reached for to dismiss something should dismiss
+  it. Pinning is on the list itself rather than only in the config, so it can be set without
+  leaving the map.
+- **A ping on every row in the marker list.** Press it and that kind's markers swell and
   brighten twice a second for a few seconds, then settle. It answers "where are all the dungeons"
   without putting anything else away, which is what separates it from the find box: nothing is
   hidden, nothing is changed, and the rest of the map stays where you can see it. A row in the
-  find results locates that one type instead. "Locate Seconds" (Display) sets how long.
+  find results pings that one type instead. "Locate Seconds" (Display) sets how long.
+- **A kind you have switched off still answers.** Its markers come back for as long as the pulse
+  lasts and hide themselves again when it ends -- being told nothing because you turned that kind
+  off an hour ago is a poor answer to "where are they", and hiding is a standing preference
+  rather than something to undo and redo to glance at the map.
+- **Ships, carts and the other players can be pinged too**, though none of those markers belong
+  to this mod: the first two are drawn from the server's sweep and the players are vanilla's own.
+  "Where is everybody" is the same question the list answers for everything else, so Players has
+  a row of its own -- clicking it gives the spotlight the H key gives, and the ping only makes
+  them wave.
 - A marker placed by hand follows its kind's icon, since its kind is all it ever claimed to be.
 - Markers of a kind the catalog does not divide -- portals, runestones -- follow their kind's icon
   directly. There is only one sort of each, so there was never anything to tell apart.
+- **Portals are drawn over everything else at the same spot.** Crews put a portal beside a trader
+  and name it after them, and vanilla draws a trader's own icon at double size -- so the portal
+  sat underneath it, barely visible, at exactly the place you most want to see one.
+- **Traders are no longer recorded.** The game marks a trader the moment you find one, so a
+  marker of ours was a second pin saying the same thing in a different picture. Nothing records
+  them now, and the recording settings for the kind are gone with it.
+- They keep their row in the marker list all the same, because "where is the nearest trader" is
+  the same question the list answers for everything else -- the ping points at vanilla's own
+  pins instead of ours. Like ships, carts and players, the row has no "place one by hand".
+- Markers already recorded for traders stay until you remove them: `tgm_erase Trader 100000`
+  clears them, and the erasure travels like any other.
+- **Spawners are their own kind**, no longer filed under camps. A greydwarf nest is not a camp:
+  nobody lives there and the reason to walk to one is to break it. The kind holds the nests and
+  piles you can actually walk up to -- Greydwarf Nest, Draugr Pile, Evil Bone Pile, Charred
+  Spawner -- and crossing one off means cleared, as with a vein, because a spawner you have
+  broken is gone for good. Camps keeps the settlements: Fuling Villages and Draugr Villages.
+- They are listed by name rather than found by their component, which is the opposite of how
+  ships are found, and deliberately. Valheim fills its dungeons and camps with invisible spawn
+  points named `Spawner_<creature>` -- over five thousand in one explored world -- and a rule
+  that caught them would bury the map. It would also have missed the evil bone pile, whose prefab
+  does not follow the naming of the other two.
+- **`tgm_identify` refiles markers the catalog has since moved.** A greydwarf nest written while
+  nests were camps stays a camp otherwise, which would leave the same thing in two places at
+  once. A marker that knows what it is is filed where that thing is filed now.
 - **Guck is recorded**, as a deposit, so a worked-out sack crosses off like a vein. There is a lot
   of it -- this world holds over 1,300 sacks -- so a swamp will read as a dense patch of markers.
   Turn "Show Ore" off, add `Guck` to "Hidden Icons", widen the ore marker spacing, or take the two

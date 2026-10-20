@@ -25,6 +25,16 @@ namespace TheGreatestMap
 
         internal static void Reset() => _on = false;
 
+        /// <summary>Turn it on or off from somewhere other than the key, such as the marker list.</summary>
+        internal static void Toggle(Minimap map)
+        {
+            if (_on) Stop(map);
+            else Start(map);
+        }
+
+        /// <summary>How many other players are on the map to be found.</summary>
+        internal static int Players(Minimap map) => Count(map);
+
         internal static void Update()
         {
             var map = Minimap.instance;

@@ -32,6 +32,7 @@ namespace TheGreatestMap
         Sighting,
         Ship,
         Cart,
+        Spawner,
     }
 
     /// <summary>Static facts about each category: defaults, labels.</summary>
@@ -49,6 +50,15 @@ namespace TheGreatestMap
         /// spacing, labels and crossing off is therefore beside the point for these.
         /// </summary>
         internal static bool IsLive(Category c) => c == Category.Ship || c == Category.Cart;
+
+        /// <summary>
+        /// A kind the game puts on the map by itself, the moment you find one. Recording our own
+        /// on top is a second pin saying the same thing in a different picture, so nothing here
+        /// records these -- but they stay in the marker list, because "where is the nearest
+        /// trader" is the same question the list answers for everything else, and the catalog
+        /// line is still what says which of the world's locations are traders.
+        /// </summary>
+        internal static bool VanillaMarks(Category c) => c == Category.Trader;
 
         /// <summary>
         /// A kind nothing in the world can be classified as: it exists so a player can mark
@@ -73,6 +83,7 @@ namespace TheGreatestMap
                 case Category.Sighting:  return "Sightings";
                 case Category.Ship:      return "Ships";
                 case Category.Cart:      return "Carts";
+                case Category.Spawner:   return "Spawners";
                 default:                 return c.ToString();
             }
         }
@@ -96,7 +107,8 @@ namespace TheGreatestMap
         internal static bool IsResource(Category c)
         {
             return c == Category.Berries || c == Category.Mushrooms || c == Category.Herbs
-                || c == Category.Ore || c == Category.Seeds || c == Category.Plants;
+                || c == Category.Ore || c == Category.Seeds || c == Category.Plants
+                || c == Category.Spawner;
         }
 
         internal static bool DefaultEnabled(Category c)
@@ -160,6 +172,9 @@ namespace TheGreatestMap
                 // A vessel is built with the hammer, so it has a build-menu picture of itself.
                 case Category.Ship:      return "piece:Karve";
                 case Category.Cart:      return "piece:Cart";
+                // Only the fallback: every spawner in the list wears the trophy of whatever
+                // comes out of it, which is the thing worth knowing before you break one open.
+                case Category.Spawner:   return "TrophySkeleton";
                 default:                 return "pin:Icon3";
             }
         }
@@ -266,8 +281,16 @@ namespace TheGreatestMap
                 case Category.Trader:
                     return "Vendor_BlackForest=Haldor|Coins,Hildir_camp=Hildir|Coins,BogWitch_Camp=Bog Witch|Coins";
                 case Category.Camp:
-                    return "GoblinCamp2=Fuling Village|TrophyGoblin,WoodVillage1=Draugr Village|TrophyDraugr," +
-                           "Spawner_GreydwarfNest=Greydwarf Nest|TrophyGreydwarfBrute,CharredStone_Spawner*=Charred Spawner|TrophyCharredMelee";
+                    return "GoblinCamp2=Fuling Village|TrophyGoblin,WoodVillage1=Draugr Village|TrophyDraugr";
+                case Category.Spawner:
+                    // Vanilla names these three inconsistently -- two Spawner_ and one not -- so
+                    // they are listed rather than matched by name. Listing is also the only safe
+                    // way: the world is full of invisible Spawner_<creature> points, thousands of
+                    // them inside dungeons and camps, and nothing on the map should mark those.
+                    return "Spawner_GreydwarfNest=Greydwarf Nest|TrophyGreydwarfBrute," +
+                           "Spawner_DraugrPile=Draugr Pile|TrophyDraugr," +
+                           "BonePileSpawner=Evil Bone Pile|TrophySkeleton," +
+                           "CharredStone_Spawner*=Charred Spawner|TrophyCharredMelee";
                 case Category.BossAltar:
                     return "Eikthyrnir=Eikthyr|TrophyEikthyr,GDKing=The Elder|TrophyTheElder,Bonemass=Bonemass|TrophyBonemass," +
                            "Dragonqueen=Moder|TrophyDragonQueen,GoblinKing=Yagluth|TrophyGoblinKing," +
@@ -296,6 +319,7 @@ namespace TheGreatestMap
                 case Category.Ore:       return "Matches MineRock5, MineRock, Destructible and Pickable objects by prefab name, and a plain networked object such as a Yggdrasil root.";
                 case Category.Structure: return "Entries ending in * match by prefix. Unlisted outdoor locations also count when 'Structures Include Unlisted' is on.";
                 case Category.Campfire:  return "Only fires a player built count, not the ones the world puts in camps and villages. The icon can be piece:<prefab>, a building piece's build-menu picture.";
+                case Category.Spawner:   return "The nests and piles that creatures come out of, which you can walk up to and break. Valheim also has thousands of invisible spawn points named Spawner_<creature> inside dungeons and camps; do not add those.";
                 default:                 return "";
             }
         }
