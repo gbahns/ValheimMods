@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.10.16 - 2026-10-20
+
+- **The bench reports the draw distance actually granted, and dsl_sim writes to the log.** The
+  graphics menu shows the REQUEST, not the grant, so a capture that reported settings without the
+  negotiated value was reporting the lie - days went into tuning a 544 m draw distance that was
+  being capped to 288 m, with every capture faithfully recording `SimulationDistance=6`. The
+  bench now prints it under `world`, from the same code `dsl_sim` uses rather than a second
+  copy, so running two commands to get one honest answer is no longer a step to forget. And
+  `dsl_sim` logs as well as printing: a console-only readout cannot be copied out and does not
+  survive the session.
+
+- **The capture says when a graphics setting changed, and which one.** Settings were recorded once
+  per bench, which answers "what were they" and never "when did they move" - and that turned out to
+  be the question that mattered. A week of A/B testing was spent on captures that each spanned a
+  change made somewhere in the middle, and three causal claims were made and retracted because the
+  moment of the change was unknown while the frame time was drifting anyway.
+
+  New `settings_rev` column, bumped on every detected change. A window holding more than one value
+  spans a change and cannot be read as a single configuration. The bench report now says so at the
+  top, before any of the numbers below it invite that mistake, and names each change with its
+  timestamp: `Target3DResolutionVertical 900 -> 1080`.
+
+  Two sources, because one is not enough. `GraphicsSettingsManager.GraphicsSettingsChanged` fires
+  the instant a vanilla setting is applied, which catches menu changes exactly. A five-second poll
+  catches everything else: mods that write `QualitySettings` directly never raise that event, and
+  GraphicsConfigPlus does exactly that for LOD bias, shadow distance, cascades and resolution,
+  applying them on a keypress - so the event alone would miss precisely the settings hardest to
+  track by hand.
+
+  The description is produced by the same code as the settings line, so a change is reported in the
+  same vocabulary as the configuration it came from, and the comparison is token-wise rather than a
+  text diff.
+
 ## 0.10.15 - 2026-10-19
 
 - **`dsl_hotspots`: where the main thread's time goes, per method.** A week of captures

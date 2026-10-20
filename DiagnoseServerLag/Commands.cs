@@ -69,33 +69,13 @@ namespace DiagnoseServerLag
             new Terminal.ConsoleCommand("dsl_sim", "Diagnose Server Lag: the draw distance actually in effect, not the one requested",
                 (Terminal.ConsoleEvent)(args =>
                 {
-                    var znet = ZNet.instance;
-                    if (znet == null) { args.Context?.AddString("Not in a world."); return; }
-                    try
-                    {
-                        var live = znet.GetSyncedSimulationDistance();
-                        int near = live.NearSimulationDistance;
-                        float reach = (near + 2.5f) * 64f;
-
-                        int wanted = -1;
-                        var gsm = GraphicsSettingsManager.Instance;
-                        if (gsm != null) wanted = gsm.GetSimulationDistance().NearSimulationDistance;
-
-                        args.Context?.AddString(
-                            $"draw distance in effect: near {near}, far {live.FarSimulationDistance}" +
-                            (live.IsClassic ? " (classic)" : "") + $" - about {reach:0} m");
-                        if (wanted >= 0 && wanted != near)
-                            args.Context?.AddString(
-                                $"the menu is asking for {wanted} (about {(wanted + 2.5f) * 64f:0} m) and not getting it: " +
-                                "the server's ceiling is lower. Raise it there, then change any graphics " +
-                                "setting or reconnect - the request is only re-sent when something changes.");
-                        else if (wanted >= 0)
-                            args.Context?.AddString("the menu asked for this and got it.");
-                    }
-                    catch (Exception e)
-                    {
-                        args.Context?.AddString("Could not read it: " + e.Message);
-                    }
+                    string text = SimDistanceText();
+                    args.Context?.AddString(text);
+                    // Logged as well as printed. A console-only readout cannot be copied out and
+                    // does not survive the session, and this is the one number the graphics menu
+                    // is actively misleading about - so it belongs in the file that gets read
+                    // after the fact, not only on screen.
+                    DiagnoseServerLagMod.Log.LogInfo("[DiagnoseServerLag] " + text.Replace("\n", " | "));
                 }));
 
             new Terminal.ConsoleCommand("dsl_server", "Diagnose Server Lag: what the server last reported about itself",
@@ -337,6 +317,45 @@ namespace DiagnoseServerLag
         /// carrying the same world. The load being carried is printed alongside, so a difference in
         /// CPU can be read against whether the two servers were doing the same amount of work.
         /// </summary>
+        /// <summary>
+        /// The draw distance actually in force, as one or two lines.
+        ///
+        /// Shared by dsl_sim and the bench report rather than duplicated, because the whole point
+        /// of this readout is that the graphics menu shows the REQUEST and not the grant - so a
+        /// capture that reports settings without it is reporting the lie. Days were spent tuning a
+        /// 544 m draw distance that was being capped to 288 m, with every capture faithfully
+        /// recording "SimulationDistance=6".
+        /// </summary>
+        internal static string SimDistanceText()
+        {
+            var znet = ZNet.instance;
+            if (znet == null) return "Not in a world.";
+            try
+            {
+                var live = znet.GetSyncedSimulationDistance();
+                int near = live.NearSimulationDistance;
+                float reach = (near + 2.5f) * 64f;
+
+                int wanted = -1;
+                var gsm = GraphicsSettingsManager.Instance;
+                if (gsm != null) wanted = gsm.GetSimulationDistance().NearSimulationDistance;
+
+                string head = $"draw distance in effect: near {near}, far {live.FarSimulationDistance}"
+                            + (live.IsClassic ? " (classic)" : "") + $" - about {reach:0} m";
+                if (wanted >= 0 && wanted != near)
+                    return head + "\n" +
+                           $"the menu is asking for {wanted} (about {(wanted + 2.5f) * 64f:0} m) and not getting it: " +
+                           "the server's ceiling is lower. Raise it there, then change any graphics " +
+                           "setting or reconnect - the request is only re-sent when something changes.";
+                if (wanted >= 0) return head + "\n" + "the menu asked for this and got it.";
+                return head;
+            }
+            catch (Exception e)
+            {
+                return "Could not read the draw distance: " + e.Message;
+            }
+        }
+
         internal static string Bench(int seconds, out string csvPath)
         {
             csvPath = null;
@@ -360,8 +379,27 @@ namespace DiagnoseServerLag
             sb.AppendLine($"DiagnoseServerLag {DiagnoseServerLagMod.ModVersion} bench - last {window.Count}s");
             sb.AppendLine($"  role            {role}, {Machine.ProcessorCount} cores");
             sb.AppendLine($"  world           {now.Zdos} objects, {now.Peers} players connected");
+            // Included rather than left to a separate command: the settings block below reports
+            // what was asked for, and this is what was granted. Running two commands to get one
+            // honest answer was a step everybody skipped.
+            foreach (var line in SimDistanceText().Split('\n'))
+                sb.AppendLine("  draw distance   " + line);
             sb.AppendLine($"  tick            {tickMed:0.0} ms median, {tickWorst:0} ms worst, {stalls} stalls"
                           + (capped ? "   (capped - not a load measurement)" : ""));
+
+            // A window that spans a settings change is not one configuration, and reading it as
+            // one is how three causal claims got made and retracted. Say so at the top, before
+            // any of the numbers below invite that mistake.
+            if (window.Count > 0)
+            {
+                var changes = GraphicsWatch.Since(window[0].UtcTicks);
+                if (changes.Count > 0)
+                {
+                    sb.AppendLine($"  SETTINGS MOVED  {changes.Count} change(s) inside this window - it is not one configuration");
+                    foreach (var ch in changes)
+                        sb.AppendLine($"                  {CaptureCsv.Iso(ch.UtcTicks)}  {ch.What}");
+                }
+            }
 
             // What the frame was waiting for, where the build will say. Printed right under the
             // tick because it is the first thing anyone asks next, and because the two numbers are

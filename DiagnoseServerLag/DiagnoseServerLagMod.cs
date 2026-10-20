@@ -29,7 +29,7 @@ namespace DiagnoseServerLag
     {
         public const string ModGuid    = "DeathMonger.DiagnoseServerLag";
         public const string ModName    = "Diagnose Server Lag";
-        public const string ModVersion = "0.10.15";
+        public const string ModVersion = "0.10.16";
 
         internal static DiagnoseServerLagMod Instance { get; private set; }
         internal static ManualLogSource Log { get; private set; }
@@ -81,6 +81,7 @@ namespace DiagnoseServerLag
             }
             _wasInWorld = inWorld;
 
+            GraphicsWatch.Hook();      // cheap and idempotent; the event may not exist until the game is up
             Sampler.Tick();
             LagNetwork.Update();
 

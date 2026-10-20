@@ -179,6 +179,13 @@ namespace DiagnoseServerLag
         /// separate the two. See MainThreadCpu.
         /// </summary>
         internal float MainCpuMsPerSec;
+
+        /// <summary>
+        /// Bumped every time a graphics setting changes. A window holding more than one value
+        /// spans a change and cannot be read as one configuration - which is the mistake that
+        /// produced three retracted causal claims before this column existed. See GraphicsWatch.
+        /// </summary>
+        internal int SettingsRev;
     }
 
     /// <summary>
@@ -248,6 +255,7 @@ namespace DiagnoseServerLag
             pkg.Write(s.CpuMainMs);
             pkg.Write(s.CpuRenderMs);
             pkg.Write(s.MainCpuMsPerSec);
+            pkg.Write(s.SettingsRev);
         }
 
         internal static Sample Read(ZPackage pkg, int layout)
@@ -342,6 +350,7 @@ namespace DiagnoseServerLag
                 s.CpuMainMs = pkg.ReadSingle();
                 s.CpuRenderMs = pkg.ReadSingle();
                 s.MainCpuMsPerSec = pkg.ReadSingle();
+                s.SettingsRev = pkg.ReadInt();
             }
             catch { }
             return s;

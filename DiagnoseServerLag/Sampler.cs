@@ -407,6 +407,10 @@ namespace DiagnoseServerLag
             // the main thread, which is what identifies it - see MainThreadCpu.
             s.MainCpuMsPerSec = MainThreadCpu.MsPerSec(now);
 
+            // Notices a graphics setting moving, and when. Cheap unless something actually changed.
+            GraphicsWatch.Tick(now);
+            s.SettingsRev = GraphicsWatch.Revision;
+
             // The whole machine, not just this process - the only figure that separates the game
             // pausing itself from something else taking the processor away.
             s.SystemCpu = SystemCpu.Read();
