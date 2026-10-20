@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.5.4 — unreleased
+## 2.5.4 — 2026-10-19
 
 - **Pack hotkeys are registered by pack slot, not by pack name.** A pack's display name was also the name its hotkey was registered under, so two packs with the same name shared one key and the second was silently dead, and packs left nameless produced a string of "Cannot have duplicate button" warnings from Jotunn. Names are now purely yours to change.
 - A pack with no key is still a pack: `/g <name>` and `/g pack <n>` reach it, and only the hotkey is left out. A pack with no name and no key is skipped. In each case the log says plainly what the pack is missing and how to give it, and the pack editor no longer saves a blank name.
