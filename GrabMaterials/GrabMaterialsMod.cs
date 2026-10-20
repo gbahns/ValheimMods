@@ -19,7 +19,7 @@ using UnityEngine;
 namespace GrabMaterialsMod
 {
 
-	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.5.3")]
+	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.5.4")]
 	[BepInProcess("valheim.exe")]
 	public class GrabMaterialsMod : BaseUnityPlugin
 	{
@@ -79,17 +79,26 @@ namespace GrabMaterialsMod
 			public ConfigEntry<KeyboardShortcut> Key;
 			public ConfigEntry<string> Items;
 			public ConfigEntry<DeltaSetting> GrabDelta;
+			// The config section, "Grab Pack 7": the pack's fixed identity, and the name its hotkey
+			// is registered under.  The display name is the player's to change, blank or duplicate,
+			// and must never be what a registration is keyed on.
+			public string Section;
+			// Null when the pack has no key: nothing registered, nothing to poll.
 			public ButtonConfig Button;
+
+			public bool HasName => !string.IsNullOrWhiteSpace(Name.Value);
+			public bool HasKey => Key.Value.MainKey != KeyCode.None;
 
 			public GrabPackConfig(ConfigFile config, string section, string name, KeyboardShortcut keyboardShortcut, string items)
 			{
+				Section = section;
 				Name = config.Bind(section, section+" Name", name, new ConfigDescription("Name of the grab pack"));
 				Key = config.Bind(section, section+" Key", keyboardShortcut, new ConfigDescription("Key to grab materials for the grab pack"));
 				Items = config.Bind(section, section+" Items", items, new ConfigDescription("Items to grab for the grab pack"));
 				GrabDelta = config.Bind(section, section+" Grab Delta", DeltaSetting.UseGlobal, new ConfigDescription("UseGlobal = follow the 'Grab Delta (default)' setting; On = only grab the shortfall (e.g. if the pack needs 10 wood and you have 7, only 3 will be grabbed); Off = always grab the full amount."));
 				Button = new ButtonConfig()
 				{
-					Name = Name.Value,
+					Name = section,
 					ShortcutConfig = Key
 				};
 			}
@@ -269,19 +278,56 @@ namespace GrabMaterialsMod
 			//InputManager.Instance.AddButton(ModGuid, GrabPack1.Button);
 			//InputManager.Instance.AddButton(ModGuid, GrabPack2.Button);
 			//InputManager.Instance.AddButton(ModGuid, GrabPack3.Button);
-			foreach (var grabPack in GrabPacks)
+			// A pack is reachable three ways: its key, "/g <name>", and "/g pack <n>".  Only the key
+			// needs anything registered, so a pack without one is still a pack; it just gets no
+			// button.  Every shortcoming is said plainly here, once, instead of leaving Jotunn to
+			// complain about a duplicate blank button.
+			for (int i = 0; i < GrabPacks.Length; i++)
 			{
-				//InitButton(grabPack.Name.Value, grabPack.Key.Value.MainKey);
-				//grabPack.Button = new ButtonConfig()
-				//{
-				//	Name = grabPack.Name.Value,
-				//	Config = grabPack.Key,
-				//	ShortcutConfig = grabPack.Key
-				//};
-				InputManager.Instance.AddButton(ModGuid, grabPack.Button);
+				var grabPack = GrabPacks[i];
 				var packRef = grabPack;
+				var number = i + 1;
+				if (!grabPack.HasName && !grabPack.HasKey)
+				{
+					Log.LogWarning($"{grabPack.Section} has no name and no key, so nothing can reach it. Name it in the packs panel, or set '{grabPack.Section} Name' or '{grabPack.Section} Key' in the config.");
+					grabPack.Button = null;
+					grabPack.Key.SettingChanged += (s, e) => NoteKeyChange(packRef);
+					continue;
+				}
+				if (!grabPack.HasName)
+				{
+					Log.LogWarning($"{grabPack.Section} has no name. Its key {grabPack.Key.Value} and '/g pack {number}' work, but '/g <name>' cannot reach it. Name it in the packs panel or set '{grabPack.Section} Name' in the config.");
+				}
+				if (!grabPack.HasKey)
+				{
+					Log.LogInfo($"{grabPack.Section} \"{grabPack.Name.Value}\" has no key; '/g {grabPack.Name.Value}' and '/g pack {number}' still work. Set '{grabPack.Section} Key' in the config to add one (takes effect after a restart).");
+					grabPack.Button = null;
+					grabPack.Key.SettingChanged += (s, e) => NoteKeyChange(packRef);
+					continue;
+				}
+				InputManager.Instance.AddButton(ModGuid, grabPack.Button);
 				grabPack.Key.SettingChanged += (s, e) => RebindButton(packRef.Button, packRef.Key.Value.MainKey);
 			}
+
+			// Two packs with the same display name: "/g <name>" takes the first, so say which.
+			var seen = new Dictionary<string, GrabPackConfig>(StringComparer.OrdinalIgnoreCase);
+			foreach (var grabPack in GrabPacks)
+			{
+				if (!grabPack.HasName) continue;
+				var key = grabPack.Name.Value.Trim();
+				if (seen.TryGetValue(key, out var first))
+					Log.LogWarning($"{first.Section} and {grabPack.Section} are both named \"{key}\"; '/g {key}' uses {first.Section}. Rename one in the packs panel.");
+				else
+					seen[key] = grabPack;
+			}
+		}
+
+		// A key given to a pack that had none when the game started: Jotunn registers buttons once,
+		// at startup, so it cannot be used until the next launch.  Say so rather than stay silent.
+		private static void NoteKeyChange(GrabPackConfig pack)
+		{
+			if (pack.HasKey)
+				Log.LogInfo($"{pack.Section} key set to {pack.Key.Value}; it works after the next restart.");
 		}
 
 		// Jotunn registers each pack key with ZInput once, at ZInput.Load, and its GetButtonDown patch
@@ -372,7 +418,7 @@ namespace GrabMaterialsMod
 
 				foreach (var grabPack in GrabPacks)
 				{
-					if (ZInput.GetButtonDown(grabPack.Button.Name))
+					if (grabPack.Button != null && ZInput.GetButtonDown(grabPack.Button.Name))
 					{
 						ConsoleCommands.GrabMaterialsForPack(grabPack);
 					}
@@ -781,7 +827,14 @@ namespace GrabMaterialsMod
 				initialDelta: pack.GrabDelta.Value,
 				onSave: (newName, newItems, newDelta) =>
 				{
-					pack.Name.Value = newName;
+					if (string.IsNullOrWhiteSpace(newName))
+					{
+						Player.m_localPlayer?.Message(MessageHud.MessageType.Center, $"A pack needs a name; keeping \"{pack.Name.Value}\"");
+					}
+					else
+					{
+						pack.Name.Value = newName.Trim();
+					}
 					pack.Items.Value = newItems;
 					pack.GrabDelta.Value = newDelta;
 					ListGrabPacks();  // back to the list, with updated values
