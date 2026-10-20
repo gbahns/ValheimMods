@@ -30,6 +30,8 @@ namespace TheGreatestMap
         Plants,
         Campfire,
         Sighting,
+        Ship,
+        Cart,
     }
 
     /// <summary>Static facts about each category: defaults, labels.</summary>
@@ -38,7 +40,15 @@ namespace TheGreatestMap
         internal static readonly Category[] All = (Category[])Enum.GetValues(typeof(Category));
 
         internal static bool UsesPrefabList(Category c) =>
-            c != Category.Runestone && c != Category.Portal && !IsPlacedOnly(c);
+            c != Category.Runestone && c != Category.Portal && !IsPlacedOnly(c) && !IsLive(c);
+
+        /// <summary>
+        /// A kind that is never recorded and never stored: the server says where these are now,
+        /// and the client draws that. A ship moves, so a marker written where one was found is
+        /// wrong by the next tide -- which is why none is written. Everything about recording,
+        /// spacing, labels and crossing off is therefore beside the point for these.
+        /// </summary>
+        internal static bool IsLive(Category c) => c == Category.Ship || c == Category.Cart;
 
         /// <summary>
         /// A kind nothing in the world can be classified as: it exists so a player can mark
@@ -61,6 +71,8 @@ namespace TheGreatestMap
                 case Category.Structure: return "Structures";
                 case Category.Campfire:  return "Campfires";
                 case Category.Sighting:  return "Sightings";
+                case Category.Ship:      return "Ships";
+                case Category.Cart:      return "Carts";
                 default:                 return c.ToString();
             }
         }
@@ -145,6 +157,9 @@ namespace TheGreatestMap
                 case Category.Structure: return "pin:Icon1";
                 case Category.Campfire:  return "piece:fire_pit"; // the campfire's own build-menu picture
                 case Category.Sighting:  return "TrophySerpent";
+                // A vessel is built with the hammer, so it has a build-menu picture of itself.
+                case Category.Ship:      return "piece:Karve";
+                case Category.Cart:      return "piece:Cart";
                 default:                 return "pin:Icon3";
             }
         }

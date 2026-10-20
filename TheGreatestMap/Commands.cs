@@ -184,6 +184,16 @@ namespace TheGreatestMap
                     }
                 }));
 
+            new Terminal.ConsoleCommand("tgm_transports", "What the mod knows about ships and carts, and why one near you is or is not drawn",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    foreach (var line in Transports.Describe())
+                    {
+                        args.Context.AddString(line);
+                        TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_transports: " + line);
+                    }
+                }));
+
             new Terminal.ConsoleCommand("tgm_find", "Show only the markers mentioning some text (tgm_find frost); tgm_find on its own shows everything again",
                 (Terminal.ConsoleEvent)(args =>
                 {

@@ -30,7 +30,7 @@ namespace TheGreatestMap
     {
         public const string ModGuid    = "DeathMonger.TheGreatestMap";
         public const string ModName    = "The Greatest Map";
-        public const string ModVersion = "1.9.0";
+        public const string ModVersion = "2.0.0";
 
         // Oldest version whose shared-marker wire format this build still speaks. ServerSync
         // refuses peers below this, so bump it only when the format or an RPC changes, not on
@@ -129,6 +129,7 @@ namespace TheGreatestMap
             PinStore.Update();
             ServerSave.Update();
             Portals.Update(); // also runs on the dedicated server, which is the source of the list
+            Transports.Update(); // likewise: the sweep for ships and carts is the server's
             Portals.Paint();
             MapPause.Refresh(); // also lets go of the pause when the player is gone
             PauseButton.Update();

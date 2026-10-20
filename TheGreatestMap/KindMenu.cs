@@ -244,16 +244,21 @@ namespace TheGreatestMap
             foreach (var kind in Categories.All)
             {
                 // A kind that is only ever placed by hand has no markers until one is placed, so
-                // it must be listed anyway -- it is the list that places it.
-                if (!seen.Contains(kind) && !Categories.IsPlacedOnly(kind)) continue;
+                // it must be listed anyway -- it is the list that places it. A live kind has no
+                // markers ever, its pins being the server's answer, so it is listed as soon as
+                // there is an answer to draw from.
+                bool live = Categories.IsLive(kind) && Transports.HaveList;
+                if (!seen.Contains(kind) && !Categories.IsPlacedOnly(kind) && !live) continue;
                 var k = kind;
                 SwitchRow(map, x, y, 0f, IconKeyFor(k), Categories.Label(k),
                     () => { if (TgmConfig.ShowKind.TryGetValue(k, out var e)) e.Value = !e.Value; },
                     () => AllShown && IsShown(k),
                     // The small pin at the row's end arms that kind for placing by hand. It is a
                     // button of its own rather than another meaning for the row, which already
-                    // means "show or hide these".
-                    () => { if (ManualPlace.Arm(map, k)) Close(); },
+                    // means "show or hide these". A live kind cannot be placed: a hand-written
+                    // ship would be a memory of a thing that moves, which is the whole reason
+                    // these are not recorded.
+                    Categories.IsLive(k) ? (Action)null : () => { if (ManualPlace.Arm(map, k)) Close(); },
                     // And "only": the same row's switch would need twenty others turned off to say
                     // this, so it says it in one press, and says it again to take it back.
                     () => Focus.SetKind(k));

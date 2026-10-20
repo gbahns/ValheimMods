@@ -148,6 +148,24 @@ only the ones someone has seen, which suits a server where everyone is in the sa
 off and portals are learned the way everything else is, by seeing one yourself or by someone
 sharing their map with you. The extra portals are drawn only, never saved and never shared.
 
+**Ships and carts are drawn where they are now.** Every vessel in the world appears on the map at
+its current position -- the longship moored at the outpost, the karve somebody sailed off in, the
+cart left halfway up a mountain. Like the extra portals these are drawn only: nothing is written to
+your map, nothing is shared, nothing is left behind when you switch the kind off, and none of it can
+reach a cartography table. The "found, not detected" rule does not apply to them, which is
+deliberate -- a vessel is your own property, and knowing where you parked it is not a discovery
+about the world.
+
+The server does the finding, so this covers the whole world rather than the part loaded around you:
+a boat forty minutes away is still on your map, and it is still there after you rejoin. Modded ships
+are included without anyone maintaining a list, because the vessels to watch for are worked out from
+what is actually in the world. Each one is called what the game calls it -- a longship reads
+"Longship", not "Viking Ship" -- though the names are off by default ("Show Transport Labels"),
+since a harbor of six ships writes six names across the coast and the icon already says what is
+there. The sweep runs every five seconds by default ("Transport Sweep
+Seconds", server only); these pins answer "where did I leave it" rather than "where is it this
+second", and a ship riding the swell at anchor does not count as having moved.
+
 Portals get their own color, since they are the points you travel between and are worth spotting at
 a glance. By default they fade slowly between two shades of orange, which reads as a gentle pulse rather
 than a color change; set "Portal Marker Color" and
@@ -181,6 +199,7 @@ counts as well unless "Structures Include Unlisted" is off or its prefab name is
 | `tgm_status` | Counts of shared markers, erased spots and pending discoveries |
 | `tgm_list [n]` | Nearest shared markers |
 | `tgm_find [text]` | Show only the markers mentioning some text, and list the types that matched; on its own, show everything again |
+| `tgm_transports` | Which vessel prefabs are watched, how many ships and carts are out there, and why one is or is not drawn |
 | `tgm_dedupe [apply]` | List markers standing on one another, or fold each group into one |
 | `tgm_import` | Share your existing local markers (the five standard icons) with everyone |
 | `tgm_clearlocal` | Delete your local, non-shared player markers, including stale ones imported from tables |

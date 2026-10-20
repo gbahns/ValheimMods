@@ -118,6 +118,19 @@ namespace TheGreatestMap
             ClientPins.Restyle();
         }
 
+        /// <summary>
+        /// Whether a kind drawn live from the server -- ships, carts -- is what is being looked
+        /// for. Those have no marker to ask about: the pins are the server's answer, drawn and
+        /// thrown away, so the kind and its icon are all there is to go on.
+        /// </summary>
+        internal static bool ShowsKind(Category kind, string icon)
+        {
+            if (!On) return true;
+            if (_icon != null) return IconRegistry.SameKey(_icon, icon);
+            if (_kind.HasValue) return _kind.Value == kind;
+            return Has(Categories.Label(kind), _text);
+        }
+
         /// <summary>True when this marker is the thing being looked for. Always true with no focus set.</summary>
         internal static bool Shows(SharedPin pin)
         {

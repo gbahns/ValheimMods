@@ -1,5 +1,53 @@
 # Changelog
 
+## 2.0.0 — 2026-10-19
+
+A round number because of what the first entry is, not because anything breaks. Every marker this
+mod has drawn until now has been a record of something a player found; these are the first that
+are not. Nothing has to be upgraded in step: an older server never answers the request, so its
+players see no ships and everything else works exactly as before, and an older client ignores a
+broadcast it was never listening for. The lowest version this mod will talk to is unchanged.
+
+- **Ships and carts on the map, where they are now.** Every vessel in the world is drawn at its
+  current position: the longship moored at the outpost, the karve somebody sailed off in, the cart
+  left halfway up a mountain. Two new kinds, Ships and Carts, each with its own switch in the
+  marker list and its own icon setting.
+- These are the one thing on this map that is not a memory. Everything else recorded stays where
+  it was found, because ore does not wander off; a longship does, so nothing is written down.
+  The server sweeps the world and tells everyone, and each client draws what it was told. Nothing
+  enters your map, nothing is shared, nothing survives the switch being turned off, and none of it
+  can reach a cartography table.
+- It follows that the "found, not detected" rule is not in play here, which was a deliberate
+  decision rather than an oversight: a vessel is the group's own property, and knowing where you
+  parked it is not a discovery about the world.
+- **The whole world, not the part you have loaded.** The server holds every ship and cart there
+  is, so a boat forty minutes away is on your map. This is the part a client-side mod cannot do:
+  watching things appear around you only ever sees the bubble you are standing in, and loses
+  track of them when you rejoin.
+- **Modded ships are included without anybody maintaining a list.** The vessels to watch for are
+  worked out by looking at what is in the world and keeping whatever is a ship or a cart
+  underneath, so TheGreatestShips' hulls are covered, as is whatever comes next. A hardcoded list
+  of names would quietly miss them, and a ship that exists and never appears on the map is the
+  worst thing this feature could do. Finding them means reading the table the game resolves a
+  saved object through rather than the list the world was built from: a hull cloned at runtime by
+  another mod only ever reaches the first of those, which is why the first build of this saw none
+  of TheGreatestShips' eight.
+- **A vessel is called what the game calls it.** Ships are build pieces and carry their own names,
+  so the longship reads "Longship" rather than "Viking Ship", which is merely the name of the
+  prefab underneath. The naming happens on your own machine, in your own language, and a modded
+  hull names itself the same way with nothing here knowing about it.
+- **Those names are off by default** ("Show Transport Labels", Display). A harbor with six ships
+  in it writes six names across the coast, and the icon already says what is there.
+- The sweep is spread over several frames and runs every five seconds by default ("Transport
+  Sweep Seconds", server only). These pins answer "where did I leave it" rather than "where is it
+  this second": a longship under sail covers twenty meters in two seconds, so a tighter interval
+  buys little and costs a walk of every object in the world. A moored ship riding the swell does
+  not count as having moved, so a still harbor sends nothing to anybody.
+- They answer the find box like everything else: "only Ships" leaves the fleet and puts the rest
+  of the map away, and looking for frost caves puts the fleet away too.
+- `tgm_transports` says which vessel prefabs are being watched, how many are out there, how many
+  are drawn, and why.
+
 ## 1.9.0 — 2026-10-16
 
 Client-side; works with a 0.2.x server.

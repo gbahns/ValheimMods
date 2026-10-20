@@ -50,6 +50,7 @@ namespace TheGreatestMap
             IconRegistry.ForgetPicks();
             Reveals.Reset();
             Portals.Reset();
+            Transports.Reset();
             PlayerSpotlight.Reset();
             MinimapClip.Reset();
             MapFrame.Reset();
@@ -609,6 +610,7 @@ namespace TheGreatestMap
             _pinById.Clear();
             _idByPin.Clear();
             Portals.OnPinsCleared();
+            Transports.OnPinsCleared();
         }
 
         /// <summary>A new pin got its name on the map screen: put it on the personal map if configured.</summary>

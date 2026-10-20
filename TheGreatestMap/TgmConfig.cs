@@ -165,6 +165,8 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> FoldDuplicates;
         internal static ConfigEntry<bool> RepairDungeonIcons;
         internal static ConfigEntry<float> ServerAutosaveMinutes;
+        internal static ConfigEntry<float> TransportSweepSeconds;
+        internal static ConfigEntry<bool> ShowTransportLabels;
 
         // ── Pocket map visuals ──────────────────────────────────────────────────────
         internal static ConfigEntry<bool> ShowMapInHands;
@@ -392,9 +394,9 @@ namespace TheGreatestMap
             foreach (var cat in Categories.All)
             {
                 string label = Categories.Label(cat);
-                // A kind only ever placed by hand is never recorded, so none of the recording
-                // settings would mean anything for it.
-                if (!Categories.IsPlacedOnly(cat))
+                // A kind only ever placed by hand, or drawn live from the server, is never
+                // recorded, so none of the recording settings would mean anything for it.
+                if (!Categories.IsPlacedOnly(cat) && !Categories.IsLive(cat))
                 {
                 CategoryEnabled[cat] = mod.BindLocal("Recording", "Record " + label, Categories.DefaultEnabled(cat),
                     "Record " + label.ToLowerInvariant() + " you have found." +
@@ -411,20 +413,29 @@ namespace TheGreatestMap
                     "How far away " + label.ToLowerInvariant() + " can be and still count as seen when you look straight at them " +
                     "with clear line of sight. Interacting, or having them under the crosshair within reach, always counts.");
                 }
+                // Size and minimap are about markers this mod drew into your map, which a live
+                // kind has none of: its pins are the server's answer, drawn and thrown away.
+                if (!Categories.IsLive(cat))
+                {
                 MarkerSize[cat] = mod.BindLocalRange("Recording", label + " Marker Size", Categories.DefaultSize(cat), 20, 100,
                     "Size of recorded " + label.ToLowerInvariant() + " markers on the map, as a percentage of the normal marker size.");
                 ShowOnMinimap[cat] = mod.BindLocal("Recording", label + " On Minimap", true,
                     "Show recorded " + label.ToLowerInvariant() + " markers on the small minimap (when they are shown at all).");
+                ShowOnMinimap[cat].SettingChanged += (_, __) => ClientPins.Restyle();
+                MarkerSize[cat].SettingChanged += (_, __) => ClientPins.Restyle();
+                }
                 ShowKind[cat] = mod.BindLocal("Display", "Show " + label, true,
-                    "Draw recorded " + label.ToLowerInvariant() + " markers on your map. Off hides them on both the large map and the " +
+                    Categories.IsLive(cat)
+                    ? "Draw every " + label.ToLowerInvariant().TrimEnd('s') + " in the world on your map, where it is now. The server " +
+                      "finds them and tells everyone, so this covers the whole world rather than what is loaded around you. These pins " +
+                      "are drawn only: they are never written to your map, never shared, and gone the moment this is off."
+                    : "Draw recorded " + label.ToLowerInvariant() + " markers on your map. Off hides them on both the large map and the " +
                     "minimap; they stay on your map and keep syncing. To hide single icons instead (say only dandelions) use Hidden Icons." +
                     (IconRegistry.VanillaFilters(Categories.DefaultIcon(cat))
                         ? " This kind draws on one of vanilla's own map icons, so vanilla's icon button on the map screen already hides and " +
                           "shows it, along with any pin you placed by hand with that icon; this switch covers only the markers this mod recorded."
                         : ""));
                 ShowKind[cat].SettingChanged += (_, __) => ClientPins.Restyle();
-                ShowOnMinimap[cat].SettingChanged += (_, __) => ClientPins.Restyle();
-                MarkerSize[cat].SettingChanged += (_, __) => ClientPins.Restyle();
                 if (Categories.UsesPrefabList(cat))
                 {
                     CategoryPrefabs[cat] = mod.BindLocal("Catalog", label, Categories.DefaultPrefabs(cat),
@@ -485,6 +496,17 @@ namespace TheGreatestMap
             foreach (var entry in CategoryPrefabs.Values)
                 entry.SettingChanged += (_, __) => { Catalog.Invalidate(); KindInference.Invalidate(); };
             StructuresExcludePrefixes.SettingChanged += (_, __) => Catalog.Invalidate();
+
+            ShowTransportLabels = mod.BindLocal("Display", "Show Transport Labels", false,
+                "Write the name of each ship and cart beside its pin on the large map. Off by default: a harbor of six " +
+                "ships writes six names across the coast, and the icon already says what is there.");
+            ShowTransportLabels.SettingChanged += (_, __) => Transports.Redraw();
+
+            TransportSweepSeconds = mod.BindLocal("Server", "Transport Sweep Seconds", 5f,
+                "Server only. How often the server looks for every ship and cart in the world and tells the clients where " +
+                "they are. These pins answer \"where did I leave it\", not \"where is it this second\": a longship under sail " +
+                "covers 20 m in two seconds, so a tighter interval buys little and costs a walk of every object in the world. " +
+                "The walk is spread over several frames either way.");
 
             ServerAutosaveMinutes = mod.BindLocal("Server", "Server Autosave Minutes", 0f,
                 "Server only. Extra world save every this many minutes on top of vanilla's own autosave (0 = vanilla only). " +
