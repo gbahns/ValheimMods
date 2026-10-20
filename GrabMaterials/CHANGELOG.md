@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.6.1 — unreleased
+## 2.6.1 — 2026-10-19
 
 - **Fixed: the scrollbar from a tall `/i` panel stayed on screen beside the next grab-results panel.** It now leaves with the rows it belongs to.
 
