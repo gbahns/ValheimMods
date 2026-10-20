@@ -46,6 +46,19 @@ namespace DiagnoseServerLag
         // A separate RPC rather than extra fields on the text reply, so an old client simply never
         // receives it instead of mis-reading a message whose shape changed.
         private const string RpcCaptureCsv = "DSL_CaptureCsv";          // server -> that client, the CSV
+
+        // Offered before the bytes, because on a machine that is both the server and the client
+        // there is nothing to send: the server has already written the file to a disk the asker
+        // can read. Sending it anyway pushed a 1,976 KB CSV through Steam's 512 KiB ceiling and
+        // got the admin told to "copy it from the server" - which was the same folder they were
+        // standing in.
+        //
+        // Deliberately a handshake rather than a server-side guess at whether the asker is local.
+        // A Steam socket identifies a peer by SteamID, not by address, so the server cannot tell
+        // a local client from a remote one with any confidence; the client reading its own
+        // filesystem can, and that test is right whatever the transport.
+        private const string RpcCaptureCsvOffer = "DSL_CaptureCsvOffer"; // server -> asker: path, size, mtime
+        private const string RpcCaptureCsvWant = "DSL_CaptureCsvWant";   // asker -> server: send it after all
         private const string RpcCaptureAll = "DSL_CaptureAll";         // server -> every client: send your window
         private const string RpcClientSeries = "DSL_ClientSeries";     // client -> server, its window
         private const string RpcEcho = "DSL_Echo";                     // client -> an object owner
@@ -130,6 +143,8 @@ namespace DiagnoseServerLag
                 rpc.Register<ZPackage>(RpcCapture, RPC_Capture);
                 rpc.Register<ZPackage>(RpcCaptureResult, RPC_CaptureResult);
                 rpc.Register<ZPackage>(RpcCaptureCsv, RPC_CaptureCsv);
+                rpc.Register<ZPackage>(RpcCaptureCsvOffer, RPC_CaptureCsvOffer);
+                rpc.Register<ZPackage>(RpcCaptureCsvWant, RPC_CaptureCsvWant);
                 rpc.Register<ZPackage>(RpcCaptureAll, RPC_CaptureAll);
                 rpc.Register<ZPackage>(RpcClientSeries, RPC_ClientSeries);
                 rpc.Register<ZPackage>(RpcEcho, RPC_Echo);
@@ -383,6 +398,194 @@ namespace DiagnoseServerLag
             {
                 DiagnoseServerLagMod.Log.LogWarning($"[DiagnoseServerLag] Could not save the group capture: {e.Message}");
             }
+        }
+
+        // -- handing over the group CSV ----------------------------------------------
+
+        /// <summary>The one file this server has offered, and to whom. Never more than one.</summary>
+        private static string _offeredPath;
+        private static long _offeredTo;
+        private static float _offeredAt = -1f;
+
+        /// <summary>The asking client's mod version, out of the window it just sent us.</summary>
+        private static string AskerVersion()
+        {
+            foreach (var c in _gathered)
+                if (c != null && c.Uid == _gatherFor) return c.ModVersion;
+            return null;
+        }
+
+        /// <summary>
+        /// Whether that client knows what to do with an offer. Below 0.10.15 it has no handler
+        /// registered, so an offer would simply vanish and the admin would get a text report and
+        /// no data at all - worse than the oversized send this replaces. A version that will not
+        /// parse counts as too old rather than being guessed at, because guessing wrong loses the
+        /// capture silently.
+        /// </summary>
+        private static bool OffersUnderstood(string version)
+        {
+            if (string.IsNullOrEmpty(version)) return false;
+            var parts = version.Split('.');
+            if (parts.Length < 3) return false;
+            int major, minor, patch;
+            if (!int.TryParse(parts[0], out major)) return false;
+            if (!int.TryParse(parts[1], out minor)) return false;
+            if (!int.TryParse(parts[2], out patch)) return false;
+            if (major != 0) return major > 0;
+            if (minor != 10) return minor > 10;
+            return patch >= 15;
+        }
+
+        /// <summary>
+        /// Tells the asker where the file is and exactly which bytes to expect, so it can decide
+        /// whether it is already looking at them. Length and write time travel with the path
+        /// because a path alone would also match a stale file from an earlier capture.
+        /// </summary>
+        private static bool OfferCsv(string path)
+        {
+            try
+            {
+                var info = new System.IO.FileInfo(path);
+                if (!info.Exists) return false;
+                var pkg = new ZPackage();
+                pkg.Write(path);
+                pkg.Write(info.Length);
+                pkg.Write(info.LastWriteTimeUtc.Ticks);
+                _offeredPath = path;
+                _offeredTo = _gatherFor;
+                _offeredAt = Time.unscaledTime;
+                ZRoutedRpc.instance?.InvokeRoutedRPC(_gatherFor, RpcCaptureCsvOffer, pkg);
+                return true;
+            }
+            catch (Exception e)
+            {
+                DiagnoseServerLagMod.Log.LogWarning(
+                    "[DiagnoseServerLag] could not offer the group CSV at " + path + ": " + e.Message);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Never hand a socket a package it cannot send. Steam's ceiling is 512 KiB, and
+        /// ZSteamSocket.Send has no guard: it passes the array straight to SendMessageToConnection
+        /// and, on any result but OK, logs "Failed to send data" and breaks - leaving the oversized
+        /// package at the head of the queue to be retried forever. So one too-large package does
+        /// not fail, it wedges that peer's socket until the connection dies.
+        ///
+        /// Which is exactly what happened: dsl_bench 60 across six machines produced a 3.8 MB CSV,
+        /// Steam refused it with k_EResultInvalidParam, and thirty seconds later the admin who
+        /// asked for the capture was disconnected. Every earlier group CSV was between 115 and
+        /// 758 KB and sent fine, so the feature looked healthy right up to the first full-hour
+        /// capture with everybody on - the one capture worth having.
+        ///
+        /// Capped well under the ceiling, because the routed RPC wraps this payload again and the
+        /// margin is free.
+        /// </summary>
+        private static void SendCsvBytes(ZPackage payload, int csvChars, string csvPath)
+        {
+            const int maxPayload = 256 * 1024;
+            if (payload.Size() <= maxPayload)
+            {
+                ZRoutedRpc.instance?.InvokeRoutedRPC(_gatherFor, RpcCaptureCsv, payload);
+                return;
+            }
+            string where = csvPath == null ? "on the server" : csvPath;
+            ZRoutedRpc.instance?.InvokeRoutedRPC(_gatherFor, RpcCaptureResult, Wrap(
+                "The group CSV is " + (csvChars / 1024) + " KB, too big to send over the game's " +
+                "network (the limit is 512 KB and this compresses to " + (payload.Size() / 1024) +
+                " KB). It is on the server at " + where + " - copy it from there, or capture a " +
+                "shorter window next time."));
+            DiagnoseServerLagMod.Log.LogWarning(
+                "[DiagnoseServerLag] group CSV not sent: " + payload.Size() + " bytes compressed " +
+                "exceeds the " + maxPayload + " byte cap. It is at " + where + ".");
+        }
+
+        /// <summary>
+        /// Server side: the asker could not read the file, so send it the old way.
+        ///
+        /// Only ever the one path just offered, to the one peer it was offered to, once. A client
+        /// is not allowed to name a file for the server to read back - that would turn a
+        /// diagnostic into a way to pull any file off the host.
+        /// </summary>
+        private static void RPC_CaptureCsvWant(long sender, ZPackage pkg)
+        {
+            try
+            {
+                if (ZNet.instance == null || !ZNet.instance.IsServer()) return;
+                string asked = pkg.ReadString();
+                if (_offeredPath == null || sender != _offeredTo || asked != _offeredPath) return;
+                if (_offeredAt < 0f || Time.unscaledTime - _offeredAt > 300f) return;
+                string path = _offeredPath;
+                _offeredPath = null; _offeredTo = 0; _offeredAt = -1f;      // one shot
+
+                string csv = System.IO.File.ReadAllText(path);
+                var inner = new ZPackage();
+                inner.Write(csv);
+                var payload = new ZPackage();
+                payload.WriteCompressed(inner);
+                _gatherFor = sender;
+                SendCsvBytes(payload, csv.Length, path);
+            }
+            catch (Exception e)
+            {
+                DiagnoseServerLagMod.Log.LogWarning(
+                    "[DiagnoseServerLag] could not send the group CSV on request: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// Client side: the server says where it put the file. If this machine is looking at the
+        /// same bytes - same path, same length, same write time - there is nothing to transfer and
+        /// the 512 KiB ceiling stops applying at all. Otherwise ask for them.
+        /// </summary>
+        private static void RPC_CaptureCsvOffer(long sender, ZPackage pkg)
+        {
+            try
+            {
+                if (ZNet.instance == null) return;
+                if (_askedAt < 0f || Time.realtimeSinceStartup - _askedAt > 300f) return;
+
+                string path = pkg.ReadString();
+                long length = pkg.ReadLong();
+                long ticks = pkg.ReadLong();
+
+                if (HaveSameFile(path, length, ticks))
+                {
+                    _askedAt = -1f;
+                    Print("the server wrote " + path + " - this machine can read it, so nothing was copied");
+                    DiagnoseServerLagMod.Log.LogInfo(
+                        "[DiagnoseServerLag] group capture is readable locally at " + path +
+                        " (" + (length / 1024) + " KB); no transfer needed.");
+                    return;
+                }
+
+                // _askedAt is left alone: the bytes are still coming, and RPC_CaptureCsv checks it.
+                ZRoutedRpc.instance?.InvokeRoutedRPC(sender, RpcCaptureCsvWant, Wrap(path));
+            }
+            catch (Exception e)
+            {
+                DiagnoseServerLagMod.Log.LogWarning(
+                    "[DiagnoseServerLag] could not read the group CSV offer: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// Is the file at this path the one the server just wrote? Path, length and last-write time
+        /// must all agree. Two of the three are not enough: a server re-running the same window
+        /// produces a same-named, same-sized file, and a client keeps its own group captures in a
+        /// folder of the same shape - so a weaker test could tell someone they already have a
+        /// capture they have never seen.
+        /// </summary>
+        private static bool HaveSameFile(string path, long length, long lastWriteUtcTicks)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(path)) return false;
+                var info = new System.IO.FileInfo(path);
+                if (!info.Exists || info.Length != length) return false;
+                return info.LastWriteTimeUtc.Ticks == lastWriteUtcTicks;
+            }
+            catch { return false; }
         }
 
         private static ZPackage Wrap(string text)
@@ -691,23 +894,14 @@ namespace DiagnoseServerLag
                     // again and the margin is free. When it does not fit, the path is sent instead;
                     // chunking would be the richer answer, but a diagnostic convenience is not
                     // worth a protocol that can drop players.
-                    const int maxPayload = 256 * 1024;
-                    if (payload.Size() <= maxPayload)
-                    {
-                        ZRoutedRpc.instance?.InvokeRoutedRPC(_gatherFor, RpcCaptureCsv, payload);
-                    }
-                    else
-                    {
-                        string where = csvPath == null ? "on the server" : csvPath;
-                        ZRoutedRpc.instance?.InvokeRoutedRPC(_gatherFor, RpcCaptureResult, Wrap(
-                            $"The group CSV is {csv.Length / 1024}" + " KB, too big to send over the game's " +
-                            $"network (the limit is 512 KB and this compresses to {payload.Size() / 1024} KB). " +
-                            $"It is on the server at {where} - copy it from there, or capture a shorter " +
-                            "window next time."));
-                        DiagnoseServerLagMod.Log.LogWarning(
-                            $"[DiagnoseServerLag] group CSV not sent: {payload.Size()} bytes compressed " +
-                            $"exceeds the {maxPayload} byte cap. It is at {where}.");
-                    }
+                    // Offer the path first, if the asker is new enough to answer. A client that
+                    // can read the file needs none of this; one that cannot asks for the bytes and
+                    // gets exactly the behaviour in SendCsvBytes. Older clients skip the offer and
+                    // are sent the bytes as before - the version check decides which message shape
+                    // to WRITE, never which to accept, so no client is cut off.
+                    if (OffersUnderstood(AskerVersion()) && csvPath != null && OfferCsv(csvPath)) return;
+
+                    SendCsvBytes(payload, csv.Length, csvPath);
                 }
             }
             _gathered.Clear();

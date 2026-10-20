@@ -169,6 +169,91 @@ namespace DiagnoseServerLag
                         (Machine.HasWorkingSet ? $", working set {Stats.Bytes(s.WorkingSetBytes)}" : ", working set not measurable"));
                 }));
 
+            // The one measurement that can name a cause rather than a correlate. Off by default
+            // because it patches hot vanilla methods, which a diagnostic has no business doing to
+            // somebody who only wanted their frame time. See Hotspots for why it exists: a week of
+            // captures established that a client loses ~1.6 ms per frame over ninety minutes, that
+            // the loss is spread across every frame rather than concentrated in a tail (so not GC
+            // pauses), and that ZDO count, heap, travel and every graphics setting are correlates
+            // that fail as causes.
+            new Terminal.ConsoleCommand("dsl_hotspots", "Diagnose Server Lag: time the main thread per method ('on', 'off', 'reset', 'patches', 'drill Type.Method', or nothing to read it)",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    string what = args.Length > 1 ? args[1].ToLowerInvariant() : "";
+                    switch (what)
+                    {
+                        case "on":
+                        case "start":
+                            args.Context?.AddString(Hotspots.Start());
+                            return;
+                        case "off":
+                        case "stop":
+                            args.Context?.AddString(Hotspots.Stop());
+                            return;
+                        case "patches":
+                        case "who":
+                        {
+                            string who = Hotspots.Patches().TrimEnd();
+                            args.Context?.AddString(who);
+                            DiagnoseServerLagMod.Log.LogInfo("[DiagnoseServerLag] hotspot patches\n" + who);
+                            return;
+                        }
+                        case "drill":
+                        {
+                            // Times each mod patch inside one method, so a hot entry names a
+                            // culprit rather than only a method. Harmony emits calls to patch
+                            // methods rather than inlining them, so they can be patched in turn.
+                            if (args.Length < 3)
+                            {
+                                args.Context?.AddString(
+                                    "dsl_hotspots drill needs a method, as Type.Method - for example " +
+                                    "'dsl_hotspots drill Hud.Update'. Run 'dsl_hotspots patches' to see " +
+                                    "which ones have anything worth drilling into.");
+                                return;
+                            }
+                            string spec = args[2];
+                            int dot = spec.LastIndexOf('.');
+                            if (dot <= 0 || dot == spec.Length - 1)
+                            {
+                                args.Context?.AddString(
+                                    "'" + spec + "' is not Type.Method - try 'dsl_hotspots drill Hud.Update'.");
+                                return;
+                            }
+                            string said = Hotspots.Drill(spec.Substring(0, dot), spec.Substring(dot + 1));
+                            args.Context?.AddString(said);
+                            return;
+                        }
+                        case "reset":
+                            if (!Hotspots.Running)
+                            {
+                                args.Context?.AddString("Hotspot timing is off. Run: dsl_hotspots on");
+                                return;
+                            }
+                            Hotspots.Reset();
+                            args.Context?.AddString("counters reset - play for a few minutes, then dsl_hotspots");
+                            return;
+                        case "":
+                        {
+                            // Logged as well as printed. The first real window of this was lost
+                            // because it only ever existed on screen: the console cannot be
+                            // copied out of easily, the counters live in the running process, and
+                            // a rebuild to add the logging would have restarted the game and
+                            // discarded them. Every other report here goes to both.
+                            string report = Hotspots.Report().TrimEnd();
+                            args.Context?.AddString(report);
+                            DiagnoseServerLagMod.Log.LogInfo(
+                                "[DiagnoseServerLag] hotspots\n" + report);
+                            return;
+                        }
+                        default:
+                            args.Context?.AddString(
+                                "dsl_hotspots takes 'on', 'off', 'reset', 'patches', " +
+                                "'drill <Type>.<Method>', or nothing at all to read the current " +
+                                "window. '" + what + "' is none of those, so nothing was changed.");
+                            return;
+                    }
+                }));
+
             new Terminal.ConsoleCommand("dsl_reset", "Diagnose Server Lag: forget the measurements and start again",
                 (Terminal.ConsoleEvent)(args =>
                 {

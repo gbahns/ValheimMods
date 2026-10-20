@@ -1,5 +1,73 @@
 # Changelog
 
+## 0.10.15 - 2026-10-19
+
+- **`dsl_hotspots`: where the main thread's time goes, per method.** A week of captures
+  established that a client loses about 1.6 ms per frame over ninety minutes, that a restart
+  resets it, that the GPU is never involved, and - the useful part - that the loss is spread
+  across the whole frame-time distribution rather than concentrated in a tail. The floor (p10)
+  rose 4.8% while the median rose 4.7%, which rules out garbage-collection pauses: the extra time
+  is in essentially every frame, so it is steady work and therefore attributable to specific calls.
+
+  Three correlates had already failed as causes. ZDO count predicts within a session and inverts
+  across them - 53,196 ZDOs at 36.3 ms against 35,029 at 41.2 ms. Managed heap predicts sometimes,
+  and a relog that halved the ZDO table *raised* the heap while improving the frame time. Travel,
+  base visits, simulation distance and every graphics setting were measured and eliminated. Rather
+  than guess at a fourth correlate, this times twenty once-per-frame methods with a `Stopwatch`
+  and reports milliseconds per second for each.
+
+  Read it as two windows, never as one absolute: `dsl_hotspots on`, play a few minutes,
+  `dsl_hotspots`; then `dsl_hotspots reset` after a couple of hours and read it again. Whatever
+  grew is the answer. Timing adds a little to every call, so a single reading is slightly high in
+  absolute terms while a difference between two is not.
+
+  Entries print in declaration order with children indented, because a parent's time includes its
+  children's - `ZNet.Update` contains `ZDOMan.Update`, `ZNetScene.Update` contains
+  `CreateDestroyObjects`, which contains `CreateObjects` and `RemoveObjects`. Sorting by cost would
+  separate them and make the double-counting unreadable, so the column is deliberately not
+  totalled. A parent that grew while none of its children did is itself a finding: the cost is in
+  the parent's own body.
+
+  Nothing per-object is timed. `WearNTear.UpdateWear` would be the most interesting entry in a
+  4,000-piece base and is called thousands of times a frame, where a `Stopwatch` per call would
+  cost more than the thing it measures. A method missing from the running build is skipped and
+  named rather than throwing, so a Valheim update retires an entry instead of breaking the
+  command.
+
+  Off by default, and unpatched again by `dsl_hotspots off`. It patches hot vanilla methods, which
+  is not something a diagnostic should do to somebody who only wanted to know their frame time.
+
+- **The group CSV is not sent to a machine that can already read it.** The server writes
+  `group-<stamp>.csv` and then shipped it to the asking client over Steam, which is wasted work
+  whenever the two are the same computer - and on a local server they always are. The waste was
+  not theoretical: a two-player hour produced a 1,976 KB file, that exceeds Steam's 512 KiB
+  ceiling, and the admin was told to "copy it from the server" - naming the folder they were
+  standing in.
+
+  The server now offers the path first, with the file's length and last-write time, and the client
+  answers only if it cannot see those exact bytes itself. Same machine means nothing is
+  transferred and the size ceiling stops applying at all, so a full-hour capture with everybody on
+  - the one capture actually worth having - finally works.
+
+  A handshake rather than a server-side guess at whether the asker is local, because a Steam
+  socket identifies a peer by SteamID and not by address: the server cannot tell a local client
+  from a remote one with any confidence, while a client reading its own filesystem can, and that
+  test is right whatever the transport.
+
+  Path, length *and* write time must all match before a transfer is skipped. Two of the three are
+  not enough - a server re-running the same window writes a same-named, same-sized file, and
+  clients keep their own group captures in a folder of the same shape - so a weaker test could
+  tell someone they already have a capture they have never seen.
+
+  The request is answered for exactly the one path just offered, to the one peer it was offered
+  to, once. A client cannot name a file for the server to read back; that would turn a diagnostic
+  into a way to pull any file off the host.
+
+  Clients older than 0.10.15 have no handler for the offer, so they are sent the bytes as before.
+  The version check decides which message shape to *write*, never which to accept - see the note
+  on wire versions: refusing an old shape partitions players, so every shape ever written stays
+  readable.
+
 ## 0.10.14 - 2026-10-16
 
 - **`dsl_sim`: the draw distance actually in effect, not the one requested.** "Draw distance" in
