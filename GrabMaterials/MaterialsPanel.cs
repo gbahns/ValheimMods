@@ -1469,6 +1469,27 @@ namespace GrabMaterials
 			Jotunn.Logger.LogInfo($"[Grab Materials] panel shown: \"{title}\" ({idleText}{(DismissOnMovement ? ", dismissed by movement" : "")})");
 		}
 
+		// Mouse-wheel scrolling by whole rows, a configurable number per notch, whatever size of
+		// delta the input module reports.  Unity's own wheel handling scales a per-notch delta
+		// that differs by input module and platform, which is why it crawled; only the sign is
+		// used here.  Same approach as the lists in DudeWhatAreMyStats and TheGreatestPortal.
+		private sealed class WheelScroller : MonoBehaviour, IScrollHandler
+		{
+			public ScrollRect Scroll;
+
+			public void OnScroll(PointerEventData eventData)
+			{
+				if (Scroll == null || !Scroll.enabled || Scroll.content == null || Scroll.viewport == null) return;
+				var dir = Mathf.Sign(eventData.scrollDelta.y);
+				if (dir == 0f) return;
+				var range = Scroll.content.rect.height - Scroll.viewport.rect.height;
+				if (range <= 0f) return;
+				var rows = GrabMaterialsMod.GrabMaterialsMod.Instance?.PanelScrollRows?.Value ?? 4;
+				var step = rows * LineHeight / range;
+				Scroll.verticalNormalizedPosition = Mathf.Clamp01(Scroll.verticalNormalizedPosition + dir * step);
+			}
+		}
+
 		// A plain vertical scrollbar in the panel's colors: dark track, Valheim-gold handle.
 		private static Scrollbar CreateVerticalScrollbar(Transform parent)
 		{
@@ -1652,7 +1673,8 @@ namespace GrabMaterials
 			_rowsScroll.vertical = true;
 			_rowsScroll.movementType = ScrollRect.MovementType.Clamped;
 			_rowsScroll.inertia = false;
-			_rowsScroll.scrollSensitivity = LineHeight * 2f;   // two rows per wheel notch
+			_rowsScroll.scrollSensitivity = 0f;   // WheelScroller does the wheel, by whole rows
+			_rowsViewport.AddComponent<WheelScroller>().Scroll = _rowsScroll;
 			_rowsScrollbar = CreateVerticalScrollbar(_panel.transform);
 			_rowsScroll.verticalScrollbar = _rowsScrollbar;
 			_rowsScroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.Permanent;  // shown/hidden by FinalizeRowsLayout

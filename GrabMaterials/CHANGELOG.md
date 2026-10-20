@@ -2,7 +2,7 @@
 
 ## 2.6.0 — unreleased
 
-- **Panels taller than the screen now fit it and scroll.** The inventory panel in Table style, which lists every item in one column, ran off the bottom of the screen on a well-stocked base. Rows are now clipped to what fits, with a scrollbar beside them; the mouse wheel over the panel scrolls two rows per notch. The List style and the packs list get the same treatment when they are too tall.
+- **Panels taller than the screen now fit it and scroll.** The inventory panel in Table style, which lists every item in one column, ran off the bottom of the screen on a well-stocked base. Rows are now clipped to what fits, with a scrollbar beside them; the mouse wheel over the panel scrolls four rows per notch ("Scroll Rows" under [Panel UI]). The List style and the packs list get the same treatment when they are too tall.
 
 ## 2.5.4 — 2026-10-19
 

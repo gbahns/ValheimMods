@@ -50,6 +50,7 @@ namespace GrabMaterialsMod
 		public ConfigEntry<bool> PanelMarkUndiscovered;
 		public ConfigEntry<bool> PanelPauseWhileOpen;
 		public ConfigEntry<float> PanelIconSize;
+		public ConfigEntry<int> PanelScrollRows;
 		public ConfigEntry<GrabMaterials.MaterialsPanel.InventoryShape> InventoryShape;
 		public ConfigEntry<GrabMaterials.MaterialsPanel.InventoryStyle> InventoryStyle;
 		public ConfigEntry<bool> ShowDistanceHud;
@@ -194,6 +195,7 @@ namespace GrabMaterialsMod
 			PanelPauseWhileOpen = Config.Bind("Panel UI", "Pause While Inventory Panel Open", false, new ConfigDescription("Pause the game while the /inventory panel is up, the way the ESC menu does. Toggle it from the button in the panel's top-right corner. This works by itself when playing solo or hosting alone; on a dedicated server it takes the Pause My Server mod. The button shows whether the pause actually took effect."));
 			PanelPauseWhileOpen.SettingChanged += (s, e) => GrabMaterials.PanelPause.Refresh();
 			PanelIconSize = Config.Bind("Panel UI", "Icon Size", 24f, new ConfigDescription("Width of the item-icon column in pixels. Icons are square and sized to fit. Beyond ~26 the row stays the same height so icons get visually capped by the row.", new AcceptableValueRange<float>(12f, 40f)));
+			PanelScrollRows = Config.Bind("Panel UI", "Scroll Rows", 4, new ConfigDescription("Rows a panel scrolls per mouse-wheel notch when it is taller than the screen.", new AcceptableValueRange<int>(1, 20)));
 
 			ShowDistanceHud = Config.Bind("Distance HUD", "Enabled", false, new ConfigDescription("Show a small always-on widget displaying the player's horizontal distance from the world center."));
 			ShowDistanceCoords = Config.Bind("Distance HUD", "Show Coordinates", false, new ConfigDescription("Also include the player's (X, Z) coordinates in the distance widget."));
