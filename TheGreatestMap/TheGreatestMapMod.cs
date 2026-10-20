@@ -30,13 +30,22 @@ namespace TheGreatestMap
     {
         public const string ModGuid    = "DeathMonger.TheGreatestMap";
         public const string ModName    = "The Greatest Map";
-        public const string ModVersion = "3.0.0";
+        public const string ModVersion = "3.0.1";
 
         // Oldest version whose shared-marker wire format this build still speaks. ServerSync
         // refuses peers below this, so bump it only when the format or an RPC changes, not on
         // every fix; otherwise every patch would force the server and all players to update
         // at the same moment. 0.2.0: personal maps, merge-based sync, tombstones, new RPCs.
-        public const string MinCompatibleVersion = "0.2.0";
+        //
+        // 3.0.0: the saved format became 5, and a build before that refuses a format it does not
+        // know rather than reading around it. Left at 0.2.0, an older client joined happily and
+        // then quietly received nothing -- its own markers still worked and still reached
+        // everyone else, so neither side saw anything wrong while that player's map went stale.
+        // Turning them away at the door says why, which a map that silently stops filling cannot.
+        //
+        // Deliberately the floor and not ModVersion: a patch must not lock out the players who
+        // installed the release before it. This rises only when the format does.
+        public const string MinCompatibleVersion = "3.0.0";
 
         internal static TheGreatestMapMod Instance { get; private set; }
         internal static ManualLogSource Log { get; private set; }

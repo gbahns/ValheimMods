@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.0.1 — 2026-10-20
+
+- **A server on 3.x now turns away a client older than 3.0.0**, with a reason: "The Greatest Map
+  needs to be at least version 3.0.0. You have version 2.1.0." Before this it let them in and
+  they quietly stopped receiving the shared map -- their own markers still worked and still
+  reached everyone else, so nothing looked broken from either side while they saw less and less
+  of the group's map. Being told to update at the door is a better answer than a map that goes
+  stale without saying why.
+- The floor is 3.0.0 rather than this version, so 3.0.0 clients are not shut out by it. It only
+  rises when the saved format changes again, which the framing added in 3.0.0 is meant to avoid.
+
 ## 3.0.0 — 2026-10-20
 
 **Everyone needs this together, the server included.** The saved format has changed, and versions
