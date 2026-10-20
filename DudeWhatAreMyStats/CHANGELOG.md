@@ -1,5 +1,57 @@
 # Changelog
 
+## 0.11.0 — unreleased
+
+A kill count that knows what it killed: your own pets, the deer and the fish, and the things that
+were actually trying to kill you, told apart and counted separately. Most of it works on the kills
+you already made.
+
+**Your Kills number will drop the day you update**, because it stops counting pets, deer, hares,
+fish and chickens. That is the point of it. *Kills Column Hostile Only* off puts the column back to
+the game's own total.
+
+Plays with 0.10.1 either way: the stats message only gained sections on the end, which is the
+contract 0.10.0 set up, so nobody is hidden from anybody. A player on an older version shows "-" in
+the new columns rather than disappearing.
+
+- **Hostile, tame, critters and bosses, worked out for kills you already made.** Valheim files a
+  kill under the species and nothing else, but what sort of thing a species *is* never changes, and
+  the answer is still in the game: the faction it belongs to, whether it carries an attack at all,
+  whether it can be tamed. So the old tallies can be sorted without any record of the kills
+  themselves. Nothing here is a list this mod maintains, which means a mod that adds creatures gets
+  classified by the same rules.
+- **K/D follows the Kills column**, so the ratio and the number beside it mean the same thing. The
+  Details tab shows both figures side by side, labelled, and *Kills by type* accounts for the
+  difference between them.
+- **Two new columns, Tame and Critters**, and the panel is a little wider by default to fit them. A
+  size you have already dragged is kept.
+- **Tame against wild is the one thing the past cannot give up.** Whether the wolf was somebody's pet
+  is a fact about that wolf, not about wolves, and the game recorded nothing: `Character.OnDeath`
+  credits a kill without ever asking `IsTamed`. So *Assume Tame Share* says what to assume, per
+  species, and ships assuming your old boar and wolf kills were pets - the right call for a
+  long-running world with a pen full of animals, and wrong for a fresh one, which is why it is a
+  setting. Write `Wolf:70` for a world that killed some of each.
+- **Some of it is not an assumption at all.** A creature the world never spawns by itself and a
+  player can tame only exists because somebody made it, so every one that died was a pet. In vanilla
+  that is the hen and the chicken, which come from an egg and nowhere else; they are counted as
+  yours without needing a setting, and a modded creature that works the same way gets it for free.
+- **The assumption only ever touches kills nothing watched.** From this version the pet flag and the
+  star level are recorded as kills happen, and the Details tab shows how many kills the game counted
+  against how many this mod actually saw. The guessed share shrinks every session and never applies
+  to a kill made from now on.
+- **Kills by weapon**: unarmed, magic, ranged, melee. Valheim has been keeping these per creature
+  since 1.0, in four slots beside the total that nothing has ever read. They are yours retroactively.
+- **Toughness killed**, as the health of everything you fought added up, and the toughest single
+  thing you have killed. Pets are left out of both; killing your own pig is not an achievement
+  however much the pig weighed.
+- **`dwams_creatures`** lists every creature in your world with how it was classified, its biome,
+  its health, whether it can be tamed and what your setting assumes about it. Worth a look before
+  trusting the numbers. `dwams_creatures all` prints the lot and copies it to the log.
+- Settings under `[Kills]`: *Record Kills*, *Assume Tame Share*, *Kills Column Hostile Only*.
+- Still not possible, and not pretended otherwise: how hard a kill was *at the time*. The old
+  records carry no dates, so there is no way to know whether that troll died to a bronze axe or a
+  blackmetal one. Star levels for old kills are gone for the same reason.
+
 ## 0.10.1
 
 Different versions of this mod no longer hide players from each other.

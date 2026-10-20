@@ -22,6 +22,10 @@ namespace DudeWhatAreMyStats
             // fight of the session.
             DeathWatch.Reset();
             DeathLog.Load();
+            // The creature catalog is per world, since a world can have different mods in it. It is
+            // built on first use rather than here, so a long prefab walk does not sit in the load.
+            CreatureCatalog.Reset();
+            KillLog.Load();
         }
     }
 
@@ -39,6 +43,8 @@ namespace DudeWhatAreMyStats
             StatsNetwork.Reset();
             DeathWatch.Reset();
             DeathLog.Unload();
+            KillLog.Unload();
+            CreatureCatalog.Reset();
         }
     }
 

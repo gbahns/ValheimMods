@@ -35,6 +35,12 @@ namespace DudeWhatAreMyStats
                     args.Context?.AddString(Deaths(args.Length > 1 ? args[1] : null));
                 }));
 
+            new Terminal.ConsoleCommand("dwams_creatures", "Dude What Are My Stats: how each creature is classified for the kill breakdown",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    args.Context?.AddString(Creatures(args.Length > 1 ? args[1] : null));
+                }));
+
             new Terminal.ConsoleCommand("dwams_status", "Dude What Are My Stats: what the scoreboard currently knows",
                 (Terminal.ConsoleEvent)(args =>
                 {
@@ -47,6 +53,9 @@ namespace DudeWhatAreMyStats
                     sb.AppendLine(StatsNetwork.ServerHasStore
                         ? $"server store: answering, {StatsNetwork.StoredCount} character(s) remembered"
                         : "server store: no answer yet (the server may not run this mod, which only costs you offline players)");
+                    sb.AppendLine(KillLog.Loaded
+                        ? $"kill log: {KillLog.Species} species watched, {CreatureCatalog.Count} creature(s) catalogued"
+                        : "kill log: not open yet");
                     if (DwamsConfig.RecordDeaths.Value)
                         sb.AppendLine(DeathLog.Loaded
                             ? $"death log: {DeathLog.Recorded} recorded, {DeathLog.ReportCount} kept in full" +
@@ -62,11 +71,94 @@ namespace DudeWhatAreMyStats
                     {
                         string age = snap.LastSeenText;
                         string who = snap.IsLocal ? "you" : snap.Online ? "online" : age.Length > 0 ? "last seen " + age : "offline";
-                        sb.AppendLine($"{snap.Name} ({who}): {StatGroups.Count(snap.Kills)} kills, {StatGroups.Count(snap.Deaths)} deaths, " +
+                        sb.AppendLine($"{snap.Name} ({who}): {StatGroups.Count(snap.KillsShown)} kills, {StatGroups.Count(snap.Deaths)} deaths, " +
                                       $"{StatGroups.Count(snap.Bosses)} bosses, {StatGroups.Duration(snap.Played)} played, best {snap.BestSkillText}");
                     }
                     args.Context?.AddString(sb.ToString().TrimEnd());
                 }));
+        }
+
+        /// <summary>
+        /// How every creature in this world is classified, which is what the kill breakdown rests
+        /// on. With no argument it prints the summary and the rows worth checking by eye -- the
+        /// tameable ones, the ones that leave you alone, and anything it could not place. "all"
+        /// prints everything and copies it to the log, and any other word filters by name.
+        /// </summary>
+        private static string Creatures(string filter)
+        {
+            if (!CreatureCatalog.Built) CreatureCatalog.Build();
+            var all = CreatureCatalog.All();
+            if (all.Count == 0)
+                return "No creatures catalogued. This needs a world loaded.";
+
+            bool everything = string.Equals(filter, "all", System.StringComparison.OrdinalIgnoreCase);
+            bool filtered = !everything && !string.IsNullOrEmpty(filter);
+
+            int hostile = 0, critter = 0, neutral = 0, boss = 0, other = 0, tameable = 0;
+            foreach (var c in all)
+            {
+                if (c.Tameable) tameable++;
+                switch (c.Kind)
+                {
+                    case CreatureKind.Hostile: hostile++; break;
+                    case CreatureKind.Critter: critter++; break;
+                    case CreatureKind.Neutral: neutral++; break;
+                    case CreatureKind.Boss:    boss++;    break;
+                    default:                   other++;   break;
+                }
+            }
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"{all.Count} creature(s): {hostile} hostile, {critter} critters, {neutral} leave you alone, " +
+                          $"{boss} bosses, {other} unplaced; {tameable} can be tamed.");
+            if (!everything && !filtered)
+                sb.AppendLine("Showing the ones worth checking. Use dwams_creatures all for every row, or a word to filter.");
+
+            int shown = 0;
+            foreach (var c in all)
+            {
+                // Critters are in here too: there are only a handful of them and they are the rows
+                // most likely to be wrong, since "cannot fight back" is inferred rather than stated.
+                bool interesting = c.Tameable || c.Kind == CreatureKind.Critter ||
+                                   c.Kind == CreatureKind.Neutral || c.Kind == CreatureKind.Unknown;
+                if (filtered)
+                {
+                    if (c.Key.IndexOf(filter, System.StringComparison.OrdinalIgnoreCase) < 0 &&
+                        c.Display.IndexOf(filter, System.StringComparison.OrdinalIgnoreCase) < 0 &&
+                        c.Prefab.IndexOf(filter, System.StringComparison.OrdinalIgnoreCase) < 0) continue;
+                }
+                else if (!everything && !interesting) continue;
+
+                string line = Row(c);
+                sb.AppendLine(line);
+                if (everything) DudeWhatAreMyStatsMod.Log.LogInfo("[DudeWhatAreMyStats] " + line);
+                shown++;
+            }
+            if (shown == 0) sb.AppendLine("Nothing matched.");
+            return sb.ToString().TrimEnd();
+        }
+
+        private static string Row(CreatureInfo c)
+        {
+            var sb = new StringBuilder();
+            sb.Append(CreatureCatalog.TierName(c.Tier).PadRight(12)).Append(' ');
+            sb.Append(c.Display).Append(" (").Append(c.Key).Append(") ");
+            sb.Append(c.Kind.ToString().ToLowerInvariant());
+            sb.Append(", ").Append(Mathf.RoundToInt(c.Health)).Append(" hp");
+            if (c.OnlyEverTame) sb.Append(", only ever tame");
+            else if (c.Tameable) sb.Append(", tameable");
+            // The evidence behind the classification, so a wrong call can be argued with rather
+            // than just disbelieved.
+            sb.Append(c.Armed ? ", armed" : ", unarmed");
+            if (c.Flees) sb.Append(", flees");
+            if (c.Attacks.Length > 0) sb.Append(" [").Append(c.Attacks).Append("]");
+            float share = KillSplit.AssumedTameShare(c.Key);
+            if (share > 0f) sb.Append(", old kills counted ").Append(Mathf.RoundToInt(share * 100f)).Append("% tame");
+            var tally = KillLog.For(c.Key);
+            if (tally != null)
+                sb.Append(", watched ").Append(Mathf.RoundToInt(tally.Seen))
+                  .Append(" (").Append(Mathf.RoundToInt(tally.Tame)).Append(" tame)");
+            return sb.ToString();
         }
 
         /// <summary>

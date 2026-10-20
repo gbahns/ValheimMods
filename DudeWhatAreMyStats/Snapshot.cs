@@ -20,7 +20,7 @@ namespace DudeWhatAreMyStats
         /// later one takes what it understands and ignores the rest. That is a contract: a future
         /// version appends, and never reorders or removes.
         /// </summary>
-        internal const int Schema = 3;
+        internal const int Schema = 4;
 
         /// <summary>
         /// The oldest layout this build can read: every version this mod has ever shipped.
@@ -85,6 +85,20 @@ namespace DudeWhatAreMyStats
         internal float RecordedDeaths;
 
         /// <summary>
+        /// This character's kills sorted into what they actually were, or null from a build that did
+        /// not send it. See <see cref="KillSplit"/>: the game records a kill as a species and nothing
+        /// more, so this is the species catalog, what this mod watched, and the config's assumption
+        /// about the rest, combined.
+        /// </summary>
+        internal KillSplitResult KillTypes;
+
+        /// <summary>
+        /// Kills by how they were made: unarmed, magic, ranged, melee. Valheim has kept these all
+        /// along, in slots 1 to 4 of its per-creature tally, and nothing ever read them.
+        /// </summary>
+        internal readonly List<KeyValuePair<string, float>> ByWeapon = new List<KeyValuePair<string, float>>();
+
+        /// <summary>
         /// What identifies this player in the roster. The character's profile id normally, which is
         /// stable across reconnects; a profile restored from an old save can carry a zero id, so the
         /// connection falls in behind it rather than letting two zeroes collapse into one row.
@@ -96,8 +110,29 @@ namespace DudeWhatAreMyStats
         internal float Stat(PlayerStatType stat) => Stats.TryGetValue(stat, out var v) ? v : 0f;
 
         internal float Kills  => Stat(PlayerStatType.EnemyKills);
+
+        /// <summary>
+        /// The kill count to show. Hostile kills by default, which is what the word usually means;
+        /// the setting puts it back to the game's own total. Falls back to the total for a player on
+        /// a build that sends no breakdown, so their column is never mysteriously empty.
+        /// </summary>
+        internal float KillsShown
+        {
+            get
+            {
+                bool hostileOnly = DwamsConfig.KillsColumnHostileOnly == null || DwamsConfig.KillsColumnHostileOnly.Value;
+                if (!hostileOnly || KillTypes == null) return Kills;
+                return KillTypes.Hostile;
+            }
+        }
         internal float Deaths => Stat(PlayerStatType.Deaths);
         internal float Bosses => Stat(PlayerStatType.BossKills);
+
+        /// <summary>Pets killed, watched and assumed together. Zero for a build that sends no breakdown.</summary>
+        internal float TameKills => KillTypes != null ? KillTypes.Tame : 0f;
+
+        /// <summary>Things that could not fight back: deer, hare, fish, gulls.</summary>
+        internal float CritterKills => KillTypes != null ? KillTypes.Critters : 0f;
         internal float Played => Stat(PlayerStatType.TimeInBase) + Stat(PlayerStatType.TimeOutOfBase);
 
         /// <summary>
@@ -137,8 +172,12 @@ namespace DudeWhatAreMyStats
         /// <summary>Deaths the game counted that this mod was not there to watch, so nothing is claimed about them.</summary>
         internal float UnrecordedDeaths => Mathf.Max(0f, Deaths - RecordedDeaths);
 
-        /// <summary>Kills per death. With no deaths yet the ratio is the kill count, as scoreboards usually show it.</summary>
-        internal float KillDeath => Deaths >= 1f ? Kills / Deaths : Kills;
+        /// <summary>
+        /// Kills per death. With no deaths yet the ratio is the kill count, as scoreboards usually
+        /// show it. Built on the same kills the Kills column shows, so the two agree: a ratio that
+        /// counted the chickens while the column next to it did not would be worse than either.
+        /// </summary>
+        internal float KillDeath => Deaths >= 1f ? KillsShown / Deaths : KillsShown;
 
         /// <summary>The highest skill, or None at level 0 for a fresh character.</summary>
         internal KeyValuePair<Skills.SkillType, float> BestSkill
@@ -258,6 +297,27 @@ namespace DudeWhatAreMyStats
             pkg.Write(RecordedDeaths);
             WritePairs(pkg, KilledBy);
             WritePairs(pkg, FoughtWith);
+
+            // Schema 4.
+            WritePairs(pkg, ByWeapon);
+            pkg.Write(KillTypes != null);
+            if (KillTypes != null)
+            {
+                pkg.Write(KillTypes.Hostile);
+                pkg.Write(KillTypes.Tame);
+                pkg.Write(KillTypes.Critters);
+                pkg.Write(KillTypes.Neutral);
+                pkg.Write(KillTypes.Bosses);
+                pkg.Write(KillTypes.Players);
+                pkg.Write(KillTypes.Unknown);
+                pkg.Write(KillTypes.Assumed);
+                pkg.Write(KillTypes.Seen);
+                pkg.Write(KillTypes.Total);
+                pkg.Write(KillTypes.Starred);
+                pkg.Write(KillTypes.Toughness);
+                pkg.Write(KillTypes.Hardest);
+                pkg.Write(KillTypes.HardestKey ?? "");
+            }
             return pkg;
         }
 
@@ -352,6 +412,28 @@ namespace DudeWhatAreMyStats
                 if (pkg.GetPos() < pkg.Size()) snap.RecordedDeaths = pkg.ReadSingle();
                 if (pkg.GetPos() < pkg.Size()) ReadPairs(pkg, snap.KilledBy);
                 if (pkg.GetPos() < pkg.Size()) ReadPairs(pkg, snap.FoughtWith);
+
+                if (pkg.GetPos() < pkg.Size()) ReadPairs(pkg, snap.ByWeapon);
+                if (pkg.GetPos() < pkg.Size() && pkg.ReadBool())
+                {
+                    snap.KillTypes = new KillSplitResult
+                    {
+                        Hostile = pkg.ReadSingle(),
+                        Tame = pkg.ReadSingle(),
+                        Critters = pkg.ReadSingle(),
+                        Neutral = pkg.ReadSingle(),
+                        Bosses = pkg.ReadSingle(),
+                        Players = pkg.ReadSingle(),
+                        Unknown = pkg.ReadSingle(),
+                        Assumed = pkg.ReadSingle(),
+                        Seen = pkg.ReadSingle(),
+                        Total = pkg.ReadSingle(),
+                        Starred = pkg.ReadSingle(),
+                        Toughness = pkg.ReadSingle(),
+                        Hardest = pkg.ReadSingle(),
+                        HardestKey = pkg.ReadString(),
+                    };
+                }
                 return snap;
             }
             catch (Exception e)

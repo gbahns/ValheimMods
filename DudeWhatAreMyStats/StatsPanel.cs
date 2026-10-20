@@ -15,7 +15,9 @@ namespace DudeWhatAreMyStats
     /// </summary>
     internal static class StatsPanel
     {
-        private const float W = 820f, H = 620f;
+        // Wider than it was: ten columns at 820 left Nemesis and Best skill clipping their text.
+        // A saved size is kept, so this only moves the default for a panel nobody has resized.
+        private const float W = 980f, H = 620f;
         private const float MinW = 620f, MaxW = 1800f, MinH = 400f, MaxH = 1400f;
         private const float HeaderHeight = 26f;
         private const float ListTop = 152f;
@@ -69,23 +71,28 @@ namespace DudeWhatAreMyStats
 
         private static readonly Column[] Columns =
         {
-            new Column { Key = "Player",  Header = "Player", Start = 0.00f, End = 0.22f, RightAlign = false,
+            new Column { Key = "Player",  Header = "Player", Start = 0.00f, End = 0.20f, RightAlign = false,
                          Sort = null, Text = s => s.Name },
-            new Column { Key = "Kills",   Header = "Kills",  Start = 0.22f, End = 0.32f,
-                         Sort = s => s.Kills, Text = s => StatGroups.Count(s.Kills) },
-            new Column { Key = "Deaths",  Header = "Deaths", Start = 0.32f, End = 0.42f,
+            // Hostile kills by default, the game's own total with Kills Column Hostile Only off.
+            new Column { Key = "Kills",   Header = "Kills",  Start = 0.20f, End = 0.28f,
+                         Sort = s => s.KillsShown, Text = s => StatGroups.Count(s.KillsShown) },
+            new Column { Key = "Tame",    Header = "Tame",   Start = 0.28f, End = 0.35f,
+                         Sort = s => s.TameKills, Text = s => s.KillTypes == null ? "-" : StatGroups.Count(s.TameKills) },
+            new Column { Key = "Critters", Header = "Critters", Start = 0.35f, End = 0.43f,
+                         Sort = s => s.CritterKills, Text = s => s.KillTypes == null ? "-" : StatGroups.Count(s.CritterKills) },
+            new Column { Key = "Deaths",  Header = "Deaths", Start = 0.43f, End = 0.51f,
                          Sort = s => s.Deaths, Text = s => StatGroups.Count(s.Deaths) },
-            new Column { Key = "K/D",     Header = "K/D",    Start = 0.42f, End = 0.51f,
+            new Column { Key = "K/D",     Header = "K/D",    Start = 0.51f, End = 0.58f,
                          Sort = s => s.KillDeath, Text = s => s.KillDeath.ToString("0.0") },
-            new Column { Key = "Bosses",  Header = "Bosses", Start = 0.51f, End = 0.60f,
+            new Column { Key = "Bosses",  Header = "Bosses", Start = 0.58f, End = 0.65f,
                          Sort = s => s.Bosses, Text = s => StatGroups.Count(s.Bosses) },
-            new Column { Key = "Played",  Header = "Played", Start = 0.60f, End = 0.72f,
+            new Column { Key = "Played",  Header = "Played", Start = 0.65f, End = 0.75f,
                          Sort = s => s.Played, Text = s => StatGroups.Duration(s.Played) },
             // Empty until this mod has watched somebody die, which is the whole reason the column
             // reads "-" rather than zero: the game keeps no record of what killed you.
-            new Column { Key = "Nemesis", Header = "Nemesis", Start = 0.72f, End = 0.87f,
+            new Column { Key = "Nemesis", Header = "Nemesis", Start = 0.75f, End = 0.89f,
                          Sort = s => s.NemesisCount, Text = s => s.NemesisText },
-            new Column { Key = "Skill",   Header = "Best skill", Start = 0.87f, End = 1.00f,
+            new Column { Key = "Skill",   Header = "Best skill", Start = 0.89f, End = 1.00f,
                          Sort = s => s.BestSkillLevel, Text = s => s.BestSkillText },
         };
 
@@ -306,7 +313,12 @@ namespace DudeWhatAreMyStats
             // A one-line summary, then the sections.
             Section("Summary", () =>
             {
-                UiKit.Row(_listContent, "Kills", StatGroups.Count(snap.Kills), null, null);
+                // Deliberately the game's own figure, which counts everything that died by their
+                // hand. The scoreboard column is hostile kills only, and Kills by type below shows
+                // where the difference went, so this row says which number it is.
+                UiKit.Row(_listContent, "Kills (everything)", StatGroups.Count(snap.Kills), null, null);
+                if (snap.KillTypes != null)
+                    UiKit.Row(_listContent, "Kills (hostile)", StatGroups.Count(snap.KillTypes.Hostile), null, null);
                 UiKit.Row(_listContent, "Deaths", StatGroups.Count(snap.Deaths), null, null);
                 UiKit.Row(_listContent, "Kills per death", snap.KillDeath.ToString("0.0"), null, null);
                 UiKit.Row(_listContent, "Boss kills", StatGroups.Count(snap.Bosses), null, null);
@@ -352,6 +364,38 @@ namespace DudeWhatAreMyStats
                 {
                     foreach (var kv in snap.Creatures)
                         UiKit.Row(_listContent, CreatureName(kv.Key), StatGroups.Count(kv.Value), null, null);
+                });
+
+            if (snap.KillTypes != null)
+            {
+                var k = snap.KillTypes;
+                Section("Kills by type", () =>
+                {
+                    UiKit.Row(_listContent, "Hostile", StatGroups.Count(k.Hostile), null, null);
+                    UiKit.Row(_listContent, k.Assumed > 0f ? "Tame (" + StatGroups.Count(k.Assumed) + " assumed)" : "Tame",
+                              StatGroups.Count(k.Tame), null, null);
+                    UiKit.Row(_listContent, "Critters", StatGroups.Count(k.Critters), null, null);
+                    if (k.Neutral > 0f) UiKit.Row(_listContent, "Left you alone", StatGroups.Count(k.Neutral), null, null);
+                    if (k.Bosses > 0f) UiKit.Row(_listContent, "Bosses", StatGroups.Count(k.Bosses), null, null);
+                    if (k.Players > 0f) UiKit.Row(_listContent, "Players", StatGroups.Count(k.Players), null, null);
+                    if (k.Unknown > 0f) UiKit.Row(_listContent, "Not in this world", StatGroups.Count(k.Unknown), null, null);
+                    UiKit.Row(_listContent, "Counted by the game", StatGroups.Count(k.Total), null, null);
+                    // The gap between these two is exactly what the tame assumption is applied to,
+                    // and it shrinks every session, so it is worth showing rather than hiding.
+                    UiKit.Row(_listContent, "Watched in detail", StatGroups.Count(k.Seen), null, null);
+                    if (k.Starred > 0f) UiKit.Row(_listContent, "Starred (of those watched)", StatGroups.Count(k.Starred), null, null);
+                    if (k.Toughness > 0f) UiKit.Row(_listContent, "Toughness killed", StatGroups.Count(k.Toughness), null, null);
+                    if (k.Hardest > 0f)
+                        UiKit.Row(_listContent, "Toughest kill",
+                                  DeathReport.CauseName(k.HardestKey) + " (" + StatGroups.Count(k.Hardest) + " hp)", null, null);
+                });
+            }
+
+            if (snap.ByWeapon.Count > 0)
+                Section("Kills by weapon", () =>
+                {
+                    foreach (var kv in snap.ByWeapon)
+                        UiKit.Row(_listContent, kv.Key, StatGroups.Count(kv.Value), null, null);
                 });
 
             if (snap.KilledBy.Count > 0)
@@ -625,6 +669,8 @@ namespace DudeWhatAreMyStats
                 _collapsed.Add("Creatures killed");
                 _collapsed.Add("Killed by");
                 _collapsed.Add("In the fight");
+                _collapsed.Add("Kills by type");
+                _collapsed.Add("Kills by weapon");
                 foreach (var s in StatGroups.Order) _collapsed.Add(s);
                 SaveCollapsed();
                 _dirty = true;

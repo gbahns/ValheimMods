@@ -463,8 +463,61 @@ reason. Aggregate keys are `Character.m_name` (`$enemy_troll`), which is exactly
 its own kill tally by, so "killed by Troll" reads against "Trolls killed" without translation;
 `@HitType` covers deaths nothing dealt and `#Name` another player.
 
+### What you killed (0.11.0)
+
+Greg wanted tame, hostile and non-hostile kills told apart, retroactively if possible, plus
+toughness and difficulty-relative-to-progression. Designed with him 2026-10-20. What the save
+actually allows, which is most of it:
+
+**Vanilla records a kill as a species and nothing else.** `Character.OnDeath` credits every player
+whose name carries an `Attackers<name>` flag on the creature's ZDO, routing `RegisterKill` to each,
+and that call carries the species name, the boss number, a `KillModifiers` value and the attacker
+count. No `IsTamed` check exists anywhere in the path, and no star level.
+
+**So the split works on the species, not the kill.** What a species *is* never changes, and the
+answer is still in `ZNetScene`: every prefab with a `Character` gives its faction, its base health
+and whether it has a `Tameable`. Hostility is Valheim's own test, lifted from
+`Character.IsMonsterFaction` -- the eight monster factions -- with two cases it does not cover:
+`m_aggravatable` for the dverger, who are neither hostile nor harmless, and `Faction.AnimalsVeg`,
+which holds both the boar that gores you and the deer that cannot, so those split on whether the
+prefab carries any attack item at all (every attack in Valheim is an item, bites included).
+Nothing is a hand-maintained list, so modded creatures classify themselves.
+
+**`KillModifiers` is a free win nobody had read.** `m_enemyStats` is `Dictionary<string,float>[5]`
+indexed by it -- `{MixedAndTotal, Unarmed, Magic, Ranged, Melee}` -- and the mod only ever read slot
+0. Kills by weapon class, per creature, were sitting in every save since 1.0.
+
+**Tame against wild is genuinely unrecoverable** and the design says so rather than fudging it. The
+shape that works: a config of per-species percentages applied *only* to the kills the mod never
+watched, computed as the game's own count minus what `KillLog` has seen. Forward kills are exact, so
+the guessed share shrinks every session and today's kill is never guessed at. Greg's call for his
+world: boar and wolf 100% tame (a full pen, and he would rather undercount than inflate), lox 0%
+(none tamed yet), and hen/chicken added as the obvious third case.
+
+**Forward recording needs the owner, not the killer.** `OnDeath` runs on whoever owns the creature,
+which is often not the player who killed it, and `RegisterKill` carries no tame flag to pass along.
+So `KillWatch` mirrors vanilla exactly: the owner reads the tame flag and star level and sends them
+to each credited player over `DWAMS_Kill`, who files them locally. If the owner lacks the mod nobody
+is told and the kill joins the unwatched pile. This is the one message where another client writes to
+our own record rather than describing itself; the cost of a lie is a wrong number on a scoreboard
+among friends, which every other figure here already rests on.
+
+**Difficulty relative to progression is forward-only, and that is a hard limit.** Tier per creature
+is available (`SpawnData.m_biome` off `SpawnSystem.m_spawnLists`, lowest biome it spawns in, with
+faction as the fallback for dungeon and event creatures that have no world spawner). But the old
+records carry no dates, so there is no way to know what gear or bosses a player had when a troll
+died. Retroactively the only comparison possible is the whole history against current progression,
+which flatters everyone equally and is therefore worthless. Toughness as `health x kills` works
+retroactively and is honest; stamping progression at the kill is what would make difficulty real.
+
+Schema 4 on the snapshot, and the first release to prove 0.10.0's append-only contract: 0.10.1
+reads it and ignores the tail, so nothing is partitioned. See
+[[wire-version-checks-partition-players]].
+
 ### Possible follow-ups
 
+- Stamp each kill with the player's boss progress at the time, which is the only thing that makes
+  "relative difficulty" mean anything. Cheap now that `KillWatch` exists.
 - A panel view for the death reports. 0.10.0 prints them with `dwams_deaths`; the tallies are in the
   Details tab but the full story is console-only.
 - Damage dealt *to* a creature over a fight, the mirror of this, which would answer "how much did we

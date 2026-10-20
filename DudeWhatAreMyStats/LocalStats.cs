@@ -21,6 +21,7 @@ namespace DudeWhatAreMyStats
         private static bool _warnedSkills;
         private static bool _warnedRead;
         private static bool _warnedDeaths;
+        private static bool _warnedKills;
 
         /// <summary>
         /// The local character's stats, or null if there is no profile loaded yet. Never throws:
@@ -80,7 +81,54 @@ namespace DudeWhatAreMyStats
 
             ReadSkills(snap);
             ReadDeaths(snap);
+            ReadKills(snap, raw);
             return snap;
+        }
+
+        /// <summary>
+        /// Sorts this character's kills into what they actually were, and reads the kill counts by
+        /// weapon class that Valheim has been keeping all along.
+        ///
+        /// Note the untrimmed table: the breakdown is computed from every species the profile holds,
+        /// not from the top fifteen the panel lists, or most of the kills would be left out of it.
+        /// Only the totals travel, so this costs the message a few dozen bytes rather than a table.
+        /// </summary>
+        private static void ReadKills(Snapshot snap, PlayerProfile.PlayerStats raw)
+        {
+            try
+            {
+                if (DwamsConfig.RecordKills == null) return;
+                if (raw == null || raw.m_enemyStats == null || raw.m_enemyStats.Length == 0) return;
+
+                if (raw.m_enemyStats[0] != null)
+                    snap.KillTypes = KillSplit.Compute(raw.m_enemyStats[0]);
+
+                // Slots 1 to 4 are KillModifiers: Unarmed, Magic, Ranged, Melee. The game writes
+                // them on every kill and nothing has ever read them.
+                AddWeaponClass(snap, raw, (int)KillModifiers.Unarmed, "Unarmed");
+                AddWeaponClass(snap, raw, (int)KillModifiers.Magic, "Magic");
+                AddWeaponClass(snap, raw, (int)KillModifiers.Ranged, "Ranged");
+                AddWeaponClass(snap, raw, (int)KillModifiers.Melee, "Melee");
+            }
+            catch (Exception e)
+            {
+                if (!_warnedKills)
+                {
+                    _warnedKills = true;
+                    DudeWhatAreMyStatsMod.Log.LogWarning(
+                        $"[DudeWhatAreMyStats] Could not sort this character's kills; the rest of the stats still work. {e.Message}");
+                }
+            }
+        }
+
+        private static void AddWeaponClass(Snapshot snap, PlayerProfile.PlayerStats raw, int slot, string label)
+        {
+            if (slot < 0 || slot >= raw.m_enemyStats.Length) return;
+            var table = raw.m_enemyStats[slot];
+            if (table == null) return;
+            float total = 0f;
+            foreach (var kv in table) total += kv.Value;
+            if (total > 0f) snap.ByWeapon.Add(new KeyValuePair<string, float>(label, total));
         }
 
         /// <summary>

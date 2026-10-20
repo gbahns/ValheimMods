@@ -7,6 +7,8 @@
 - The **Scoreboard** tab ranks everyone who runs this mod, online now or not. Click a column to sort by it.
 - The **Details** tab breaks one player's stats into sections, with their skills and the creatures
   they have killed most.
+- The **kill count knows what it killed**: your own pets and the deer and the fish are counted
+  apart from the things that were actually trying to kill you.
 - It **records what kills you** -- which creature, what it was holding, and everyone else who was
   in the fight. Valheim never writes that down.
 - Optionally, a small **always-on player list** with everyone's death count.
@@ -20,7 +22,9 @@ online, each marked with how long ago they were last seen. Players without the m
 | Column | What it is |
 |---|---|
 | Player | Your own row is gold and marked *(you)*. Anyone not online is marked with how long ago they were last seen, such as *(2d ago)*. |
-| Kills | Every creature you have killed. |
+| Kills | Creatures that were hostile. Pets, deer, fish and chickens are counted in their own columns, not here. *Kills Column Hostile Only* off puts this back to the game's own total of everything that ever died by your hand. |
+| Tame | Somebody's pets. See below: part of this is an assumption for old kills. |
+| Critters | Things that could not fight back at all: deer, hare, fish, gulls. |
 | Deaths | Every death. |
 | K/D | Kills per death. With no deaths yet this is simply your kill count, the way scoreboards usually show it. |
 | Bosses | Boss kills. |
@@ -36,6 +40,45 @@ numbers are current. Anyone else is shown from the server's last record of them,
 or similar, so nobody argues over a number that turns out to be a fortnight stale. If the server
 does not run the mod there is nowhere to keep those records, and the board shows only the players
 online to answer.
+
+## What you killed
+
+Valheim files a kill under the species and nothing else. That is enough to answer some of this
+retroactively and not the rest, and the panel is careful about which is which.
+
+**Hostile, tame, critters and bosses** come from what a species *is*, which never changes, so your
+existing kills sort themselves out with no record of the kills needed. The mod reads your world's
+own creatures for it: the faction each belongs to, whether it carries an attack at all, whether it
+can be tamed. A creature from another mod is classified by the same rules. `dwams_creatures` lists
+every one of them with its biome, health and classification, and is worth a look before you trust
+the numbers.
+
+**Whether the wolf was a pet is the one thing the past cannot give up.** That is a fact about that
+wolf, not about wolves, and the game never wrote it down. So *Assume Tame Share* tells the mod what
+to assume, per species, for kills it was not there for. It ships assuming your old boar, wolf, hen
+and chicken kills were your own animals, which is right for a world with a full pen and wrong for a
+fresh character, so change it to suit: `Wolf:70` for a world that killed some of each, `Boar:0` to
+count them all wild. `dwams_creatures` prints the names to use.
+
+**The assumption only ever touches kills nothing watched.** From 0.11.0 the pet flag and the star
+level are recorded as kills happen, and the Details tab shows the game's count against the number
+this mod actually saw. The gap between them is exactly what gets assumed, and it shrinks every time
+you play. A kill you make today is never guessed at.
+
+One hole worth knowing about: the details come from whichever player's game owns the creature, which
+is how Valheim credits the kill too. If that player does not run the mod, nobody is told, and the
+kill falls into the unwatched pile with your old ones.
+
+**Also in the Details tab**, from data the game was already keeping:
+
+- **Kills by weapon** - unarmed, magic, ranged and melee. Valheim has recorded these per creature
+  since 1.0, in four slots next to the total, and nothing has ever read them.
+- **Toughness killed**, the health of everything you fought added up, and the toughest single thing
+  you have killed. Pets are left out of both.
+
+What is not possible, rather than quietly approximated: how hard a kill was *at the time*. The old
+records carry no dates, so there is no telling whether that troll fell to a bronze axe or a
+blackmetal one. Star levels for old kills are gone for the same reason.
 
 ## What killed you
 
@@ -202,6 +245,7 @@ the keep window runs out.
 | `dwams` | Open or close the panel. |
 | `dwams_hud` | Show or hide the always-on player list. |
 | `dwams_refresh` | Ask everyone online, and the server, for stats again. |
+| `dwams_creatures` | How every creature in your world is classified. Add a word to filter, or `all` for everything. |
 | `dwams_deaths` | What has killed you, and the last few deaths in full. Add a number for one of them. |
 | `dwams_status` | Print the scoreboard, and say whether the server is keeping records. |
 
@@ -210,7 +254,8 @@ the keep window runs out.
 `BepInEx/config/DeathMonger.DudeWhatAreMyStats.cfg`, or press F1 in game if you have a
 configuration manager. Notable settings: the open key, *Pause While Open*, *Ask Other Players*,
 *Refresh Seconds*, *Show Offline Players*, *Push Minutes*, *Show Zero Stats*, *Top Creature Count*
-and *Fix Treasure Discovery Count*, the `[Deaths]` section for the death record, the `[Player List]`
+and *Fix Treasure Discovery Count*, the `[Kills]` section for the kill breakdown, the `[Deaths]`
+section for the death record, the `[Player List]`
 section for the always-on list, plus *Server Store Enabled* and *Server Keep Days* on a server.
 
 ## A vanilla bug it fixes
@@ -229,6 +274,8 @@ Count* to leave the game exactly as it ships.
 ## Known limits
 
 - Only players running this mod appear on the scoreboard.
+- Tame and star details are recorded from 0.11.0 on and no earlier. Nothing can reconstruct them:
+  the game kept no record to read.
 - Seeing players who are not online needs the mod on the server too. Without it the board shows
   only whoever is online to answer for themselves.
 - The server records what each player's own game tells it about itself, the same as the live

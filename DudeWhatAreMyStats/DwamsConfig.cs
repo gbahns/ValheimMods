@@ -50,6 +50,11 @@ namespace DudeWhatAreMyStats
         internal static ConfigEntry<int> TopDeathCauses;
         internal static ConfigEntry<bool> LogDeaths;
 
+        // ── what you killed ────────────────────────────────────────────────────────
+        internal static ConfigEntry<bool> RecordKills;
+        internal static ConfigEntry<string> AssumeTameShare;
+        internal static ConfigEntry<bool> KillsColumnHostileOnly;
+
         // ── fixes ───────────────────────────────────────────────────────────────────
         internal static ConfigEntry<bool> FixTreasureDiscoveryCount;
 
@@ -108,7 +113,7 @@ namespace DudeWhatAreMyStats
             CollapsedGroups = mod.BindLocal("Display", "Collapsed Groups", "",
                 "Which sections are folded away in the Details tab, kept between sessions. Click a section header, " +
                 "or Expand all / Collapse all, in the panel itself rather than editing this.");
-            PanelSize = mod.BindLocal("Display", "Panel Size", "820,620",
+            PanelSize = mod.BindLocal("Display", "Panel Size", "980,620",
                 "Width and height of the stats panel, remembered when you drag its bottom-right corner.");
             PanelPosition = mod.BindLocal("Display", "Panel Position", "0,0",
                 "Where the stats panel sits, as an offset from the screen center, remembered when you drag it by its " +
@@ -144,6 +149,29 @@ namespace DudeWhatAreMyStats
                 "overlaps something else on your screen.");
             PlayerListFontSize = mod.BindLocalRange("Player List", "Font Size", 16f, 10f, 30f,
                 "Text size of the player list.");
+
+            RecordKills = mod.BindLocal("Kills", "Record Kills", true,
+                "Record what you kill, which Valheim does not do in full: it files a kill under the species and " +
+                "nothing else, so a tame wolf and a wild one are the same row and a 2-star troll is just a troll. " +
+                "This notes the pet and the stars as kills happen. The client that owns the creature is the one " +
+                "holding those details, so it tells everyone who damaged it, exactly as the game already does when " +
+                "it credits the kill. Off records nothing new; what is already recorded is kept.");
+            AssumeTameShare = mod.BindLocal("Kills", "Assume Tame Share", "Boar:100, Wolf:100",
+                "What to assume about kills made before this mod was recording them, as a list of species and the " +
+                "percentage of those to count as pets rather than wild animals. The game kept no record either way, " +
+                "so a long-running world has to be told. This applies ONLY to kills nothing watched: anything " +
+                "recorded since is exact, so the guesswork shrinks every time you play and never touches a kill made " +
+                "from now on. Species not listed are counted as wild. Write the short name, as in Boar:100, or a " +
+                "percentage for a world that killed some of each, as in Wolf:70. A creature the world never spawns " +
+                "by itself and a player can tame needs no entry: every one that ever died was somebody's, which the " +
+                "hen and the chicken are, so they are counted as pets without being listed. Name one here anyway to " +
+                "overrule that. The dwams_creatures console command lists every name you can use and says which can " +
+                "be tamed, and which only ever exist because a player made them.");
+            KillsColumnHostileOnly = mod.BindLocal("Kills", "Kills Column Hostile Only", true,
+                "Show only hostile kills in the scoreboard's Kills column, which is what people mean by a kill " +
+                "count: pets, deer, fish and chickens come out of it and get their own columns. Off puts the " +
+                "column back to the game's own total, which counts everything that ever died by your hand and is " +
+                "the number every other stats mod shows.");
 
             RecordDeaths = mod.BindLocal("Deaths", "Record Deaths", true,
                 "Keep track of what kills you: which creature, what it was holding, its star level, and everyone " +

@@ -27,6 +27,7 @@ namespace DudeWhatAreMyStats
         private const string RpcAskAll   = "DWAMS_AskAll";     // client -> server, no payload yet
         private const string RpcAll      = "DWAMS_All";        // server -> client, many snapshots
         private const string RpcForget   = "DWAMS_Forget";     // client -> server, "take me off the board"
+        private const string RpcKill     = "DWAMS_Kill";       // creature's owner -> each player it credits
 
         /// <summary>Bumped when the many-snapshots message changes shape.</summary>
         private const int AllSchema = 1;
@@ -190,6 +191,7 @@ namespace DudeWhatAreMyStats
                 rpc.Register<ZPackage>(RpcAskAll, RPC_AskAll);
                 rpc.Register<ZPackage>(RpcAll, RPC_All);
                 rpc.Register<ZPackage>(RpcForget, RPC_Forget);
+                rpc.Register<ZPackage>(RpcKill, RPC_Kill);
                 DudeWhatAreMyStatsMod.Log.LogInfo("[DudeWhatAreMyStats] Stats RPCs registered.");
             }
             catch (Exception e)
@@ -391,6 +393,52 @@ namespace DudeWhatAreMyStats
             catch (Exception e)
             {
                 DudeWhatAreMyStatsMod.Log.LogWarning($"[DudeWhatAreMyStats] Could not handle a forget request: {e.Message}");
+            }
+        }
+
+        // ── kills, from whoever owned the creature ──────────────────────────────────
+
+        /// <summary>
+        /// Tells a player what they just killed. Sent by the client that owned the creature, which
+        /// is the only one that had its tame flag and star level to hand.
+        /// </summary>
+        internal static void SendKill(long peer, string key, bool tame, int level)
+        {
+            var rpc = ZRoutedRpc.instance;
+            if (rpc == null || string.IsNullOrEmpty(key)) return;
+            var pkg = new ZPackage();
+            pkg.Write(1);            // this message's own version, so it can gain fields later
+            pkg.Write(key);
+            pkg.Write(tame);
+            pkg.Write(level);
+            rpc.InvokeRoutedRPC(peer, RpcKill, pkg);
+        }
+
+        /// <summary>
+        /// Somebody else's game says we killed something of theirs.
+        ///
+        /// This is the one message in the mod where another player writes to our own record rather
+        /// than describing themselves, so it is worth being clear about the trust: a client that
+        /// wanted to could tell us we killed a hundred tame wolves. It costs a wrong number on a
+        /// scoreboard among friends, which is the same thing every other figure here already rests
+        /// on, and the alternative is not knowing whether the wolf was a pet.
+        /// </summary>
+        private static void RPC_Kill(long sender, ZPackage pkg)
+        {
+            try
+            {
+                if (pkg == null) return;
+                pkg.SetPos(0);
+                int schema = pkg.ReadInt();
+                if (schema < 1) return;
+                string key = pkg.ReadString();
+                bool tame = pkg.ReadBool();
+                int level = pkg.ReadInt();
+                KillLog.Record(key, tame, level);
+            }
+            catch (Exception e)
+            {
+                DudeWhatAreMyStatsMod.Log.LogWarning($"[DudeWhatAreMyStats] Could not record a reported kill: {e.Message}");
             }
         }
 
