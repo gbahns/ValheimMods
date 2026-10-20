@@ -30,7 +30,7 @@ namespace TheGreatestMap
     {
         public const string ModGuid    = "DeathMonger.TheGreatestMap";
         public const string ModName    = "The Greatest Map";
-        public const string ModVersion = "3.0.1";
+        public const string ModVersion = "3.1.0";
 
         // Oldest version whose shared-marker wire format this build still speaks. ServerSync
         // refuses peers below this, so bump it only when the format or an RPC changes, not on
@@ -150,6 +150,7 @@ namespace TheGreatestMap
             MarkerToggle.Update();
             PlayerSpotlight.Update();
             Locate.Paint();
+            PlayerArrow.Update();
             MarkerTooltip.Update();
             Reveals.Update();
             PocketMap.Update();

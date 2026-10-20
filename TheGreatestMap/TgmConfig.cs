@@ -168,6 +168,8 @@ namespace TheGreatestMap
         internal static ConfigEntry<float> TransportSweepSeconds;
         internal static ConfigEntry<bool> ShowTransportLabels;
         internal static ConfigEntry<float> LocateSeconds;
+        internal static ConfigEntry<int> PlayerMarkerSize;
+        internal static ConfigEntry<int> PlayerArrowSize;
         internal static ConfigEntry<bool> PinMarkerMenu;
         internal static ConfigEntry<Vector2> PinnedMenuSpot;
 
@@ -526,6 +528,19 @@ namespace TheGreatestMap
             PinnedMenuSpot = mod.BindLocal("Display", "Pinned Marker List Spot", Vector2.zero,
                 "Where a pinned marker list sits, as a fraction of the screen. Set when you pin it; zero means it has " +
                 "not been pinned anywhere yet.");
+
+            PlayerArrowSize = mod.BindLocalRange("Display", "Player Arrow Size", 100, 50, 400,
+                "Size of your own arrow on the large map, as a percentage of the normal size. Pan and zoom around a " +
+                "few hundred markers and a small arrow is easy to lose; this is the one thing on the map that had no " +
+                "size of its own, because the game draws it as part of the map rather than as a marker. Covers the " +
+                "arrow shown while you are aboard a ship as well.");
+            PlayerArrowSize.SettingChanged += (_, __) => { if (PlayerArrowSize.Value == 100) PlayerArrow.Reset(); };
+
+            PlayerMarkerSize = mod.BindLocalRange("Display", "Player Marker Size", 100, 50, 400,
+                "Size of the other players' markers on the map, as a percentage of the normal size. These are the " +
+                "game's own markers rather than this mod's, and on a map carrying hundreds of markers three moving " +
+                "dots are easy to lose; making them larger is the quietest way to keep them findable.");
+            PlayerMarkerSize.SettingChanged += (_, __) => ClientPins.Restyle();
 
             LocateSeconds = mod.BindLocal("Display", "Locate Seconds", 6f,
                 "How long markers pulse after you press \"locate\" on their row in the marker list. They swell and " +

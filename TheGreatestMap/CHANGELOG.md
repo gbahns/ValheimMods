@@ -1,5 +1,23 @@
 # Changelog
 
+## 3.1.0 — 2026-10-20
+
+Client-side.
+
+- **Your own arrow on the big map can be made larger** ("Player Arrow Size", Display: a
+  percentage, 100 as now, up to 400). Pan and zoom around a few hundred markers and the one thing
+  you need to find again is a small arrow among them. It was the only thing on the map with no
+  size of its own, because the game draws it as part of the map rather than as a marker. The
+  arrow shown while you are aboard a ship is covered too, so it does not shrink back the moment
+  you step on a boat.
+- **The other players' markers can be made larger** ("Player Marker Size", Display: a percentage,
+  100 as now, up to 400). On a map carrying hundreds of markers, three moving dots are easy to
+  lose among them, and growing the dots is the quietest way to keep them findable -- nothing is
+  hidden and nothing else changes. These are the game's own markers rather than this mod's, which
+  is why they were the one thing with no size setting of their own.
+- The spotlight and the ping grow from that size rather than from the normal one, so a player set
+  larger stays larger while either is running.
+
 ## 3.0.1 — 2026-10-20
 
 - **A server on 3.x now turns away a client older than 3.0.0**, with a reason: "The Greatest Map

@@ -110,7 +110,8 @@ namespace TheGreatestMap
                     continue;
                 }
                 Show(pin, true);
-                pin.m_uiElement.localScale = new Vector3(pulse, pulse, 1f);
+                float size = pulse * ClientPins.PlayerScale;
+                pin.m_uiElement.localScale = new Vector3(size, size, 1f);
                 if (pin.m_iconElement != null) pin.m_iconElement.color = color;
                 var text = pin.m_NamePinData != null ? pin.m_NamePinData.PinNameText : null;
                 if (text != null) text.color = color;

@@ -490,6 +490,15 @@ namespace TheGreatestMap
             return id != null && Store.Pins.TryGetValue(id, out shared);
         }
 
+        /// <summary>
+        /// How large the other players' markers are drawn, as a fraction of normal. Vanilla's
+        /// markers rather than ours, so this is the one size not covered by a kind's own
+        /// setting -- and the one worth raising, since a player is a moving dot among hundreds
+        /// of still ones.
+        /// </summary>
+        internal static float PlayerScale =>
+            TgmConfig.PlayerMarkerSize != null ? Mathf.Clamp(TgmConfig.PlayerMarkerSize.Value, 50, 400) / 100f : 1f;
+
         /// <summary>The size this kind of marker is configured to be drawn at.</summary>
         internal static float ScaleOf(SharedPin shared)
         {
@@ -776,6 +785,7 @@ namespace TheGreatestMap
                     : AutoTint;
                 pin.m_iconElement.color = faded ? Faded(tint) : tint;
             }
+            ResizePlayers(map);
             PortalsToFront();
             // Vanilla lays the pins out again whenever the map moves, which on the minimap is every
             // step the player takes, and a freshly built icon starts at the prefab's plain white.
@@ -817,6 +827,23 @@ namespace TheGreatestMap
             foreach (var pin in _portalPins)
                 if (pin != null && pin.m_uiElement != null)
                     pin.m_uiElement.SetAsLastSibling();
+        }
+
+        /// <summary>
+        /// Draw the other players at the size the player asked for. Left alone while the
+        /// spotlight or a ping is up, since both of those are saying something about size
+        /// themselves and will put it back when they finish.
+        /// </summary>
+        private static void ResizePlayers(Minimap map)
+        {
+            if (map == null || PlayerSpotlight.On || Locate.On) return;
+            float scale = PlayerScale;
+            foreach (var pin in Access.Pins(map))
+            {
+                if (pin == null || pin.m_uiElement == null || pin.m_type != Minimap.PinType.Player) continue;
+                var at = pin.m_uiElement.localScale;
+                if (!Mathf.Approximately(at.x, scale)) pin.m_uiElement.localScale = new Vector3(scale, scale, 1f);
+            }
         }
 
         internal static void TintPortals(Color color)

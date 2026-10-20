@@ -242,7 +242,7 @@ namespace TheGreatestMap
                     {
                         if (pin == null) continue;
                         if (_players ? pin.m_type == Minimap.PinType.Player : IsSpot(pin))
-                            Pulse(pin, grow, toWhite);
+                            Pulse(pin, grow * (_players ? ClientPins.PlayerScale : 1f), toWhite);
                     }
             }
         }
