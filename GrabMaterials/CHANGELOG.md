@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.6.0 — unreleased
+
+- **Panels taller than the screen now fit it and scroll.** The inventory panel in Table style, which lists every item in one column, ran off the bottom of the screen on a well-stocked base. Rows are now clipped to what fits, with a scrollbar beside them; the mouse wheel over the panel scrolls two rows per notch. The List style and the packs list get the same treatment when they are too tall.
+
 ## 2.5.4 — 2026-10-19
 
 - **Pack hotkeys are registered by pack slot, not by pack name.** A pack's display name was also the name its hotkey was registered under, so two packs with the same name shared one key and the second was silently dead, and packs left nameless produced a string of "Cannot have duplicate button" warnings from Jotunn. Names are now purely yours to change.

@@ -81,6 +81,8 @@ namespace GrabMaterials
 		private const float CategorySpacing = 8f;     // gap between groups within a column
 		private const float ColumnSpacing = 20f;      // gap between columns when multi-column
 		private const float BottomPadding = 20f;
+		private const float ScrollbarWidth = 10f;     // vertical scrollbar beside the rows when they overflow the screen
+		private const float ScrollbarGap = 6f;        // between the rows and the scrollbar
 		private const float TopMargin = 20f;
 		private const float ArmDelaySeconds = 0.3f;
 		private const int MaxColumns = 20;
@@ -156,6 +158,10 @@ namespace GrabMaterials
 		public static bool InteractivePanelVisible => _interactive && IsVisible;
 		private static Text _contentText;
 		private static RectTransform _contentRect;
+		private static GameObject _rowsViewport;           // clips the rows to the screen and scrolls them; what is shown/hidden
+		private static RectTransform _rowsViewportRect;
+		private static ScrollRect _rowsScroll;
+		private static Scrollbar _rowsScrollbar;
 		private static GameObject _rowsContainer;          // outer (HorizontalLayoutGroup); holds 1+ column children
 		private static RectTransform _rowsContainerRect;
 		private static Transform _currentBuildParent;       // column GameObject the next BuildXxx call writes into
@@ -223,7 +229,7 @@ namespace GrabMaterials
 
 			// Hide the other content modes; rebuild the editor container fresh.
 			if (_contentText != null) _contentText.gameObject.SetActive(false);
-			if (_rowsContainer != null) _rowsContainer.SetActive(false);
+			if (_rowsViewport != null) _rowsViewport.SetActive(false);
 			DestroyEditor();
 			_editorContainer = new GameObject("EditorContainer");
 			_editorContainer.transform.SetParent(_panel.transform, false);
@@ -816,18 +822,43 @@ namespace GrabMaterials
 		{
 			if (_contentText != null) _contentText.gameObject.SetActive(false);
 			DestroyEditor();
-			_rowsContainer.SetActive(true);
+			_rowsViewport.SetActive(true);
 			_titleText.text = title;
 			// Apply width up-front so layout-group children can size correctly during build.
 			ApplyPanelWidth(panelWidth);
 			ClearRows();
 		}
 
+		// Rows taller than the screen allows are clipped to what fits and scrolled, with a
+		// scrollbar beside them.  The panel grows by the scrollbar's width so the columns keep
+		// the widths they were laid out at.  The Table style, one column of every item, is the
+		// usual case; a long List or packs list gets the same treatment.
 		private static void FinalizeRowsLayout(float panelWidth, float totalHeight)
 		{
 			var contentWidth = panelWidth - PanelSidePadding * 2f;
+			var maxContentHeight = MaxPanelHeight - TitleHeight - BottomPadding;
+			var scrolls = totalHeight > maxContentHeight;
+			var visibleHeight = scrolls ? maxContentHeight : totalHeight;
+			var extra = scrolls ? ScrollbarWidth + ScrollbarGap : 0f;
+			if (extra > 0f) ApplyPanelWidth(panelWidth + extra);
+			panelWidth += extra;
+
+			// The viewport is centered in the panel; shift it left by the room the scrollbar takes.
+			_rowsViewportRect.anchoredPosition = new Vector2(-extra / 2f, -TitleHeight);
+			_rowsViewportRect.sizeDelta = new Vector2(contentWidth, visibleHeight);
 			_rowsContainerRect.sizeDelta = new Vector2(contentWidth, totalHeight);
-			var panelHeight = TitleHeight + totalHeight + BottomPadding;
+			_rowsContainerRect.anchoredPosition = Vector2.zero;   // scrolled to the top
+			_rowsScroll.enabled = scrolls;
+			_rowsScrollbar.gameObject.SetActive(scrolls);
+			if (scrolls)
+			{
+				var sbRect = _rowsScrollbar.GetComponent<RectTransform>();
+				sbRect.anchoredPosition = new Vector2(-PanelSidePadding, -TitleHeight);
+				sbRect.sizeDelta = new Vector2(ScrollbarWidth, visibleHeight);
+				_rowsScrollbar.value = 1f;
+			}
+
+			var panelHeight = TitleHeight + visibleHeight + BottomPadding;
 			_panelRect.sizeDelta = new Vector2(panelWidth, panelHeight);
 
 			_panel.SetActive(true);
@@ -1396,7 +1427,7 @@ namespace GrabMaterials
 			if (_panel == null) return;
 
 			// Switch to text-based content; hide the row-based table and editor.
-			if (_rowsContainer != null) _rowsContainer.SetActive(false);
+			if (_rowsViewport != null) _rowsViewport.SetActive(false);
 			DestroyEditor();
 			_contentText.gameObject.SetActive(true);
 
@@ -1436,6 +1467,44 @@ namespace GrabMaterials
 			var idle = IdleTimeoutSeconds;
 			var idleText = float.IsPositiveInfinity(idle) ? "never fades" : $"fades after {idle:0.#} s over {FadeDurationSeconds:0.##} s";
 			Jotunn.Logger.LogInfo($"[Grab Materials] panel shown: \"{title}\" ({idleText}{(DismissOnMovement ? ", dismissed by movement" : "")})");
+		}
+
+		// A plain vertical scrollbar in the panel's colors: dark track, Valheim-gold handle.
+		private static Scrollbar CreateVerticalScrollbar(Transform parent)
+		{
+			var go = new GameObject("RowsScrollbar", typeof(RectTransform));
+			go.transform.SetParent(parent, false);
+			var rt = go.GetComponent<RectTransform>();
+			rt.anchorMin = new Vector2(1f, 1f);
+			rt.anchorMax = new Vector2(1f, 1f);
+			rt.pivot = new Vector2(1f, 1f);
+			rt.anchoredPosition = new Vector2(-PanelSidePadding, -TitleHeight);
+			rt.sizeDelta = new Vector2(ScrollbarWidth, 200f);
+			var track = go.AddComponent<Image>();
+			track.color = new Color(0f, 0f, 0f, 0.35f);
+
+			var area = new GameObject("SlidingArea", typeof(RectTransform));
+			area.transform.SetParent(go.transform, false);
+			var areaRect = area.GetComponent<RectTransform>();
+			areaRect.anchorMin = Vector2.zero;
+			areaRect.anchorMax = Vector2.one;
+			areaRect.sizeDelta = new Vector2(-2f, -2f);
+			areaRect.anchoredPosition = Vector2.zero;
+
+			var handle = new GameObject("Handle", typeof(RectTransform));
+			handle.transform.SetParent(area.transform, false);
+			var handleRect = handle.GetComponent<RectTransform>();
+			handleRect.anchorMin = Vector2.zero;
+			handleRect.anchorMax = Vector2.one;
+			handleRect.sizeDelta = Vector2.zero;
+			var handleImage = handle.AddComponent<Image>();
+			handleImage.color = new Color(1f, 0.847f, 0.42f, 0.75f);
+
+			var sb = go.AddComponent<Scrollbar>();
+			sb.handleRect = handleRect;
+			sb.targetGraphic = handleImage;
+			sb.direction = Scrollbar.Direction.BottomToTop;
+			return sb;
 		}
 
 		private static void EnsureCreated()
@@ -1541,13 +1610,32 @@ namespace GrabMaterials
 			// Row-based content (used by the categorized /inventory path).
 			// Outer container is horizontal — each child is a column with its own VerticalLayoutGroup.
 			// Single-column layouts have one child; multi-column has 2+ children side-by-side.
+			// The viewport clips the rows to the part of the panel that fits on screen and scrolls
+			// them.  Its invisible image is what lets a mouse wheel over the gaps between rows reach
+			// the ScrollRect, and its button keeps click-to-dismiss working over that area.
+			_rowsViewport = new GameObject("RowsViewport", typeof(RectTransform));
+			_rowsViewport.transform.SetParent(_panel.transform, false);
+			_rowsViewportRect = _rowsViewport.GetComponent<RectTransform>();
+			_rowsViewportRect.anchorMin = new Vector2(0.5f, 1f);
+			_rowsViewportRect.anchorMax = new Vector2(0.5f, 1f);
+			_rowsViewportRect.pivot = new Vector2(0.5f, 1f);
+			_rowsViewportRect.anchoredPosition = new Vector2(0f, -TitleHeight);
+			_rowsViewportRect.sizeDelta = new Vector2(DefaultPanelWidth - 40f, 200f);
+			var viewportImage = _rowsViewport.AddComponent<Image>();
+			viewportImage.color = new Color(0f, 0f, 0f, 0f);
+			viewportImage.raycastTarget = true;
+			_rowsViewport.AddComponent<RectMask2D>();
+			var viewportBtn = _rowsViewport.AddComponent<Button>();
+			viewportBtn.transition = Selectable.Transition.None;
+			viewportBtn.onClick.AddListener(Hide);
+
 			_rowsContainer = new GameObject("RowsContainer");
-			_rowsContainer.transform.SetParent(_panel.transform, false);
+			_rowsContainer.transform.SetParent(_rowsViewport.transform, false);
 			_rowsContainerRect = _rowsContainer.AddComponent<RectTransform>();
 			_rowsContainerRect.anchorMin = new Vector2(0.5f, 1f);
 			_rowsContainerRect.anchorMax = new Vector2(0.5f, 1f);
 			_rowsContainerRect.pivot = new Vector2(0.5f, 1f);
-			_rowsContainerRect.anchoredPosition = new Vector2(0f, -TitleHeight);
+			_rowsContainerRect.anchoredPosition = Vector2.zero;
 			_rowsContainerRect.sizeDelta = new Vector2(DefaultPanelWidth - 40f, 200f);
 			var hlg = _rowsContainer.AddComponent<HorizontalLayoutGroup>();
 			hlg.childControlWidth = true;
@@ -1556,7 +1644,20 @@ namespace GrabMaterials
 			hlg.childForceExpandHeight = false;
 			hlg.spacing = ColumnSpacing;
 			hlg.childAlignment = TextAnchor.UpperLeft;
-			_rowsContainer.SetActive(false);
+
+			_rowsScroll = _rowsViewport.AddComponent<ScrollRect>();
+			_rowsScroll.content = _rowsContainerRect;
+			_rowsScroll.viewport = _rowsViewportRect;
+			_rowsScroll.horizontal = false;
+			_rowsScroll.vertical = true;
+			_rowsScroll.movementType = ScrollRect.MovementType.Clamped;
+			_rowsScroll.inertia = false;
+			_rowsScroll.scrollSensitivity = LineHeight * 2f;   // two rows per wheel notch
+			_rowsScrollbar = CreateVerticalScrollbar(_panel.transform);
+			_rowsScroll.verticalScrollbar = _rowsScrollbar;
+			_rowsScroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.Permanent;  // shown/hidden by FinalizeRowsLayout
+			_rowsScrollbar.gameObject.SetActive(false);
+			_rowsViewport.SetActive(false);
 
 			// Click anywhere on panel dismisses (when the cursor is free, e.g. via Tab/Esc).
 			var panelBtn = _panel.AddComponent<Button>();
