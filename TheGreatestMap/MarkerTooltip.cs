@@ -52,10 +52,16 @@ namespace TheGreatestMap
             _next = Time.unscaledTime + Interval;
 
             var world = Access.ScreenToWorldPoint(map, ZInput.pointerPosition);
-            var pin = ClientPins.ClosestPin(map, world, Access.PinInteractRadius(map));
+            float radius = Access.PinInteractRadius(map);
+            var pin = ClientPins.ClosestPin(map, world, radius);
             var shared = ClientPins.SharedFor(pin);
-            if (shared == null) { Hide(); return; }
-            Show(map, shared);
+            if (shared != null) { Show(map, shared); return; }
+            // A ship or a cart, which is not a marker at all and so is not among the pins any of
+            // the usual lookups walk. Worth naming on hover above all when the labels are off,
+            // which they are by default: otherwise the map shows a hull and no word about it.
+            var vessel = Transports.HoveredAt(world, radius);
+            if (vessel != null) { ShowVessel(map, vessel); return; }
+            Hide();
         }
 
         /// <summary>Everything the tooltip reads, so any change to it is a change on screen.</summary>
@@ -69,6 +75,31 @@ namespace TheGreatestMap
         {
             if (_root != null && _root.activeSelf) _root.SetActive(false);
             _shownId = null;
+        }
+
+        /// <summary>
+        /// A vessel's tooltip. It says plainly that this is where the thing is rather than where
+        /// somebody found it, because everything else the map shows is the opposite, and there is
+        /// no finder and no date to show for it -- a ship has no history here, only a position.
+        /// </summary>
+        private static void ShowVessel(Minimap map, Transports.Hovered vessel)
+        {
+            var parent = map.m_largeRoot != null ? map.m_largeRoot.transform as RectTransform : null;
+            if (parent == null) return;
+            if (_root == null) Build(parent);
+            if (_root == null) return;
+
+            string key = "vessel|" + vessel.Title + "|" + vessel.Prefab;
+            if (key != _shownId)
+            {
+                _shownId = key;
+                var lines = new List<string> { vessel.Kind + ", where it is now" };
+                if (!string.Equals(vessel.Prefab, vessel.Title, StringComparison.OrdinalIgnoreCase))
+                    lines.Add(vessel.Prefab);
+                Write(vessel.Title, lines);
+            }
+            if (!_root.activeSelf) _root.SetActive(true);
+            Place(parent);
         }
 
         private static void Show(Minimap map, SharedPin shared)
@@ -103,7 +134,6 @@ namespace TheGreatestMap
 
             string title = !string.IsNullOrEmpty(shared.Name) ? shared.Name
                 : (what ?? IconRegistry.DisplayName(shared.Icon));
-            _title.text = title;
 
             var lines = new List<string>();
             // A second line only when it says something the title does not. A marker named by its
@@ -128,6 +158,13 @@ namespace TheGreatestMap
             else if (who != null) lines.Add(who);
             else if (when != null) lines.Add(when);
 
+            Write(title, lines);
+        }
+
+        /// <summary>Put a title and some lines in the panel, switching off the ones left over.</summary>
+        private static void Write(string title, List<string> lines)
+        {
+            _title.text = title ?? "";
             for (int i = 0; i < _lines.Count; i++)
             {
                 bool used = i < lines.Count;

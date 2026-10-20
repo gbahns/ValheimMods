@@ -1,5 +1,27 @@
 # Changelog
 
+## 2.1.0 — 2026-10-20
+
+Client-side. Needs a 2.0.0 server for ships and carts, as 2.0.0 did.
+
+- **Hovering a ship or a cart names it.** The labels are off by default, so until now a hull on the
+  map was a picture and nothing else. The tooltip says what it is, that this is where the thing is
+  rather than where somebody found it, and the prefab underneath -- which is the line worth having
+  when a modded vessel turns up looking like something it is not. There is no finder and no date,
+  because a vessel has no history here, only a position.
+- Those pins are drawn in a way that keeps them out of the saved profile and out of a cartography
+  table, and every lookup the game and this mod do over map pins skips exactly that kind of pin --
+  which is why a vessel cannot be clicked or crossed off like a marker, and why the tooltip had to
+  ask the vessel list where things are rather than ask the map.
+- **The dynamic markers have a config section of their own**, "Dynamic Markers": "Show Ships",
+  "Show Carts", "Show Transport Labels" and "Transport Sweep Seconds" were mixed in among the
+  display and server settings, which are all about markers written on the map. Nothing in the new
+  section is recorded, shared or saved, and keeping them apart says so.
+- Moving a setting between sections would normally reset it, since BepInEx binds section and key
+  together and leaves the old line behind as an orphan. The old value is carried across once, so
+  if you had already turned the carts off they stay off. A choice made in the new section wins over
+  a leftover from the old one.
+
 ## 2.0.0 — 2026-10-19
 
 A round number because of what the first entry is, not because anything breaks. Every marker this

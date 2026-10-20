@@ -168,6 +168,21 @@ namespace TheGreatestMap
         internal static ConfigEntry<float> TransportSweepSeconds;
         internal static ConfigEntry<bool> ShowTransportLabels;
 
+        /// <summary>
+        /// Settings for markers the server finds and the client draws, rather than markers written
+        /// on the map. They behave differently enough to be worth keeping apart: nothing here is
+        /// recorded, shared or saved.
+        /// </summary>
+        private const string Dynamic = "Dynamic Markers";
+
+        private static string LiveShowNote(string label)
+        {
+            string one = label.ToLowerInvariant().TrimEnd('s');
+            return "Draw every " + one + " in the world on your map, where it is now. The server finds them and tells " +
+                   "everyone, so this covers the whole world rather than what is loaded around you. These pins are drawn " +
+                   "only: never written to your map, never shared, and gone the moment this is off.";
+        }
+
         // ── Pocket map visuals ──────────────────────────────────────────────────────
         internal static ConfigEntry<bool> ShowMapInHands;
         internal static ConfigEntry<int> MapPose;
@@ -424,12 +439,12 @@ namespace TheGreatestMap
                 ShowOnMinimap[cat].SettingChanged += (_, __) => ClientPins.Restyle();
                 MarkerSize[cat].SettingChanged += (_, __) => ClientPins.Restyle();
                 }
-                ShowKind[cat] = mod.BindLocal("Display", "Show " + label, true,
-                    Categories.IsLive(cat)
-                    ? "Draw every " + label.ToLowerInvariant().TrimEnd('s') + " in the world on your map, where it is now. The server " +
-                      "finds them and tells everyone, so this covers the whole world rather than what is loaded around you. These pins " +
-                      "are drawn only: they are never written to your map, never shared, and gone the moment this is off."
-                    : "Draw recorded " + label.ToLowerInvariant() + " markers on your map. Off hides them on both the large map and the " +
+                // A live kind's switch belongs with the other dynamic-marker settings rather than
+                // among the display ones, which are all about markers written on the map.
+                ShowKind[cat] = Categories.IsLive(cat)
+                    ? mod.BindMoved("Display", Dynamic, "Show " + label, true, LiveShowNote(label))
+                    : mod.BindLocal("Display", "Show " + label, true,
+                      "Draw recorded " + label.ToLowerInvariant() + " markers on your map. Off hides them on both the large map and the " +
                     "minimap; they stay on your map and keep syncing. To hide single icons instead (say only dandelions) use Hidden Icons." +
                     (IconRegistry.VanillaFilters(Categories.DefaultIcon(cat))
                         ? " This kind draws on one of vanilla's own map icons, so vanilla's icon button on the map screen already hides and " +
@@ -497,12 +512,12 @@ namespace TheGreatestMap
                 entry.SettingChanged += (_, __) => { Catalog.Invalidate(); KindInference.Invalidate(); };
             StructuresExcludePrefixes.SettingChanged += (_, __) => Catalog.Invalidate();
 
-            ShowTransportLabels = mod.BindLocal("Display", "Show Transport Labels", false,
+            ShowTransportLabels = mod.BindMoved("Display", Dynamic, "Show Transport Labels", false,
                 "Write the name of each ship and cart beside its pin on the large map. Off by default: a harbor of six " +
-                "ships writes six names across the coast, and the icon already says what is there.");
+                "ships writes six names across the coast, the icon already says what is there, and hovering a pin names it.");
             ShowTransportLabels.SettingChanged += (_, __) => Transports.Redraw();
 
-            TransportSweepSeconds = mod.BindLocal("Server", "Transport Sweep Seconds", 5f,
+            TransportSweepSeconds = mod.BindMoved("Server", Dynamic, "Transport Sweep Seconds", 5f,
                 "Server only. How often the server looks for every ship and cart in the world and tells the clients where " +
                 "they are. These pins answer \"where did I leave it\", not \"where is it this second\": a longship under sail " +
                 "covers 20 m in two seconds, so a tighter interval buys little and costs a walk of every object in the world. " +

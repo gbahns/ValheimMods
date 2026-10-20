@@ -419,6 +419,41 @@ namespace TheGreatestMap
             _redrawWanted = true;
         }
 
+        /// <summary>One vessel under the pointer: what to call it, what it is, and its prefab.</summary>
+        internal sealed class Hovered
+        {
+            public string Title;
+            public string Kind;
+            public string Prefab;
+        }
+
+        /// <summary>
+        /// The vessel nearest a point on the map, within the radius vanilla uses for clicking a
+        /// pin, or null. Asked of the list rather than of the pins on the map, because these are
+        /// drawn with m_save false and every lookup the game and this mod do over map pins skips
+        /// those -- which is the whole reason they cannot be clicked or hovered like a marker.
+        /// Only what is actually drawn can be hovered, so a hidden kind answers nothing.
+        /// </summary>
+        internal static Hovered HoveredAt(Vector3 world, float radius)
+        {
+            if (!_haveList || radius <= 0f) return null;
+            Live best = null;
+            float bestDistance = float.MaxValue;
+            foreach (var v in _live)
+            {
+                if (v.Cart ? !_drawnCarts : !_drawnShips) continue;
+                float d = Geo.FlatDistance(v.Pos, world);
+                if (d < radius && d < bestDistance) { best = v; bestDistance = d; }
+            }
+            if (best == null) return null;
+            return new Hovered
+            {
+                Title = Label(best.Name),
+                Kind = Categories.Label(best.Cart ? Category.Cart : Category.Ship).TrimEnd('s'),
+                Prefab = best.Name ?? "",
+            };
+        }
+
         /// <summary>What the mod knows about vessels, for tgm_status and the diagnostics.</summary>
         internal static List<string> Describe()
         {

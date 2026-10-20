@@ -30,7 +30,7 @@ namespace TheGreatestMap
     {
         public const string ModGuid    = "DeathMonger.TheGreatestMap";
         public const string ModName    = "The Greatest Map";
-        public const string ModVersion = "2.0.0";
+        public const string ModVersion = "2.1.0";
 
         // Oldest version whose shared-marker wire format this build still speaks. ServerSync
         // refuses peers below this, so bump it only when the format or an RPC changes, not on
@@ -192,6 +192,41 @@ namespace TheGreatestMap
         internal ConfigEntry<T> BindLocal<T>(string section, string key, T defaultValue, string description)
         {
             return Config.Bind(section, key, defaultValue, new ConfigDescription(description));
+        }
+
+        /// <summary>
+        /// A setting that used to live in a different section. BepInEx binds by section and key
+        /// together, so moving one leaves the player's line behind as an orphan and the new entry
+        /// starts at its default: a tidier config file would quietly switch somebody's settings
+        /// back. The old value is carried across once, and only when the new entry is still at its
+        /// default, so a choice already made in the new place wins.
+        /// </summary>
+        internal ConfigEntry<T> BindMoved<T>(string oldSection, string section, string key, T defaultValue, string description)
+        {
+            var entry = BindLocal(section, key, defaultValue, description);
+            try
+            {
+                // ConfigFile.OrphanedEntries is internal; AccessTools so runtime enforcement
+                // does not throw, and a BepInEx that renames it costs a log line, not a crash.
+                var orphans = HarmonyLib.AccessTools.Property(typeof(ConfigFile), "OrphanedEntries")
+                    ?.GetValue(Config) as System.Collections.IDictionary;
+                var was = new ConfigDefinition(oldSection, key);
+                string raw = orphans != null && orphans.Contains(was) ? orphans[was] as string : null;
+                if (!string.IsNullOrEmpty(raw) && Equals(entry.Value, defaultValue))
+                {
+                    var carried = (T)TomlTypeConverter.ConvertToValue(raw, typeof(T));
+                    if (!Equals(carried, entry.Value))
+                    {
+                        entry.Value = carried;
+                        Log.LogInfo($"[TheGreatestMap] Moved \"{key}\" from [{oldSection}] to [{section}], keeping your {carried}.");
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Log.LogWarning($"[TheGreatestMap] Could not carry \"{key}\" over from [{oldSection}]: {e.Message}");
+            }
+            return entry;
         }
 
         /// <summary>Binds a client-only integer entry with an allowed range (shown as a slider by config managers).</summary>

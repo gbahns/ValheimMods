@@ -163,8 +163,10 @@ what is actually in the world. Each one is called what the game calls it -- a lo
 "Longship", not "Viking Ship" -- though the names are off by default ("Show Transport Labels"),
 since a harbor of six ships writes six names across the coast and the icon already says what is
 there. The sweep runs every five seconds by default ("Transport Sweep
-Seconds", server only); these pins answer "where did I leave it" rather than "where is it this
-second", and a ship riding the swell at anchor does not count as having moved.
+Seconds"); these pins answer "where did I leave it" rather than "where is it this second", and a
+ship riding the swell at anchor does not count as having moved. Hovering one names it, which is
+how to tell a knarr from a longship with the labels off. Their settings live together under
+"Dynamic Markers", apart from the settings for markers written on the map.
 
 Portals get their own color, since they are the points you travel between and are worth spotting at
 a glance. By default they fade slowly between two shades of orange, which reads as a gentle pulse rather
