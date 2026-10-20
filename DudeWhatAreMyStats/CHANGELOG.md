@@ -19,7 +19,12 @@ the new columns rather than disappearing.
   the answer is still in the game: the faction it belongs to, whether it carries an attack at all,
   whether it can be tamed. So the old tallies can be sorted without any record of the kills
   themselves. Nothing here is a list this mod maintains, which means a mod that adds creatures gets
-  classified by the same rules.
+  classified by the same rules. What decides it is whether the creature carries anything that deals
+  damage, since every attack in Valheim is an item: the faction is no help, because the game files
+  the deer, the piggy and the lox calf under monster factions alongside the greydwarves, and its own
+  `IsEnemy` calls a deer an enemy of everything. `dwams_creatures` prints the evidence behind every
+  row, including which rule decided it, because a classification nobody can check is one nobody
+  should believe.
 - **K/D follows the Kills column**, so the ratio and the number beside it mean the same thing. The
   Details tab shows both figures side by side, labelled, and *Kills by type* accounts for the
   difference between them.
@@ -44,9 +49,17 @@ the new columns rather than disappearing.
 - **Toughness killed**, as the health of everything you fought added up, and the toughest single
   thing you have killed. Pets are left out of both; killing your own pig is not an achievement
   however much the pig weighed.
-- **`dwams_creatures`** lists every creature in your world with how it was classified, its biome,
-  its health, whether it can be tamed and what your setting assumes about it. Worth a look before
-  trusting the numbers. `dwams_creatures all` prints the lot and copies it to the log.
+- **`dwams_creatures`** lists every creature in your world with how it was classified and why: its
+  faction, its biome, its health, whether it can be tamed, and the attacks it carries by name. It
+  also names the rows where this mod overruled the game's own grouping, which is the one place a
+  mistake can hide. Everything it prints goes to the BepInEx log as well, since the console holds a
+  couple of dozen lines and will not scroll back.
+- **Anything it gets wrong is fixable without a new build.** *Treat Creatures As* overrules any row,
+  as in `Seal:hostile`. Reading prefabs settles almost every case -- an attack is an item, and that
+  covers fists and bites as much as swords, including the ones kept in a creature's random sets
+  rather than its default items, and damage dealt by simply being near the thing. It will not cover
+  every way a mod might make a creature dangerous, and a creature that hurts you by some means this
+  does not recognise reads as harmless until somebody says otherwise.
 - Settings under `[Kills]`: *Record Kills*, *Assume Tame Share*, *Kills Column Hostile Only*.
 - Still not possible, and not pretended otherwise: how hard a kill was *at the time*. The old
   records carry no dates, so there is no way to know whether that troll died to a bronze axe or a

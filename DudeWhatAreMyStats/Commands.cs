@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 
@@ -109,10 +110,26 @@ namespace DudeWhatAreMyStats
             }
 
             var sb = new StringBuilder();
-            sb.AppendLine($"{all.Count} creature(s): {hostile} hostile, {critter} critters, {neutral} leave you alone, " +
-                          $"{boss} bosses, {other} unplaced; {tameable} can be tamed.");
+            string summary = $"{all.Count} creature(s): {hostile} hostile, {critter} critters, {neutral} leave you alone, " +
+                             $"{boss} bosses, {other} unplaced; {tameable} can be tamed.";
+            sb.AppendLine(summary);
+            DudeWhatAreMyStatsMod.Log.LogInfo("[DudeWhatAreMyStats] " + summary);
             if (!everything && !filtered)
                 sb.AppendLine("Showing the ones worth checking. Use dwams_creatures all for every row, or a word to filter.");
+
+            // The one place this mod overrules the game's own grouping, and therefore the one place
+            // a mistake in the armament test would hide. Listed by name so it can be read at a
+            // glance rather than hunted for among a hundred rows.
+            var overruled = new List<string>();
+            foreach (var c in all)
+                if (c.OverruledFaction) overruled.Add(c.Display);
+            if (overruled.Count > 0)
+            {
+                string line = $"Counted harmless despite a monster faction ({overruled.Count}): " +
+                              string.Join(", ", overruled.ToArray()) + ". Anything in here that can hurt you is a bug.";
+                sb.AppendLine(line);
+                DudeWhatAreMyStatsMod.Log.LogInfo("[DudeWhatAreMyStats] " + line);
+            }
 
             int shown = 0;
             foreach (var c in all)
@@ -131,10 +148,13 @@ namespace DudeWhatAreMyStats
 
                 string line = Row(c);
                 sb.AppendLine(line);
-                if (everything) DudeWhatAreMyStatsMod.Log.LogInfo("[DudeWhatAreMyStats] " + line);
+                // Always to the log as well: the console holds a couple of dozen lines and will not
+                // scroll back, so a hundred-row answer is unreadable there by design.
+                DudeWhatAreMyStatsMod.Log.LogInfo("[DudeWhatAreMyStats] " + line);
                 shown++;
             }
             if (shown == 0) sb.AppendLine("Nothing matched.");
+            else sb.AppendLine($"All {shown} row(s) also written to the BepInEx log, which does scroll.");
             return sb.ToString().TrimEnd();
         }
 
@@ -144,13 +164,16 @@ namespace DudeWhatAreMyStats
             sb.Append(CreatureCatalog.TierName(c.Tier).PadRight(12)).Append(' ');
             sb.Append(c.Display).Append(" (").Append(c.Key).Append(") ");
             sb.Append(c.Kind.ToString().ToLowerInvariant());
+            sb.Append(", ").Append(c.Faction);
             sb.Append(", ").Append(Mathf.RoundToInt(c.Health)).Append(" hp");
             if (c.OnlyEverTame) sb.Append(", only ever tame");
             else if (c.Tameable) sb.Append(", tameable");
             // The evidence behind the classification, so a wrong call can be argued with rather
             // than just disbelieved.
-            sb.Append(c.Armed ? ", armed" : ", unarmed");
+            sb.Append(c.Armed ? ", can attack" : ", NO ATTACK");
             if (c.Flees) sb.Append(", flees");
+            if (c.Overridden) sb.Append(" <set by config>");
+            else if (c.Reason.Length > 0) sb.Append(" <").Append(c.Reason).Append(">");
             if (c.Attacks.Length > 0) sb.Append(" [").Append(c.Attacks).Append("]");
             float share = KillSplit.AssumedTameShare(c.Key);
             if (share > 0f) sb.Append(", old kills counted ").Append(Mathf.RoundToInt(share * 100f)).Append("% tame");

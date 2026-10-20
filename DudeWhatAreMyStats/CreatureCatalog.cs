@@ -27,7 +27,24 @@ namespace DudeWhatAreMyStats
         /// <summary>The game's own name key, which is what the kill tallies are filed under.</summary>
         internal string Key = "";
         internal string Prefab = "";
-        internal CreatureKind Kind;
+
+        /// <summary>What reading the prefab concluded, before the config has its say.</summary>
+        internal CreatureKind InferredKind;
+
+        /// <summary>
+        /// What this counts as. The config wins: no reading of the game's data will ever be right
+        /// about every creature in every mod, and a wrong row should be fixable without a new build.
+        /// </summary>
+        internal CreatureKind Kind
+        {
+            get
+            {
+                var forced = CreatureCatalog.Forced(Key);
+                return forced != CreatureKind.Unknown ? forced : InferredKind;
+            }
+        }
+
+        internal bool Overridden => CreatureCatalog.Forced(Key) != CreatureKind.Unknown;
         internal Character.Faction Faction;
         /// <summary>Base health at one star, straight off the prefab. The toughness figure.</summary>
         internal float Health;
@@ -39,6 +56,8 @@ namespace DudeWhatAreMyStats
         internal bool Flees;
         /// <summary>The damaging items it carries, named, so a surprising classification can be argued with.</summary>
         internal string Attacks = "";
+        /// <summary>Which rule decided <see cref="Kind"/>. Printed by the dump so a wrong call names itself.</summary>
+        internal string Reason = "";
         /// <summary>
         /// True if the world spawns this species on its own. False for a creature that only ever
         /// exists because a player made it: the hen and the chicken, which come from an egg and
@@ -46,14 +65,48 @@ namespace DudeWhatAreMyStats
         /// </summary>
         internal bool WildSpawns;
 
-        /// <summary>Nothing in the world produces this except a player, and it can be tamed.</summary>
-        internal bool OnlyEverTame => Tameable && !WildSpawns;
+        /// <summary>
+        /// Nothing in the world produces this except a player, it can be tamed, and it is not
+        /// something that fights you. The last clause matters: a summoned creature can carry a
+        /// Tameable and never spawn wild while being thoroughly hostile, and counting those as
+        /// somebody's pet would be wrong in the direction that flatters people.
+        /// </summary>
+        internal bool OnlyEverTame => Tameable && !WildSpawns && Kind != CreatureKind.Hostile;
 
         /// <summary>1 Meadows to 8 Deep North, 0 when nothing says where it lives.</summary>
         internal int Tier;
         internal Heightmap.Biome Biome;
 
         internal string Display => DeathReport.CauseName(Key);
+
+        /// <summary>
+        /// True where this mod overruled the game's own grouping: something Valheim files under a
+        /// monster faction that is counted as harmless because it carries no attack. The deer, the
+        /// piggy and the lox calf belong here. Anything else that turns up in this list is the
+        /// shape a mistake in the armament test would take, so it is worth listing on its own.
+        /// </summary>
+        internal bool OverruledFaction => Kind == CreatureKind.Critter && Reason == "no attack of any kind" && IsMonsterFaction;
+
+        internal bool IsMonsterFaction
+        {
+            get
+            {
+                switch (Faction)
+                {
+                    case Character.Faction.ForestMonsters:
+                    case Character.Faction.Undead:
+                    case Character.Faction.Demon:
+                    case Character.Faction.PlainsMonsters:
+                    case Character.Faction.MountainMonsters:
+                    case Character.Faction.SeaMonsters:
+                    case Character.Faction.MistlandsMonsters:
+                    case Character.Faction.DeepNorth:
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -76,6 +129,55 @@ namespace DudeWhatAreMyStats
 
         internal static bool Built => _built;
         internal static int Count => _byKey.Count;
+
+        private static readonly Dictionary<string, CreatureKind> _forced = new Dictionary<string, CreatureKind>(StringComparer.OrdinalIgnoreCase);
+        private static string _forcedFrom;
+
+        /// <summary>
+        /// What the config insists a species is, or Unknown where it says nothing.
+        ///
+        /// The escape hatch, and the honest admission that reading a prefab cannot settle every
+        /// case. A creature that damages you by some means this does not recognise reads as
+        /// harmless, and the dump names those rows so they can be corrected here rather than waiting
+        /// for a new build.
+        /// </summary>
+        internal static CreatureKind Forced(string key)
+        {
+            string raw = DwamsConfig.TreatCreaturesAs != null ? DwamsConfig.TreatCreaturesAs.Value : "";
+            if (raw != _forcedFrom)
+            {
+                _forcedFrom = raw;
+                _forced.Clear();
+                foreach (string part in (raw ?? "").Split(','))
+                {
+                    string entry = part.Trim();
+                    int colon = entry.IndexOf(':');
+                    if (colon <= 0) continue;
+                    string name = entry.Substring(0, colon).Trim();
+                    string want = entry.Substring(colon + 1).Trim();
+                    if (name.Length == 0) continue;
+                    CreatureKind kind;
+                    if (want.Equals("hostile", StringComparison.OrdinalIgnoreCase)) kind = CreatureKind.Hostile;
+                    else if (want.Equals("critter", StringComparison.OrdinalIgnoreCase)) kind = CreatureKind.Critter;
+                    else if (want.Equals("neutral", StringComparison.OrdinalIgnoreCase)) kind = CreatureKind.Neutral;
+                    else if (want.Equals("boss", StringComparison.OrdinalIgnoreCase)) kind = CreatureKind.Boss;
+                    else
+                    {
+                        DudeWhatAreMyStatsMod.Log.LogWarning(
+                            $"[DudeWhatAreMyStats] Could not read \"{entry}\" in Treat Creatures As; " +
+                            "expected hostile, critter, neutral or boss.");
+                        continue;
+                    }
+                    _forced[name] = kind;
+                }
+            }
+            if (_forced.Count == 0 || string.IsNullOrEmpty(key)) return CreatureKind.Unknown;
+            if (_forced.TryGetValue(key, out var exact)) return exact;
+            int underscore = key.LastIndexOf('_');
+            if (underscore >= 0 && underscore + 1 < key.Length && _forced.TryGetValue(key.Substring(underscore + 1), out var suffix))
+                return suffix;
+            return CreatureKind.Unknown;
+        }
 
         internal static void Reset()
         {
@@ -161,7 +263,7 @@ namespace DudeWhatAreMyStats
             string key = (character.m_name ?? "").Trim();
             if (key.Length == 0) return;
 
-            var kind = Classify(go, character);
+            var kind = Classify(go, character, out string reason);
             bool tameable = go.GetComponent<Tameable>() != null;
 
             if (_byKey.TryGetValue(key, out var have))
@@ -170,7 +272,16 @@ namespace DudeWhatAreMyStats
                 // any variant that can be tamed or that fights make that true of the species.
                 if (character.m_health > have.Health) have.Health = character.m_health;
                 if (tameable) have.Tameable = true;
-                if (kind > have.Kind && have.Kind != CreatureKind.Boss) have.Kind = kind;
+                if (kind > have.InferredKind && have.InferredKind != CreatureKind.Boss)
+                {
+                    // Take this prefab's evidence along with its verdict, or the dump would explain
+                    // the row with the reasoning of a prefab that did not decide it.
+                    have.InferredKind = kind;
+                    have.Reason = reason;
+                    have.Armed = HasAttack(go);
+                    have.Flees = Flees(go);
+                    have.Attacks = AttackNames(go);
+                }
                 return;
             }
 
@@ -178,13 +289,14 @@ namespace DudeWhatAreMyStats
             {
                 Key = key,
                 Prefab = go.name ?? "",
-                Kind = kind,
+                InferredKind = kind,
                 Faction = character.m_faction,
                 Health = character.m_health,
                 Tameable = tameable,
                 Armed = HasAttack(go),
                 Flees = Flees(go),
                 Attacks = AttackNames(go),
+                Reason = reason,
                 Tier = TierFromFaction(character.m_faction),
             };
         }
@@ -199,10 +311,31 @@ namespace DudeWhatAreMyStats
         /// the boar and lox that will happily gore you and the deer and hare that cannot do a thing
         /// about it, so those split on whether the prefab carries an attack at all.
         /// </summary>
-        private static CreatureKind Classify(GameObject go, Character character)
+        private static CreatureKind Classify(GameObject go, Character character, out string reason)
         {
-            if (character.m_boss || character.m_faction == Character.Faction.Boss) return CreatureKind.Boss;
-            if (character.m_faction == Character.Faction.Players) return CreatureKind.Player;
+            if (character.m_boss || character.m_faction == Character.Faction.Boss)
+            {
+                reason = "boss";
+                return CreatureKind.Boss;
+            }
+            if (go.GetComponent<Player>() != null)
+            {
+                reason = "a player";
+                return CreatureKind.Player;
+            }
+
+            // Before the faction, because the faction is wrong about this. Valheim files the deer,
+            // the piggy and the lox calf under monster factions along with the greydwarves, so
+            // asking the faction first called a deer hostile. Carrying nothing that deals damage is
+            // the one thing that settles it: every attack in the game is an item, so a creature
+            // holding none cannot hurt anybody whatever it is grouped with.
+            // "No attack" rather than "unarmed": a troll's fists and a wolf's bite are attacks held
+            // in the same way a sword is, so this means it has nothing at all to hurt you with.
+            if (!HasAttack(go))
+            {
+                reason = "no attack of any kind";
+                return CreatureKind.Critter;
+            }
 
             switch (character.m_faction)
             {
@@ -214,12 +347,16 @@ namespace DudeWhatAreMyStats
                 case Character.Faction.SeaMonsters:
                 case Character.Faction.MistlandsMonsters:
                 case Character.Faction.DeepNorth:
+                    reason = "monster faction";
                     return CreatureKind.Hostile;
             }
 
             var ai = go.GetComponent<BaseAI>();
             if (character.m_faction == Character.Faction.Dverger || (ai != null && ai.m_aggravatable))
+            {
+                reason = "aggravatable";
                 return CreatureKind.Neutral;
+            }
 
             // Two signals, because one is not enough. Carrying nothing that deals damage settles it
             // (the hare). Carrying something does not: the deer has an attack it uses on other
@@ -227,11 +364,18 @@ namespace DudeWhatAreMyStats
             // the designers saying this creature runs rather than fights, and it is the difference
             // between a deer and a boar, both of which are Faction.AnimalsVeg and both of which the
             // game's own IsEnemy calls an enemy of everything.
-            if (!HasAttack(go)) return CreatureKind.Critter;
-            return Flees(go) ? CreatureKind.Critter : CreatureKind.Hostile;
+            // Armed, not a monster faction, not aggravatable: a boar or a lox. Note that fleeing is
+            // NOT used here, though it is still reported. It looked like the signal that separates a
+            // deer from a boar until the boar turned out to flee as well, and the deer turned out to
+            // be unarmed all along.
+            reason = "armed";
+            return CreatureKind.Hostile;
         }
 
-        /// <summary>Whether it runs away rather than coming for you when it has no target.</summary>
+        /// <summary>
+        /// Whether it runs away rather than coming for you when it has no target. Reported by the
+        /// dump as a curiosity; it decides nothing, because boars flee too.
+        /// </summary>
         internal static bool Flees(GameObject go)
         {
             var monster = go.GetComponent<MonsterAI>();
@@ -245,10 +389,30 @@ namespace DudeWhatAreMyStats
         /// </summary>
         internal static bool HasAttack(GameObject go)
         {
+            // Damage dealt by simply being near the thing, rather than by it swinging anything: a
+            // lava blob's heat, a blob that bursts. An Aoe on the creature itself is a weapon in
+            // every sense that matters here, and it is held in none of the item slots.
+            if (HasDamagingAoe(go)) return true;
+
             var humanoid = go.GetComponent<Humanoid>();
             if (humanoid == null) return false;
+            // Fists, claws, a golem's stone arms. Humanoid.m_unarmedWeapon is a weapon the creature
+            // always has rather than one it carries, and GetCurrentWeapon falls back to it, so a
+            // creature that fights with nothing in its hands keeps its attack here and in no array.
+            // This is what had the troll and the stone golem filed as harmless.
+            if (Damaging(humanoid.m_unarmedWeapon)) return true;
+
+            // The four places Humanoid.GiveDefaultItems draws from, for creatures that do carry
+            // something: a troll with a log, a fuling with a club.
             if (Any(humanoid.m_defaultItems)) return true;
-            return Any(humanoid.m_randomWeapon);
+            if (Any(humanoid.m_randomWeapon)) return true;
+            if (humanoid.m_randomSets != null)
+                foreach (var set in humanoid.m_randomSets)
+                    if (set != null && Any(set.m_items)) return true;
+            if (humanoid.m_randomItems != null)
+                foreach (var random in humanoid.m_randomItems)
+                    if (random != null && Damaging(random.m_prefab)) return true;
+            return false;
         }
 
         /// <summary>
@@ -261,8 +425,17 @@ namespace DudeWhatAreMyStats
             var humanoid = go.GetComponent<Humanoid>();
             if (humanoid == null) return "";
             var names = new List<string>();
+            if (Damaging(humanoid.m_unarmedWeapon))
+                names.Add("fists: " + humanoid.m_unarmedWeapon.name + " " +
+                          Mathf.RoundToInt(humanoid.m_unarmedWeapon.m_itemData.m_shared.m_damages.GetTotalDamage()));
             Collect(humanoid.m_defaultItems, names);
             Collect(humanoid.m_randomWeapon, names);
+            if (humanoid.m_randomSets != null)
+                foreach (var set in humanoid.m_randomSets)
+                    if (set != null) Collect(set.m_items, names);
+            if (humanoid.m_randomItems != null)
+                foreach (var random in humanoid.m_randomItems)
+                    if (random != null) Collect(new[] { random.m_prefab }, names);
             return names.Count == 0 ? "" : string.Join(", ", names.ToArray());
         }
 
@@ -283,14 +456,33 @@ namespace DudeWhatAreMyStats
         {
             if (items == null) return false;
             foreach (var item in items)
+                if (Damaging(item)) return true;
+            return false;
+        }
+
+        /// <summary>An area effect on the creature or its children that does damage to somebody.</summary>
+        private static bool HasDamagingAoe(GameObject go)
+        {
+            var effects = go.GetComponentsInChildren<Aoe>(true);
+            if (effects == null) return false;
+            foreach (var aoe in effects)
             {
-                if (item == null) continue;
-                var drop = item.GetComponent<ItemDrop>();
-                var shared = drop != null && drop.m_itemData != null ? drop.m_itemData.m_shared : null;
-                if (shared == null) continue;
-                if (shared.m_damages.GetTotalDamage() > 0f) return true;
+                if (aoe == null) continue;
+                // m_hitOwner would mean it hurts the creature carrying it, which is not an attack.
+                if (aoe.m_damage.GetTotalDamage() > 0f) return true;
             }
             return false;
+        }
+
+        private static bool Damaging(GameObject item)
+        {
+            return item != null && Damaging(item.GetComponent<ItemDrop>());
+        }
+
+        private static bool Damaging(ItemDrop drop)
+        {
+            var shared = drop != null && drop.m_itemData != null ? drop.m_itemData.m_shared : null;
+            return shared != null && shared.m_damages.GetTotalDamage() > 0f;
         }
 
         // ── where it lives ──────────────────────────────────────────────────────────

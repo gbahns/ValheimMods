@@ -54,6 +54,7 @@ namespace DudeWhatAreMyStats
         internal static ConfigEntry<bool> RecordKills;
         internal static ConfigEntry<string> AssumeTameShare;
         internal static ConfigEntry<bool> KillsColumnHostileOnly;
+        internal static ConfigEntry<string> TreatCreaturesAs;
 
         // ── fixes ───────────────────────────────────────────────────────────────────
         internal static ConfigEntry<bool> FixTreasureDiscoveryCount;
@@ -167,6 +168,14 @@ namespace DudeWhatAreMyStats
                 "hen and the chicken are, so they are counted as pets without being listed. Name one here anyway to " +
                 "overrule that. The dwams_creatures console command lists every name you can use and says which can " +
                 "be tamed, and which only ever exist because a player made them.");
+            TreatCreaturesAs = mod.BindLocal("Kills", "Treat Creatures As", "",
+                "Overrule how a creature is classified, as a list like Seal:hostile, Lox Calf:critter. The four " +
+                "values are hostile, critter, neutral and boss. The mod works out what a creature is by reading your " +
+                "world's own prefabs, which is right for everything anyone has checked, but nothing can recognise " +
+                "every way a creature might hurt you, and one that damages you by some unusual means reads as " +
+                "harmless. The dwams_creatures console command names the rows where this mod overruled the game's " +
+                "own grouping, which is where a mistake would be; anything there that can actually hurt you belongs " +
+                "in this list. Empty means trust what the prefabs say.");
             KillsColumnHostileOnly = mod.BindLocal("Kills", "Kills Column Hostile Only", true,
                 "Show only hostile kills in the scoreboard's Kills column, which is what people mean by a kill " +
                 "count: pets, deer, fish and chickens come out of it and get their own columns. Off puts the " +
