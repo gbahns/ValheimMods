@@ -229,7 +229,7 @@ namespace GrabMaterials
 
 			// Hide the other content modes; rebuild the editor container fresh.
 			if (_contentText != null) _contentText.gameObject.SetActive(false);
-			if (_rowsViewport != null) _rowsViewport.SetActive(false);
+			HideRows();
 			DestroyEditor();
 			_editorContainer = new GameObject("EditorContainer");
 			_editorContainer.transform.SetParent(_panel.transform, false);
@@ -827,6 +827,15 @@ namespace GrabMaterials
 			// Apply width up-front so layout-group children can size correctly during build.
 			ApplyPanelWidth(panelWidth);
 			ClearRows();
+		}
+
+		// The rows and their scrollbar leave together.  The scrollbar is the panel's child, not
+		// the viewport's, so hiding the viewport alone left a full-height bar standing beside
+		// the next text panel.
+		private static void HideRows()
+		{
+			if (_rowsViewport != null) _rowsViewport.SetActive(false);
+			if (_rowsScrollbar != null) _rowsScrollbar.gameObject.SetActive(false);
 		}
 
 		// Rows taller than the screen allows are clipped to what fits and scrolled, with a
@@ -1427,7 +1436,7 @@ namespace GrabMaterials
 			if (_panel == null) return;
 
 			// Switch to text-based content; hide the row-based table and editor.
-			if (_rowsViewport != null) _rowsViewport.SetActive(false);
+			HideRows();
 			DestroyEditor();
 			_contentText.gameObject.SetActive(true);
 

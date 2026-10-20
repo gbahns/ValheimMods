@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.6.1 — unreleased
+
+- **Fixed: the scrollbar from a tall `/i` panel stayed on screen beside the next grab-results panel.** It now leaves with the rows it belongs to.
+
 ## 2.6.0 — 2026-10-19
 
 - **Panels taller than the screen now fit it and scroll.** The inventory panel in Table style, which lists every item in one column, ran off the bottom of the screen on a well-stocked base. Rows are now clipped to what fits, with a scrollbar beside them; the mouse wheel over the panel scrolls four rows per notch ("Scroll Rows" under [Panel UI]). The List style and the packs list get the same treatment when they are too tall.
