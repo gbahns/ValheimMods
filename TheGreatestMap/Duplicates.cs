@@ -61,32 +61,79 @@ namespace TheGreatestMap
             return string.Equals(x, y, System.StringComparison.OrdinalIgnoreCase);
         }
 
+        /// <summary>
+        /// Markers of one icon, filed by where they are, so a marker is only ever compared with
+        /// the handful standing near it.
+        ///
+        /// Comparing every marker with every other marker of the same icon is what this used to
+        /// do, and on a map that has been shared for a month it is ruinous: seven hundred
+        /// blueberry bushes is half a million comparisons, each one resolving a marker's kind to
+        /// ask how close is too close, and every merge ran the lot. Two players comparing maps in
+        /// the field watched the game stop for fifteen seconds.
+        ///
+        /// The cells are as wide as the furthest two markers of this icon could be and still
+        /// count as one thing, so everything near enough to matter is in this cell or one of the
+        /// eight around it, and nothing else need be looked at.
+        /// </summary>
+        private sealed class Grid
+        {
+            internal readonly Dictionary<long, List<SharedPin>> Cells = new Dictionary<long, List<SharedPin>>();
+            internal float Size = 5f;
+
+            internal long KeyOf(Vector3 pos) =>
+                ((long)Mathf.FloorToInt(pos.x / Size) << 32) ^ (uint)Mathf.FloorToInt(pos.z / Size);
+
+            internal void Add(SharedPin pin)
+            {
+                long key = KeyOf(pin.Pos);
+                if (!Cells.TryGetValue(key, out var list)) Cells[key] = list = new List<SharedPin>();
+                list.Add(pin);
+            }
+
+            /// <summary>Everything in this marker's cell and the eight around it.</summary>
+            internal IEnumerable<SharedPin> Near(Vector3 pos)
+            {
+                int cx = Mathf.FloorToInt(pos.x / Size), cz = Mathf.FloorToInt(pos.z / Size);
+                for (int dx = -1; dx <= 1; dx++)
+                    for (int dz = -1; dz <= 1; dz++)
+                        if (Cells.TryGetValue(((long)(cx + dx) << 32) ^ (uint)(cz + dz), out var list))
+                            foreach (var pin in list) yield return pin;
+            }
+        }
+
         /// <summary>Every cluster of markers standing on one another, without changing anything.</summary>
         internal static List<Group> Find()
         {
             var groups = new List<Group>();
             var byIcon = new Dictionary<string, List<SharedPin>>(System.StringComparer.OrdinalIgnoreCase);
+            var spacingOf = new Dictionary<string, float>();
             foreach (var pin in ClientPins.All)
             {
                 string icon = IconRegistry.Normalize(ClientPins.IconOf(pin)) ?? "";
                 if (!byIcon.TryGetValue(icon, out var list)) byIcon[icon] = list = new List<SharedPin>();
                 list.Add(pin);
+                // Once per marker, not once per comparison: working out a marker's kind is a
+                // dictionary lookup and an inference, and it was being done inside the inner loop.
+                spacingOf[pin.Id] = SpacingFor(pin);
             }
 
             foreach (var kv in byIcon)
             {
                 var pins = kv.Value;
                 if (pins.Count < 2) continue;
+                var grid = new Grid();
+                foreach (var pin in pins) { float s = spacingOf[pin.Id]; if (s > grid.Size) grid.Size = s; }
+                foreach (var pin in pins) grid.Add(pin);
                 var taken = new HashSet<string>();
                 foreach (var pin in pins)
                 {
                     if (!taken.Add(pin.Id)) continue;
                     Group group = null;
-                    float spacing = SpacingFor(pin);
-                    foreach (var other in pins)
+                    float spacing = spacingOf[pin.Id];
+                    foreach (var other in grid.Near(pin.Pos))
                     {
                         if (other == pin || taken.Contains(other.Id)) continue;
-                        if (Geo.FlatDistance(pin.Pos, other.Pos) > Mathf.Max(spacing, SpacingFor(other))) continue;
+                        if (Geo.FlatDistance(pin.Pos, other.Pos) > Mathf.Max(spacing, spacingOf[other.Id])) continue;
                         if (!SameThing(pin, other)) continue;
                         // Everything in a cluster has to be one thing with everything else in it,
                         // not merely with the first of them: an unnamed marker between two

@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.1.2 — 2026-10-21
+
+- **Fixed comparing maps in the field stopping the game for seconds at a time.** Tidying up after
+  a merge compared every marker with every other marker of the same icon: seven hundred blueberry
+  bushes is half a million comparisons, and each one worked out a marker's kind afresh to ask how
+  close is too close. On a map carrying four thousand markers that ran into whole seconds, every
+  time two players met and merged -- long enough to be thrown off the server. Markers are now
+  filed by where they are, so each is compared with the handful standing near it and nothing else
+  is looked at. The same shape, and the same cure, in the pass that thins out labels.
+- **The tidying says how long it took** when it takes longer than a fifth of a second, broken
+  down by pass. The stop was plain to everyone playing and invisible in the log.
+
 ## 3.1.1 — 2026-10-20
 
 - **Withdrawn: portals drawn over everything else at the same spot**, added in 3.0.0. It never

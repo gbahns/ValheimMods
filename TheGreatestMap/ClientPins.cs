@@ -456,18 +456,33 @@ namespace TheGreatestMap
                 foreach (var pin in Store.Pins.Values)
                     if (pin.Auto && !string.IsNullOrEmpty(pin.Name) && KindOf(pin) == kind) markers.Add(pin);
                 markers.Sort((a, b) => a.Created.CompareTo(b.Created));
-                var kept = new List<SharedPin>();
+                // Kept labels filed by where they are, so a marker is compared with the few near
+                // it rather than with every label of its kind. Five hundred thistles is a quarter
+                // of a million name comparisons otherwise, on every merge.
+                var kept = new Dictionary<long, List<SharedPin>>();
+                float cell = Mathf.Max(spacing, 1f);
+                System.Func<Vector3, int, int, long> key = (p, dx, dz) =>
+                    ((long)(Mathf.FloorToInt(p.x / cell) + dx) << 32) ^ (uint)(Mathf.FloorToInt(p.z / cell) + dz);
                 foreach (var pin in markers)
                 {
                     bool strip = spacing < 0f;
                     if (!strip)
                     {
-                        foreach (var k in kept)
-                        {
-                            if (SameName(k.Name, pin.Name) && Geo.FlatDistance(k.Pos, pin.Pos) <= spacing) { strip = true; break; }
-                        }
+                        for (int dx = -1; dx <= 1 && !strip; dx++)
+                            for (int dz = -1; dz <= 1 && !strip; dz++)
+                            {
+                                if (!kept.TryGetValue(key(pin.Pos, dx, dz), out var near)) continue;
+                                foreach (var k in near)
+                                    if (SameName(k.Name, pin.Name) && Geo.FlatDistance(k.Pos, pin.Pos) <= spacing) { strip = true; break; }
+                            }
                     }
-                    if (!strip) { kept.Add(pin); continue; }
+                    if (!strip)
+                    {
+                        long at = key(pin.Pos, 0, 0);
+                        if (!kept.TryGetValue(at, out var here)) kept[at] = here = new List<SharedPin>();
+                        here.Add(pin);
+                        continue;
+                    }
                     pin.Name = "";
                     Store.Upsert(pin);
                     ReplacePinData(pin);

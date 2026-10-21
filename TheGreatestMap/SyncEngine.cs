@@ -85,20 +85,34 @@ namespace TheGreatestMap
             // because by id they are two different markers. Folding here is the only place that
             // sees both. Every map folds a pair the same way round, so this converges rather than
             // each side erasing the other's.
+            // Timed, each pass separately. These run over every marker on the map, and a map
+            // shared for a month carries thousands; when two players comparing maps in the field
+            // watched the game stop for fifteen seconds, nothing in the log said which pass did it.
+            var clock = Stopwatch.StartNew();
             if (TgmConfig.FoldDuplicates == null || TgmConfig.FoldDuplicates.Value)
             {
                 int folded = Duplicates.Fold();
                 if (folded > 0) TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Folded {folded} marker(s) that arrived standing on ones already here.");
             }
+            long foldMs = clock.ElapsedMilliseconds;
             // Markers can still arrive with the old wrong icon from players on an older version.
             if (TgmConfig.RepairDungeonIcons.Value)
             {
                 int fixedUp = ClientPins.RepairDungeonIcons();
                 if (fixedUp > 0) TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Corrected the icon on {fixedUp} dungeon marker(s) that had the crypt key.");
             }
-            if (!TgmConfig.ApplyLabelRulesOnSync.Value) return;
-            int stripped = ClientPins.ApplyLabelRules(null);
-            if (stripped > 0) TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Removed labels from {stripped} markers to match the label rules.");
+            long repairMs = clock.ElapsedMilliseconds - foldMs;
+            if (TgmConfig.ApplyLabelRulesOnSync.Value)
+            {
+                int stripped = ClientPins.ApplyLabelRules(null);
+                if (stripped > 0) TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Removed labels from {stripped} markers to match the label rules.");
+            }
+            long total = clock.ElapsedMilliseconds;
+            if (total >= 200L)
+                TheGreatestMapMod.Log.LogWarning(
+                    $"[TheGreatestMap] Tidying up after a merge took {total} ms over {ClientPins.Count} markers " +
+                    $"(folding {foldMs} ms, icons {repairMs} ms, labels {total - foldMs - repairMs} ms). " +
+                    "That is a stop the player can feel.");
         }
 
         // ── map to map ──────────────────────────────────────────────────────────────
