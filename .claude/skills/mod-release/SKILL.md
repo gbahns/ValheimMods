@@ -69,10 +69,18 @@ Then, **after Greg confirms**, publish to both sites:
 `-Publish` needs `TCLI_AUTH_TOKEN` in the environment; `-Hexium` reads the token from
 `%USERPROFILE%\.hexium_token`. Never print either token.
 
-A published version is **not** visible in Gale for about half an hour. Gale reads a pre-built
-listing index rather than querying Thunderstore, and that index is rebuilt on a schedule - two
-rebuilds timed on 2026-10-04 were 29m53s apart. Nothing about the publish is wrong while that is
-happening, and clearing Gale's cache early only re-caches a listing that predates the publish.
+**A published version now shows up in Gale within a minute or two.** Greg saw it twice on
+2026-10-20 and 2026-10-21, on different versions, minutes after publishing. So do not tell him to
+wait half an hour, and do not treat a quick appearance as surprising.
+
+The old note said about half an hour, from two Thunderstore index rebuilds timed 29m53s apart on
+2026-10-04: Gale read a pre-built listing rather than querying Thunderstore. Something has changed
+since. The likeliest explanation is that Gale fetches Hexium alongside Thunderstore, and the
+Hexium side is live the moment `package.ps1 -Hexium` finishes - so the copy appearing straight
+away may be the Hexium one while the Thunderstore listing is still catching up. That has not been
+confirmed; what is confirmed is that it appears quickly.
+
+If a listing really is slow to turn up, these still apply and do no harm:
 
 - `.\package.ps1 -Version <x.y.z> -Publish -Hexium -ClearGaleCache` waits for the index to
   actually carry the new version, then clears Gale's cached listing so the next launch refetches.
@@ -214,4 +222,10 @@ current and loading.
 - `StationExtensionGuard` has no tomls and has never been published. Don't publish it without asking.
 - Never build `GrabMaterialsTests`, `GrabMaterialsTests2`, or `TestMod`; the test projects have
   never worked and `build-all.ps1` skips them.
+- Thunderstore refuses a `CHANGELOG.md` or `README.md` that starts with a UTF-8 BOM, and it
+  says so only **after** "Successfully finalized the upload" - the zip reaches the server, the
+  package is not created, and `mod-status.ps1` still shows the old version. A scripted edit that
+  reads with `utf-8-sig` and writes with `utf-8` adds the BOM back silently. If a publish ends in
+  `400 BadRequest`, read the whole error before assuming anything; strip the BOM with
+  `tail -c +4` and publish again.
 - Jotunn 2.30.0 is the version that works on Valheim 1.0 — 2.29.2's PieceManager causes a spawn loop.
