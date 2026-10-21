@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.11.0 — unreleased
+## 0.11.0
 
 A kill count that knows what it killed: your own pets, the deer and the fish, and the things that
 were actually trying to kill you, told apart and counted separately. Most of it works on the kills
