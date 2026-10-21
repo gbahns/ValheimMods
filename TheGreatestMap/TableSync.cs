@@ -93,11 +93,26 @@ namespace TheGreatestMap
             }
 
             // Read: apply the table's exploration (and vanilla-shared pins) to our map.
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            TheGreatestMapMod.Log.LogInfo(
+                $"[TheGreatestMap] {System.DateTime.Now:HH:mm:ss} cartography table: starting " +
+                $"({(data == null ? "the table is empty" : (data.Length / 1024f).ToString("0.#") + " KB on it")}, " +
+                $"{ClientPins.Count} markers on our map).");
             bool gotNew = data != null && map.AddSharedMapData(data);
+            long readMs = clock.ElapsedMilliseconds;
 
             // Write only if the table lacks something we know; vanilla's path shows "map saved".
             bool haveNew = data == null || HasExplorationNotIn(map, data);
+            long compareMs = clock.ElapsedMilliseconds - readMs;
             if (haveNew) Access.TableWrite(table, player);
+            long writeMs = clock.ElapsedMilliseconds - readMs - compareMs;
+            // The table's own work is all vanilla's: reading its explored area into ours, working
+            // out whether ours has anything it lacks, and writing ours back. None of it said
+            // anything, so a table visit that stopped the game for fifteen seconds left no trace.
+            TheGreatestMapMod.Log.LogInfo(
+                $"[TheGreatestMap] {System.DateTime.Now:HH:mm:ss} cartography table: its own work done in " +
+                $"{clock.ElapsedMilliseconds} ms (reading its map {readMs} ms, comparing {compareMs} ms, " +
+                $"writing ours back {writeMs} ms){(haveNew ? "" : ", nothing of ours to write")}. Asking the server next.");
 
             if (gotNew) TheGreatestMapMod.Message(haveNew ? "Map exchanged with the cartography table." : "New map areas read from the cartography table.");
             else if (manual && !haveNew) TheGreatestMapMod.Message("Cartography table already up to date.");

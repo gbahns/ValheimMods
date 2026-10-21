@@ -1,5 +1,36 @@
 # Changelog
 
+## 3.2.0 — 2026-10-21
+
+**Update the server as well as every player.** Maps are compressed on the wire now; both shapes
+are read, so nothing refuses anything, but only an updated server sends the smaller one.
+
+- **Maps are compressed when they cross the wire.** The shared map had reached 543 KB and the
+  most Steam will carry in one message is 512 KB. Compressed it is 233 KB. Markers are alike
+  enough to shrink well, though not as well as they might -- most of the bulk is identifiers and
+  positions, which do not compress -- so this is headroom rather than a cure: about six thousand
+  more markers at the present density.
+- **The server's answer was the one message that was not compressed.** It went as a raw snapshot
+  of the whole shared map while everything else already went through the packer, which made it
+  the largest thing this mod sends and the first to outgrow what the game can carry.
+- **A cartography table now says what it is doing, step by step, on both sides** -- starting, its
+  own work and how long each part took, whether our map went up and how large it was, and when
+  the server answered. The server logs the map it received and the one it sent back. A sync that
+  gets stuck now shows where instead of leaving a silent gap and a disconnected player.
+
+## 3.1.3 — 2026-10-21
+
+- **An unchanged map is no longer sent to the server again.** The whole map went up on every
+  sync, and a map carrying four and a half thousand markers is half a megabyte. Steam sends that
+  as one ordered message, so until it has gone, everything queued behind it waits -- including
+  the replies the server is listening for. Standing at a cartography table did that repeatedly,
+  the server stopped hearing from the client, and after thirty seconds it closed the connection.
+  Nothing is lost by staying quiet: the server already holds exactly that map, and anything
+  arriving from anyone else still comes down as usual.
+- Note for large maps: this makes it rarer, not smaller. A map that *has* changed still goes up
+  whole, and at half a megabyte that is close to the largest single message Steam will carry.
+  Sending only what changed, and compressing it, is the proper repair and is next.
+
 ## 3.1.2 — 2026-10-21
 
 - **Fixed comparing maps in the field stopping the game for seconds at a time.** Tidying up after

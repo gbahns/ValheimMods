@@ -109,6 +109,9 @@ namespace TheGreatestMap
 
         internal static byte[] Snapshot() => _store.ToBytes();
 
+        /// <summary>The shared map itself, for sending compressed.</summary>
+        internal static MapStore Store => _store;
+
         /// <summary>Erase markers for everyone: they become tombstones so no client can bring them back.</summary>
         internal static MapStore Wipe(bool autoOnly)
         {

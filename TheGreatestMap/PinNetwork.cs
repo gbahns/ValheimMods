@@ -39,12 +39,21 @@ namespace TheGreatestMap
 
         // ── senders ─────────────────────────────────────────────────────────────────
 
+        /// <summary>When the map last went up, so the answer can be timed against it.</summary>
+        private static float _sentAt = -1f;
+
         internal static void SendSync(MapStore store)
         {
             if (!Ready) return;
+            _sentAt = UnityEngine.Time.realtimeSinceStartup;
+            var clock = System.Diagnostics.Stopwatch.StartNew();
             var pkg = new ZPackage();
-            store.Write(pkg);
+            store.WriteFor(pkg);
+            long wrote = clock.ElapsedMilliseconds;
             ZRoutedRpc.instance.InvokeRoutedRPC(Sync, pkg);
+            TheGreatestMapMod.Log.LogInfo(
+                $"[TheGreatestMap] {System.DateTime.Now:HH:mm:ss} sent our map up: {store.Pins.Count} markers, " +
+                $"{pkg.Size() / 1024f:0.#} KB compressed, packed in {wrote} ms. One message carries at most 512 KB.");
         }
 
         /// <summary>Offer my map to another player: markers, and my explored area if given (compressed, table format).</summary>
@@ -54,7 +63,7 @@ namespace TheGreatestMap
             var pkg = new ZPackage();
             pkg.Write(Player.m_localPlayer != null ? Player.m_localPlayer.GetPlayerName() : "");
             pkg.Write(reply);
-            store.Write(pkg);
+            store.WriteFor(pkg);
             pkg.Write(exploration != null && exploration.Length > 0);
             if (exploration != null && exploration.Length > 0) pkg.Write(exploration);
             ZRoutedRpc.instance.InvokeRoutedRPC(peer, Exchange, pkg);
@@ -126,17 +135,31 @@ namespace TheGreatestMap
         private static void RPC_Sync(long sender, ZPackage pkg)
         {
             if (!PinStore.IsServer || !PinStore.Loaded) return;
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            int came = pkg.Size();
             MapStore incoming;
-            try { incoming = MapStore.Read(pkg); }
+            try { incoming = MapStore.ReadFrom(pkg); }
             catch (System.Exception e) { TheGreatestMapMod.Log.LogWarning($"[TheGreatestMap] Bad map from peer {sender}: {e.Message}"); return; }
+            TheGreatestMapMod.Log.LogInfo(
+                $"[TheGreatestMap] Peer {sender} sent a map: {incoming.Pins.Count} markers, {came / 1024f:0.#} KB, unpacked in {clock.ElapsedMilliseconds} ms.");
             var result = PinStore.Merge(incoming);
+            long merged = clock.ElapsedMilliseconds;
             if (result.Any && TgmConfig.SharingMode.Value == SharingMode.Instant)
             {
                 var delta = new ZPackage();
-                result.ToDelta().Write(delta);
+                result.ToDelta().WriteFor(delta);
                 Broadcast(Delta, delta);
             }
-            ZRoutedRpc.instance.InvokeRoutedRPC(sender, SyncRes, new ZPackage(PinStore.Snapshot()));
+            // Compressed like everything else that crosses the wire. This one was not: it went
+            // as a raw snapshot, which is the largest message this mod sends and the one that
+            // outgrew what Steam will carry.
+            var reply = new ZPackage();
+            PinStore.Store.WriteFor(reply);
+            TheGreatestMapMod.Log.LogInfo(
+                $"[TheGreatestMap] Answering peer {sender} with the shared map: {PinStore.Store.Pins.Count} markers, " +
+                $"{reply.Size() / 1024f:0.#} KB compressed (merging took {merged} ms, {clock.ElapsedMilliseconds} ms in all). " +
+                "One message carries at most 512 KB.");
+            ZRoutedRpc.instance.InvokeRoutedRPC(sender, SyncRes, reply);
         }
 
         private static void RPC_Wipe(long sender, int autoOnly)
@@ -167,14 +190,33 @@ namespace TheGreatestMap
         private static void RPC_SyncRes(long sender, ZPackage pkg)
         {
             if (Minimap.instance == null) return;
-            try { SyncEngine.OnSharedMap(MapStore.Read(pkg)); }
+            try
+            {
+                if (_sentAt > 0f)
+                {
+                    float waited = UnityEngine.Time.realtimeSinceStartup - _sentAt;
+                    _sentAt = -1f;
+                    TheGreatestMapMod.Log.LogInfo(
+                        $"[TheGreatestMap] {System.DateTime.Now:HH:mm:ss} the server answered in {waited:0.0} s.");
+                }
+                var clock = System.Diagnostics.Stopwatch.StartNew();
+                int size = pkg.Size();
+                var store = MapStore.ReadFrom(pkg);
+                long read = clock.ElapsedMilliseconds;
+                SyncEngine.OnSharedMap(store);
+                if (clock.ElapsedMilliseconds >= 50L)
+                    TheGreatestMapMod.Log.LogWarning(
+                        $"[TheGreatestMap] The shared map came back in {clock.ElapsedMilliseconds} ms " +
+                        $"({store.Pins.Count} markers, {size / 1024f:0.#} KB, unpacking {read} ms, " +
+                        $"taking it in {clock.ElapsedMilliseconds - read} ms).");
+            }
             catch (System.Exception e) { TheGreatestMapMod.Log.LogWarning($"[TheGreatestMap] Bad shared map from the server: {e.Message}"); }
         }
 
         private static void RPC_Delta(long sender, ZPackage pkg)
         {
             if (Minimap.instance == null) return;
-            try { SyncEngine.OnDelta(MapStore.Read(pkg)); }
+            try { SyncEngine.OnDelta(MapStore.ReadFrom(pkg)); }
             catch (System.Exception e) { TheGreatestMapMod.Log.LogWarning($"[TheGreatestMap] Bad update from the server: {e.Message}"); }
         }
 
@@ -188,7 +230,7 @@ namespace TheGreatestMap
             {
                 name = pkg.ReadString();
                 reply = pkg.ReadBool();
-                theirs = MapStore.Read(pkg);
+                theirs = MapStore.ReadFrom(pkg);
             }
             catch (System.Exception e) { TheGreatestMapMod.Log.LogWarning($"[TheGreatestMap] Bad map from another player: {e.Message}"); return; }
             // Exploration follows the markers; a sender on an older build stops after the markers.

@@ -205,6 +205,41 @@ namespace TheGreatestMap
             return store;
         }
 
+        /// <summary>
+        /// Written where a format version would be, to say the map that follows is compressed.
+        /// No real version is negative, so a reader can tell the two apart by looking.
+        /// </summary>
+        private const int CompressedMark = -2;
+
+        /// <summary>
+        /// The map, compressed, for crossing the wire.
+        ///
+        /// Markers are extremely alike -- the same icon keys, kind names and prefabs over and
+        /// over -- so they shrink enormously, and the uncompressed map had outgrown what the game
+        /// can send. Steam carries at most half a megabyte in one reliable message and this map
+        /// reached 543 KB: the send simply failed, the queue behind it stopped draining, and the
+        /// player was disconnected at a cartography table or on meeting someone in the field,
+        /// which are the two places the whole map is sent.
+        /// </summary>
+        public void WriteFor(ZPackage pkg)
+        {
+            pkg.Write(CompressedMark);
+            pkg.Write(Utils.Compress(ToBytes()));
+        }
+
+        /// <summary>
+        /// Read a map that may be compressed or plain. Both shapes are accepted and always will
+        /// be: refusing one is how players end up unable to see each other's maps.
+        /// </summary>
+        public static MapStore ReadFrom(ZPackage pkg)
+        {
+            int at = pkg.GetPos();
+            int first = pkg.ReadInt();
+            if (first == CompressedMark) return Read(new ZPackage(Utils.Decompress(pkg.ReadByteArray())));
+            pkg.SetPos(at);
+            return Read(pkg);
+        }
+
         public byte[] ToBytes()
         {
             var pkg = new ZPackage();

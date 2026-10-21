@@ -28,6 +28,7 @@ namespace TheGreatestMap
         {
             _instantDue = -1f;
             _announcePending = false;
+            _lastFullSync = -999f;
             _lastExchange.Clear();
             _quietOnce.Clear();
         }
@@ -49,10 +50,36 @@ namespace TheGreatestMap
 
         // ── shared map on the server ────────────────────────────────────────────────
 
-        /// <summary>Send the personal map to the server; the merged shared map comes back and is merged here.</summary>
+        /// <summary>How long a map that has not changed is assumed to still match the server's.</summary>
+        private const float UnchangedSeconds = 120f;
+
+        private static float _lastFullSync = -999f;
+
+        /// <summary>
+        /// Send the personal map to the server; the merged shared map comes back and is merged here.
+        ///
+        /// The whole map goes up every time, and a map carrying four and a half thousand markers
+        /// is half a megabyte. Steam sends that as one ordered message, so until it has gone,
+        /// everything behind it waits -- including the answer the server is waiting to hear. Do
+        /// that repeatedly, as standing at a cartography table did, and the server stops hearing
+        /// from the client at all and closes the connection.
+        ///
+        /// So a map that has not changed since it last went up is not sent again. Nothing is lost
+        /// by staying quiet: the server already has exactly that map, and anything arriving from
+        /// anyone else still comes down as usual.
+        /// </summary>
         internal static void SyncWithServer(bool announceNothing)
         {
             if (!PersonalMap.Loaded) return;
+            if (!PersonalMap.Dirty && Time.time - _lastFullSync < UnchangedSeconds)
+            {
+                TheGreatestMapMod.Log.LogInfo(
+                    $"[TheGreatestMap] {System.DateTime.Now:HH:mm:ss} not asking the server: our map has not changed since it last went up.");
+                if (announceNothing) TheGreatestMapMod.Message("Shared map: nothing of ours has changed.");
+                return;
+            }
+            _lastFullSync = Time.time;
+            PersonalMap.Sent();
             _announcePending = announceNothing;
             PinNetwork.SendSync(PersonalMap.Store);
         }
@@ -108,7 +135,7 @@ namespace TheGreatestMap
                 if (stripped > 0) TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Removed labels from {stripped} markers to match the label rules.");
             }
             long total = clock.ElapsedMilliseconds;
-            if (total >= 200L)
+            if (total >= 50L)
                 TheGreatestMapMod.Log.LogWarning(
                     $"[TheGreatestMap] Tidying up after a merge took {total} ms over {ClientPins.Count} markers " +
                     $"(folding {foldMs} ms, icons {repairMs} ms, labels {total - foldMs - repairMs} ms). " +

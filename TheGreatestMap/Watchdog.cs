@@ -23,8 +23,12 @@ namespace TheGreatestMap
     /// </summary>
     internal static class Watchdog
     {
-        /// <summary>A frame this long is a stall a player would notice and a server might time out.</summary>
-        private const float StallSeconds = 1f;
+        /// <summary>
+        /// A frame this long is a stall a player would notice. Half a second rather than a whole
+        /// one: the point is to catch the thing before it grows into a disconnect, and a report
+        /// that only fires at the catastrophic end tells you nothing about what led there.
+        /// </summary>
+        private const float StallSeconds = 0.5f;
 
         /// <summary>A pause worth noting in the log when reading one back.</summary>
         private const float PauseWarnSeconds = 20f;

@@ -95,11 +95,22 @@ namespace TheGreatestMap
 
         internal static MergeResult ApplyMerge(MapStore incoming)
         {
+            // Timed because this is the other half of a merge and the tidying that follows was
+            // the only part with a clock on it. Redrawing a marker takes a pin out of the game's
+            // list and puts a new one in, so a merge that changes thousands of them -- which one
+            // does, the first time a map catches up with a big edit -- is thousands of those.
+            var clock = System.Diagnostics.Stopwatch.StartNew();
             var result = Store.Merge(incoming);
+            long mergeMs = clock.ElapsedMilliseconds;
             if (!result.Any) return result;
             foreach (var t in result.NewTombstones) RemovePinData(t.Id);
             foreach (var pin in result.ChangedPins) ReplacePinData(pin);
             PersonalMap.MarkDirty();
+            long total = clock.ElapsedMilliseconds;
+            if (total >= 50L)
+                TheGreatestMapMod.Log.LogWarning(
+                    $"[TheGreatestMap] Taking in {result.Added + result.Updated} changed marker(s) took {total} ms " +
+                    $"(reading them {mergeMs} ms, redrawing them {total - mergeMs} ms).");
             return result;
         }
 

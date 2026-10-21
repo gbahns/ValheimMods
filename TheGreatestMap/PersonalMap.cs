@@ -47,6 +47,9 @@ namespace TheGreatestMap
         /// <summary>A change that came from elsewhere: needs saving only.</summary>
         internal static void MarkDirty() => Dirty = true;
 
+        /// <summary>The map as it stands has gone to the server, so it need not go again unchanged.</summary>
+        internal static void Sent() => Dirty = false;
+
         internal static void LoadFrom(Player player)
         {
             Store = new MapStore();
