@@ -158,6 +158,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> StructuresIncludeUnlisted;
         internal static ConfigEntry<string> StructuresExcludePrefixes;
         internal static ConfigEntry<bool> RecordInBase;
+        internal static ConfigEntry<bool> ForgetTilledCrops;
         internal static ConfigEntry<bool> CrossOffStructuresOnChest;
         internal static ConfigEntry<bool> CrossOffMinedCopper;
         internal static ConfigEntry<bool> CrossOffMinedSilver;
@@ -496,6 +497,14 @@ namespace TheGreatestMap
                 "were written, such as bear caves. Only markers with that icon whose name says otherwise are touched, so a " +
                 "real sunken crypt keeps it. Runs when your map loads and after each merge, which also catches markers " +
                 "arriving from players still on an older version. The console command tgm_reicon does the same on demand.");
+            ForgetTilledCrops = mod.BindLocal("Recording", "Forget Crops On Tilled Ground", true,
+                "Erase markers for plants growing on ground somebody tilled, as you come across them. Maps written " +
+                "before this mod knew the difference carry a marker for every crop in a farm -- dozens of them on one " +
+                "field -- and they are not discoveries. There is no sweep of the whole world because whether ground " +
+                "is tilled can only be read where terrain is loaded, so a farm clears itself the next time anyone " +
+                "walks across it. Turned off by \"Record Plants In Your Base\" as well, for anyone who wants their " +
+                "garden on the map.");
+
             RecordInBase = mod.BindLocal("Recording", "Record Plants In Your Base", false,
                 "Write down berries, mushrooms, herbs, seeds and plants growing on ground you have tilled, or standing " +
                 "inside one of your own bases. Off by " +

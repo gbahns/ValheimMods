@@ -158,6 +158,7 @@ namespace TheGreatestMap
             MapOutStatus.Update();
             DiscoveryLedger.Update();
             Recorder.Update();
+            Tilled.Update();
             TableSync.Update();
             SyncEngine.Update();
         }

@@ -1,25 +1,31 @@
-# Changelog
+﻿# Changelog
 
 ## 3.2.1 — 2026-10-21
 
-- **A crop growing on ground you tilled is no longer written down.** Planting a turnip grows the
-  very same thing the wild one is, so a farm was being recorded plant by plant: one real map had
-  twenty-nine turnip markers within twenty meters of each other, and two hundred across the
-  world. Until now the only guard was whether the plant stood inside a base, which a field often
-  reaches past -- so the far end of a plot was recorded while the near end was not. Tilled ground
-  settles it: somebody worked that soil, so whatever grows there was planted. "Record Plants In
-  Your Base" still overrides it for anyone who wants their garden on the map.
-- Markers already written for a farm stay until removed. Standing in the field,
-  `tgm_erase Seeds 60` clears them, and the erasure travels to everyone like any other.
-- **A marker is no longer written with no owner.** The code took the player's id and fell back to
-  zero if it could not get one, which would put the marker in a namespace shared with every other
-  player's ownerless markers. That is not as impossible as it sounds: the game answers zero
-  whenever a player's networked object is not valid, which is true through spawning and again on
-  the way out, and finds saved with a character are flushed to the map at exactly that moment.
-  Now it refuses and says so, and the find stays pending until there is someone to own it.
-- **A find is struck off the ledger only once a marker exists.** It was marked as recorded first
-  and the result of writing ignored, so a write that did not happen lost the discovery for good --
-  the ledger believed it had been dealt with and never offered it again.
+**Farms are no longer mapped plant by plant.** Planting a turnip grows the very same thing the
+wild one is, so a field was recorded one marker per crop -- 172 of them on one map, and 29 within
+twenty meters of each other. Two changes:
+
+- Crops growing on ground somebody tilled are not recorded.
+- Markers already written for them are erased as you walk past, a few seconds after you come
+  near. You need do nothing; one player clears a field for everyone.
+
+If you *want* your garden on the map, set **Record Plants In Your Base = true**, or
+**Forget Crops On Tilled Ground = false** to keep the markers you already have. Set it before you
+play: erased markers are gone for everyone and do not come back.
+
+Only crops on tilled ground are touched. Wild berries, mushrooms and herbs are untouched, and so
+is anything you placed by hand.
+
+Also:
+
+- **`tgm_counts`** -- what your map is made of, by kind and by icon.
+- `tgm_order` now reports where it looked, and looks where you stand when the map is closed. It
+  used only the mouse pointer before, which made it answer about ground you were not on.
+- A marker is never written without an owner. The game reports no player id while you are
+  spawning or logging out, and the code quietly wrote zero instead; a find now waits.
+- A find is struck off as recorded only once its marker exists. It was marked first, so a write
+  that failed lost the discovery for good.
 
 ## 3.2.0 — 2026-10-21
 

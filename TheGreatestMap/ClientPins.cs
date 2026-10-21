@@ -57,6 +57,7 @@ namespace TheGreatestMap
             Focus.Clear();
             Locate.Reset();
             Watchdog.Reset();
+            Tilled.Reset();
         }
 
         /// <summary>
