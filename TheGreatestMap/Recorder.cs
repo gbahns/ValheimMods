@@ -92,9 +92,12 @@ namespace TheGreatestMap
                 float labelSpacing = TgmConfig.LabelSpacing.TryGetValue(found.Cat, out var l) ? l.Value : 0f;
                 float labelRadius = labelSpacing > 0f ? Mathf.Max(labelSpacing, found.Radius) : labelSpacing;
                 bool label = labelSpacing >= 0f && !ClientPins.HasLabeledPinNear(found.Icon, found.Name, dedupeAt, labelRadius);
-                DiscoveryLedger.MarkRecorded(found.Key);
-                ClientPins.CreateShared(label ? found.Name : "", found.Pos, found.Icon, found.Cat.ToString(), auto: true, source: found.Source,
+                // Struck off only once there is a marker. Marking it first and failing to write
+                // one loses the find for good: the ledger would believe it had been dealt with.
+                var written = ClientPins.CreateShared(label ? found.Name : "", found.Pos, found.Icon, found.Cat.ToString(), auto: true, source: found.Source,
                     isChecked: found.Cleared || Searched.WasSearched(found.Key));
+                if (written == null) continue;
+                DiscoveryLedger.MarkRecorded(found.Key);
                 TheGreatestMapMod.Message((found.Cleared ? "Recorded, cleared: " : "Recorded: ") + found.Name);
             }
         }

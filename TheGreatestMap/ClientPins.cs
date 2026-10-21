@@ -123,14 +123,38 @@ namespace TheGreatestMap
         // ── local edits ─────────────────────────────────────────────────────────────
 
         /// <summary>Record or place a marker on the personal map.</summary>
+        /// <summary>
+        /// Who is writing this marker, or zero if nobody can be. Player.GetPlayerID() answers
+        /// zero whenever the player's networked object is not valid -- through spawning and
+        /// again on the way out -- so a present player is not proof of a usable id.
+        /// </summary>
+        private static long WriterId()
+        {
+            var player = Player.m_localPlayer;
+            if (player == null) return 0L;
+            try { return player.GetPlayerID(); }
+            catch (System.Exception) { return 0L; }
+        }
+
         internal static SharedPin CreateShared(string name, Vector3 pos, string icon, string kind, bool auto, bool isChecked = false, string source = "")
         {
             var player = Player.m_localPlayer;
+            // No owner, no marker. Writing one owned by nobody puts it in a namespace shared with
+            // every other player's ownerless markers, which is the one way two people's markers
+            // can collide outright rather than merely sit on top of one another.
+            long owner = WriterId();
+            if (owner == 0L)
+            {
+                TheGreatestMapMod.Log.LogError(
+                    $"[TheGreatestMap] Not recording \"{name}\": no player id yet (spawning or logging out). " +
+                    "The find stays pending and is written when there is someone to own it.");
+                return null;
+            }
             string key = IconRegistry.Normalize(icon) ?? IconRegistry.FallbackKey;
             var pin = new SharedPin
             {
                 Id = SharedPin.NewId(),
-                OwnerId = player != null ? player.GetPlayerID() : 0L,
+                OwnerId = owner,
                 Author = player != null ? player.GetPlayerName() : "",
                 Name = name ?? "",
                 Pos = pos,
@@ -160,10 +184,17 @@ namespace TheGreatestMap
             var placing = PinTypes.IsCustom((int)pinData.m_type) ? ManualPlace.Take((int)pinData.m_type) : null;
             if (placing == null && PinTypes.IsCustom((int)pinData.m_type)) return null;
             var player = Player.m_localPlayer;
+            long owner = WriterId();
+            if (owner == 0L)
+            {
+                TheGreatestMapMod.Log.LogError(
+                    "[TheGreatestMap] Not adopting a pin: no player id yet (spawning or logging out).");
+                return null;
+            }
             var pin = new SharedPin
             {
                 Id = SharedPin.NewId(),
-                OwnerId = player != null ? player.GetPlayerID() : 0L,
+                OwnerId = owner,
                 Author = player != null ? player.GetPlayerName() : "",
                 Name = pinData.m_name ?? "",
                 Pos = pinData.m_pos,

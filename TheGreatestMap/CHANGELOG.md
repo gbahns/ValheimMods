@@ -11,6 +11,15 @@
   Your Base" still overrides it for anyone who wants their garden on the map.
 - Markers already written for a farm stay until removed. Standing in the field,
   `tgm_erase Seeds 60` clears them, and the erasure travels to everyone like any other.
+- **A marker is no longer written with no owner.** The code took the player's id and fell back to
+  zero if it could not get one, which would put the marker in a namespace shared with every other
+  player's ownerless markers. That is not as impossible as it sounds: the game answers zero
+  whenever a player's networked object is not valid, which is true through spawning and again on
+  the way out, and finds saved with a character are flushed to the map at exactly that moment.
+  Now it refuses and says so, and the find stays pending until there is someone to own it.
+- **A find is struck off the ledger only once a marker exists.** It was marked as recorded first
+  and the result of writing ignored, so a write that did not happen lost the discovery for good --
+  the ledger believed it had been dealt with and never offered it again.
 
 ## 3.2.0 — 2026-10-21
 
