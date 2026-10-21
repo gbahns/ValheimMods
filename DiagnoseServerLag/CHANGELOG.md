@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.10.17 - 2026-10-20
+
+- **`dsl_hotspots mods`: time the per-frame methods mods define themselves.** `drill` can only
+  reach Harmony patches, because it works by patching the patch method. A mod's own
+  `MonoBehaviour.Update` is dispatched by Unity directly, has no patch record to walk, and so
+  simply shows up as part of the frame nobody can account for - which in practice was about 30% of
+  it. In this repo alone TheGreatestMap defines 23 such methods and DudeWhatAreMyStats 9, none of
+  them visible to any measurement here until now.
+
+  Worth auditing because the one serious performance bug found so far - a third-party compass
+  costing 20 ms of a 28 ms frame - was exactly this shape: ordinary per-frame code doing work
+  proportional to something that grew. A constant like that cancels out of every comparison, so
+  only an absolute per-method reading finds it.
+
+  Takes an optional filter, so `dsl_hotspots mods TheGreatestMap` audits one mod rather than all
+  of them. The plugin list comes from BepInEx's own chainloader rather than a scan of loaded
+  assemblies, so every entry is labelled with the GUID that owns it and nothing from Unity or the
+  game is swept in by accident. `DeclaredOnly` lookup, so an inherited `Update` is counted once
+  against its own body rather than once per subclass.
+
 ## 0.10.16 - 2026-10-20
 
 - **The bench reports the draw distance actually granted, and dsl_sim writes to the log.** The

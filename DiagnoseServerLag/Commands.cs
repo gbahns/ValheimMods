@@ -178,6 +178,16 @@ namespace DiagnoseServerLag
                             DiagnoseServerLagMod.Log.LogInfo("[DiagnoseServerLag] hotspot patches\n" + who);
                             return;
                         }
+                        case "mods":
+                        {
+                            // Times the per-frame methods mods define themselves, which drill
+                            // cannot reach: a MonoBehaviour.Update is dispatched by Unity, not
+                            // through a Harmony wrapper, so it has no patch record to walk.
+                            string filter = args.Length > 2 ? args[2] : "";
+                            string said = Hotspots.Mods(filter);
+                            args.Context?.AddString(said);
+                            return;
+                        }
                         case "drill":
                         {
                             // Times each mod patch inside one method, so a hot entry names a
@@ -228,8 +238,9 @@ namespace DiagnoseServerLag
                         default:
                             args.Context?.AddString(
                                 "dsl_hotspots takes 'on', 'off', 'reset', 'patches', " +
-                                "'drill <Type>.<Method>', or nothing at all to read the current " +
-                                "window. '" + what + "' is none of those, so nothing was changed.");
+                                "'drill <Type>.<Method>', 'mods [name]', or nothing at all to read " +
+                                "the current window. '" + what + "' is none of those, so nothing " +
+                                "was changed.");
                             return;
                     }
                 }));

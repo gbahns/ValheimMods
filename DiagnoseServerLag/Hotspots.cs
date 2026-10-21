@@ -238,6 +238,89 @@ namespace DiagnoseServerLag
             return n;
         }
 
+        /// <summary>
+        /// Times every per-frame method a loaded mod defines, so a mod's own Update is as visible
+        /// as a mod's patch on somebody else's.
+        ///
+        /// Drill cannot reach these. A mod's MonoBehaviour.Update is dispatched by Unity directly,
+        /// not through a Harmony wrapper, so it has no patch record to walk - it simply shows up as
+        /// part of the frame nobody can account for. In this repo alone TheGreatestMap defines 23
+        /// such methods and DudeWhatAreMyStats 9, none of them visible to any measurement here
+        /// until now.
+        ///
+        /// Worth auditing because the one serious performance bug found so far - a third-party
+        /// compass costing 20 ms of a 28 ms frame - was of exactly this shape: ordinary per-frame
+        /// code doing work proportional to something that grew. A constant like that cancels out of
+        /// every comparison, so only an absolute per-method reading finds it.
+        ///
+        /// The plugin list comes from BepInEx's own chainloader rather than a scan of every loaded
+        /// assembly, so each entry is labelled with the GUID that owns it and nothing from Unity or
+        /// the game itself is swept in by accident.
+        /// </summary>
+        internal static string Mods(string filter)
+        {
+            if (_harmony == null) return "Hotspot timing is off. Run: dsl_hotspots on";
+
+            string[] perFrame = { "Update", "LateUpdate", "FixedUpdate", "OnGUI" };
+            int added = 0, skipped = 0, plugins = 0;
+            var names = new List<string>();
+
+            try
+            {
+                foreach (var kv in BepInEx.Bootstrap.Chainloader.PluginInfos)
+                {
+                    var info = kv.Value;
+                    if (info == null || info.Instance == null) continue;
+                    string guid = info.Metadata != null ? info.Metadata.GUID : kv.Key;
+                    if (!string.IsNullOrEmpty(filter) &&
+                        guid.IndexOf(filter, StringComparison.OrdinalIgnoreCase) < 0) continue;
+
+                    Type[] types;
+                    try { types = info.Instance.GetType().Assembly.GetTypes(); }
+                    catch (ReflectionTypeLoadException e) { types = e.Types; }
+                    catch { continue; }
+
+                    plugins++;
+                    foreach (var t in types)
+                    {
+                        if (t == null || !typeof(MonoBehaviour).IsAssignableFrom(t)) continue;
+                        foreach (var name in perFrame)
+                        {
+                            MethodInfo m;
+                            // DeclaredOnly: an inherited Update belongs to the base type and would
+                            // otherwise be counted once per subclass, against the same method body.
+                            try
+                            {
+                                m = t.GetMethod(name, BindingFlags.Instance | BindingFlags.Static |
+                                                      BindingFlags.Public | BindingFlags.NonPublic |
+                                                      BindingFlags.DeclaredOnly,
+                                                null, Type.EmptyTypes, null);
+                            }
+                            catch { continue; }
+                            if (m == null || m.IsAbstract || m.ContainsGenericParameters) continue;
+                            if (TimeIt(m, "    [" + guid + "] " + t.Name + "." + name, 1, "mods"))
+                            { added++; if (names.Count < 12) names.Add(t.Name + "." + name); }
+                            else skipped++;
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                return "Could not walk the plugin list: " + e.Message;
+            }
+
+            Reset();
+            var sb = new StringBuilder();
+            sb.Append("timing ").Append(added).Append(" per-frame method(s) across ")
+              .Append(plugins).Append(" plugin(s)");
+            if (!string.IsNullOrEmpty(filter)) sb.Append(" matching '").Append(filter).Append("'");
+            if (skipped > 0) sb.Append("; ").Append(skipped).Append(" already timed or unpatchable");
+            sb.Append(". Counters reset - play a few minutes, then dsl_hotspots.");
+            DiagnoseServerLagMod.Log.LogInfo("[DiagnoseServerLag] " + sb);
+            return sb.ToString();
+        }
+
         /// <summary>Who has patched each timed method, without timing any of it.</summary>
         internal static string Patches()
         {
