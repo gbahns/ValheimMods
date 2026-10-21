@@ -211,6 +211,47 @@ namespace TheGreatestMap
                         args.Context.AddString($"Asking the world about {result.Ambiguous + result.Lost} more...");
                 }));
 
+            new Terminal.ConsoleCommand("tgm_counts", "What the map is made of: markers by kind, then by icon, commonest first",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    int total = ClientPins.Count;
+                    if (total == 0) { args.Context.AddString("No markers on your map."); return; }
+                    var kinds = new Dictionary<string, int>();
+                    var icons = new Dictionary<string, int>();
+                    int crossed = 0, placed = 0;
+                    foreach (var pin in ClientPins.All)
+                    {
+                        var kind = ClientPins.KindOf(pin);
+                        string k = kind.HasValue ? Categories.Label(kind.Value) : "No kind";
+                        kinds.TryGetValue(k, out int kn); kinds[k] = kn + 1;
+                        string icon = ClientPins.IconOf(pin) ?? "";
+                        icons.TryGetValue(icon, out int ino); icons[icon] = ino + 1;
+                        if (pin.Checked) crossed++;
+                        if (!pin.Auto) placed++;
+                    }
+                    var byKind = new List<KeyValuePair<string, int>>(kinds);
+                    byKind.Sort((a, b) => b.Value.CompareTo(a.Value));
+                    var byIcon = new List<KeyValuePair<string, int>>(icons);
+                    byIcon.Sort((a, b) => b.Value.CompareTo(a.Value));
+
+                    void Say(string line)
+                    {
+                        args.Context.AddString(line);
+                        TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_counts: " + line);
+                    }
+
+                    Say($"{total} markers: {crossed} crossed off, {placed} placed by hand.");
+                    foreach (var kv in byKind)
+                        Say($"  {kv.Key}: {kv.Value} ({100f * kv.Value / total:0.#}%)");
+                    Say("By icon, the busiest first:");
+                    int shown = 0;
+                    foreach (var kv in byIcon)
+                    {
+                        if (shown++ >= 15) break;
+                        Say($"  {IconRegistry.DisplayName(kv.Key)} ({kv.Key}): {kv.Value}");
+                    }
+                }));
+
             new Terminal.ConsoleCommand("tgm_order", "With the large map open, list the pins under the pointer in the order they are drawn (last is on top)",
                 (Terminal.ConsoleEvent)(args =>
                 {
@@ -218,7 +259,17 @@ namespace TheGreatestMap
                     if (map == null) { args.Context.AddString("No map."); return; }
                     float radius = 20f;
                     if (args.Args.Length >= 2) float.TryParse(args.Args[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out radius);
-                    var world = Access.ScreenToWorldPoint(map, ZInput.pointerPosition);
+                    // The pointer only means something with the large map open and pointing at
+                    // the ground you mean. Shut, it converts a cursor position against the
+                    // minimap, which is how the same command found a farm once and never again.
+                    bool large = map.m_mode == Minimap.MapMode.Large;
+                    var player = Player.m_localPlayer;
+                    UnityEngine.Vector3 world = large || player == null
+                        ? Access.ScreenToWorldPoint(map, ZInput.pointerPosition)
+                        : player.transform.position;
+                    args.Context.AddString(large
+                        ? $"Looking where the pointer is: {world.x:0}, {world.z:0} (within {radius:0} m)."
+                        : $"The large map is shut, so looking where you stand: {world.x:0}, {world.z:0} (within {radius:0} m).");
                     foreach (var line in ClientPins.DescribeOrder(world, radius))
                     {
                         args.Context.AddString(line);

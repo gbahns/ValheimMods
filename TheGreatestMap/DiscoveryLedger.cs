@@ -104,21 +104,32 @@ namespace TheGreatestMap
 
         /// <summary>
         /// Your own garden. What you planted you already know about, and a farm would otherwise put
-        /// a marker on every carrot. The test is the game's own: the area a workbench or fire holds
-        /// against monsters, which is the same ground a player thinks of as their base.
+        /// a marker on every carrot -- twenty-nine turnip plots within twenty meters of each other,
+        /// on one real map, because planting a turnip grows the very same thing the wild one is.
+        ///
+        /// Two tests, and the second is the better one. A base is the game's own idea of one, the
+        /// ground a workbench or fire keeps monsters out of. But a field often reaches past that,
+        /// and the far end of it was being written down while the near end was not. Tilled ground
+        /// settles it: somebody worked that soil, so whatever grows there was planted, wherever the
+        /// workbench happens to stand.
         /// </summary>
-        private static bool InOwnBase(Found found)
+        private static bool Planted(Found found)
         {
             if (TgmConfig.RecordInBase != null && TgmConfig.RecordInBase.Value) return false;
             if (!Categories.IsGrown(found.Cat)) return false;
-            try { return EffectArea.IsPointInsideArea(found.Pos, EffectArea.Type.PlayerBase, 0f) != null; }
+            try
+            {
+                var ground = Heightmap.FindHeightmap(found.Pos);
+                if (ground != null && ground.IsCultivated(found.Pos)) return true;
+                return EffectArea.IsPointInsideArea(found.Pos, EffectArea.Type.PlayerBase, 0f) != null;
+            }
             catch (Exception) { return false; }
         }
 
         internal static void MarkFound(Found found)
         {
             if (found == null || string.IsNullOrEmpty(found.Key)) return;
-            if (InOwnBase(found)) return;
+            if (Planted(found)) return;
             // Correcting a marker that is already on the map is not recording a discovery, so it
             // does not wait for the pocket map to come out: the moment the place is seen, what the
             // map says about it can be made true. Writing a new marker still waits, as it should.

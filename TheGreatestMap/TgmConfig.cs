@@ -497,7 +497,8 @@ namespace TheGreatestMap
                 "real sunken crypt keeps it. Runs when your map loads and after each merge, which also catches markers " +
                 "arriving from players still on an older version. The console command tgm_reicon does the same on demand.");
             RecordInBase = mod.BindLocal("Recording", "Record Plants In Your Base", false,
-                "Write down berries, mushrooms, herbs, seeds and plants standing inside one of your own bases. Off by " +
+                "Write down berries, mushrooms, herbs, seeds and plants growing on ground you have tilled, or standing " +
+                "inside one of your own bases. Off by " +
                 "default: the carrots and turnips in your own garden are not a discovery, and a farm fills the map " +
                 "with markers for crops you planted and already know about. A base is the game's own idea of one, the " +
                 "ground a workbench or fire keeps monsters out of, so it covers the yard as well as the house. Ore " +

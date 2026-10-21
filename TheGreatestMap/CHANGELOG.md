@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.2.1 — 2026-10-21
+
+- **A crop growing on ground you tilled is no longer written down.** Planting a turnip grows the
+  very same thing the wild one is, so a farm was being recorded plant by plant: one real map had
+  twenty-nine turnip markers within twenty meters of each other, and two hundred across the
+  world. Until now the only guard was whether the plant stood inside a base, which a field often
+  reaches past -- so the far end of a plot was recorded while the near end was not. Tilled ground
+  settles it: somebody worked that soil, so whatever grows there was planted. "Record Plants In
+  Your Base" still overrides it for anyone who wants their garden on the map.
+- Markers already written for a farm stay until removed. Standing in the field,
+  `tgm_erase Seeds 60` clears them, and the erasure travels to everyone like any other.
+
 ## 3.2.0 — 2026-10-21
 
 **Update the server as well as every player.** Maps are compressed on the wire now; both shapes
