@@ -1,5 +1,29 @@
 # Changelog
 
+## 3.1.1 — 2026-10-20
+
+- **Withdrawn: portals drawn over everything else at the same spot**, added in 3.0.0. It never
+  worked reliably -- a portal beside Hildir stayed behind her icon while others came out in
+  front, seemingly by luck of creation order -- and reordering pins is expensive enough to be a
+  suspect in client stalls. Better nothing than an unreliable fix that costs frames. The problem
+  it was aimed at is real and will be solved another way; `tgm_order` is kept for working on it,
+  and reports what is drawn over what under the pointer.
+- **A watchdog for disconnects.** When the game stops for more than a second, or sits paused for
+  more than twenty, a line goes in the log with the wall clock on it. A server that drops a
+  client says only "ZRpc timeout detected", which looks the same whether the client froze, sat
+  paused, or simply stopped being heard; these two numbers tell those apart. Silent otherwise.
+
+- **Stopped describing the cartography table as though it had been taken away.** It read as
+  "tables no longer carry markers", when what is off by default is vanilla's own pin sharing --
+  your maps still merge at a table, markers and all. "Table Carries Player Markers" (Sharing)
+  gives vanilla's behavior back for the five standard pins, which is the thing that was switched
+  off and sounded like a thing that was removed.
+- Said that a table is optional now: two players standing together with their maps out merge
+  directly, which is usually how it happens anyway.
+- Said that the shared map lives on the server, so the mod belongs there too. Installed only on
+  your own game, a table carries fog and nothing else, which is the likeliest reason for someone
+  finding markers do not travel.
+
 ## 3.1.0 — 2026-10-20
 
 Client-side.

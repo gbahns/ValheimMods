@@ -35,6 +35,8 @@ namespace TheGreatestMap
         {
             public Func<bool> Shown;
             public Func<string> Text;
+            /// <summary>Live text for a switch row, for one whose label can change while the list is open.</summary>
+            public Func<string> Caption;
             public Func<bool> Quiet;
             public TextMeshProUGUI Label;
             public Image Icon;
@@ -394,19 +396,21 @@ namespace TheGreatestMap
             // records them and nothing hides them, but "where is everybody" is the same question
             // this column answers for everything else, so it belongs in the same place. The row
             // itself is the spotlight the H key gives; the ping only makes them wave.
-            int players = PlayerSpotlight.Players(map);
             // Shown even when there are none, dimmed, saying so. Leaving the row out entirely
             // when nobody is sharing looks exactly like the feature not existing, which is how
-            // it read the first time somebody went looking for it.
-            SwitchRow(map, x, y, 0f, "pin:Player",
-                players > 0 ? $"Players ({players})" : "Players (none sharing)",
+            // it read the first time somebody went looking for it. The count is read afresh on
+            // every refresh rather than fixed when the list opened: players come and go, and a
+            // pinned list stays open for hours.
+            Func<int> players = () => PlayerSpotlight.Players(map);
+            SwitchRow(map, x, y, 0f, "pin:Player", "Players",
                 () =>
                 {
-                    if (players > 0) PlayerSpotlight.Toggle(map);
+                    if (players() > 0) PlayerSpotlight.Toggle(map);
                     else TheGreatestMapMod.Message("No other players are sharing their position.");
                 },
-                () => players > 0,
-                onLocate: players > 0 ? (Action)(() => Locate.Players(map)) : null);
+                () => players() > 0,
+                onLocate: () => Locate.Players(map),
+                caption: () => players() > 0 ? $"Players ({players()})" : "Players (none sharing)");
             y -= RowHeight;
             return y;
         }
@@ -612,7 +616,7 @@ namespace TheGreatestMap
             _entries.Add(new Entry { Text = text, Quiet = quiet ?? (() => false), Label = label });
         }
 
-        private static void SwitchRow(Minimap map, float x, float y, float indent, string iconKey, string text, Action onClick, Func<bool> shown, Action onPlace = null, Action onOnly = null, Action onLocate = null)
+        private static void SwitchRow(Minimap map, float x, float y, float indent, string iconKey, string text, Action onClick, Func<bool> shown, Action onPlace = null, Action onOnly = null, Action onLocate = null, Func<string> caption = null)
         {
             var row = MenuKit.Row(_root.transform, "", true, () =>
             {
@@ -621,7 +625,7 @@ namespace TheGreatestMap
                 Refresh();
             });
             Place(row, x, y, ColumnWidth, RowHeight);
-            var entry = new Entry { Shown = shown };
+            var entry = new Entry { Shown = shown, Caption = caption };
 
             var sprite = (iconKey != null ? IconRegistry.Resolve(map, iconKey) : null) ?? IconRegistry.Resolve(map, IconRegistry.FallbackKey);
             var iconGo = new GameObject("Icon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
@@ -703,6 +707,7 @@ namespace TheGreatestMap
                     entry.Label.color = entry.Quiet() ? MenuKit.Dim : MenuKit.Header;
                     continue;
                 }
+                if (entry.Caption != null) entry.Label.text = entry.Caption();
                 bool shown = entry.Shown == null || entry.Shown();
                 entry.Label.color = shown ? MenuKit.Body : MenuKit.Dim;
                 if (entry.Icon != null) entry.Icon.color = shown ? Color.white : new Color(1f, 1f, 1f, 0.3f);

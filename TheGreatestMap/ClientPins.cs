@@ -56,6 +56,7 @@ namespace TheGreatestMap
             MapFrame.Reset();
             Focus.Clear();
             Locate.Reset();
+            Watchdog.Reset();
         }
 
         /// <summary>
@@ -786,7 +787,6 @@ namespace TheGreatestMap
                 pin.m_iconElement.color = faded ? Faded(tint) : tint;
             }
             ResizePlayers(map);
-            PortalsToFront();
             // Vanilla lays the pins out again whenever the map moves, which on the minimap is every
             // step the player takes, and a freshly built icon starts at the prefab's plain white.
             // Painting here, right after that rebuild, is what stops portals flashing white while
@@ -814,22 +814,6 @@ namespace TheGreatestMap
         }
 
         /// <summary>
-        /// Portals last in their root, so they are drawn over everything else at the same spot.
-        /// Crews put a portal beside a trader and name it after them, and vanilla draws a
-        /// trader's own icon at double size: the portal ended up underneath it, barely visible,
-        /// at exactly the place a player most wants to see one.
-        ///
-        /// Safe to do on every layout because vanilla only lays the pins out when something has
-        /// changed -- a pin added or removed, the map moved or zoomed -- rather than every frame.
-        /// </summary>
-        private static void PortalsToFront()
-        {
-            foreach (var pin in _portalPins)
-                if (pin != null && pin.m_uiElement != null)
-                    pin.m_uiElement.SetAsLastSibling();
-        }
-
-        /// <summary>
         /// Draw the other players at the size the player asked for. Left alone while the
         /// spotlight or a ping is up, since both of those are saying something about size
         /// themselves and will put it back when they finish.
@@ -844,6 +828,37 @@ namespace TheGreatestMap
                 var at = pin.m_uiElement.localScale;
                 if (!Mathf.Approximately(at.x, scale)) pin.m_uiElement.localScale = new Vector3(scale, scale, 1f);
             }
+        }
+
+        /// <summary>
+        /// What the drawing order looks like where the pointer is, for when a marker is behind
+        /// something it should be in front of. Reports every pin near that spot in the order the
+        /// game draws them, last on top, so "ours is not being lifted" can be told apart from
+        /// "ours is on top and the thing over it is simply bigger".
+        /// </summary>
+        internal static List<string> DescribeOrder(Vector3 world, float radius)
+        {
+            var lines = new List<string>();
+            var map = Map;
+            if (map == null) { lines.Add("No map."); return lines; }
+            lines.Add($"{_portalPins.Count} portal pin(s) known; large map: {map.m_mode == Minimap.MapMode.Large}");
+            var near = new List<Minimap.PinData>();
+            foreach (var pin in Access.Pins(map))
+                if (pin != null && pin.m_uiElement != null && Geo.FlatDistance(pin.m_pos, world) <= radius)
+                    near.Add(pin);
+            near.Sort((a, b) => a.m_uiElement.GetSiblingIndex().CompareTo(b.m_uiElement.GetSiblingIndex()));
+            Transform parent = near.Count > 0 ? near[0].m_uiElement.parent : null;
+            lines.Add($"{near.Count} pin(s) within {radius:0} m" + (parent != null ? $", root holds {parent.childCount}" : ""));
+            foreach (var pin in near)
+            {
+                var shared = SharedFor(pin);
+                string what = shared != null ? (KindOf(shared)?.ToString() ?? "ours, no kind") : "not ours";
+                lines.Add($"  sibling {pin.m_uiElement.GetSiblingIndex()}: type {(int)pin.m_type}, " +
+                          $"{(string.IsNullOrEmpty(pin.m_name) ? "(no label)" : pin.m_name)}, {what}" +
+                          $"{(pin.m_doubleSize ? ", double size" : "")}");
+            }
+            lines.Add("Drawn in the order listed; the last one is on top.");
+            return lines;
         }
 
         internal static void TintPortals(Color color)

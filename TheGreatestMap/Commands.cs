@@ -211,6 +211,21 @@ namespace TheGreatestMap
                         args.Context.AddString($"Asking the world about {result.Ambiguous + result.Lost} more...");
                 }));
 
+            new Terminal.ConsoleCommand("tgm_order", "With the large map open, list the pins under the pointer in the order they are drawn (last is on top)",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    var map = Minimap.instance;
+                    if (map == null) { args.Context.AddString("No map."); return; }
+                    float radius = 20f;
+                    if (args.Args.Length >= 2) float.TryParse(args.Args[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out radius);
+                    var world = Access.ScreenToWorldPoint(map, ZInput.pointerPosition);
+                    foreach (var line in ClientPins.DescribeOrder(world, radius))
+                    {
+                        args.Context.AddString(line);
+                        TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_order: " + line);
+                    }
+                }));
+
             new Terminal.ConsoleCommand("tgm_transports", "What the mod knows about ships and carts, and why one near you is or is not drawn",
                 (Terminal.ConsoleEvent)(args =>
                 {

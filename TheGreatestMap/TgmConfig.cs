@@ -372,10 +372,12 @@ namespace TheGreatestMap
                 "Markers you place on the map screen are shared instantly with everyone on the server. " +
                 "When false they stay private, as in vanilla.");
             TableCarriesPins = mod.BindSynced("Sharing", "Table Carries Player Markers", false,
-                "When false (recommended) the cartography table only carries map exploration. Player-placed markers " +
-                "(the five standard icons and this mod's icons) are neither written to nor read from the table, and " +
-                "stale copies previously imported from a table are swept away. Boss, Hildir and memorial pins still " +
-                "share through the table as in vanilla. Set true to restore vanilla table behavior for markers.");
+                "Vanilla's own pin sharing, off by default. Your maps still merge at a cartography table either " +
+                "way -- this is only about the five standard pins you place by hand, which vanilla copies in and out " +
+                "of tables and which otherwise pile up a fresh copy on every visit. Off, they stay on your own map " +
+                "and stale ones imported from a table before are swept away. Boss, Hildir and memorial pins share " +
+                "through the table as in vanilla regardless. Turning it on also sends the markers this mod recorded " +
+                "with one of those standard icons, so expect a plain copy of some of them beside the real one.");
 
             AutoSyncTable = mod.BindLocal("Cartography Table", "Auto Sync", true,
                 "Automatically read and write the cartography table when you are right at it. Silent unless something " +

@@ -338,7 +338,11 @@ namespace TheGreatestMap
             if (!_haveList) return "no list from the server yet";
             if (TgmConfig.ShowAllMarkers != null && !TgmConfig.ShowAllMarkers.Value)
                 return "every marker is hidden (right-click the marker button, or \"Show All Markers\")";
-            if (TgmConfig.ShowKind.TryGetValue(kind, out var show) && !show.Value)
+            // A ping outranks the switch, as it does for recorded markers: these come back for
+            // the few seconds it lasts and go away again after. Without this a kind switched off
+            // had nothing drawn for the pulse to light up, so the ping looked broken rather than
+            // obeyed -- and unlike a marker, a vessel that is not drawn does not exist at all.
+            if (TgmConfig.ShowKind.TryGetValue(kind, out var show) && !show.Value && !Locate.Pointing(kind))
                 return $"\"Show {Categories.Label(kind)}\" is off";
             if (PlayerSpotlight.On) return "the player spotlight is up, which puts the rest of the map away";
             if (Focus.On && !Focus.ShowsKind(kind, IconFor(kind)))

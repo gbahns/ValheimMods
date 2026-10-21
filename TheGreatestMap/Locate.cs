@@ -36,6 +36,9 @@ namespace TheGreatestMap
 
         internal static bool On => Time.unscaledTime < _until && Armed;
 
+        /// <summary>True while the ping is pointing at this whole kind.</summary>
+        internal static bool Pointing(Category kind) => On && _kind.HasValue && _kind.Value == kind;
+
         private static float Seconds =>
             TgmConfig.LocateSeconds != null ? Mathf.Max(1f, TgmConfig.LocateSeconds.Value) : 6f;
 
@@ -131,8 +134,10 @@ namespace TheGreatestMap
         {
             _until = Time.unscaledTime + Seconds;
             // A kind switched off still answers: the markers come back for as long as the pulse
-            // lasts, so the styling pass has to run now rather than at the next change.
+            // lasts, so the styling pass has to run now rather than at the next change. Ships and
+            // carts are drawn by their own pass, which has to be told as well.
             ClientPins.Restyle();
+            Transports.Redraw();
             if (found == 0)
             {
                 TheGreatestMapMod.Message($"No {what.ToLowerInvariant()} on your map.");
@@ -213,7 +218,7 @@ namespace TheGreatestMap
             if (!On)
             {
                 // Over: put the map back, which also hides again whatever was only shown for this.
-                if (Armed) { Reset(); ClientPins.Restyle(); }
+                if (Armed) { Reset(); ClientPins.Restyle(); Transports.Redraw(); }
                 return;
             }
             float strength = Mathf.Clamp01(_until - Time.unscaledTime);
