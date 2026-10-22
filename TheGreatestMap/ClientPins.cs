@@ -688,6 +688,23 @@ namespace TheGreatestMap
             return false;
         }
 
+        /// <summary>
+        /// Throw away every marker held and take the ones in this map instead (tgm_restore).
+        /// The drawn pins go with them, because a pin left over from the old map would have
+        /// nothing behind it.
+        /// </summary>
+        internal static void ReplaceAll(MapStore store)
+        {
+            if (store == null) return;
+            // One at a time rather than clearing the indexes, because the drawn pins have to come
+            // off the map as well; emptying the bookkeeping alone would leave every old marker
+            // visible with no record behind it.
+            foreach (var key in new List<PinKey>(_pinById.Keys)) RemovePinData(key);
+            PersonalMap.Replace(store);
+            RebuildPins();
+            Restyle();
+        }
+
         // ── PinData bookkeeping ─────────────────────────────────────────────────────
 
         internal static void RebuildPins()

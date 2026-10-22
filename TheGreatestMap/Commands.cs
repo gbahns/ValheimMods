@@ -116,6 +116,63 @@ namespace TheGreatestMap
                     args.Context.AddString($"Erased {n} recorded {kind} markers within {radius:0} m.");
                 }));
 
+            new Terminal.ConsoleCommand("tgm_backups", "List the copies kept of your map from before a format change, and how to put one back",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    var files = MapBackup.All();
+                    if (files.Count == 0)
+                    {
+                        args.Context.AddString("No backups. One is kept automatically the first time a map is read in an older format.");
+                        args.Context.AddString("They live in " + MapBackup.Folder);
+                        return;
+                    }
+                    args.Context.AddString($"{files.Count} backup(s) in {MapBackup.Folder}:");
+                    foreach (var f in files)
+                    {
+                        var info = new System.IO.FileInfo(f);
+                        args.Context.AddString($"  {info.Name}  {info.Length:n0} bytes  {info.LastWriteTime:yyyy-MM-dd HH:mm}");
+                        TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] tgm_backups: {f} ({info.Length:n0} bytes)");
+                    }
+                    args.Context.AddString("Put one back with: tgm_restore <name> confirm");
+                }));
+
+            new Terminal.ConsoleCommand("tgm_restore", "Put a backup of your own map back: tgm_restore <name> confirm. Replaces every marker you hold with the ones in that copy",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    if (Player.m_localPlayer == null) { args.Context.AddString("No player."); return; }
+                    if (args.Args.Length < 2)
+                    {
+                        args.Context.AddString("Usage: tgm_restore <name> confirm   (tgm_backups lists the names)");
+                        return;
+                    }
+                    string name = args.Args[1];
+                    string path = null;
+                    foreach (var f in MapBackup.All())
+                        if (System.IO.Path.GetFileName(f).IndexOf(name, System.StringComparison.OrdinalIgnoreCase) >= 0) { path = f; break; }
+                    if (path == null) { args.Context.AddString($"No backup matching \"{name}\". Run tgm_backups."); return; }
+
+                    MapStore restored;
+                    try { restored = MapStore.FromBytes(System.IO.File.ReadAllBytes(path)); }
+                    catch (System.Exception e) { args.Context.AddString("Could not read that backup: " + e.Message); return; }
+
+                    // Said before it is done, because the thing it cannot undo is the part people
+                    // get wrong: an erasure that already reached the server has been seen by
+                    // everyone, and the next merge will apply it again whatever is restored here.
+                    if (args.Args.Length < 3 || !string.Equals(args.Args[2], "confirm", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        args.Context.AddString($"{System.IO.Path.GetFileName(path)} holds {restored.Pins.Count} markers (format {restored.ReadVersion}); you hold {ClientPins.Count}.");
+                        args.Context.AddString("This replaces your markers with those. Erasures that already reached the server will still be applied at the next merge;");
+                        args.Context.AddString("rolling the shared map back as well means restoring the server's copy with nobody connected.");
+                        args.Context.AddString("Run again with: tgm_restore " + name + " confirm");
+                        return;
+                    }
+                    int was = ClientPins.Count;
+                    ClientPins.ReplaceAll(restored);
+                    args.Context.AddString($"Restored {restored.Pins.Count} markers from {System.IO.Path.GetFileName(path)} (you had {was}).");
+                    TheGreatestMapMod.Log.LogWarning(
+                        $"[TheGreatestMap] tgm_restore: replaced {was} markers with {restored.Pins.Count} from {path}.");
+                }));
+
             new Terminal.ConsoleCommand("tgm_admin", "Ask the server whether it treats you as an admin, and what player id it sees for you",
                 (Terminal.ConsoleEvent)(args =>
                 {

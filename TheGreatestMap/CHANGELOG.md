@@ -17,6 +17,12 @@ why. The way markers are identified has changed, and a 3.x client cannot read th
   `tgm_identify apply` did, and you no longer have to know it exists. Markers you placed yourself
   are marked as placed by hand rather than left blank.
 
+- **A copy of your map is kept before any of this happens.** The first time a map is read in the
+  older format, it is written out untouched to `BepInEx/config/TheGreatestMap/backups/` -- the
+  shared map on the server, and each character's own map, which otherwise lives inside the
+  character file where it cannot be copied. `tgm_backups` lists them; `tgm_restore <name>` puts
+  one back. You should never need it.
+
 Nothing to do, and nothing is lost: every marker, erasure and suppression carries over, and old
 maps are read and converted as they are opened.
 

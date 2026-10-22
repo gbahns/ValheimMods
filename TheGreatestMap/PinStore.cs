@@ -42,10 +42,12 @@ namespace TheGreatestMap
             {
                 if (File.Exists(_path))
                 {
-                    _store = MapStore.FromBytes(File.ReadAllBytes(_path));
+                    var stored = File.ReadAllBytes(_path);
+                    _store = MapStore.FromBytes(stored);
                     TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Loaded the shared map: {_store.Pins.Count} markers, {_store.Tombstones.Count} erased, {_store.Suppressions.Count} erased spots, from {_path}");
                     if (_store.ReadVersion < MapStore.FormatVersion)
                     {
+                        MapBackup.Keep(Path.GetFileNameWithoutExtension(_path), _store.ReadVersion, stored);
                         // Converted as it was read. Written back at once so the next load is not
                         // another conversion, and so the smaller format is what actually goes out.
                         TheGreatestMapMod.Log.LogInfo(

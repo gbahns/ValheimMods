@@ -14,6 +14,19 @@ namespace TheGreatestMap
         private const string KeyPrefix = "TheGreatestMap.Map:";
 
         internal static MapStore Store { get; private set; } = new MapStore();
+
+        /// <summary>
+        /// Put a different map in place of this one, for tgm_restore. Marked dirty so it is
+        /// written to the character, and so the next merge sends it like any other change.
+        /// </summary>
+        internal static void Replace(MapStore store)
+        {
+            if (store == null) return;
+            Store = store;
+            Loaded = true;
+            IsNew = false;
+            MarkDirty();
+        }
         internal static bool Loaded { get; private set; }
         internal static bool Dirty { get; private set; }
         /// <summary>True when this character has never had a map for this world: it receives the shared map once on spawn.</summary>
@@ -50,6 +63,14 @@ namespace TheGreatestMap
         /// <summary>The map as it stands has gone to the server, so it need not go again unchanged.</summary>
         internal static void Sent() => Dirty = false;
 
+        /// <summary>Which character on which world, for naming a backup of this map.</summary>
+        private static string Name(Player player)
+        {
+            string who = player != null ? player.GetPlayerName() : "character";
+            var world = ZNet.World;
+            return (string.IsNullOrEmpty(who) ? "character" : who) + "_" + (world != null ? world.m_name : "world");
+        }
+
         internal static void LoadFrom(Player player)
         {
             Store = new MapStore();
@@ -60,9 +81,14 @@ namespace TheGreatestMap
             if (!player.m_customData.TryGetValue(Key, out var data) || string.IsNullOrEmpty(data)) { IsNew = true; return; }
             try
             {
-                Store = MapStore.FromBytes(Utils.Decompress(Convert.FromBase64String(data)));
+                var stored = Utils.Decompress(Convert.FromBase64String(data));
+                Store = MapStore.FromBytes(stored);
                 if (Store.ReadVersion < MapStore.FormatVersion)
                 {
+                    // Before anything saves over it. A personal map cannot be copied as a file,
+                    // because it lives inside the character; this writes out the bytes that were
+                    // in there, which tgm_restore reads back.
+                    MapBackup.Keep(Name(player), Store.ReadVersion, stored);
                     TheGreatestMapMod.Log.LogInfo(
                         $"[TheGreatestMap] Your own map was in format {Store.ReadVersion} and has been brought up to " +
                         $"{MapStore.FormatVersion}: {Store.Pins.Count} markers, {Store.LegacyTombstones.Count} erasure(s) carried over.");
