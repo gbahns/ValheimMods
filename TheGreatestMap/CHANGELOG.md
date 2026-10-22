@@ -1,5 +1,28 @@
 # Changelog
 
+## 4.0.0 -- 2026-10-21
+
+**Everyone must update, including the server.** A 4.0 server turns away older clients and says
+why. The way markers are identified has changed, and a 3.x client cannot read the new maps.
+
+- **The shared map is half the size on the wire.** 227 KB down to 112 KB on our server's 4,644
+  markers. Every marker carried a 33-byte made-up identifier, which was a quarter of the whole
+  map and the one part compression could do nothing with. It is gone: a marker is identified by
+  who recorded it, where it stands and what it is, which the marker already said. The game cannot
+  send more than 512 KB in one message, and going over it is what was disconnecting people at the
+  cartography table, so this is room to grow rather than a saving for its own sake.
+
+- **Your map brings itself up to date now.** Markers written before the mod recorded *what* a
+  thing is get filled in by themselves, shortly after you log in, once. This is what
+  `tgm_identify apply` did, and you no longer have to know it exists. Markers you placed yourself
+  are marked as placed by hand rather than left blank.
+
+Nothing to do, and nothing is lost: every marker, erasure and suppression carries over, and old
+maps are read and converted as they are opened.
+
+Small print: markers you had hidden one at a time with "Hide this marker" are shown again once,
+because that list referred to the old identifiers. Hide them again and they stay hidden.
+
 ## 3.2.1 — 2026-10-21
 
 **Farms are no longer mapped plant by plant.** Planting a turnip grows the very same thing the

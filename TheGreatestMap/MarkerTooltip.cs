@@ -67,7 +67,9 @@ namespace TheGreatestMap
         /// <summary>Everything the tooltip reads, so any change to it is a change on screen.</summary>
         private static string Describes(SharedPin shared)
         {
-            return shared.Id + "|" + (shared.Checked ? "1" : "0") + "|" + shared.Name + "|" + ClientPins.IconOf(shared)
+            // Encode rather than ToString: this has to tell two markers apart, and ToString
+            // rounds the position to two decimals for the sake of a readable log line.
+            return shared.Key.Encode() + "|" + (shared.Checked ? "1" : "0") + "|" + shared.Name + "|" + ClientPins.IconOf(shared)
                  + "|" + shared.Author + "|" + shared.Created;
         }
 

@@ -28,7 +28,7 @@ namespace TheGreatestMap
                 if (d <= bestDistance) { bestDistance = d; best = pin; }
             }
             if (best == null) return;
-            ClientPins.RemoveStale(best.Id);
+            ClientPins.RemoveStale(best.Key);
             ClientPins.Restyle();
             TheGreatestMapMod.Message("Campfire taken down; its marker is gone.");
         }

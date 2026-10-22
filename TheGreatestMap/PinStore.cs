@@ -117,7 +117,7 @@ namespace TheGreatestMap
         {
             var delta = new MapStore();
             long now = MapStore.Now;
-            var ids = new List<string>();
+            var ids = new List<PinKey>();
             foreach (var kv in _store.Pins) if (!autoOnly || kv.Value.Auto) ids.Add(kv.Key);
             foreach (var id in ids)
             {

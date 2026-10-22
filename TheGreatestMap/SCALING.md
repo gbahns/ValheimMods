@@ -115,13 +115,25 @@ Ordered by what each one is actually for. The first removes a failure; the rest 
       Catch: a peer whose watermark we do not trust (new player, rejoined after a rollback) still
       needs the whole map, so the full path cannot go away.
 
-- [ ] **3. Drop `Id`; key on `Owner + Pos + Source`.** Halves the compressed map on its own. The
-      format change reaches tombstones too -- they key on `Id` today, and their 41 bytes become
-      about 29. Needs a format 6, a reader that still accepts 5, and a one-time conversion of
-      every stored map, including the personal copy in each character file.
+- [x] **3. Drop `Id`; key on `Owner + Pos + Source`.** Done in 4.0.0. Measured by converting the
+      live map and reading it back: 4,644 markers, **no two on one key**, every field identical
+      after a round trip, 227,299 -> 112,076 bytes deflated (**49%**), 43% of Steam's message
+      budget down to 21%.
+
+      Two things turned out differently from the plan. Tombstones could not be converted at all:
+      a tombstone names a marker that is gone, so there is nothing left to compute its new key
+      from. They are carried as they are in a section of their own (`LegacyTombstones`) and
+      consulted against the old id that an incoming pre-6 marker still carries -- dropping them
+      would have resurrected all 659 erasures, the crop markers among them. And `Source` turned
+      out to be part of the key *and* occasionally written, by tgm_identify, so changing it is a
+      rekey: `ClientPins.Reidentify` erases the old record and writes a new one, which is
+      honestly what it is.
 
 - [ ] **4. Drop `Type` from the wire.** It is recomputed from `Icon` on arrival and read nowhere
-      else. Four bytes a record, and one less field to keep honest. Free, once format 6 exists.
+      else. Four bytes a record, and one less field to keep honest. Deliberately *not* taken
+      along with item 3, to keep that change reviewable; it now needs a format 7 of its own,
+      which is a poor trade for 18 KB raw and about 600 bytes compressed. Worth doing only when
+      the format is being opened for something else -- item 5, most likely.
 
 - [ ] **5. The small fields, if the format is being changed anyway.** 4-byte timestamps against a
       mod epoch instead of 8-byte .NET ticks, `Checked` and `Auto` packed into one byte, varint
@@ -144,6 +156,24 @@ Ordered by what each one is actually for. The first removes a failure; the rest 
 
 - **Interning alone.** Measured at 4% off the compressed size. Only worth doing as part of item 5.
 - **Owner + Pos as the natural key.** Collides eight times on the live map; see above.
+- **`Created` as the third part of the key instead of `Source`.** It is provably immutable, where
+  `Source` is written once and can be taken back, so it needs no rekey machinery. `Source` was
+  chosen anyway and the machinery written, because it buys something `Created` cannot: recording
+  the same thing at the same place twice produces the *same key*, so a duplicate cannot be
+  created in the first place. Idempotence was worth more than the simpler migration.
+
+## Data fixes run themselves now (4.0.0)
+
+`Migrations.cs`. Anything that brings an old map up to date happens a few seconds after login,
+once, with no command and nothing for a player to read -- the same principle as the crop markers
+clearing themselves. Two rules for anything added there: it must be safe to run twice, because
+there is no stamp saying it has been done, and it must be cheap when there is nothing to do.
+
+Filling in what a marker stands for is the first one, which is what `tgm_identify apply` did by
+hand. It cannot settle every blank: `Portal` and `Runestone` have no prefab list, because for
+those kinds the kind *is* the whole answer, so on the live map 109 of the 430 blanks stay blank.
+Giving those a source of their own -- as hand-placed markers now get `Manual` -- is unfinished
+business.
 
 ---
 

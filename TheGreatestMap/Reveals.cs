@@ -17,22 +17,22 @@ namespace TheGreatestMap
     /// </summary>
     internal static class Reveals
     {
-        private static readonly Dictionary<string, float> _until = new Dictionary<string, float>();
-        private static readonly List<string> _lapsed = new List<string>();
+        private static readonly Dictionary<PinKey, float> _until = new Dictionary<PinKey, float>();
+        private static readonly List<PinKey> _lapsed = new List<PinKey>();
 
         internal static void Reset() => _until.Clear();
 
-        internal static void Add(string id)
+        internal static void Add(PinKey id)
         {
             float seconds = TgmConfig.RevealNewMarkers != null ? TgmConfig.RevealNewMarkers.Value : 0f;
-            if (string.IsNullOrEmpty(id) || seconds <= 0f) return;
+            if (id.IsNone || seconds <= 0f) return;
             _until[id] = Time.unscaledTime + seconds;
             ClientPins.Restyle();
         }
 
-        internal static bool IsRevealed(string id)
+        internal static bool IsRevealed(PinKey id)
         {
-            return id != null && _until.TryGetValue(id, out float until) && Time.unscaledTime < until;
+            return _until.TryGetValue(id, out float until) && Time.unscaledTime < until;
         }
 
         /// <summary>Drop lapsed reveals and ask for a redraw, so a revealed marker goes away on time.</summary>

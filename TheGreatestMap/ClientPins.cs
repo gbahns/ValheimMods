@@ -15,8 +15,8 @@ namespace TheGreatestMap
     /// </summary>
     internal static class ClientPins
     {
-        private static readonly Dictionary<string, Minimap.PinData> _pinById = new Dictionary<string, Minimap.PinData>();
-        private static readonly Dictionary<Minimap.PinData, string> _idByPin = new Dictionary<Minimap.PinData, string>();
+        private static readonly Dictionary<PinKey, Minimap.PinData> _pinById = new Dictionary<PinKey, Minimap.PinData>();
+        private static readonly Dictionary<Minimap.PinData, PinKey> _idByPin = new Dictionary<Minimap.PinData, PinKey>();
         private static readonly Color AutoTint = new Color(1f, 0.93f, 0.72f, 1f);
         private static readonly Color FireTint = new Color(1f, 0.5f, 0.12f, 1f);
         private static readonly Color CrossTint = new Color(1f, 0.33f, 0.28f, 1f);   // the cross over a crossed-off marker
@@ -58,6 +58,7 @@ namespace TheGreatestMap
             Locate.Reset();
             Watchdog.Reset();
             Tilled.Reset();
+            Migrations.Reset();
         }
 
         /// <summary>
@@ -70,7 +71,10 @@ namespace TheGreatestMap
         internal static string IconOf(SharedPin shared)
         {
             if (shared == null) return IconRegistry.FallbackKey;
-            string fromCatalog = Catalog.IconFor(shared.Source);
+            // "Manual" is not a prefab. Asking the catalog about it would find nothing, which is
+            // the right answer by luck rather than by meaning; saying so here keeps it right if
+            // some mod ever ships a prefab by that name.
+            string fromCatalog = shared.Source == SharedPin.Manual ? null : Catalog.IconFor(shared.Source);
             if (!string.IsNullOrEmpty(fromCatalog)) return fromCatalog;
             var kind = KindOf(shared);
             // The kind answers for two sorts of marker: one placed by hand, which never claimed
@@ -104,7 +108,7 @@ namespace TheGreatestMap
             var result = Store.Merge(incoming);
             long mergeMs = clock.ElapsedMilliseconds;
             if (!result.Any) return result;
-            foreach (var t in result.NewTombstones) RemovePinData(t.Id);
+            foreach (var t in result.NewTombstones) RemovePinData(t.Key);
             foreach (var pin in result.ChangedPins) ReplacePinData(pin);
             PersonalMap.MarkDirty();
             long total = clock.ElapsedMilliseconds;
@@ -154,7 +158,6 @@ namespace TheGreatestMap
             string key = IconRegistry.Normalize(icon) ?? IconRegistry.FallbackKey;
             var pin = new SharedPin
             {
-                Id = SharedPin.NewId(),
                 OwnerId = owner,
                 Author = player != null ? player.GetPlayerName() : "",
                 Name = name ?? "",
@@ -169,7 +172,7 @@ namespace TheGreatestMap
             };
             Store.Upsert(pin);
             EnsurePin(pin);
-            Reveals.Add(pin.Id);
+            Reveals.Add(pin.Key);
             PersonalMap.Touch();
             return pin;
         }
@@ -194,13 +197,13 @@ namespace TheGreatestMap
             }
             var pin = new SharedPin
             {
-                Id = SharedPin.NewId(),
                 OwnerId = owner,
                 Author = player != null ? player.GetPlayerName() : "",
                 Name = pinData.m_name ?? "",
                 Pos = pinData.m_pos,
                 Type = (int)pinData.m_type,
                 Icon = placing != null ? placing.Icon : IconRegistry.KeyForVanilla((int)pinData.m_type),
+                Source = SharedPin.Manual,
                 Checked = pinData.m_checked,
                 Auto = auto,
                 Created = MapStore.Now,
@@ -211,8 +214,8 @@ namespace TheGreatestMap
             pinData.m_save = true;
             pinData.m_ownerID = 0L;
             Store.Upsert(pin);
-            _pinById[pin.Id] = pinData;
-            _idByPin[pinData] = pin.Id;
+            _pinById[pin.Key] = pinData;
+            _idByPin[pinData] = pin.Key;
             PersonalMap.Touch();
             return pin;
         }
@@ -259,7 +262,7 @@ namespace TheGreatestMap
             if (best == null) return false;
             best.Checked = true;
             Store.Upsert(best);
-            if (_pinById.TryGetValue(best.Id, out var pinData))
+            if (_pinById.TryGetValue(best.Key, out var pinData))
             {
                 pinData.m_checked = true;
                 if (Map != null) Access.PinUpdateRequired(Map) = true;
@@ -269,9 +272,9 @@ namespace TheGreatestMap
         }
 
         /// <summary>Cross a marker off, or uncross it, from the marker menu.</summary>
-        internal static void SetChecked(string id, bool isChecked)
+        internal static void SetChecked(PinKey id, bool isChecked)
         {
-            if (id == null || !Store.Pins.TryGetValue(id, out var shared) || shared.Checked == isChecked) return;
+            if (id.IsNone || !Store.Pins.TryGetValue(id, out var shared) || shared.Checked == isChecked) return;
             shared.Checked = isChecked;
             Store.Upsert(shared);
             if (_pinById.TryGetValue(id, out var pinData))
@@ -346,16 +349,45 @@ namespace TheGreatestMap
         /// <summary>Write a changed record back and redraw it; the change merges like any other.</summary>
         internal static void UpdateMarker(SharedPin shared)
         {
-            if (shared == null || !Store.Pins.ContainsKey(shared.Id)) return;
+            if (shared == null || !Store.Pins.ContainsKey(shared.Key)) return;
             Store.Upsert(shared);
             ReplacePinData(shared);
             PersonalMap.Touch();
         }
 
-        /// <summary>Rename a marker on the personal map (the portal reconciler; the change merges like any other).</summary>
-        internal static void RenameMarker(string id, string name)
+        /// <summary>
+        /// Change what a marker says it is, which under the natural key changes which marker it
+        /// is -- so it is done as an erasure and a fresh write rather than as an edit.
+        ///
+        /// This is what tgm_identify does: it fills in what a marker stands for, for the markers
+        /// written before a marker stood for anything, and takes the answer back on the rare
+        /// occasion it was wrong. Assigning the field and saving would not work, because by the
+        /// time the save ran the record would be looked up under a key nothing is filed under,
+        /// and the change would be dropped without a word.
+        ///
+        /// The erasure does not suppress the spot. A suppression says the player does not want a
+        /// marker here; this is the mod correcting its own record of one it does want.
+        /// </summary>
+        internal static SharedPin Reidentify(SharedPin shared, string source)
         {
-            if (id == null || !Store.Pins.TryGetValue(id, out var shared) || shared.Name == name) return;
+            if (shared == null) return null;
+            string next = source ?? "";
+            if (string.Equals(shared.Source, next, System.StringComparison.Ordinal)) return shared;
+            var was = shared.Key;
+            if (!Store.Pins.ContainsKey(was)) { shared.Source = next; return shared; }
+            RemovePinData(was);
+            Store.Delete(was, out _, suppress: false);
+            shared.Source = next;
+            Store.Upsert(shared);
+            EnsurePin(shared);
+            PersonalMap.Touch();
+            return shared;
+        }
+
+        /// <summary>Rename a marker on the personal map (the portal reconciler; the change merges like any other).</summary>
+        internal static void RenameMarker(PinKey id, string name)
+        {
+            if (id.IsNone || !Store.Pins.TryGetValue(id, out var shared) || shared.Name == name) return;
             shared.Name = name ?? "";
             Store.Upsert(shared);
             ReplacePinData(shared);
@@ -366,9 +398,9 @@ namespace TheGreatestMap
         /// Erase a marker that no longer matches the world, without suppressing the spot: the
         /// thing may come back (a portal rebuilt where one stood) and should be recorded again.
         /// </summary>
-        internal static void RemoveStale(string id)
+        internal static void RemoveStale(PinKey id)
         {
-            if (id == null || !Store.Pins.ContainsKey(id)) return;
+            if (id.IsNone || !Store.Pins.ContainsKey(id)) return;
             RemovePinData(id);
             Store.Delete(id, out _, suppress: false);
             PersonalMap.Touch();
@@ -388,11 +420,11 @@ namespace TheGreatestMap
         /// </summary>
         internal static int MarkClearedNear(Vector3 pos, float radius, Category kind)
         {
-            var hits = new List<string>();
+            var hits = new List<PinKey>();
             foreach (var pin in Store.Pins.Values)
             {
                 if (!pin.Auto || pin.Checked || KindOf(pin) != kind) continue;
-                if (Geo.FlatDistance(pin.Pos, pos) <= radius) hits.Add(pin.Id);
+                if (Geo.FlatDistance(pin.Pos, pos) <= radius) hits.Add(pin.Key);
             }
             foreach (var id in hits) SetChecked(id, true);
             return hits.Count;
@@ -409,7 +441,7 @@ namespace TheGreatestMap
                 if (d <= bestDistance) { bestDistance = d; best = pin; }
             }
             if (best == null) return false;
-            SetChecked(best.Id, true);
+            SetChecked(best.Key, true);
             return true;
         }
 
@@ -444,9 +476,9 @@ namespace TheGreatestMap
         }
 
         /// <summary>Erase one marker for everyone (a tombstone carries it at the next merge). Not gated: the caller checks the server setting.</summary>
-        internal static bool EraseById(string id)
+        internal static bool EraseById(PinKey id)
         {
-            if (id == null || !Store.Pins.ContainsKey(id)) return false;
+            if (id.IsNone || !Store.Pins.ContainsKey(id)) return false;
             RemovePinData(id);
             Store.Delete(id, out _);
             PersonalMap.Touch();
@@ -456,9 +488,9 @@ namespace TheGreatestMap
         /// <summary>Erase recorded markers of one kind within a radius of a point (maintenance; tombstones carry it to everyone).</summary>
         internal static int EraseKindNear(Category kind, Vector3 pos, float radius)
         {
-            var ids = new List<string>();
+            var ids = new List<PinKey>();
             foreach (var pin in Store.Pins.Values)
-                if (pin.Auto && KindOf(pin) == kind && Geo.FlatDistance(pin.Pos, pos) <= radius) ids.Add(pin.Id);
+                if (pin.Auto && KindOf(pin) == kind && Geo.FlatDistance(pin.Pos, pos) <= radius) ids.Add(pin.Key);
             foreach (var id in ids)
             {
                 RemovePinData(id);
@@ -541,12 +573,12 @@ namespace TheGreatestMap
         internal static bool IsOurs(Minimap.PinData pin) => pin != null && _idByPin.ContainsKey(pin);
 
         /// <summary>Every marker drawn on the map, with the record behind it.</summary>
-        internal static IEnumerable<KeyValuePair<Minimap.PinData, string>> Drawn => _idByPin;
+        internal static IEnumerable<KeyValuePair<Minimap.PinData, PinKey>> Drawn => _idByPin;
 
-        internal static bool TryGet(string id, out SharedPin shared)
+        internal static bool TryGet(PinKey id, out SharedPin shared)
         {
             shared = null;
-            return id != null && Store.Pins.TryGetValue(id, out shared);
+            return !id.IsNone && Store.Pins.TryGetValue(id, out shared);
         }
 
         /// <summary>
@@ -667,14 +699,14 @@ namespace TheGreatestMap
         private static void EnsurePin(SharedPin shared)
         {
             if (Map == null) return;
-            if (_pinById.TryGetValue(shared.Id, out var existing))
+            if (_pinById.TryGetValue(shared.Key, out var existing))
             {
                 if (Access.Pins(Map).Contains(existing))
                 {
                     existing.m_checked = shared.Checked;
                     return;
                 }
-                _pinById.Remove(shared.Id);
+                _pinById.Remove(shared.Key);
                 _idByPin.Remove(existing);
             }
             // m_save must be true: vanilla's pin-under-pointer lookup (right-click erase, click to
@@ -686,18 +718,18 @@ namespace TheGreatestMap
             // no word on the map and still gives anything that reads a pin's name something to know
             // it by -- which is how a compass mod is told to leave the mushrooms off its band.
             if (string.IsNullOrEmpty(pin.m_name)) pin.m_name = IconRegistry.DisplayName(shared.Icon) ?? "";
-            _pinById[shared.Id] = pin;
-            _idByPin[pin] = shared.Id;
+            _pinById[shared.Key] = pin;
+            _idByPin[pin] = shared.Key;
         }
 
         /// <summary>Drop the marker's vanilla pin and add it again from the record (name or icon changes).</summary>
         private static void ReplacePinData(SharedPin shared)
         {
-            RemovePinData(shared.Id);
+            RemovePinData(shared.Key);
             EnsurePin(shared);
         }
 
-        private static void RemovePinData(string id)
+        private static void RemovePinData(PinKey id)
         {
             if (!_pinById.TryGetValue(id, out var old)) return;
             _pinById.Remove(id);
@@ -862,7 +894,7 @@ namespace TheGreatestMap
         internal static string DrawnState(SharedPin shared)
         {
             if (shared == null) return "";
-            if (!_pinById.TryGetValue(shared.Id, out var pin) || pin == null) return "not drawn";
+            if (!_pinById.TryGetValue(shared.Key, out var pin) || pin == null) return "not drawn";
             string color = pin.m_iconElement != null
                 ? $"{pin.m_iconElement.color.r:0.00}/{pin.m_iconElement.color.g:0.00}/{pin.m_iconElement.color.b:0.00} a{pin.m_iconElement.color.a:0.00}"
                 : "no icon";

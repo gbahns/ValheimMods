@@ -6,7 +6,6 @@ namespace TheGreatestMap
     /// <summary>One map marker, on a personal map or the shared one. "Later change wins" when maps merge.</summary>
     internal sealed class SharedPin
     {
-        public string Id = "";
         public long OwnerId;
         public string Author = "";
         public string Name = "";
@@ -23,6 +22,21 @@ namespace TheGreatestMap
         public bool Auto;       // recorded automatically (erasing it suppresses re-recording there)
         public long Created;    // DateTime.UtcNow.Ticks
         public long Modified;   // DateTime.UtcNow.Ticks of the last change; decides merges
+
+        /// <summary>
+        /// The GUID this marker was written with, for a marker read from format 4 or older. Not
+        /// written back out and not what identifies the marker any more -- kept only so a merge
+        /// can ask whether that old id was tombstoned before the tombstones were rekeyed.
+        /// </summary>
+        public string LegacyId = "";
+
+        /// <summary>
+        /// Which marker this is. Derived rather than stored; see <see cref="PinKey"/>. Recomputed
+        /// on each call because the alternative is a cached copy going stale behind a field that
+        /// was assigned directly, and a key that disagrees with its own record is the one failure
+        /// here that loses markers silently.
+        /// </summary>
+        public PinKey Key => new PinKey(OwnerId, Pos, Source);
 
         private Category? _kind;
         private bool _kindParsed;
@@ -41,7 +55,13 @@ namespace TheGreatestMap
             }
         }
 
-        public static string NewId() => Guid.NewGuid().ToString("N");
+        /// <summary>
+        /// What <see cref="Source"/> says for a marker a player placed themselves. Not a prefab
+        /// and never matched against the catalog: it means "a person put this here", which is a
+        /// complete answer to what the marker stands for, and a different answer from the blank
+        /// left by a marker written before the question was asked.
+        /// </summary>
+        public const string Manual = "Manual";
 
         /// <summary>Set the kind (for markers stored before kinds existed) and forget the cached parse.</summary>
         public void SetKind(string kind)
@@ -55,15 +75,14 @@ namespace TheGreatestMap
         {
             return new SharedPin
             {
-                Id = Id, OwnerId = OwnerId, Author = Author, Name = Name, Pos = Pos, Type = Type, Icon = Icon,
+                OwnerId = OwnerId, Author = Author, Name = Name, Pos = Pos, Type = Type, Icon = Icon,
                 Kind = Kind, Checked = Checked, Auto = Auto, Created = Created, Modified = Modified,
-                Source = Source,
+                Source = Source, LegacyId = LegacyId,
             };
         }
 
         public void Write(ZPackage pkg)
         {
-            pkg.Write(Id ?? "");
             pkg.Write(OwnerId);
             pkg.Write(Author ?? "");
             pkg.Write(Name ?? "");
@@ -80,9 +99,14 @@ namespace TheGreatestMap
 
         public static SharedPin Read(ZPackage pkg, int version)
         {
+            // Up to 5 a marker led with the GUID it was written under. From 6 it does not have
+            // one: which marker this is comes out of the owner, the position and the source,
+            // which were all in the record already. The old id is still read, because a marker
+            // arriving from an older map needs it to be matched against tombstones written
+            // before the rekey.
             var pin = new SharedPin
             {
-                Id      = pkg.ReadString(),
+                LegacyId = version < 6 ? pkg.ReadString() : "",
                 OwnerId = pkg.ReadLong(),
                 Author  = pkg.ReadString(),
                 Name    = pkg.ReadString(),

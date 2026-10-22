@@ -172,15 +172,15 @@ namespace TheGreatestMap
             if (!_haveList) return;
             if (!PersonalMap.Loaded) { _reconcileWanted = true; return; }
             _reconcileWanted = false;
-            var stale = new List<string>();
-            var renamed = new List<KeyValuePair<string, string>>();
+            var stale = new List<PinKey>();
+            var renamed = new List<KeyValuePair<PinKey, string>>();
             foreach (var pin in ClientPins.All)
             {
                 if (!pin.Auto || ClientPins.KindOf(pin) != Category.Portal) continue;
                 var live = Nearest(pin.Pos);
-                if (live == null) { stale.Add(pin.Id); continue; }
+                if (live == null) { stale.Add(pin.Key); continue; }
                 string name = string.IsNullOrEmpty(live.Name) ? "Portal" : live.Name;
-                if (pin.Name != name) renamed.Add(new KeyValuePair<string, string>(pin.Id, name));
+                if (pin.Name != name) renamed.Add(new KeyValuePair<PinKey, string>(pin.Key, name));
             }
             foreach (var kv in renamed) ClientPins.RenameMarker(kv.Key, kv.Value);
             foreach (var id in stale) ClientPins.RemoveStale(id);
@@ -393,7 +393,7 @@ namespace TheGreatestMap
             {
                 if (!pin.Auto || ClientPins.KindOf(pin) != Category.Portal) continue;
                 if (Geo.FlatDistance(pin.Pos, pos) > MatchRadius) continue;
-                ClientPins.RemoveStale(pin.Id);
+                ClientPins.RemoveStale(pin.Key);
                 TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] A portal was destroyed here; its marker is gone.");
                 break;
             }

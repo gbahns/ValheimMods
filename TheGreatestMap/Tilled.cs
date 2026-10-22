@@ -77,7 +77,7 @@ namespace TheGreatestMap
 
             foreach (var pin in doomed)
             {
-                ClientPins.RemoveStale(pin.Id);
+                ClientPins.RemoveStale(pin.Key);
                 _forgotten++;
             }
             if (doomed.Count > 0)

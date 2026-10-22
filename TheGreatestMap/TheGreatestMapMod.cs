@@ -30,7 +30,7 @@ namespace TheGreatestMap
     {
         public const string ModGuid    = "DeathMonger.TheGreatestMap";
         public const string ModName    = "The Greatest Map";
-        public const string ModVersion = "3.2.1";
+        public const string ModVersion = "4.0.0";
 
         // Oldest version whose shared-marker wire format this build still speaks. ServerSync
         // refuses peers below this, so bump it only when the format or an RPC changes, not on
@@ -43,9 +43,16 @@ namespace TheGreatestMap
         // everyone else, so neither side saw anything wrong while that player's map went stale.
         // Turning them away at the door says why, which a map that silently stops filling cannot.
         //
+        // 4.0.0: markers lost the GUID they used to be identified by and are now known by their
+        // owner, position and source instead -- format 6. Every bump before this one could be
+        // read by an older build, because the framing lets a reader step over a field it does
+        // not know; it cannot step over one that is no longer written. A 3.x client reading a
+        // 4.x map would take the owner for a name and come apart from there, so this is the
+        // first bump that genuinely has to turn people away.
+        //
         // Deliberately the floor and not ModVersion: a patch must not lock out the players who
         // installed the release before it. This rises only when the format does.
-        public const string MinCompatibleVersion = "3.0.0";
+        public const string MinCompatibleVersion = "4.0.0";
 
         internal static TheGreatestMapMod Instance { get; private set; }
         internal static ManualLogSource Log { get; private set; }
@@ -159,6 +166,7 @@ namespace TheGreatestMap
             DiscoveryLedger.Update();
             Recorder.Update();
             Tilled.Update();
+            Migrations.Update();
             TableSync.Update();
             SyncEngine.Update();
         }

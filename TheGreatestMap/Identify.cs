@@ -166,6 +166,10 @@ namespace TheGreatestMap
             }
             foreach (var pin in new List<SharedPin>(ClientPins.All))
             {
+                // Placed by a person, which is already the whole answer. Asked about it the
+                // catalog finds no such prefab, and Mistaken below would read that as a wrong
+                // answer and clear it.
+                if (pin.Source == SharedPin.Manual) { result.Placed++; continue; }
                 if (!string.IsNullOrEmpty(pin.Source))
                 {
                     // A supply of something that was told it is a building: that can only have
@@ -174,7 +178,7 @@ namespace TheGreatestMap
                     if (Mistaken(pin, byPrefab))
                     {
                         result.Corrected++;
-                        if (apply) { pin.Source = ""; ClientPins.UpdateMarker(pin); }
+                        if (apply) ClientPins.Reidentify(pin, "");
                         continue;
                     }
                     result.Known++;
@@ -230,8 +234,7 @@ namespace TheGreatestMap
                 if (!apply) continue;
                 // The trailing star of a prefix line is not part of any prefab's name, and the
                 // catalog matches a bare prefix just as well.
-                pin.Source = row.Prefab.TrimEnd('*');
-                ClientPins.UpdateMarker(pin);
+                ClientPins.Reidentify(pin, row.Prefab.TrimEnd('*'));
             }
             if (apply && result.Matched > 0) ClientPins.Restyle();
             return result;
@@ -274,8 +277,7 @@ namespace TheGreatestMap
                     named++;
                     Count(byName, Catalog.Prettify(prefab) + " (" + prefab + ")");
                     if (!apply) continue;
-                    pins[i].Source = prefab;
-                    ClientPins.UpdateMarker(pins[i]);
+                    ClientPins.Reidentify(pins[i], prefab);
                 }
                 lines.Add($"The world named {named} of {pins.Count} the icons could not settle" +
                           (nothing > 0 ? $"; {nothing} stand where it has no building on record." : "."));

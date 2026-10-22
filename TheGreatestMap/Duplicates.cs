@@ -106,7 +106,7 @@ namespace TheGreatestMap
         {
             var groups = new List<Group>();
             var byIcon = new Dictionary<string, List<SharedPin>>(System.StringComparer.OrdinalIgnoreCase);
-            var spacingOf = new Dictionary<string, float>();
+            var spacingOf = new Dictionary<PinKey, float>();
             foreach (var pin in ClientPins.All)
             {
                 string icon = IconRegistry.Normalize(ClientPins.IconOf(pin)) ?? "";
@@ -114,7 +114,7 @@ namespace TheGreatestMap
                 list.Add(pin);
                 // Once per marker, not once per comparison: working out a marker's kind is a
                 // dictionary lookup and an inference, and it was being done inside the inner loop.
-                spacingOf[pin.Id] = SpacingFor(pin);
+                spacingOf[pin.Key] = SpacingFor(pin);
             }
 
             foreach (var kv in byIcon)
@@ -122,18 +122,18 @@ namespace TheGreatestMap
                 var pins = kv.Value;
                 if (pins.Count < 2) continue;
                 var grid = new Grid();
-                foreach (var pin in pins) { float s = spacingOf[pin.Id]; if (s > grid.Size) grid.Size = s; }
+                foreach (var pin in pins) { float s = spacingOf[pin.Key]; if (s > grid.Size) grid.Size = s; }
                 foreach (var pin in pins) grid.Add(pin);
-                var taken = new HashSet<string>();
+                var taken = new HashSet<PinKey>();
                 foreach (var pin in pins)
                 {
-                    if (!taken.Add(pin.Id)) continue;
+                    if (!taken.Add(pin.Key)) continue;
                     Group group = null;
-                    float spacing = spacingOf[pin.Id];
+                    float spacing = spacingOf[pin.Key];
                     foreach (var other in grid.Near(pin.Pos))
                     {
-                        if (other == pin || taken.Contains(other.Id)) continue;
-                        if (Geo.FlatDistance(pin.Pos, other.Pos) > Mathf.Max(spacing, spacingOf[other.Id])) continue;
+                        if (other == pin || taken.Contains(other.Key)) continue;
+                        if (Geo.FlatDistance(pin.Pos, other.Pos) > Mathf.Max(spacing, spacingOf[other.Key])) continue;
                         if (!SameThing(pin, other)) continue;
                         // Everything in a cluster has to be one thing with everything else in it,
                         // not merely with the first of them: an unnamed marker between two
@@ -141,12 +141,12 @@ namespace TheGreatestMap
                         if (group != null && !group.Drop.TrueForAll(m => SameThing(m, other))) continue;
                         if (group == null) group = new Group { Keep = pin };
                         group.Drop.Add(other);
-                        taken.Add(other.Id);
+                        taken.Add(other.Key);
                     }
                     if (group == null) continue;
                     // The lowest id survives, so every map folds the pair the same way round.
                     foreach (var member in group.Drop)
-                        if (string.CompareOrdinal(member.Id, group.Keep.Id) < 0)
+                        if (member.Key.CompareTo(group.Keep.Key) < 0)
                         {
                             group.Drop.Add(group.Keep);
                             group.Keep = member;
@@ -180,7 +180,7 @@ namespace TheGreatestMap
                 {
                     // Erased, not suppressed: nothing is being rejected here, and the spot must stay
                     // recordable -- the survivor is standing on it.
-                    ClientPins.RemoveStale(loser.Id);
+                    ClientPins.RemoveStale(loser.Key);
                     dropped++;
                 }
             }

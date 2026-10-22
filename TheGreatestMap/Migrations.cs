@@ -1,0 +1,90 @@
+using UnityEngine;
+
+namespace TheGreatestMap
+{
+    /// <summary>
+    /// Bringing an old map up to date without anybody being told to.
+    ///
+    /// Every time this mod has learned to record something better, the maps already written stayed
+    /// as they were, and the repair was a console command somebody had to hear about and run --
+    /// tgm_identify for what a marker stands for, tgm_erase for the markers that should never have
+    /// been written. That is not a repair. It works for the one person who read the changelog, and
+    /// everyone else keeps a map that is quietly worse than the mod can make it, forever.
+    ///
+    /// Clearing crop markers was the first thing done the other way: it happens as the player walks
+    /// about, nobody is told anything, and a field tidies itself. This is the same idea applied to
+    /// the rest. Each fix runs once, early in a session, and says in the log what it did.
+    ///
+    /// <para>Rules for anything added here. It must be <b>safe to run twice</b>, because it will
+    /// be -- there is no stamp saying it has been done, on purpose, since a stamp is one more
+    /// thing to get out of step with the map it describes. It must be <b>cheap when there is
+    /// nothing to do</b>, because that is the usual case. And it must only make changes it can
+    /// justify from what is on the map already: no reaching out to the server, no guessing. The
+    /// guessing belongs in tgm_identify, where a person is asking for it and can read the answer
+    /// before it is written.</para>
+    /// </summary>
+    internal static class Migrations
+    {
+        /// <summary>Long enough after the map loads that nothing races the first draw.</summary>
+        private const float DelaySeconds = 5f;
+
+        private static bool _done;
+        private static float _at;
+
+        internal static void Reset()
+        {
+            _done = false;
+            _at = 0f;
+        }
+
+        internal static void Update()
+        {
+            if (_done) return;
+            if (Player.m_localPlayer == null || !PersonalMap.Loaded) return;
+            if (_at == 0f) { _at = Time.unscaledTime + DelaySeconds; return; }
+            if (Time.unscaledTime < _at) return;
+            _done = true;
+            try { Run(); }
+            catch (System.Exception e)
+            {
+                TheGreatestMapMod.Log.LogError("[TheGreatestMap] Bringing the map up to date failed: " + e);
+            }
+        }
+
+        private static void Run()
+        {
+            int named = NameTheHandPlaced();
+            int identified = Identify.Run(apply: true).Matched;
+            if (named == 0 && identified == 0) return;
+            ClientPins.Restyle();
+            var parts = new System.Collections.Generic.List<string>();
+            if (identified > 0) parts.Add($"worked out what {identified} marker(s) stand for");
+            if (named > 0) parts.Add($"marked {named} as placed by hand");
+            TheGreatestMapMod.Log.LogInfo(
+                "[TheGreatestMap] Brought the map up to date: " + string.Join(", ", parts.ToArray()) +
+                ". Markers written before the mod recorded what a thing is are filled in once, " +
+                "here, so nobody has to run anything.");
+        }
+
+        /// <summary>
+        /// A marker somebody placed themselves says so, rather than leaving the field blank.
+        ///
+        /// Blank used to mean two different things -- "placed by hand" and "recorded before this
+        /// field existed" -- and a marker cannot be told which it is from a blank. It matters more
+        /// now that what a marker stands for is part of what identifies it: a hand-placed marker
+        /// and a not-yet-identified one, dropped by the same player on the same spot, would
+        /// otherwise be one marker.
+        /// </summary>
+        private static int NameTheHandPlaced()
+        {
+            int n = 0;
+            foreach (var pin in new System.Collections.Generic.List<SharedPin>(ClientPins.All))
+            {
+                if (pin == null || pin.Auto || !string.IsNullOrEmpty(pin.Source)) continue;
+                ClientPins.Reidentify(pin, SharedPin.Manual);
+                n++;
+            }
+            return n;
+        }
+    }
+}

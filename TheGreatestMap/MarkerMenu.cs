@@ -339,7 +339,7 @@ namespace TheGreatestMap
         private static List<KeyValuePair<string, Action>> BuildItems(SharedPin pin)
         {
             var items = new List<KeyValuePair<string, Action>>();
-            string id = pin.Id;
+            var id = pin.Key;
             string icon = pin.Icon;
             string iconName = IconRegistry.DisplayName(icon);
             var kind = ClientPins.KindOf(pin);
@@ -425,8 +425,8 @@ namespace TheGreatestMap
             string label = pin.Auto ? "Erase for everyone" : "Delete this marker";
             if (!mayDelete) items.Add(Item($"{label} ({whyNot})", null));
             else items.Add(Item(label, canEdit
-                ? () => { if (ClientPins.EraseById(id)) Note(pin.Auto ? "Marker erased." : "Marker deleted."); }
-                : (Action)null, "take out your map"));
+                ? (Action)(() => { if (ClientPins.EraseById(id)) Note(pin.Auto ? "Marker erased." : "Marker deleted."); })
+                : null, "take out your map"));
 
             if (ViewPrefs.Count > 0 || TgmConfig.AnythingHidden())
                 items.Add(Item("Show all hidden", () =>

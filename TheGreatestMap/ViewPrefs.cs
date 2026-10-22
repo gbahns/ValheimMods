@@ -13,21 +13,21 @@ namespace TheGreatestMap
     internal static class ViewPrefs
     {
         private const string Key = "TheGreatestMap.HiddenMarkers";
-        private static readonly HashSet<string> _hidden = new HashSet<string>(StringComparer.Ordinal);
+        private static readonly HashSet<PinKey> _hidden = new HashSet<PinKey>();
 
         internal static int Count => _hidden.Count;
 
-        internal static bool IsHidden(string id) => id != null && _hidden.Contains(id);
+        internal static bool IsHidden(PinKey id) => _hidden.Contains(id);
 
-        internal static void Hide(string id)
+        internal static void Hide(PinKey id)
         {
-            if (string.IsNullOrEmpty(id) || !_hidden.Add(id)) return;
+            if (id.IsNone || !_hidden.Add(id)) return;
             Refresh();
         }
 
-        internal static void Unhide(string id)
+        internal static void Unhide(PinKey id)
         {
-            if (id != null && _hidden.Remove(id)) Refresh();
+            if (_hidden.Remove(id)) Refresh();
         }
 
         internal static void Clear()
@@ -48,8 +48,11 @@ namespace TheGreatestMap
             _hidden.Clear();
             if (player == null || player.m_customData == null) return;
             if (!player.m_customData.TryGetValue(Key, out var data) || string.IsNullOrEmpty(data)) return;
-            foreach (var id in data.Split(','))
-                if (id.Length > 0) _hidden.Add(id);
+            // Anything unreadable is dropped rather than argued with. The list written before
+            // markers were rekeyed names GUIDs, which no longer mean anything, so a player who
+            // had hidden markers by hand sees them once more and can hide them again.
+            foreach (var text in data.Split(','))
+                if (PinKey.TryDecode(text, out var id)) _hidden.Add(id);
         }
 
         internal static void SaveTo(Player player)
@@ -61,8 +64,10 @@ namespace TheGreatestMap
                 var pins = PersonalMap.Store.Pins;
                 _hidden.RemoveWhere(id => !pins.ContainsKey(id));
             }
-            if (_hidden.Count == 0) player.m_customData.Remove(Key);
-            else player.m_customData[Key] = string.Join(",", _hidden);
+            if (_hidden.Count == 0) { player.m_customData.Remove(Key); return; }
+            var parts = new List<string>(_hidden.Count);
+            foreach (var id in _hidden) parts.Add(id.Encode());
+            player.m_customData[Key] = string.Join(",", parts.ToArray());
         }
     }
 
