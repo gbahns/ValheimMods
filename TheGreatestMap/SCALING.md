@@ -216,31 +216,45 @@ away 325 markers' identities in an evening before anyone noticed.
 | `Checked` | **keep** | the one piece of state that genuinely changes in play |
 | `Name` | **keep** | a label a player wrote; no longer mutates now portals are live |
 | `Icon` | **only when it cannot be derived** | hand-placed markers, and anything whose source the catalog cannot read |
-| `Kind` | **only when it cannot be derived** | same rule: usually empty, kept where `Source` is blank or unknown |
+| `Kind` | **drop** | the icon gives it back, and the icon is kept wherever `Source` cannot |
 | `Type` | **drop** | already recomputed from `Icon` on arrival and read nowhere else |
 | `Auto` | **drop** | `Source != "Manual"` says it |
 | *(length prefix)* | **keep, shrink** | what lets an older reader step over a field it does not know; a varint makes it 1 byte instead of 4 |
 
-### The rule for a derived field, and why it is not simply "drop it"
+### The rule for a derived field
 
 > **Write a derived field only when deriving it would not reproduce it.**
 
-At write time, work out what `Kind` would come to from `Source`. If that matches what the record
-holds, write an empty string -- one byte. If it does not match, or there is nothing to derive
-from, write the real value. The check is made rather than assumed, which matters in two cases
-that a flat "drop it" would quietly destroy:
+At write time, work out what the field would come to. If that matches what the record holds,
+write an empty string -- one byte. If it does not, or there is nothing to derive from, write the
+real value. The check is made rather than assumed, which matters for a source the catalog cannot
+read: a prefab removed from the lists, or a mod uninstalled. The stored icon is then the last
+thing anybody knew, and derivation would answer nothing.
 
-- **A marker with a blank source.** There is nothing to derive from, so dropping its kind loses
-  it outright. A player who upgrades straight from 4.1.0, having never run the repair in 4.2.0,
-  has hundreds of these -- and a format change that only works if some earlier release happened
-  to run is a trap set for whoever upgrades twice in one sitting.
-- **A source the catalog cannot read.** A prefab removed from the lists, or a mod uninstalled.
-  The stored kind is the last thing anybody knew; derivation would answer nothing.
+**`Kind` needs none of that and simply goes.** Where `Source` is blank the icon is kept by the
+rule above, and `KindInference` turns an icon back into a kind -- it is built from the catalog
+and then from every category's own default icon, so even the generic house pin leads back to
+Structure. `ClientPins.KindOf` already falls back to exactly that lookup when a marker has no
+kind stored. Two fields were carrying one answer.
 
-So the conversion is lossless from any version, and 4.2.0's repair is an accelerant rather than
-a prerequisite. On the live map that is 528 markers carrying a kind and 4,113 carrying one empty
-byte -- about 500 bytes where the field costs 33,000 now, which keeps nearly all of a saving that
-was never the point. The point is that a field which can disagree with `Source` eventually will.
+Which makes the conversion lossless from any version, with no dependency on an earlier release
+having run: somebody upgrading straight from 4.1.0, who never ran the repair, keeps every
+unidentified marker's icon and gets its kind from that. **A format change that only works if an
+earlier release happened to run first is a trap for whoever upgrades twice in one sitting.**
+
+Dropping the stored kind also fixes something. The 42 greydwarf nests on the live map still say
+`Kind: Camp`, frozen from before nests moved out of camps; derived from the icon they would
+follow the catalog as it is now. A stored copy of a derived answer is a copy that can go stale,
+which is the whole case for not keeping one.
+
+### Blank will never reach zero
+
+Worth saying plainly, because it decides what the format has to stay correct for. A marker whose
+thing is **gone** -- a deposit mined out, a house pulled down, a plant picked that never grows
+back -- has nothing at its position for the world to name, and the icon-agreement gate refuses
+every other answer, rightly. Those markers keep a blank source for good. They are not a backlog
+being drained; they are a permanent minority, and they are still worth having, because where a
+thing used to be is worth knowing.
 
 **None of it needs doing yet.** It is a format break, and the rule from the last two rounds
 stands: break the format once, for all of this at once, together with the timestamps and the
