@@ -44,6 +44,16 @@ namespace TheGreatestMap
                 {
                     _store = MapStore.FromBytes(File.ReadAllBytes(_path));
                     TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Loaded the shared map: {_store.Pins.Count} markers, {_store.Tombstones.Count} erased, {_store.Suppressions.Count} erased spots, from {_path}");
+                    if (_store.ReadVersion < MapStore.FormatVersion)
+                    {
+                        // Converted as it was read. Written back at once so the next load is not
+                        // another conversion, and so the smaller format is what actually goes out.
+                        TheGreatestMapMod.Log.LogInfo(
+                            $"[TheGreatestMap] The shared map was in format {_store.ReadVersion} and has been brought up to " +
+                            $"{MapStore.FormatVersion}: {_store.Pins.Count} markers keyed by what they are, " +
+                            $"{_store.LegacyTombstones.Count} erasure(s) carried over as they were. Saving it in the new format.");
+                        MarkDirty();
+                    }
                 }
                 else
                 {

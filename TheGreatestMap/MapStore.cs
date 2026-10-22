@@ -89,6 +89,14 @@ namespace TheGreatestMap
         /// </summary>
         public readonly Dictionary<string, long> LegacyTombstones = new Dictionary<string, long>();
 
+        /// <summary>
+        /// Which format this store was read out of, or the current one for a store built here.
+        /// A map read from an older format has been converted in memory and the copy on disk is
+        /// still the old one, so whoever loaded it should write it back rather than leaving the
+        /// conversion to be redone on every load.
+        /// </summary>
+        public int ReadVersion = FormatVersion;
+
         public static long Now => DateTime.UtcNow.Ticks;
 
         // ── local edits ─────────────────────────────────────────────────────────────
@@ -241,7 +249,7 @@ namespace TheGreatestMap
             // and split the group in two, which is the one failure worth going out of the way to
             // avoid -- read every shape, enforce none.
             if (version < 1) throw new InvalidDataException("Unsupported map format " + version);
-            var store = new MapStore();
+            var store = new MapStore { ReadVersion = version };
             int n = pkg.ReadInt();
             for (int i = 0; i < n; i++)
             {

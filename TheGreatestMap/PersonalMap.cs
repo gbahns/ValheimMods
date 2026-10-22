@@ -61,6 +61,13 @@ namespace TheGreatestMap
             try
             {
                 Store = MapStore.FromBytes(Utils.Decompress(Convert.FromBase64String(data)));
+                if (Store.ReadVersion < MapStore.FormatVersion)
+                {
+                    TheGreatestMapMod.Log.LogInfo(
+                        $"[TheGreatestMap] Your own map was in format {Store.ReadVersion} and has been brought up to " +
+                        $"{MapStore.FormatVersion}: {Store.Pins.Count} markers, {Store.LegacyTombstones.Count} erasure(s) carried over.");
+                    MarkDirty();
+                }
                 TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Personal map loaded: {Store.Pins.Count} markers, {Store.Tombstones.Count} erased.");
             }
             catch (Exception e)
