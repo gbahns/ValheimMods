@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.10.18 - unreleased
+
+- **The group report no longer blames the network for everyone standing in the same base.** The
+  simultaneity test counts seconds where two or more machines stalled and compares that against
+  what unrelated machines at the same rates would give. Above chance, it concluded "look at the
+  server and at the network path everyone shares" - which is one explanation for coupled stalls and
+  not the likeliest one. Two players walking into the same base stall in the same second for an
+  entirely local reason: they are each instantiating the same several thousand build pieces.
+
+  So the test now asks where the stalling machines were. Each is judged against its own usual
+  surroundings rather than one threshold for everybody, since bases differ by an order of magnitude,
+  with a floor under it so that four times a median of twelve pieces is not called a base. Where
+  most of the shared seconds had two or more clients standing in built-up ground, the verdict says
+  so and points at the base instead. The counts are printed either way.
+
+  Measured only over the shared seconds where at least two of the stalling clients could be placed
+  at all, so an old client that sent no position cannot argue the base either way. The server is
+  never placeable - it stands nowhere - which is what makes a second it stalled in the one kind that
+  really does implicate the shared path, now reported on its own line.
+
+  On the four-player hour that prompted this, 23 of the 32 shared seconds it could place had two or
+  more clients standing in the base. The old verdict read "well above chance" and sent the search
+  in the wrong direction; the stalls were the cost of loading six thousand build pieces.
+
+- **A parenthesised note in the settings line is no longer read as five separate settings.** The
+  change watcher compares the settings line token-wise, treating a token without '=' as a bare flag.
+  That is right for "fullscreen" and wrong for "live:lodBias=5 (menu implies 2 - overridden)", whose
+  note parsed as flags named "(menu", "implies", "2", "-" and "overridden)". They appear and vanish
+  together, so one real event - a mod starting to override the LOD bias - was reported five times
+  over, with the words of the sentence standing in as the names of the settings that moved. The note
+  now folds into the value in front of it and reads as the one thing it is.
+
 ## 0.10.17 - 2026-10-20
 
 - **`dsl_hotspots mods`: time the per-frame methods mods define themselves.** `drill` can only

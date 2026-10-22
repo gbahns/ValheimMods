@@ -102,8 +102,8 @@ namespace DiagnoseServerLag
         ///
         /// Both lines are space-separated key=value tokens from the same producer, so a token-wise
         /// comparison is exact rather than a text diff. A token without '=' - "fullscreen", or the
-        /// "(menu implies 5 - overridden)" note - is compared as a bare flag, because those move
-        /// too and a change in them is worth seeing.
+        /// screen size - is compared as a bare flag, because those move too and a change in them is
+        /// worth seeing. A parenthesised note is not a flag: see Parse.
         /// </summary>
         private static string Diff(string before, string after)
         {
@@ -127,18 +127,60 @@ namespace DiagnoseServerLag
             return sb.Length == 0 ? "something not in the settings line" : sb.ToString();
         }
 
+        /// <summary>
+        /// The settings line as key -> value, with a parenthesised note folded into the value in
+        /// front of it rather than split on its spaces.
+        ///
+        /// Splitting on spaces alone, "live:lodBias=5 (menu implies 2 - overridden)" parses as a
+        /// value plus five bare flags named "(menu", "implies", "2", "-" and "overridden)". They
+        /// appear and vanish together, so one real change - a mod starting to override the LOD bias -
+        /// was reported five times over with the words of the sentence as the names of the settings
+        /// that moved. Folded in, it reads as the one thing it is:
+        /// live:lodBias 2 -> 5 (menu implies 2 - overridden).
+        /// </summary>
         private static Dictionary<string, string> Parse(string line)
         {
             var d = new Dictionary<string, string>();
             if (string.IsNullOrEmpty(line)) return d;
+            string last = null;
+            int depth = 0;
             foreach (var tok in line.Split(' '))
             {
                 if (tok.Length == 0) continue;
+
+                // Inside a note: everything belongs to the value that opened it, until the
+                // parentheses balance again. Counted rather than matched on the closing token,
+                // because a note may hold parentheses of its own.
+                if (depth > 0 && last != null)
+                {
+                    d[last] = d[last] + " " + tok;
+                    depth += Count(tok, '(') - Count(tok, ')');
+                    if (depth < 0) depth = 0;
+                    continue;
+                }
+
+                int open = Count(tok, '('), close = Count(tok, ')');
+                // A note begins where a token opens a parenthesis, whether or not it closes it in
+                // the same word. With nothing in front of it to annotate it stays a flag of its own.
+                if (last != null && (tok[0] == '(' || open > close))
+                {
+                    d[last] = d[last] + " " + tok;
+                    depth = open > close ? open - close : 0;
+                    continue;
+                }
+
                 int eq = tok.IndexOf('=');
-                if (eq > 0) d[tok.Substring(0, eq)] = tok.Substring(eq + 1);
-                else d[tok] = "present";
+                if (eq > 0) { last = tok.Substring(0, eq); d[last] = tok.Substring(eq + 1); }
+                else { last = tok; d[last] = "present"; }
             }
             return d;
+        }
+
+        private static int Count(string s, char c)
+        {
+            int n = 0;
+            for (int i = 0; i < s.Length; i++) if (s[i] == c) n++;
+            return n;
         }
 
         /// <summary>

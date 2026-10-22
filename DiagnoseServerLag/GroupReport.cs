@@ -27,6 +27,13 @@ namespace DiagnoseServerLag
         /// <summary>Seconds in which this many machines stalled together count as one shared event.</summary>
         private const int Together = 2;
 
+        /// <summary>
+        /// Pieces nearby that make a place count as built-up rather than wild, below which no
+        /// ratio against a machine's own median counts either. A long stretch of forest loads
+        /// thousands of objects and a handful of pieces; a base is the other way round.
+        /// </summary>
+        private const int BuiltUpFloor = 1000;
+
         internal static string Build(int seconds, List<ClientSeries> clients, int expected, out string csvPath, out string csvText)
         {
             csvPath = null;
@@ -231,6 +238,45 @@ namespace DiagnoseServerLag
                 foreach (var sec in c.Seconds)
                     if (sec.UtcTicks > 0) Note(Trim(c.Name, 16), ToSecond(sec.UtcTicks), sec.Stalls > 0);
 
+            // Where each machine was standing, so a shared second can be told from a shared cause.
+            // Two players walking into the same base stall together for an entirely local reason,
+            // and the coincidence test cannot see the difference on its own: an hour whose overlaps
+            // were almost all one base read as "well above chance, look at the network".
+            //
+            // Only clients that sent the full record have this. An older client's seconds still
+            // count towards the coincidence test and simply cannot be placed.
+            var pieces = new Dictionary<string, Dictionary<long, int>>();
+            void NotePieces(string who, long second, int built)
+            {
+                if (!pieces.TryGetValue(who, out var p)) pieces[who] = p = new Dictionary<long, int>();
+                p[second] = built;
+            }
+            foreach (var c in clients)
+                foreach (var s in c.Samples)
+                    if (s.UtcTicks > 0) NotePieces(Trim(c.Name, 16), ToSecond(s.UtcTicks), s.NearbyPieces);
+
+            // Each machine against its own usual surroundings rather than one number for everybody,
+            // because bases differ by an order of magnitude and a hut is not a mistake.
+            var typical = new Dictionary<string, int>();
+            foreach (var kv in pieces)
+            {
+                var all = new List<int>(kv.Value.Values);
+                all.Sort();
+                typical[kv.Key] = all.Count == 0 ? 0 : all[all.Count / 2];
+            }
+
+            bool BuiltUp(string who, long second)
+            {
+                if (!pieces.TryGetValue(who, out var p) || !p.TryGetValue(second, out int built)) return false;
+                int usual = typical.TryGetValue(who, out int t) ? t : 0;
+                // A floor as well as a ratio: four times a median of twelve pieces is a campfire.
+                return built >= BuiltUpFloor && built >= usual * 4;
+            }
+            bool Placeable(string who, long second)
+            {
+                return who != "server" && pieces.TryGetValue(who, out var p) && p.ContainsKey(second);
+            }
+
             int machines = reported.Count;
             if (machines <= 1)
                 return "Only this machine reported, so nothing can be told apart. Ask again with players connected.";
@@ -274,6 +320,28 @@ namespace DiagnoseServerLag
                     togetherAt.Add(new KeyValuePair<long, List<string>>(sec, who));
             }
 
+            // How many of the shared seconds shared ground as well. Two or more clients standing in
+            // built-up land is a complete explanation for the overlap on its own. Counted only over
+            // the seconds where at least two of the stalling clients could be placed at all, so an
+            // old client that sent no position cannot argue the base either way. The server is never
+            // placeable - it stands nowhere - which makes a second it stalled in the one kind that
+            // does implicate the path everyone shares.
+            int placed = 0, measurable = 0, serverIn = 0;
+            foreach (var kv in togetherAt)
+            {
+                int builtUp = 0, known = 0;
+                foreach (string who in kv.Value)
+                {
+                    if (!Placeable(who, kv.Key)) continue;
+                    known++;
+                    if (BuiltUp(who, kv.Key)) builtUp++;
+                }
+                if (kv.Value.Contains("server")) serverIn++;
+                if (known < 2) continue;
+                measurable++;
+                if (builtUp >= 2) placed++;
+            }
+
             // Expected, were the machines unrelated: the chance that two or more stall in the same
             // second, which is one minus the chance none does minus the chance exactly one does.
             double noneP = 1.0;
@@ -306,13 +374,30 @@ namespace DiagnoseServerLag
                 }
             }
 
+            if (measurable > 0 && placed > 0)
+                sb.AppendLine($"  {placed} of the {measurable} that can be placed had two or more clients " +
+                              "standing in built-up ground, which accounts for the overlap without any " +
+                              "shared cause: loading a base stalls whoever is in it.");
+            if (serverIn > 0)
+                sb.AppendLine($"  The server was one of the stalling machines in {serverIn} of them.");
+
             // The verdict is the comparison, never the count. The thresholds are deliberately wide:
             // this is a handful of machines over an hour, not a sample that supports a fine call.
             if (expected < 0.5 && togetherAt.Count == 0)
                 sb.AppendLine("  Too few stalls anywhere to tell. Nothing points at the server.");
             else if (togetherAt.Count >= expected * 2.0 && togetherAt.Count >= 3)
-                sb.AppendLine("  Well above chance. Look at the server and at the network path everyone " +
-                              "shares, not at any one computer.");
+            {
+                // Above chance says the stalls are not independent. It does not say what couples
+                // them, and standing in the same base couples them locally - so the shared-ground
+                // count answers first, wherever there was enough position data to compute it.
+                if (measurable > 0 && placed * 2 >= measurable)
+                    sb.AppendLine("  Above chance, but shared ground accounts for most of it. Look at what " +
+                                  "the base costs to load, not at the server or the network.");
+                else
+                    sb.AppendLine("  Well above chance, and not explained by where anyone was standing. " +
+                                  "Look at the server and at the network path everyone shares, not at any " +
+                                  "one computer.");
+            }
             else if (togetherAt.Count <= expected * 0.5)
                 sb.AppendLine("  Below chance: these machines stall independently, and whoever stalls most " +
                               "is not dragging the others down with them.");
