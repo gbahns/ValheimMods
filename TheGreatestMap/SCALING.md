@@ -115,10 +115,23 @@ Ordered by what each one is actually for. The first removes a failure; the rest 
       Catch: a peer whose watermark we do not trust (new player, rejoined after a rollback) still
       needs the whole map, so the full path cannot go away.
 
-- [x] **3. Drop `Id`; key on `Owner + Pos + Source`.** Done in 4.0.0. Measured by converting the
-      live map and reading it back: 4,644 markers, **no two on one key**, every field identical
-      after a round trip, 227,299 -> 112,076 bytes deflated (**49%**), 43% of Steam's message
-      budget down to 21%.
+- [x] **3. Drop `Id`; key on `Owner + Pos + Source`.** Done in 4.0.0, and since confirmed on the
+      live server rather than in simulation. The server converted its map, a client synced at a
+      cartography table, and the file it wrote back was compared field by field with the copy
+      taken beforehand:
+
+      | | before | after |
+      |---|---:|---:|
+      | format | 5 | 6 |
+      | bytes | 593,624 | 454,251 |
+      | deflated | 227,299 | **113,120** |
+      | markers | 4,644 | 4,644 |
+      | erasures | 659 | 659 + 337 |
+
+      No marker lost, none gained, no field changed on any marker except the 337 sources the
+      migration filled in, and every one of the 659 old erasures still recorded. The 337 new
+      tombstones are the rekeys, one each. 43% of Steam's message budget down to 22%. The table
+      sync itself: 246 ms of table work, 111.5 KB sent, the server answering in 1.6 s.
 
       Two things turned out differently from the plan. Tombstones could not be converted at all:
       a tombstone names a marker that is gone, so there is nothing left to compute its new key
