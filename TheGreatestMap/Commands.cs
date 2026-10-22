@@ -298,6 +298,26 @@ namespace TheGreatestMap
                     }
 
                     Say($"{total} markers: {crossed} crossed off, {placed} placed by hand.");
+                    // The one number worth watching. While it was not reported, 325 markers lost
+                    // their identity in an evening and nobody could have known without comparing
+                    // the map against a copy taken the day before.
+                    var unknown = Repair.Unknown();
+                    if (unknown.Count > 0)
+                    {
+                        var unknownByKind = new Dictionary<string, int>();
+                        foreach (var pin in unknown)
+                        {
+                            var k = ClientPins.KindOf(pin);
+                            string label = k.HasValue ? Categories.Label(k.Value) : "no kind";
+                            unknownByKind.TryGetValue(label, out int n);
+                            unknownByKind[label] = n + 1;
+                        }
+                        var bits = new List<string>();
+                        foreach (var kv in unknownByKind) bits.Add($"{kv.Value} {kv.Key}");
+                        bits.Sort();
+                        Say($"{unknown.Count} do not know what they are ({string.Join(", ", bits.ToArray())}); " +
+                            "the world is asked about these at every login, and tgm_identify asks now.");
+                    }
                     foreach (var kv in byKind)
                         Say($"  {kv.Key}: {kv.Value} ({100f * kv.Value / total:0.#}%)");
                     Say("By icon, the busiest first:");

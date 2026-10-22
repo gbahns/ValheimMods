@@ -1,5 +1,28 @@
 # Changelog
 
+## 4.2.0 -- 2026-10-22
+
+**Markers that did not know what they were now work it out by themselves.** Update the server too.
+
+Old maps carry markers written before the mod recorded what a thing *is* -- a house pin that
+could be an abandoned house, a ruin or a stone tower, with nothing on it to say which. Until now
+the only cure was a console command. Now the game is asked at every login and the markers settle
+themselves, with nothing to run and nothing to read.
+
+The server knows what stands anywhere in the world, whether or not anybody is there, so your map
+is repaired wherever you have been rather than only where you go back to.
+
+- **An answer is only believed when it agrees with the marker.** The world can truthfully say
+  "this is the ruin's ground" about a patch of carrots growing inside a ruin -- a true answer to
+  a different question, and the reason this used to be a manual command people were warned about.
+  Now the thing the world names has to wear the icon the marker already wears, or it is left
+  alone. A carrot patch is not a ruin, and the two no longer get confused.
+- **Markers whose kind is the whole answer say so.** A runestone is a runestone; there was never
+  anything further to work out, but those markers looked exactly like the ones nobody had got
+  round to. Now they are marked as settled, and "unidentified" means only what it says.
+- **`tgm_counts` reports how many markers do not know what they are**, by kind. It is the number
+  to watch: if it climbs, something is eating your map's memory of itself.
+
 ## 4.1.0 -- 2026-10-22
 
 **Portals are drawn from the world now instead of being remembered.** Update the server too.

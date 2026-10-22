@@ -63,6 +63,24 @@ namespace TheGreatestMap
         /// </summary>
         public const string Manual = "Manual";
 
+        /// <summary>
+        /// What <see cref="Source"/> says for a marker whose kind is the whole answer: a
+        /// runestone is a runestone and the catalog has no list of kinds of them, so there is
+        /// nothing further to work out. Written "kind:Runestone", in the same shape as the icon
+        /// keys, because no prefab can be called that -- and Valheim really does have a prefab
+        /// named "portal", so a bare kind name here would have been a trap waiting.
+        ///
+        /// It exists so that blank means one thing. While blank meant both "nobody has worked
+        /// this out" and "there is nothing to work out", every rule that read it was guessing,
+        /// and one of them -- which copy of a marker survives a fold -- threw away 325 markers'
+        /// identities in an evening before anybody noticed.
+        /// </summary>
+        public static string KindOnly(Category kind) => "kind:" + kind;
+
+        /// <summary>True for a source that names a kind rather than a prefab.</summary>
+        public static bool IsKindOnly(string source) =>
+            !string.IsNullOrEmpty(source) && source.StartsWith("kind:", StringComparison.Ordinal);
+
         /// <summary>Set the kind (for markers stored before kinds existed) and forget the cached parse.</summary>
         public void SetKind(string kind)
         {

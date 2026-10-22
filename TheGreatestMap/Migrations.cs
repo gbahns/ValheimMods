@@ -35,6 +35,7 @@ namespace TheGreatestMap
         {
             _done = false;
             _at = 0f;
+            Repair.Reset();
         }
 
         internal static void Update()
@@ -55,10 +56,16 @@ namespace TheGreatestMap
         {
             int named = NameTheHandPlaced();
             int identified = Identify.Run(apply: true).Matched;
-            if (named == 0 && identified == 0) return;
+            int kinded = NameTheKindOnly();
+            // Whatever the catalog could not settle, the world is asked about -- and answers only
+            // count where they agree with the icon the marker already wears. The answer comes
+            // back later, over the network, and says what it did in the log itself.
+            Repair.Run();
+            if (named == 0 && identified == 0 && kinded == 0) return;
             ClientPins.Restyle();
             var parts = new System.Collections.Generic.List<string>();
             if (identified > 0) parts.Add($"worked out what {identified} marker(s) stand for");
+            if (kinded > 0) parts.Add($"said of {kinded} that their kind is the whole answer");
             if (named > 0) parts.Add($"marked {named} as placed by hand");
             TheGreatestMapMod.Log.LogInfo(
                 "[TheGreatestMap] Brought the map up to date: " + string.Join(", ", parts.ToArray()) +
@@ -75,6 +82,25 @@ namespace TheGreatestMap
         /// and a not-yet-identified one, dropped by the same player on the same spot, would
         /// otherwise be one marker.
         /// </summary>
+        /// <summary>
+        /// A runestone is a runestone. Kinds with no prefab list have nothing to look up, so
+        /// their markers said nothing at all about themselves and were indistinguishable from
+        /// the ones nobody had got round to working out. Now they say so.
+        /// </summary>
+        private static int NameTheKindOnly()
+        {
+            int n = 0;
+            foreach (var pin in new System.Collections.Generic.List<SharedPin>(ClientPins.All))
+            {
+                if (pin == null || !pin.Auto || !string.IsNullOrEmpty(pin.Source)) continue;
+                var kind = ClientPins.KindOf(pin);
+                if (!kind.HasValue || Categories.UsesPrefabList(kind.Value)) continue;
+                ClientPins.Reidentify(pin, SharedPin.KindOnly(kind.Value));
+                n++;
+            }
+            return n;
+        }
+
         private static int NameTheHandPlaced()
         {
             int n = 0;

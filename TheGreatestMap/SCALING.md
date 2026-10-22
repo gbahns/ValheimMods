@@ -184,6 +184,51 @@ Ordered by what each one is actually for. The first removes a failure; the rest 
   the same thing at the same place twice produces the *same key*, so a duplicate cannot be
   created in the first place. Idempotence was worth more than the simpler migration.
 
+## The field set we are heading for
+
+One rule: **store only what cannot be derived.** `Source` says what a thing is, and the icon, the
+kind, the pin type and whether it was recorded all follow from that -- so all four are working
+copies of an answer the record already gives, and a working copy can disagree with the thing it
+copies. Twice now that is exactly what went wrong.
+
+`Source` takes one of four shapes, and between them they leave no gaps:
+
+| shape | means | example |
+|---|---|---|
+| `<prefab>` | the thing the catalog matched | `SunkenCrypt4` |
+| `kind:<Category>` | the kind is the whole answer, nothing further to work out | `kind:Runestone` |
+| `Manual` | a player put this here; the stored `Icon` is their choice | `Manual` |
+| *blank* | **a defect.** Recorded, not yet identified -- counted, and repaired | |
+
+Blank meaning exactly one thing is the point. While it meant both "nobody has worked this out"
+and "there is nothing to work out", every rule that read it was guessing, and the fold rule threw
+away 325 markers' identities in an evening before anyone noticed.
+
+### What a record would hold
+
+| field | keep? | why |
+|---|---|---|
+| `Pos` | **keep** | the key, and the thing a marker is about |
+| `OwnerId` | **keep** | the key, and who found it |
+| `Source` | **keep** | the key, and the one authoritative statement of what this is |
+| `Created` | **keep** | credit for finding it first, and the fold tie-break |
+| `Modified` | **keep** | decides merges, carries `Checked`, and is the watermark a delta sync needs |
+| `Checked` | **keep** | the one piece of state that genuinely changes in play |
+| `Name` | **keep** | a label a player wrote; no longer mutates now portals are live |
+| `Icon` | **hand-placed only** | derived from `Source` for everything recorded |
+| `Kind` | **drop** | derived from `Source` via the catalog, or from `Icon` for hand-placed |
+| `Type` | **drop** | already recomputed from `Icon` on arrival and read nowhere else |
+| `Auto` | **drop** | `Source != "Manual"` says it |
+| *(length prefix)* | **keep, shrink** | what lets an older reader step over a field it does not know; a varint makes it 1 byte instead of 4 |
+
+That is four fields gone and one kept only where it carries information. Worth about 27 bytes a
+record raw and far less compressed -- which is not the reason to do it. The reason is that a
+field which can disagree with `Source` eventually will.
+
+**None of it needs doing yet.** It is a format break, and the rule from the last two rounds
+stands: break the format once, for all of this at once, together with the timestamps and the
+positions below. Not three migrations for a few percent each.
+
 ## What is left to win
 
 **`Pos` and `Created` are 41% of the compressed map between them**, and they are the two fields
