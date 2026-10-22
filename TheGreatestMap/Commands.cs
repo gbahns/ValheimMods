@@ -173,6 +173,35 @@ namespace TheGreatestMap
                         $"[TheGreatestMap] tgm_restore: replaced {was} markers with {restored.Pins.Count} from {path}.");
                 }));
 
+            new Terminal.ConsoleCommand("tgm_scrub", "Admin: erase every marker that stands for one thing, anywhere on the map: tgm_scrub Pickable_Tar [confirm]. Carries to everyone at the next merge",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    if (Player.m_localPlayer == null) { args.Context.AddString("No player."); return; }
+                    if (args.Args.Length < 2)
+                    {
+                        args.Context.AddString("Usage: tgm_scrub <source> [confirm]   (the source is what tgm_counts and tgm_look call it, e.g. Pickable_Tar)");
+                        return;
+                    }
+                    string source = args.Args[1];
+                    var doomed = new List<SharedPin>();
+                    foreach (var pin in ClientPins.All)
+                        if (pin != null && string.Equals(pin.Source, source, System.StringComparison.OrdinalIgnoreCase))
+                            doomed.Add(pin);
+                    if (doomed.Count == 0) { args.Context.AddString($"No markers stand for \"{source}\"."); return; }
+                    if (args.Args.Length < 3 || !string.Equals(args.Args[2], "confirm", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        args.Context.AddString($"{doomed.Count} marker(s) stand for \"{source}\". Erasing carries to everyone and does not come back.");
+                        args.Context.AddString("Run again with: tgm_scrub " + source + " confirm");
+                        return;
+                    }
+                    // Erased without suppressing: the spot is not being refused, this kind of
+                    // record is. Suppressing would also stop anything else there being recorded.
+                    foreach (var pin in doomed) ClientPins.RemoveStale(pin.Key);
+                    ClientPins.Restyle();
+                    args.Context.AddString($"Erased {doomed.Count} marker(s) standing for \"{source}\".");
+                    TheGreatestMapMod.Log.LogWarning($"[TheGreatestMap] tgm_scrub: erased {doomed.Count} marker(s) with source \"{source}\".");
+                }));
+
             new Terminal.ConsoleCommand("tgm_admin", "Ask the server whether it treats you as an admin, and what player id it sees for you",
                 (Terminal.ConsoleEvent)(args =>
                 {

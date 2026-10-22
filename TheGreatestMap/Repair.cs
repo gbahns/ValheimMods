@@ -36,13 +36,24 @@ namespace TheGreatestMap
 
         internal static void Reset() => _asked = false;
 
-        /// <summary>Recorded markers that still do not know what they are, and could.</summary>
+        /// <summary>
+        /// Recorded markers that do not know what they are, and could.
+        ///
+        /// Blank is the obvious case. The other is a source naming something no catalog line
+        /// covers, which is the same predicament wearing a name: nothing can read it, so nothing
+        /// can draw from it or file it. Those come about honestly -- an outdoor location nobody
+        /// listed is still recorded as a structure, a location with an interior is still a
+        /// dungeon -- and the world may well have a better answer standing at the same spot. The
+        /// ten markers reading Pickable_Tar on the live map are all inside tar pits the catalog
+        /// does know about.
+        /// </summary>
         internal static List<SharedPin> Unknown()
         {
             var list = new List<SharedPin>();
             foreach (var pin in ClientPins.All)
             {
-                if (pin == null || !pin.Auto || !string.IsNullOrEmpty(pin.Source)) continue;
+                if (pin == null || !pin.Auto) continue;
+                if (!string.IsNullOrEmpty(pin.Source) && !string.IsNullOrEmpty(Catalog.IconFor(pin.Source))) continue;
                 var kind = ClientPins.KindOf(pin);
                 // A kind with no prefab list has nothing to look up: the kind is the whole answer,
                 // and those are given one of their own rather than left looking unidentified.
