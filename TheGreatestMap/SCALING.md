@@ -26,27 +26,36 @@ the ceiling.
 
 ## What a marker record is made of
 
-4,644 markers, 565,975 bytes of records -- **121.9 bytes each**, 95.3% of the file.
+Format 6, measured on the live server map on 2026-10-22: 4,641 markers, 587,444 bytes, 169,594
+deflated. Marker records are 412,554 of those bytes -- **88.9 bytes each**.
 
-| Field | Bytes/rec | % of file | What it is for |
-|---|---:|---:|---|
-| `Id` | 33.0 | 25.8% | A GUID, made when the marker is created. The only thing identifying a marker across machines: merges, tombstones and edits all key on it. Nothing a player ever sees. |
-| `Icon` | 14.7 | 11.5% | How the marker is *drawn* -- `item:Dandelion`, `pin:Boss`. Changed whenever we decide a different picture suits a thing better. 38 distinct values on this map. |
-| `Source` | 13.6 | 10.6% | What the marker **is**: the prefab the catalog matched when it was recorded (`SunkenCrypt4`). The durable half of the 3.0.0 split -- `Icon` is the picture, this is the thing. Empty for the 501 markers placed by hand. 76 distinct values. |
-| `Pos` | 12.0 | 9.4% | Three floats. World position. Also the thing that makes a marker the same marker on two maps, since the world is identical for everyone. |
-| `OwnerId` | 8.0 | 6.3% | The player id of whoever recorded it. Decides who may edit or erase it, and who a `tgm_dupes` listing blames. |
-| `Created` | 8.0 | 6.3% | `DateTime.UtcNow.Ticks` when it was first written. Orders markers for the label-thinning pass, so the same set of markers thins the same way on every machine. |
-| `Modified` | 8.0 | 6.3% | Ticks of the last change. **Decides merges** -- later change wins -- and is what a delta sync would compare against. |
-| `Kind` | 7.1 | 5.6% | The `Category` it was recorded under (`Herbs`, `Dungeon`). Drives the show/hide switches, focus, ping and the counts. Empty for the 71 placed by hand. 15 distinct values. |
-| `Author` | 6.3 | 4.9% | The player *name*, for display. Five distinct values on a map of 4,644 markers -- it is `OwnerId` spelled out, carried per record. |
-| *(record length prefix)* | 4.0 | 3.1% | Added in format 5. Lets a reader step over a record written by a newer version it does not understand, which is what makes a mixed-version group work at all. Worth keeping; a varint would make it 1--2 bytes. |
-| `Type` | 4.0 | 3.1% | The creating client's local `Minimap.PinType`. **Dead weight on the wire:** the receiver throws it away and recomputes it from `Icon` (`ClientPins.cs:305`). It survives only because format 1 had no `Icon`. |
-| `Name` | 1.2 | 0.9% | The label shown on the map. Empty on 4,548 of 4,644 -- almost every recorded marker is unlabeled, and the ones that have a name are dungeons. |
-| `Checked` | 1.0 | 0.8% | Crossed off: you have taken what was there. 830 are. |
-| `Auto` | 1.0 | 0.8% | Recorded by the mod rather than placed by hand. Erasing an `Auto` marker also writes a suppression so the recorder does not put it back. 4,573 are. |
+The deflated column is the one to read. A field compression already squeezes costs almost nothing
+to leave alone, however fat it looks on disk, and measuring that is what stopped two rounds of
+this work optimizing the wrong things.
 
-Tombstones are 27,019 bytes (659 of them, ~41 bytes each: a GUID and a timestamp). Suppressions
-are 614 bytes and are not worth a thought.
+| Field | Bytes/rec | Deflated | Shrinks | What it is for |
+|---|---:|---:|---:|---|
+| `Pos` | 12.0 | **51,213** | 1.1x | Three floats, the world position. Also what makes a marker the same marker on two maps, since the world is identical for everyone, and **part of the key**. Raw float bits are near enough random, which is why this one field is 30% of the compressed map. |
+| `Created` | 8.0 | **19,409** | 1.9x | `DateTime.UtcNow.Ticks` when first written. Orders markers for the label-thinning pass so the same set thins the same way everywhere. 100-nanosecond ticks barely compress; seconds would do the job in half the bytes. |
+| `Modified` | 8.0 | 4,297 | 8.6x | Ticks of the last change. **Decides merges** -- later change wins -- and is what a delta sync would compare against. |
+| `Icon` | 14.7 | 3,286 | 20.7x | How the marker is *drawn*: `item:Dandelion`, `pin:Icon1`. Changes whenever we decide a different picture suits a thing better. 39 distinct values. |
+| `Source` | 13.6 | 3,009 | 20.9x | What the marker **is**: the prefab the catalog matched (`SunkenCrypt4`), or `Manual` for one a player placed. The durable half of the 3.0.0 split, and the third **part of the key**. 38 distinct values; still blank on 528 recorded markers. |
+| `Kind` | 7.1 | 2,229 | 14.8x | The `Category` it was recorded under (`Herbs`, `Dungeon`). Drives the show/hide switches, focus, ping and the counts. Blank on the 62 placed by hand. 16 distinct values. |
+| `Type` | 4.0 | 2,180 | 8.5x | The creating client's local `Minimap.PinType`. **Dead weight:** the receiver throws it away and recomputes it from `Icon` (`ClientPins.cs:305`). It survives only because format 1 had no `Icon`. |
+| *(length prefix)* | 4.0 | -- | -- | Added in format 5. Lets a reader step over a record written by a newer version it does not understand, which is what makes a mixed-version group work at all. A varint would make it 1--2 bytes. |
+| `Name` | 1.2 | 923 | 6.2x | The label shown on the map. Blank on 4,537 of 4,641 -- almost every recorded marker is unlabeled. |
+| `OwnerId` | 8.0 | 456 | 81x | The player id of whoever recorded it. Decides who may edit or erase, who `tgm_dupes` blames, and is the first **part of the key**. Five distinct values, so deflate reduces it to almost nothing. |
+| `Author` | 6.3 | 457 | 64x | The player *name*, for display. Five distinct values -- it is `OwnerId` spelled out, carried on every record. |
+| `Checked` | 1.0 | 459 | 10.1x | Crossed off: you have taken what was there. 811 are. |
+| `Auto` | 1.0 | 33 | 141x | Recorded by the mod rather than placed by hand. Erasing an `Auto` marker also writes a suppression so the recorder does not put it back. 4,579 are. |
+
+`SharedPin` also carries **`LegacyId`**, which costs nothing here because it is never written: it
+holds the GUID of a marker read from format 4 or older, only so a merge can ask whether that old
+id was erased before the rekey. It dies with the last pre-6 map.
+
+Everything that is not a marker is the other 11%: erasures, and the handful of suppressions. On
+2026-10-22 that is 4,823 erasures at 29 bytes and 660 older ones at 41, which is 175 KB -- and
+most of it should not be there; see the note on folding below.
 
 ---
 
@@ -175,31 +184,11 @@ Ordered by what each one is actually for. The first removes a failure; the rest 
   the same thing at the same place twice produces the *same key*, so a duplicate cannot be
   created in the first place. Idempotence was worth more than the simpler migration.
 
-## Where the bytes are now (measured 2026-10-21, after 4.0.0)
+## What is left to win
 
-454,251 bytes on disk, 113,120 deflated, 4,644 markers. The field table above describes format 5;
-this is what is left. The right-hand column is the one that matters -- a field deflate can already
-squeeze costs nothing to leave alone.
-
-| field | bytes | per rec | deflated | compresses |
-|---|---:|---:|---:|---:|
-| `Pos` | 55,728 | 12.0 | **51,113** | 1.1x |
-| `Created` | 37,152 | 8.0 | **18,878** | 2.0x |
-| `Source` | 67,179 | 14.5 | 3,896 | 17.2x |
-| `Icon` | 68,041 | 14.7 | 3,504 | 19.4x |
-| `Modified` | 37,152 | 8.0 | 2,707 | 13.7x |
-| `Kind` | 33,039 | 7.1 | 2,456 | 13.5x |
-| `Type` | 18,576 | 4.0 | 2,376 | 7.8x |
-| `Name` | 5,605 | 1.2 | 856 | 6.5x |
-| `Checked` | 4,644 | 1.0 | 522 | 8.9x |
-| `OwnerId` | 37,152 | 8.0 | 357 | 104x |
-| `Author` | 29,337 | 6.3 | 357 | 82x |
-| `Auto` | 4,644 | 1.0 | 36 | 129x |
-
-**`Pos` and `Created` are 62% of the compressed map between them**, and they are the two fields
-compression cannot touch: raw float bits and 100-nanosecond tick counts are near enough random.
-Everything else together is about 12%. This is the second time measuring has pointed somewhere
-other than where the list did -- items 4 and 5 below both target fields in the cheap half.
+**`Pos` and `Created` are 41% of the compressed map between them**, and they are the two fields
+compression cannot touch. Everything else together is about 9%. This is the second time measuring
+has pointed somewhere other than the list did -- items 4 and 5 below both target the cheap half.
 
 Prototyped on the real file, each change on top of the last:
 
@@ -231,6 +220,26 @@ the wrong order of work.
 So: **deltas, then chunking, and the format last or never.** If the format is ever broken again,
 break it once and take all of the above together -- not 3% here and 5% there across three
 migrations.
+
+## When a key carries meaning, every rule that sorts it changes meaning too
+
+4.0.1. `Duplicates.Fold` kept the **lowest key** of a group, so that every machine folded a pair
+the same way round. That was right for three years: a key was a GUID invented on the spot, so
+"lowest" was an arbitrary choice made identically everywhere, which is all it had to be.
+
+Format 6 ended a key with what the marker stands for -- and the blank that means *nobody has
+worked this out yet* sorts before every real prefab name. The rule did not change. What it sorted
+did, and overnight it stopped choosing at random and started always choosing the copy that knew
+less. One player who had never run `tgm_identify` was enough: their blank copy of a house stood at
+the same point with the same icon as an identified one, the two folded, the answer was thrown
+away, and a tombstone was left behind. **325 structures, 31 spawners and a dungeon lost their
+identity in a single evening**, and the shared map went from 113 KB to 170 KB on the wire, almost
+all of it tombstones from folds that should never have happened.
+
+The fix is that the copy which knows what it is survives, with the key as the tie-break. The
+lesson is larger than the fix: a natural key is data, and every comparison, sort and tie-break
+anywhere in the codebase silently acquires that data's meaning. Grep for the others before
+changing a key again.
 
 ## Data fixes run themselves now (4.0.0)
 

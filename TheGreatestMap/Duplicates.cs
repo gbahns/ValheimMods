@@ -144,19 +144,42 @@ namespace TheGreatestMap
                         taken.Add(other.Key);
                     }
                     if (group == null) continue;
-                    // The lowest id survives, so every map folds the pair the same way round.
-                    foreach (var member in group.Drop)
-                        if (member.Key.CompareTo(group.Keep.Key) < 0)
-                        {
-                            group.Drop.Add(group.Keep);
-                            group.Keep = member;
-                            group.Drop.Remove(member);
-                            break;
-                        }
+                    // The copy that knows what it is survives, and the lowest key settles it
+                    // when they know the same amount, so every map folds the pair the same way.
+                    //
+                    // It used to be the lowest key alone, which was right while a key was a GUID
+                    // made up on the spot: an arbitrary choice, but the same arbitrary choice
+                    // everywhere, which is all that was needed. Since 4.0.0 a key ends in what
+                    // the marker stands for, and the blank that means "nobody has worked this
+                    // out yet" sorts before every real answer -- so a rule that used to pick at
+                    // random became a rule that always threw away the copy that knew. One
+                    // player who had never identified their map, syncing in, was enough: their
+                    // blank copy of a house stood at the same point with the same icon, the two
+                    // folded, and the answer lost. 325 structures went that way in one evening.
+                    var best = group.Keep;
+                    foreach (var member in group.Drop) if (Better(member, best)) best = member;
+                    if (!ReferenceEquals(best, group.Keep))
+                    {
+                        group.Drop.Add(group.Keep);
+                        group.Drop.Remove(best);
+                        group.Keep = best;
+                    }
                     groups.Add(group);
                 }
             }
             return groups;
+        }
+
+        /// <summary>
+        /// Which of two copies of one thing to keep. Knowing what it is beats not knowing; past
+        /// that, the lower key, so that every machine folds the group the same way round and the
+        /// maps stay in step.
+        /// </summary>
+        private static bool Better(SharedPin a, SharedPin b)
+        {
+            bool knowsA = !string.IsNullOrEmpty(a.Source), knowsB = !string.IsNullOrEmpty(b.Source);
+            if (knowsA != knowsB) return knowsA;
+            return a.Key.CompareTo(b.Key) < 0;
         }
 
         /// <summary>Fold them, carrying what the losers knew onto the survivor. Returns how many went.</summary>

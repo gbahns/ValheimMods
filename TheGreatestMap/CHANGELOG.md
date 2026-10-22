@@ -1,5 +1,21 @@
 # Changelog
 
+## 4.0.1 -- 2026-10-22
+
+**Fixes markers losing track of what they are.** Update everyone, including the server.
+
+When two copies of one marker met, the mod kept whichever had the lower identifier, so that every
+player folded the pair the same way round. Since 4.0.0 an identifier ends with what the marker
+stands for, and "not worked out yet" sorts before every real answer -- so the copy that knew less
+won, every time. One player who had never identified their map was enough to undo it for
+everyone: 325 structures, 31 spawners and a dungeon went back to a generic pin in one evening,
+and the map grew by half on the wire from the erasures each fold left behind.
+
+Now the copy that knows what a thing is survives.
+
+If markers on your map have gone generic, `tgm_identify apply` works them out again once everyone
+is on 4.0.1. Doing it before that will not stick.
+
 ## 4.0.0 -- 2026-10-21
 
 **Everyone must update, including the server.** A 4.0 server turns away older clients and says
