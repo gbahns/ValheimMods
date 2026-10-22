@@ -171,14 +171,25 @@ namespace TheGreatestMap
         }
 
         /// <summary>
-        /// Which of two copies of one thing to keep. Knowing what it is beats not knowing; past
-        /// that, the lower key, so that every machine folds the group the same way round and the
-        /// maps stay in step.
+        /// Which of two copies of one thing to keep: the one that knows what it is, then the one
+        /// that was found first, then -- only to break a tie that cannot otherwise be broken --
+        /// the lower key, so every machine folds the group the same way round.
+        ///
+        /// The key is last on purpose. Within a group the positions differ a little and the
+        /// owners usually do not, so ordering by key resolves to ordering by owner id: the same
+        /// player would win every fold on the server, for good. That is the same fault as
+        /// keeping the copy that knew less, only quieter, because nothing about the surviving
+        /// marker looks wrong -- it is simply always the same person's.
+        ///
+        /// Found first is the honest answer for a shared map. It is also stable: Created never
+        /// changes, and is identical on every copy of a marker, so two players comparing maps
+        /// reach the same verdict without having to agree on anything else first.
         /// </summary>
         private static bool Better(SharedPin a, SharedPin b)
         {
             bool knowsA = !string.IsNullOrEmpty(a.Source), knowsB = !string.IsNullOrEmpty(b.Source);
             if (knowsA != knowsB) return knowsA;
+            if (a.Created != b.Created) return a.Created < b.Created;
             return a.Key.CompareTo(b.Key) < 0;
         }
 

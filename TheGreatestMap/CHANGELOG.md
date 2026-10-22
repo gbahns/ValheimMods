@@ -11,7 +11,9 @@ won, every time. One player who had never identified their map was enough to und
 everyone: 325 structures, 31 spawners and a dungeon went back to a generic pin in one evening,
 and the map grew by half on the wire from the erasures each fold left behind.
 
-Now the copy that knows what a thing is survives.
+Now the copy that knows what a thing is survives, and where both know the same, the one that was
+found first -- rather than whichever happened to sort lowest, which quietly meant the same
+player's copy won every time.
 
 If markers on your map have gone generic, `tgm_identify apply` works them out again once everyone
 is on 4.0.1. Doing it before that will not stick.
