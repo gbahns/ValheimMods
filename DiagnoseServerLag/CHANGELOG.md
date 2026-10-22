@@ -24,6 +24,30 @@
   more clients standing in the base. The old verdict read "well above chance" and sent the search
   in the wrong direction; the stalls were the cost of loading six thousand build pieces.
 
+- **Clients send their display's refresh rate, and the report says when a frame time is just the
+  panel.** The refresh rate has been captured since the hardware line was added, and the comment
+  next to it says outright that it is what decides whether vsync costs anything - but it was only
+  ever printed for whichever machine wrote the report, never sent. So a group capture could show
+  `Vsync=on`, `vsyncCount=1` and a frame time of 16.7 ms flat for an hour without being able to
+  state the obvious: the second of those is the first one's consequence, and 16.7 ms is a 60 Hz
+  period rather than anything about the computer.
+
+  It now travels, printed as `2560x1440@60Hz` beside the rest of the hardware, and where vsync is on
+  and the median frame time sits within a frame's jitter of the period it enforces, the machine gets
+  a line saying so. `vsyncCount` is how many refreshes each frame is held for, so a value of 2 is
+  compared against half the refresh rather than ignored.
+
+  Worth deriving rather than left to the reader, because the three facts needed to see it sit in
+  three different places and joining them by hand is a step nobody takes. A player who had put every
+  quality setting on its floor and halved his render scale read as the slowest machine in the group
+  for a week, on the strength of a flat 16.7 ms that was only ever his monitor.
+
+  Appended past the compressed sample block rather than slotted in with the other header fields, so
+  no layout bump and no partition: a server that predates this stops after the version string and
+  never notices the tail, and a client that sends the version without the refresh rate - every build
+  between the two - reads correctly here. Same reasoning as the version string itself, recorded in
+  `Pack`.
+
 - **A parenthesised note in the settings line is no longer read as five separate settings.** The
   change watcher compares the settings line token-wise, treating a token without '=' as a bare flag.
   That is right for "fullscreen" and wrong for "live:lodBias=5 (menu implies 2 - overridden)", whose

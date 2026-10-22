@@ -58,6 +58,15 @@ namespace DiagnoseServerLag
         internal int RamMB;
         internal int ScreenWidth;
         internal int ScreenHeight;
+
+        /// <summary>
+        /// What the display is actually presenting at, which is the fact that decides whether
+        /// vsync costs this machine anything. Captured locally since 0.10.x and printed in a local
+        /// report, but until now never sent, so a group capture could see "Vsync=on" and a frame
+        /// time of 16.7 ms without being able to say that the second was the first - the panel's
+        /// period rather than a measure of the computer. 0 means the client did not send it.
+        /// </summary>
+        internal int RefreshHz;
         internal string Graphics = "";
         internal string GpuDetail = "";
 
@@ -116,6 +125,7 @@ namespace DiagnoseServerLag
             // follows and drop that client from the capture entirely - which is the same
             // partition-by-wire-version trap as refusing the message outright, just quieter.
             pkg.Write(ModVersion ?? "");
+            pkg.Write(RefreshHz);
             return pkg;
         }
 
@@ -178,7 +188,11 @@ namespace DiagnoseServerLag
                     }
                 }
                 // The tail, if this client was new enough to send it. Absent is not an error.
+                // One try per field rather than one around both: a client that sends the version
+                // and not the refresh rate is a real combination, being every build between the
+                // two that added them.
                 try { c.ModVersion = pkg.ReadString(); } catch { c.ModVersion = ""; }
+                try { c.RefreshHz = pkg.ReadInt(); } catch { c.RefreshHz = 0; }
                 return c;
             }
             catch (Exception e)
@@ -242,6 +256,7 @@ namespace DiagnoseServerLag
             c.RamMB = Hardware.RamMB;
             c.ScreenWidth = Hardware.ScreenWidth;
             c.ScreenHeight = Hardware.ScreenHeight;
+            c.RefreshHz = Hardware.RefreshHz;
             c.Graphics = GraphicsConfig.Describe();
             c.GpuDetail = string.Join(", ", new[]
             {

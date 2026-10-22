@@ -89,7 +89,9 @@ namespace DiagnoseServerLag
             foreach (var c in clients)
             {
                 if (string.IsNullOrEmpty(c.Gpu) && c.RamMB == 0) continue;
-                string res = c.ScreenWidth > 0 ? $"{c.ScreenWidth}x{c.ScreenHeight}" : "?";
+                string res = c.ScreenWidth > 0
+                    ? $"{c.ScreenWidth}x{c.ScreenHeight}" + (c.RefreshHz > 0 ? $"@{c.RefreshHz}Hz" : "")
+                    : "?";
                 string vram = c.VramMB > 0 ? $" {c.VramMB / 1024f:0.#} GB" : "";
                 string ram = c.RamMB > 0 ? $", {c.RamMB / 1024f:0.#} GB RAM" : "";
                 sb.AppendLine($"  {Trim(c.Name, 16),-16} {c.CpuName} ({c.Cores}c){ram}, {c.Gpu}{vram}, {res}");
@@ -99,6 +101,8 @@ namespace DiagnoseServerLag
                     sb.AppendLine($"  {"",-16} {c.GpuDetail}");
                 if (!string.IsNullOrEmpty(c.Graphics))
                     sb.AppendLine($"  {"",-16} {c.Graphics}");
+                string capped = DisplayCapped(c);
+                if (capped != null) sb.AppendLine($"  {"",-16} {capped}");
             }
 
             int reduced = 0;
@@ -213,6 +217,35 @@ namespace DiagnoseServerLag
                 return $"   sim {near}/{granted.FarSimulationDistance}{classic}";
             }
             catch { return ""; }
+        }
+
+        /// <summary>
+        /// Whether this machine's frame time is its display's refresh period rather than a measure
+        /// of the machine, as one line, or null when it is not or cannot be told.
+        ///
+        /// Worth deriving because the three facts needed to see it sit in three different places -
+        /// the refresh rate in the hardware line, vsyncCount in the settings line, the frame time
+        /// in the summary - and joining them by hand is a step nobody takes. A player who had set
+        /// every quality setting to its floor and a half-resolution render target was read as
+        /// "slowest machine in the group" for a week on the strength of a flat 16.7 ms that was
+        /// only ever his monitor.
+        /// </summary>
+        private static string DisplayCapped(ClientSeries c)
+        {
+            if (c == null || c.RefreshHz <= 0 || c.FrameMedianMs <= 0f) return null;
+            var g = GraphicsWatch.Parse(c.Graphics);
+            if (!g.TryGetValue("vsyncCount", out string raw)) return null;
+            int every;
+            if (!int.TryParse(raw, out every) || every < 1) return null;
+
+            // vsyncCount is how many refreshes each frame is held for, so the period it enforces
+            // is that multiple of the panel's own.
+            float period = 1000f * every / c.RefreshHz;
+            // Within a frame's own jitter of the period. Loose enough that a machine missing the
+            // occasional frame still reads as capped, tight enough that one merely nearby does not.
+            if (Math.Abs(c.FrameMedianMs - period) > period * 0.08f) return null;
+            return $"frame time is this display's refresh period ({period:0.0} ms at {c.RefreshHz} Hz, " +
+                   "vsync on), so it measures the panel and not the machine";
         }
 
         private static string Correlate(List<Sample> window, List<ClientSeries> clients)

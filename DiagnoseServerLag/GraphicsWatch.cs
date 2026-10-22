@@ -138,7 +138,7 @@ namespace DiagnoseServerLag
         /// that moved. Folded in, it reads as the one thing it is:
         /// live:lodBias 2 -> 5 (menu implies 2 - overridden).
         /// </summary>
-        private static Dictionary<string, string> Parse(string line)
+        internal static Dictionary<string, string> Parse(string line)
         {
             var d = new Dictionary<string, string>();
             if (string.IsNullOrEmpty(line)) return d;
