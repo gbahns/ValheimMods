@@ -256,6 +256,14 @@ every other answer, rightly. Those markers keep a blank source for good. They ar
 being drained; they are a permanent minority, and they are still worth having, because where a
 thing used to be is worth knowing.
 
+Erasing them instead was considered and dropped. It buys nothing: `Icon` has to be written
+conditionally anyway, for hand-placed markers and for a source naming a prefab the catalog
+cannot read, and `Kind` goes either way -- so a record whose source is empty needs no special
+case anywhere in the format. There is no difficulty to trade a marker away for. The only cost of
+keeping them is that the repair asks the server about them each session and is refused, which at
+four hundred positions is about 5 KB a login. Decide it on the number `tgm_counts` reports once
+the repair has run, not before.
+
 **None of it needs doing yet.** It is a format break, and the rule from the last two rounds
 stands: break the format once, for all of this at once, together with the timestamps and the
 positions below. Not three migrations for a few percent each.
