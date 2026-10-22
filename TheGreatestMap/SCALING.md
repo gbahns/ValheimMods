@@ -175,6 +175,63 @@ Ordered by what each one is actually for. The first removes a failure; the rest 
   the same thing at the same place twice produces the *same key*, so a duplicate cannot be
   created in the first place. Idempotence was worth more than the simpler migration.
 
+## Where the bytes are now (measured 2026-10-21, after 4.0.0)
+
+454,251 bytes on disk, 113,120 deflated, 4,644 markers. The field table above describes format 5;
+this is what is left. The right-hand column is the one that matters -- a field deflate can already
+squeeze costs nothing to leave alone.
+
+| field | bytes | per rec | deflated | compresses |
+|---|---:|---:|---:|---:|
+| `Pos` | 55,728 | 12.0 | **51,113** | 1.1x |
+| `Created` | 37,152 | 8.0 | **18,878** | 2.0x |
+| `Source` | 67,179 | 14.5 | 3,896 | 17.2x |
+| `Icon` | 68,041 | 14.7 | 3,504 | 19.4x |
+| `Modified` | 37,152 | 8.0 | 2,707 | 13.7x |
+| `Kind` | 33,039 | 7.1 | 2,456 | 13.5x |
+| `Type` | 18,576 | 4.0 | 2,376 | 7.8x |
+| `Name` | 5,605 | 1.2 | 856 | 6.5x |
+| `Checked` | 4,644 | 1.0 | 522 | 8.9x |
+| `OwnerId` | 37,152 | 8.0 | 357 | 104x |
+| `Author` | 29,337 | 6.3 | 357 | 82x |
+| `Auto` | 4,644 | 1.0 | 36 | 129x |
+
+**`Pos` and `Created` are 62% of the compressed map between them**, and they are the two fields
+compression cannot touch: raw float bits and 100-nanosecond tick counts are near enough random.
+Everything else together is about 12%. This is the second time measuring has pointed somewhere
+other than where the list did -- items 4 and 5 below both target fields in the cheap half.
+
+Prototyped on the real file, each change on top of the last:
+
+| | raw | deflated | vs. now |
+|---|---:|---:|---:|
+| format 6 as shipped | 454,251 | 113,120 | -- |
+| columnar (every field its own run) | 431,068 | 109,865 | 97% |
+| + string and owner tables | 221,299 | 105,104 | 93% |
+| + drop `Type`, packed flags | 202,720 | 101,868 | 90% |
+| + times as seconds, delta-coded | 139,596 | 86,258 | 76% |
+| + positions to the centimeter | 120,960 | 70,532 | 62% |
+| + sorted by place, positions delta-coded | 114,077 | **65,301** | **58%** |
+
+Both caveats check out on the live map. Snapping positions to the centimeter causes **no**
+collisions -- the closest two markers anywhere are 23.7 cm apart, a 23x margin -- though it does
+change the key, so it needs a format bump and a version gate like 4.0.0 (but no tombstones: every
+client converts identically, so it is a reinterpretation, not an edit). Coarser timestamps only
+risk a merge tie if two clients change *the same marker* within one tick of each other;
+milliseconds cost almost nothing once delta-coded, so use those and the question goes away.
+
+### But this is no longer the bottleneck
+
+42% more off a map that already uses **22% of the message budget** is not worth a third format
+migration on its own. Items 1 and 2 are worth more, and item 2 is worth the most of all: with
+deltas, the everyday table sync sends nothing at all, which makes the size of a full map
+something that matters only when somebody joins. Shrinking a message you have stopped sending is
+the wrong order of work.
+
+So: **deltas, then chunking, and the format last or never.** If the format is ever broken again,
+break it once and take all of the above together -- not 3% here and 5% there across three
+migrations.
+
 ## Data fixes run themselves now (4.0.0)
 
 `Migrations.cs`. Anything that brings an old map up to date happens a few seconds after login,
