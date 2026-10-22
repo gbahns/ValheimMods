@@ -87,6 +87,10 @@ namespace TheGreatestMap
 
         private static string Clean(string s)
         {
+            // The shared map's name already ends in ".pins", which would otherwise come out as
+            // TestWorld.pins.format2.pins.bin.
+            if (s != null && s.EndsWith(".pins", StringComparison.OrdinalIgnoreCase))
+                s = s.Substring(0, s.Length - 5);
             var bad = Path.GetInvalidFileNameChars();
             var sb = new System.Text.StringBuilder();
             foreach (char c in s ?? "") sb.Append(Array.IndexOf(bad, c) >= 0 ? '_' : c);

@@ -97,6 +97,18 @@ namespace TheGreatestMap
         /// </summary>
         public int ReadVersion = FormatVersion;
 
+        /// <summary>
+        /// How many markers in the map just read turned out to be another marker already in it.
+        ///
+        /// Only happens converting a map written before markers said what they stand for, where
+        /// the whole of a key is the owner and the position: two records at one point are then
+        /// one record, and the later of them is kept. They are duplicates in any case -- the same
+        /// plant written down twice, once as a thistle and once as a dandelion -- so folding them
+        /// is the repair this mod exists to make. It is counted because a marker disappearing
+        /// without anybody saying so is how trust in a map is lost.
+        /// </summary>
+        public int Collapsed;
+
         public static long Now => DateTime.UtcNow.Ticks;
 
         // ── local edits ─────────────────────────────────────────────────────────────
@@ -262,6 +274,7 @@ namespace TheGreatestMap
                 // the later-modified one is the one to keep.
                 var key = p.Key;
                 if (key.IsNone) continue;
+                if (store.Pins.ContainsKey(key)) store.Collapsed++;
                 if (store.Pins.TryGetValue(key, out var seen) && seen.Modified > p.Modified) continue;
                 store.Pins[key] = p;
             }

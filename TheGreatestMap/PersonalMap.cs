@@ -91,10 +91,15 @@ namespace TheGreatestMap
                     MapBackup.Keep(Name(player), Store.ReadVersion, stored);
                     TheGreatestMapMod.Log.LogInfo(
                         $"[TheGreatestMap] Your own map was in format {Store.ReadVersion} and has been brought up to " +
-                        $"{MapStore.FormatVersion}: {Store.Pins.Count} markers, {Store.LegacyTombstones.Count} erasure(s) carried over.");
+                        $"{MapStore.FormatVersion}: {Store.Pins.Count} markers, {Store.LegacyTombstones.Count} erasure(s) carried over." +
+                        (Store.Collapsed > 0
+                            ? $" {Store.Collapsed} marker(s) were a second record of a spot already marked and are now one marker each."
+                            : ""));
                     MarkDirty();
                 }
-                TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Personal map loaded: {Store.Pins.Count} markers, {Store.Tombstones.Count} erased.");
+                TheGreatestMapMod.Log.LogInfo(
+                    $"[TheGreatestMap] Personal map loaded: {Store.Pins.Count} markers, {Store.Tombstones.Count} erased" +
+                    (Store.LegacyTombstones.Count > 0 ? $" (and {Store.LegacyTombstones.Count} erased before the rekey)" : "") + ".");
             }
             catch (Exception e)
             {

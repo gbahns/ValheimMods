@@ -23,8 +23,13 @@ why. The way markers are identified has changed, and a 3.x client cannot read th
   character file where it cannot be copied. `tgm_backups` lists them; `tgm_restore <name>` puts
   one back. You should never need it.
 
-Nothing to do, and nothing is lost: every marker, erasure and suppression carries over, and old
-maps are read and converted as they are opened.
+Nothing to do: every marker, erasure and suppression carries over, and old maps are read and
+converted as they are opened.
+
+One exception, and it is counted and reported rather than quietly done. On a map written before
+markers recorded *what* they stand for, two markers at the very same point by the same player are
+now one marker -- the same bush written down twice, once as a thistle and once as a dandelion.
+They were always duplicates; the later of the two is kept, and the log says how many there were.
 
 Small print: markers you had hidden one at a time with "Hide this marker" are shown again once,
 because that list referred to the old identifiers. Hide them again and they stay hidden.
