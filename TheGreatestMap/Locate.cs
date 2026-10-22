@@ -125,8 +125,7 @@ namespace TheGreatestMap
         {
             int n = _spots.Count;
             foreach (var pin in ClientPins.All) if (Matches(pin)) n++;
-            if (_kind.HasValue && Categories.IsLive(_kind.Value))
-                foreach (var shown in Transports.DrawnPins) if (Wanted(shown)) n++;
+            foreach (var pin in LivePins()) { if (pin != null) n++; }
             return n;
         }
 
@@ -165,13 +164,11 @@ namespace TheGreatestMap
                 float d = Geo.FlatDistance(from, pin.Pos);
                 if (d < best) { best = d; at = pin.Pos; }
             }
-            if (_kind.HasValue && Categories.IsLive(_kind.Value))
-                foreach (var shown in Transports.DrawnPins)
-                {
-                    if (!Wanted(shown) || shown.Pin == null) continue;
-                    float d = Geo.FlatDistance(from, shown.Pin.m_pos);
-                    if (d < best) { best = d; at = shown.Pin.m_pos; }
-                }
+            foreach (var pin in LivePins())
+            {
+                float d = Geo.FlatDistance(from, pin.m_pos);
+                if (d < best) { best = d; at = pin.m_pos; }
+            }
             foreach (var spot in _spots)
             {
                 float d = Geo.FlatDistance(from, spot);
@@ -199,6 +196,24 @@ namespace TheGreatestMap
             if (!_kind.HasValue) return false;
             var kind = ClientPins.KindOf(pin);
             return kind.HasValue && kind.Value == _kind.Value;
+        }
+
+        /// <summary>
+        /// The pins a live kind has on screen at this moment, whoever drew them. Ships and carts
+        /// come from the transport sweep and portals from the portal list, and pinging should not
+        /// have to care which: both are pins the server told us about and neither is on the map
+        /// in the sense the rest of this class means.
+        /// </summary>
+        private static IEnumerable<Minimap.PinData> LivePins()
+        {
+            if (!_kind.HasValue || !Categories.IsLive(_kind.Value)) yield break;
+            if (_kind.Value == Category.Portal)
+            {
+                foreach (var pin in Portals.DrawnPins) if (pin != null) yield return pin;
+                yield break;
+            }
+            foreach (var shown in Transports.DrawnPins)
+                if (Wanted(shown) && shown.Pin != null) yield return shown.Pin;
         }
 
         private static bool Wanted(Transports.Shown shown)
@@ -235,9 +250,7 @@ namespace TheGreatestMap
                 Pulse(kv.Key, ClientPins.ScaleOf(shared) * grow, toWhite);
             }
 
-            if (_kind.HasValue && Categories.IsLive(_kind.Value))
-                foreach (var shown in Transports.DrawnPins)
-                    if (Wanted(shown)) Pulse(shown.Pin, grow, toWhite);
+            foreach (var pin in LivePins()) Pulse(pin, grow, toWhite);
 
             if (_players || _spots.Count > 0)
             {

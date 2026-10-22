@@ -367,7 +367,8 @@ namespace TheGreatestMap
                 // it must be listed anyway -- it is the list that places it. A live kind has no
                 // markers ever, its pins being the server's answer, so it is listed as soon as
                 // there is an answer to draw from.
-                bool live = Categories.IsLive(kind) && Transports.HaveList;
+                bool live = Categories.IsLive(kind)
+                    && (kind == Category.Portal ? Portals.HaveList : Transports.HaveList);
                 if (!seen.Contains(kind) && !Categories.IsPlacedOnly(kind) && !live
                     && !Categories.VanillaMarks(kind)) continue;
                 var k = kind;

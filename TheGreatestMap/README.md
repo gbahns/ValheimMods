@@ -140,18 +140,19 @@ log cabins and stone towers are one group. A crossed-off marker's right-click me
 switch that covers it, plus "Hide all searched dungeons" on a dungeon. The choices are kept in
 "Hidden Searched Places" in the Display section, and the record is kept either way.
 
-**Portals are kept current, not remembered.** Everything else the mod records stays where you
-found it, so writing it down once is enough. A portal is built by players and gets renamed and torn
-down, so instead the server reads the game's own list of portals and the markers follow it: a
-renamed portal's marker is renamed, and a portal that is gone has its marker erased for everyone.
-"Map All Portals" (on by default) goes further and draws every portal that currently exists, not
-only the ones someone has seen, which suits a server where everyone is in the same group. Turn it
-off and portals are learned the way everything else is, by seeing one yourself or by someone
-sharing their map with you. The extra portals are drawn only, never saved and never shared.
+**Portals are drawn from the world, not remembered.** Everything else the mod records stays where
+you found it, so writing it down once is enough. A portal is built by players and gets renamed,
+torn down and rebuilt, so a marker written once is wrong within days. Instead the server reads the
+game's own list of every portal and your map draws that: a renamed portal is right immediately, a
+rebuilt one appears, and one that is gone leaves nothing behind. Nothing is stored, nothing is
+shared, and switching "Show Portals" off leaves no trace. Because the list is the world's, every
+portal is drawn rather than only the ones someone has seen -- portals are built by the players, so
+on a server where everyone is in the same group this is simply the truth; on a public server, or
+if you would rather learn a portal the way you learn everything else, turn the kind off.
 
 **Ships and carts are drawn where they are now.** Every vessel in the world appears on the map at
 its current position -- the longship moored at the outpost, the karve somebody sailed off in, the
-cart left halfway up a mountain. Like the extra portals these are drawn only: nothing is written to
+cart left halfway up a mountain. Like portals these are drawn only: nothing is written to
 your map, nothing is shared, nothing is left behind when you switch the kind off, and none of it can
 reach a cartography table. The "found, not detected" rule does not apply to them, which is
 deliberate -- a vessel is your own property, and knowing where you parked it is not a discovery

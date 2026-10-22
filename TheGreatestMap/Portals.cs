@@ -48,6 +48,9 @@ namespace TheGreatestMap
         private static bool _reconcileWanted;
 
         internal static bool HaveList => _haveList;
+
+        /// <summary>The pins drawn from the live list, for anything that works on what is on screen.</summary>
+        internal static IEnumerable<Minimap.PinData> DrawnPins => _drawn;
         internal static int Count => _live.Count;
 
         internal static void Reset()
@@ -159,10 +162,15 @@ namespace TheGreatestMap
         }
 
         /// <summary>
-        /// Bring the portal markers already on this map into line with the world: rename the ones
-        /// whose portal was renamed, erase the ones whose portal is gone. Only markers this mod
-        /// recorded are touched, never a pin somebody placed by hand with the portal icon, and the
-        /// erasure travels like any other, so a stale marker goes away for everyone.
+        /// Clear away the recorded portal markers, which nothing writes any more.
+        ///
+        /// Until 4.1.0 portals were recorded like discoveries and then endlessly corrected to
+        /// follow the world. Now they are drawn from the server's list and nothing is stored, so
+        /// the markers left on old maps are just a second portal icon sitting under the live one.
+        /// They go, once, and the erasure travels like any other so nobody has to do it twice.
+        ///
+        /// Only markers this mod recorded are touched, never a pin somebody placed by hand with
+        /// the portal icon -- those are a note a player wrote and are nobody else's to remove.
         /// </summary>
         private static void Reconcile()
         {
@@ -172,23 +180,18 @@ namespace TheGreatestMap
             if (!_haveList) return;
             if (!PersonalMap.Loaded) { _reconcileWanted = true; return; }
             _reconcileWanted = false;
-            var stale = new List<PinKey>();
-            var renamed = new List<KeyValuePair<PinKey, string>>();
+            var stored = new List<PinKey>();
             foreach (var pin in ClientPins.All)
-            {
-                if (!pin.Auto || ClientPins.KindOf(pin) != Category.Portal) continue;
-                var live = Nearest(pin.Pos);
-                if (live == null) { stale.Add(pin.Key); continue; }
-                string name = string.IsNullOrEmpty(live.Name) ? "Portal" : live.Name;
-                if (pin.Name != name) renamed.Add(new KeyValuePair<PinKey, string>(pin.Key, name));
-            }
-            foreach (var kv in renamed) ClientPins.RenameMarker(kv.Key, kv.Value);
-            foreach (var id in stale) ClientPins.RemoveStale(id);
-            if (stale.Count > 0 || renamed.Count > 0)
-            {
-                TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Portals: renamed {renamed.Count} marker(s), erased {stale.Count} that no longer exist.");
-                _redrawWanted = true;
-            }
+                if (pin.Auto && ClientPins.KindOf(pin) == Category.Portal) stored.Add(pin.Key);
+            if (stored.Count == 0) return;
+            // Erased, not suppressed: a suppression says do not record here again, and nothing
+            // records portals any more -- the spot is not being refused, the record is retired.
+            foreach (var key in stored) ClientPins.RemoveStale(key);
+            TheGreatestMapMod.Log.LogInfo(
+                $"[TheGreatestMap] Portals are drawn from the server's own list now, so the {stored.Count} " +
+                "recorded portal marker(s) on this map have been retired. The portals themselves are still " +
+                "shown, and stay right even when one is renamed or rebuilt.");
+            _redrawWanted = true;
         }
 
         private static Live Nearest(Vector3 pos)
@@ -205,12 +208,22 @@ namespace TheGreatestMap
 
         // ── the extra, draw-only pins ───────────────────────────────────────────────
 
+        /// <summary>
+        /// Whether to draw them at all. "Show Portals", with the other dynamic markers -- the
+        /// same switch ships and carts answer to. It used to be "Map All Portals", which asked
+        /// whether to draw the portals nobody had recorded; that question stopped meaning
+        /// anything when none of them are recorded.
+        ///
+        /// A ping outranks the switch, as it does for vessels: a portal that is not drawn does
+        /// not exist to pulse, so without this a ping would look broken rather than obeyed.
+        /// </summary>
         private static bool DrawingWanted()
         {
-            return _haveList
-                && TgmConfig.MapAllPortals != null && TgmConfig.MapAllPortals.Value
-                && (TgmConfig.ShowAllMarkers == null || TgmConfig.ShowAllMarkers.Value)
-                && !PortalPickerOpen();
+            if (!_haveList) return false;
+            if (TgmConfig.ShowAllMarkers != null && !TgmConfig.ShowAllMarkers.Value) return false;
+            if (TgmConfig.ShowKind.TryGetValue(Category.Portal, out var show)
+                && !show.Value && !Locate.Pointing(Category.Portal)) return false;
+            return !PortalPickerOpen();
         }
 
         internal static void Redraw()
@@ -336,7 +349,7 @@ namespace TheGreatestMap
             {
                 $"have a list from the server: {_haveList} ({_live.Count} portals)",
                 $"this is the server: {IsServer}; next sweep in {Mathf.Max(0f, _nextScan - Time.time):0.0}s",
-                $"Map All Portals: {(TgmConfig.MapAllPortals != null && TgmConfig.MapAllPortals.Value)}, " +
+                $"Show Portals: {(!TgmConfig.ShowKind.TryGetValue(Category.Portal, out var showCfg) || showCfg.Value)}, " +
                 $"Show Markers: {(TgmConfig.ShowAllMarkers == null || TgmConfig.ShowAllMarkers.Value)}, " +
                 $"picker open: {PortalPickerOpen()}",
                 $"drawing extra pins: wanted {DrawingWanted()}, currently drawn {_drawn.Count}",

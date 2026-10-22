@@ -1,5 +1,27 @@
 # Changelog
 
+## 4.1.0 -- 2026-10-22
+
+**Portals are drawn from the world now instead of being remembered.** Update the server too.
+
+A portal is not a discovery. It gets renamed, torn down and rebuilt, so a marker written once is
+wrong within days -- which is why portal markers were being quietly renamed and erased in the
+background to chase the world. The game already keeps a list of every portal and the server
+already sends it, so that whole dance was keeping a copy in step with something we were being
+told anyway. Portals now work the way ships and carts do: the server says where they are, your
+map draws them, and nothing is stored.
+
+What you will notice:
+
+- A renamed or rebuilt portal is right **immediately**, rather than after the next correction.
+- A torn-down portal leaves nothing behind -- no marker, no erasure to carry around forever.
+- The portal markers already on your map are retired once, automatically, the first time you
+  play. You do not lose any portals; they are drawn from the live list instead.
+- **"Map All Portals" is gone.** It asked whether to draw the portals nobody had recorded, which
+  is not a question any more -- every portal is drawn, or none. **"Show Portals"**, with the
+  ships and carts under Dynamic Markers, is now the switch. If you had Map All Portals turned
+  off, turn Show Portals off.
+
 ## 4.0.1 -- 2026-10-22
 
 **Fixes markers losing track of what they are.** Update everyone, including the server.

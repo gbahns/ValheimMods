@@ -54,7 +54,6 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> ShowClearedDeposits;
         internal static ConfigEntry<string> HiddenSearched;
         internal static ConfigEntry<float> RevealNewMarkers;
-        internal static ConfigEntry<bool> MapAllPortals;
         internal static ConfigEntry<string> PortalColor;
         internal static ConfigEntry<string> PortalPulseColor;
         internal static ConfigEntry<float> PortalPulseSeconds;
@@ -338,14 +337,12 @@ namespace TheGreatestMap
                 "Traders, Boss Altars, Portals), plus Placed Markers for the ones you put down yourself. The marker button's " +
                 "list on the map edits this. The record is kept either way; used-up deposits have their own switch above.");
             HiddenSearched.SettingChanged += (_, __) => { CrossedOff.ForgetHidden(); ClientPins.Restyle(); };
-            MapAllPortals = mod.BindLocal("Display", "Map All Portals", true,
-                "Draw every portal that currently exists in the world, not only the ones you or someone who shared their " +
-                "map with you has seen. Portals are built by the players, so on a server where everyone is in the same " +
-                "group this simply keeps the map honest; turn it off on a public server, or if you would rather learn a " +
-                "portal the way you learn everything else. The extra portals are drawn only: they are never written to " +
-                "your map and never shared, so turning this off leaves nothing behind. Either way the portal markers you " +
-                "do have are kept current, renamed when the portal is renamed and erased when it is torn down.");
-            MapAllPortals.SettingChanged += (_, __) => Portals.Redraw();
+            // "Map All Portals" was retired in 4.1.0. It asked whether to draw the portals
+            // nobody had recorded, which was a real question while portals were recorded and is
+            // not one now that none of them are: every portal is drawn from the server's list or
+            // none is. "Show Portals", under Dynamic Markers with the ships and carts, is that
+            // switch. Leaving both would be two settings for one thing, and the one that sounds
+            // like it only adds extras would be the one that turns them all off.
             PortalColor = mod.BindLocal("Display", "Portal Marker Color", "#FF6600",
                 "Color of portal markers, which are worth picking out of the crowd because they are how you travel. " +
                 "A hex color such as #A05BDD, or a name such as violet. The default pair is two shades of orange; " +

@@ -48,8 +48,17 @@ namespace TheGreatestMap
         /// and the client draws that. A ship moves, so a marker written where one was found is
         /// wrong by the next tide -- which is why none is written. Everything about recording,
         /// spacing, labels and crossing off is therefore beside the point for these.
+        ///
+        /// Portals joined them in 4.1.0. They do not move, but they are torn down, rebuilt and
+        /// renamed at will, which is the same problem wearing a different hat: a marker written
+        /// once goes wrong within days. They were recorded and then continuously corrected --
+        /// renamed to follow the portal, erased when it went -- and that correction was the only
+        /// thing left in the mod that changed a stored marker in ordinary play. The game keeps an
+        /// authoritative list of every portal and the server already sends it, so the correction
+        /// was keeping a copy in step with something we were being told anyway.
         /// </summary>
-        internal static bool IsLive(Category c) => c == Category.Ship || c == Category.Cart;
+        internal static bool IsLive(Category c) =>
+            c == Category.Ship || c == Category.Cart || c == Category.Portal;
 
         /// <summary>
         /// A kind the game puts on the map by itself, the moment you find one. Recording our own
