@@ -202,28 +202,52 @@ namespace TheGreatestMap
         internal static readonly Color GlyphIdle = new Color(1f, 0.85f, 0.45f, 0.9f);
         internal static readonly Color GlyphOn = new Color(1f, 0.95f, 0.8f, 1f);
 
-        private static GameObject _tipPrefab;
-        private static bool _lookedForTip;
-
         /// <summary>
-        /// Hang one of the game's own tooltips on something. Its prefab is not ours to make, so
-        /// it is borrowed from whatever already carries one -- found once and kept, since the
-        /// search walks every UITooltip in the scene.
+        /// A tooltip for one of our own small buttons, drawn by the same panel that names a
+        /// marker when you hover it on the map.
+        ///
+        /// This went the long way round first: hang one of the game's own UITooltip components on
+        /// the button and let it do the work. The component needs a prefab it cannot make, which
+        /// has to be borrowed from something else in the scene that has one -- and nearly every
+        /// tooltip in the game sits on a panel switched off while the map is up, so at the one
+        /// moment we asked there was nothing to borrow. Our own panel needs nothing borrowed, and
+        /// it is the panel these buttons sit next to anyway, so the two now match by being the
+        /// same thing rather than by resembling each other.
         /// </summary>
+        internal sealed class Hint : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+        {
+            internal static Hint Over;
+
+            internal string Title = "";
+            internal string Body = "";
+
+            void IPointerEnterHandler.OnPointerEnter(PointerEventData e) { Over = this; }
+            void IPointerExitHandler.OnPointerExit(PointerEventData e) { if (ReferenceEquals(Over, this)) Over = null; }
+            private void OnDisable() { if (ReferenceEquals(Over, this)) Over = null; }
+
+            /// <summary>The body broken into lines the panel can hold, at word boundaries.</summary>
+            internal List<string> Lines()
+            {
+                var lines = new List<string>();
+                var word = Body.Split(' ');
+                string line = "";
+                foreach (var w in word)
+                {
+                    if (line.Length > 0 && line.Length + 1 + w.Length > 38) { lines.Add(line); line = w; }
+                    else line = line.Length == 0 ? w : line + " " + w;
+                }
+                if (line.Length > 0) lines.Add(line);
+                return lines;
+            }
+        }
+
+        /// <summary>Give something a tooltip of our own, shown while the pointer rests on it.</summary>
         internal static void Tip(GameObject go, string topic, string text)
         {
             if (go == null || string.IsNullOrEmpty(text)) return;
-            if (!_lookedForTip)
-            {
-                _lookedForTip = true;
-                foreach (var found in UnityEngine.Object.FindObjectsByType<UITooltip>(UnityEngine.FindObjectsSortMode.None))
-                    if (found != null && found.m_tooltipPrefab != null) { _tipPrefab = found.m_tooltipPrefab; break; }
-            }
-            if (_tipPrefab == null) return;
-            var tip = go.GetComponent<UITooltip>() ?? go.AddComponent<UITooltip>();
-            tip.m_tooltipPrefab = _tipPrefab;
-            tip.m_topic = topic;
-            tip.m_text = text;
+            var hint = go.GetComponent<Hint>() ?? go.AddComponent<Hint>();
+            hint.Title = topic ?? "";
+            hint.Body = text;
         }
 
         /// <summary>Grown by a tenth while hovered, from whatever size the button is normally.</summary>

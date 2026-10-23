@@ -43,6 +43,11 @@ namespace TheGreatestMap
             var map = Minimap.instance;
             if (map == null) { Hide(); return; }
             if (map.m_mode != Minimap.MapMode.Large) { Hide(); return; }
+            // One of our own buttons under the pointer explains itself, and does so ahead of
+            // everything below: the pointer being over a panel is exactly when the rest of this
+            // stands down, so a button's tooltip has to be answered before that rule applies.
+            var hint = MenuKit.Hint.Over;
+            if (hint != null) { ShowHint(map, hint); return; }
             if (TgmConfig.MarkerTooltips == null || !TgmConfig.MarkerTooltips.Value) { Hide(); return; }
             // Over a menu rather than over the map: a tooltip about whatever marker lies under
             // the panel would be answering a question nobody asked. Being open is not enough --
@@ -88,6 +93,22 @@ namespace TheGreatestMap
         /// somebody found it, because everything else the map shows is the opposite, and there is
         /// no finder and no date to show for it -- a ship has no history here, only a position.
         /// </summary>
+        private static void ShowHint(Minimap map, MenuKit.Hint hint)
+        {
+            var parent = map.m_largeRoot != null ? map.m_largeRoot.transform as RectTransform : null;
+            if (parent == null) return;
+            if (_root == null) Build(parent);
+            if (_root == null) return;
+            string key = "hint|" + hint.Title + "|" + hint.Body;
+            if (key != _shownId)
+            {
+                _shownId = key;
+                Write(hint.Title, hint.Lines());
+            }
+            if (!_root.activeSelf) _root.SetActive(true);
+            Place(parent);
+        }
+
         private static void ShowVessel(Minimap map, Transports.Hovered vessel)
         {
             var parent = map.m_largeRoot != null ? map.m_largeRoot.transform as RectTransform : null;

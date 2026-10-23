@@ -398,7 +398,19 @@ namespace TheGreatestMap
                     // these are not recorded.
                     Categories.IsLive(k) || Categories.VanillaMarks(k)
                         ? (Action)null
-                        : () => { if (!ManualPlace.Arm(map, k)) return; if (Pinned) Refresh(); else Close(); },
+                        : () => {
+                            // Pressing it again puts the arming away, which is what a button that
+                            // stays lit has to mean -- there was no way to stop placing short of
+                            // closing the map.
+                            if (ManualPlace.Armed.HasValue && ManualPlace.Armed.Value == k)
+                            {
+                                ManualPlace.Cancel();
+                                Refresh();
+                                return;
+                            }
+                            if (!ManualPlace.Arm(map, k)) return;
+                            if (Pinned) Refresh(); else Close();
+                        },
                     // And "only": the same row's switch would need twenty others turned off to say
                     // this, so it says it in one press, and says it again to take it back.
                     () => Focus.SetKind(k),
