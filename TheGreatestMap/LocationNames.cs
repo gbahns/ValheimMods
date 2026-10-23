@@ -49,11 +49,18 @@ namespace TheGreatestMap
         internal static void Register()
         {
             var rpc = ZRoutedRpc.instance;
-            if (rpc == null) return;
+            if (rpc == null)
+            {
+                TheGreatestMapMod.Log.LogWarning(
+                    "[TheGreatestMap] Nowhere to register the world questions yet; nobody will be able to ask.");
+                return;
+            }
             rpc.Register<ZPackage>(RpcAsk, RPC_Ask);
             rpc.Register<ZPackage>(RpcTell, RPC_Tell);
             rpc.Register<ZPackage>(RpcAskAll, RPC_AskAll);
             rpc.Register<ZPackage>(RpcTellAll, RPC_TellAll);
+            TheGreatestMapMod.Log.LogInfo(
+                $"[TheGreatestMap] Ready to answer questions about the world (this is {(IsServer ? "the server" : "a client")}).");
         }
 
         private static bool IsServer => ZNet.instance != null && ZNet.instance.IsServer();
@@ -173,7 +180,13 @@ namespace TheGreatestMap
 
         private static void RPC_AskAll(long sender, ZPackage pkg)
         {
-            if (!IsServer || pkg == null || ZRoutedRpc.instance == null) return;
+            if (!IsServer || pkg == null || ZRoutedRpc.instance == null)
+            {
+                TheGreatestMapMod.Log.LogWarning(
+                    $"[TheGreatestMap] A question about the world arrived from {sender} and was not answered " +
+                    $"(server: {IsServer}, package: {pkg != null}, routing: {ZRoutedRpc.instance != null}).");
+                return;
+            }
             int n = pkg.ReadInt();
             var reply = new ZPackage();
             reply.Write(n);
@@ -206,6 +219,9 @@ namespace TheGreatestMap
             }
             var handler = OnStanding;
             OnStanding = null;
+            if (handler == null)
+                TheGreatestMapMod.Log.LogWarning(
+                    "[TheGreatestMap] The world answered, but nothing was waiting for the answer any more.");
             if (handler != null) handler(all);
         }
 
