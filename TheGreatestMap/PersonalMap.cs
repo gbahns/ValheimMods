@@ -83,6 +83,14 @@ namespace TheGreatestMap
             {
                 var stored = Utils.Decompress(Convert.FromBase64String(data));
                 Store = MapStore.FromBytes(stored);
+                int ghosts = Store.ForgetGhosts();
+                if (ghosts > 0)
+                {
+                    MarkDirty();
+                    TheGreatestMapMod.Log.LogInfo(
+                        $"[TheGreatestMap] Dropped {ghosts} erasure(s) from your own map that were only the former name " +
+                        "of a marker still standing in the same place.");
+                }
                 if (Store.ReadVersion < MapStore.FormatVersion)
                 {
                     // Before anything saves over it. A personal map cannot be copied as a file,

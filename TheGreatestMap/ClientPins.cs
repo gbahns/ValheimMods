@@ -110,6 +110,10 @@ namespace TheGreatestMap
             if (!result.Any) return result;
             foreach (var t in result.NewTombstones) RemovePinData(t.Key);
             foreach (var pin in result.ChangedPins) ReplacePinData(pin);
+            // A map that has not been cleaned sends its ghosts along with everything else, and a
+            // merge takes in every erasure it is offered. Clearing them again after each merge
+            // costs a pass over the erasures and keeps them from creeping back.
+            Store.ForgetGhosts();
             PersonalMap.MarkDirty();
             long total = clock.ElapsedMilliseconds;
             if (total >= 50L)
@@ -416,7 +420,10 @@ namespace TheGreatestMap
             var was = shared.Key;
             if (!Store.Pins.ContainsKey(was)) { shared.Source = next; return shared; }
             RemovePinData(was);
-            Store.Delete(was, out _, suppress: false);
+            // Lifted rather than erased: the marker is not gone, it is being written down under
+            // the name we have just worked out for it, and an erasure here leaves a ghost that
+            // outlives everything it was ever meant to guard.
+            Store.Lift(was, out _);
             shared.Source = next;
             Store.Upsert(shared);
             EnsurePin(shared);

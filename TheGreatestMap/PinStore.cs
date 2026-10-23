@@ -48,6 +48,14 @@ namespace TheGreatestMap
                         $"[TheGreatestMap] Loaded the shared map: {_store.Pins.Count} markers, {_store.Tombstones.Count} erased" +
                         (_store.LegacyTombstones.Count > 0 ? $" (and {_store.LegacyTombstones.Count} erased before the rekey)" : "") +
                         $", {_store.Suppressions.Count} erased spots, from {_path}");
+                    int ghosts = _store.ForgetGhosts();
+                    if (ghosts > 0)
+                    {
+                        MarkDirty();
+                        TheGreatestMapMod.Log.LogInfo(
+                            $"[TheGreatestMap] Dropped {ghosts} erasure(s) that were only the former name of a marker " +
+                            "still standing in the same place. They kept nothing erased and cost more than the markers did.");
+                    }
                     if (_store.ReadVersion < MapStore.FormatVersion)
                     {
                         MapBackup.Keep(Path.GetFileNameWithoutExtension(_path), _store.ReadVersion, stored);

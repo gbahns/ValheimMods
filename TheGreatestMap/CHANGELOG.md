@@ -40,6 +40,12 @@ is repaired wherever you have been rather than only where you go back to.
   did nothing -- re-tilling underneath was the only cure. Both sides ask the same thing now:
   whatever the mod would decline to write down today, it is willing to forget.
 
+- **Working out what a marker is no longer counts as erasing it.** Filling in what an old marker
+  stands for gives it a new name, and the mod used to record the old name as an erasure -- which
+  on a map that had never been identified meant thousands of them in one sitting, outweighing the
+  markers themselves. Those are cleared away on sight now, and no new ones are made. Real
+  erasures are untouched: what you deleted stays deleted.
+
 Also fixed, all of them older than this release:
 
 - **A marker you placed by hand only counted if you pressed Enter.** Place one, then dismiss the

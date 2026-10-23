@@ -136,6 +136,71 @@ namespace TheGreatestMap
             return true;
         }
 
+        /// <summary>
+        /// Take a marker out without leaving an erasure behind: it is not gone, it is being
+        /// written down again under another name.
+        ///
+        /// Re-identifying used to erase and re-add, which left a tombstone each time. That was
+        /// right when an erasure was the only way to take a key off the map, and ruinous at
+        /// scale: a map that had never been identified had every berry and mushroom filled in at
+        /// once, and each fill left its ghost. Four thousand four hundred of them appeared on the
+        /// live map in a single hour, and they outweighed the markers.
+        ///
+        /// Nothing needs the tombstone. Every client works the same answer out of the same
+        /// catalog, so they all re-file a marker the same way and arrive at the same place
+        /// without being told. If a copy that has not yet done so sends the old one back, there
+        /// are briefly two markers at one spot -- which the folding pass already settles, keeping
+        /// the one that knows what it is.
+        /// </summary>
+        public bool Lift(PinKey key, out SharedPin removed)
+        {
+            removed = null;
+            if (key.IsNone || !Pins.TryGetValue(key, out removed)) return false;
+            Pins.Remove(key);
+            Tombstones.Remove(key);
+            return true;
+        }
+
+        /// <summary>
+        /// Drop erasures that are only the former name of a marker still standing in the same
+        /// place. Returns how many went.
+        ///
+        /// Each of these says "the thing that used to be here is gone", about a spot where that
+        /// very thing is still recorded under the name it has since been given. They are not
+        /// keeping anything erased, and they cost more than the markers do.
+        /// </summary>
+        public int ForgetGhosts()
+        {
+            if (Tombstones.Count == 0) return 0;
+            var standing = new Dictionary<long, List<SharedPin>>();
+            foreach (var pin in Pins.Values)
+            {
+                long at = Place(pin.Pos);
+                if (!standing.TryGetValue(at, out var here)) standing[at] = here = new List<SharedPin>();
+                here.Add(pin);
+            }
+            var ghosts = new List<PinKey>();
+            foreach (var kv in Tombstones)
+            {
+                var key = kv.Key;
+                if (!standing.TryGetValue(Place(key.Pos), out var here)) continue;
+                foreach (var pin in here)
+                {
+                    if (pin.OwnerId != key.Owner) continue;
+                    if (pin.Pos != key.Pos) continue;
+                    if (string.Equals(pin.Source, key.Source, StringComparison.Ordinal)) continue;
+                    ghosts.Add(key);
+                    break;
+                }
+            }
+            foreach (var key in ghosts) Tombstones.Remove(key);
+            return ghosts.Count;
+        }
+
+        /// <summary>A position as one number, for gathering what stands in the same spot.</summary>
+        private static long Place(Vector3 pos) =>
+            ((long)SharedPin.Hundredths(pos.x) << 32) ^ (uint)SharedPin.Hundredths(pos.z);
+
         public bool AddSuppression(Suppression s)
         {
             foreach (var existing in Suppressions)
