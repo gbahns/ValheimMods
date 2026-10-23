@@ -33,6 +33,19 @@ is repaired wherever you have been rather than only where you go back to.
 - Nothing is lost converting, from any version as far back as the first. A copy of your map is
   kept before it happens, as always.
 
+Also fixed, both older than this release:
+
+- **A marker placed by hand could stop being yours.** Choosing a kind to place tells the game to
+  use one of this mod's own pin types, and that instruction was left standing after the marker
+  went down -- so the next pin you placed came out as a type nothing claimed, was refused, and
+  was left on the map as something the mod did not know about. It drew with the wrong picture,
+  had no tooltip, and went its own way from there.
+- **"Right-click the map to place a marker" was wrong**, and worse than wrong: right-click opens
+  the marker menu, whose first entry hides the marker. It says double-click now, which is what
+  places a pin and always was.
+- **`tgm_list` says why a marker is hidden**, not merely that it is. Six separate switches can
+  put a marker away and from the outside they look identical.
+
 ## 4.1.0 -- 2026-10-22
 
 **Portals are drawn from the world now instead of being remembered.** Update the server too.

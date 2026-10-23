@@ -186,8 +186,9 @@ namespace TheGreatestMap
             // never be adopted a second time -- hence the refusal. The exception is a marker the
             // player asked for by kind: that one is theirs, and it is spent as it is taken, so the
             // refusal still stands for everything else.
-            var placing = PinTypes.IsCustom((int)pinData.m_type) ? ManualPlace.Take((int)pinData.m_type) : null;
-            if (placing == null && PinTypes.IsCustom((int)pinData.m_type)) return null;
+            bool custom = PinTypes.IsCustom((int)pinData.m_type);
+            var placing = custom ? ManualPlace.Take((int)pinData.m_type) : null;
+            if (placing == null && custom) return null;
             var player = Player.m_localPlayer;
             long owner = WriterId();
             if (owner == 0L)
@@ -912,9 +913,35 @@ namespace TheGreatestMap
             string color = pin.m_iconElement != null
                 ? $"{pin.m_iconElement.color.r:0.00}/{pin.m_iconElement.color.g:0.00}/{pin.m_iconElement.color.b:0.00} a{pin.m_iconElement.color.a:0.00}"
                 : "no icon";
+            bool shown = pin.m_uiElement != null && pin.m_uiElement.gameObject.activeSelf;
             return $"crossed {(shared.Checked ? "yes" : "no")}/{(pin.m_checked ? "yes" : "no")}, " +
                    $"{(_fadedPins.Contains(pin) ? "faded" : "not faded")}, {color}, " +
-                   $"{(pin.m_uiElement != null && pin.m_uiElement.gameObject.activeSelf ? "shown" : "hidden")}";
+                   (shown ? "shown" : "hidden -- " + WhyHidden(shared));
+        }
+
+        /// <summary>
+        /// Which switch put this marker away. Six things can hide a marker and from the outside
+        /// they are indistinguishable, which cost an evening of guessing: a marker vanished, the
+        /// command that shows everything brought it back, and that narrowed it to all six at once.
+        /// </summary>
+        internal static string WhyHidden(SharedPin shared)
+        {
+            if (shared == null) return "no marker";
+            if (TgmConfig.ShowAllMarkers != null && !TgmConfig.ShowAllMarkers.Value) return "every marker is switched off";
+            if (ViewPrefs.IsHidden(shared.Key)) return "hidden on its own, through the marker menu";
+            if (TgmConfig.IsIconHidden(IconOf(shared))) return $"its icon ({IconOf(shared)}) is in Hidden Icons";
+            var kind = KindOf(shared);
+            if (kind.HasValue)
+            {
+                if (TgmConfig.ShowKind.TryGetValue(kind.Value, out var showKind) && !showKind.Value)
+                    return $"\"Show {Categories.Label(kind.Value)}\" is off";
+                if (TgmConfig.ShowOnMinimap.TryGetValue(kind.Value, out var onMini) && !onMini.Value)
+                    return $"\"{Categories.Label(kind.Value)} On Minimap\" is off and this is the small map";
+                if (kind.Value == Category.Portal && Portals.PortalPickerOpen()) return "the portal picker is open";
+            }
+            if (CrossedOff.IsHidden(shared)) return "it is crossed off and that kind of crossed-off marker is hidden";
+            if (Focus.On && !Focus.Shows(shared)) return $"the map is showing only {Focus.What()}";
+            return "no reason found -- which is itself worth reporting";
         }
 
         /// <summary>

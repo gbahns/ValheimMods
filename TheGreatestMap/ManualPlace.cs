@@ -28,7 +28,27 @@ namespace TheGreatestMap
 
         internal static Category? Armed => _armed != null ? _armed.Kind : (Category?)null;
 
-        internal static void Cancel() => _armed = null;
+        internal static void Cancel() => Disarm(Minimap.instance);
+
+        /// <summary>
+        /// Forget what was armed and give the game back a pin type of its own.
+        ///
+        /// Arming works by writing our type into Minimap's m_selectedType, which is what a
+        /// placement reads. Clearing only our side left that type behind, so the next pin the
+        /// player placed was still of our kind while nothing was armed to claim it -- it came out
+        /// refused, unadopted, and drawn by vanilla as a type it has no business owning.
+        /// </summary>
+        private static void Disarm(Minimap map)
+        {
+            _armed = null;
+            if (map == null) return;
+            try
+            {
+                if (PinTypes.IsCustom((int)Access.SelectedType(map)))
+                    Access.SelectedType(map) = Minimap.PinType.Icon0;
+            }
+            catch (System.Exception) { /* the map is going away; nothing to put back */ }
+        }
 
         /// <summary>
         /// Arm a kind: the next marker placed by hand is one of these. The icon is the kind's own,
@@ -45,7 +65,12 @@ namespace TheGreatestMap
             if (type <= 0) return false;
             _armed = new Placing { Kind = kind, Icon = IconRegistry.Normalize(icon), Type = type };
             Access.SelectedType(map) = (Minimap.PinType)type;
-            TheGreatestMapMod.Message($"Right-click the map to place a {Categories.Label(kind)} marker.");
+            // Double-click, as vanilla has always placed a pin. This said "right-click" for
+            // months, which is not merely wrong but harmful: right-click is the marker menu,
+            // whose first item is "Hide this marker". Following the instruction over an existing
+            // marker hid it, and a marker hidden one at a time stays hidden through everything
+            // short of tgm_show -- so the advice made markers disappear and gave no hint why.
+            TheGreatestMapMod.Message($"Double-click the map to place a {Categories.Label(kind)} marker.");
             return true;
         }
 
@@ -58,7 +83,7 @@ namespace TheGreatestMap
         {
             if (_armed == null || _armed.Type != type) return null;
             var placing = _armed;
-            _armed = null;
+            Disarm(Minimap.instance);
             return placing;
         }
     }
