@@ -59,7 +59,6 @@ namespace TheGreatestMap
             float radius = Access.PinInteractRadius(map);
             var pin = ClientPins.ClosestPin(map, world, radius);
             var shared = ClientPins.SharedFor(pin);
-            ClientPins.TraceLookup(pin, shared);
             if (shared != null) { Show(map, shared); return; }
             // A ship or a cart, which is not a marker at all and so is not among the pins any of
             // the usual lookups walk. Worth naming on hover above all when the labels are off,

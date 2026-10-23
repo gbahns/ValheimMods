@@ -28,6 +28,7 @@ namespace TheGreatestMap
 
         internal static Category? Armed => _armed != null ? _armed.Kind : (Category?)null;
 
+
         internal static void Cancel() => Disarm(Minimap.instance);
 
         /// <summary>
@@ -55,6 +56,20 @@ namespace TheGreatestMap
         /// the one the legend shows for it, since a marker placed by hand stands for the kind
         /// rather than for a particular thing the catalog knows about.
         /// </summary>
+        /// <summary>
+        /// Put an arming away once the map is shut. A kind armed in one sitting should not still
+        /// be armed when the map is next opened, which is the trap the old one-shot rule was
+        /// written to avoid -- this avoids it by the clock the player is actually keeping.
+        /// </summary>
+        internal static void Update()
+        {
+            if (_armed == null) return;
+
+            var map = Minimap.instance;
+            if (map == null) { _armed = null; return; }
+            if (map.m_mode != Minimap.MapMode.Large) Disarm(map);
+        }
+
         internal static bool Arm(Minimap map, Category kind)
         {
             if (map == null) return false;
@@ -70,21 +85,28 @@ namespace TheGreatestMap
             // whose first item is "Hide this marker". Following the instruction over an existing
             // marker hid it, and a marker hidden one at a time stays hidden through everything
             // short of tgm_show -- so the advice made markers disappear and gave no hint why.
-            TheGreatestMapMod.Message($"Double-click the map to place a {Categories.Label(kind)} marker.");
+            TheGreatestMapMod.Message($"Double-click the map to place {Categories.Label(kind)} markers, as many as you like.");
             return true;
         }
 
         /// <summary>
-        /// What is being placed, if this pin is it. Spent on the way out, so a second pin placed
-        /// afterwards is an ordinary one again and the player is never left arming something they
-        /// have forgotten about.
+        /// What is being placed, if this pin is it.
+        ///
+        /// It used to be spent by the first marker, on the reasoning that an arming left standing
+        /// would quietly turn later pins into something the player had forgotten asking for. The
+        /// reasoning was sound and the result was worse than the thing it guarded against:
+        /// marking eight ore veins meant arming eight times, and anybody who armed once and
+        /// placed eight got one marker and seven pins this mod refused -- and a refused pin is
+        /// not an ordinary one, it is an orphan with no tooltip, no menu, and vanilla's erase on
+        /// a right click. Nothing said so.
+        ///
+        /// So it lasts while the map is open, which is the span a player is thinking about it in,
+        /// and <see cref="Update"/> puts it away when the map closes.
         /// </summary>
         internal static Placing Take(int type)
         {
             if (_armed == null || _armed.Type != type) return null;
-            var placing = _armed;
-            Disarm(Minimap.instance);
-            return placing;
+            return _armed;   // still armed: the next one is of the same kind
         }
     }
 }

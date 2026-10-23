@@ -160,6 +160,8 @@ namespace TheGreatestMap
             MarkerMenu.Update();
             MapFrame.Update();
             MarkerToggle.Update();
+            ManualPlace.Update();
+            ClientPins.AdoptStrays();
             PlayerSpotlight.Update();
             Locate.Paint();
             PlayerArrow.Update();

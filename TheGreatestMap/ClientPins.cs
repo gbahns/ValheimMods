@@ -216,8 +216,50 @@ namespace TheGreatestMap
             Store.Upsert(pin);
             _pinById[pin.Key] = pinData;
             _idByPin[pinData] = pin.Key;
+            // Ask for a redraw, or the marker keeps the size and colour the game gave it until
+            // something else happens to dirty the layout -- a click, a pan -- which looked like
+            // the marker not being accepted until you clicked away.
+            Restyle();
             PersonalMap.Touch();
             return pin;
+        }
+
+        private static Minimap.PinData _naming;
+
+        /// <summary>
+        /// Take on a pin whose name box was closed without being confirmed.
+        ///
+        /// Adoption hangs off Minimap.OnPinTextEntered -- the moment the name box is accepted --
+        /// which catches a pin whose name was entered, even an empty one, and misses one placed
+        /// and then waved away with Escape or a click elsewhere. The game keeps the pin either
+        /// way. We did not, so it sat there as an orphan: no tooltip, no marker menu, vanilla's
+        /// erase on a right click, and the wrong picture after a reload, because an unadopted pin
+        /// keeps the raw pin type it was placed with and those are handed out afresh each session.
+        ///
+        /// Nothing said any of this, and whether a marker worked came down to how its name box
+        /// had been dismissed -- which is why it looked random for months.
+        ///
+        /// Watching the box close is the exact moment, and it has to be that moment rather than
+        /// a sweep of the map: a sweep either runs while the box is still open and takes the pin
+        /// before the player has finished typing, losing the name, or runs so late that the pin
+        /// has been saved and reloaded as something no longer recognisable.
+        /// </summary>
+        internal static void AdoptStrays()
+        {
+            var map = Map;
+            if (map == null) { _naming = null; return; }
+            var naming = Access.NamePin(map);
+            var closed = _naming;
+            _naming = naming;
+            if (closed == null || ReferenceEquals(naming, closed)) return;  // none open, or still the same one
+            if (!TgmConfig.SharePlacedPins.Value) return;
+            if (IsOurs(closed)) return;                       // confirmed, and already taken on
+            if (!Access.Pins(map).Contains(closed)) return;   // the game dropped it after all
+            if (!PinTypes.IsPlayerPlaceable((int)closed.m_type)) return;
+            if (AdoptLocalPin(closed, auto: false) != null)
+                TheGreatestMapMod.Log.LogInfo(
+                    "[TheGreatestMap] Took on a marker placed by hand whose name box was closed without being " +
+                    "accepted. The game keeps such a pin but only mentions it when a name is confirmed.");
         }
 
         /// <summary>Adopts every vanilla local player-placed pin onto the personal map.</summary>
@@ -598,22 +640,6 @@ namespace TheGreatestMap
         }
 
         /// <summary>The marker behind one of our vanilla pins, or null for a pin that is not ours.</summary>
-        // TEMPORARY: why a pin under the pointer is or is not recognised as one of ours.
-        private static float _tracedAt;
-        internal static void TraceLookup(Minimap.PinData pin, SharedPin shared)
-        {
-            if (Time.unscaledTime < _tracedAt) return;
-            _tracedAt = Time.unscaledTime + 1f;
-            if (pin == null) { TheGreatestMapMod.Log.LogWarning("[TheGreatestMap] LOOK no pin under the pointer"); return; }
-            bool indexed = _idByPin.TryGetValue(pin, out var key);
-            bool inStore = indexed && Store.Pins.ContainsKey(key);
-            TheGreatestMapMod.Log.LogWarning(
-                $"[TheGreatestMap] LOOK pin type {(int)pin.m_type} name '{pin.m_name}' save {pin.m_save} " +
-                $"| in the pin index: {indexed}" + (indexed ? $" as {key}" : "") +
-                $" | that key is in the map: {inStore}" +
-                $" | recognised: {shared != null} | index holds {_idByPin.Count}, map holds {Store.Pins.Count}");
-        }
-
         internal static SharedPin SharedFor(Minimap.PinData pin)
         {
             if (pin == null || !_idByPin.TryGetValue(pin, out var id)) return null;
