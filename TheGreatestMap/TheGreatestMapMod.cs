@@ -30,7 +30,7 @@ namespace TheGreatestMap
     {
         public const string ModGuid    = "DeathMonger.TheGreatestMap";
         public const string ModName    = "The Greatest Map";
-        public const string ModVersion = "4.2.0";
+        public const string ModVersion = "4.3.0";
 
         // Oldest version whose shared-marker wire format this build still speaks. ServerSync
         // refuses peers below this, so bump it only when the format or an RPC changes, not on
@@ -56,7 +56,13 @@ namespace TheGreatestMap
         // follow from Source and a second copy of an answer is one that can disagree -- which
         // it did, on forty-two markers, for weeks. A 4.1.x client reads a 4.2 record's source
         // where it expects a pin type and comes apart from there.
-        public const string MinCompatibleVersion = "4.2.0";
+        // 4.3.0: format 8, the columnar layout. 4.2.0 wrote format 7 a marker at a time; for a
+        // few hours it also wrote the columnar layout under that same number 7, which is the
+        // mistake this bump exists to make impossible. A 4.2 client handed a columnar map reads
+        // the string table as marker records. Since both shapes went out calling themselves
+        // 4.2.0, the floor has to rise to 4.3.0 -- a version number that cannot be told apart
+        // from another with different bytes is no check at all.
+        public const string MinCompatibleVersion = "4.3.0";
 
         internal static TheGreatestMapMod Instance { get; private set; }
         internal static ManualLogSource Log { get; private set; }

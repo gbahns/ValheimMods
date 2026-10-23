@@ -1,5 +1,25 @@
 # Changelog
 
+## 4.3.0 -- 2026-10-23
+
+**The map is written a field at a time instead of a marker at a time, and the erasures that had
+grown to outweigh the markers are gone.** Everyone must update, including the server.
+
+A map used to go out as a run of marker records, each one repeating the same owner, the same
+source and the same author as its neighbors. Now each field is a column of its own, every
+repeated string is held once and referred to by number, positions go as centimetre steps from
+the marker before, and times go as seconds rather than ten-millionths. A four-and-a-half
+thousand marker map went from 587 KB to about 110 KB.
+
+- **Re-identifying a marker no longer records an erasure.** Working out that a house pin is
+  really a stone tower files it under a new name; it does not delete it. The old code erased and
+  re-added, and the erasure outlived everything it was meant to guard -- 4,401 of them appeared
+  on one map in a single hour, and together they were larger than every marker on it.
+- **Erasures that were only a marker's former name are dropped on load**, so a map that already
+  collected them cleans itself up without anyone running anything.
+- **Positions are kept to the centimetre** and times to the second. Nothing on a map is measured
+  finely enough for the difference to be visible.
+
 ## 4.2.0 -- 2026-10-22
 
 **Markers that did not know what they were now work it out by themselves, and the map on the wire

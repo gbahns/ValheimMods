@@ -235,6 +235,9 @@ namespace TheGreatestMap
             // which were all in the record already. The old id is still read, because a marker
             // arriving from an older map needs it to be matched against tombstones written
             // before the rekey.
+            // 7 only: it is the last format written a marker at a time, and 8 on are columnar
+            // and never come through here. Written as >= so that a map from a version this build
+            // has never heard of is still read as the newest record shape it knows.
             if (version >= 7)
             {
                 var fresh = new SharedPin

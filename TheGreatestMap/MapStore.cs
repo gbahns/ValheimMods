@@ -66,8 +66,22 @@ namespace TheGreatestMap
         /// framing lets a reader step over a field it does not know, not over one that is no
         /// longer there. A server on 6 therefore turns away clients that predate it, with a
         /// reason, rather than letting them read nonsense.
+        ///
+        /// 7 drops the fields a reader can work out again -- the pin type, the auto flag, and an
+        /// icon or kind that only repeats what the catalog already says.
+        ///
+        /// 8 stops writing a marker at a time and writes a field at a time: a column per field,
+        /// strings held once in a table and referred to by number, positions in centimetres as
+        /// deltas, timestamps in seconds from 2020.
+        ///
+        /// 8 is deliberately a number of its own rather than a second shape of 7. Both were
+        /// written on the same day, and for a few hours the columnar layout went out still
+        /// calling itself 7 -- which meant a per-record 7 and a columnar 7 existed with no way to
+        /// tell them apart, and a reader handed the wrong one would take the string table for
+        /// marker records. One encoding, one number, always: a version that does not change when
+        /// the bytes do is worse than no version at all.
         /// </summary>
-        public const int FormatVersion = 7;
+        public const int FormatVersion = 8;
 
         public readonly Dictionary<PinKey, SharedPin> Pins = new Dictionary<PinKey, SharedPin>();
         public readonly Dictionary<PinKey, long> Tombstones = new Dictionary<PinKey, long>();
@@ -503,7 +517,9 @@ namespace TheGreatestMap
             if (version < 1) throw new InvalidDataException("Unsupported map format " + version);
             var store = new MapStore { ReadVersion = version };
             int n = pkg.ReadInt();
-            if (version >= 7)
+            // 8 and up are columnar. 7 is a marker at a time like everything before it, and is
+            // read by the loop below -- SharedPin.Read knows its shape.
+            if (version >= 8)
             {
                 ReadColumns(pkg, n, store);
                 ReadTail(pkg, version, store);
