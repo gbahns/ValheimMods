@@ -58,21 +58,45 @@ namespace TheGreatestMap
             int identified = Identify.Run(apply: true).Matched;
             int kinded = NameTheKindOnly();
             int rekinded = KindTheHandPlaced();
+            int traders = RetireTraders();
             // Whatever the catalog could not settle, the world is asked about -- and answers only
             // count where they agree with the icon the marker already wears. The answer comes
             // back later, over the network, and says what it did in the log itself.
             Repair.Run();
-            if (named == 0 && identified == 0 && kinded == 0 && rekinded == 0) return;
+            if (named == 0 && identified == 0 && kinded == 0 && rekinded == 0 && traders == 0) return;
             ClientPins.Restyle();
             var parts = new System.Collections.Generic.List<string>();
             if (identified > 0) parts.Add($"worked out what {identified} marker(s) stand for");
             if (kinded > 0) parts.Add($"said of {kinded} that their kind is the whole answer");
             if (named > 0) parts.Add($"marked {named} as placed by hand");
             if (rekinded > 0) parts.Add($"gave {rekinded} placed by hand their kind back");
+            if (traders > 0) parts.Add($"retired {traders} trader marker(s) the game marks by itself");
             TheGreatestMapMod.Log.LogInfo(
                 "[TheGreatestMap] Brought the map up to date: " + string.Join(", ", parts.ToArray()) +
                 ". Markers written before the mod recorded what a thing is are filled in once, " +
                 "here, so nobody has to run anything.");
+        }
+
+        /// <summary>
+        /// Take down the trader markers.
+        ///
+        /// Valheim marks Haldor, Hildir and the Bog Witch itself the moment you find one, so ours
+        /// was always a second pin saying the same thing in a different picture. Nothing records
+        /// them any more -- there is not even a setting for it, because the kinds the game marks
+        /// are left out of that list -- but maps written before that still carry the old ones,
+        /// and erasing them by hand did not stick: the erasure was only on the map that made it,
+        /// and the next merge with somebody who still had them brought them straight back.
+        ///
+        /// Erased, not suppressed: a suppression says do not record here again, and nothing
+        /// records these anyway. The spot is not being refused, the record is retired.
+        /// </summary>
+        private static int RetireTraders()
+        {
+            var stored = new System.Collections.Generic.List<PinKey>();
+            foreach (var pin in ClientPins.All)
+                if (pin.Auto && ClientPins.KindOf(pin) == Category.Trader) stored.Add(pin.Key);
+            foreach (var key in stored) ClientPins.RemoveStale(key);
+            return stored.Count;
         }
 
         /// <summary>
