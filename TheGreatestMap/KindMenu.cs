@@ -693,27 +693,23 @@ namespace TheGreatestMap
                     RowButton(row, "+", 15f, right, RowHeight - 8f, onPlace,
                         lit: () => placeKind.HasValue && ManualPlace.Armed.HasValue
                                    && ManualPlace.Armed.Value == placeKind.Value,
-                        tipTopic: "Place one by hand",
-                        tip: "Put a marker of this kind down yourself, for something this mod will never find " +
-                             "on its own. Double-click the map to place one, as many as you like; it stays " +
-                             "armed until you close the map.");
+                        tipTopic: "Place Manually",
+                        tip: "Double-click on the map to place this marker manually");
                 right += RowHeight - 4f;
                 if (onOnly != null)
                     RowButton(row, "only", 11f, right, 34f, () => { onOnly(); Refresh(); },
                         lit: () => placeKind.HasValue && Focus.Kind.HasValue
                                    && Focus.Kind.Value == placeKind.Value,
-                        tipTopic: "Only these",
-                        tip: "Show this kind and nothing else, whatever the switches say. Press it again to " +
-                             "put the rest of the map back.");
+                        tipTopic: "Only",
+                        tip: "hide all other kinds of markers");
                 right += 38f;
                 // Pinging leaves the list open and changes nothing, so unlike the others there
                 // is nothing to redraw afterwards -- the pulse paints itself.
                 if (onLocate != null)
                     RowIcon(row, MenuKit.Ping(), right, 22f, onLocate,
                         lit: () => placeKind.HasValue && Locate.Pointing(placeKind.Value),
-                        tipTopic: "Where are they",
-                        tip: "Make every marker of this kind pulse for a few seconds, and say how far away " +
-                             "the nearest one is. A kind that is switched off comes back for the pulse.");
+                        tipTopic: "Ping",
+                        tip: "ping every marker of this kind");
                 right += 26f;
             }
             float buttons = right;
