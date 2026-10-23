@@ -41,13 +41,17 @@ namespace TheGreatestMap
         internal static void Update()
         {
             var map = Minimap.instance;
-            if (map == null || map.m_mode != Minimap.MapMode.Large
-                || TgmConfig.MarkerTooltips == null || !TgmConfig.MarkerTooltips.Value
-                || MarkerMenu.IsOpen || KindMenu.IsOpen || Portals.PortalListHovered())
-            {
-                Hide();
-                return;
-            }
+            if (map == null) { Hide(); return; }
+            if (map.m_mode != Minimap.MapMode.Large) { Hide(); return; }
+            if (TgmConfig.MarkerTooltips == null || !TgmConfig.MarkerTooltips.Value) { Hide(); return; }
+            // Over a menu rather than over the map: a tooltip about whatever marker lies under
+            // the panel would be answering a question nobody asked. Being open is not enough --
+            // the list can be pinned open for a whole session, and suppressing tooltips for that
+            // long made hovering useless, which is how an evening went looking for a tooltip bug
+            // that was this line.
+            if (MarkerMenu.Hovered) { Hide(); return; }
+            if (KindMenu.Hovered) { Hide(); return; }
+            if (Portals.PortalListHovered()) { Hide(); return; }
             if (Time.unscaledTime < _next) return;
             _next = Time.unscaledTime + Interval;
 

@@ -281,6 +281,11 @@ namespace TheGreatestMap
 
         internal static bool IsOpen => _root != null;
 
+        /// <summary>Is the pointer over the menu itself, rather than merely is it open?</summary>
+        internal static bool Hovered =>
+            _root != null && _rect != null
+            && RectTransformUtility.RectangleContainsScreenPoint(_rect, ZInput.pointerPosition, _camera);
+
         internal static void Open(SharedPin pin, Vector2 screenPos)
         {
             Close();

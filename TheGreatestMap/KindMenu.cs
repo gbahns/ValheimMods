@@ -57,6 +57,16 @@ namespace TheGreatestMap
 
         internal static bool IsOpen => _root != null;
 
+        /// <summary>
+        /// Is the pointer over the list itself? Not the same question as whether the list is
+        /// open, which is what anything wanting to stand out of its way used to ask. Pinned open
+        /// it is furniture at the edge of the map, and the map behind it stays as usable as it
+        /// ever was -- so "open" stopped being a reason for anything else to stand down.
+        /// </summary>
+        internal static bool Hovered =>
+            _root != null && _rect != null
+            && RectTransformUtility.RectangleContainsScreenPoint(_rect, ZInput.pointerPosition, _camera);
+
         private static bool Pinned => TgmConfig.PinMarkerMenu != null && TgmConfig.PinMarkerMenu.Value;
 
         /// <summary>
