@@ -598,6 +598,22 @@ namespace TheGreatestMap
         }
 
         /// <summary>The marker behind one of our vanilla pins, or null for a pin that is not ours.</summary>
+        // TEMPORARY: why a pin under the pointer is or is not recognised as one of ours.
+        private static float _tracedAt;
+        internal static void TraceLookup(Minimap.PinData pin, SharedPin shared)
+        {
+            if (Time.unscaledTime < _tracedAt) return;
+            _tracedAt = Time.unscaledTime + 1f;
+            if (pin == null) { TheGreatestMapMod.Log.LogWarning("[TheGreatestMap] LOOK no pin under the pointer"); return; }
+            bool indexed = _idByPin.TryGetValue(pin, out var key);
+            bool inStore = indexed && Store.Pins.ContainsKey(key);
+            TheGreatestMapMod.Log.LogWarning(
+                $"[TheGreatestMap] LOOK pin type {(int)pin.m_type} name '{pin.m_name}' save {pin.m_save} " +
+                $"| in the pin index: {indexed}" + (indexed ? $" as {key}" : "") +
+                $" | that key is in the map: {inStore}" +
+                $" | recognised: {shared != null} | index holds {_idByPin.Count}, map holds {Store.Pins.Count}");
+        }
+
         internal static SharedPin SharedFor(Minimap.PinData pin)
         {
             if (pin == null || !_idByPin.TryGetValue(pin, out var id)) return null;
@@ -914,7 +930,17 @@ namespace TheGreatestMap
                 ? $"{pin.m_iconElement.color.r:0.00}/{pin.m_iconElement.color.g:0.00}/{pin.m_iconElement.color.b:0.00} a{pin.m_iconElement.color.a:0.00}"
                 : "no icon";
             bool shown = pin.m_uiElement != null && pin.m_uiElement.gameObject.activeSelf;
-            return $"crossed {(shared.Checked ? "yes" : "no")}/{(pin.m_checked ? "yes" : "no")}, " +
+            // The pin's own type against the type this marker should be drawn with. They differ
+            // when the pin on screen was not made from this record -- the game made it and we
+            // took it over, or it was never ours at all -- which is invisible from everything
+            // else here and is exactly what makes one marker of six come out wrong.
+            int want = LocalType(shared);
+            int got = (int)pin.m_type;
+            string drawn = got == want
+                ? $"type {got}"
+                : $"type {got} but the record wants {want}  <-- MISMATCH";
+            return $"icon {IconOf(shared)}, stored '{shared.StoredIcon}', {drawn}, " +
+                   $"crossed {(shared.Checked ? "yes" : "no")}/{(pin.m_checked ? "yes" : "no")}, " +
                    $"{(_fadedPins.Contains(pin) ? "faded" : "not faded")}, {color}, " +
                    (shown ? "shown" : "hidden -- " + WhyHidden(shared));
         }

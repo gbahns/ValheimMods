@@ -71,7 +71,8 @@ namespace TheGreatestMap
                 // Reading the terrain is the dear part, so only so many of those per pass; what
                 // is left is still standing there next time.
                 if (++asked > PerPass) break;
-                if (!OnTilledGround(pin.Pos)) continue;
+                // The same question recording asks before it refuses to write one of these.
+                if (!DiscoveryLedger.Planted(pin.Pos, kind.Value)) continue;
                 doomed.Add(pin);
             }
 
@@ -89,14 +90,5 @@ namespace TheGreatestMap
             }
         }
 
-        private static bool OnTilledGround(Vector3 pos)
-        {
-            try
-            {
-                var ground = Heightmap.FindHeightmap(pos);
-                return ground != null && ground.IsCultivated(pos);
-            }
-            catch (System.Exception) { return false; }
-        }
     }
 }

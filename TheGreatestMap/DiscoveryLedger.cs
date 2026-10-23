@@ -113,15 +113,36 @@ namespace TheGreatestMap
         /// settles it: somebody worked that soil, so whatever grows there was planted, wherever the
         /// workbench happens to stand.
         /// </summary>
-        private static bool Planted(Found found)
+        private static bool Planted(Found found) => Planted(found.Pos, found.Cat);
+
+        /// <summary>
+        /// Somebody's garden rather than a discovery: a growing thing on ground that was tilled,
+        /// or standing inside a player's base.
+        ///
+        /// Both halves matter, and for a while only one of them was asked on the way out. A
+        /// player wrote in to say the crop markers in his farm would not clear however much he
+        /// walked over them, and clearing came only when he re-tilled the ground beneath -- his
+        /// plot had been reshaped since the markers were written, so they sat on earth nobody
+        /// had cultivated in weeks. Recording would have refused every one of them, because they
+        /// are plainly inside his base; forgetting asked the narrower question and walked past.
+        ///
+        /// So the two ask the same thing now. Whatever this mod would decline to write down
+        /// today is something it is willing to forget, which is the only version of this that
+        /// can be explained to anybody in one sentence.
+        /// </summary>
+        internal static bool Planted(Vector3 pos, Category cat)
         {
             if (TgmConfig.RecordInBase != null && TgmConfig.RecordInBase.Value) return false;
-            if (!Categories.IsGrown(found.Cat)) return false;
+            if (!Categories.IsGrown(cat)) return false;
             try
             {
-                var ground = Heightmap.FindHeightmap(found.Pos);
-                if (ground != null && ground.IsCultivated(found.Pos)) return true;
-                return EffectArea.IsPointInsideArea(found.Pos, EffectArea.Type.PlayerBase, 0f) != null;
+                var ground = Heightmap.FindHeightmap(pos);
+                if (ground != null && ground.IsCultivated(pos)) return true;
+                // A collider test against the areas the game itself uses to call somewhere a
+                // base, so it agrees with the player's own sense of where theirs ends. It only
+                // sees what is loaded, which is no limit here: nothing is forgotten beyond the
+                // ground around whoever is walking.
+                return EffectArea.IsPointInsideArea(pos, EffectArea.Type.PlayerBase, 0f) != null;
             }
             catch (Exception) { return false; }
         }

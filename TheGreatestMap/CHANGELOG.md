@@ -33,6 +33,13 @@ is repaired wherever you have been rather than only where you go back to.
 - Nothing is lost converting, from any version as far back as the first. A copy of your map is
   kept before it happens, as always.
 
+- **Crop markers in a farm that has been reshaped now clear.** Forgetting a planted crop asked
+  only whether the ground beneath it is tilled right now, while refusing to record one asks that
+  *or* whether it stands inside your base. A plot dug out to a different shape left its old
+  markers on untilled earth, out of reach of the only question being asked, and walking over them
+  did nothing -- re-tilling underneath was the only cure. Both sides ask the same thing now:
+  whatever the mod would decline to write down today, it is willing to forget.
+
 Also fixed, both older than this release:
 
 - **A marker placed by hand could stop being yours.** Choosing a kind to place tells the game to
