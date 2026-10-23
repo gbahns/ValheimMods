@@ -239,6 +239,11 @@ namespace TheGreatestMap
                     ?.GetValue(Config) as System.Collections.IDictionary;
                 var was = new ConfigDefinition(oldSection, key);
                 string raw = orphans != null && orphans.Contains(was) ? orphans[was] as string : null;
+                // And take the old one out, or BepInEx writes it back beside the new one and the
+                // file ends up with the same setting twice -- the dead copy in the section it
+                // used to live in, where somebody will eventually change it and wonder why
+                // nothing happens.
+                if (orphans != null && orphans.Contains(was)) orphans.Remove(was);
                 if (!string.IsNullOrEmpty(raw) && Equals(entry.Value, defaultValue))
                 {
                     var carried = (T)TomlTypeConverter.ConvertToValue(raw, typeof(T));
