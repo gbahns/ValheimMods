@@ -80,6 +80,64 @@ namespace TheGreatestMap
             catch (Exception) { return null; }
         }
 
+        /// <summary>One placed location, already read out of the game's own table.</summary>
+        internal struct Placed
+        {
+            public Vector3 Pos;
+            public float Radius;
+            public string Prefab;
+        }
+
+        /// <summary>
+        /// Every location the generator placed, read once.
+        ///
+        /// Reading one costs four reflective field reads, because the table and the fields on it
+        /// are all private. That is affordable for a single question and ruinous for a thousand:
+        /// the repair asks about every marker that does not know what it is, and doing this per
+        /// marker meant the whole table walked once per marker -- hundreds of thousands of
+        /// reflective reads for one request, which is what made the server go quiet rather than
+        /// answer. Read the table once and ask the snapshot instead.
+        /// </summary>
+        internal static List<Placed> Snapshot()
+        {
+            var list = new List<Placed>();
+            var instances = Instances();
+            if (instances == null) return list;
+            foreach (DictionaryEntry entry in instances)
+            {
+                var instance = entry.Value;
+                if (instance == null) continue;
+                var location = Traverse.Create(instance).Field("m_location").GetValue();
+                if (location == null) continue;
+                string name = Traverse.Create(location).Field("m_prefabName").GetValue<string>();
+                if (string.IsNullOrEmpty(name)) continue;
+                list.Add(new Placed
+                {
+                    Pos = Traverse.Create(instance).Field("m_position").GetValue<Vector3>(),
+                    Radius = Traverse.Create(location).Field("m_exteriorRadius").GetValue<float>(),
+                    Prefab = name,
+                });
+            }
+            return list;
+        }
+
+        /// <summary>The nearest location in the snapshot whose reach covers the point, or empty.</summary>
+        internal static string At(Vector3 pos, List<Placed> places)
+        {
+            string best = "";
+            float bestDistance = float.MaxValue;
+            if (places == null) return best;
+            for (int i = 0; i < places.Count; i++)
+            {
+                float d = Geo.FlatDistance(places[i].Pos, pos);
+                if (d >= bestDistance) continue;
+                if (d > Mathf.Max(places[i].Radius, SearchRadius)) continue;
+                best = places[i].Prefab;
+                bestDistance = d;
+            }
+            return best;
+        }
+
         /// <summary>
         /// What stands at a place, by the world's own reckoning, or empty. The nearest location
         /// whose reach covers the point wins; a point inside two of them takes the closer, which
@@ -130,7 +188,9 @@ namespace TheGreatestMap
         /// going to look. Nearest first, so the nest at arm's length is offered before the camp
         /// fifty meters off, and the caller takes the first that agrees with what it already knows.
         /// </summary>
-        internal static List<string> StandingAt(Vector3 pos)
+        internal static List<string> StandingAt(Vector3 pos) => StandingAt(pos, null);
+
+        internal static List<string> StandingAt(Vector3 pos, List<Placed> places)
         {
             var found = new List<KeyValuePair<float, string>>();
             try
@@ -169,7 +229,16 @@ namespace TheGreatestMap
                 TheGreatestMapMod.Log.LogWarning("[TheGreatestMap] Could not read what stands at a place: " + e.Message);
             }
 
-            string here = At(pos);
+            // Inside the guard, not after it. This sat outside and was the one call on the path
+            // that could throw its way out of the whole request: the handler's only log line
+            // comes after the loop, so one bad place meant the server answered nothing at all
+            // and said nothing about why.
+            string here = "";
+            try { here = places != null ? At(pos, places) : At(pos); }
+            catch (Exception e)
+            {
+                TheGreatestMapMod.Log.LogWarning("[TheGreatestMap] Could not name the place at a marker: " + e.Message);
+            }
             if (!string.IsNullOrEmpty(here)) found.Add(new KeyValuePair<float, string>(float.MaxValue, here));
             found.Sort((a, b) => a.Key.CompareTo(b.Key));
 
@@ -191,9 +260,10 @@ namespace TheGreatestMap
             var reply = new ZPackage();
             reply.Write(n);
             int answered = 0;
+            var places = Snapshot();
             for (int i = 0; i < n; i++)
             {
-                var names = StandingAt(pkg.ReadVector3());
+                var names = StandingAt(pkg.ReadVector3(), places);
                 if (names.Count > 0) answered++;
                 // Eight is more than any real place has that the catalog could know, and it keeps
                 // a thousand-marker question from becoming a message nobody can carry.
@@ -201,7 +271,9 @@ namespace TheGreatestMap
                 reply.Write(names.Count);
                 foreach (var name in names) reply.Write(name);
             }
-            TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Asked what stands at {n} place(s); found something at {answered}.");
+            TheGreatestMapMod.Log.LogInfo(
+                $"[TheGreatestMap] Asked what stands at {n} place(s) against {places.Count} placed location(s); " +
+                $"found something at {answered}.");
             ZRoutedRpc.instance.InvokeRoutedRPC(sender, RpcTellAll, reply);
         }
 
