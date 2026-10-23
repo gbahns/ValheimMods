@@ -228,11 +228,110 @@ namespace TheGreatestMap
 
         // ── serialization ───────────────────────────────────────────────────────────
 
+        /// <summary>
+        /// Seconds from the first of January 2020, which every time in the map is counted from.
+        /// Ticks are hundred-nanosecond counts since the year 1 and are eight bytes of almost
+        /// entirely the same leading digits; a map is not interested in anything finer than a
+        /// second, and nothing here is: the one rule that reads a time closely is which of two
+        /// changes to a marker came later, and two changes to one marker inside a second have a
+        /// settled answer already.
+        /// </summary>
+        private const long Epoch = 637134336000000000L;
+        private const long TicksPerSecond = 10000000L;
+
+        private static long ToSeconds(long ticks) => ticks <= Epoch ? 0L : (ticks - Epoch) / TicksPerSecond;
+        private static long FromSeconds(long seconds) => Epoch + seconds * TicksPerSecond;
+
+        /// <summary>
+        /// Markers ordered so that neighbours on the map are neighbours in the file, which is
+        /// what makes a position worth writing as the step from the one before. The order is of
+        /// no consequence to anything else: a marker's name is worked out from what it says
+        /// about itself, so the file may hold them in any order it likes.
+        /// </summary>
+        private List<SharedPin> InWritingOrder()
+        {
+            var ordered = new List<SharedPin>(Pins.Values);
+            ordered.Sort((a, b) =>
+            {
+                int ax = Mathf.FloorToInt(a.Pos.x / 32f), bx = Mathf.FloorToInt(b.Pos.x / 32f);
+                if (ax != bx) return ax.CompareTo(bx);
+                int az = Mathf.FloorToInt(a.Pos.z / 32f), bz = Mathf.FloorToInt(b.Pos.z / 32f);
+                if (az != bz) return az.CompareTo(bz);
+                int byX = a.Pos.x.CompareTo(b.Pos.x);
+                return byX != 0 ? byX : a.Pos.z.CompareTo(b.Pos.z);
+            });
+            return ordered;
+        }
+
         public void Write(ZPackage pkg)
         {
             pkg.Write(FormatVersion);
-            pkg.Write(Pins.Count);
-            foreach (var p in Pins.Values) pkg.Write(Blob(p.Write));
+            var pins = InWritingOrder();
+            pkg.Write(pins.Count);
+
+            var owners = new StringTable();
+            var authors = new StringTable();
+            var sources = new StringTable();
+            var icons = new StringTable();
+            var kinds = new StringTable();
+            var ownerIndex = new ColumnWriter();
+            var authorIndex = new ColumnWriter();
+            var sourceIndex = new ColumnWriter();
+            var iconIndex = new ColumnWriter();
+            var kindIndex = new ColumnWriter();
+            var names = new ColumnWriter();
+            var x = new ColumnWriter();
+            var y = new ColumnWriter();
+            var z = new ColumnWriter();
+            var flags = new ColumnWriter();
+            var created = new ColumnWriter();
+            var modified = new ColumnWriter();
+
+            long lastX = 0, lastY = 0, lastZ = 0;
+            foreach (var p in pins)
+            {
+                ownerIndex.Var(owners.Of(p.OwnerId.ToString()));
+                authorIndex.Var(authors.Of(p.Author));
+                sourceIndex.Var(sources.Of(p.Source));
+                iconIndex.Var(icons.Of(p.IconToStore));
+                kindIndex.Var(kinds.Of(p.KindToStore));
+                names.Str(p.Name);
+
+                long px = SharedPin.Hundredths(p.Pos.x);
+                long py = SharedPin.Hundredths(p.Pos.y);
+                long pz = SharedPin.Hundredths(p.Pos.z);
+                x.Zig(px - lastX); lastX = px;
+                y.Zig(py - lastY); lastY = py;
+                z.Zig(pz - lastZ); lastZ = pz;
+
+                flags.Byte((byte)(p.Checked ? 1 : 0));
+                long madeAt = ToSeconds(p.Created);
+                created.Var(madeAt);
+                // Against its own creation rather than against the marker before it: a marker is
+                // nearly always changed in the moment it is made, so this is usually a zero.
+                modified.Zig(ToSeconds(p.Modified) - madeAt);
+            }
+
+            var tables = new ColumnWriter();
+            owners.Write(tables);
+            authors.Write(tables);
+            sources.Write(tables);
+            icons.Write(tables);
+            kinds.Write(tables);
+
+            pkg.Write(tables.Done());
+            pkg.Write(ownerIndex.Done());
+            pkg.Write(authorIndex.Done());
+            pkg.Write(sourceIndex.Done());
+            pkg.Write(iconIndex.Done());
+            pkg.Write(kindIndex.Done());
+            pkg.Write(names.Done());
+            pkg.Write(x.Done());
+            pkg.Write(y.Done());
+            pkg.Write(z.Done());
+            pkg.Write(flags.Done());
+            pkg.Write(created.Done());
+            pkg.Write(modified.Done());
             pkg.Write(Tombstones.Count);
             foreach (var t in Tombstones) { t.Key.Write(pkg); pkg.Write(t.Value); }
             pkg.Write(Suppressions.Count);
@@ -252,6 +351,82 @@ namespace TheGreatestMap
             return inner.GetArray();
         }
 
+        /// <summary>The markers of a format 7 map, a field at a time.</summary>
+        private static void ReadColumns(ZPackage pkg, int n, MapStore store)
+        {
+            var tables = new ColumnReader(pkg.ReadByteArray());
+            var owners = StringTable.Read(tables);
+            var authors = StringTable.Read(tables);
+            var sources = StringTable.Read(tables);
+            var icons = StringTable.Read(tables);
+            var kinds = StringTable.Read(tables);
+
+            var ownerIndex = new ColumnReader(pkg.ReadByteArray());
+            var authorIndex = new ColumnReader(pkg.ReadByteArray());
+            var sourceIndex = new ColumnReader(pkg.ReadByteArray());
+            var iconIndex = new ColumnReader(pkg.ReadByteArray());
+            var kindIndex = new ColumnReader(pkg.ReadByteArray());
+            var names = new ColumnReader(pkg.ReadByteArray());
+            var x = new ColumnReader(pkg.ReadByteArray());
+            var y = new ColumnReader(pkg.ReadByteArray());
+            var z = new ColumnReader(pkg.ReadByteArray());
+            var flags = new ColumnReader(pkg.ReadByteArray());
+            var created = new ColumnReader(pkg.ReadByteArray());
+            var modified = new ColumnReader(pkg.ReadByteArray());
+
+            long lastX = 0, lastY = 0, lastZ = 0;
+            for (int i = 0; i < n; i++)
+            {
+                var pin = new SharedPin();
+                pin.OwnerId = Pick(owners, ownerIndex.Var(), "0") is string owner
+                              && long.TryParse(owner, out long id) ? id : 0L;
+                pin.Author = Pick(authors, authorIndex.Var(), "");
+                pin.Name = names.Str();
+
+                lastX += x.Zig(); lastY += y.Zig(); lastZ += z.Zig();
+                pin.Pos = new Vector3(lastX / 100f, lastY / 100f, lastZ / 100f);
+
+                pin.Source = Pick(sources, sourceIndex.Var(), "");
+                pin.Icon = Pick(icons, iconIndex.Var(), "");
+                pin.Kind = Pick(kinds, kindIndex.Var(), "");
+                pin.Checked = (flags.Byte() & 1) != 0;
+                long madeAt = created.Var();
+                pin.Created = FromSeconds(madeAt);
+                pin.Modified = FromSeconds(madeAt + modified.Zig());
+
+                var key = pin.Key;
+                if (key.IsNone) continue;
+                if (store.Pins.TryGetValue(key, out var seen) && seen.Modified > pin.Modified) continue;
+                store.Pins[key] = pin;
+            }
+        }
+
+        private static string Pick(List<string> values, long at, string whenMissing) =>
+            at >= 0 && at < values.Count ? values[(int)at] : whenMissing;
+
+        /// <summary>The erasures and suppressions, which every version from 4 on holds alike.</summary>
+        private static void ReadTail(ZPackage pkg, int version, MapStore store)
+        {
+            int t = pkg.ReadInt();
+            for (int i = 0; i < t; i++)
+            {
+                var key = PinKey.Read(pkg);
+                long at = pkg.ReadLong();
+                if (!key.IsNone) store.Tombstones[key] = at;
+            }
+            int m = pkg.ReadInt();
+            for (int i = 0; i < m; i++)
+                store.Suppressions.Add(Suppression.Read(new ZPackage(pkg.ReadByteArray()), version));
+            if (pkg.GetPos() >= pkg.Size()) return;
+            int l = pkg.ReadInt();
+            for (int i = 0; i < l; i++)
+            {
+                string id = pkg.ReadString();
+                long at = pkg.ReadLong();
+                if (!string.IsNullOrEmpty(id)) store.LegacyTombstones[id] = at;
+            }
+        }
+
         public static MapStore Read(ZPackage pkg)
         {
             int version = pkg.ReadInt();
@@ -263,6 +438,12 @@ namespace TheGreatestMap
             if (version < 1) throw new InvalidDataException("Unsupported map format " + version);
             var store = new MapStore { ReadVersion = version };
             int n = pkg.ReadInt();
+            if (version >= 7)
+            {
+                ReadColumns(pkg, n, store);
+                ReadTail(pkg, version, store);
+                return store;
+            }
             for (int i = 0; i < n; i++)
             {
                 var p = version >= 5

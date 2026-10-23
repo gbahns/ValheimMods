@@ -9,7 +9,30 @@ namespace TheGreatestMap
         public long OwnerId;
         public string Author = "";
         public string Name = "";
-        public Vector3 Pos;
+
+        private Vector3 _pos;
+
+        /// <summary>
+        /// Where it is, always on a centimeter. Part of the key, which is why the snapping
+        /// happens here rather than on the way out: a position written to the centimeter and
+        /// read back would otherwise differ from the one still in memory, and the same marker
+        /// would answer to two different keys either side of a save.
+        ///
+        /// A centimeter is far finer than a map can show and far coarser than a float can hold.
+        /// The closest two markers on the live map stand 23.7 cm apart, so nothing is brought
+        /// together by this that was ever apart.
+        /// </summary>
+        public Vector3 Pos
+        {
+            get { return _pos; }
+            set { _pos = new Vector3(Snap(value.x), Snap(value.y), Snap(value.z)); }
+        }
+
+        /// <summary>A coordinate on the centimeter, as the stored form will round it.</summary>
+        internal static float Snap(float v) => Mathf.Round(v * 100f) / 100f;
+
+        /// <summary>The coordinate as it is written down: hundredths, as a whole number.</summary>
+        internal static int Hundredths(float v) => Mathf.RoundToInt(v * 100f);
         // ── what is stored, and what is worked out again ───────────────────────────
         //
         // From format 7 the record holds only what nothing else can supply. Icon, Kind, Type and
@@ -169,27 +192,20 @@ namespace TheGreatestMap
         }
 
         /// <summary>
-        /// Format 7. Four fields are gone -- Type, Auto, and Icon and Kind wherever they can be
-        /// worked out again -- and Source has moved up, because everything else now leans on it.
+        /// The icon to write down, which is nothing at all unless it could not be worked out
+        /// again: a marker placed by hand, whose icon is the player's own choice, or one whose
+        /// source names something no catalog line covers.
         ///
-        /// Icon and Kind are written only when deriving them would not give back what the record
-        /// holds. That check is made rather than assumed, which is what keeps a map readable
-        /// after a prefab leaves the catalog or a mod is uninstalled: derivation then answers
-        /// nothing, the stored value differs, and it is written.
+        /// This is worth almost no space now that a column of icons is written as numbers into a
+        /// table of the few that occur -- an empty string and a real one cost the same single
+        /// byte. It is kept because it was never really about space: a stored icon that merely
+        /// repeats what the catalog says is a copy that stops agreeing the day somebody changes
+        /// the catalog, and the stored one wins.
         /// </summary>
-        public void Write(ZPackage pkg)
-        {
-            pkg.Write(OwnerId);
-            pkg.Write(Author ?? "");
-            pkg.Write(Name ?? "");
-            pkg.Write(Pos);
-            pkg.Write(Source ?? "");
-            pkg.Write(Keep(_icon, Catalog.IconFor(_source)));
-            pkg.Write(Keep(_kindText, DerivedKind()));
-            pkg.Write(Checked);
-            pkg.Write(Created);
-            pkg.Write(Modified);
-        }
+        internal string IconToStore => Keep(_icon, Catalog.IconFor(_source));
+
+        /// <summary>The kind to write down, on the same terms.</summary>
+        internal string KindToStore => Keep(_kindText, DerivedKind());
 
         /// <summary>What to write for a field that can usually be worked out: nothing, usually.</summary>
         private static string Keep(string stored, string derived)
