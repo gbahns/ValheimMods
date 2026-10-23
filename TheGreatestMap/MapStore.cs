@@ -67,7 +67,7 @@ namespace TheGreatestMap
         /// longer there. A server on 6 therefore turns away clients that predate it, with a
         /// reason, rather than letting them read nonsense.
         /// </summary>
-        public const int FormatVersion = 6;
+        public const int FormatVersion = 7;
 
         public readonly Dictionary<PinKey, SharedPin> Pins = new Dictionary<PinKey, SharedPin>();
         public readonly Dictionary<PinKey, long> Tombstones = new Dictionary<PinKey, long>();

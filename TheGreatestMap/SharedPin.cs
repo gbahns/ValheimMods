@@ -10,16 +10,82 @@ namespace TheGreatestMap
         public string Author = "";
         public string Name = "";
         public Vector3 Pos;
-        public int Type;        // the creating client's local pin type; receivers recompute from Icon
-        public string Icon = ""; // "item:Dandelion" or "pin:Boss" (see IconRegistry)
-        public string Kind = ""; // Category name for recorded markers ("Herbs"); "" for placed ones
-        // What the marker stands for: the prefab the catalog matched when it was recorded
-        // ("SunkenCrypt4"), empty for one placed by hand. The icon above is how it was drawn at
-        // the time; this is what it IS, which is the part that does not change when somebody
-        // decides a draugr trophy suits a sunken crypt better than a swamp key.
-        public string Source = "";
+        // ── what is stored, and what is worked out again ───────────────────────────
+        //
+        // From format 7 the record holds only what nothing else can supply. Icon, Kind, Type and
+        // Auto all follow from Source, so storing them is keeping a second copy of an answer the
+        // record already gives -- and a second copy is one that can disagree. It did: a stored
+        // Kind of "Camp" on forty-two greydwarf nests outlived the catalog moving nests out of
+        // camps, and nothing noticed, because the stale copy was the one being read.
+        //
+        // They are all still readable here. Only the written record loses them: in memory a
+        // marker answers every question it used to, so the hundred-odd places that ask go on
+        // asking and none of them had to change.
+
+        private string _icon = "";
+        private string _kindText = "";
+        private string _source = "";
+
+        /// <summary>
+        /// What the marker stands for: the prefab the catalog matched when it was recorded
+        /// ("SunkenCrypt4"), "Manual" for one a player placed, "kind:Runestone" where the kind is
+        /// the whole answer, and empty only for one nothing has identified yet. Part of the key.
+        /// </summary>
+        public string Source
+        {
+            get { return _source; }
+            set { _source = value ?? ""; _kindParsed = false; _kind = null; }
+        }
+
+        /// <summary>
+        /// How this is drawn. Written down only where it cannot be derived: a marker placed by
+        /// hand, whose icon is the player's own choice, and one whose source names something no
+        /// catalog line covers because a prefab left the lists or its mod was uninstalled.
+        /// </summary>
+        public string Icon
+        {
+            get
+            {
+                if (!string.IsNullOrEmpty(_icon)) return _icon;
+                string derived = Catalog.IconFor(_source);
+                return string.IsNullOrEmpty(derived) ? "" : derived;
+            }
+            set { _icon = value ?? ""; }
+        }
+
+        /// <summary>The icon as actually written down, empty where it is left to be derived.</summary>
+        public string StoredIcon { get { return _icon; } }
+
+        /// <summary>
+        /// The kind this is filed under, from the source through the catalog -- so moving a
+        /// prefab from one list to another refiles every marker of it at once, rather than
+        /// needing a pass to rewrite them all and leaving the ones it missed saying the old thing.
+        /// </summary>
+        public string Kind
+        {
+            get
+            {
+                if (!string.IsNullOrEmpty(_kindText)) return _kindText;
+                if (IsKindOnly(_source)) return _source.Substring(5);
+                var cat = Catalog.CategoryOf(_source);
+                return cat.HasValue ? cat.Value.ToString() : "";
+            }
+            set { _kindText = value ?? ""; _kindParsed = false; _kind = null; }
+        }
+
+        /// <summary>The kind as actually written down, empty where it is left to be derived.</summary>
+        public string StoredKind { get { return _kindText; } }
+
+        /// <summary>The creating client's local pin type, worked out from the icon.</summary>
+        public int Type { get { return IconRegistry.TypeFor(Icon); } }
+
+        /// <summary>
+        /// Recorded by the mod rather than put down by a player, which the source says: a marker
+        /// somebody placed says "Manual" and everything else was recorded.
+        /// </summary>
+        public bool Auto { get { return !string.Equals(_source, Manual, StringComparison.Ordinal); } }
+
         public bool Checked;
-        public bool Auto;       // recorded automatically (erasing it suppresses re-recording there)
         public long Created;    // DateTime.UtcNow.Ticks
         public long Modified;   // DateTime.UtcNow.Ticks of the last change; decides merges
 
@@ -93,26 +159,50 @@ namespace TheGreatestMap
         {
             return new SharedPin
             {
-                OwnerId = OwnerId, Author = Author, Name = Name, Pos = Pos, Type = Type, Icon = Icon,
-                Kind = Kind, Checked = Checked, Auto = Auto, Created = Created, Modified = Modified,
-                Source = Source, LegacyId = LegacyId,
+                OwnerId = OwnerId, Author = Author, Name = Name, Pos = Pos,
+                Source = Source, Checked = Checked, Created = Created, Modified = Modified,
+                LegacyId = LegacyId,
+                // The stored halves, not the derived ones: copying Icon through its getter would
+                // bake a derived answer into the copy and quietly make it a thing written down.
+                Icon = StoredIcon, Kind = StoredKind,
             };
         }
 
+        /// <summary>
+        /// Format 7. Four fields are gone -- Type, Auto, and Icon and Kind wherever they can be
+        /// worked out again -- and Source has moved up, because everything else now leans on it.
+        ///
+        /// Icon and Kind are written only when deriving them would not give back what the record
+        /// holds. That check is made rather than assumed, which is what keeps a map readable
+        /// after a prefab leaves the catalog or a mod is uninstalled: derivation then answers
+        /// nothing, the stored value differs, and it is written.
+        /// </summary>
         public void Write(ZPackage pkg)
         {
             pkg.Write(OwnerId);
             pkg.Write(Author ?? "");
             pkg.Write(Name ?? "");
             pkg.Write(Pos);
-            pkg.Write(Type);
-            pkg.Write(Icon ?? "");
-            pkg.Write(Kind ?? "");
+            pkg.Write(Source ?? "");
+            pkg.Write(Keep(_icon, Catalog.IconFor(_source)));
+            pkg.Write(Keep(_kindText, DerivedKind()));
             pkg.Write(Checked);
-            pkg.Write(Auto);
             pkg.Write(Created);
             pkg.Write(Modified);
-            pkg.Write(Source ?? "");
+        }
+
+        /// <summary>What to write for a field that can usually be worked out: nothing, usually.</summary>
+        private static string Keep(string stored, string derived)
+        {
+            if (string.IsNullOrEmpty(stored)) return "";
+            return string.Equals(stored, derived, StringComparison.Ordinal) ? "" : stored;
+        }
+
+        private string DerivedKind()
+        {
+            if (IsKindOnly(_source)) return _source.Substring(5);
+            var cat = Catalog.CategoryOf(_source);
+            return cat.HasValue ? cat.Value.ToString() : "";
         }
 
         public static SharedPin Read(ZPackage pkg, int version)
@@ -122,6 +212,24 @@ namespace TheGreatestMap
             // which were all in the record already. The old id is still read, because a marker
             // arriving from an older map needs it to be matched against tombstones written
             // before the rekey.
+            if (version >= 7)
+            {
+                var fresh = new SharedPin
+                {
+                    OwnerId = pkg.ReadLong(),
+                    Author  = pkg.ReadString(),
+                    Name    = pkg.ReadString(),
+                    Pos     = pkg.ReadVector3(),
+                    Source  = pkg.ReadString(),
+                };
+                fresh.Icon     = pkg.ReadString();
+                fresh.Kind     = pkg.ReadString();
+                fresh.Checked  = pkg.ReadBool();
+                fresh.Created  = pkg.ReadLong();
+                fresh.Modified = pkg.ReadLong();
+                return fresh;
+            }
+
             var pin = new SharedPin
             {
                 LegacyId = version < 6 ? pkg.ReadString() : "",
@@ -129,18 +237,23 @@ namespace TheGreatestMap
                 Author  = pkg.ReadString(),
                 Name    = pkg.ReadString(),
                 Pos     = pkg.ReadVector3(),
-                Type    = pkg.ReadInt(),
             };
-            pin.Icon     = version >= 2 ? pkg.ReadString() : IconRegistry.LegacyKey(pin.Type);
+            int type     = pkg.ReadInt();
+            pin.Icon     = version >= 2 ? pkg.ReadString() : IconRegistry.LegacyKey(type);
             pin.Kind     = version >= 3 ? pkg.ReadString() : "";
             pin.Checked  = pkg.ReadBool();
-            pin.Auto     = pkg.ReadBool();
+            bool auto    = pkg.ReadBool();
             pin.Created  = pkg.ReadLong();
             pin.Modified = version >= 4 ? pkg.ReadLong() : pin.Created;
             // What the thing is, as opposed to the picture standing for it. Guarded on what is
             // left in the package rather than on the version alone, so a marker written by a
             // later version that has grown another field still reads correctly up to here.
             pin.Source = version >= 5 && pkg.GetPos() < pkg.Size() ? pkg.ReadString() : "";
+            // Before 4.0.0 a marker placed by hand said so in a flag of its own and left the
+            // source empty. The flag is gone and the source carries it, so an old hand-placed
+            // marker is given the word now -- otherwise it would read as recorded-but-unknown,
+            // and be asked about by every repair from here on.
+            if (!auto && string.IsNullOrEmpty(pin.Source)) pin.Source = Manual;
             return pin;
         }
     }

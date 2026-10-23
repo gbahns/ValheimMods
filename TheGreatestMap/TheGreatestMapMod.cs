@@ -52,7 +52,11 @@ namespace TheGreatestMap
         //
         // Deliberately the floor and not ModVersion: a patch must not lock out the players who
         // installed the release before it. This rises only when the format does.
-        public const string MinCompatibleVersion = "4.0.0";
+        // 4.2.0: format 7. Icon, Kind, Type and Auto left the record, because all four
+        // follow from Source and a second copy of an answer is one that can disagree -- which
+        // it did, on forty-two markers, for weeks. A 4.1.x client reads a 4.2 record's source
+        // where it expects a pin type and comes apart from there.
+        public const string MinCompatibleVersion = "4.2.0";
 
         internal static TheGreatestMapMod Instance { get; private set; }
         internal static ManualLogSource Log { get; private set; }

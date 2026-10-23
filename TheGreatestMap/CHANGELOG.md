@@ -2,7 +2,9 @@
 
 ## 4.2.0 -- 2026-10-22
 
-**Markers that did not know what they were now work it out by themselves.** Update the server too.
+**Markers that did not know what they were now work it out by themselves, and the map on the wire
+is nearly half the size.** Everyone must update, including the server: a 4.2 server turns away
+older clients and says why.
 
 Old maps carry markers written before the mod recorded what a thing *is* -- a house pin that
 could be an abandoned house, a ruin or a stone tower, with nothing on it to say which. Until now
@@ -22,6 +24,14 @@ is repaired wherever you have been rather than only where you go back to.
   round to. Now they are marked as settled, and "unidentified" means only what it says.
 - **`tgm_counts` reports how many markers do not know what they are**, by kind. It is the number
   to watch: if it climbs, something is eating your map's memory of itself.
+- **Four fields left the record.** How a marker is drawn, what kind it is, its pin type and
+  whether it was recorded all follow from what it stands for, so keeping them was keeping a
+  second copy of an answer the marker already gives -- and a second copy is one that can
+  disagree. It did: forty-two markers spent weeks filed under a category the catalog had moved
+  them out of, because the stale copy was the one being read. The shared map went from 170 KB to
+  about 91 KB on the wire in the same stroke.
+- Nothing is lost converting, from any version as far back as the first. A copy of your map is
+  kept before it happens, as always.
 
 ## 4.1.0 -- 2026-10-22
 

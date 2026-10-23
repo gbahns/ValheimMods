@@ -156,18 +156,19 @@ namespace TheGreatestMap
                 return null;
             }
             string key = IconRegistry.Normalize(icon) ?? IconRegistry.FallbackKey;
+            // Whether this was recorded or placed is said by the source now, so a caller asking
+            // for a hand-placed marker has to be given the word for it rather than a flag.
+            if (!auto && string.IsNullOrEmpty(source)) source = SharedPin.Manual;
             var pin = new SharedPin
             {
                 OwnerId = owner,
                 Author = player != null ? player.GetPlayerName() : "",
                 Name = name ?? "",
                 Pos = pos,
-                Type = IconRegistry.TypeFor(key),
                 Icon = key,
                 Kind = kind ?? "",
                 Source = source ?? "",
                 Checked = isChecked,
-                Auto = auto,
                 Created = MapStore.Now,
             };
             Store.Upsert(pin);
@@ -201,11 +202,9 @@ namespace TheGreatestMap
                 Author = player != null ? player.GetPlayerName() : "",
                 Name = pinData.m_name ?? "",
                 Pos = pinData.m_pos,
-                Type = (int)pinData.m_type,
                 Icon = placing != null ? placing.Icon : IconRegistry.KeyForVanilla((int)pinData.m_type),
                 Source = SharedPin.Manual,
                 Checked = pinData.m_checked,
-                Auto = auto,
                 Created = MapStore.Now,
             };
             // Placed by hand, but still of a kind, so it hides and groups with its fellows. A kind
@@ -305,7 +304,6 @@ namespace TheGreatestMap
                 string better = Catalog.IconFromDungeonName(pin.Name);
                 if (better == null || IconRegistry.SameKey(better, pin.Icon)) continue;
                 pin.Icon = IconRegistry.Normalize(better);
-                pin.Type = IconRegistry.TypeFor(pin.Icon);
                 Store.Upsert(pin);
                 ReplacePinData(pin);
                 changed++;
@@ -339,7 +337,6 @@ namespace TheGreatestMap
             if (best == null || IconRegistry.SameKey(best.Icon, found.Icon)) return false;
             TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Correcting a dungeon marker's icon from {best.Icon} to {found.Icon} ({found.Name}).");
             best.Icon = IconRegistry.Normalize(found.Icon);
-            best.Type = IconRegistry.TypeFor(best.Icon);
             Store.Upsert(best);
             ReplacePinData(best);
             PersonalMap.Touch();

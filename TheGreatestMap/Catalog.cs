@@ -846,6 +846,14 @@ namespace TheGreatestMap
             return !Rubble.Contains(name);
         }
 
+        /// <summary>What kind the catalog files this prefab under, or nothing if it has no line.</summary>
+        internal static Category? CategoryOf(string prefab)
+        {
+            if (string.IsNullOrEmpty(prefab)) return null;
+            if (!_built) Rebuild();
+            return Lookup(prefab, out var entry) ? entry.Cat : (Category?)null;
+        }
+
         private static bool Lookup(string prefab, out Entry entry)
         {
             if (!_built) Rebuild();
