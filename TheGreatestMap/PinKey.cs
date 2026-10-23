@@ -50,9 +50,7 @@ namespace TheGreatestMap
         public PinKey(long owner, Vector3 pos, string source)
         {
             Owner = owner;
-            // Negative zero equals positive zero but need not hash alike, which would put two
-            // equal keys in different buckets and lose one of them. Costs three comparisons.
-            Pos = new Vector3(Flat(pos.x), Flat(pos.y), Flat(pos.z));
+            Pos = new Vector3(Grid(pos.x), Grid(pos.y), Grid(pos.z));
             Source = source ?? "";
             unchecked
             {
@@ -65,7 +63,29 @@ namespace TheGreatestMap
             }
         }
 
-        private static float Flat(float v) => v == 0f ? 0f : v;
+        /// <summary>
+        /// A coordinate as the key sees it: on the centimetre grid, and never negative zero.
+        ///
+        /// Both halves matter, and the first was learned the hard way. A marker snaps its own
+        /// position when it is set, so a pin stands at -363.56; an erasure read from a map
+        /// written before the grid existed still carries -363.55914306640625. Equal markers,
+        /// unequal keys -- which meant an erasure from an older map matched nothing, and the
+        /// pass that drops erasures made obsolete by a rename found 4,401 of them and removed
+        /// none. Worse, it meant a deletion written before 4.3.0 would silently stop travelling,
+        /// and an erased marker coming back is the one thing this mod was built to prevent.
+        ///
+        /// The position has to be put on the grid in the same place for everyone who asks what a
+        /// marker is, and this is that place: a key made from a pin and a key read off the wire
+        /// now agree by construction rather than by both happening to have been rounded already.
+        ///
+        /// Negative zero is the older half: it equals positive zero but need not hash alike,
+        /// which would put two equal keys in different buckets and lose one of them.
+        /// </summary>
+        private static float Grid(float v)
+        {
+            float snapped = SharedPin.Snap(v);
+            return snapped == 0f ? 0f : snapped;
+        }
 
         public PinKey(SharedPin pin) : this(pin.OwnerId, pin.Pos, pin.Source) { }
 
