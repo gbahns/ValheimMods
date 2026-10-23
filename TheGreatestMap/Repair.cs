@@ -69,16 +69,32 @@ namespace TheGreatestMap
         /// </summary>
         internal static bool Run(bool force = false)
         {
-            if (_asked && !force) return false;
+            if (_asked && !force)
+            {
+                TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] The world has already been asked this session.");
+                return false;
+            }
             var unknown = Unknown();
-            if (unknown.Count == 0) { _asked = true; return false; }
+            if (unknown.Count == 0)
+            {
+                _asked = true;
+                TheGreatestMapMod.Log.LogInfo(
+                    "[TheGreatestMap] Nothing to ask the world about: every marker knows what it is.");
+                return false;
+            }
             _asked = true;
             if (unknown.Count > PerAsk) unknown.RemoveRange(PerAsk, unknown.Count - PerAsk);
 
             var places = new List<Vector3>(unknown.Count);
             foreach (var pin in unknown) places.Add(pin.Pos);
 
-            return LocationNames.AskStanding(places, answers =>
+            // Said before the question goes out, not after the answer comes back. Twice in a row
+            // this produced no line at all and there was no way to tell which of three silent
+            // exits had been taken -- asked already, nothing to ask, or nobody to ask.
+            TheGreatestMapMod.Log.LogInfo(
+                $"[TheGreatestMap] Asking the world about {places.Count} marker(s) that do not know what they are.");
+
+            bool sent = LocationNames.AskStanding(places, answers =>
             {
                 int settled = 0, refused = 0;
                 var byName = new Dictionary<string, int>();
@@ -98,6 +114,11 @@ namespace TheGreatestMap
                 foreach (var kv in byName)
                     TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap]   {kv.Key}: {kv.Value}");
             });
+            if (!sent)
+                TheGreatestMapMod.Log.LogWarning(
+                    "[TheGreatestMap] Could not ask the world: there is nobody to ask yet. " +
+                    "The markers keep their icons and are asked about again at the next login.");
+            return sent;
         }
 
         /// <summary>

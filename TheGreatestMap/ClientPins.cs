@@ -110,10 +110,13 @@ namespace TheGreatestMap
             if (!result.Any) return result;
             foreach (var t in result.NewTombstones) RemovePinData(t.Key);
             foreach (var pin in result.ChangedPins) ReplacePinData(pin);
-            // A map that has not been cleaned sends its ghosts along with everything else, and a
-            // merge takes in every erasure it is offered. Clearing them again after each merge
-            // costs a pass over the erasures and keeps them from creeping back.
-            Store.ForgetGhosts();
+            // No ghost sweep here, and this is load-bearing. Folding two markers that arrived on
+            // one spot erases the loser, and that erasure looks exactly like a ghost: an erasure
+            // naming a place where a marker still stands under another name. Sweeping after a
+            // merge ate the fold's erasure before it could be sent up, so the server kept its
+            // copy and handed it back at the next merge, to be folded and eaten again -- 129,
+            // then 118, then 118 forever. The sweep belongs to the one-time conversion that
+            // needed it, not to every merge.
             PersonalMap.MarkDirty();
             long total = clock.ElapsedMilliseconds;
             if (total >= 50L)
