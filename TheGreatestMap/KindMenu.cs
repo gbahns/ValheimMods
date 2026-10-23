@@ -43,6 +43,12 @@ namespace TheGreatestMap
         }
 
         private static readonly List<Entry> _entries = new List<Entry>();
+
+        /// <summary>
+        /// One per small button that can be on: armed for placing, or filtering the map. Run
+        /// whenever the list is refreshed, which is after every press on it.
+        /// </summary>
+        private static readonly List<Action> _lights = new List<Action>();
         private static GameObject _root;
         private static RectTransform _rect;
         private static Camera _camera;
@@ -392,14 +398,15 @@ namespace TheGreatestMap
                     // these are not recorded.
                     Categories.IsLive(k) || Categories.VanillaMarks(k)
                         ? (Action)null
-                        : () => { if (ManualPlace.Arm(map, k)) Close(); },
+                        : () => { if (!ManualPlace.Arm(map, k)) return; if (Pinned) Refresh(); else Close(); },
                     // And "only": the same row's switch would need twenty others turned off to say
                     // this, so it says it in one press, and says it again to take it back.
                     () => Focus.SetKind(k),
                     // And the ping, which answers the same question the other way round: leave
                     // the map as it is and make these ones wave. Live kinds answer it too, even
                     // though the server drew those pins rather than this map.
-                    () => Locate.Kind(k));
+                    () => Locate.Kind(k),
+                    placeKind: k);
                 y -= RowHeight;
             }
 
@@ -500,7 +507,8 @@ namespace TheGreatestMap
         /// it has beyond the Latin alphabet cannot be relied on.
         /// </summary>
         /// <summary>The same button with a picture in it, for an action a word would only clutter.</summary>
-        private static void RowIcon(RectTransform row, Sprite sprite, float right, float width, Action onClick)
+        private static void RowIcon(RectTransform row, Sprite sprite, float right, float width, Action onClick,
+                                    Func<bool> lit = null, string tipTopic = null, string tip = null)
         {
             var go = new GameObject("RowIcon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
             go.transform.SetParent(row, false);
@@ -510,12 +518,14 @@ namespace TheGreatestMap
             rt.anchoredPosition = new Vector2(-right, 0f);
             rt.sizeDelta = new Vector2(width, RowHeight - 8f);
             var back = go.GetComponent<Image>();
-            back.color = new Color(1f, 1f, 1f, 0.07f);
+            back.color = MenuKit.ButtonIdle;
             back.raycastTarget = true;
             var button = go.GetComponent<Button>();
             button.transition = Selectable.Transition.None;
             button.targetGraphic = back;
             button.onClick.AddListener(() => onClick());
+            MenuKit.Tip(go, tipTopic, tip);
+            if (lit != null) _lights.Add(() => back.color = lit() ? MenuKit.ButtonOn : MenuKit.ButtonIdle);
 
             var icon = new GameObject("Glyph", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             icon.transform.SetParent(go.transform, false);
@@ -530,7 +540,8 @@ namespace TheGreatestMap
             img.color = new Color(1f, 0.85f, 0.45f, 0.9f);
         }
 
-        private static void RowButton(RectTransform row, string glyph, float size, float right, float width, Action onClick)
+        private static void RowButton(RectTransform row, string glyph, float size, float right, float width, Action onClick,
+                                      Func<bool> lit = null, string tipTopic = null, string tip = null)
         {
             var go = new GameObject("RowButton", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
             go.transform.SetParent(row, false);
@@ -540,14 +551,15 @@ namespace TheGreatestMap
             rt.anchoredPosition = new Vector2(-right, 0f);
             rt.sizeDelta = new Vector2(width, RowHeight - 8f);
             var img = go.GetComponent<Image>();
-            img.color = new Color(1f, 1f, 1f, 0.07f);
+            img.color = MenuKit.ButtonIdle;
             img.raycastTarget = true;
             var button = go.GetComponent<Button>();
             button.transition = Selectable.Transition.None;
             button.targetGraphic = img;
             button.onClick.AddListener(() => onClick());
+            MenuKit.Tip(go, tipTopic, tip);
 
-            var text = MenuKit.Text(go.transform, "Glyph", glyph, size, new Color(1f, 0.85f, 0.45f, 0.9f));
+            var text = MenuKit.Text(go.transform, "Glyph", glyph, size, MenuKit.GlyphIdle);
             text.alignment = TextAlignmentOptions.Center;
             text.raycastTarget = false;
             var grt = text.rectTransform;
@@ -555,6 +567,12 @@ namespace TheGreatestMap
             grt.anchorMax = Vector2.one;
             grt.offsetMin = Vector2.zero;
             grt.offsetMax = Vector2.zero;
+            if (lit != null) _lights.Add(() =>
+            {
+                bool on = lit();
+                img.color = on ? MenuKit.ButtonOn : MenuKit.ButtonIdle;
+                text.color = on ? MenuKit.GlyphOn : MenuKit.GlyphIdle;
+            });
         }
 
         /// <summary>
@@ -627,7 +645,7 @@ namespace TheGreatestMap
             _entries.Add(new Entry { Text = text, Quiet = quiet ?? (() => false), Label = label });
         }
 
-        private static void SwitchRow(Minimap map, float x, float y, float indent, string iconKey, string text, Action onClick, Func<bool> shown, Action onPlace = null, Action onOnly = null, Action onLocate = null, Func<string> caption = null)
+        private static void SwitchRow(Minimap map, float x, float y, float indent, string iconKey, string text, Action onClick, Func<bool> shown, Action onPlace = null, Action onOnly = null, Action onLocate = null, Func<string> caption = null, Category? placeKind = null)
         {
             var row = MenuKit.Row(_root.transform, "", true, () =>
             {
@@ -659,13 +677,31 @@ namespace TheGreatestMap
             float right = 6f;
             if (anyButton)
             {
-                if (onPlace != null) RowButton(row, "+", 15f, right, RowHeight - 8f, onPlace);
+                if (onPlace != null)
+                    RowButton(row, "+", 15f, right, RowHeight - 8f, onPlace,
+                        lit: () => placeKind.HasValue && ManualPlace.Armed.HasValue
+                                   && ManualPlace.Armed.Value == placeKind.Value,
+                        tipTopic: "Place one by hand",
+                        tip: "Put a marker of this kind down yourself, for something this mod will never find " +
+                             "on its own. Double-click the map to place one, as many as you like; it stays " +
+                             "armed until you close the map.");
                 right += RowHeight - 4f;
-                if (onOnly != null) RowButton(row, "only", 11f, right, 34f, () => { onOnly(); Refresh(); });
+                if (onOnly != null)
+                    RowButton(row, "only", 11f, right, 34f, () => { onOnly(); Refresh(); },
+                        lit: () => placeKind.HasValue && Focus.Kind.HasValue
+                                   && Focus.Kind.Value == placeKind.Value,
+                        tipTopic: "Only these",
+                        tip: "Show this kind and nothing else, whatever the switches say. Press it again to " +
+                             "put the rest of the map back.");
                 right += 38f;
                 // Pinging leaves the list open and changes nothing, so unlike the others there
                 // is nothing to redraw afterwards -- the pulse paints itself.
-                if (onLocate != null) RowIcon(row, MenuKit.Ping(), right, 22f, onLocate);
+                if (onLocate != null)
+                    RowIcon(row, MenuKit.Ping(), right, 22f, onLocate,
+                        lit: () => placeKind.HasValue && Locate.Pointing(placeKind.Value),
+                        tipTopic: "Where are they",
+                        tip: "Make every marker of this kind pulse for a few seconds, and say how far away " +
+                             "the nearest one is. A kind that is switched off comes back for the pulse.");
                 right += 26f;
             }
             float buttons = right;
@@ -709,6 +745,7 @@ namespace TheGreatestMap
         /// </summary>
         private static void Refresh()
         {
+            foreach (var light in _lights) light();
             foreach (var entry in _entries)
             {
                 if (entry.Label == null) continue;
@@ -731,6 +768,7 @@ namespace TheGreatestMap
             _root = null;
             _rect = null;
             _entries.Clear();
+            _lights.Clear();
             _find = null;
             _pinImage = null;
             _pinGlow = null;

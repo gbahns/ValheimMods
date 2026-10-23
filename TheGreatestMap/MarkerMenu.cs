@@ -191,6 +191,41 @@ namespace TheGreatestMap
 
         internal static Color Lit(Color c, bool lit) => lit ? HoverColor : c;
 
+        /// <summary>
+        /// The colours of a small button that is currently doing something -- armed for placing,
+        /// or filtering the map. A button that is on should say so without being read: it is the
+        /// difference between a list of things you could do and a list that also tells you what
+        /// you already asked for.
+        /// </summary>
+        internal static readonly Color ButtonIdle = new Color(1f, 1f, 1f, 0.07f);
+        internal static readonly Color ButtonOn = new Color(1f, 0.6f, 0.13f, 0.35f);
+        internal static readonly Color GlyphIdle = new Color(1f, 0.85f, 0.45f, 0.9f);
+        internal static readonly Color GlyphOn = new Color(1f, 0.95f, 0.8f, 1f);
+
+        private static GameObject _tipPrefab;
+        private static bool _lookedForTip;
+
+        /// <summary>
+        /// Hang one of the game's own tooltips on something. Its prefab is not ours to make, so
+        /// it is borrowed from whatever already carries one -- found once and kept, since the
+        /// search walks every UITooltip in the scene.
+        /// </summary>
+        internal static void Tip(GameObject go, string topic, string text)
+        {
+            if (go == null || string.IsNullOrEmpty(text)) return;
+            if (!_lookedForTip)
+            {
+                _lookedForTip = true;
+                foreach (var found in UnityEngine.Object.FindObjectsOfType<UITooltip>())
+                    if (found != null && found.m_tooltipPrefab != null) { _tipPrefab = found.m_tooltipPrefab; break; }
+            }
+            if (_tipPrefab == null) return;
+            var tip = go.GetComponent<UITooltip>() ?? go.AddComponent<UITooltip>();
+            tip.m_tooltipPrefab = _tipPrefab;
+            tip.m_topic = topic;
+            tip.m_text = text;
+        }
+
         /// <summary>Grown by a tenth while hovered, from whatever size the button is normally.</summary>
         internal static Vector3 Magnified(Vector3 normal, bool lit) => lit ? normal * HoverMagnify : normal;
 
