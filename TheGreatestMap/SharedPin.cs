@@ -202,13 +202,14 @@ namespace TheGreatestMap
         {
             if (IsKindOnly(_source)) return _source.Substring(5);
             var cat = Catalog.CategoryOf(_source);
-            if (cat.HasValue) return cat.Value.ToString();
-            // Nothing in the catalog answers for a marker somebody placed, but its icon does --
-            // the player chose a kind and got that kind's icon, so the icon leads back. This is
-            // the same step ClientPins.KindOf takes when a marker arrives without a kind; taking
-            // it here too means the writer stops keeping a copy of what the reader works out.
-            var fromIcon = KindInference.FromIcon(Icon);
-            return fromIcon.HasValue ? fromIcon.Value.ToString() : "";
+            return cat.HasValue ? cat.Value.ToString() : "";
+            // No icon inference here, though it is tempting and I tried it. ClientPins.KindOf
+            // will infer a kind from an icon, but only for a marker this mod recorded: a pin the
+            // player adopted from vanilla wears something like "pin:Icon0", which is the Camps
+            // icon, and inferring there would quietly file every plain dot as a camp. So the
+            // reader refuses that path for anything placed by hand -- and a writer that elided
+            // on the strength of it threw away the one thing nothing else knows, the kind the
+            // player chose. A marker placed by hand keeps its kind written down.
         }
 
         public static SharedPin Read(ZPackage pkg, int version)

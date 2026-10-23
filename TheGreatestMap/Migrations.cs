@@ -57,16 +57,18 @@ namespace TheGreatestMap
             int named = NameTheHandPlaced();
             int identified = Identify.Run(apply: true).Matched;
             int kinded = NameTheKindOnly();
+            int rekinded = KindTheHandPlaced();
             // Whatever the catalog could not settle, the world is asked about -- and answers only
             // count where they agree with the icon the marker already wears. The answer comes
             // back later, over the network, and says what it did in the log itself.
             Repair.Run();
-            if (named == 0 && identified == 0 && kinded == 0) return;
+            if (named == 0 && identified == 0 && kinded == 0 && rekinded == 0) return;
             ClientPins.Restyle();
             var parts = new System.Collections.Generic.List<string>();
             if (identified > 0) parts.Add($"worked out what {identified} marker(s) stand for");
             if (kinded > 0) parts.Add($"said of {kinded} that their kind is the whole answer");
             if (named > 0) parts.Add($"marked {named} as placed by hand");
+            if (rekinded > 0) parts.Add($"gave {rekinded} placed by hand their kind back");
             TheGreatestMapMod.Log.LogInfo(
                 "[TheGreatestMap] Brought the map up to date: " + string.Join(", ", parts.ToArray()) +
                 ". Markers written before the mod recorded what a thing is are filled in once, " +
@@ -96,6 +98,38 @@ namespace TheGreatestMap
                 var kind = ClientPins.KindOf(pin);
                 if (!kind.HasValue || Categories.UsesPrefabList(kind.Value)) continue;
                 ClientPins.Reidentify(pin, SharedPin.KindOnly(kind.Value));
+                n++;
+            }
+            return n;
+        }
+
+        /// <summary>
+        /// Give a hand-placed marker its kind back, where a version of this mod wrote it out
+        /// without one.
+        ///
+        /// For a few hours the writer elided a hand-placed marker's kind, on the grounds that it
+        /// could be read back from the icon. It cannot: the reader will not infer a kind for
+        /// anything placed by hand, because an adopted vanilla pin's icon belongs to a kind it
+        /// has nothing to do with. Markers saved in that window came back kindless, which means
+        /// drawn at full size and answering to none of their kind's switches.
+        ///
+        /// The icon still says which kind was chosen, and here it can be trusted, because the
+        /// icons a kind hands out are never vanilla's own -- a marker wearing "pin:Icon0" was
+        /// adopted rather than chosen, and is left alone.
+        /// </summary>
+        private static int KindTheHandPlaced()
+        {
+            int n = 0;
+            foreach (var pin in new System.Collections.Generic.List<SharedPin>(ClientPins.All))
+            {
+                if (pin == null || pin.Auto) continue;
+                if (!string.IsNullOrEmpty(pin.StoredKind)) continue;
+                string icon = pin.StoredIcon;
+                if (string.IsNullOrEmpty(icon) || icon.StartsWith("pin:", System.StringComparison.Ordinal)) continue;
+                var kind = KindInference.FromIcon(icon);
+                if (!kind.HasValue) continue;
+                pin.Kind = kind.Value.ToString();
+                ClientPins.UpdateMarker(pin);
                 n++;
             }
             return n;
