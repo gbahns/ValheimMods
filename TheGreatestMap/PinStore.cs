@@ -48,6 +48,14 @@ namespace TheGreatestMap
                         $"[TheGreatestMap] Loaded the shared map: {_store.Pins.Count} markers, {_store.Tombstones.Count} erased" +
                         (_store.LegacyTombstones.Count > 0 ? $" (and {_store.LegacyTombstones.Count} erased before the rekey)" : "") +
                         $", {_store.Suppressions.Count} erased spots, from {_path}");
+                    int crops = _store.ForgetCropErasures();
+                    if (crops > 0)
+                    {
+                        MarkDirty();
+                        TheGreatestMapMod.Log.LogInfo(
+                            $"[TheGreatestMap] Forgot {crops} erasure(s) left by clearing crops off tilled ground. " +
+                            "A planted turnip was never a discovery, so there is nothing to remember about rubbing one out.");
+                    }
                     int ghosts = _store.ForgetGhosts();
                     if (ghosts > 0)
                     {

@@ -83,6 +83,13 @@ namespace TheGreatestMap
             {
                 var stored = Utils.Decompress(Convert.FromBase64String(data));
                 Store = MapStore.FromBytes(stored);
+                int crops = Store.ForgetCropErasures();
+                if (crops > 0)
+                {
+                    MarkDirty();
+                    TheGreatestMapMod.Log.LogInfo(
+                        $"[TheGreatestMap] Forgot {crops} crop erasure(s) from your own map.");
+                }
                 int ghosts = Store.ForgetGhosts();
                 if (ghosts > 0)
                 {

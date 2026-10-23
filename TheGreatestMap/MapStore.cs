@@ -211,6 +211,39 @@ namespace TheGreatestMap
             return ghosts.Count;
         }
 
+        /// <summary>
+        /// Forget the erasures left by clearing crops off a farm. Returns how many went.
+        ///
+        /// A marker written for a planted turnip was never a discovery, and the record of
+        /// rubbing one out is not worth keeping either. There were 141 of these on the live map
+        /// against 281 real ones, and unlike a real erasure they can never be needed again:
+        /// recording refuses to write a crop on tilled ground or inside a base in the first
+        /// place, so there is nothing for an erasure to hold back.
+        ///
+        /// They are forgotten on load rather than never written, because the erasure is also
+        /// how the removal travels. A client that merely dropped the marker would have it
+        /// handed straight back by the server at the next merge and would drop it again three
+        /// seconds later, round and round, while the farm stayed exactly as it was. So the
+        /// erasure does its work during the session and is gone by the next load, which costs
+        /// nothing and leaves nothing behind.
+        ///
+        /// Only the two categories you can actually plant. A mushroom or a berry inside
+        /// somebody's walls could equally have been rubbed out on purpose, and an erasure that
+        /// might have been meant is one to keep.
+        /// </summary>
+        public int ForgetCropErasures()
+        {
+            if (Tombstones.Count == 0) return 0;
+            var crops = new List<PinKey>();
+            foreach (var kv in Tombstones)
+            {
+                var cat = Catalog.CategoryOf(kv.Key.Source);
+                if (cat == Category.Seeds || cat == Category.Plants) crops.Add(kv.Key);
+            }
+            foreach (var key in crops) Tombstones.Remove(key);
+            return crops.Count;
+        }
+
         /// <summary>A position as one number, for gathering what stands in the same spot.</summary>
         private static long Place(Vector3 pos) =>
             ((long)SharedPin.Hundredths(pos.x) << 32) ^ (uint)SharedPin.Hundredths(pos.z);

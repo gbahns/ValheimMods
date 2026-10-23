@@ -17,6 +17,10 @@ thousand marker map went from 587 KB to about 110 KB.
   on one map in a single hour, and together they were larger than every marker on it.
 - **Erasures that were only a marker's former name are dropped on load**, so a map that already
   collected them cleans itself up without anyone running anything.
+- **Clearing crops off a farm leaves nothing behind.** A marker written for a planted turnip
+  was never a discovery, and the record of rubbing one out is not worth keeping: recording
+  already refuses to write a crop on tilled ground or inside a base, so there is nothing for an
+  erasure to hold back. 141 of them went from one map.
 - **Positions are kept to the centimetre** and times to the second. Nothing on a map is measured
   finely enough for the difference to be visible.
 
