@@ -216,7 +216,7 @@ namespace TheGreatestMap
             if (!_lookedForTip)
             {
                 _lookedForTip = true;
-                foreach (var found in UnityEngine.Object.FindObjectsOfType<UITooltip>())
+                foreach (var found in UnityEngine.Object.FindObjectsByType<UITooltip>(UnityEngine.FindObjectsSortMode.None))
                     if (found != null && found.m_tooltipPrefab != null) { _tipPrefab = found.m_tooltipPrefab; break; }
             }
             if (_tipPrefab == null) return;

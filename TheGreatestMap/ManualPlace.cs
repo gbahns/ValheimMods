@@ -80,12 +80,12 @@ namespace TheGreatestMap
             if (type <= 0) return false;
             _armed = new Placing { Kind = kind, Icon = IconRegistry.Normalize(icon), Type = type };
             Access.SelectedType(map) = (Minimap.PinType)type;
-            // Double-click, as vanilla has always placed a pin. This said "right-click" for
-            // months, which is not merely wrong but harmful: right-click is the marker menu,
-            // whose first item is "Hide this marker". Following the instruction over an existing
-            // marker hid it, and a marker hidden one at a time stays hidden through everything
-            // short of tgm_show -- so the advice made markers disappear and gave no hint why.
-            TheGreatestMapMod.Message($"Double-click the map to place {Categories.Label(kind)} markers, as many as you like.");
+            // Nothing is said on screen. There was a line here telling the player how to place
+            // one, and it was wrong for months -- it said right-click, which is the marker menu,
+            // whose first item hides the marker. But the reason it is gone rather than corrected
+            // is that the "+" on the row lights up while its kind is armed, which says the same
+            // thing in the place the player is already looking and goes on saying it while the
+            // game is paused, which an on-screen message does not.
             return true;
         }
 
