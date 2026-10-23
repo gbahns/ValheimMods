@@ -202,7 +202,13 @@ namespace TheGreatestMap
         {
             if (IsKindOnly(_source)) return _source.Substring(5);
             var cat = Catalog.CategoryOf(_source);
-            return cat.HasValue ? cat.Value.ToString() : "";
+            if (cat.HasValue) return cat.Value.ToString();
+            // Nothing in the catalog answers for a marker somebody placed, but its icon does --
+            // the player chose a kind and got that kind's icon, so the icon leads back. This is
+            // the same step ClientPins.KindOf takes when a marker arrives without a kind; taking
+            // it here too means the writer stops keeping a copy of what the reader works out.
+            var fromIcon = KindInference.FromIcon(Icon);
+            return fromIcon.HasValue ? fromIcon.Value.ToString() : "";
         }
 
         public static SharedPin Read(ZPackage pkg, int version)

@@ -403,9 +403,22 @@ namespace TheGreatestMap
             if (string.IsNullOrEmpty(source)) return null;
             if (!_built) Rebuild();
             if (_iconBySource.TryGetValue(source, out var cached)) return cached;
-            string icon = Lookup(source, out var e) ? ResolveLegendIcon(source, e, out _) : null;
+            // "kind:Runestone" names a kind rather than a prefab, and a kind draws with its own
+            // icon -- the one the legend shows and the Icons section sets. Without this the
+            // writer finds nothing to derive and keeps a copy of an icon the kind already says.
+            string icon = SharedPin.IsKindOnly(source)
+                ? IconForKind(source.Substring(5))
+                : (Lookup(source, out var e) ? ResolveLegendIcon(source, e, out _) : null);
             _iconBySource[source] = icon;
             return icon;
+        }
+
+        /// <summary>The icon a kind draws with, as configured or as it comes.</summary>
+        private static string IconForKind(string kind)
+        {
+            if (!System.Enum.TryParse(kind, true, out Category cat)) return null;
+            string configured = TgmConfig.CategoryIcon.TryGetValue(cat, out var cfg) ? cfg.Value : null;
+            return IconRegistry.Normalize(string.IsNullOrEmpty(configured) ? Categories.DefaultIcon(cat) : configured);
         }
 
         private static void Rebuild()
