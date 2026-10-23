@@ -33,6 +33,15 @@
     <DeployProfiles Condition="'$(DeployProfiles)' == ''">Default SD Test;Default HD Test</DeployProfiles>
   </PropertyGroup>
 
+  <!-- A mod's version is written in two places that must agree: manifest.json, which becomes
+       the assembly version, and the ModVersion constant the BepInPlugin attribute needs.  An
+       attribute argument has to be a compile-time constant, so the repeat cannot be removed.
+       It is checked instead, before anything is compiled against it. -->
+  <Target Name="CheckModVersion" BeforeTargets="CoreCompile"
+          Condition="Exists('$(MSBuildProjectDirectory)\manifest.json')">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)check-mod-version.ps1&quot; -ProjectDir &quot;$(MSBuildProjectDirectory)&quot; -ManifestVersion &quot;$(Version)&quot;" />
+  </Target>
+
   <!-- Only for mods: a project with a manifest.json is one, the test projects are not. -->
   <Target Name="DeployToProfiles" AfterTargets="Build"
           Condition="'$(DeployProfiles)' != 'none'
