@@ -701,7 +701,7 @@ namespace TheGreatestMap
                         lit: () => placeKind.HasValue && Focus.Kind.HasValue
                                    && Focus.Kind.Value == placeKind.Value,
                         tipTopic: "Only",
-                        tip: "hide all other kinds of markers");
+                        tip: "Hide all other kinds of markers");
                 right += 38f;
                 // Pinging leaves the list open and changes nothing, so unlike the others there
                 // is nothing to redraw afterwards -- the pulse paints itself.
@@ -709,7 +709,7 @@ namespace TheGreatestMap
                     RowIcon(row, MenuKit.Ping(), right, 22f, onLocate,
                         lit: () => placeKind.HasValue && Locate.Pointing(placeKind.Value),
                         tipTopic: "Ping",
-                        tip: "ping every marker of this kind");
+                        tip: "Ping every marker of this kind");
                 right += 26f;
             }
             float buttons = right;
