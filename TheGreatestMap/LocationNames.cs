@@ -72,6 +72,26 @@ namespace TheGreatestMap
         private static readonly System.Reflection.FieldInfo _instancesField =
             AccessTools.Field(typeof(ZoneSystem), "m_locationInstances");
 
+        /// <summary>
+        /// The game's index of what stands in each sector.
+        ///
+        /// Reached by name rather than written as `man.m_objectsBySector`, which compiles --
+        /// the Libs copy of the game has every member public -- and then throws
+        /// FieldAccessException against the real assembly, where the field is private.
+        ///
+        /// It throws in a way that hides itself, too. The runtime raises it when the method is
+        /// compiled, not where the field is read, so the try/catch wrapped around the read never
+        /// sees it: the whole method fails before its first statement. Here that meant the
+        /// server took the repair's question, answered nothing, logged nothing, and threw
+        /// nothing that any guard inside could catch -- several evenings of looking at silence.
+        /// Only a guard in the calling method ever caught it.
+        ///
+        /// audit-private-access.ps1 finds these by compiling against the real assembly and
+        /// reporting what will not resolve. Worth running before a release.
+        /// </summary>
+        private static readonly AccessTools.FieldRef<ZDOMan, List<ZDO>[]> ObjectsBySector =
+            AccessTools.FieldRefAccess<ZDOMan, List<ZDO>[]>("m_objectsBySector");
+
         private static IDictionary Instances()
         {
             var zone = ZoneSystem.instance;
@@ -197,7 +217,8 @@ namespace TheGreatestMap
             {
                 var man = ZDOMan.instance;
                 var scene = ZNetScene.instance;
-                if (man != null && scene != null && man.m_objectsBySector != null)
+                var bySector = man != null ? ObjectsBySector(man) : null;
+                if (scene != null && bySector != null)
                 {
                     // A place near a sector's edge has its object in the next one along, so the
                     // corners of the search box are sampled and the sectors they fall in are the
@@ -209,8 +230,8 @@ namespace TheGreatestMap
                                 pos + new Vector3(dx * ObjectRadius, 0f, dz * ObjectRadius)).Sector);
                     foreach (uint sector in sectors)
                     {
-                        if (sector >= man.m_objectsBySector.Length) continue;
-                        var list = man.m_objectsBySector[sector];
+                        if (sector >= bySector.Length) continue;
+                        var list = bySector[sector];
                         if (list == null) continue;
                         foreach (var zdo in list)
                         {
