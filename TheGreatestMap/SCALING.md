@@ -4,10 +4,13 @@ What the shared map costs today, what each proposed change is actually worth, an
 do them in. Measured on the live server map, not estimated.
 
 **Source of every number below:** `C:\ValheimServer\server\BepInEx\config\TheGreatestMap\DeepNorth_-313114985.pins.bin`,
-read on 2026-10-21. 593,624 bytes, 4,644 markers, 659 tombstones, 17 suppressions. Deflated, as it
-goes on the wire, that is 227,299 bytes.
+read on **2026-10-23, after 4.3.0 shipped**. 139,923 bytes, 4,683 markers, 570 erasures, 660
+pre-rekey erasures, 17 suppressions. Deflated, as it goes on the wire, that is **72,148 bytes** --
+**14% of Steam's message budget**, where five days earlier it was 43%.
 
-Re-measure before acting on any of this. The map grows; it was 543 KB five days ago.
+Re-measure before acting on any of this. Numbers further down are labelled with the format they
+were taken on; the record-by-record table is format 6 and is kept because it is why the format 7
+and 8 changes were chosen, not because it describes the file today.
 
 ---
 
@@ -67,7 +70,7 @@ which is the whole point of measuring instead of reasoning.
 
 | Change | Raw | Deflated | vs. today |
 |---|---:|---:|---:|
-| today (format 5) | 593,624 | 227,299 | -- |
+| format 5, as it stood 2026-10-21 | 593,624 | 227,299 | -- |
 | drop `Id`, key on a natural key | 440,372 | **112,253** | **49%** |
 | + intern `Author`/`Icon`/`Kind`/`Source` | 267,175 | 104,875 | 46% |
 | + drop `Type` | 248,599 | 104,294 | 46% |
@@ -151,28 +154,52 @@ Ordered by what each one is actually for. The first removes a failure; the rest 
       rekey: `ClientPins.Reidentify` erases the old record and writes a new one, which is
       honestly what it is.
 
-- [ ] **4. Drop `Type` from the wire.** It is recomputed from `Icon` on arrival and read nowhere
+- [x] **4. Drop `Type` from the wire.** Done in format 7, together with `Auto`, `Kind` and a
+      derivable `Icon` -- the whole derived set went at once rather than four bytes on their own,
+      which is what the note below predicted it would take.
+
+  <details><summary>what the item originally said</summary> It is recomputed from `Icon` on arrival and read nowhere
       else. Four bytes a record, and one less field to keep honest. Deliberately *not* taken
       along with item 3, to keep that change reviewable; it now needs a format 7 of its own,
       which is a poor trade for 18 KB raw and about 600 bytes compressed. Worth doing only when
       the format is being opened for something else -- item 5, most likely.
+  </details>
 
-- [ ] **5. The small fields, if the format is being changed anyway.** 4-byte timestamps against a
-      mod epoch instead of 8-byte .NET ticks, `Checked` and `Auto` packed into one byte, varint
-      record framing, and interning the four repeated strings. Together about 6% more off the
-      compressed size -- the reason to do them is that they ride along with 3 and 4 for almost
-      nothing, not that any of them is worth a release.
+- [x] **5. The small fields, if the format is being changed anyway.** Done across formats 7 and 8,
+      and the format was indeed opened for something else, exactly as this item assumed. Seconds
+      from a 2020 epoch rather than .NET ticks, positions to the centimeter, varint framing, and
+      the strings interned in tables -- the last of which the measurements had called nearly
+      worthless on its own and which is worth having once the layout is columnar, because a
+      column of small table indices compresses where a column of strings does not.
 
-- [ ] **6. Tombstones never expire.** 659 today, 27 KB, and the number only goes up for the life of
-      the world. A tombstone exists to stop an old copy of the map resurrecting an erased marker,
-      so it only needs to outlive the oldest copy anyone might still be carrying. A horizon --
-      drop tombstones older than some months -- bounds a cost that is currently unbounded.
-      Think hard before picking the number: too short and a player returning from a long absence
-      brings their erased markers back for everyone.
+- [ ] **6. Erasures never expire. Now the largest item left.** Two populations, 44 KB between
+      them against a 140 KB file:
 
-- [ ] **7. Check the personal map in the character file.** About 310 KB today and written on the
-      same record format, so items 3--5 shrink it too. Worth a measurement at 20,000 markers
-      before anyone finds the limit the hard way.
+      - **660 pre-rekey erasures, 27,064 bytes, 21% of the file.** Keyed by the GUID a marker
+        carried before 4.0.0. Formats 7 and 8 store no GUID on anything, so nothing in the file
+        can ever match one again. They can still match exactly one thing: a marker arriving from
+        a personal map saved in format 5 or older -- a player who has not logged in since 4.0.0.
+        For that player they are the only record of what they erased.
+      - **~515 blank-source erasures, roughly 17 KB.** The former keys of markers the repair
+        identified. Each is what stops the unidentified copy coming back from a map that has not
+        caught up yet.
+
+      Both are records that have done their job and have no way to retire; `Merge` only ever
+      unions erasures in. The disciplined way to settle it is evidence rather than a horizon:
+      **log a line whenever an erasure actually matches an incoming marker.** After some weeks of
+      silence, dropping them is a fact. A date-based horizon was the original proposal and is
+      strictly worse -- it guesses at the very thing the log would tell us.
+
+      Crop erasures were the third population and are gone: they are swept on load (4.3.0),
+      because recording already refuses to write a crop on tilled ground, so there is nothing for
+      the erasure to hold back. 141 went from this map.
+
+- [ ] **7. Check the personal map in the character file.** Measured 2026-10-23 on the way into
+      4.3.0: **568,861 bytes in format 6**, converted to format 8 on load with a backup written
+      beside it. It is the same record format as the shared map, so formats 7 and 8 shrank it by
+      the same proportion. Still worth a measurement at 20,000 markers before anyone finds the
+      limit the hard way -- it lives in `Player.m_customData`, which has nobody watching its
+      size.
 
 ### Decided against
 
@@ -268,13 +295,42 @@ the repair has run, not before.
 stands: break the format once, for all of this at once, together with the timestamps and the
 positions below. Not three migrations for a few percent each.
 
-## What is left to win
+## What was won (formats 7 and 8, shipped in 4.3.0)
 
-**`Pos` and `Created` are 41% of the compressed map between them**, and they are the two fields
-compression cannot touch. Everything else together is about 9%. This is the second time measuring
-has pointed somewhere other than the list did -- items 4 and 5 below both target the cheap half.
+The table below this one was the prediction. Here is what the live map actually did, measured the
+same way at each step:
 
-Prototyped on the real file, each change on top of the last:
+| | raw | deflated | markers |
+|---|---:|---:|---:|
+| format 6, 2026-10-23 morning | 587,444 | 169,594 | 4,641 |
+| format 7 -- derived fields dropped | 479,863 | 162,730 | 4,641 |
+| format 8 -- columnar, cm, seconds, varint | 269,993 | 127,119 | 4,641 |
+| + ghost erasures swept (4,401 of them) | 137,704 | ~70,000 | 4,641 |
+| **today, after the repair and the folds** | **139,923** | **72,148** | **4,683** |
+
+**76% off the compressed size**, from 43% of Steam's message budget to 14%. Two notes on reading
+that:
+
+- **Nearly half of it was not the format at all.** Format 8 took the file to 270 KB; sweeping
+  4,401 erasures that were only the former names of markers still standing took it to 138 KB.
+  The biggest single win in a document about record layout came from deleting records that should
+  never have existed. Measure what is *in* the file before optimizing how it is written.
+- **The prediction was close where it was measured and wrong where it was reasoned.** The
+  columnar prototype said 65,301 deflated and the real thing landed at 72,148 -- 10% off, which
+  is the cost of prototyping against a file that then changed underneath. Good enough to decide
+  on; not good enough to quote.
+
+### What is left to win
+
+**Timestamps are now the biggest thing in a marker.** On the format 8 file, `Created` is 18,736
+bytes and `Modified` 15,514 -- **34,250 between them, 26% of the whole file**, more than the three
+position columns (26,680) and far more than names (4,911). Positions were the target for two
+rounds and are no longer the problem; centimeter deltas dealt with them.
+
+That said, see the heading after next: there is no longer a case for acting on any of this.
+
+The prototype table, kept for the record -- this is what was predicted before formats 7 and 8 were
+written, each change on top of the last:
 
 | | raw | deflated | vs. now |
 |---|---:|---:|---:|
@@ -295,8 +351,8 @@ milliseconds cost almost nothing once delta-coded, so use those and the question
 
 ### But this is no longer the bottleneck
 
-42% more off a map that already uses **22% of the message budget** is not worth a third format
-migration on its own. Items 1 and 2 are worth more, and item 2 is worth the most of all: with
+Whatever is left is not worth a format migration. The map uses **14% of the message budget**;
+halving the timestamps would take it to about 11%, which buys nothing anybody will notice. Items 1 and 2 are worth more, and item 2 is worth the most of all: with
 deltas, the everyday table sync sends nothing at all, which makes the size of a full map
 something that matters only when somebody joins. Shrinking a message you have stopped sending is
 the wrong order of work.
@@ -337,6 +393,50 @@ hand. It cannot settle every blank: `Portal` and `Runestone` have no prefab list
 those kinds the kind *is* the whole answer, so on the live map 109 of the 430 blanks stay blank.
 Giving those a source of their own -- as hand-placed markers now get `Manual` -- is unfinished
 business.
+
+---
+
+## What 4.3.0 cost, and why
+
+Four bugs, and they were the same bug wearing different clothes: **two halves disagreeing about
+one fact, in a way that produced no evidence.** Each is written up where it belongs in the code;
+what they have in common is worth stating once.
+
+**One encoding, one version number.** The columnar layout shipped still calling itself format 7,
+hours after the per-record format 7 had been deployed. Two byte layouts with one number and no
+way to tell them apart -- and both builds reported the same mod version, so the compatibility
+check would have waved the mismatch through and a reader would have taken the string table for
+marker records. Caught before the two met. Reusing a number inside an unpublished version feels
+free, because nothing has shipped; the old build is already running on the server.
+
+**A key must be put on the grid in exactly one place.** Markers snapped their position to the
+centimeter when it was set; keys built from a position read off the wire did not. A pin stood at
+-363.56 while the erasure naming that same spot still carried -363.55914306640625, so they never
+matched. The visible cost was a cleanup pass that found 4,401 obsolete erasures and removed none.
+The quiet cost was that a deletion written before the grid existed would have stopped travelling,
+which is the one failure this mod exists to prevent.
+
+**A sweep that cannot tell two cases apart will eat the one it should keep.** The ghost sweep
+drops erasures naming a place where a marker still stands under another name. Folding two markers
+onto one spot produces exactly that shape -- and the fold's erasure is load-bearing, because it
+is how the removal reaches the server. The sweep ate it before it could be sent, the server
+handed the loser straight back, and the client folded it again: 129, then 118, then 118 forever,
+visible in the logs for anyone who looked. The sweep now runs only during the one-time conversion
+it was written for.
+
+**A handler that cannot report its own failure is invisible, not absent.** The repair asked the
+server what stood at each of 344 places; the server answered nothing, logged nothing, and looked
+exactly like a server that had never been asked. It had been asked every login. Reading a private
+field threw `FieldAccessException`, which the runtime raises *when the method is compiled* rather
+than where the field is read -- so the try/catch wrapped around that very read never fired. The
+game does catch it, and reports it with `ZLog.Log`, info-level on Unity's channel, which on this
+server reaches no file anybody reads.
+
+That last one took several restarts, and the reason is the lesson: three theories were formed by
+re-reading code that looked correct, and none survived contact. A patch on the game's own
+dispatcher answered it on the first run. **When something produces no output at all, the next
+move is an observation point, not another reading.** All 17 of the mod's RPC handlers are now
+registered through one wrapper that logs whatever they throw.
 
 ---
 
