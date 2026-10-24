@@ -89,8 +89,8 @@ namespace TheGreatestMap
         {
             var rpc = ZRoutedRpc.instance;
             if (rpc == null) return;
-            rpc.Register<ZPackage>(RpcList, RPC_List);
-            rpc.Register(RpcWant, RPC_Want);
+            Rpc.Register<ZPackage>(rpc, RpcList, RPC_List);
+            Rpc.Register(rpc, RpcWant, RPC_Want);
         }
 
         private static bool IsServer => ZNet.instance != null && ZNet.instance.IsServer();

@@ -55,10 +55,10 @@ namespace TheGreatestMap
                     "[TheGreatestMap] Nowhere to register the world questions yet; nobody will be able to ask.");
                 return;
             }
-            rpc.Register<ZPackage>(RpcAsk, RPC_Ask);
-            rpc.Register<ZPackage>(RpcTell, RPC_Tell);
-            rpc.Register<ZPackage>(RpcAskAll, RPC_AskAll);
-            rpc.Register<ZPackage>(RpcTellAll, RPC_TellAll);
+            Rpc.Register<ZPackage>(rpc, RpcAsk, RPC_Ask);
+            Rpc.Register<ZPackage>(rpc, RpcTell, RPC_Tell);
+            Rpc.Register<ZPackage>(rpc, RpcAskAll, RPC_AskAll);
+            Rpc.Register<ZPackage>(rpc, RpcTellAll, RPC_TellAll);
             TheGreatestMapMod.Log.LogInfo(
                 $"[TheGreatestMap] Ready to answer questions about the world (this is {(IsServer ? "the server" : "a client")}).");
         }

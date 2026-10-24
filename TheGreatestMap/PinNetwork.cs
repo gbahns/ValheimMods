@@ -24,15 +24,15 @@ namespace TheGreatestMap
         {
             var rpc = ZRoutedRpc.instance;
             if (rpc == null) return;
-            rpc.Register<ZPackage>(Sync, RPC_Sync);
-            rpc.Register<ZPackage>(SyncRes, RPC_SyncRes);
-            rpc.Register<ZPackage>(Delta, RPC_Delta);
-            rpc.Register<ZPackage>(Exchange, RPC_Exchange);
-            rpc.Register<int>(Wipe, RPC_Wipe);
-            rpc.Register(Unsuppress, RPC_Unsuppress);
-            rpc.Register(BUnsuppress, RPC_BUnsuppress);
-            rpc.Register(WhoAmI, RPC_WhoAmI);
-            rpc.Register<bool, string>(YouAre, RPC_YouAre);
+            Rpc.Register<ZPackage>(rpc, Sync, RPC_Sync);
+            Rpc.Register<ZPackage>(rpc, SyncRes, RPC_SyncRes);
+            Rpc.Register<ZPackage>(rpc, Delta, RPC_Delta);
+            Rpc.Register<ZPackage>(rpc, Exchange, RPC_Exchange);
+            Rpc.Register<int>(rpc, Wipe, RPC_Wipe);
+            Rpc.Register(rpc, Unsuppress, RPC_Unsuppress);
+            Rpc.Register(rpc, BUnsuppress, RPC_BUnsuppress);
+            Rpc.Register(rpc, WhoAmI, RPC_WhoAmI);
+            Rpc.Register<bool, string>(rpc, YouAre, RPC_YouAre);
         }
 
         private static bool Ready => ZRoutedRpc.instance != null && ZNet.instance != null;
