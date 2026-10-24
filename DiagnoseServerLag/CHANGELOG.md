@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.18 - unreleased
+## 0.10.18 - 2026-10-23
 
 - **The group report no longer blames the network for everyone standing in the same base.** The
   simultaneity test counts seconds where two or more machines stalled and compares that against
