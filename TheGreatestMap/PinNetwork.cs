@@ -49,6 +49,11 @@ namespace TheGreatestMap
             var clock = System.Diagnostics.Stopwatch.StartNew();
             var pkg = new ZPackage();
             store.WriteFor(pkg);
+            // Written after the map, so a server that knows nothing of watermarks reads the map
+            // and stops, exactly as it always did. It then answers with the whole map, which is
+            // the right answer to a question it did not hear.
+            pkg.Write(SyncEngine.HeardSession);
+            pkg.Write(SyncEngine.HeardSeq);
             long wrote = clock.ElapsedMilliseconds;
             ZRoutedRpc.instance.InvokeRoutedRPC(Sync, pkg);
             TheGreatestMapMod.Log.LogInfo(
@@ -142,6 +147,16 @@ namespace TheGreatestMap
             catch (System.Exception e) { TheGreatestMapMod.Log.LogWarning($"[TheGreatestMap] Bad map from peer {sender}: {e.Message}"); return; }
             TheGreatestMapMod.Log.LogInfo(
                 $"[TheGreatestMap] Peer {sender} sent a map: {incoming.Pins.Count} markers, {came / 1024f:0.#} KB, unpacked in {clock.ElapsedMilliseconds} ms.");
+            // Read after the map and only if the sender wrote them; a client that predates
+            // watermarks simply asks for everything.
+            long askedSession = 0L, askedSeq = -1L;
+            try
+            {
+                if (pkg.GetPos() < pkg.Size()) askedSession = pkg.ReadLong();
+                if (pkg.GetPos() < pkg.Size()) askedSeq = pkg.ReadLong();
+            }
+            catch (System.Exception) { askedSession = 0L; askedSeq = -1L; }
+
             var result = PinStore.Merge(incoming);
             long merged = clock.ElapsedMilliseconds;
             if (result.Refused)
@@ -158,12 +173,25 @@ namespace TheGreatestMap
             // Compressed like everything else that crosses the wire. This one was not: it went
             // as a raw snapshot, which is the largest message this mod sends and the one that
             // outgrew what Steam will carry.
+            var marks = PinStore.Marks;
+            bool known = marks.Knows(askedSession, askedSeq);
+            var sending = known ? marks.Since(askedSeq, PinStore.Store) : PinStore.Store;
+
             var reply = new ZPackage();
-            PinStore.Store.WriteFor(reply);
+            sending.WriteFor(reply);
+            // After the map, for the same reason the client writes its watermark after its own:
+            // an older client reads the map and stops, and keeps asking for everything.
+            reply.Write(marks.Session);
+            reply.Write(marks.Seq);
             TheGreatestMapMod.Log.LogInfo(
-                $"[TheGreatestMap] Answering peer {sender} with the shared map: {PinStore.Store.Pins.Count} markers, " +
-                $"{reply.Size() / 1024f:0.#} KB compressed (merging took {merged} ms, {clock.ElapsedMilliseconds} ms in all). " +
-                "One message carries at most 512 KB.");
+                known
+                    ? $"[TheGreatestMap] Answering peer {sender} with what changed since their last sync: " +
+                      $"{sending.Pins.Count} marker(s), {sending.Tombstones.Count} erasure(s), " +
+                      $"{reply.Size() / 1024f:0.#} KB compressed (merging took {merged} ms, " +
+                      $"{clock.ElapsedMilliseconds} ms in all), instead of the whole {PinStore.Store.Pins.Count}."
+                    : $"[TheGreatestMap] Answering peer {sender} with the shared map: {PinStore.Store.Pins.Count} markers, " +
+                      $"{reply.Size() / 1024f:0.#} KB compressed (merging took {merged} ms, {clock.ElapsedMilliseconds} ms in all). " +
+                      "One message carries at most 512 KB.");
             ZRoutedRpc.instance.InvokeRoutedRPC(sender, SyncRes, reply);
         }
 
@@ -208,7 +236,19 @@ namespace TheGreatestMap
                 int size = pkg.Size();
                 var store = MapStore.ReadFrom(pkg);
                 long read = clock.ElapsedMilliseconds;
+                // Read here, committed after the merge. Claiming to hold changes we then failed
+                // to apply is the one way a watermark can lose a marker for good, so it is only
+                // written down once the markers are in. A server too old to send one offers
+                // nothing, we keep asking for the whole map, and that is correct.
+                long session = 0L, seq = -1L;
+                try
+                {
+                    if (pkg.GetPos() < pkg.Size()) session = pkg.ReadLong();
+                    if (pkg.GetPos() < pkg.Size()) seq = pkg.ReadLong();
+                }
+                catch (System.Exception) { session = 0L; seq = -1L; }
                 SyncEngine.OnSharedMap(store);
+                if (seq >= 0L) SyncEngine.Heard(session, seq);
                 if (clock.ElapsedMilliseconds >= 50L)
                     TheGreatestMapMod.Log.LogWarning(
                         $"[TheGreatestMap] The shared map came back in {clock.ElapsedMilliseconds} ms " +

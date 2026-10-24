@@ -24,6 +24,45 @@ namespace TheGreatestMap
 
         internal static bool Instant => TgmConfig.SharingMode.Value == SharingMode.Instant;
 
+        // ── what we have already been told ──────────────────────────────────────────
+        //
+        // The server's numbering, as far as this client has heard it. Sent with every sync so
+        // the answer can be only what has changed since. Forgotten on leaving a world, and
+        // never written to disk: one whole map per player per server restart is a cheap price
+        // for a claim that cannot outlive the thing it describes.
+
+        /// <summary>The server run our sequence number belongs to; 0 when we have heard none.</summary>
+        internal static long HeardSession { get; private set; }
+
+        /// <summary>The last change number the server told us about; -1 when we have heard none.</summary>
+        internal static long HeardSeq { get; private set; } = -1L;
+
+        /// <summary>Note where the server's numbering had reached, once its changes are applied.</summary>
+        internal static void Heard(long session, long seq)
+        {
+            if (session == 0L || seq < 0L) return;
+            if (session == HeardSession && seq < HeardSeq) return;   // never walk the mark backwards
+            HeardSession = session;
+            HeardSeq = seq;
+        }
+
+        private static void ForgetWatermark()
+        {
+            HeardSession = 0L;
+            HeardSeq = -1L;
+            _serverHasOurs = false;
+        }
+
+        /// <summary>
+        /// Whether the server has everything this map holds -- true only once a reply has come
+        /// back for an upload, which is the only proof the server actually took it.
+        ///
+        /// PersonalMap.Dirty cannot answer this on its own: it is cleared when a map is handed
+        /// to the network, not when the far end accepts it, so a send that never arrives leaves
+        /// a clean flag over an unsent change. An answered sync is the proof.
+        /// </summary>
+        private static bool _serverHasOurs;
+
         internal static void Reset()
         {
             _instantDue = -1f;
@@ -31,6 +70,7 @@ namespace TheGreatestMap
             _lastFullSync = -999f;
             _lastExchange.Clear();
             _quietOnce.Clear();
+            ForgetWatermark();
         }
 
         /// <summary>Called after every local edit. In Instant mode, syncs with the shared map shortly after.</summary>
@@ -79,13 +119,21 @@ namespace TheGreatestMap
                 return;
             }
             _lastFullSync = Time.time;
+            // Nothing of ours to offer: the server answered our last upload and nothing has
+            // changed here since, so it already holds every marker this map does. Send an empty
+            // one and let the watermark fetch whatever the others have added. This is the
+            // ordinary case at a cartography table and it used to cost 70 KB in each direction.
+            bool nothingToOffer = _serverHasOurs && !PersonalMap.Dirty;
+            if (PersonalMap.Dirty) _serverHasOurs = false;
             PersonalMap.Sent();
             _announcePending = announceNothing;
-            PinNetwork.SendSync(PersonalMap.Store);
+            PinNetwork.SendSync(nothingToOffer ? new MapStore() : PersonalMap.Store);
         }
 
         internal static void OnSharedMap(MapStore serverStore)
         {
+            // The server answered, so it has taken whatever we sent with that question.
+            _serverHasOurs = true;
             var result = ClientPins.ApplyMerge(serverStore);
             AfterMerge(result);
             if (result.Any) TheGreatestMapMod.Message("Shared map: " + result);

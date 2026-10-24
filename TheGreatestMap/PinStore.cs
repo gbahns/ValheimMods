@@ -17,6 +17,10 @@ namespace TheGreatestMap
     internal static class PinStore
     {
         private static MapStore _store = new MapStore();
+
+        /// <summary>What has changed since each client last heard, so a sync can send the
+        /// changes rather than the map. In memory only; see <see cref="Watermark"/>.</summary>
+        private static Watermark _marks = new Watermark();
         private static bool _loaded, _dirty;
         private static float _saveAt;
         private static string _path;
@@ -30,6 +34,10 @@ namespace TheGreatestMap
         internal static void Load()
         {
             _store = new MapStore();
+            // A new map means a new numbering. Loading a different world without unloading the
+            // last one would otherwise leave clients holding watermarks that count changes to a
+            // map nobody has any more.
+            _marks = new Watermark();
             _dirty = false;
             _path = BuildPath();
             _loaded = true;
@@ -99,6 +107,10 @@ namespace TheGreatestMap
             SaveIfDirty();
             _loaded = false;
             _store = new MapStore();
+            // A fresh session: every client's watermark stops being recognised and each is sent
+            // one whole map the next time it syncs, which is the safe answer to "I no longer
+            // know what you have".
+            _marks = new Watermark();
         }
 
         internal static void Update()
@@ -140,8 +152,12 @@ namespace TheGreatestMap
         {
             var result = _store.Merge(incoming);
             if (result.Any) MarkDirty();
+            _marks.Record(result);
             return result;
         }
+
+        /// <summary>The change numbering, for answering a sync with only what is new.</summary>
+        internal static Watermark Marks => _marks;
 
         internal static byte[] Snapshot() => _store.ToBytes();
 
@@ -163,6 +179,13 @@ namespace TheGreatestMap
             }
             _store.Suppressions.Clear();
             MarkDirty();
+            // A wipe changes the map without going through Merge, so the numbering has to be
+            // told about it here or a client holding a watermark would never be sent the
+            // erasures and would keep showing markers an admin has removed for everyone.
+            var wiped = new MergeResult();
+            foreach (var kv in delta.Tombstones) wiped.NewTombstones.Add(new Tombstone { Key = kv.Key, DeletedAt = kv.Value });
+            wiped.Deleted = delta.Tombstones.Count;
+            _marks.Record(wiped);
             return delta;
         }
 
