@@ -249,6 +249,25 @@ namespace TheGreatestMap
 
         private static void RPC_AskAll(long sender, ZPackage pkg)
         {
+            // First statement in the method, before any test. The dispatcher proved the call
+            // arrives and is registered, and still nothing came out of here -- not the result,
+            // not the refusal. Either this line appears next time and the body is dying inside,
+            // or it does not and the method is never entered at all. Those need different fixes
+            // and there is no way to tell them apart from outside.
+            TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] A question about the world is being handled, from {sender}.");
+            try
+            {
+                AnswerStanding(sender, pkg);
+            }
+            catch (Exception e)
+            {
+                TheGreatestMapMod.Log.LogError(
+                    "[TheGreatestMap] Answering what stands somewhere went wrong: " + e);
+            }
+        }
+
+        private static void AnswerStanding(long sender, ZPackage pkg)
+        {
             if (!IsServer || pkg == null || ZRoutedRpc.instance == null)
             {
                 TheGreatestMapMod.Log.LogWarning(
