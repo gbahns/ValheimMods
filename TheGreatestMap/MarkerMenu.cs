@@ -192,7 +192,7 @@ namespace TheGreatestMap
         internal static Color Lit(Color c, bool lit) => lit ? HoverColor : c;
 
         /// <summary>
-        /// The colours of a small button that is currently doing something -- armed for placing,
+        /// The colors of a small button that is currently doing something -- armed for placing,
         /// or filtering the map. A button that is on should say so without being read: it is the
         /// difference between a list of things you could do and a list that also tells you what
         /// you already asked for.

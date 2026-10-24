@@ -7,9 +7,9 @@ grown to outweigh the markers are gone.** Everyone must update, including the se
 
 A map used to go out as a run of marker records, each one repeating the same owner, the same
 source and the same author as its neighbors. Now each field is a column of its own, every
-repeated string is held once and referred to by number, positions go as centimetre steps from
+repeated string is held once and referred to by number, positions go as centimeter steps from
 the marker before, and times go as seconds rather than ten-millionths. A four-and-a-half
-thousand marker map went from 587 KB to about 110 KB.
+thousand marker map went from 587 KB to 140 KB.
 
 - **Re-identifying a marker no longer records an erasure.** Working out that a house pin is
   really a stone tower files it under a new name; it does not delete it. The old code erased and
@@ -21,8 +21,12 @@ thousand marker map went from 587 KB to about 110 KB.
   was never a discovery, and the record of rubbing one out is not worth keeping: recording
   already refuses to write a crop on tilled ground or inside a base, so there is nothing for an
   erasure to hold back. 141 of them went from one map.
-- **Positions are kept to the centimetre** and times to the second. Nothing on a map is measured
+- **Positions are kept to the centimeter** and times to the second. Nothing on a map is measured
   finely enough for the difference to be visible.
+- **The trader markers are retired.** Valheim marks Haldor, Hildir and the Bog Witch itself
+  the moment you find one, so ours was a second pin saying the same thing. Erasing them by
+  hand never stuck, because the erasure only existed on the map that made it and the next
+  merge brought them back.
 
 ## 4.2.0 -- 2026-10-22
 

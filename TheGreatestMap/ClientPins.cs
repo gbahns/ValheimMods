@@ -223,7 +223,7 @@ namespace TheGreatestMap
             Store.Upsert(pin);
             _pinById[pin.Key] = pinData;
             _idByPin[pinData] = pin.Key;
-            // Ask for a redraw, or the marker keeps the size and colour the game gave it until
+            // Ask for a redraw, or the marker keeps the size and color the game gave it until
             // something else happens to dirty the layout -- a click, a pan -- which looked like
             // the marker not being accepted until you clicked away.
             Restyle();

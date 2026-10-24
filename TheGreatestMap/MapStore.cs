@@ -71,7 +71,7 @@ namespace TheGreatestMap
         /// icon or kind that only repeats what the catalog already says.
         ///
         /// 8 stops writing a marker at a time and writes a field at a time: a column per field,
-        /// strings held once in a table and referred to by number, positions in centimetres as
+        /// strings held once in a table and referred to by number, positions in centimeters as
         /// deltas, timestamps in seconds from 2020.
         ///
         /// 8 is deliberately a number of its own rather than a second shape of 7. Both were

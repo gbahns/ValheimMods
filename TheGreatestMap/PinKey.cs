@@ -64,7 +64,7 @@ namespace TheGreatestMap
         }
 
         /// <summary>
-        /// A coordinate as the key sees it: on the centimetre grid, and never negative zero.
+        /// A coordinate as the key sees it: on the centimeter grid, and never negative zero.
         ///
         /// Both halves matter, and the first was learned the hard way. A marker snaps its own
         /// position when it is set, so a pin stands at -363.56; an erasure read from a map
