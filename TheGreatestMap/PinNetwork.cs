@@ -144,6 +144,11 @@ namespace TheGreatestMap
                 $"[TheGreatestMap] Peer {sender} sent a map: {incoming.Pins.Count} markers, {came / 1024f:0.#} KB, unpacked in {clock.ElapsedMilliseconds} ms.");
             var result = PinStore.Merge(incoming);
             long merged = clock.ElapsedMilliseconds;
+            if (result.Refused)
+                TheGreatestMapMod.Log.LogInfo(
+                    $"[TheGreatestMap] Erasures turned away {result.RefusedByErasure} marker(s) from peer {sender}" +
+                    (result.RefusedByOldErasure > 0
+                        ? $", and pre-rekey erasures another {result.RefusedByOldErasure}" : "") + ".");
             if (result.Any && TgmConfig.SharingMode.Value == SharingMode.Instant)
             {
                 var delta = new ZPackage();

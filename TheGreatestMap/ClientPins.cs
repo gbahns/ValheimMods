@@ -107,6 +107,10 @@ namespace TheGreatestMap
             var clock = System.Diagnostics.Stopwatch.StartNew();
             var result = Store.Merge(incoming);
             long mergeMs = clock.ElapsedMilliseconds;
+            if (result.Refused)
+                TheGreatestMapMod.Log.LogInfo(
+                    $"[TheGreatestMap] An erasure turned away {result.RefusedByErasure + result.RefusedByOldErasure} " +
+                    "marker(s) offered by that map, which is erasures doing the job they exist for.");
             if (!result.Any) return result;
             foreach (var t in result.NewTombstones) RemovePinData(t.Key);
             foreach (var pin in result.ChangedPins) ReplacePinData(pin);

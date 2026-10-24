@@ -16,10 +16,31 @@ namespace TheGreatestMap
     internal sealed class MergeResult
     {
         public int Added, Updated, Deleted, Suppressed;
+
+        /// <summary>
+        /// Markers an erasure turned away: one keyed the modern way, and one written before the
+        /// rekey and keyed by the GUID the marker used to carry.
+        ///
+        /// Counted because erasures never retire and nothing knows when they could. 660 pre-rekey
+        /// erasures are 21% of the live map and can only ever match a marker arriving from a
+        /// personal map saved in format 5 or older; the blank-source ones left by folding are
+        /// another 17 KB. Both are certainly dead at some point and there is no way to tell when.
+        ///
+        /// A horizon -- drop anything older than N months -- guesses at exactly the fact this
+        /// number states. So state it: if no erasure of a kind turns anything away for weeks
+        /// across a group that is playing normally, dropping that kind is a measurement rather
+        /// than a gamble. If one does fire, that is the proof they are still earning their keep,
+        /// and it says which marker and from whom.
+        /// </summary>
+        public int RefusedByErasure, RefusedByOldErasure;
         public readonly List<SharedPin> ChangedPins = new List<SharedPin>();
         public readonly List<Tombstone> NewTombstones = new List<Tombstone>();
         public readonly List<Suppression> NewSuppressions = new List<Suppression>();
         public bool Any => Added + Updated + Deleted + Suppressed > 0;
+
+        /// <summary>Whether an erasure turned anything away, which is worth saying even when
+        /// nothing else changed: it is the only sign that the erasures are still doing work.</summary>
+        public bool Refused => RefusedByErasure + RefusedByOldErasure > 0;
 
         /// <summary>The changes as a store of their own, for forwarding to others.</summary>
         public MapStore ToDelta()
@@ -37,6 +58,8 @@ namespace TheGreatestMap
             if (Added > 0) parts.Add($"+{Added}");
             if (Updated > 0) parts.Add($"{Updated} updated");
             if (Deleted > 0) parts.Add($"{Deleted} erased");
+            if (RefusedByErasure > 0) parts.Add($"{RefusedByErasure} refused by an erasure");
+            if (RefusedByOldErasure > 0) parts.Add($"{RefusedByOldErasure} refused by a pre-rekey erasure");
             return parts.Count > 0 ? string.Join(", ", parts) : "nothing new";
         }
     }
@@ -268,13 +291,25 @@ namespace TheGreatestMap
                 var theirs = kv.Value;
                 var key = theirs.Key;
                 if (key.IsNone) continue;
-                if (Tombstones.TryGetValue(key, out long myTomb) && myTomb >= theirs.Modified) continue; // erased here after their last change
+                if (Tombstones.TryGetValue(key, out long myTomb) && myTomb >= theirs.Modified)
+                {
+                    result.RefusedByErasure++;                 // erased here after their last change
+                    continue;
+                }
                 // The same question asked of the erasures recorded before the rekey. A marker
                 // coming from a map still in the old format carries the id it was written with,
                 // and that id is the only thing those tombstones know it by.
                 if (!string.IsNullOrEmpty(theirs.LegacyId)
                     && LegacyTombstones.TryGetValue(theirs.LegacyId, out long oldTomb)
-                    && oldTomb >= theirs.Modified) continue;
+                    && oldTomb >= theirs.Modified)
+                {
+                    result.RefusedByOldErasure++;
+                    TheGreatestMapMod.Log.LogInfo(
+                        $"[TheGreatestMap] A pre-rekey erasure kept {theirs.Source ?? ""} at " +
+                        $"{theirs.Pos} erased, for {theirs.Author}. These are the erasures that cannot be " +
+                        "retired yet; this line is the evidence that they are still needed.");
+                    continue;
+                }
                 if (Pins.TryGetValue(key, out var mine))
                 {
                     if (theirs.Modified <= mine.Modified) continue;
