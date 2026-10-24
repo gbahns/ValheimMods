@@ -61,6 +61,7 @@ namespace DiagnoseServerLag
         private const string RpcCaptureCsvWant = "DSL_CaptureCsvWant";   // asker -> server: send it after all
         private const string RpcCaptureAll = "DSL_CaptureAll";         // server -> every client: send your window
         private const string RpcClientSeries = "DSL_ClientSeries";     // client -> server, its window
+        private const string RpcClientLeft = "DSL_ClientLeft";         // client -> server, its window on the way out
         private const string RpcEcho = "DSL_Echo";                     // client -> an object owner
         private const string RpcEchoReply = "DSL_EchoReply";           // that owner -> back
 
@@ -147,6 +148,7 @@ namespace DiagnoseServerLag
                 rpc.Register<ZPackage>(RpcCaptureCsvWant, RPC_CaptureCsvWant);
                 rpc.Register<ZPackage>(RpcCaptureAll, RPC_CaptureAll);
                 rpc.Register<ZPackage>(RpcClientSeries, RPC_ClientSeries);
+                rpc.Register<ZPackage>(RpcClientLeft, RPC_ClientLeft);
                 rpc.Register<ZPackage>(RpcEcho, RPC_Echo);
                 rpc.Register<ZPackage>(RpcEchoReply, RPC_EchoReply);
                 DiagnoseServerLagMod.Log.LogInfo("[DiagnoseServerLag] Diagnostic RPCs registered.");
@@ -171,6 +173,7 @@ namespace DiagnoseServerLag
             _owners.Clear();
             _echoSentAt.Clear();
             _echoTarget.Clear();
+            _parked.Clear();
         }
 
         internal static void Update()
@@ -805,6 +808,187 @@ namespace DiagnoseServerLag
         private static int _gatherExpected;
         private static bool _gathering;
 
+        /// <summary>
+        /// Windows from players who have left, kept for a capture taken shortly afterwards.
+        ///
+        /// A group capture is a synchronous round trip: the server asks whoever is connected and
+        /// reports what comes back, so somebody who said goodnight two minutes earlier is simply
+        /// absent from it. That is the capture worth having - the one taken at the end of a long
+        /// session, once everyone has drifted off.
+        /// </summary>
+        private static readonly Dictionary<long, Parked> _parked = new Dictionary<long, Parked>();
+
+        /// <summary>
+        /// A departed player's window, kept as the bytes that arrived rather than as an unpacked
+        /// series.
+        ///
+        /// Because every capture narrows it to the span that was asked for, and narrowing an
+        /// unpacked copy in place would let one short capture truncate it for good: a dsl_bench 5
+        /// would leave five minutes where an hour had been, and the next dsl_bench 60 would answer
+        /// out of it without a word. Unpacking afresh each time costs a few milliseconds once per
+        /// capture and cannot go wrong that way.
+        /// </summary>
+        private sealed class Parked
+        {
+            internal byte[] Bytes;
+            internal long LeftAtUtcTicks;
+            internal long NewestSampleTicks;
+            internal string Name = "";
+        }
+
+        /// <summary>
+        /// How many departed players to hold at once. A convenience for a capture minutes later,
+        /// not a record of everyone who ever played here, so the oldest is dropped rather than
+        /// letting a long-running server accumulate windows nobody will ask for.
+        /// </summary>
+        private const int MaxParked = 16;
+
+        /// <summary>
+        /// The ceiling on a farewell push, well under Steam's 512 KiB - see SendCsvBytes for what
+        /// happens to a socket handed more than it can send. The routed RPC wraps this again, and
+        /// the margin is free.
+        /// </summary>
+        private const int MaxFarewell = 256 * 1024;
+
+        /// <summary>
+        /// Client side: hand the server this session's window on the way out, so a capture taken
+        /// after we have gone still has us in it.
+        ///
+        /// Safe to send this late, and only because of how Valheim closes a socket. Game.Shutdown
+        /// runs SavePlayerProfile, ZNetScene.Shutdown and ZNet.Shutdown in a single frame, so there
+        /// is no later frame to send from - but ZSteamSocket.Send drains its queue immediately
+        /// rather than waiting for an Update, and Close calls Flush and then sleeps 100 ms before
+        /// closing the connection. It is the same path vanilla's own disconnect message takes, and
+        /// the message is sent reliably.
+        ///
+        /// Only a clean quit is covered. Alt-F4 and a crash send nothing, which is the deliberate
+        /// trade: a periodic push would cover those too, at the cost of constant traffic for data
+        /// that is almost never read.
+        /// </summary>
+        internal static void PushFarewell()
+        {
+            try
+            {
+                var znet = ZNet.instance;
+                var rpc = ZRoutedRpc.instance;
+                if (znet == null || rpc == null || znet.IsDedicated()) return;
+                // Hosting: this machine IS the server, and the history never left it.
+                if (Sampler.IsServerHere) return;
+                if (!DslConfig.ShareMyPerformance.Value) return;
+                if (Sampler.History.Count == 0) return;
+
+                int seconds = Sampler.History.Capacity;
+                ZPackage pkg = null;
+                // Halving rather than one guess: the ring can be configured to three hours, and
+                // the oldest seconds are the right ones to lose, since a capture always asks for a
+                // window ending now.
+                for (int i = 0; i < 4 && seconds >= 60; i++)
+                {
+                    var series = ClientSeries.FromLocal(seconds);
+                    if (series == null) return;
+                    var candidate = series.Pack();
+                    if (candidate.Size() <= MaxFarewell) { pkg = candidate; break; }
+                    seconds /= 2;
+                }
+                if (pkg == null)
+                {
+                    DiagnoseServerLagMod.Log.LogInfo(
+                        "[DiagnoseServerLag] not sending a farewell window: it does not fit under " +
+                        (MaxFarewell / 1024) + " KB even trimmed.");
+                    return;
+                }
+
+                rpc.InvokeRoutedRPC(RpcClientLeft, pkg);
+                DiagnoseServerLagMod.Log.LogInfo(
+                    "[DiagnoseServerLag] sent the server " + seconds + "s of history (" +
+                    (pkg.Size() / 1024) + " KB) on the way out, so a capture taken soon still " +
+                    "includes this machine.");
+            }
+            catch (Exception e)
+            {
+                // Never let this stop a logout.
+                DiagnoseServerLagMod.Log.LogWarning($"[DiagnoseServerLag] Could not send a farewell window: {e.Message}");
+            }
+        }
+
+        /// <summary>Server side: a departing client's window arrived. Park it.</summary>
+        private static void RPC_ClientLeft(long sender, ZPackage pkg)
+        {
+            try
+            {
+                if (!Sampler.IsServerHere) return;
+                // Unpacked once here to check it is readable and to learn how far it reaches,
+                // then kept as bytes. A message that cannot be read is better refused now than
+                // held until a capture tries to use it.
+                var series = ClientSeries.Unpack(pkg);
+                if (series == null || series.Samples.Count == 0) return;
+
+                if (!_parked.ContainsKey(sender) && _parked.Count >= MaxParked)
+                {
+                    long oldestKey = 0, oldestAt = long.MaxValue;
+                    foreach (var kv in _parked)
+                        if (kv.Value.LeftAtUtcTicks < oldestAt) { oldestAt = kv.Value.LeftAtUtcTicks; oldestKey = kv.Key; }
+                    _parked.Remove(oldestKey);
+                }
+                _parked[sender] = new Parked
+                {
+                    Bytes = pkg.GetArray(),
+                    LeftAtUtcTicks = DateTime.UtcNow.Ticks,
+                    NewestSampleTicks = series.Samples[series.Samples.Count - 1].UtcTicks,
+                    Name = series.Name ?? "",
+                };
+
+                DiagnoseServerLagMod.Log.LogInfo(
+                    "[DiagnoseServerLag] parked " + series.Samples.Count + "s from " + series.Name +
+                    ", who has left. A capture inside that window will still include them.");
+            }
+            catch (Exception e)
+            {
+                DiagnoseServerLagMod.Log.LogWarning($"[DiagnoseServerLag] Could not park a departing client's window: {e.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Server side: fold in the players who left, for the part of their window the capture
+        /// asked for.
+        ///
+        /// Run after the live answers rather than before, because the gather finishes on a count:
+        /// seeding _gathered with parked entries would satisfy it before anybody had replied.
+        /// Anyone who has since come back is dropped in favour of their live answer, which is both
+        /// fresher and complete.
+        /// </summary>
+        private static void AdoptParked(int seconds)
+        {
+            if (_parked.Count == 0) return;
+            long cutoff = DateTime.UtcNow.AddSeconds(-seconds).Ticks;
+            var expired = new List<long>();
+
+            foreach (var kv in _parked)
+            {
+                // Nothing of this window reaches into the capture, and nothing ever will again:
+                // every later capture begins later still.
+                if (kv.Value.NewestSampleTicks < cutoff) { expired.Add(kv.Key); continue; }
+
+                bool back = false;
+                foreach (var answered in _gathered) if (answered.Uid == kv.Key) { back = true; break; }
+                if (back) continue;                           // they came back; prefer the live answer
+
+                var series = ClientSeries.Unpack(new ZPackage(kv.Value.Bytes));
+                if (series == null) continue;
+                series.Uid = kv.Key;                          // trust the routing, not the payload
+                series.LeftAtUtcTicks = kv.Value.LeftAtUtcTicks;
+
+                // Trimmed to the span asked for, on this unpacked copy only: a parked window can
+                // reach further back than the capture does, and widening the report past what was
+                // asked for would be as wrong as truncating it.
+                series.Samples.RemoveAll(x => x.UtcTicks < cutoff);
+                if (series.Samples.Count == 0) continue;
+                series.Recompute();
+                _gathered.Add(series);
+            }
+            foreach (long gone in expired) _parked.Remove(gone);
+        }
+
         /// <summary>Server side: ask every connected client for the same window, then answer.</summary>
         private static void BeginGather(long asker, int seconds)
         {
@@ -844,6 +1028,7 @@ namespace DiagnoseServerLag
         private static void FinishGather()
         {
             _gathering = false;
+            AdoptParked(_gatherSeconds);
             string text;
             string csv = null;
             string csvPath = null;

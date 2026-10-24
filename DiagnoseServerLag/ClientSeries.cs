@@ -80,6 +80,15 @@ namespace DiagnoseServerLag
         /// <summary>Whether this client sent every field or only the correlation columns.</summary>
         internal bool Full;
 
+        /// <summary>
+        /// When this player left, or 0 while they are still connected.
+        ///
+        /// Set by the server on receipt of a farewell push, and never sent: the arrival time is
+        /// something the server knows for certain, where a departing client could only state what
+        /// its own clock said.
+        /// </summary>
+        internal long LeftAtUtcTicks;
+
         /// <summary>Median frame time over the window, which the summary line reports.</summary>
         internal float FrameMedianMs;
         internal int TotalStalls;
@@ -218,6 +227,33 @@ namespace DiagnoseServerLag
                     CpuMsPerSec = s.CpuMsPerSec,
                     Collections = Machine.Collections(s),
                 });
+        }
+
+        /// <summary>
+        /// Recomputes the summary figures from Samples, after the sample list has been narrowed.
+        ///
+        /// Those figures travel alongside the samples rather than being derived from them at the
+        /// far end, so trimming a parked window down to the span a capture asked for would
+        /// otherwise leave a median frame time and a stall total describing seconds that are no
+        /// longer in the report - the one error that looks like data rather than a gap.
+        /// </summary>
+        internal void Recompute()
+        {
+            TotalStalls = 0;
+            HasCpu = false;
+            foreach (var s in Samples)
+            {
+                if (s.HasCpu) HasCpu = true;
+                TotalStalls += s.Stalls;
+            }
+            if (Samples.Count > 0)
+            {
+                OwnedAI = Samples[Samples.Count - 1].OwnedAI;
+                NearbyAI = Samples[Samples.Count - 1].NearbyAI;
+            }
+            FrameMedianMs = Stats.Median(Samples, x => x.FrameMsAvg);
+            CpuMedianMsPerSec = Stats.Median(Samples, x => x.CpuMsPerSec);
+            FillSecondsFromSamples();
         }
 
         /// <summary>Builds this machine's own series for the last <paramref name="seconds"/>.</summary>

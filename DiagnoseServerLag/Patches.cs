@@ -68,6 +68,9 @@ namespace DiagnoseServerLag
         {
             LagPanel.Close();
             LagPause.Release();
+            // Before either Reset: the push reads the history that Sampler.Reset clears, and the
+            // socket is still open until StopAll, a few statements further into ZNet.Shutdown.
+            LagNetwork.PushFarewell();
             Sampler.Reset();
             LagNetwork.Reset();
         }

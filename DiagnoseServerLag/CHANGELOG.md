@@ -24,6 +24,43 @@
   more clients standing in the base. The old verdict read "well above chance" and sent the search
   in the wrong direction; the stalls were the cost of loading six thousand build pieces.
 
+- **A player who logs off cleanly is still in the next capture.** A group capture was a synchronous
+  round trip - the server asks whoever is connected, waits, and reports what comes back - so anyone
+  who said goodnight a minute earlier was simply absent from it. Which is the capture worth having:
+  the one taken at the end of a long session, once people have started drifting off. One player was
+  missing from a four-player hour for exactly this reason.
+
+  Clients now hand the server their window on the way out, and the server parks it for a capture
+  taken inside that span. A capture trims it to the window it asked for and labels the row
+  `(left 7 min ago)`; a player who reconnects is reported from their live answer instead.
+
+  Only a clean quit is covered, by choice: alt-F4 and a crash send nothing. A periodic push would
+  cover those too, at the cost of constant background traffic for data that is almost never read,
+  and if an ungraceful exit ever loses something that mattered the answer is to take another
+  capture.
+
+  Sending this late is safe, and only because of how Valheim closes a socket - worth recording,
+  since it is not obvious and the feature depends on it entirely. `Game.Shutdown` runs
+  `SavePlayerProfile`, `ZNetScene.Shutdown` and `ZNet.Shutdown` in a single frame, so there is no
+  later frame to send from. But the whole chain is synchronous: `ZRpc.Invoke` calls
+  `m_socket.Send`, and `ZSteamSocket.Send` drains its queue on the spot instead of waiting for an
+  `Update`. Then `Close` calls `Flush` and sleeps 100 ms before closing the connection. It is the
+  same path vanilla's own disconnect message takes, and the message is sent reliably. The push sits
+  in the `ZNet.Shutdown` prefix ahead of `Sampler.Reset`, which would otherwise have cleared the
+  history it reads.
+
+  Parked windows are kept as the bytes that arrived rather than as an unpacked series, and each
+  capture unpacks a fresh copy to trim. Trimming one in place would let a short capture truncate it
+  for good - a `dsl_bench 5` would leave five minutes where an hour had been, and the next
+  `dsl_bench 60` would answer out of it without saying so. At most 16 are held, oldest dropped
+  first, and one is discarded once its newest sample falls behind the capture window, since no later
+  capture can reach it.
+
+  Departed players are left out of the stall-coincidence comparison, which is defined over the
+  seconds *every* machine covered: a window ending at somebody's logout would shrink that
+  intersection to their session, throwing away the overlap between everyone who stayed. They appear
+  in the rows, in the machine list and in the CSV, and the report says it has done this.
+
 - **Clients send their display's refresh rate, and the report says when a frame time is just the
   panel.** The refresh rate has been captured since the hardware line was added, and the comment
   next to it says outright that it is what decides whether vsync costs anything - but it was only

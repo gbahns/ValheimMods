@@ -60,7 +60,7 @@ namespace DiagnoseServerLag
                     : "CPU n/a";
                 string ai = c.NearbyAI > 0 ? $"   simulating {c.OwnedAI}/{c.NearbyAI} creatures" : "";
                 sb.AppendLine($"  {Trim(c.Name, 16),-16} frame {c.FrameMedianMs,5:0.0} ms   stalls {c.TotalStalls,3}   {cpu}" +
-                              (c.RoundTripMs > 0 ? $"   rt {c.RoundTripMs} ms" : "") + ai + Granted(c));
+                              (c.RoundTripMs > 0 ? $"   rt {c.RoundTripMs} ms" : "") + ai + Granted(c) + Departed(c));
             }
 
             // Who is running what. A client on an older build is not refused anything - refusing a
@@ -115,7 +115,17 @@ namespace DiagnoseServerLag
 
             // ── what only the group can say ─────────────────────────────────────────
             sb.AppendLine();
-            sb.AppendLine(Correlate(window, clients));
+            // Departed players are reported but not correlated. The comparison is defined over
+            // the seconds every machine covered, and a window that ends when somebody logged off
+            // would shrink that intersection to their session - throwing away the overlap between
+            // everyone who stayed, to gain a few minutes of one who did not.
+            var live = new List<ClientSeries>();
+            foreach (var c in clients) if (c.LeftAtUtcTicks == 0) live.Add(c);
+            sb.AppendLine(Correlate(window, live));
+            if (live.Count != clients.Count)
+                sb.AppendLine($"  ({clients.Count - live.Count} departed player(s) are in the rows above and " +
+                              "in the CSV, but left out of this comparison: their windows end early, and " +
+                              "including them would shorten it for everybody.)");
 
             string ownership = Ownership(clients);
             if (ownership != null) { sb.AppendLine(); sb.AppendLine(ownership); }
@@ -246,6 +256,23 @@ namespace DiagnoseServerLag
             if (Math.Abs(c.FrameMedianMs - period) > period * 0.08f) return null;
             return $"frame time is this display's refresh period ({period:0.0} ms at {c.RefreshHz} Hz, " +
                    "vsync on), so it measures the panel and not the machine";
+        }
+
+        /// <summary>
+        /// How long ago this player left, or "" while they are still connected.
+        ///
+        /// Worth saying on the row rather than in a footnote: their window ends when they logged
+        /// off, so a short stall count or a quiet median is partly just a shorter window, and the
+        /// row cannot be compared with a live one without knowing that.
+        /// </summary>
+        private static string Departed(ClientSeries c)
+        {
+            if (c == null || c.LeftAtUtcTicks == 0) return "";
+            var ago = DateTime.UtcNow - new DateTime(c.LeftAtUtcTicks, DateTimeKind.Utc);
+            if (ago.TotalSeconds < 0) return "   (left)";
+            if (ago.TotalMinutes < 1) return "   (left seconds ago)";
+            if (ago.TotalMinutes < 60) return $"   (left {ago.TotalMinutes:0} min ago)";
+            return $"   (left {ago.TotalHours:0.#} h ago)";
         }
 
         private static string Correlate(List<Sample> window, List<ClientSeries> clients)
