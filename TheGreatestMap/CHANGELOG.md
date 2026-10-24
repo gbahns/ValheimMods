@@ -1,5 +1,18 @@
 # Changelog
 
+## 4.4.0 -- unreleased
+
+- **A sync carries what changed instead of the whole map.** A cartography table used to
+  send your map up and the shared map back, both in full, almost always to find that
+  nothing had changed. The server now counts its own changes and answers with just the
+  ones you have not heard; a map with nothing new of its own goes up empty. Nothing is
+  ordered by any clock, so a machine whose clock is wrong cannot cause a marker to be
+  skipped, and anything the server is unsure of still sends the whole map.
+
+- **A merge says when an erasure turned a marker away.** Erasures never retire and
+  nothing knows when they safely could; counting what they actually do is how that gets
+  decided with evidence rather than a guess.
+
 ## 4.3.0 -- 2026-10-23
 
 **The map is written a field at a time instead of a marker at a time, and the erasures that had
