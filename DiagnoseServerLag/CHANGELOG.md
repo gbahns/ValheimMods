@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.19 - unreleased
+## 0.10.19 - 2026-10-25
 
 - **A player who logs off cleanly is still in the next capture.** A group capture was a synchronous
   round trip - the server asks whoever is connected, waits, and reports what comes back - so anyone

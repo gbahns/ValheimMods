@@ -119,6 +119,8 @@ A `group-<timestamp>.csv` is written on the server, one row per machine per seco
 
 Each client decides whether to answer via **Share My Performance** (default on). It sends frame times, stalls, CPU share and collection counts — performance numbers only. Clients that do not answer are counted and named, so a partial picture is never mistaken for a complete one.
 
+The same setting covers one other case: when you log out cleanly, your window is handed to the server so a capture taken shortly afterwards still includes you - otherwise the capture everyone wants, the one taken at the end of a long session, is missing whoever has already gone to bed. The row is labelled with how long ago you left. Turn **Share My Performance** off and neither happens.
+
 ## Comparing two servers
 
 Tick time cannot tell you how a server is doing if it runs a frame limiter, and most dedicated servers do. A server pinned to 33.3 ms might be using a tenth of a core or all of it — the tick is held at its configured length either way, and only starts moving once the server has already failed.
