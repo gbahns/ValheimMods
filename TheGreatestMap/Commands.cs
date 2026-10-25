@@ -34,7 +34,7 @@ namespace TheGreatestMap
             new Terminal.ConsoleCommand("tgm_resync", "Merge your personal map with the shared map now, without a cartography table",
                 (Terminal.ConsoleEvent)(args =>
                 {
-                    SyncEngine.SyncWithServer(announceNothing: true);
+                    SyncEngine.SyncWithServer(announceNothing: true, asked: true);
                     args.Context.AddString("Merging with the shared map...");
                 }));
 

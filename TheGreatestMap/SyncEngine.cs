@@ -108,10 +108,18 @@ namespace TheGreatestMap
         /// by staying quiet: the server already has exactly that map, and anything arriving from
         /// anyone else still comes down as usual.
         /// </summary>
-        internal static void SyncWithServer(bool announceNothing)
+        internal static void SyncWithServer(bool announceNothing, bool asked = false)
         {
             if (!PersonalMap.Loaded) return;
-            if (!PersonalMap.Dirty && Time.time - _lastFullSync < UnchangedSeconds)
+            // Skipped only when nobody asked. The wait is measured in game time on purpose: the
+            // world stops when the map is open, so time that does not pass is time in which
+            // nothing could have changed, and a cooldown that kept running through it would be
+            // counting nothing.
+            //
+            // It exists to avoid a sync, which used to mean the whole map in both directions.
+            // A sync now carries what changed, so the thing being avoided costs a tenth of a
+            // kilobyte -- not worth refusing somebody who typed the command or pressed the key.
+            if (!asked && !PersonalMap.Dirty && Time.time - _lastFullSync < UnchangedSeconds)
             {
                 TheGreatestMapMod.Log.LogInfo(
                     $"[TheGreatestMap] {System.DateTime.Now:HH:mm:ss} not asking the server: our map has not changed since it last went up.");

@@ -118,7 +118,7 @@ namespace TheGreatestMap
             else if (manual && !haveNew) TheGreatestMapMod.Message("Cartography table already up to date.");
 
             // Markers travel the same way: merge the personal map with the shared map on the server.
-            SyncEngine.SyncWithServer(announceNothing: manual);
+            SyncEngine.SyncWithServer(announceNothing: manual, asked: manual);
         }
 
         /// <summary>True if any area we have explored (ourselves or via other tables) is missing from this table's data.</summary>
