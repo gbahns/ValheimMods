@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.4.0 -- unreleased
+## 4.4.0 -- 2026-10-25
 
 **Everyone must update, including the server.** Nothing in the map format changed and a
 mixed group would in principle have worked -- the new sync was built so an older copy
