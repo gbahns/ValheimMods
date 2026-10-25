@@ -9,6 +9,16 @@
   ordered by any clock, so a machine whose clock is wrong cannot cause a marker to be
   skipped, and anything the server is unsure of still sends the whole map.
 
+- **A console command that waits for the server now says how it ended.** `tgm_resync`
+  printed "Merging with the shared map..." and nothing further: the answer arrives over
+  the network, and it was being announced only on the HUD, which does not draw while the
+  game is paused -- exactly when the console is open. Anything worth telling a player now
+  reaches the console too.
+
+- **New setting, Echo Log To Console (off).** Repeats this mod's log lines in the dev
+  console as they happen, for watching a sync, a repair or a format conversion without
+  alt-tabbing to the log file.
+
 - **The log no longer reports every pause.** It was there to tell a frozen client from a
   paused one while a disconnection was being chased, and it answered that: a pause cannot
   cost a connection. Since the map pauses the game by design, the lines then fired every

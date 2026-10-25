@@ -15,6 +15,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<KeyboardShortcut> LegendKey;
         internal static ConfigEntry<KeyboardShortcut> HighlightPlayersKey;
         internal static ConfigEntry<bool> ShowMessages;
+        internal static ConfigEntry<bool> EchoLogToConsole;
 
         // ── Sharing rules (server-synced) ───────────────────────────────────────────
         internal static ConfigEntry<bool> LockConfiguration;
@@ -209,6 +210,10 @@ namespace TheGreatestMap
                 "On the large map, light up the other players and put every other marker out, so you can find each " +
                 "other on a map carrying hundreds of markers. Press again, or close the map, to bring it all back. " +
                 "Only players who are sharing their position can be shown, which is all the game tells your client.");
+
+            EchoLogToConsole = mod.BindLocal("General", "Echo Log To Console", false,
+                "Repeat this mod's own log lines in the dev console (F5) as they happen. Off by default; it is for " +
+                "watching a sync, a repair or a conversion without alt-tabbing to the log file.");
 
             ShowMessages = mod.BindLocal("General", "Show Messages", true,
                 "Show small top-left messages when the map is taken out, a marker is recorded, and so on.");

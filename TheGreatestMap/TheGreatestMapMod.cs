@@ -79,6 +79,11 @@ namespace TheGreatestMap
         {
             Instance = this;
             Log = Logger;
+            // Everything this mod logs can be repeated in the dev console, so that watching a
+            // sync or a repair does not mean alt-tabbing to a file. Hooked at the source rather
+            // than at the hundreds of places that log, which also means a line added later is
+            // carried without anybody remembering to.
+            Log.LogEvent += EchoToConsole;
 
             ModEnabled = Config.Bind("General", "Mod Enabled", true,
                 "Master toggle for the entire mod. Set to false to disable every patch, the pocket map, " +
@@ -276,9 +281,39 @@ namespace TheGreatestMap
         /// <summary>Small top-left HUD message, respecting the ShowMessages toggle.</summary>
         internal static void Message(string text)
         {
+            // The console first, and not only when messages are switched on. Anything worth
+            // telling a player is worth finishing a command they typed: a console command whose
+            // answer arrives over the network can only print "working on it..." when it runs,
+            // and if the answer then goes to the HUD alone the command appears to hang. Worse,
+            // the HUD does not draw while the game is paused -- which is exactly when somebody
+            // has the console open.
+            Say(text);
             if (TgmConfig.ShowMessages == null || !TgmConfig.ShowMessages.Value) return;
             if (MessageHud.instance == null) return;
             MessageHud.instance.ShowMessage(MessageHud.MessageType.TopLeft, text);
+        }
+
+        /// <summary>
+        /// Repeat one of our log lines in the dev console, when asked to.
+        ///
+        /// Off unless switched on: the console holds a limited scrollback and this mod is
+        /// talkative during a conversion. Guarded rather than trusted, because a log line can
+        /// arrive from whatever thread did the logging and the console is Unity's.
+        /// </summary>
+        private static void EchoToConsole(object sender, LogEventArgs e)
+        {
+            if (TgmConfig.EchoLogToConsole == null || !TgmConfig.EchoLogToConsole.Value) return;
+            if (e == null || e.Data == null) return;
+            try { Console.instance?.AddString(e.Data.ToString()); } catch (Exception) { /* never worth a crash */ }
+        }
+
+        /// <summary>Write a line into the dev console, if one is open to write to.</summary>
+        internal static void Say(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return;
+            var console = Console.instance;
+            if (console == null) return;
+            try { console.AddString("[TheGreatestMap] " + text); } catch (Exception) { /* never worth a crash */ }
         }
     }
 }
