@@ -256,6 +256,33 @@ namespace DiagnoseServerLag
             FillSecondsFromSamples();
         }
 
+        /// <summary>
+        /// The character's name, or the last one known.
+        ///
+        /// A null check on Player.m_localPlayer is the wrong test. GetPlayerName returns "" when
+        /// its ZNetView is invalid - not when the Player object is gone - and ZNetScene.Shutdown
+        /// calls ResetZDO on every instance before destroying it, with the destruction itself
+        /// deferred to the end of the frame. So at farewell-push time the player is a perfectly
+        /// live reference whose name reads back empty.
+        ///
+        /// Which is what happened on the first real test: the server logged "parked 40s from ,
+        /// who has left". The window arrived intact and was useless, because a window nobody can
+        /// attribute to a player is not evidence about anybody.
+        ///
+        /// Live answers are unaffected: the current character is still read first, and only an
+        /// empty result falls back.
+        /// </summary>
+        private static string LocalName()
+        {
+            var who = Player.m_localPlayer;
+            if (who != null)
+            {
+                string name = who.GetPlayerName();
+                if (!string.IsNullOrEmpty(name)) return name;
+            }
+            return string.IsNullOrEmpty(Sampler.LastPlayerName) ? "(no character)" : Sampler.LastPlayerName;
+        }
+
         /// <summary>Builds this machine's own series for the last <paramref name="seconds"/>.</summary>
         internal static ClientSeries FromLocal(int seconds)
         {
@@ -263,12 +290,7 @@ namespace DiagnoseServerLag
             var c = new ClientSeries
             {
                 Uid = ZDOMan.GetSessionID(),
-                // The remembered name is the fallback rather than the other way round, so a live
-                // answer always reports the current character and only a window built after the
-                // player object has gone falls back - see Sampler.LastPlayerName.
-                Name = Player.m_localPlayer != null ? Player.m_localPlayer.GetPlayerName()
-                     : !string.IsNullOrEmpty(Sampler.LastPlayerName) ? Sampler.LastPlayerName
-                     : "(no character)",
+                Name = LocalName(),
                 CpuName = UnityEngine.SystemInfo.processorType,
                 Cores = Machine.ProcessorCount,
                 RoundTripMs = UnityEngine.Mathf.RoundToInt(LagNetwork.RoundTripMs),

@@ -879,6 +879,7 @@ namespace DiagnoseServerLag
 
                 int seconds = Sampler.History.Capacity;
                 ZPackage pkg = null;
+                int sent = 0;
                 // Halving rather than one guess: the ring can be configured to three hours, and
                 // the oldest seconds are the right ones to lose, since a capture always asks for a
                 // window ending now.
@@ -887,7 +888,7 @@ namespace DiagnoseServerLag
                     var series = ClientSeries.FromLocal(seconds);
                     if (series == null) return;
                     var candidate = series.Pack();
-                    if (candidate.Size() <= MaxFarewell) { pkg = candidate; break; }
+                    if (candidate.Size() <= MaxFarewell) { pkg = candidate; sent = series.Samples.Count; break; }
                     seconds /= 2;
                 }
                 if (pkg == null)
@@ -899,8 +900,11 @@ namespace DiagnoseServerLag
                 }
 
                 rpc.InvokeRoutedRPC(RpcClientLeft, pkg);
+                // The count sent, not the window asked for. Those differ by however long this
+                // session was: the first test logged "sent the server 3600s of history" for a
+                // forty-second visit, which reads as a full hour of data arriving.
                 DiagnoseServerLagMod.Log.LogInfo(
-                    "[DiagnoseServerLag] sent the server " + seconds + "s of history (" +
+                    "[DiagnoseServerLag] sent the server " + sent + "s of history (" +
                     (pkg.Size() / 1024) + " KB) on the way out, so a capture taken soon still " +
                     "includes this machine.");
             }
