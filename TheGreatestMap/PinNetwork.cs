@@ -48,6 +48,26 @@ namespace TheGreatestMap
         /// </summary>
         private const int WarnBytes = 256 * 1024;
 
+        /// <summary>
+        /// Who a peer number belongs to, for a log a person has to read.
+        ///
+        /// The number itself is a session id the game makes up per connection -- not a Steam id,
+        /// not stable across a rejoin, and not the id ServerSync and the Azu mods print beside
+        /// their own lines. So "peer 3087014532 sent a map" cannot be matched to a player, to
+        /// another mod's line, or to the same player an hour later. The name can.
+        /// </summary>
+        private static string Who(long peer)
+        {
+            try
+            {
+                var net = ZNet.instance;
+                var found = net != null ? net.GetPeer(peer) : null;
+                string name = found != null ? found.m_playerName : null;
+                return string.IsNullOrEmpty(name) ? $"peer {peer}" : $"{name} (peer {peer})";
+            }
+            catch (System.Exception) { return $"peer {peer}"; }
+        }
+
         private static void WarnIfLarge(int bytes, string what)
         {
             if (bytes < WarnBytes) return;
@@ -162,7 +182,7 @@ namespace TheGreatestMap
             int came = pkg.Size();
             MapStore incoming;
             try { incoming = MapStore.ReadFrom(pkg); }
-            catch (System.Exception e) { TheGreatestMapMod.Log.LogWarning($"[TheGreatestMap] Bad map from peer {sender}: {e.Message}"); return; }
+            catch (System.Exception e) { TheGreatestMapMod.Log.LogWarning($"[TheGreatestMap] Bad map from {Who(sender)}: {e.Message}"); return; }
             int tookIn = incoming.Pins.Count;
             // Read after the map and only if the sender wrote them; a client that predates
             // watermarks simply asks for everything.
@@ -178,7 +198,7 @@ namespace TheGreatestMap
             long merged = clock.ElapsedMilliseconds;
             if (result.Refused)
                 TheGreatestMapMod.Log.LogInfo(
-                    $"[TheGreatestMap] Erasures turned away {result.RefusedByErasure} marker(s) from peer {sender}" +
+                    $"[TheGreatestMap] Erasures turned away {result.RefusedByErasure} marker(s) from {Who(sender)}" +
                     (result.RefusedByOldErasure > 0
                         ? $", and pre-rekey erasures another {result.RefusedByOldErasure}" : "") + ".");
             if (result.Any && TgmConfig.SharingMode.Value == SharingMode.Instant)
@@ -207,10 +227,10 @@ namespace TheGreatestMap
                 ? $"{sending.Pins.Count} of {PinStore.Store.Pins.Count} markers, {sending.Tombstones.Count} erasure(s)"
                 : $"all {PinStore.Store.Pins.Count} markers";
             TheGreatestMapMod.Log.LogInfo(
-                $"[TheGreatestMap] Peer {sender} sent {tookIn} markers ({came / 1024f:0.#} KB); " +
+                $"[TheGreatestMap] {Who(sender)} sent {tookIn} markers ({came / 1024f:0.#} KB); " +
                 $"answered with {answer} ({reply.Size() / 1024f:0.#} KB) in {clock.ElapsedMilliseconds} ms, " +
                 $"{merged} of it merging.");
-            WarnIfLarge(reply.Size(), $"the map sent to peer {sender}");
+            WarnIfLarge(reply.Size(), $"the map sent to {Who(sender)}");
             ZRoutedRpc.instance.InvokeRoutedRPC(sender, SyncRes, reply);
         }
 
@@ -219,11 +239,11 @@ namespace TheGreatestMap
             if (!PinStore.IsServer || !PinStore.Loaded) return;
             if (!IsAdmin(sender))
             {
-                TheGreatestMapMod.Log.LogWarning($"[TheGreatestMap] Ignored wipe request from non-admin peer {sender}.");
+                TheGreatestMapMod.Log.LogWarning($"[TheGreatestMap] Ignored wipe request from non-admin {Who(sender)}.");
                 return;
             }
             var delta = PinStore.Wipe(autoOnly != 0);
-            TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Wiped {delta.Tombstones.Count} shared markers (autoOnly={autoOnly != 0}) on request of peer {sender}.");
+            TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Wiped {delta.Tombstones.Count} shared markers (autoOnly={autoOnly != 0}) on request of {Who(sender)}.");
             var pkg = new ZPackage();
             delta.Write(pkg);
             Broadcast(Delta, pkg);
