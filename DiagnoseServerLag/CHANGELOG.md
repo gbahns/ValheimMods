@@ -1,28 +1,6 @@
 # Changelog
 
-## 0.10.18 - 2026-10-23
-
-- **The group report no longer blames the network for everyone standing in the same base.** The
-  simultaneity test counts seconds where two or more machines stalled and compares that against
-  what unrelated machines at the same rates would give. Above chance, it concluded "look at the
-  server and at the network path everyone shares" - which is one explanation for coupled stalls and
-  not the likeliest one. Two players walking into the same base stall in the same second for an
-  entirely local reason: they are each instantiating the same several thousand build pieces.
-
-  So the test now asks where the stalling machines were. Each is judged against its own usual
-  surroundings rather than one threshold for everybody, since bases differ by an order of magnitude,
-  with a floor under it so that four times a median of twelve pieces is not called a base. Where
-  most of the shared seconds had two or more clients standing in built-up ground, the verdict says
-  so and points at the base instead. The counts are printed either way.
-
-  Measured only over the shared seconds where at least two of the stalling clients could be placed
-  at all, so an old client that sent no position cannot argue the base either way. The server is
-  never placeable - it stands nowhere - which is what makes a second it stalled in the one kind that
-  really does implicate the shared path, now reported on its own line.
-
-  On the four-player hour that prompted this, 23 of the 32 shared seconds it could place had two or
-  more clients standing in the base. The old verdict read "well above chance" and sent the search
-  in the wrong direction; the stalls were the cost of loading six thousand build pieces.
+## 0.10.19 - unreleased
 
 - **A player who logs off cleanly is still in the next capture.** A group capture was a synchronous
   round trip - the server asks whoever is connected, waits, and reports what comes back - so anyone
@@ -60,6 +38,30 @@
   seconds *every* machine covered: a window ending at somebody's logout would shrink that
   intersection to their session, throwing away the overlap between everyone who stayed. They appear
   in the rows, in the machine list and in the CSV, and the report says it has done this.
+
+## 0.10.18 - 2026-10-23
+
+- **The group report no longer blames the network for everyone standing in the same base.** The
+  simultaneity test counts seconds where two or more machines stalled and compares that against
+  what unrelated machines at the same rates would give. Above chance, it concluded "look at the
+  server and at the network path everyone shares" - which is one explanation for coupled stalls and
+  not the likeliest one. Two players walking into the same base stall in the same second for an
+  entirely local reason: they are each instantiating the same several thousand build pieces.
+
+  So the test now asks where the stalling machines were. Each is judged against its own usual
+  surroundings rather than one threshold for everybody, since bases differ by an order of magnitude,
+  with a floor under it so that four times a median of twelve pieces is not called a base. Where
+  most of the shared seconds had two or more clients standing in built-up ground, the verdict says
+  so and points at the base instead. The counts are printed either way.
+
+  Measured only over the shared seconds where at least two of the stalling clients could be placed
+  at all, so an old client that sent no position cannot argue the base either way. The server is
+  never placeable - it stands nowhere - which is what makes a second it stalled in the one kind that
+  really does implicate the shared path, now reported on its own line.
+
+  On the four-player hour that prompted this, 23 of the 32 shared seconds it could place had two or
+  more clients standing in the base. The old verdict read "well above chance" and sent the search
+  in the wrong direction; the stalls were the cost of loading six thousand build pieces.
 
 - **Clients send their display's refresh rate, and the report says when a frame time is just the
   panel.** The refresh rate has been captured since the hardware line was added, and the comment
