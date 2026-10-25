@@ -34,8 +34,12 @@ namespace TheGreatestMap
             new Terminal.ConsoleCommand("tgm_resync", "Merge your personal map with the shared map now, without a cartography table",
                 (Terminal.ConsoleEvent)(args =>
                 {
-                    SyncEngine.SyncWithServer(announceNothing: true, asked: true);
+                    // Said before the work, not after. On a dedicated server the answer comes
+                    // back over the network and this reads as "working on it"; in a solo or
+                    // hosted game you are the server, the whole sync finishes inside this call,
+                    // and printing afterwards put "working on it" below the result.
                     args.Context.AddString("Merging with the shared map...");
+                    SyncEngine.SyncWithServer(announceNothing: true, asked: true);
                 }));
 
             new Terminal.ConsoleCommand("tgm_sync", "Read and write the nearest cartography table now",
