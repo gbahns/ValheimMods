@@ -39,6 +39,23 @@ namespace TheGreatestMap
 
         // ── senders ─────────────────────────────────────────────────────────────────
 
+        /// <summary>
+        /// Steam carries at most 524,288 bytes in one reliable message, and over that the send
+        /// loop breaks rather than skipping the message -- the queue behind it stalls and the
+        /// connection dies thirty seconds later. Worth saying when a payload is getting close,
+        /// which is never in normal play; it used to be said on every sync, where it was a
+        /// sentence nobody read attached to a number that was fine.
+        /// </summary>
+        private const int WarnBytes = 256 * 1024;
+
+        private static void WarnIfLarge(int bytes, string what)
+        {
+            if (bytes < WarnBytes) return;
+            TheGreatestMapMod.Log.LogWarning(
+                $"[TheGreatestMap] {what} is {bytes / 1024f:0.#} KB, and one message carries at most 512 KB. " +
+                "Past that the connection drops rather than the message.");
+        }
+
         /// <summary>When the map last went up, so the answer can be timed against it.</summary>
         private static float _sentAt = -1f;
 
@@ -58,7 +75,8 @@ namespace TheGreatestMap
             ZRoutedRpc.instance.InvokeRoutedRPC(Sync, pkg);
             TheGreatestMapMod.Log.LogInfo(
                 $"[TheGreatestMap] {System.DateTime.Now:HH:mm:ss} sent our map up: {store.Pins.Count} markers, " +
-                $"{pkg.Size() / 1024f:0.#} KB compressed, packed in {wrote} ms. One message carries at most 512 KB.");
+                $"{pkg.Size() / 1024f:0.#} KB.");
+            WarnIfLarge(pkg.Size(), "the map we sent up");
         }
 
         /// <summary>Offer my map to another player: markers, and my explored area if given (compressed, table format).</summary>
@@ -145,8 +163,7 @@ namespace TheGreatestMap
             MapStore incoming;
             try { incoming = MapStore.ReadFrom(pkg); }
             catch (System.Exception e) { TheGreatestMapMod.Log.LogWarning($"[TheGreatestMap] Bad map from peer {sender}: {e.Message}"); return; }
-            TheGreatestMapMod.Log.LogInfo(
-                $"[TheGreatestMap] Peer {sender} sent a map: {incoming.Pins.Count} markers, {came / 1024f:0.#} KB, unpacked in {clock.ElapsedMilliseconds} ms.");
+            int tookIn = incoming.Pins.Count;
             // Read after the map and only if the sender wrote them; a client that predates
             // watermarks simply asks for everything.
             long askedSession = 0L, askedSeq = -1L;
@@ -183,15 +200,17 @@ namespace TheGreatestMap
             // an older client reads the map and stops, and keeps asking for everything.
             reply.Write(marks.Session);
             reply.Write(marks.Seq);
+            // One line for the whole exchange rather than one for each half: they are written
+            // a millisecond apart by the same handler, and two lines to say "a sync happened"
+            // is one more than anybody reading a server log wants.
+            string answer = known
+                ? $"{sending.Pins.Count} of {PinStore.Store.Pins.Count} markers, {sending.Tombstones.Count} erasure(s)"
+                : $"all {PinStore.Store.Pins.Count} markers";
             TheGreatestMapMod.Log.LogInfo(
-                known
-                    ? $"[TheGreatestMap] Answering peer {sender} with what changed since their last sync: " +
-                      $"{sending.Pins.Count} marker(s), {sending.Tombstones.Count} erasure(s), " +
-                      $"{reply.Size() / 1024f:0.#} KB compressed (merging took {merged} ms, " +
-                      $"{clock.ElapsedMilliseconds} ms in all), instead of the whole {PinStore.Store.Pins.Count}."
-                    : $"[TheGreatestMap] Answering peer {sender} with the shared map: {PinStore.Store.Pins.Count} markers, " +
-                      $"{reply.Size() / 1024f:0.#} KB compressed (merging took {merged} ms, {clock.ElapsedMilliseconds} ms in all). " +
-                      "One message carries at most 512 KB.");
+                $"[TheGreatestMap] Peer {sender} sent {tookIn} markers ({came / 1024f:0.#} KB); " +
+                $"answered with {answer} ({reply.Size() / 1024f:0.#} KB) in {clock.ElapsedMilliseconds} ms, " +
+                $"{merged} of it merging.");
+            WarnIfLarge(reply.Size(), $"the map sent to peer {sender}");
             ZRoutedRpc.instance.InvokeRoutedRPC(sender, SyncRes, reply);
         }
 
@@ -225,13 +244,8 @@ namespace TheGreatestMap
             if (Minimap.instance == null) return;
             try
             {
-                if (_sentAt > 0f)
-                {
-                    float waited = UnityEngine.Time.realtimeSinceStartup - _sentAt;
-                    _sentAt = -1f;
-                    TheGreatestMapMod.Log.LogInfo(
-                        $"[TheGreatestMap] {System.DateTime.Now:HH:mm:ss} the server answered in {waited:0.0} s.");
-                }
+                float waited = _sentAt > 0f ? UnityEngine.Time.realtimeSinceStartup - _sentAt : -1f;
+                _sentAt = -1f;
                 var clock = System.Diagnostics.Stopwatch.StartNew();
                 int size = pkg.Size();
                 var store = MapStore.ReadFrom(pkg);
@@ -249,11 +263,16 @@ namespace TheGreatestMap
                 catch (System.Exception) { session = 0L; seq = -1L; }
                 SyncEngine.OnSharedMap(store);
                 if (seq >= 0L) SyncEngine.Heard(session, seq);
-                if (clock.ElapsedMilliseconds >= 50L)
-                    TheGreatestMapMod.Log.LogWarning(
-                        $"[TheGreatestMap] The shared map came back in {clock.ElapsedMilliseconds} ms " +
-                        $"({store.Pins.Count} markers, {size / 1024f:0.#} KB, unpacking {read} ms, " +
-                        $"taking it in {clock.ElapsedMilliseconds - read} ms).");
+                // The round trip and what came of it, in one line. "Answered in 0.0 s" on its
+                // own said nothing the next line did not, and the detail only appeared when the
+                // merge was slow -- so a sync that went well was two lines, neither of which
+                // said what had arrived.
+                string line = $"[TheGreatestMap] {System.DateTime.Now:HH:mm:ss} the server answered" +
+                              (waited >= 0f ? $" in {waited:0.0} s" : "") +
+                              $": {store.Pins.Count} markers, {size / 1024f:0.#} KB, " +
+                              $"unpacked in {read} ms and taken in {clock.ElapsedMilliseconds - read} ms.";
+                if (clock.ElapsedMilliseconds >= 50L) TheGreatestMapMod.Log.LogWarning(line);
+                else TheGreatestMapMod.Log.LogInfo(line);
             }
             catch (System.Exception e) { TheGreatestMapMod.Log.LogWarning($"[TheGreatestMap] Bad shared map from the server: {e.Message}"); }
         }
