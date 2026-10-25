@@ -41,8 +41,22 @@ namespace TheGreatestMap
             if (key.Length == 0) return null;
             if (key.StartsWith("item:", StringComparison.OrdinalIgnoreCase)) return "item:" + key.Substring(5).Trim();
             if (key.StartsWith("pin:", StringComparison.OrdinalIgnoreCase)) return "pin:" + key.Substring(4).Trim();
+            if (key.StartsWith("like:", StringComparison.OrdinalIgnoreCase)) return "like:" + key.Substring(5).Trim();
             if (key.StartsWith("piece:", StringComparison.OrdinalIgnoreCase)) return "piece:" + key.Substring(6).Trim();
             return "item:" + key;
+        }
+
+        /// <summary>
+        /// The same picture on a pin of our own, for an icon that has to be placeable.
+        ///
+        /// The game lets a player place only its five numbered pins, so arming any other vanilla
+        /// type produces a pin it will not let us adopt: it draws, it keeps its name, and it is
+        /// on no other map. A key of ours wearing the same sprite is placeable and shares.
+        /// </summary>
+        internal static string AsOwnPin(string key)
+        {
+            key = Normalize(key);
+            return key != null && key.StartsWith("pin:") ? "like:" + key.Substring(4) : key;
         }
 
         internal static bool SameKey(string a, string b)
@@ -335,9 +349,17 @@ namespace TheGreatestMap
         {
             key = Normalize(key);
             if (key == null || map == null) return null;
-            if (key.StartsWith("pin:"))
+            if (key.StartsWith("pin:") || key.StartsWith("like:"))
             {
-                if (!TryVanilla(key, out var vanilla)) return null;
+                // "like:" wears a vanilla picture on a pin type of our own. "pin:" is the vanilla
+                // type itself, which is right for a picture the game already uses for that
+                // meaning -- and wrong whenever a player has to be able to place one, because
+                // the game only lets its own five numbered pins be placed by hand. A marker
+                // armed as a vanilla type is dropped as a plain vanilla pin and never adopted:
+                // it draws, it keeps its label, and it is on nobody else's map. The player
+                // marker did exactly that until this existed.
+                string want = key.StartsWith("like:") ? "pin:" + key.Substring(5) : key;
+                if (!TryVanilla(want, out var vanilla)) return null;
                 foreach (var data in map.m_icons)
                     if (data.m_name == vanilla) return data.m_icon;
                 return null;

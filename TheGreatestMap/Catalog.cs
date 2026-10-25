@@ -181,7 +181,10 @@ namespace TheGreatestMap
                 case Category.Structure: return "pin:Icon1";
                 case Category.Campfire:  return "piece:fire_pit"; // the campfire's own build-menu picture
                 case Category.Sighting:  return "TrophySerpent";
-                case Category.Player:    return "pin:Player";
+                // Not "pin:Player": that is the vanilla type the game draws other players with,
+                // and the game refuses to let a player place one by hand, so a marker armed with
+                // it is never taken onto the shared map. Same picture, our own pin.
+                case Category.Player:    return "like:Player";
                 // A vessel is built with the hammer, so it has a build-menu picture of itself.
                 case Category.Ship:      return "piece:Karve";
                 case Category.Cart:      return "piece:Cart";
