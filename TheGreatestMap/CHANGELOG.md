@@ -2,6 +2,11 @@
 
 ## 4.4.0 -- unreleased
 
+**Everyone must update, including the server.** Nothing in the map format changed and a
+mixed group would in principle have worked -- the new sync was built so an older copy
+simply does not see it and is answered in full. That path was reasoned rather than
+tried, though, and an untested road is not one to send other people down.
+
 - **A sync carries what changed instead of the whole map.** A cartography table used to
   send your map up and the shared map back, both in full, almost always to find that
   nothing had changed. The server now counts its own changes and answers with just the

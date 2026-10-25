@@ -62,7 +62,17 @@ namespace TheGreatestMap
         // the string table as marker records. Since both shapes went out calling themselves
         // 4.2.0, the floor has to rise to 4.3.0 -- a version number that cannot be told apart
         // from another with different bytes is no check at all.
-        public const string MinCompatibleVersion = "4.3.0";
+        // 4.4.0: nothing in the format changed, and that is the point worth recording. A sync
+        // now sends a watermark and gets back only what has changed since, and the whole thing
+        // was built to need no bump at all -- both numbers are written after the map, so a
+        // reader that predates them stops where it always did, answers in full, and works.
+        //
+        // The floor rises anyway, because that path was reasoned and never run. The choice is
+        // between a mixed-version group taking an untested road and a group that updates
+        // together taking a tested one, and nobody is owed the first. The code that tolerates a
+        // missing watermark stays exactly as it is: read every shape, enforce none, and let the
+        // version check decide who is allowed to speak rather than what we are able to hear.
+        public const string MinCompatibleVersion = "4.4.0";
 
         internal static TheGreatestMapMod Instance { get; private set; }
         internal static ManualLogSource Log { get; private set; }
