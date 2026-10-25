@@ -9,6 +9,11 @@
   ordered by any clock, so a machine whose clock is wrong cannot cause a marker to be
   skipped, and anything the server is unsure of still sends the whole map.
 
+- **The log no longer reports every pause.** It was there to tell a frozen client from a
+  paused one while a disconnection was being chased, and it answered that: a pause cannot
+  cost a connection. Since the map pauses the game by design, the lines then fired every
+  time anybody opened the map and said nothing. Long frames are still reported.
+
 - **A merge says when an erasure turned a marker away.** Erasures never retire and
   nothing knows when they safely could; counting what they actually do is how that gets
   decided with evidence rather than a guess.
