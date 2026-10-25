@@ -145,7 +145,14 @@ namespace TheGreatestMap
         {
             // The server answered, so it has taken whatever we sent with that question.
             _serverHasOurs = true;
+            // Whether anything of ours was still waiting to go up, read before the merge --
+            // because taking the server's own changes in marks the map as having something to
+            // send, and what came from the server plainly does not need sending back to it.
+            // Left alone, every sync that received anything made the next one upload the whole
+            // map again: 71 KB to tell the server what it had just told us.
+            bool oursWaiting = PersonalMap.Dirty;
             var result = ClientPins.ApplyMerge(serverStore);
+            if (!oursWaiting) PersonalMap.Sent();
             AfterMerge(result);
             if (result.Any) TheGreatestMapMod.Message("Shared map: " + result);
             else if (_announcePending) TheGreatestMapMod.Message("Shared map: nothing new.");
@@ -155,7 +162,10 @@ namespace TheGreatestMap
         /// <summary>A change pushed by the server (Instant mode, or an admin wipe).</summary>
         internal static void OnDelta(MapStore delta)
         {
+            // Pushed by the server, so the same reasoning as a reply: it already has these.
+            bool oursWaiting = PersonalMap.Dirty;
             var result = ClientPins.ApplyMerge(delta);
+            if (!oursWaiting) PersonalMap.Sent();
             AfterMerge(result);
             if (result.Deleted > 0 && result.Added == 0 && result.Updated == 0 && delta.Tombstones.Count > 5)
                 TheGreatestMapMod.Message($"Shared map: {result.Deleted} markers erased by an admin.");

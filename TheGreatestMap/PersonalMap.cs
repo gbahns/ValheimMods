@@ -57,7 +57,15 @@ namespace TheGreatestMap
             SyncEngine.OnLocalChange();
         }
 
-        /// <summary>A change that came from elsewhere: needs saving only.</summary>
+        /// <summary>
+        /// A change that came from elsewhere. Still sets the flag, because a map merged from
+        /// another player holds markers the server has not seen and they have to go up.
+        ///
+        /// The comment here used to say "needs saving only", which was not true of the flag it
+        /// sets: saving happens on the player's own save hook and never reads this. It only ever
+        /// meant "we have something the server may not", which is why a merge from the server
+        /// has to put it back afterwards -- see SyncEngine.OnSharedMap.
+        /// </summary>
         internal static void MarkDirty() => Dirty = true;
 
         /// <summary>The map as it stands has gone to the server, so it need not go again unchanged.</summary>
