@@ -119,6 +119,16 @@ Ordered by what each one is actually for. The first removes a failure; the rest 
       Needs a sequence number, a reassembly buffer keyed by sender, and a timeout that discards a
       half-arrived map rather than holding it forever.
 
+- [x] **2. Deltas -- send only what changed.** Done in 4.4.0 and measured in TestWorld: a first
+      sync full, a sync after one new marker carrying one marker, and a sync with nothing changed
+      carrying nothing in either direction -- 0 KB up, 0 KB back, where the same exchange had
+      been 1.7 KB each way. The ordering is the server's own count of changes it has accepted,
+      not the Modified stamps, because those are wall-clock from machines that disagree and a
+      slow clock would make a marker skippable. Unknowns fall back to the whole map, so a
+      restarted server costs one full map per player and nothing worse.
+
+  <details><summary>what the item originally said</summary>
+
 - [ ] **2. Deltas -- send only what changed.** `Modified` already exists on every record, so a peer
       that says "I have everything up to tick N" can be sent only what is newer. The common case at
       a cartography table is *nothing changed* or *three markers changed*; today both cost the
@@ -126,6 +136,7 @@ Ordered by what each one is actually for. The first removes a failure; the rest 
       this. Tombstones and suppressions need the same watermark treatment.
       Catch: a peer whose watermark we do not trust (new player, rejoined after a rollback) still
       needs the whole map, so the full path cannot go away.
+  </details>
 
 - [x] **3. Drop `Id`; key on `Owner + Pos + Source`.** Done in 4.0.0, and since confirmed on the
       live server rather than in simulation. The server converted its map, a client synced at a
