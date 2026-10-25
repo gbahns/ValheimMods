@@ -1032,12 +1032,17 @@ namespace DiagnoseServerLag
         private static void FinishGather()
         {
             _gathering = false;
-            AdoptParked(_gatherSeconds);
             string text;
             string csv = null;
             string csvPath = null;
             try
             {
+                // Inside the try, not ahead of it. This runs from UpdateGather, so anything that
+                // escapes here escapes into the plugin's Update - where a diagnostic that failed
+                // to build its report would instead stop the mod sampling at all. Folding in a
+                // departed player is the least important thing this method does and has no
+                // business being the one that can break it.
+                AdoptParked(_gatherSeconds);
                 text = GroupReport.Build(_gatherSeconds, _gathered, _gatherExpected, out string path, out csv);
                 csvPath = path;
                 if (path != null) text += "\nwrote " + path + " on the server";
