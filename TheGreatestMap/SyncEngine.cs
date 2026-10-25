@@ -111,10 +111,13 @@ namespace TheGreatestMap
         internal static void SyncWithServer(bool announceNothing, bool asked = false)
         {
             if (!PersonalMap.Loaded) return;
-            // Skipped only when nobody asked. The wait is measured in game time on purpose: the
-            // world stops when the map is open, so time that does not pass is time in which
-            // nothing could have changed, and a cooldown that kept running through it would be
-            // counting nothing.
+            // Skipped only when nobody asked. The wait is measured in game time on purpose, and
+            // that is the whole reason it is right: the world is only ever stopped when every
+            // player online has asked for it -- Pause My Server grants a pause on no other terms,
+            // a lone player being the common case rather than the rule -- or when an admin stops
+            // it for everybody. Either way nobody is moving, so time that does not pass is time
+            // in which nothing could have changed, and a cooldown that kept running through it
+            // would be counting nothing.
             //
             // It exists to avoid a sync, which used to mean the whole map in both directions.
             // A sync now carries what changed, so the thing being avoided costs a tenth of a

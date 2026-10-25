@@ -10,8 +10,9 @@ namespace TheGreatestMap
     /// Option: pause the game while the large map screen is open, the way the ESC menu does.
     /// It goes through vanilla's own Game.Pause / Game.Unpause, the two calls the menu makes, so
     /// alone in a solo or hosted game the game freezes by itself, and on a dedicated server it is
-    /// Pause My Server, if installed, that decides: it hooks those same two calls and grants the
-    /// pause only while you are the only player online. Nothing here knows about that mod.
+    /// Pause My Server, if installed, that decides: it hooks those same two calls and stops the
+    /// world once every player online has asked for a pause -- being the only player is the
+    /// common case of that, not a rule of its own. Nothing here knows about that mod.
     /// </summary>
     internal static class MapPause
     {
