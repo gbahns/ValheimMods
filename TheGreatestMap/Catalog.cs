@@ -30,6 +30,7 @@ namespace TheGreatestMap
         Plants,
         Campfire,
         Sighting,
+        Player,
         Ship,
         Cart,
         Spawner,
@@ -75,7 +76,8 @@ namespace TheGreatestMap
         /// well, where the trolls walk. Nothing records one, so the settings about recording would
         /// all be answers to a question never asked, and it is not listed in any prefab catalog.
         /// </summary>
-        internal static bool IsPlacedOnly(Category c) => c == Category.Sighting;
+        internal static bool IsPlacedOnly(Category c) =>
+            c == Category.Sighting || c == Category.Player;
 
         internal static string Label(Category c)
         {
@@ -90,6 +92,7 @@ namespace TheGreatestMap
                 case Category.Structure: return "Structures";
                 case Category.Campfire:  return "Campfires";
                 case Category.Sighting:  return "Sightings";
+                case Category.Player:    return "Players";
                 case Category.Ship:      return "Ships";
                 case Category.Cart:      return "Carts";
                 case Category.Spawner:   return "Spawners";
@@ -178,6 +181,7 @@ namespace TheGreatestMap
                 case Category.Structure: return "pin:Icon1";
                 case Category.Campfire:  return "piece:fire_pit"; // the campfire's own build-menu picture
                 case Category.Sighting:  return "TrophySerpent";
+                case Category.Player:    return "pin:Player";
                 // A vessel is built with the hammer, so it has a build-menu picture of itself.
                 case Category.Ship:      return "piece:Karve";
                 case Category.Cart:      return "piece:Cart";

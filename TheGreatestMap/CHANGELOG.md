@@ -9,6 +9,13 @@
   ordered by any clock, so a machine whose clock is wrong cannot cause a marker to be
   skipped, and anything the server is unsure of still sends the whole map.
 
+- **Traders and people can be marked by hand.** Nothing records a trader -- the game pins
+  the ones you have met -- but "the trader is over there" is worth writing down for
+  somebody who has not met him, and the rule against recording them had quietly become a
+  rule against writing them. Both now have the place-by-hand button. People get one too,
+  on the Players row, for marking where somebody is building or where they went down,
+  along with an "only" button to show just those.
+
 - **A console command that waits for the server now says how it ended.** `tgm_resync`
   printed "Merging with the shared map..." and nothing further: the answer arrives over
   the network, and it was being announced only on the HUD, which does not draw while the

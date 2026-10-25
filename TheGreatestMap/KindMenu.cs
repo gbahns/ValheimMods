@@ -385,6 +385,10 @@ namespace TheGreatestMap
                 // there is an answer to draw from.
                 bool live = Categories.IsLive(kind)
                     && (kind == Category.Portal ? Portals.HaveList : Transports.HaveList);
+                // Players have a row of their own further down -- the live one, which is also
+                // where a hand-placed player marker is armed and filtered -- so the kind is not
+                // listed twice.
+                if (kind == Category.Player) continue;
                 if (!seen.Contains(kind) && !Categories.IsPlacedOnly(kind) && !live
                     && !Categories.VanillaMarks(kind)) continue;
                 var k = kind;
@@ -396,7 +400,13 @@ namespace TheGreatestMap
                     // means "show or hide these". A live kind cannot be placed: a hand-written
                     // ship would be a memory of a thing that moves, which is the whole reason
                     // these are not recorded.
-                    Categories.IsLive(k) || Categories.VanillaMarks(k)
+                    //
+                    // A kind the game marks by itself can be: nothing records a trader, because
+                    // vanilla already pins the ones you have met, but "the trader is over there"
+                    // is a perfectly good thing to write down for somebody who has not met him,
+                    // and refusing to let a player place one was a rule about recording leaking
+                    // into a rule about writing.
+                    Categories.IsLive(k)
                         ? (Action)null
                         : () => {
                             // Pressing it again puts the arming away, which is what a button that
@@ -439,8 +449,25 @@ namespace TheGreatestMap
                     else TheGreatestMapMod.Message("No other players are sharing their position.");
                 },
                 () => players() > 0,
+                // Placing and filtering work on the markers people leave about each other --
+                // where somebody is building, where they went down -- which is a different thing
+                // from the live positions the row itself switches, and the only sensible place
+                // to keep it is the row already about people.
+                onPlace: () =>
+                {
+                    if (ManualPlace.Armed.HasValue && ManualPlace.Armed.Value == Category.Player)
+                    {
+                        ManualPlace.Cancel();
+                        Refresh();
+                        return;
+                    }
+                    if (!ManualPlace.Arm(map, Category.Player)) return;
+                    if (Pinned) Refresh(); else Close();
+                },
+                onOnly: () => Focus.SetKind(Category.Player),
                 onLocate: () => Locate.Players(map),
-                caption: () => players() > 0 ? $"Players ({players()})" : "Players (none sharing)");
+                caption: () => players() > 0 ? $"Players ({players()})" : "Players (none sharing)",
+                placeKind: Category.Player);
             y -= RowHeight;
             return y;
         }
