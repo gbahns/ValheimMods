@@ -263,7 +263,12 @@ namespace DiagnoseServerLag
             var c = new ClientSeries
             {
                 Uid = ZDOMan.GetSessionID(),
-                Name = Player.m_localPlayer != null ? Player.m_localPlayer.GetPlayerName() : "(no character)",
+                // The remembered name is the fallback rather than the other way round, so a live
+                // answer always reports the current character and only a window built after the
+                // player object has gone falls back - see Sampler.LastPlayerName.
+                Name = Player.m_localPlayer != null ? Player.m_localPlayer.GetPlayerName()
+                     : !string.IsNullOrEmpty(Sampler.LastPlayerName) ? Sampler.LastPlayerName
+                     : "(no character)",
                 CpuName = UnityEngine.SystemInfo.processorType,
                 Cores = Machine.ProcessorCount,
                 RoundTripMs = UnityEngine.Mathf.RoundToInt(LagNetwork.RoundTripMs),

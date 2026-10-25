@@ -287,9 +287,28 @@ namespace DiagnoseServerLag
         }
 
         /// <summary>Call once per frame from the plugin's Update.</summary>
+        /// <summary>
+        /// The character's name, last time there was one.
+        ///
+        /// Kept because the farewell push happens inside ZNet.Shutdown, by which point
+        /// ZNetScene.Shutdown has already called Destroy on every networked object including the
+        /// player. Unity defers that to the end of the frame, so Player.m_localPlayer does still
+        /// read back - but the push is a single message that cannot be retried, and a row labelled
+        /// "(no character)" is a row nobody can attribute. Not worth resting that on the order of
+        /// two statements in somebody else's shutdown.
+        /// </summary>
+        internal static string LastPlayerName { get; private set; } = "";
+
         internal static void Tick()
         {
             if (!Live) { if (_started) Reset(); return; }
+
+            var who = Player.m_localPlayer;
+            if (who != null)
+            {
+                string name = who.GetPlayerName();
+                if (!string.IsNullOrEmpty(name)) LastPlayerName = name;
+            }
 
             // Unscaled: a paused game still renders, and the ESC menu freezing the simulation must
             // not read as the machine having stopped keeping up.
