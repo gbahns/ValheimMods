@@ -64,11 +64,6 @@ namespace TheGreatestMap
                             $"[TheGreatestMap] Forgot {crops} erasure(s) left by clearing crops off tilled ground. " +
                             "A planted turnip was never a discovery, so there is nothing to remember about rubbing one out.");
                     }
-                    // On every load, not only while converting. It was narrowed to the
-                    // conversion because it was eating the erasure that folding two markers
-                    // into one depends on -- the two look identical, and only age tells them
-                    // apart, which ForgetGhosts now weighs for itself. Narrowing it meant every
-                    // ghost that arrived afterwards stayed: 197 of them on the live map.
                     Acks.Load(_path);
                     int acked = Acks.Prune(_store);
                     if (acked > 0)
@@ -78,6 +73,11 @@ namespace TheGreatestMap
                             $"[TheGreatestMap] Dropped {acked} erasure(s) that every player still being waited for has " +
                             "already taken in. They can no longer hold anything back, so they are no longer kept.");
                     }
+                    // On every load, not only while converting. It was narrowed to the
+                    // conversion because it was eating the erasure that folding two markers
+                    // into one depends on -- the two look identical, and only age tells them
+                    // apart, which ForgetGhosts now weighs for itself. Narrowing it meant every
+                    // ghost that arrived afterwards stayed: 197 of them on the live map.
                     int ghosts = _store.ForgetGhosts();
                     if (ghosts > 0)
                     {

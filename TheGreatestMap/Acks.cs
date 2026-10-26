@@ -81,6 +81,16 @@ namespace TheGreatestMap
             // than dropped the moment everybody syncs once.
             foreach (var key in store.Tombstones.Keys)
                 if (!_erasedAt.ContainsKey(key)) _erasedAt[key] = _changes;
+            // And forget the ones whose erasure has gone by some other road -- the ghost sweep,
+            // the crop sweep, a conversion. Nothing reads them again, but they would be written
+            // back to the file on every save, so the ledger would only ever grow.
+            if (_erasedAt.Count > store.Tombstones.Count)
+            {
+                var gone = new List<PinKey>();
+                foreach (var key in _erasedAt.Keys)
+                    if (!store.Tombstones.ContainsKey(key)) gone.Add(key);
+                foreach (var key in gone) _erasedAt.Remove(key);
+            }
             _dirty = true;
         }
 
