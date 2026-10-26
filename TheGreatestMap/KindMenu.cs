@@ -1,4 +1,5 @@
 using System;
+using BepInEx.Configuration;
 using System.Collections.Generic;
 using HarmonyLib;
 using TMPro;
@@ -262,6 +263,21 @@ namespace TheGreatestMap
             Place(showAll, 0f, y, Width, RowHeight);
             y -= RowHeight;
 
+            // Side by side, because they are the same question asked of two things, and a player
+            // deciding to quieten the map wants to see both answers at once rather than hunt for
+            // the second one. Half the panel each, which is a column's width -- the longest
+            // either says is "Hide Marker Labels".
+            float half = (Width - Gap) * 0.5f;
+            LabelButton(0f, y, half,
+                () => TgmConfig.ShowMarkerLabels,
+                () => TgmConfig.ShowMarkerLabels != null && TgmConfig.ShowMarkerLabels.Value
+                    ? "Hide Marker Labels" : "Show Marker Labels");
+            LabelButton(half + Gap, y, half,
+                () => TgmConfig.ShowPortalLabels,
+                () => TgmConfig.ShowPortalLabels != null && TgmConfig.ShowPortalLabels.Value
+                    ? "Hide Portal Labels" : "Show Portal Labels");
+            y -= RowHeight;
+
             // Pinning is about this list's own behavior rather than about the markers, so it sits
             // apart from them at the foot, next to the other row that acts on the whole list.
 
@@ -339,18 +355,6 @@ namespace TheGreatestMap
                 () => AllShown ? "Hide all markers" : "Show all markers", null);
             y -= RowHeight;
 
-            // Beside it, because it answers the same complaint -- a map too full to read -- and
-            // answers it without hiding anything. A setting exists for it too, but a player who
-            // wants the names gone is looking at the map at the time.
-            ActionRow(x, y, () =>
-                {
-                    if (TgmConfig.ShowMarkerLabels != null)
-                        TgmConfig.ShowMarkerLabels.Value = !TgmConfig.ShowMarkerLabels.Value;
-                    Refresh();
-                },
-                () => TgmConfig.ShowMarkerLabels != null && TgmConfig.ShowMarkerLabels.Value
-                    ? "Hide marker labels" : "Show marker labels", null);
-            y -= RowHeight;
 
             if (_results != null)
             {
@@ -681,6 +685,25 @@ namespace TheGreatestMap
             var header = MenuKit.Text(_root.transform, "Header", text, 15f, MenuKit.Header);
             Place(header.rectTransform, x + 10f, y, ColumnWidth - 20f, HeaderHeight);
             header.alignment = TextAlignmentOptions.MidlineLeft;
+        }
+
+        /// <summary>
+        /// A button that turns one label switch off and on, captioned with what pressing it will
+        /// do rather than with the state it is in. "Hide Marker Labels" is an instruction; "Marker
+        /// Labels: on" is a report that leaves the reader to work out what a press does.
+        /// </summary>
+        private static void LabelButton(float x, float y, float width, Func<ConfigEntry<bool>> entry, Func<string> text)
+        {
+            var row = MenuKit.Row(_root.transform, "", true, () =>
+            {
+                var e = entry();
+                if (e != null) e.Value = !e.Value;
+                Refresh();
+            });
+            Place(row, x, y, width, RowHeight);
+            var label = row.GetComponentInChildren<TextMeshProUGUI>();
+            if (label != null) label.alignment = TextAlignmentOptions.Center;
+            _entries.Add(new Entry { Text = text, Quiet = () => false, Label = label });
         }
 
         private static void ActionRow(float x, float y, Action onClick, Func<string> text, Func<bool> quiet)

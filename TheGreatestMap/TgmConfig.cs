@@ -169,6 +169,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<float> TransportSweepSeconds;
         internal static ConfigEntry<bool> ShowTransportLabels;
         internal static ConfigEntry<bool> ShowMarkerLabels;
+        internal static ConfigEntry<bool> ShowPortalLabels;
         internal static ConfigEntry<float> LocateSeconds;
         internal static ConfigEntry<int> PlayerMarkerSize;
         internal static ConfigEntry<int> PlayerArrowSize;
@@ -567,7 +568,14 @@ namespace TheGreatestMap
                 "density even that is a wall of words over the terrain. The names are not lost -- hovering a marker " +
                 "still names it, the marker list still finds it by name, and switching this back on writes them all " +
                 "again. There is a row in the marker list that does the same thing without leaving the map.");
-            ShowMarkerLabels.SettingChanged += (_, __) => { ClientPins.RedrawLabels(); Portals.Redraw(); };
+            ShowMarkerLabels.SettingChanged += (_, __) => ClientPins.RedrawLabels();
+
+            ShowPortalLabels = mod.BindLocal("Display", "Show Portal Labels", true,
+                "Write portal names on the large map. Kept apart from the marker labels because the two are not the " +
+                "same complaint: a portal name is worth reading and there are a dozen of them, while marker names run " +
+                "to thousands. A base with six portals writes six words across itself, which is reason enough to want " +
+                "these gone while keeping the rest.");
+            ShowPortalLabels.SettingChanged += (_, __) => Portals.Redraw();
 
             ShowTransportLabels = mod.BindMoved("Display", Dynamic, "Show Transport Labels", false,
                 "Write the name of each ship and cart beside its pin on the large map. Off by default: a harbor of six " +

@@ -250,7 +250,7 @@ namespace TheGreatestMap
                 // hovering it still says which portal this is. Portals are the labels people
                 // most want gone -- a base with six of them writes six words over itself.
                 string name = string.IsNullOrEmpty(p.Name) ? "Portal" : p.Name;
-                bool label = TgmConfig.ShowMarkerLabels == null || TgmConfig.ShowMarkerLabels.Value;
+                bool label = TgmConfig.ShowPortalLabels == null || TgmConfig.ShowPortalLabels.Value;
                 var pin = map.AddPin(p.Pos, (Minimap.PinType)type, label ? name : "", false, false, 0L);
                 if (pin == null) continue;
                 pin.m_name = name;
