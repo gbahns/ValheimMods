@@ -228,4 +228,11 @@ current and loading.
   reads with `utf-8-sig` and writes with `utf-8` adds the BOM back silently. If a publish ends in
   `400 BadRequest`, read the whole error before assuming anything; strip the BOM with
   `tail -c +4` and publish again.
+- **Thunderstore refuses a `CHANGELOG.md` over 100,000 characters**, and like the BOM check
+  it says so only *after* "Successfully finalized the upload" - the zip lands, the package
+  is not created, and `mod-status.ps1` still shows the old version on both sites. The error
+  body is `{"__all__":["CHANGELOG.md is too long, max: 100000"]}`. TheGreatestMap hit it at
+  4.5.0 and 101,239 characters; the fix was moving everything before 1.0.0 into
+  `CHANGELOG-0.x.md`, kept in the repo and not shipped. A long-running mod will reach this,
+  so check the size before publishing rather than after.
 - Jotunn 2.30.0 is the version that works on Valheim 1.0 — 2.29.2's PieceManager causes a spawn loop.
