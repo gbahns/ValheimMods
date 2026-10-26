@@ -58,6 +58,7 @@ namespace TheGreatestMap
             Locate.Reset();
             Watchdog.Reset();
             Tilled.Reset();
+            Erasures.Reset();
             Migrations.Reset();
         }
 
@@ -1417,6 +1418,7 @@ namespace TheGreatestMap
             ClientPins.StylePins(__instance);
             // Vanilla may have added or reordered elements, which would bury the portals again.
             Portals.BringToFront();
+            Erasures.Paint();
             ClientPins.AfterLayoutLabels(__instance);
             // Vanilla has just built markers afresh, and a new one starts visible. Putting the
             // spotlight's out here rather than waiting for our own Update keeps them from showing

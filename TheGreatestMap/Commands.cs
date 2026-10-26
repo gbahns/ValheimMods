@@ -301,6 +301,13 @@ namespace TheGreatestMap
                         args.Context.AddString($"Asking the world about {result.Ambiguous + result.Lost} more...");
                 }));
 
+            new Terminal.ConsoleCommand("tgm_erased", "Show or hide the places where markers were erased, greyed out on the large map",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    Erasures.Toggle();
+                    args.Context.AddString(Erasures.On ? "Erased markers shown." : "Erased markers hidden.");
+                }));
+
             new Terminal.ConsoleCommand("tgm_counts", "What the map is made of: markers by kind, then by icon, commonest first",
                 (Terminal.ConsoleEvent)(args =>
                 {

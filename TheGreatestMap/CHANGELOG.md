@@ -2,6 +2,14 @@
 
 ## 4.5.1 -- unreleased
 
+- **Erased places can be shown on the map.** A row in the marker list, or `tgm_erased`,
+  greys in every spot where a marker was rubbed out, captioned with what it was and when
+  it went. An erasure is otherwise the one thing on a map that cannot be seen, though it
+  holds a marker back on every copy forever: 373 of them sat unexamined on one map until
+  somebody read the file with a script, and 309 of those turned out to have been written
+  in three single minutes by a migration rather than by anybody erasing anything. Drawn,
+  that is obvious at a glance. Nothing is changed by looking.
+
 - **Obsolete erasures are cleared on every load again.** The sweep had been narrowed to run
   only while converting a map, because it could not tell an erasure left behind by an old
   rename from the one that carries a fold between machines -- they are the same shape. Age

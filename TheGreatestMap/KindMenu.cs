@@ -267,6 +267,10 @@ namespace TheGreatestMap
             // deciding to quieten the map wants to see both answers at once rather than hunt for
             // the second one. Half the panel each, which is a column's width -- the longest
             // either says is "Hide Marker Labels".
+            ActionRow(0f, y, Erasures.Toggle,
+                () => Erasures.On ? "Hide erased markers" : "Show erased markers", null);
+            y -= RowHeight;
+
             float half = (Width - Gap) * 0.5f;
             LabelButton(0f, y, half,
                 () => TgmConfig.ShowMarkerLabels,
