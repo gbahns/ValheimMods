@@ -1,5 +1,14 @@
 # Changelog
 
+## 4.5.1 -- unreleased
+
+- **Hiding marker labels is instant.** It took about a quarter of a second on a full map,
+  because every pin was destroyed and built again: a marker created without a name has no
+  label to switch back on, so the switch had to remake them all. Every named marker keeps
+  its label now and the label is hidden instead, which is what the game's own pins already
+  needed. Almost nothing pays for it -- a recorded berry bush carries no name and still
+  gets no label at all.
+
 ## 4.5.0 -- 2026-10-26
 
 - **Portal markers are drawn in front of everything else.** A portal is the marker you are

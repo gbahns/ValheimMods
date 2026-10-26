@@ -761,25 +761,22 @@ namespace TheGreatestMap
 
         // ── PinData bookkeeping ─────────────────────────────────────────────────────
 
-        /// <summary>
-        /// Put every marker back with or without its label, after that setting changed.
-        ///
-        /// A whole rebuild, because a label cannot be added to or taken off a pin that already
-        /// exists -- vanilla decides at AddPin and never revisits it. That is thousands of pins
-        /// on a full map and tens of milliseconds, which is affordable for something a player
-        /// does deliberately and would not be once a frame.
-        /// </summary>
         /// <summary>Called once the game has laid the markers out; see ApplyLabelVisibility.</summary>
         internal static void AfterLayoutLabels(Minimap map)
         {
             if (map != null) ApplyLabelVisibility(map);
         }
 
+        /// <summary>
+        /// Show the markers again after the label switch moved. A relayout and nothing else: the
+        /// labels exist either way now, and ApplyLabelVisibility turns them on and off.
+        ///
+        /// This rebuilt every pin until 4.5.1, because a marker born without a name had no label
+        /// to put back -- a quarter of a second of destroying and instantiating thousands of
+        /// objects, for something a player expects to be instant.
+        /// </summary>
         internal static void RedrawLabels()
         {
-            if (Map == null) return;
-            foreach (var key in new List<PinKey>(_pinById.Keys)) RemovePinData(key);
-            RebuildPins();
             Restyle();
         }
 
@@ -804,13 +801,16 @@ namespace TheGreatestMap
             }
             // m_save must be true: vanilla's pin-under-pointer lookup (right-click erase, click to
             // check off) ignores unsaved pins. The GetMapData patch below keeps them out of the profile.
-            // The name is withheld at birth when labels are off, which is the only moment it can
-            // be: vanilla builds a label for a pin that was given a name and never afterwards, so
-            // a pin named later carries its name without a word appearing on the map. That is the
-            // same trick the label rules already use to thin a cluster, borrowed wholesale.
-            bool label = TgmConfig.ShowMarkerLabels == null || TgmConfig.ShowMarkerLabels.Value;
-            var pin = Map.AddPin(shared.Pos, (Minimap.PinType)LocalType(shared),
-                label ? (shared.Name ?? "") : "", true, shared.Checked, 0L);
+            // The name is always given, even with labels switched off. Withholding it is what
+            // vanilla wants -- a label is built for a pin that had a name at AddPin and never
+            // afterwards -- but it makes the switch cost a rebuild of every pin on the map,
+            // because a marker born without a name has no label to switch back on. That was a
+            // quarter of a second of destroying and instantiating thousands of objects for
+            // something a player expects to be instant. The label is built and then hidden
+            // instead, which is what the game's own pins needed anyway. Few markers pay for it:
+            // an auto-recorded berry bush carries no name and gets no label either way.
+            var pin = Map.AddPin(shared.Pos, (Minimap.PinType)LocalType(shared), shared.Name ?? "",
+                                 true, shared.Checked, 0L);
             if (pin == null) return;
             // A marker that carries no label still has a name; it is simply not written on the map.
             // Vanilla builds a label only for a pin added with a name, so naming it afterwards puts
