@@ -232,6 +232,12 @@ namespace TheGreatestMap
                 $"{merged} of it merging.");
             WarnIfLarge(reply.Size(), $"the map sent to {Who(sender)}");
             ZRoutedRpc.instance.InvokeRoutedRPC(sender, SyncRes, reply);
+            // The answer has gone, so this player now has the map as it stands. Keyed by the
+            // host id rather than the peer number, which is invented fresh on every connection
+            // and would make one player look like a crowd of strangers who each synced once.
+            var who = ZNet.instance != null ? ZNet.instance.GetPeer(sender) : null;
+            if (who != null && who.m_socket != null)
+                Acks.Synced(who.m_socket.GetHostName(), who.m_playerName);
         }
 
         private static void RPC_Wipe(long sender, int autoOnly)

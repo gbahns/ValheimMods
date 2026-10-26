@@ -14,7 +14,11 @@ namespace TheGreatestMap
                     foreach (var pin in ClientPins.All) { if (pin.Auto) auto++; else manual++; }
                     args.Context.AddString($"Personal map: {ClientPins.Count} markers ({auto} recorded, {manual} placed), {ClientPins.TombstoneCount} erased, {ClientPins.SuppressionCount} erased spots; sharing mode: {TgmConfig.SharingMode.Value}");
                     args.Context.AddString($"Found but not yet recorded: {DiscoveryLedger.PendingCount}, recorded this session: {DiscoveryLedger.RecordedCount}, map out: {PocketMap.IsOut}");
-                    if (PinStore.IsServer) args.Context.AddString($"Shared map (this is the server): {PinStore.Count} markers, {PinStore.TombstoneCount} erased, {PinStore.SuppressionCount} erased spots");
+                    if (PinStore.IsServer)
+                    {
+                        args.Context.AddString($"Shared map (this is the server): {PinStore.Count} markers, {PinStore.TombstoneCount} erased, {PinStore.SuppressionCount} erased spots");
+                        args.Context.AddString($"Erasures are kept until everyone has them: {Acks.Describe()}");
+                    }
                 }));
 
             new Terminal.ConsoleCommand("tgm_import", "Share your local map markers (the five standard icons) with everyone",

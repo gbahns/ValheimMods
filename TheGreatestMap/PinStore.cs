@@ -69,6 +69,15 @@ namespace TheGreatestMap
                     // into one depends on -- the two look identical, and only age tells them
                     // apart, which ForgetGhosts now weighs for itself. Narrowing it meant every
                     // ghost that arrived afterwards stayed: 197 of them on the live map.
+                    Acks.Load(_path);
+                    int acked = Acks.Prune(_store);
+                    if (acked > 0)
+                    {
+                        MarkDirty();
+                        TheGreatestMapMod.Log.LogInfo(
+                            $"[TheGreatestMap] Dropped {acked} erasure(s) that every player still being waited for has " +
+                            "already taken in. They can no longer hold anything back, so they are no longer kept.");
+                    }
                     int ghosts = _store.ForgetGhosts();
                     if (ghosts > 0)
                     {
@@ -109,6 +118,7 @@ namespace TheGreatestMap
         internal static void Unload()
         {
             SaveIfDirty();
+            Acks.Save();
             _loaded = false;
             _store = new MapStore();
             // A fresh session: every client's watermark stops being recognised and each is sent
@@ -157,6 +167,7 @@ namespace TheGreatestMap
             var result = _store.Merge(incoming);
             if (result.Any) MarkDirty();
             _marks.Record(result);
+            Acks.Record(result, _store);
             return result;
         }
 

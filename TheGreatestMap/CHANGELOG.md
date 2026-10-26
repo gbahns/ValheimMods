@@ -2,6 +2,18 @@
 
 ## 4.5.1 -- unreleased
 
+- **An erasure stops being kept once everyone has it.** An erasure exists because some copy
+  of the map might still hold the marker it rubbed out; once every player has taken it in,
+  it cannot hold anything back and is only cost. The server now records who has synced and
+  drops the ones everybody has.
+
+  Measured in changes to the map rather than in days, because what puts a returning player
+  out of step is not how long they were away but how much happened while they were: a
+  month away from a sleeping server costs nothing, a week away from five people playing
+  nightly is plenty. A player who falls far enough behind is set aside rather than waited
+  for, or one person who stopped playing would pin every erasure made afterwards for good.
+  They keep their place and one sync brings them back into the count.
+
 - **Erased places can be shown on the map.** A row in the marker list, or `tgm_erased`,
   greys in every spot where a marker was rubbed out, captioned with what it was and when
   it went. An erasure is otherwise the one thing on a map that cannot be seen, though it
