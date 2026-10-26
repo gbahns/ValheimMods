@@ -567,7 +567,7 @@ namespace TheGreatestMap
                 "density even that is a wall of words over the terrain. The names are not lost -- hovering a marker " +
                 "still names it, the marker list still finds it by name, and switching this back on writes them all " +
                 "again. There is a row in the marker list that does the same thing without leaving the map.");
-            ShowMarkerLabels.SettingChanged += (_, __) => ClientPins.RedrawLabels();
+            ShowMarkerLabels.SettingChanged += (_, __) => { ClientPins.RedrawLabels(); Portals.Redraw(); };
 
             ShowTransportLabels = mod.BindMoved("Display", Dynamic, "Show Transport Labels", false,
                 "Write the name of each ship and cart beside its pin on the large map. Off by default: a harbor of six " +

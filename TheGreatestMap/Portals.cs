@@ -243,9 +243,44 @@ namespace TheGreatestMap
             {
                 if (AlreadyMarked(p.Pos, iconKey)) continue;
                 // m_save false: never written to the profile, never shared, gone when the setting is.
-                var pin = map.AddPin(p.Pos, (Minimap.PinType)type, string.IsNullOrEmpty(p.Name) ? "Portal" : p.Name, false, false, 0L);
-                if (pin != null) _drawn.Add(pin);
+                //
+                // The name is withheld at birth when labels are off, because that is the only
+                // moment it can be: vanilla writes a label for a pin that was given a name at
+                // AddPin and never revisits it. The pin still carries the name afterwards, so
+                // hovering it still says which portal this is. Portals are the labels people
+                // most want gone -- a base with six of them writes six words over itself.
+                string name = string.IsNullOrEmpty(p.Name) ? "Portal" : p.Name;
+                bool label = TgmConfig.ShowMarkerLabels == null || TgmConfig.ShowMarkerLabels.Value;
+                var pin = map.AddPin(p.Pos, (Minimap.PinType)type, label ? name : "", false, false, 0L);
+                if (pin == null) continue;
+                pin.m_name = name;
+                _drawn.Add(pin);
             }
+            BringToFront();
+        }
+
+        /// <summary>
+        /// Put the portal pins above everything drawn in the same place.
+        ///
+        /// A portal is the one marker you are looking for when you need it, and it is also the
+        /// one most likely to be buried: portals stand in bases, and a base is where the berries,
+        /// the campfires and the workbenches all are. Later siblings draw on top, so the portals
+        /// go last.
+        ///
+        /// Guarded by a single check, because the cost is not the call. Moving a child to the end
+        /// shifts every sibling after it, and a full map has thousands of pins in that parent --
+        /// doing it unconditionally on every layout, and layout runs on every map move, is the
+        /// shape of problem that once stalled this client into dropped connections. If the last
+        /// portal is already last, there is nothing out of order and nothing to do.
+        /// </summary>
+        internal static void BringToFront()
+        {
+            if (_drawn.Count == 0) return;
+            var last = _drawn[_drawn.Count - 1].m_uiElement;
+            if (last == null || last.parent == null) return;
+            if (last.GetSiblingIndex() == last.parent.childCount - 1) return;
+            foreach (var pin in _drawn)
+                if (pin != null && pin.m_uiElement != null) pin.m_uiElement.SetAsLastSibling();
         }
 
         /// <summary>

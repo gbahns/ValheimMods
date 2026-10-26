@@ -2,12 +2,17 @@
 
 ## 4.5.0 -- unreleased
 
+- **Portal markers are drawn in front of everything else.** A portal is the marker you are
+  looking for when you need it, and the one most likely to be buried: portals stand in
+  bases, and a base is where the berries, the campfires and the workbenches all are.
+
 - **Marker labels can be switched off.** A row in the marker list hides every name on the
   large map and leaves the icons, and there is a setting for it as well. Worth having once
   a map carries thousands of markers: the label rules already thin a cluster down to one
   name, and past a certain density even that is a wall of words laid over the ground.
   Nothing is lost -- hovering still names a marker, the list still finds it by name, and
-  switching it back on writes them all again.
+  switching it back on writes them all again. Portal names go with them, which on our own
+  server is the main thing anybody wanted hidden.
 
 ## 4.4.0 -- 2026-10-25
 

@@ -1361,6 +1361,8 @@ namespace TheGreatestMap
         private static void Postfix(Minimap __instance)
         {
             ClientPins.StylePins(__instance);
+            // Vanilla may have added or reordered elements, which would bury the portals again.
+            Portals.BringToFront();
             // Vanilla has just built markers afresh, and a new one starts visible. Putting the
             // spotlight's out here rather than waiting for our own Update keeps them from showing
             // for the frame between: the two Updates have no order between them, so zooming or
