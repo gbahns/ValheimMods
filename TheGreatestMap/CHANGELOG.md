@@ -13,6 +13,9 @@
   six portals writes six words across itself, which is reason enough to want those gone
   while keeping the rest. Nothing is lost either way -- hovering still names a marker, the
   list still finds it by name, and switching back on writes them all again.
+  Marker labels cover the game's own pins too -- a death marker, a bed, a boss, one of
+  Hildir's -- which in practice are the labelled ones, since a recorded marker is usually
+  a berry bush that explains itself and carries no name at all.
 
 ## 4.4.0 -- 2026-10-25
 

@@ -51,6 +51,14 @@ namespace TheGreatestMap
 
         /// <summary>The pins drawn from the live list, for anything that works on what is on screen.</summary>
         internal static IEnumerable<Minimap.PinData> DrawnPins => _drawn;
+
+        /// <summary>Whether this pin is one of ours, for anything sorting pins by what they are.</summary>
+        internal static bool IsPortalPin(Minimap.PinData pin)
+        {
+            if (pin == null || _drawn.Count == 0) return false;
+            for (int i = 0; i < _drawn.Count; i++) if (ReferenceEquals(_drawn[i], pin)) return true;
+            return false;
+        }
         internal static int Count => _live.Count;
 
         internal static void Reset()
