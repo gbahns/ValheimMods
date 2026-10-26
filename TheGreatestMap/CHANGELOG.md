@@ -14,6 +14,12 @@
   for, or one person who stopped playing would pin every erasure made afterwards for good.
   They keep their place and one sync brings them back into the count.
 
+  How far behind is too far is a new setting, `Stop Waiting For A Player After`, in
+  changes. The default of 5,000 is deliberately generous -- on a map of five people it is
+  roughly two months of ordinary play -- because the two mistakes do not cost the same.
+  Waiting too long keeps a few dead records; giving up too early lets a returning
+  player's stale map put deleted markers back, which is the thing this is for.
+
 - **Erased places can be shown on the map.** A row in the marker list, or `tgm_erased`,
   greys in every spot where a marker was rubbed out, captioned with what it was and when
   it went. An erasure is otherwise the one thing on a map that cannot be seen, though it

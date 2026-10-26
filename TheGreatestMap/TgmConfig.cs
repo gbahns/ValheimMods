@@ -21,6 +21,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> LockConfiguration;
         internal static ConfigEntry<SharingMode> SharingMode;
         internal static ConfigEntry<bool> AllowErasingMarkers;
+        internal static ConfigEntry<int> StopWaitingAfter;
         internal static ConfigEntry<bool> RequireMapOutToEdit;
         internal static ConfigEntry<bool> RequireMapOutToRecord;
         internal static ConfigEntry<bool> SharePlacedPins;
@@ -238,6 +239,14 @@ namespace TheGreatestMap
                 "again, so removing one is a repair for a marker that is wrong rather than an everyday action. Hiding is " +
                 "what you want for markers you simply do not care to see. A marker somebody placed by hand is not covered: " +
                 "whoever placed it can always take it back, and this switch decides whether anyone else may.");
+            StopWaitingAfter = mod.BindLocal("Sharing", "Stop Waiting For A Player After", 5000,
+                "How far behind a player may fall, counted in changes to the shared map, before the server stops holding " +
+                "erased markers open on their behalf. An erasure exists only to stop an older copy of the map putting a " +
+                "deleted marker back, so once everyone has taken it in it is dead weight -- but one person who stops " +
+                "playing would otherwise pin every erasure made afterwards forever. Counted in changes rather than days " +
+                "because what puts a returning player out of step is how much the map moved while they were away, not how " +
+                "long they were gone: a month away from a sleeping server costs nothing. On a map of five people exploring, " +
+                "5000 changes is roughly two months of ordinary play or a fortnight of hard exploring.");
             ExchangeRadius = mod.BindLocal("Sharing", "Exchange Radius", 5f,
                 "Distance in meters within which two players who both have their maps out compare and merge their maps.");
             ExchangeCooldown = mod.BindLocal("Sharing", "Exchange Cooldown", 60f,

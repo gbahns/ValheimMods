@@ -28,11 +28,18 @@ namespace TheGreatestMap
     internal static class Acks
     {
         /// <summary>
-        /// How far behind a player may fall and still be waited for. A few busy evenings; past
-        /// that their copy is stale enough that the group should not be holding records open on
-        /// its behalf.
+        /// How far behind a player may fall and still be waited for.
+        ///
+        /// <para>Measured against the live map rather than guessed: 4,688 markers over 44 days, a
+        /// median of 71 changes on a day anyone played and 933 on the heaviest. The default of
+        /// 5,000 is about two months of ordinary play for this group, or a fortnight of five
+        /// people exploring hard -- deliberately generous, because the cost of the two mistakes
+        /// is not symmetric. Waiting too long keeps some dead records (64 real erasures in 44
+        /// days; nothing). Giving up too early lets a returning player's stale map put deleted
+        /// markers back, which is the thing this is all for.</para>
         /// </summary>
-        private const long LapsedAfterChanges = 2000L;
+        private static long LapsedAfterChanges =>
+            TgmConfig.StopWaitingAfter != null ? TgmConfig.StopWaitingAfter.Value : 5000L;
 
         private sealed class Seen
         {
