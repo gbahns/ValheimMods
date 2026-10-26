@@ -1,5 +1,14 @@
 # Changelog
 
+## 4.5.0 -- unreleased
+
+- **Marker labels can be switched off.** A row in the marker list hides every name on the
+  large map and leaves the icons, and there is a setting for it as well. Worth having once
+  a map carries thousands of markers: the label rules already thin a cluster down to one
+  name, and past a certain density even that is a wall of words laid over the ground.
+  Nothing is lost -- hovering still names a marker, the list still finds it by name, and
+  switching it back on writes them all again.
+
 ## 4.4.0 -- 2026-10-25
 
 **Everyone must update, including the server.** Nothing in the map format changed and a

@@ -339,6 +339,19 @@ namespace TheGreatestMap
                 () => AllShown ? "Hide all markers" : "Show all markers", null);
             y -= RowHeight;
 
+            // Beside it, because it answers the same complaint -- a map too full to read -- and
+            // answers it without hiding anything. A setting exists for it too, but a player who
+            // wants the names gone is looking at the map at the time.
+            ActionRow(x, y, () =>
+                {
+                    if (TgmConfig.ShowMarkerLabels != null)
+                        TgmConfig.ShowMarkerLabels.Value = !TgmConfig.ShowMarkerLabels.Value;
+                    Refresh();
+                },
+                () => TgmConfig.ShowMarkerLabels != null && TgmConfig.ShowMarkerLabels.Value
+                    ? "Hide marker labels" : "Show marker labels", null);
+            y -= RowHeight;
+
             if (_results != null)
             {
                 ActionRow(x, y, () =>

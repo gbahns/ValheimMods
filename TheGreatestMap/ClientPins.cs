@@ -761,6 +761,22 @@ namespace TheGreatestMap
 
         // ── PinData bookkeeping ─────────────────────────────────────────────────────
 
+        /// <summary>
+        /// Put every marker back with or without its label, after that setting changed.
+        ///
+        /// A whole rebuild, because a label cannot be added to or taken off a pin that already
+        /// exists -- vanilla decides at AddPin and never revisits it. That is thousands of pins
+        /// on a full map and tens of milliseconds, which is affordable for something a player
+        /// does deliberately and would not be once a frame.
+        /// </summary>
+        internal static void RedrawLabels()
+        {
+            if (Map == null) return;
+            foreach (var key in new List<PinKey>(_pinById.Keys)) RemovePinData(key);
+            RebuildPins();
+            Restyle();
+        }
+
         internal static void RebuildPins()
         {
             if (Map == null) return;
@@ -782,7 +798,13 @@ namespace TheGreatestMap
             }
             // m_save must be true: vanilla's pin-under-pointer lookup (right-click erase, click to
             // check off) ignores unsaved pins. The GetMapData patch below keeps them out of the profile.
-            var pin = Map.AddPin(shared.Pos, (Minimap.PinType)LocalType(shared), shared.Name ?? "", true, shared.Checked, 0L);
+            // The name is withheld at birth when labels are off, which is the only moment it can
+            // be: vanilla builds a label for a pin that was given a name and never afterwards, so
+            // a pin named later carries its name without a word appearing on the map. That is the
+            // same trick the label rules already use to thin a cluster, borrowed wholesale.
+            bool label = TgmConfig.ShowMarkerLabels == null || TgmConfig.ShowMarkerLabels.Value;
+            var pin = Map.AddPin(shared.Pos, (Minimap.PinType)LocalType(shared),
+                label ? (shared.Name ?? "") : "", true, shared.Checked, 0L);
             if (pin == null) return;
             // A marker that carries no label still has a name; it is simply not written on the map.
             // Vanilla builds a label only for a pin added with a name, so naming it afterwards puts

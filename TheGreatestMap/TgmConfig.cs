@@ -168,6 +168,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<float> ServerAutosaveMinutes;
         internal static ConfigEntry<float> TransportSweepSeconds;
         internal static ConfigEntry<bool> ShowTransportLabels;
+        internal static ConfigEntry<bool> ShowMarkerLabels;
         internal static ConfigEntry<float> LocateSeconds;
         internal static ConfigEntry<int> PlayerMarkerSize;
         internal static ConfigEntry<int> PlayerArrowSize;
@@ -559,6 +560,14 @@ namespace TheGreatestMap
             LocateSeconds = mod.BindLocal("Display", "Locate Seconds", 6f,
                 "How long markers pulse after you press \"locate\" on their row in the marker list. They swell and " +
                 "brighten twice a second and fade back over the last second; nothing is hidden and nothing is changed.");
+
+            ShowMarkerLabels = mod.BindLocal("Display", "Show Marker Labels", true,
+                "Write marker names on the large map. Off draws the icons alone, which is worth having on a map with " +
+                "thousands of them: the label rules already thin a cluster down to one name, and past a certain " +
+                "density even that is a wall of words over the terrain. The names are not lost -- hovering a marker " +
+                "still names it, the marker list still finds it by name, and switching this back on writes them all " +
+                "again. There is a row in the marker list that does the same thing without leaving the map.");
+            ShowMarkerLabels.SettingChanged += (_, __) => ClientPins.RedrawLabels();
 
             ShowTransportLabels = mod.BindMoved("Display", Dynamic, "Show Transport Labels", false,
                 "Write the name of each ship and cart beside its pin on the large map. Off by default: a harbor of six " +
