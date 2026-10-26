@@ -64,17 +64,21 @@ namespace TheGreatestMap
                             $"[TheGreatestMap] Forgot {crops} erasure(s) left by clearing crops off tilled ground. " +
                             "A planted turnip was never a discovery, so there is nothing to remember about rubbing one out.");
                     }
+                    // On every load, not only while converting. It was narrowed to the
+                    // conversion because it was eating the erasure that folding two markers
+                    // into one depends on -- the two look identical, and only age tells them
+                    // apart, which ForgetGhosts now weighs for itself. Narrowing it meant every
+                    // ghost that arrived afterwards stayed: 197 of them on the live map.
+                    int ghosts = _store.ForgetGhosts();
+                    if (ghosts > 0)
+                    {
+                        MarkDirty();
+                        TheGreatestMapMod.Log.LogInfo(
+                            $"[TheGreatestMap] Dropped {ghosts} erasure(s) that were only the former name of a marker " +
+                            "still standing in the same place. They kept nothing erased and cost more than the markers did.");
+                    }
                     if (_store.ReadVersion < MapStore.FormatVersion)
                     {
-                        // Only while converting. Re-identifying used to erase and re-add, and
-                        // left a ghost each time; it lifts instead now, so no new ones appear and
-                        // there is nothing to sweep on an up-to-date map. Sweeping anyway would
-                        // eat the erasure that folding two markers into one depends on.
-                        int ghosts = _store.ForgetGhosts();
-                        if (ghosts > 0)
-                            TheGreatestMapMod.Log.LogInfo(
-                                $"[TheGreatestMap] Dropped {ghosts} erasure(s) that were only the former name of a marker " +
-                                "still standing in the same place. They kept nothing erased and cost more than the markers did.");
                         MapBackup.Keep(Path.GetFileNameWithoutExtension(_path), _store.ReadVersion, stored);
                         // Converted as it was read. Written back at once so the next load is not
                         // another conversion, and so the smaller format is what actually goes out.

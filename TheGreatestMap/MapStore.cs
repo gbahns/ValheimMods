@@ -206,7 +206,25 @@ namespace TheGreatestMap
         /// very thing is still recorded under the name it has since been given. They are not
         /// keeping anything erased, and they cost more than the markers do.
         /// </summary>
-        public int ForgetGhosts()
+        /// <summary>How old an erasure must be before the sweep will believe it is a ghost.</summary>
+        public static readonly long GhostAge = TimeSpan.FromDays(1).Ticks;
+
+        public int ForgetGhosts() => ForgetGhosts(Now - GhostAge);
+
+        /// <summary>
+        /// Drop ghosts older than a cutoff, and nothing newer.
+        ///
+        /// Age is the only thing separating a ghost from an erasure that still has work to do.
+        /// Both look identical -- an erasure naming a place where a marker stands under another
+        /// name -- because folding two markers into one produces exactly that, and the fold's
+        /// erasure is how the loser's removal reaches the server. Sweeping it before it was sent
+        /// gave the server its copy back to hand over again: 129 folded, 118 swept, 118 folded,
+        /// for as long as anybody kept syncing.
+        ///
+        /// A fold's erasure goes up at the next sync, which is minutes at the outside. A day puts
+        /// the cutoff far beyond that and still clears everything left by a migration months ago.
+        /// </summary>
+        public int ForgetGhosts(long before)
         {
             if (Tombstones.Count == 0) return 0;
             var standing = new Dictionary<long, List<SharedPin>>();
@@ -220,6 +238,7 @@ namespace TheGreatestMap
             foreach (var kv in Tombstones)
             {
                 var key = kv.Key;
+                if (kv.Value >= before) continue;          // too recent to be sure it has been sent
                 if (!standing.TryGetValue(Place(key.Pos), out var here)) continue;
                 foreach (var pin in here)
                 {

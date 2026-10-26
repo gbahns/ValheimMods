@@ -98,14 +98,17 @@ namespace TheGreatestMap
                     TheGreatestMapMod.Log.LogInfo(
                         $"[TheGreatestMap] Forgot {crops} crop erasure(s) from your own map.");
                 }
+                // On every load; see PinStore for why it is no longer tied to the conversion.
+                int ghosts = Store.ForgetGhosts();
+                if (ghosts > 0)
+                {
+                    MarkDirty();
+                    TheGreatestMapMod.Log.LogInfo(
+                        $"[TheGreatestMap] Dropped {ghosts} erasure(s) from your own map that were only the former " +
+                        "name of a marker still standing in the same place.");
+                }
                 if (Store.ReadVersion < MapStore.FormatVersion)
                 {
-                    // Only while converting; see PinStore for why never after.
-                    int ghosts = Store.ForgetGhosts();
-                    if (ghosts > 0)
-                        TheGreatestMapMod.Log.LogInfo(
-                            $"[TheGreatestMap] Dropped {ghosts} erasure(s) from your own map that were only the former " +
-                            "name of a marker still standing in the same place.");
                     // Before anything saves over it. A personal map cannot be copied as a file,
                     // because it lives inside the character; this writes out the bytes that were
                     // in there, which tgm_restore reads back.

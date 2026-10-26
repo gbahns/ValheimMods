@@ -2,6 +2,12 @@
 
 ## 4.5.1 -- unreleased
 
+- **Obsolete erasures are cleared on every load again.** The sweep had been narrowed to run
+  only while converting a map, because it could not tell an erasure left behind by an old
+  rename from the one that carries a fold between machines -- they are the same shape. Age
+  tells them apart: a fold's erasure goes up at the next sync, so only those older than a
+  day are swept. 197 had collected on one map in the meantime.
+
 - **Hiding marker labels is instant.** It took about a quarter of a second on a full map,
   because every pin was destroyed and built again: a marker created without a name has no
   label to switch back on, so the switch had to remake them all. Every named marker keeps
