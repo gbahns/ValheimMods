@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.5.1 -- unreleased
+## 4.5.1
 
 - **An erasure stops being kept once everyone has it.** An erasure exists because some copy
   of the map might still hold the marker it rubbed out; once every player has taken it in,
