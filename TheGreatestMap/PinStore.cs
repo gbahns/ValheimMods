@@ -134,7 +134,14 @@ namespace TheGreatestMap
 
         internal static void SaveIfDirty()
         {
-            if (_loaded && _dirty) Save();
+            if (!_loaded) return;
+            if (_dirty) Save();
+            // The ledger goes down with the map, not only when the world is put away. A server
+            // is stopped by being killed as often as not, and a ledger that only survives a
+            // clean shutdown would come back empty after every crash -- which does not lose a
+            // marker, but does mean every erasure is held open for another full round of
+            // everybody syncing, forever, and the thing would never actually drop anything.
+            Acks.Save();
         }
 
         private static void MarkDirty()

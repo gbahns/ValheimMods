@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.5.2 -- unreleased
+
+- **The erasure ledger is written with the map, not only when the world is put away.** A
+  server is killed as often as it is stopped politely, and a ledger that only survived a
+  clean shutdown came back empty after every crash. That loses no markers, but it does
+  mean every erasure is held open for another full round of everyone syncing -- so the
+  thing would have gone on never dropping anything, and looked like it was working.
+
 ## 4.5.1
 
 - **An erasure stops being kept once everyone has it.** An erasure exists because some copy
