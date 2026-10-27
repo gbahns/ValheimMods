@@ -85,6 +85,47 @@ namespace TheGreatestMap
             }
         }
 
+        /// <summary>
+        /// What the gate can see, for tgm_underway.
+        ///
+        /// The queue is simple; the hard part is reading the player's footing, and there is no
+        /// way to test that alone with another player on hand. A sentence a sailor can read
+        /// while sailing is worth more here than any amount of staring at the code: it says
+        /// which ship the gate picked, whether the tiller or the deck answered, and how fast
+        /// the game thinks that hull is going.
+        /// </summary>
+        internal static string Describe()
+        {
+            try
+            {
+                var player = Player.m_localPlayer;
+                if (player == null) return "no player yet.";
+                var ship = player.GetControlledShip();
+                string how = "steering it";
+                if (ship == null) { ship = player.GetStandingOnShip(); how = "standing on it"; }
+                if (ship == null)
+                    return "not on a ship, so nothing would be held back" + Queue() + ".";
+                var body = ship.GetComponent<Rigidbody>();
+                if (body == null)
+                    return $"on {ship.name} ({how}) but it has no rigidbody to measure, so explored " +
+                           "ground would be held back to be safe" + Queue() + ".";
+                float speed = body.linearVelocity.magnitude;
+                return $"on {ship.name} ({how}) at {speed:0.00} m/s; the gate holds at {StillEnough:0.00}, " +
+                       $"so explored ground would {(speed >= StillEnough ? "be held back" : "go through now")}" +
+                       Queue() + ".";
+            }
+            catch (System.Exception e)
+            {
+                return "could not tell: " + e.Message;
+            }
+        }
+
+        private static string Queue()
+        {
+            if (!Waiting) return ", and nothing is waiting";
+            return $", and {_theirs.Count} map(s) of explored ground and {_owed.Count} owed are waiting";
+        }
+
         /// <summary>Keep their explored ground, and remember if they are still waiting for ours.</summary>
         internal static void Hold(long peer, string name, byte[] exploration, bool owesOurs)
         {

@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.5.3 -- unreleased
+
+- **`tgm_underway`** says what the gate that holds map sharing on a moving deck can see:
+  which ship it picked, whether the tiller or the deck answered, how fast the game thinks
+  that hull is going, and whether anything is waiting. The queue behind that gate is
+  simple; reading the player's footing is the part that can be wrong, and it needed a way
+  to be checked by one person on a boat rather than two.
+
 ## 4.5.2
 
 - **Comparing maps no longer throws you off a moving ship.** Taking in another player's

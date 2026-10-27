@@ -21,6 +21,9 @@ namespace TheGreatestMap
                     }
                 }));
 
+            new Terminal.ConsoleCommand("tgm_underway", "The Greatest Map: what the gate that holds map sharing on a moving deck can see",
+                (Terminal.ConsoleEvent)(args => args.Context.AddString("Underway: " + Underway.Describe())));
+
             new Terminal.ConsoleCommand("tgm_import", "Share your local map markers (the five standard icons) with everyone",
                 (Terminal.ConsoleEvent)(args =>
                 {
