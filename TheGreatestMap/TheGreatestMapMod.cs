@@ -30,7 +30,7 @@ namespace TheGreatestMap
     {
         public const string ModGuid    = "DeathMonger.TheGreatestMap";
         public const string ModName    = "The Greatest Map";
-        public const string ModVersion = "4.5.3";
+        public const string ModVersion = "4.6.0";
 
         // Oldest version whose shared-marker wire format this build still speaks. ServerSync
         // refuses peers below this, so bump it only when the format or an RPC changes, not on
@@ -249,9 +249,12 @@ namespace TheGreatestMap
         /// back. The old value is carried across once, and only when the new entry is still at its
         /// default, so a choice already made in the new place wins.
         /// </summary>
-        internal ConfigEntry<T> BindMoved<T>(string oldSection, string section, string key, T defaultValue, string description)
+        internal ConfigEntry<T> BindMoved<T>(string oldSection, string section, string key, T defaultValue, string description,
+                                             bool synced = false)
         {
-            var entry = BindLocal(section, key, defaultValue, description);
+            var entry = synced
+                ? BindSynced(section, key, defaultValue, description)
+                : BindLocal(section, key, defaultValue, description);
             try
             {
                 // ConfigFile.OrphanedEntries is internal; AccessTools so runtime enforcement

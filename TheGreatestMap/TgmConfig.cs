@@ -21,7 +21,6 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> LockConfiguration;
         internal static ConfigEntry<SharingMode> SharingMode;
         internal static ConfigEntry<bool> AllowErasingMarkers;
-        internal static ConfigEntry<int> StopWaitingAfter;
         internal static ConfigEntry<bool> RequireMapOutToEdit;
         internal static ConfigEntry<bool> RequireMapOutToRecord;
         internal static ConfigEntry<bool> SharePlacedPins;
@@ -168,6 +167,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> RepairDungeonIcons;
         internal static ConfigEntry<float> ServerAutosaveMinutes;
         internal static ConfigEntry<float> TransportSweepSeconds;
+        internal static ConfigEntry<int> StopWaitingAfter;
         internal static ConfigEntry<bool> ShowTransportLabels;
         internal static ConfigEntry<bool> ShowMarkerLabels;
         internal static ConfigEntry<bool> ShowPortalLabels;
@@ -223,9 +223,11 @@ namespace TheGreatestMap
 
             LockConfiguration = mod.BindSynced("General", "Lock Configuration", true,
                 "Only server admins may change the settings marked [Synced with Server]. Those are the rules of the " +
-                "shared map rather than personal taste: who may erase a marker, what the cartography table carries, " +
-                "and which finds are crossed off for everyone, so one player's config should not decide them for the " +
-                "rest. Everything else stays yours. Off lets any player set them for the whole server, which is the " +
+                "shared map rather than personal taste: who may erase a marker, how near and how often two players' maps " +
+                "merge, what the cartography table carries and how readily you touch one, and which finds are crossed " +
+                "off for everyone, so one player's config should not decide them for the rest. The settings marked " +
+                "\"Server only\" are in here as well: nothing on your machine reads them, and the mark says so. " +
+                "Everything else stays yours. Off lets any player set them for the whole server, which is the " +
                 "behavior before 1.2.0. No effect in single player or when you host the game yourself.");
             mod.LockConfig(LockConfiguration);
 
@@ -239,20 +241,22 @@ namespace TheGreatestMap
                 "again, so removing one is a repair for a marker that is wrong rather than an everyday action. Hiding is " +
                 "what you want for markers you simply do not care to see. A marker somebody placed by hand is not covered: " +
                 "whoever placed it can always take it back, and this switch decides whether anyone else may.");
-            StopWaitingAfter = mod.BindLocal("Sharing", "Stop Waiting For A Player After", 5000,
-                "How far behind a player may fall, counted in changes to the shared map, before the server stops holding " +
-                "erased markers open on their behalf. An erasure exists only to stop an older copy of the map putting a " +
-                "deleted marker back, so once everyone has taken it in it is dead weight -- but one person who stops " +
-                "playing would otherwise pin every erasure made afterwards forever. Counted in changes rather than days " +
-                "because what puts a returning player out of step is how much the map moved while they were away, not how " +
-                "long they were gone: a month away from a sleeping server costs nothing. On a map of five people exploring, " +
-                "5000 changes is roughly two months of ordinary play or a fortnight of hard exploring.");
-            ExchangeRadius = mod.BindLocal("Sharing", "Exchange Radius", 5f,
-                "Distance in meters within which two players who both have their maps out compare and merge their maps.");
-            ExchangeCooldown = mod.BindLocal("Sharing", "Exchange Cooldown", 60f,
-                "Seconds before the same two players compare maps again.");
-            ExchangeExploration = mod.BindLocal("Sharing", "Exchange Exploration", true,
-                "When comparing maps with another player, also share explored areas (the fog of war), as a cartography table does.");
+            ExchangeRadius = mod.BindSynced("Sharing", "Exchange Radius", 5f,
+                "Distance in meters within which two players who both have their maps out compare and merge their maps. " +
+                "The server's, because only one of the two decides: whoever reaches out uses their own radius and the " +
+                "other player's machine does half the work, so a wide setting starts an exchange on somebody from across " +
+                "the camp, for a meeting they would never have called a meeting.");
+            ExchangeCooldown = mod.BindSynced("Sharing", "Exchange Cooldown", 60f,
+                "Seconds before the same two players compare maps again. The server's for the same reason as the radius: " +
+                "the player reaching out sets it, and comparing explored ground costs a few hundred milliseconds on the " +
+                "main thread of both machines. A short cooldown spends that over and over on somebody who did not choose " +
+                "it, and on a moving ship a stutter that long is enough to put them through the deck.");
+            ExchangeExploration = mod.BindSynced("Sharing", "Exchange Exploration", true,
+                "When comparing maps with another player, also share explored areas (the fog of war), as a cartography " +
+                "table does. The server's, because it only governs what you send: taking the other player's ground in is " +
+                "not gated on it at all, so switching it off leaves you receiving everything and giving nothing back. " +
+                "That is a rule about what sharing means on this server rather than a preference, and it is not one " +
+                "player's to make.");
             HiddenIcons = mod.BindLocal("Display", "Hidden Icons", "",
                 "Comma-separated marker icons never drawn on your map, as item prefab names or icon keys, e.g. Dandelion,Thistle,pin:Icon1. " +
                 "Hidden markers stay on your map and keep syncing; they are just not shown. Applies at once.");
@@ -393,14 +397,24 @@ namespace TheGreatestMap
                 "through the table as in vanilla regardless. Turning it on also sends the markers this mod recorded " +
                 "with one of those standard icons, so expect a plain copy of some of them beside the real one.");
 
-            AutoSyncTable = mod.BindLocal("Cartography Table", "Auto Sync", true,
+            // All three are the server's. A table visit is not a local act: its last step is a
+            // merge of your map with the shared map on the server, so how readily you touch a
+            // table is how readily you ask the server to do that work. Five players with a wide
+            // radius and a short cooldown standing in a base full of tables is a load nobody
+            // chose. The sync key is deliberately left out of it -- asking for a sync by hand is
+            // always allowed, whatever these say.
+            AutoSyncTable = mod.BindSynced("Cartography Table", "Auto Sync", true,
                 "Automatically read and write the cartography table when you are right at it. Silent unless something " +
                 "is actually exchanged: new areas from the table are read, and the table is written (vanilla's 'map saved') " +
-                "only when it lacks areas you have explored.");
-            TableSyncRadius = mod.BindLocal("Cartography Table", "Sync Radius", 1f,
-                "How close to a cartography table you must stand (meters from you to its edge) for auto-sync and the sync key.");
-            TableSyncCooldown = mod.BindLocal("Cartography Table", "Auto Sync Cooldown", 60f,
-                "Seconds between automatic syncs of the same table while you stay in reach. The sync key ignores this.");
+                "only when it lacks areas you have explored. Off, the sync key still works, so this is about what " +
+                "happens by itself rather than about whether you may sync at all.");
+            TableSyncRadius = mod.BindSynced("Cartography Table", "Sync Radius", 1f,
+                "How close to a cartography table you must stand (meters from you to its edge) for auto-sync and the " +
+                "sync key. The server's, because the far end of every sync is the server merging your map into the " +
+                "shared one.");
+            TableSyncCooldown = mod.BindSynced("Cartography Table", "Auto Sync Cooldown", 60f,
+                "Seconds between automatic syncs of the same table while you stay in reach. The sync key ignores this, " +
+                "so a player who wants their map up to date right now never has to wait on it.");
 
             RecordEnabled = mod.BindLocal("Recording", "Enabled", true,
                 "While the pocket map is out, automatically record things you have found. Nothing is ever recorded " +
@@ -510,13 +524,15 @@ namespace TheGreatestMap
                 "were written, such as bear caves. Only markers with that icon whose name says otherwise are touched, so a " +
                 "real sunken crypt keeps it. Runs when your map loads and after each merge, which also catches markers " +
                 "arriving from players still on an older version. The console command tgm_reicon does the same on demand.");
-            ForgetTilledCrops = mod.BindLocal("Recording", "Forget Crops On Tilled Ground", true,
+            ForgetTilledCrops = mod.BindSynced("Recording", "Forget Crops On Tilled Ground", true,
                 "Erase markers for plants growing on ground somebody tilled, as you come across them. Maps written " +
                 "before this mod knew the difference carry a marker for every crop in a farm -- dozens of them on one " +
                 "field -- and they are not discoveries. There is no sweep of the whole world because whether ground " +
                 "is tilled can only be read where terrain is loaded, so a farm clears itself the next time anyone " +
-                "walks across it. Turned off by \"Record Plants In Your Base\" as well, for anyone who wants their " +
-                "garden on the map.");
+                "walks across it. The server's, because the erasing is for everyone and its three neighbors here -- " +
+                "folding duplicates, the label rules and the dungeon icon repair -- are already the server's for that same " +
+                "reason. Your own \"Record Plants In Your Base\" still holds the sweep off your client, for anyone who " +
+                "wants their garden on the map.");
 
             RecordInBase = mod.BindLocal("Recording", "Record Plants In Your Base", false,
                 "Write down berries, mushrooms, herbs, seeds and plants growing on ground you have tilled, or standing " +
@@ -592,13 +608,26 @@ namespace TheGreatestMap
             ShowTransportLabels.SettingChanged += (_, __) => Transports.Redraw();
 
             TransportSweepSeconds = mod.BindMoved("Server", Dynamic, "Transport Sweep Seconds", 5f,
-                "Server only. How often the server looks for every ship and cart in the world and tells the clients where " +
+                "Server only, and marked as the server's so it is plain your copy does nothing. How often the server " +
+                "looks for every ship and cart in the world and tells the clients where " +
                 "they are. These pins answer \"where did I leave it\", not \"where is it this second\": a longship under sail " +
                 "covers 20 m in two seconds, so a tighter interval buys little and costs a walk of every object in the world. " +
-                "The walk is spread over several frames either way.");
+                "The walk is spread over several frames either way.", synced: true);
 
-            ServerAutosaveMinutes = mod.BindLocal("Server", "Server Autosave Minutes", 0f,
-                "Server only. Extra world save every this many minutes on top of vanilla's own autosave (0 = vanilla only). " +
+            StopWaitingAfter = mod.BindMoved("Sharing", "Server", "Stop Waiting For A Player After", 5000,
+                "Server only, and marked as the server's so it is plain your copy does nothing. How far behind a player " +
+                "may fall, counted in changes to the shared map, before the server " +
+                "stops holding erased markers open on their behalf. An erasure exists only to stop an older copy of the map " +
+                "putting a deleted marker back, so once everyone has taken it in it is dead weight -- but one person who " +
+                "stops playing would otherwise pin every erasure made afterwards forever. Counted in changes rather than " +
+                "days because what puts a returning player out of step is how much the map moved while they were away, not " +
+                "how long they were gone: a month away from a sleeping server costs nothing. On a map of five people " +
+                "exploring, 5000 changes is roughly two months of ordinary play or a fortnight of hard exploring.",
+                synced: true);
+
+            ServerAutosaveMinutes = mod.BindSynced("Server", "Server Autosave Minutes", 0f,
+                "Server only, and marked as the server's so it is plain your copy does nothing. Extra world save every " +
+                "this many minutes on top of vanilla's own autosave (0 = vanilla only). " +
                 "Worth setting on hosts whose panel stop kills the server without saving. A file named save-now in " +
                 "BepInEx/config/TheGreatestMap/ also makes the server save at once (used by deploy scripts).");
 

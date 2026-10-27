@@ -233,14 +233,26 @@ setting is in follows one question: does your choice change what other players s
 Configuration" is on (it is by default): the sharing mode, whether erasing recorded markers is
 allowed, whether the map must be out to record or to edit, whether placed markers are shared,
 whether the cartography table carries player markers, whether mined-out copper and silver and
-searched structures are crossed off, and the two that rewrite markers other people wrote (the label
-rules applied on sync, and the dungeon icon repair). These are rules of the shared map: crossing a
-deposit off puts a line through it on everybody's map, so it should not be decided by whoever
-happened to swing the pick. Turning "Lock Configuration" off lets any player set them for the whole
+searched structures are crossed off, how near and how often two players' maps merge (the exchange
+radius and cooldown), whether comparing maps shares explored ground, everything under
+`[Cartography Table]`, and the three that rewrite markers other people wrote (the label rules
+applied on sync, the dungeon icon repair, and forgetting crops on tilled ground). These are rules
+of the shared map: crossing a deposit off puts a line through it on everybody's map, so it should
+not be decided by whoever happened to swing the pick.
+
+Two of those are there for a second reason. The exchange radius and cooldown are used by whichever
+player reaches out, and the other machine does half the work, so they are the one pair that lets
+one player spend another player's frames. And the cartography table settings look local but are
+not: the last step of a table visit is a merge of your map with the shared map on the server, so
+they decide how often each client asks the server to work. The sync key is deliberately exempt --
+asking for a sync by hand always works, so nobody is ever stuck with a stale map.
+
+The settings whose descriptions begin "Server only" are marked `[Synced with Server]` as well.
+Nothing on a client reads them, and the mark is how the mod says so. Turning "Lock Configuration" off lets any player set them for the whole
 server, which is how it worked before 1.2.0. Single player and hosting your own game are
 unaffected — you are the server.
 
-**Yours**, and nobody else's business: keys, auto-sync radius and cooldown, the record radius, what
+**Yours**, and nobody else's business: keys, the record radius, what
 stops you writing (under attack, and optionally while moving), which kinds of things to record,
 marker and label spacing, marker size per kind (plants draw at 60% by default), whether each kind
 shows on the small minimap, the prefab lists behind each kind, the fallback icon for each kind,
@@ -255,7 +267,10 @@ visited.
 - Server admins: some hosts' panel "stop" kills the server without a world save. On the server, a file
   named `save-now` in `BepInEx/config/TheGreatestMap/` makes the game save the world and all player
   profiles at once (create it over the host's file API before stopping), and "Server Autosave Minutes"
-  in the server's config adds an extra periodic save.
+  in the server's config adds an extra periodic save. The `[Server]` section holds that autosave
+  interval and how far behind a player may fall before the server stops holding erased markers open
+  for them; the ship and cart sweep interval sits with the other dynamic-marker settings under
+  `[Dynamic Markers]`. All three are read on the server alone.
 - Pings work as always and never need the map out.
 - The parchment shows the real world map around you; its position in the hand may need a tweak
   in the Visuals section for your taste.

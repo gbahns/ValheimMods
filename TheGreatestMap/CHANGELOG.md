@@ -1,5 +1,46 @@
 # Changelog
 
+## 4.6.0 — unreleased
+
+- **The settings that reach other people are the server's now.** Which group a setting belongs
+  in follows one question -- does your choice change what happens on somebody else's machine --
+  and three of them were answering yes while sitting in the personal half.
+
+  - **Exchange Radius** and **Exchange Cooldown** are `[Synced with Server]`. Only one of the two
+    players decides: whoever reaches out uses their own radius and their own cooldown, and the
+    other machine does half the work. So a wide radius started an exchange on somebody from
+    across the camp, and a short cooldown made them pay a few hundred milliseconds for it again
+    and again. That was not a tuning preference, it was the one setting in the mod that let one
+    player stall another -- and 4.5.2 exists because a stall that long on a moving ship puts you
+    in the water.
+  - **Forget Crops On Tilled Ground** is `[Synced with Server]`. It erases markers for everyone,
+    which is exactly why its three neighbors -- folding duplicates, the label rules and the
+    dungeon icon repair -- have always been the server's. Your own "Record Plants In Your Base"
+    still holds the sweep off your client.
+  - **Exchange Exploration** is `[Synced with Server]`. It was never symmetric: it governs only
+    what you send, and taking the other player's explored ground in is not gated on it at all. So
+    switching it off left you receiving everything and giving nothing back. What sharing means on
+    a server is the server's to say.
+  - **Auto Sync**, **Sync Radius** and **Auto Sync Cooldown** under `[Cartography Table]` are
+    `[Synced with Server]`. A table visit looks local and is not: its last step is a merge of your
+    map with the shared map on the server, so how readily you touch a table is how readily you ask
+    the server to do that work. Five players with a wide radius and a short cooldown standing in a
+    base full of tables is a load nobody chose. **The sync key is untouched** -- asking for a sync
+    by hand is always allowed, whatever these say, so nobody is ever stuck with a stale map.
+
+  Your file keeps your own values for all of them, as it does for every synced setting, so single
+  player and hosting your own game are unchanged. On a server, note that a value you had set --
+  auto-sync switched off, say -- now gives way to the server's while you are connected.
+
+- **The three "Server only" settings are marked as the server's too.** "Stop Waiting For A Player
+  After", "Server Autosave Minutes" and "Transport Sweep Seconds" are read on the server and
+  nowhere else, so a player editing their copy was always doing nothing. They now carry
+  `[Synced with Server]`, which is the mod's existing way of saying exactly that.
+
+- **"Stop Waiting For A Player After" has moved to the `[Server]` section**, beside the autosave
+  interval. It was only ever read on the server; in `[Sharing]` it looked like something a player
+  could set. Your value comes with it.
+
 ## 4.5.3
 
 - **The erasure ledger is now written on the path the map is actually written on.** 4.5.2
