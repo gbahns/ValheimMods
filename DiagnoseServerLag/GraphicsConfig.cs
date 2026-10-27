@@ -113,6 +113,64 @@ namespace DiagnoseServerLag
             { "SSAO",          "SSAO_2" },
         };
 
+        /// <summary>The "Custom" preset: the only one that leaves the player's own values in force.</summary>
+        private const int CustomPresetID = 100;
+
+        /// <summary>
+        /// Which graphics preset is in force, and what it changes about the values above.
+        ///
+        /// Everything else in this line comes out of PlatformPrefs, which is where the settings
+        /// screen keeps the individual sliders. That is not necessarily what the game is running.
+        /// GraphicsSettingsManager.ApplyGraphicsSettingsToCurrentSession applies
+        /// GetCurrentSettingsWithCurrentPresetApplied, and for any preset other than Custom that
+        /// overwrites the player's values with the preset's - without writing them back. So a
+        /// player on "High" keeps whatever sliders they last customized sitting in the prefs,
+        /// unused, and a capture that reads only the prefs describes a configuration that is not
+        /// running.
+        ///
+        /// This cost a wrong diagnosis on 2026-10-27. Three of five players were reported as having
+        /// lodBias "overridden" against what their menu implied, which read as a mod forcing quality
+        /// up at runtime - GraphicsConfigPlus does exactly that and says so, so it fit. It was
+        /// vanilla: those three were on presets, the other two on Custom, which is precisely why it
+        /// showed on some machines and not others. The note sent Greg looking for a mod he had
+        /// already disabled.
+        ///
+        /// The lesson is narrower than "check before blaming a mod": a disagreement between two
+        /// sources is only evidence once you know which one the game reads.
+        /// </summary>
+        private static string PresetNote()
+        {
+            var mgr = GraphicsSettingsManager.Instance;
+            if (mgr == null) return "";
+            if (mgr.CurrentPresetID == CustomPresetID) return "preset=Custom";
+
+            GraphicsSettingsPreset found;
+            GraphicsSettingsState live = mgr.GetCurrentSettingsWithCurrentPresetApplied(true, out found);
+            string name = found == null ? mgr.CurrentPresetID.ToString() : found.ToString();
+            GraphicsSettingsState raw = mgr.CurrentPlayerSettingsRaw;
+
+            var diff = new List<string>();
+            if (live.m_lod != raw.m_lod) diff.Add($"LOD {raw.m_lod}->{live.m_lod}");
+            if (live.m_shadowQuality != raw.m_shadowQuality) diff.Add($"ShadowQuality {raw.m_shadowQuality}->{live.m_shadowQuality}");
+            if (live.m_lights != raw.m_lights) diff.Add($"Lights {raw.m_lights}->{live.m_lights}");
+            if (live.m_vegetation != raw.m_vegetation) diff.Add($"Vegetation {raw.m_vegetation}->{live.m_vegetation}");
+            if (live.m_pointLights != raw.m_pointLights) diff.Add($"PointLights {raw.m_pointLights}->{live.m_pointLights}");
+            if (live.m_pointLightShadows != raw.m_pointLightShadows) diff.Add($"PointLightShadows {raw.m_pointLightShadows}->{live.m_pointLightShadows}");
+            if (live.m_ssao != raw.m_ssao) diff.Add($"SSAO {raw.m_ssao}->{live.m_ssao}");
+            if (live.m_clothQuality != raw.m_clothQuality) diff.Add($"ClothQuality {raw.m_clothQuality}->{live.m_clothQuality}");
+            if (live.m_simulationDistance != raw.m_simulationDistance) diff.Add($"SimulationDistance {raw.m_simulationDistance}->{live.m_simulationDistance}");
+            if (live.m_presentSettings.m_vsync != raw.m_presentSettings.m_vsync)
+                diff.Add($"Vsync {Yes(raw.m_presentSettings.m_vsync)}->{Yes(live.m_presentSettings.m_vsync)}");
+            if (live.m_presentSettings.m_fpsLimit != raw.m_presentSettings.m_fpsLimit)
+                diff.Add($"FpsLimit {raw.m_presentSettings.m_fpsLimit}->{live.m_presentSettings.m_fpsLimit}");
+
+            return diff.Count == 0
+                ? $"preset={name}"
+                : $"preset={name}, which is what is running and not the values above: " + string.Join(" ", diff.ToArray());
+        }
+
+        private static string Yes(bool b) { return b ? "on" : "off"; }
+
         private static string Alias(string name)
         {
             string a;
@@ -185,24 +243,21 @@ namespace DiagnoseServerLag
                 // apart once came back byte-identical in this block while the frame time moved
                 // 2.7 ms, and nothing here could say what had changed.
                 //
-                // The expected lodBias is computable from the menu value (0 -> 1.0, 1 -> 1.5,
-                // 2 -> 2.0, 3 -> 5.0), so a disagreement there is worth naming outright: it means
-                // something other than the menu is deciding. The rest are printed plainly for
-                // comparison rather than guessed at.
+                // These are printed plainly, for comparison between machines. There used to be a
+                // note here claiming the menu "implies" some other lodBias and that the live value
+                // was therefore overridden; see PresetNote for why that was wrong and what replaced
+                // it.
                 parts.Add($"live:lodBias={QualitySettings.lodBias:0.##}");
-                int? lodLevel = Int("LodBias") ?? Int("LOD");
-                if (lodLevel.HasValue)
-                {
-                    float expect = lodLevel.Value == 0 ? 1f : lodLevel.Value == 1 ? 1.5f : lodLevel.Value == 3 ? 5f : 2f;
-                    if (Mathf.Abs(QualitySettings.lodBias - expect) > 0.01f)
-                        parts.Add($"(menu implies {expect:0.##} - overridden)");
-                }
                 parts.Add($"live:shadowDist={QualitySettings.shadowDistance:0}");
                 parts.Add($"live:cascades={QualitySettings.shadowCascades}");
                 parts.Add($"live:shadowRes={QualitySettings.shadowResolution}");
                 parts.Add($"live:pixelLights={QualitySettings.pixelLightCount}");
                 parts.Add($"live:aniso={QualitySettings.anisotropicFiltering}");
                 parts.Add($"live:softParticles={(QualitySettings.softParticles ? "on" : "off")}");
+
+                // Last, because it qualifies everything before it.
+                string preset = PresetNote();
+                if (!string.IsNullOrEmpty(preset)) parts.Add(preset);
             }
             catch (Exception e)
             {

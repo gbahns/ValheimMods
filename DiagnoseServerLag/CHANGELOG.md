@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.10.20 - 2026-10-27
+
+- **The settings line says which graphics preset is in force.** It was reading the individual
+  sliders out of PlatformPrefs and reporting them as the machine's configuration. They are not:
+  for any preset other than Custom, Valheim applies the preset's values and leaves the player's
+  own sliders sitting unused in the prefs. So a capture could describe, in detail, a configuration
+  that was not running.
+
+- **A note that claimed a mod was overriding LOD is gone.** It compared the live `QualitySettings.lodBias`
+  against what the menu's LOD slider implies and called a disagreement "overridden", on the
+  reasoning that only a mod would change one without the other. A preset does exactly that, which
+  is why the note appeared on three machines in one capture and not on the two that were set to
+  Custom. It read as evidence of GraphicsConfigPlus still being enabled, and it was not evidence of
+  anything. The preset line replaces it and names what actually differs.
+
+- **A stall count inflated by a slow machine says so.** A stall is a frame past the threshold,
+  100 ms by default, which measures hitches on a machine whose ordinary frame is 13 ms and measures
+  the median on one whose ordinary frame is 76 ms. The threshold is unchanged - raising it would
+  hide real hitches on the fast machines - but a client whose median is within half the threshold
+  now carries a line saying to read its median rather than its stall count.
+
 ## 0.10.19 - 2026-10-25
 
 - **A player who logs off cleanly is still in the next capture.** A group capture was a synchronous

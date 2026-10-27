@@ -103,6 +103,8 @@ namespace DiagnoseServerLag
                     sb.AppendLine($"  {"",-16} {c.Graphics}");
                 string capped = DisplayCapped(c);
                 if (capped != null) sb.AppendLine($"  {"",-16} {capped}");
+                string inflated = StallsInflated(c);
+                if (inflated != null) sb.AppendLine($"  {"",-16} {inflated}");
             }
 
             int reduced = 0;
@@ -256,6 +258,32 @@ namespace DiagnoseServerLag
             if (Math.Abs(c.FrameMedianMs - period) > period * 0.08f) return null;
             return $"frame time is this display's refresh period ({period:0.0} ms at {c.RefreshHz} Hz, " +
                    "vsync on), so it measures the panel and not the machine";
+        }
+
+        /// <summary>
+        /// Says so when a machine's stall count is measuring its speed rather than its hitches.
+        ///
+        /// A stall is a frame at or past Stall Threshold, 100 ms by default, which is a good
+        /// definition of a hitch a player feels - on a machine whose ordinary frame is 13 ms. On one
+        /// whose ordinary frame is 76 ms, ordinary frames trip the counter, and the count stops
+        /// being a count of hitches: it becomes a slightly noisy restatement of the median.
+        ///
+        /// That is not a reason to raise the threshold. Raising it would blind the fast machines to
+        /// real hitches - 1,061 stalls against a 12.9 ms median are 1,061 frames eight times longer
+        /// than normal, and worth every bit of the alarm they cause. The number is only misleading
+        /// when read across machines of very different speed, so the fix is to say which reading is
+        /// which, where it is read.
+        ///
+        /// Brane's 6,469 stalls against his 76.4 ms median were nearly reported to Greg as 6,469
+        /// distinct hitches.
+        /// </summary>
+        private static string StallsInflated(ClientSeries c)
+        {
+            if (c == null || c.FrameMedianMs <= 0f) return null;
+            float threshold = DslConfig.StallMs.Value;
+            if (c.FrameMedianMs < threshold * 0.5f) return null;
+            return $"its ordinary frame ({c.FrameMedianMs:0.0} ms) is close to the {threshold:0} ms stall " +
+                   "threshold, so ordinary frames trip the counter: read the median here, not the stall count";
         }
 
         /// <summary>
