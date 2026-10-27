@@ -166,7 +166,10 @@ are included without anyone maintaining a list, because the vessels to watch for
 what is actually in the world. Each one is called what the game calls it -- a longship reads
 "Longship", not "Viking Ship" -- though the names are off by default ("Show Transport Labels"),
 since a harbor of six ships writes six names across the coast and the icon already says what is
-there. The sweep runs every five seconds by default ("Transport Sweep
+there. A vessel that is moving does not wait for the next sweep: the server passes its new
+position on four times a second ("Transport Movement Seconds"), so a ship under sail slides
+along the map, while a moored harbor sends nothing because nothing has moved. The sweep itself,
+which is what finds vessels in the first place, runs every five seconds by default ("Transport Sweep
 Seconds"); these pins answer "where did I leave it" rather than "where is it this second", and a
 ship riding the swell at anchor does not count as having moved. Hovering one names it, which is
 how to tell a knarr from a longship with the labels off. Their settings live together under

@@ -32,7 +32,29 @@ namespace TheGreatestMap
     {
         private const string RpcList = "TGM_Transports";      // server -> everybody: every vessel now
         private const string RpcWant = "TGM_TransportsWant";  // client -> server: send me that list
+        private const string RpcMove = "TGM_TransportsMove";  // server -> everybody: these few have moved
         private const float RequestSeconds = 10f;
+
+        /// <summary>
+        /// How far a vessel must have moved since we last said so before it is worth saying
+        /// again. A moored ship rides the swell and a cart settles on its wheels; neither is
+        /// news, and below a meter nothing is visible on the map anyway.
+        /// </summary>
+        private const float MovedEnough = 1.5f;
+
+        /// <summary>
+        /// A number for the list, so a move can say "the third vessel" without carrying an
+        /// identity. The server bumps it with every full list it sends; a move carrying a
+        /// different number belongs to a list this client never saw and is dropped, which is
+        /// the whole of the protocol. It also means the move message is nine bytes a vessel
+        /// rather than the thirty a position and a name would cost.
+        /// </summary>
+        private static int _gen;
+        private static float _nextLive;
+
+        /// <summary>How often a moving vessel's position is passed on. Server side only.</summary>
+        private static float LiveSeconds =>
+            TgmConfig.TransportLiveSeconds != null ? Mathf.Max(0.1f, TgmConfig.TransportLiveSeconds.Value) : 0.25f;
 
         /// <summary>
         /// How coarsely a position is read when deciding whether anything changed. A moored ship
@@ -47,6 +69,10 @@ namespace TheGreatestMap
             public Vector3 Pos;
             public string Name = "";
             public bool Cart;
+            /// <summary>Server side: the object this came from, so its position can be read again cheaply.</summary>
+            public ZDOID Id;
+            /// <summary>Client side: the pin drawing it, so a move can nudge that pin instead of rebuilding every one.</summary>
+            public Minimap.PinData Pin;
         }
 
         private static readonly List<Live> _live = new List<Live>();
@@ -82,6 +108,8 @@ namespace TheGreatestMap
             _labels.Clear();
             _sweep = null;
             _nextSweep = 0f;
+            _nextLive = 0f;
+            _gen = 0;
             _lastServerSignature = "";
         }
 
@@ -91,6 +119,7 @@ namespace TheGreatestMap
             if (rpc == null) return;
             Rpc.Register<ZPackage>(rpc, RpcList, RPC_List);
             Rpc.Register(rpc, RpcWant, RPC_Want);
+            Rpc.Register<ZPackage>(rpc, RpcMove, RPC_Move);
         }
 
         private static bool IsServer => ZNet.instance != null && ZNet.instance.IsServer();
@@ -212,7 +241,7 @@ namespace TheGreatestMap
                     // client: vanilla's longship is the prefab "VikingShip", whose own name is
                     // "$ship_longship", and only the client has the player's language to turn
                     // that into "Longship".
-                    _sweep.Found.Add(new Live { Pos = zdo.GetPosition(), Name = vessel.Prefab, Cart = vessel.Cart });
+                    _sweep.Found.Add(new Live { Pos = zdo.GetPosition(), Name = vessel.Prefab, Cart = vessel.Cart, Id = zdo.m_uid });
                 }
                 if (!done) return false;   // more sectors to walk: pick this up next frame
                 _sweep.Prefab++;
@@ -222,11 +251,22 @@ namespace TheGreatestMap
                 return false;
             }
 
-            _live.Clear();
-            _live.AddRange(_sweep.Found);
+            // A sweep that found the same world as last time is thrown away rather than
+            // installed. The entries carry the pin drawing each vessel, and replacing them with
+            // equal-but-new ones would drop every one of those references on the floor: the
+            // host's own pins would stop following a moving ship until something else forced a
+            // redraw, which is exactly the bug this feature exists to fix.
+            string signature = Signature(_sweep.Found);
+            bool changed = signature != _lastServerSignature;
+            if (changed)
+            {
+                _lastServerSignature = signature;
+                _live.Clear();
+                _live.AddRange(_sweep.Found);
+            }
             _sweep = null;
             _nextSweep = Time.time + SweepSeconds;
-            return true;
+            return changed;
         }
 
         private static string Signature(List<Live> list)
@@ -250,6 +290,11 @@ namespace TheGreatestMap
                 pkg.Write(v.Name ?? "");
                 pkg.Write(v.Cart);
             }
+            // After the vessels, never between them: a client written before this reads its way
+            // through the list exactly as it always did and simply stops with four bytes left
+            // over. Putting the number inside the loop would have shifted every field after it
+            // and handed older players a map of garbage.
+            pkg.Write(_gen);
             ZRoutedRpc.instance.InvokeRoutedRPC(target, RpcList, pkg);
         }
 
@@ -280,8 +325,36 @@ namespace TheGreatestMap
                 bool cart = pkg.GetPos() < pkg.Size() && pkg.ReadBool();
                 _live.Add(new Live { Pos = pos, Name = name, Cart = cart });
             }
+            // A server written before this sends no generation. Zero is as good a name for that
+            // list as any; it will simply never match a move, and there will not be any.
+            _gen = pkg.GetPos() < pkg.Size() ? pkg.ReadInt() : 0;
             _haveList = true;
             _redrawWanted = true;
+        }
+
+        /// <summary>
+        /// The few vessels that have moved since the last word. Their pins are nudged where they
+        /// stand rather than every pin being taken down and put up again: a redraw is a removal
+        /// and an addition per vessel and it dirties the whole pin list, which at four times a
+        /// second is the kind of thing that has stalled this client into disconnecting before.
+        /// </summary>
+        private static void RPC_Move(long sender, ZPackage pkg)
+        {
+            if (pkg == null || !_haveList) return;
+            int gen = pkg.ReadInt();
+            if (gen != _gen) return;   // about a list we do not have
+            int n = pkg.ReadInt();
+            for (int i = 0; i < n && pkg.GetPos() < pkg.Size(); i++)
+            {
+                int index = pkg.ReadInt();
+                var pos = pkg.ReadVector3();
+                if (index < 0 || index >= _live.Count) continue;
+                var v = _live[index];
+                v.Pos = pos;
+                // Not null-coalescing: a pin the game has destroyed is only null to its own ==
+                // operator, and the map rebuilds its pins whenever a table is read.
+                if (v.Pin != null) v.Pin.m_pos = pos;
+            }
         }
 
         internal static void Update()
@@ -292,14 +365,12 @@ namespace TheGreatestMap
             {
                 if (StepSweep())
                 {
-                    string signature = Signature(_live);
-                    if (signature != _lastServerSignature)
-                    {
-                        _lastServerSignature = signature;
-                        Send(ZRoutedRpc.Everybody, _live);
-                        _redrawWanted = true;   // a host plays on its own server
-                    }
+                    _gen++;
+                    Send(ZRoutedRpc.Everybody, _live);
+                    _redrawWanted = true;   // a host plays on its own server
                 }
+                // Whatever the sweep is doing, what is already known can still be moving.
+                StepLive();
             }
             else if (!_haveList && Time.time >= _nextRequest && ZRoutedRpc.instance != null)
             {
@@ -312,6 +383,56 @@ namespace TheGreatestMap
             // a switch, the master, the find box. Two booleans answer that; comparing the whole
             // list every frame would be building a string per frame for nothing.
             if (_redrawWanted || Wanted(Category.Ship) != _drawnShips || Wanted(Category.Cart) != _drawnCarts) Redraw();
+        }
+
+        /// <summary>
+        /// Pass on the vessels that have moved, without sweeping for them.
+        ///
+        /// <para>The sweep is expensive because finding a vessel means walking the world. Asking
+        /// a vessel we have already found where it is now does not: it is a dictionary lookup
+        /// per vessel, a handful of them, and the answer is live because the player sailing the
+        /// ship is the one keeping that object up to date on the server.</para>
+        ///
+        /// <para>So the sweep stays slow and rare and goes on answering "what is there", while
+        /// this answers "where is it" as often as anyone cares. A harbor of moored ships costs
+        /// nothing at all: nothing has moved, so nothing is sent.</para>
+        /// </summary>
+        private static void StepLive()
+        {
+            if (_live.Count == 0 || Time.time < _nextLive) return;
+            _nextLive = Time.time + LiveSeconds;
+            var zdoMan = ZDOMan.instance;
+            if (zdoMan == null) return;
+
+            List<int> moved = null;
+            for (int i = 0; i < _live.Count; i++)
+            {
+                var v = _live[i];
+                if (v.Id == ZDOID.None) continue;
+                var zdo = zdoMan.GetZDO(v.Id);
+                if (zdo == null || !zdo.IsValid()) continue;   // gone: the next sweep will say so
+                var now = zdo.GetPosition();
+                if (Vector3.Distance(now, v.Pos) < MovedEnough) continue;
+                v.Pos = now;
+                if (moved == null) moved = new List<int>();
+                moved.Add(i);
+            }
+            if (moved == null) return;
+
+            if (ZRoutedRpc.instance != null)
+            {
+                var pkg = new ZPackage();
+                pkg.Write(_gen);
+                pkg.Write(moved.Count);
+                foreach (int i in moved) { pkg.Write(i); pkg.Write(_live[i].Pos); }
+                ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.Everybody, RpcMove, pkg);
+            }
+            // A host plays on its own server, and its own pins are the ones it is looking at.
+            foreach (int i in moved)
+            {
+                var v = _live[i];
+                if (v.Pin != null) v.Pin.m_pos = v.Pos;
+            }
         }
 
         internal static void AskForList()
@@ -393,6 +514,7 @@ namespace TheGreatestMap
             _redrawWanted = false;
             var map = Minimap.instance;
             if (map == null) return;
+            foreach (var v in _live) v.Pin = null;
             foreach (var shown in _drawn) if (Access.Pins(map).Contains(shown.Pin)) map.RemovePin(shown.Pin);
             _drawn.Clear();
             bool ships = _drawnShips = Wanted(Category.Ship);
@@ -413,6 +535,7 @@ namespace TheGreatestMap
                 string label = TgmConfig.ShowTransportLabels != null && TgmConfig.ShowTransportLabels.Value
                     ? Label(v.Name) : "";
                 var pin = map.AddPin(v.Pos, (Minimap.PinType)type, label, false, false, 0L);
+                v.Pin = pin;
                 if (pin != null) _drawn.Add(new Shown { Pin = pin, Cart = v.Cart });
             }
         }
@@ -426,6 +549,7 @@ namespace TheGreatestMap
         /// <summary>The map data was rebuilt under us (world load, table read): our pins are gone.</summary>
         internal static void OnPinsCleared()
         {
+            foreach (var v in _live) v.Pin = null;
             _drawn.Clear();
             _drawnShips = false;
             _drawnCarts = false;
@@ -498,7 +622,15 @@ namespace TheGreatestMap
                 string why = WhyNot(kind);
                 lines.Add($"{Categories.Label(kind)}: " + (why == null ? "shown" : "not shown -- " + why));
             }
-            if (IsServer) lines.Add($"Sweeping every {SweepSeconds:0.#} s" + (_sweep != null ? $", one in progress (prefab {_sweep.Prefab + 1} of {vessels.Count})" : ""));
+            if (IsServer)
+            {
+                lines.Add($"Sweeping every {SweepSeconds:0.#} s" + (_sweep != null ? $", one in progress (prefab {_sweep.Prefab + 1} of {vessels.Count})" : ""));
+                int tracked = 0;
+                foreach (var v in _live) if (v.Id != ZDOID.None) tracked++;
+                lines.Add($"Passing on movement every {LiveSeconds:0.00} s for {tracked} of {_live.Count} vessel(s), " +
+                          $"once they have moved {MovedEnough:0.#} m; list generation {_gen}");
+            }
+            else lines.Add($"List generation {_gen}" + (_haveList ? "" : " (none yet)"));
             return lines;
         }
     }

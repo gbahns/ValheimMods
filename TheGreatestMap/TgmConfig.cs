@@ -167,6 +167,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> RepairDungeonIcons;
         internal static ConfigEntry<float> ServerAutosaveMinutes;
         internal static ConfigEntry<float> TransportSweepSeconds;
+        internal static ConfigEntry<float> TransportLiveSeconds;
         internal static ConfigEntry<bool> PaintBuildings;
         internal static ConfigEntry<bool> PaintRoads;
         internal static ConfigEntry<float> BuildSweepSeconds;
@@ -627,7 +628,16 @@ namespace TheGreatestMap
                 "looks for every ship and cart in the world and tells the clients where " +
                 "they are. These pins answer \"where did I leave it\", not \"where is it this second\": a longship under sail " +
                 "covers 20 m in two seconds, so a tighter interval buys little and costs a walk of every object in the world. " +
-                "The walk is spread over several frames either way.", synced: true);
+                "The walk is spread over several frames either way. A vessel that is actually moving does not wait " +
+                "on this: see Transport Movement Seconds.", synced: true);
+
+            TransportLiveSeconds = mod.BindMoved("Server", Dynamic, "Transport Movement Seconds", 0.25f,
+                "Server only, and marked as the server's so it is plain your copy does nothing. How often a vessel " +
+                "that is on the move has its new position passed on. The sweep above answers \"what is out there\", " +
+                "which is slow because it means walking the world; this answers \"where is it now\" for the vessels " +
+                "already found, which is a lookup each and costs nothing. A ship under sail therefore slides along " +
+                "the map instead of jumping every few seconds, while a harbor of moored ships sends nothing at all, " +
+                "because nothing has moved. Raise it if the server is short of bandwidth.", synced: true);
 
             StopWaitingAfter = mod.BindMoved("Sharing", "Server", "Stop Waiting For A Player After", 5000,
                 "Server only, and marked as the server's so it is plain your copy does nothing. How far behind a player " +

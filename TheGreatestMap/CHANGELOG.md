@@ -2,6 +2,24 @@
 
 ## 4.6.0 — unreleased
 
+- **A ship under sail slides along the map instead of jumping every five seconds.** Finding a
+  vessel means walking the world, which is why the sweep is slow and rare, and until now the
+  sweep was also the only thing that moved a pin. But asking a vessel we have *already* found
+  where it is now is a dictionary lookup, and the answer is live, because the player sailing the
+  ship is the one keeping that object up to date on the server. So the two questions are asked
+  separately now: the sweep goes on answering "what is out there" every few seconds, and
+  movement is passed on four times a second by default ("Transport Movement Seconds").
+
+  A moored harbor costs nothing at all, because nothing has moved and nothing is sent; only a
+  vessel that has actually travelled a meter and a half is mentioned, and the message naming it
+  is nine bytes. On the receiving end the pin is nudged where it stands rather than every pin
+  being taken down and put up again — a full redraw four times a second is the kind of thing
+  that has stalled this client into disconnecting before.
+
+  Players on an older version are unaffected rather than broken: the extra number rides at the
+  end of the vessel list where an older client simply stops reading, and the movement message is
+  one it never registered, so it keeps the five-second behavior it has today.
+
 - **What players have built, and the roads they have paved, are colored into the map.** Not
   markers: a base is not a point, and a marker cannot say whether a place is a shed or a hall.
   Wooden building draws brown, stone gray, iron slate, and paved road its own pale color, all
