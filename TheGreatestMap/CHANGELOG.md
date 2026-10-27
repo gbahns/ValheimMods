@@ -2,6 +2,30 @@
 
 ## 4.6.0 — unreleased
 
+- **What players have built, and the roads they have paved, are colored into the map.** Not
+  markers: a base is not a point, and a marker cannot say whether a place is a shed or a hall.
+  Wooden building draws brown, stone gray, iron slate, and paved road its own pale color, all
+  configurable. Because it goes into the map picture itself rather than on top of it, it shows
+  on the large map, the minimap and the parchment in your hands alike, with panning, zoom and
+  fog already handled -- you do not see somebody's base through unexplored ground, only once you
+  have been there. The resolution is the map's own, so a shed is a pixel and a base is a patch.
+
+  - **Buildings** are swept on the server, every two minutes by default. Only pieces a player
+    raised count: every piece the world generator places carries no builder, so the ruins, camps
+    and crypts are left alone. The sweep walks the world's objects once and asks each what it is,
+    rather than asking the world four hundred times where each buildable prefab is -- the same
+    answer for a four-hundredth of the work, which on a world of a million objects is the
+    difference between a sweep and an outage.
+  - **Paved roads** cannot be swept for, because paving is paint on the terrain and terrain only
+    exists where somebody is standing. So each client reports the paved ground it walks over, the
+    server keeps it for everybody and saves it beside the map. A road appears on everyone's map
+    the first time anyone walks it, and stays.
+
+  Switched on by default. "Paint Player Buildings" and "Paint Paved Roads" are the server's,
+  since they decide whether the server sweeps and whether every client samples; "Show Map
+  Painting" and the four colors are yours. **`tgm_paint`** reports what is being drawn, how
+  coarse the map is, and whether the ground under you reads as paved.
+
 - **Places you are plainly looking at are found now, without having to aim at them.** Fuling
   villages and tar pits were the worst of it: you could stand on a rise staring straight down
   into one and nothing would be written down. The reason was that finding something has always

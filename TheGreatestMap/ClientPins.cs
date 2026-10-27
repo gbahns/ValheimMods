@@ -51,6 +51,8 @@ namespace TheGreatestMap
             Reveals.Reset();
             Portals.Reset();
             Transports.Reset();
+            Builds.Reset();
+            MapPaint.Reset();
             PlayerSpotlight.Reset();
             MinimapClip.Reset();
             MapFrame.Reset();

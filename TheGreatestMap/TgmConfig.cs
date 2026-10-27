@@ -167,6 +167,14 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> RepairDungeonIcons;
         internal static ConfigEntry<float> ServerAutosaveMinutes;
         internal static ConfigEntry<float> TransportSweepSeconds;
+        internal static ConfigEntry<bool> PaintBuildings;
+        internal static ConfigEntry<bool> PaintRoads;
+        internal static ConfigEntry<float> BuildSweepSeconds;
+        internal static ConfigEntry<bool> ShowMapPaint;
+        internal static ConfigEntry<string> WoodColor;
+        internal static ConfigEntry<string> StoneColor;
+        internal static ConfigEntry<string> IronColor;
+        internal static ConfigEntry<string> PavedColor;
         internal static ConfigEntry<int> StopWaitingAfter;
         internal static ConfigEntry<bool> ShowTransportLabels;
         internal static ConfigEntry<bool> ShowMarkerLabels;
@@ -183,6 +191,13 @@ namespace TheGreatestMap
         /// recorded, shared or saved.
         /// </summary>
         private const string Dynamic = "Dynamic Markers";
+
+        /// <summary>
+        /// Settings for what is colored into the map picture rather than pinned on top of it.
+        /// Kept apart from Display for the same reason Dynamic Markers is: nothing here is a
+        /// marker, nothing is recorded, and the questions it answers are not the same ones.
+        /// </summary>
+        private const string Painting = "Map Painting";
 
         private static string LiveShowNote(string label)
         {
@@ -630,6 +645,44 @@ namespace TheGreatestMap
                 "this many minutes on top of vanilla's own autosave (0 = vanilla only). " +
                 "Worth setting on hosts whose panel stop kills the server without saving. A file named save-now in " +
                 "BepInEx/config/TheGreatestMap/ also makes the server save at once (used by deploy scripts).");
+
+            // ── what players have made, colored into the map ───────────────────────
+            //
+            // Three of these are the server's because they decide whether the server sweeps the
+            // world and whether every client samples the ground it walks over. The colors and
+            // the master switch are nobody's business but the player looking at the map.
+            PaintBuildings = mod.BindSynced(Painting, "Paint Player Buildings", true,
+                "Color the ground players have built on into the map itself, wood in one color and stone in another, " +
+                "rather than putting a marker on it. A base is not a point and a marker cannot say how big it is. " +
+                "The server sweeps the world for pieces a player raised -- the ruins and camps the world generated " +
+                "are not touched, since only a player's piece carries a builder -- and tells everyone, so this is " +
+                "the server's to switch on: off, it does not do the work and nobody sees it.");
+            PaintRoads = mod.BindSynced(Painting, "Paint Paved Roads", true,
+                "Color paved ground into the map, so the roads players have laid show up as roads. There is no sweep " +
+                "for these: paving is paint on the terrain, and terrain exists only where somebody is standing, so " +
+                "each client reports the paved ground it walks over and the server keeps it for everybody. A road " +
+                "appears the first time anyone uses it and stays. The server's, because it is every client that does " +
+                "the looking.");
+            BuildSweepSeconds = mod.BindSynced(Painting, "Build Sweep Seconds", 120f,
+                "Server only. How often the server walks the world for player-built pieces. This is the heaviest " +
+                "sweep the mod does -- four hundred prefabs across every sector -- and a base does not move, so it is " +
+                "spread over many frames and run rarely. Paved ground does not wait on this: a road reported by a " +
+                "player is passed on at once.");
+            ShowMapPaint = mod.BindLocal(Painting, "Show Map Painting", true,
+                "Draw the painting on your own map. Off leaves the map exactly as the game drew it, whatever the " +
+                "server is sharing. The painting goes into the map picture itself, so it shows on the large map, the " +
+                "minimap and the parchment in your hands alike, and unexplored ground hides it like anything else.");
+            WoodColor = mod.BindLocal(Painting, "Wood Color", "#704F2E",
+                "The color wooden building is drawn in. A hex value such as #704F2E, or a name such as brown. " +
+                "Hardwood and the rest of the timbers count as wood.");
+            StoneColor = mod.BindLocal(Painting, "Stone Color", "#808085",
+                "The color stone building is drawn in. Marble, ashstone and ancient stone count as stone.");
+            IronColor = mod.BindLocal(Painting, "Iron Color", "#555A66",
+                "The color iron building is drawn in -- the reinforced pieces, which usually trace the frame of " +
+                "something large.");
+            PavedColor = mod.BindLocal(Painting, "Paved Color", "#9E998C",
+                "The color paved road is drawn in. Building wins where a road runs under it, so a courtyard reads as " +
+                "the building it belongs to.");
 
             ShowMapInHands = mod.BindLocal("Visuals", "Show Map In Hands", true,
                 "Show a parchment map in the left hand and a pencil in the right while the pocket map is out (visible to other players too).");

@@ -79,6 +79,7 @@ namespace TheGreatestMap
                     }
 
                     Acks.Load(_path);
+                    PavedStore.Load(_path);
                     int acked = Acks.Prune(_store);
                     if (acked > 0)
                     {

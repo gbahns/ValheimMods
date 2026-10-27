@@ -271,6 +271,21 @@ namespace TheGreatestMap
                     }
                 }));
 
+            new Terminal.ConsoleCommand("tgm_paint", "The Greatest Map: what is colored into the map for player building and paved roads",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    foreach (var line in MapPaint.Describe())
+                    {
+                        args.Context.AddString(line);
+                        TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_paint: " + line);
+                    }
+                    foreach (var line in Builds.Describe())
+                    {
+                        args.Context.AddString(line);
+                        TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_paint: " + line);
+                    }
+                }));
+
             new Terminal.ConsoleCommand("tgm_mapui", "Measure the large map's own layout: how much screen it uses and how its parts are anchored (also written to the log)",
                 (Terminal.ConsoleEvent)(args =>
                 {

@@ -215,6 +215,7 @@ counts as well unless "Structures Include Unlisted" is off or its prefab name is
 | `tgm_wipe [auto\|all]` | Admin: erase recorded markers (default) or every shared marker, for everyone |
 | `tgm_unsuppress` | Admin: allow recording again where recorded markers were erased |
 | `tgm_look` | What the crosshair hits and every reason it would or would not be recorded |
+| `tgm_paint` | What is colored into the map for player building and paved roads |
 | `tgm_portals` | What the portal system believes, and why a portal near you is or is not drawn |
 | `tgm_erase <kind> [radius]` | Erase recorded markers of one kind near you, even when erasing by click is off |
 | `tgm_relabel [kind]` | Apply the label rules to existing markers; labels are only ever removed |
@@ -225,6 +226,27 @@ counts as well unless "Structures Include Unlisted" is off or its prefab name is
 | `tgm_legend` | Open the legend (same as the legend key) |
 | `tgm_show` | Show every hidden marker again (single markers, hidden icons, hidden kinds and hidden crossed-off markers) |
 | `tgm_mapui` | What the large map's layout measures: how much screen it uses and how its parts are anchored |
+
+## What players have made, drawn on the map
+
+Markers say *what is here*. They cannot say how big it is, or what runs between. So player
+building and paved roads are colored into the map instead — wooden building brown, stone gray,
+iron slate, paved road its own pale shade, each configurable under `[Map Painting]`.
+
+It goes into the map picture the game itself draws, which means the large map, the minimap and
+the parchment in your hands all show it, with panning, zoom and fog handled for free: a base
+under unexplored ground stays hidden until you have been there. The resolution is the map's own
+— a shed is about a pixel, a base is a patch, and a road is a line a little wider than the road
+really is.
+
+Only pieces a player raised are drawn. Every piece the world generator places carries no
+builder, so ruins, camps and crypts are left out of it.
+
+Roads work the other way round from everything else here. Paving is paint on the terrain, and
+terrain only exists where somebody is standing, so there is nothing to sweep: each client reports
+the paved ground it walks over, and the server keeps it for everybody and saves it beside the
+map. A road reaches every player's map the first time any one of them walks it. `tgm_paint` says
+what is being drawn and whether the ground under you reads as paved.
 
 ## Configuration
 

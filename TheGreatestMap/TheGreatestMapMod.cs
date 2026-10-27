@@ -172,6 +172,8 @@ namespace TheGreatestMap
             ServerSave.Update();
             Portals.Update(); // also runs on the dedicated server, which is the source of the list
             Transports.Update(); // likewise: the sweep for ships and carts is the server's
+            Builds.Update();     // and the sweep for what players built, which also paints the map
+            PavedStore.Update();
             Portals.Paint();
             MapPause.Refresh(); // also lets go of the pause when the player is gone
             PauseButton.Update();
