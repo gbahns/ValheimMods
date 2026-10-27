@@ -52,7 +52,12 @@ namespace TheGreatestMap
                 if (hit.distance < bestDistance) { bestDistance = hit.distance; best = hit; any = true; }
             }
             lines.Add($"ray: {n} hits within {maxLook:0} m" + (n >= _hits.Length ? " (buffer full)" : ""));
-            if (!any) { lines.Add("nearest hit: nothing"); return lines; }
+            if (!any)
+            {
+                lines.Add("nearest hit: nothing");
+                lines.AddRange(Landmarks.Describe(player, cam));
+                return lines;
+            }
 
             var go = best.collider.gameObject;
             lines.Add($"nearest hit: '{go.name}' at {bestDistance:0.0} m, layer {LayerMask.LayerToName(go.layer)}, prefab '{Catalog.PrefabName(go)}'");
@@ -95,6 +100,7 @@ namespace TheGreatestMap
             if (!Catalog.TryClassify(go, out var found))
             {
                 lines.Add("classified: no (nothing recordable)" + (Buildings.LastRejectReason != null ? ": " + Buildings.LastRejectReason : ""));
+                lines.AddRange(Landmarks.Describe(player, cam));
                 return lines;
             }
             lines.Add($"classified: {found.Cat} '{found.Name}' icon {found.Icon} at {found.Pos}");
@@ -113,6 +119,7 @@ namespace TheGreatestMap
             lines.Add($"  marker with this icon already there: {ClientPins.HasPinNear(found.Icon, dedupeAt, dedupeRadius)}");
             lines.Add($"  erased spot here (blocks recording): {ClientPins.IsSuppressed(found.Icon, dedupeAt, dedupeRadius)}");
             lines.Add($"  any marker of this kind nearby: {ClientPins.DescribeNear(found.Cat, dedupeAt, Mathf.Max(dedupeRadius, 30f))}");
+            lines.AddRange(Landmarks.Describe(player, cam));
             return lines;
         }
     }

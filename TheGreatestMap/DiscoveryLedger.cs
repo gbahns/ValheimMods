@@ -28,6 +28,12 @@ namespace TheGreatestMap
         private static float _nextScan;
         private static string _lookKey;
         private static float _lookSince;
+        // Places keep their own dwell. They are found alongside what the crosshair is on rather
+        // than instead of it: standing in a Fuling village with the crosshair on a berry bush is
+        // still standing in a Fuling village, and one shared tracker would have let the bush
+        // hold the village out for as long as you looked at it.
+        private static string _placeKey;
+        private static float _placeSince;
 
         internal static int PendingCount => _pending.Count;
         internal static int RecordedCount => _recorded.Count;
@@ -62,19 +68,22 @@ namespace TheGreatestMap
                 if (hit.collider == null || IsPlayerCollider(hit.collider, player)) continue;
                 if (hit.distance < bestDistance) { bestDistance = hit.distance; best = hit; any = true; }
             }
-            if (!any || !Catalog.TryClassify(best.collider.gameObject, out var looked)
-                || bestDistance > TgmConfig.LookDistanceFor(looked.Cat))
+            // What the crosshair is on, if the catalog knows it and it is near enough.
+            if (any && Catalog.TryClassify(best.collider.gameObject, out var looked)
+                && bestDistance <= TgmConfig.LookDistanceFor(looked.Cat))
             {
-                _lookKey = null;
-                return;
+                if (looked.Key != _lookKey) { _lookKey = looked.Key; _lookSince = Time.time; }
+                if (Time.time - _lookSince >= TgmConfig.LookDwell.Value) MarkFound(looked);
             }
-            if (looked.Key != _lookKey)
-            {
-                _lookKey = looked.Key;
-                _lookSince = Time.time;
-            }
-            if (Time.time - _lookSince >= TgmConfig.LookDwell.Value)
-                MarkFound(looked);
+            else _lookKey = null;
+
+            // And what you are standing in front of. The crosshair may be on grass, on the sky
+            // above the roofs, or on a goblin walking past, while a whole village fills the
+            // view; a place is too big to aim at, so it is asked about directly.
+            var place = Landmarks.Sighted(player, cam);
+            if (place == null) { _placeKey = null; return; }
+            if (place.Key != _placeKey) { _placeKey = place.Key; _placeSince = Time.time; }
+            if (Time.time - _placeSince >= TgmConfig.LookDwell.Value) MarkFound(place);
         }
 
         private static bool IsPlayerCollider(Collider collider, Player player)
@@ -222,6 +231,7 @@ namespace TheGreatestMap
             _pending.Clear();
             _recorded.Clear();
             _lookKey = null;
+            _placeKey = null;
         }
 
         internal static bool IsLocalAttacker(HitData hit)

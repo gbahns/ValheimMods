@@ -2,6 +2,31 @@
 
 ## 4.6.0 — unreleased
 
+- **Places you are plainly looking at are found now, without having to aim at them.** Fuling
+  villages and tar pits were the worst of it: you could stand on a rise staring straight down
+  into one and nothing would be written down. The reason was that finding something has always
+  meant one ray down the middle of the screen hitting an object the catalog knows -- which is
+  exactly right for a berry bush, and useless for a place sixty meters across. Looking at a tar
+  pit, the crosshair is on tar, which is terrain. Looking at a village, it is on grass, on the
+  sky above the roofs, or on a goblin walking past. The only way either ever registered was the
+  crosshair happening to cross a hut wall.
+
+  So places are now asked about directly, with the question a person would ask: is it in front
+  of me, is it near enough, and is anything in the way. **The landscape is the only thing allowed
+  to be in the way** -- a hill between you and a tar pit hides it, but its own huts, the trees
+  around it and whatever is walking through it do not. The sighting distance for a place is also
+  measured to its edge rather than its origin, so "ore: 40 m" now means forty meters from the rim
+  of a tar pit instead of forty meters from the middle of one.
+
+  This is still the "found, not detected" rule, not radar: a place behind you, over a ridge or
+  past its sighting distance is not found, and the same dwell applies. Set a kind's Look Distance
+  to 0 to switch sighting off for it entirely, as before. Structures are deliberately left out --
+  a farm or a ruin is marked building by building, and a sighting of the whole compound would put
+  a second marker in the middle of the yard.
+
+- **`tgm_look` reports the places as well as the crosshair**, listing each location around you
+  with the one thing that ruled it out: not in view, too far, blocked by the landscape, or seen.
+
 - **The settings that reach other people are the server's now.** Which group a setting belongs
   in follows one question -- does your choice change what happens on somebody else's machine --
   and three of them were answering yes while sitting in the personal half.
