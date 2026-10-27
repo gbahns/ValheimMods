@@ -2,6 +2,19 @@
 
 ## 4.5.3 -- unreleased
 
+- **The erasure ledger is now written on the path the map is actually written on.** 4.5.2
+  put that save in `SaveIfDirty`, which only runs when the world is saved or put away --
+  barely better than the shutdown-only behavior it was meant to fix. The live server showed
+  it plainly: the map came out holding 438 erasures while the ledger beside it still
+  described 1,010, the set from before the drop. It now goes down with the map on the
+  throttled save that does the work, and a player syncing counts as something to write even
+  when the map itself has not changed.
+
+- **The ledger no longer keeps rows for erasures that are already gone.** The crop sweep and
+  the ghost sweep remove erasures without telling it, so the pruning now runs after both and
+  forgets anything with nothing behind it. 572 of the live ledger's 1,010 rows described
+  erasures that had left.
+
 - **`tgm_underway`** says what the gate that holds map sharing on a moving deck can see:
   which ship it picked, whether the tiller or the deck answered, how fast the game thinks
   that hull is going, and whether anything is waiting. The queue behind that gate is

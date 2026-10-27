@@ -60,6 +60,10 @@ namespace TheGreatestMap
         /// <summary>Changes accepted over the life of this map, across restarts.</summary>
         internal static long Changes => _changes;
 
+        /// <summary>Whether there is anything to write. A player syncing changes this on its own,
+        /// with no change to the map at all, so the two cannot share one flag.</summary>
+        internal static bool Dirty => _dirty;
+
         internal static void Reset()
         {
             _players.Clear();
@@ -111,7 +115,20 @@ namespace TheGreatestMap
         /// </summary>
         internal static int Prune(MapStore store)
         {
-            if (store == null || store.Tombstones.Count == 0 || _players.Count == 0) return 0;
+            if (store == null) return 0;
+            // First forget rows for erasures that have already left by some other road -- the
+            // crop sweep and the ghost sweep both run just before this. A row with nothing
+            // behind it is written out on every save forever, which is how the live ledger came
+            // to describe 1,010 erasures over a map holding 438.
+            if (_erasedAt.Count > store.Tombstones.Count)
+            {
+                var orphans = new List<PinKey>();
+                foreach (var key in _erasedAt.Keys)
+                    if (!store.Tombstones.ContainsKey(key)) orphans.Add(key);
+                foreach (var key in orphans) _erasedAt.Remove(key);
+                if (orphans.Count > 0) _dirty = true;
+            }
+            if (store.Tombstones.Count == 0 || _players.Count == 0) return 0;
             long behind = long.MaxValue;
             int waiting = 0;
             foreach (var seen in _players.Values)

@@ -64,15 +64,6 @@ namespace TheGreatestMap
                             $"[TheGreatestMap] Forgot {crops} erasure(s) left by clearing crops off tilled ground. " +
                             "A planted turnip was never a discovery, so there is nothing to remember about rubbing one out.");
                     }
-                    Acks.Load(_path);
-                    int acked = Acks.Prune(_store);
-                    if (acked > 0)
-                    {
-                        MarkDirty();
-                        TheGreatestMapMod.Log.LogInfo(
-                            $"[TheGreatestMap] Dropped {acked} erasure(s) that every player still being waited for has " +
-                            "already taken in. They can no longer hold anything back, so they are no longer kept.");
-                    }
                     // On every load, not only while converting. It was narrowed to the
                     // conversion because it was eating the erasure that folding two markers
                     // into one depends on -- the two look identical, and only age tells them
@@ -85,6 +76,16 @@ namespace TheGreatestMap
                         TheGreatestMapMod.Log.LogInfo(
                             $"[TheGreatestMap] Dropped {ghosts} erasure(s) that were only the former name of a marker " +
                             "still standing in the same place. They kept nothing erased and cost more than the markers did.");
+                    }
+
+                    Acks.Load(_path);
+                    int acked = Acks.Prune(_store);
+                    if (acked > 0)
+                    {
+                        MarkDirty();
+                        TheGreatestMapMod.Log.LogInfo(
+                            $"[TheGreatestMap] Dropped {acked} erasure(s) that every player still being waited for has " +
+                            "already taken in. They can no longer hold anything back, so they are no longer kept.");
                     }
                     if (_store.ReadVersion < MapStore.FormatVersion)
                     {
@@ -129,18 +130,24 @@ namespace TheGreatestMap
 
         internal static void Update()
         {
-            if (_loaded && _dirty && Time.unscaledTime >= _saveAt) Save();
+            if (!_loaded || Time.unscaledTime < _saveAt) return;
+            if (_dirty) Save();
+            // This throttled tick is how the map is actually written; SaveWorldAndPlayerProfiles
+            // and Unload are the rare paths. Putting the ledger's save in SaveIfDirty alone left
+            // it written only when the world was saved or put away -- barely better than the
+            // shutdown-only behavior that was being fixed, and the live server proved it: the
+            // map came out holding 438 erasures while the ledger beside it still described
+            // 1,010, the set from before the drop.
+            //
+            // A player syncing is a change to the ledger and to nothing else, so it gets its own
+            // flag rather than riding on the map's.
+            Acks.Save();
         }
 
         internal static void SaveIfDirty()
         {
             if (!_loaded) return;
             if (_dirty) Save();
-            // The ledger goes down with the map, not only when the world is put away. A server
-            // is stopped by being killed as often as not, and a ledger that only survives a
-            // clean shutdown would come back empty after every crash -- which does not lose a
-            // marker, but does mean every erasure is held open for another full round of
-            // everybody syncing, forever, and the thing would never actually drop anything.
             Acks.Save();
         }
 
