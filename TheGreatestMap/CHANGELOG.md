@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.5.2 -- unreleased
+## 4.5.2
 
 - **Comparing maps no longer throws you off a moving ship.** Taking in another player's
   explored ground is the same work as reading a cartography table -- a few hundred
