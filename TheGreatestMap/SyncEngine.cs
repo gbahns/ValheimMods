@@ -69,6 +69,7 @@ namespace TheGreatestMap
             _announcePending = false;
             _lastFullSync = -999f;
             _lastExchange.Clear();
+            Underway.Reset();
             _quietOnce.Clear();
             ForgetWatermark();
         }
@@ -86,6 +87,7 @@ namespace TheGreatestMap
                 _instantDue = -1f;
                 SyncWithServer(announceNothing: false);
             }
+            Underway.Pump();
         }
 
         // ── shared map on the server ────────────────────────────────────────────────
@@ -224,11 +226,19 @@ namespace TheGreatestMap
             if (_lastExchange.TryGetValue(peer, out float last) && Time.time - last < TgmConfig.ExchangeCooldown.Value) return;
             _lastExchange[peer] = Time.time;
             var clock = Stopwatch.StartNew();
-            var mine = MyExploration();
+            // Packing our explored ground is the expensive half and it is not worth a swim.
+            // Offer the markers now and owe them the ground; Underway hands it over the moment
+            // the deck settles.
+            bool underway = Underway.Moving();
+            var mine = underway ? null : MyExploration();
+            if (underway) Underway.Hold(peer, Name(other), null, owesOurs: true);
             PinNetwork.SendExchange(peer, PersonalMap.Store, reply: true, mine);
             TheGreatestMapMod.Log.LogInfo(
                 $"[TheGreatestMap] Offered our map to {Name(other)}: {PersonalMap.Store.Pins.Count} markers, " +
-                $"{Bytes(mine)} of explored area, packed in {clock.ElapsedMilliseconds} ms.");
+                (underway
+                    ? "explored ground held back while we are under way"
+                    : $"{Bytes(mine)} of explored area") +
+                $", packed in {clock.ElapsedMilliseconds} ms.");
         }
 
         internal static void OnExchange(long sender, string theirName, bool reply, MapStore theirs, byte[] exploration)
@@ -237,6 +247,31 @@ namespace TheGreatestMap
             var result = ClientPins.ApplyMerge(theirs);
             AfterMerge(result);
             long merged = clock.ElapsedMilliseconds;
+
+            // Markers are always worth their 25 ms. Explored ground is not, not here: both
+            // halves of it run in this one frame, and this frame is the one that put a player
+            // in the sea. Under way, keep theirs and owe them ours.
+            bool underway = Underway.Moving();
+            if (underway)
+            {
+                Underway.Hold(sender, theirName, exploration, owesOurs: reply);
+                if (reply)
+                {
+                    _lastExchange[sender] = Time.time;
+                    PinNetwork.SendExchange(sender, PersonalMap.Store, reply: false, null);
+                }
+                TheGreatestMapMod.Log.LogInfo(
+                    $"[TheGreatestMap] Compared maps with {theirName} under way: " +
+                    $"{(result.Any ? result.ToString() : "no marker changes")}, markers {merged} ms. " +
+                    $"{Bytes(exploration)} of explored ground held back until the deck settles, " +
+                    "because applying it takes long enough to walk a moving hull out from under you.");
+                string held = result.Any ? result.ToString() : "";
+                TheGreatestMapMod.Message(held.Length > 0
+                    ? $"Compared maps with {theirName}: {held}. Map areas once we stop."
+                    : $"Compared maps with {theirName}: map areas once we stop.");
+                return;
+            }
+
             bool newAreas = ApplyExploration(exploration);
             long applied = clock.ElapsedMilliseconds;
             long packed = 0L;
@@ -261,6 +296,19 @@ namespace TheGreatestMap
             if (newAreas) what = what.Length > 0 ? what + ", new map areas" : "new map areas";
             if (what.Length > 0) TheGreatestMapMod.Message($"Compared maps with {theirName}: {what}.");
             else if (_quietOnce.Add(sender)) TheGreatestMapMod.Message($"Compared maps with {theirName}: nothing new.");
+        }
+
+        /// <summary>Apply explored ground that was held back. Used by <see cref="Underway"/>.</summary>
+        internal static bool TakeExploration(byte[] exploration) => ApplyExploration(exploration);
+
+        /// <summary>Hand over the explored ground we owed somebody. Used by <see cref="Underway"/>.</summary>
+        internal static void SendExplorationTo(long peer, string name)
+        {
+            var mine = MyExploration();
+            if (mine == null || mine.Length == 0) return;
+            PinNetwork.SendExchange(peer, new MapStore(), reply: false, mine);
+            TheGreatestMapMod.Log.LogInfo(
+                $"[TheGreatestMap] Sent {name} the explored ground we owed them from under way: {Bytes(mine)}.");
         }
 
         private static string Bytes(byte[] data) => data == null ? "none" : $"{data.Length / 1024f:0.#} KB";

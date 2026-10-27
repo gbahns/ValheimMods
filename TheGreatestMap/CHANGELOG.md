@@ -2,6 +2,15 @@
 
 ## 4.5.2 -- unreleased
 
+- **Comparing maps no longer throws you off a moving ship.** Taking in another player's
+  explored ground is the same work as reading a cartography table -- a few hundred
+  milliseconds on the main thread, in a single frame. At a table nobody minds. Under sail
+  the hull keeps moving through the frames the game did not draw, physics catches up in
+  steps large enough to carry the deck past you, and you come out the other side in the
+  water. Markers now go through at once, as they always did, and the explored ground is
+  held until the deck settles -- seconds, at anchor or ashore. Both players are spared,
+  not just the one who held their map out first.
+
 - **The erasure ledger is written with the map, not only when the world is put away.** A
   server is killed as often as it is stopped politely, and a ledger that only survived a
   clean shutdown came back empty after every crash. That loses no markers, but it does
