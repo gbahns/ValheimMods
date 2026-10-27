@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.5.3 -- unreleased
+## 4.5.3
 
 - **The erasure ledger is now written on the path the map is actually written on.** 4.5.2
   put that save in `SaveIfDirty`, which only runs when the world is saved or put away --
