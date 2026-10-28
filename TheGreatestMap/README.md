@@ -242,6 +242,14 @@ under unexplored ground stays hidden until you have been there. The resolution i
 — a shed is about a pixel, a base is a patch, and a road is a line a little wider than the road
 really is.
 
+The game draws that map from three pictures, not one: a flat color per biome, a mask that draws
+forest over it, and a height that decides where the sea is. So a painted pixel has its forest
+cleared too, and one that stood under the water line is lifted a meter above it — otherwise the
+black forest draws trees over the paint and a dock is painted under the sea. `Paint Over Water`
+turns the lifting off if you would rather the map kept its coastline exactly. `Paint Spread`
+decides how many map pixels around each painted one are painted as well: 1 by default, because a
+single pixel of two thousand is averaged away into the terrain when the map is drawn scaled down.
+
 Only pieces a player raised are drawn. Every piece the world generator places carries no
 builder, so ruins, camps and crypts are left out of it.
 

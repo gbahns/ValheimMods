@@ -47,10 +47,26 @@
     server keeps it for everybody and saves it beside the map. A road appears on everyone's map
     the first time anyone walks it, and stays.
 
+  - **It is drawn solidly, which took more than a color.** The game builds its map from three
+    pictures: a flat color for each biome, a mask that draws forest over it, and a height that
+    decides where the sea is and how the land is shaded. Coloring only the first came out
+    muddled -- in the black forest the mask went on drawing trees over the paint, and over water
+    nothing showed at all, because the sea is drawn from the heights and a dock painted below the
+    water line is painted under the sea. So a painted pixel now has its forest cleared as well,
+    and if it stood under the water line it is lifted a meter above it ("Paint Over Water", on by
+    default; off leaves the water alone and loses the docks). What is drawn is the paint and
+    nothing else.
+  - **And it is drawn large enough to see.** A map pixel is about ten meters, so a shed is one
+    pixel out of two thousand on a map the game scales down and smooths -- a lone pixel is
+    averaged into the terrain around it until it is a stain rather than a building. Each painted
+    pixel is grown into the ring around it ("Paint Spread", 1 by default; 0 is true to the meter
+    and easy to miss, 2 and 3 are for reading at a glance).
+
   Switched on by default. "Paint Player Buildings" and "Paint Paved Roads" are the server's,
   since they decide whether the server sweeps and whether every client samples; "Show Map
-  Painting" and the four colors are yours. **`tgm_paint`** reports what is being drawn, how
-  coarse the map is, and whether the ground under you reads as paved.
+  Painting", the four colors, the spread and the water are yours. **`tgm_paint`** reports what is
+  being drawn, how coarse the map is, whether the forest and the water are being got out of the
+  way, and whether the ground under you reads as paved.
 
 - **Places you are plainly looking at are found now, without having to aim at them.** Fuling
   villages and tar pits were the worst of it: you could stand on a rise staring straight down

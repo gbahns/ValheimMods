@@ -176,6 +176,8 @@ namespace TheGreatestMap
         internal static ConfigEntry<string> StoneColor;
         internal static ConfigEntry<string> IronColor;
         internal static ConfigEntry<string> PavedColor;
+        internal static ConfigEntry<int> PaintSpread;
+        internal static ConfigEntry<bool> PaintOverWater;
         internal static ConfigEntry<int> StopWaitingAfter;
         internal static ConfigEntry<bool> ShowTransportLabels;
         internal static ConfigEntry<bool> ShowMarkerLabels;
@@ -693,6 +695,17 @@ namespace TheGreatestMap
             PavedColor = mod.BindLocal(Painting, "Paved Color", "#9E998C",
                 "The color paved road is drawn in. Building wins where a road runs under it, so a courtyard reads as " +
                 "the building it belongs to.");
+            PaintSpread = mod.BindLocal(Painting, "Paint Spread", 1,
+                "How many map pixels around each painted one are painted too. A map pixel is about ten meters, so a " +
+                "shed is one pixel out of two thousand, and the game draws the map scaled down and smoothed -- a lone " +
+                "pixel is averaged into the terrain around it until it is a smudge rather than a building. 1 paints " +
+                "the ring around it and makes small things read; 0 draws only what is really there, true to the meter " +
+                "but easy to miss; 2 and 3 are broader still, for a map you are reading at a glance.");
+            PaintOverWater = mod.BindLocal(Painting, "Paint Over Water", true,
+                "Draw building and road that stand over water -- docks, bridges, a longhouse on stilts. The game " +
+                "decides where the sea is from the map's heights rather than its colors, so these have to be lifted " +
+                "a meter above the water line to be seen at all; that is a liberty with the map, and off leaves the " +
+                "water alone and loses them.");
 
             ShowMapInHands = mod.BindLocal("Visuals", "Show Map In Hands", true,
                 "Show a parchment map in the left hand and a pencil in the right while the pocket map is out (visible to other players too).");

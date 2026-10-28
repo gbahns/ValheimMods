@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Reflection;
+using HarmonyLib;
 using UnityEngine;
 
 namespace TheGreatestMap
@@ -37,6 +39,15 @@ namespace TheGreatestMap
     /// world. A shed is a pixel, a base is a patch, and a road is a line somewhat wider than the
     /// road really is. That is a feature as much as a limit: it matches everything else drawn on
     /// that map, so the result reads as terrain rather than as an overlay somebody bolted on.</para>
+    ///
+    /// <para>The color is not the whole of the map, which is why coloring alone came out muddled.
+    /// The game builds it from three pictures: a flat color per biome, a mask that draws forest
+    /// over it, and a height that decides where the sea is and how the land is shaded. Writing
+    /// only the color left the black forest drawing trees over our paint and the sea drawn over it
+    /// entirely -- a dock painted below the water line is painted under water. So a painted pixel
+    /// has its forest cleared and, if it was under the water line, is lifted a meter above it.
+    /// What is drawn is then the paint and nothing else, which is what "solid" has to mean on a
+    /// map the game shades for itself.</para>
     /// </summary>
     internal static class MapPaint
     {
@@ -73,6 +84,18 @@ namespace TheGreatestMap
         /// <summary>Every map pixel we have changed, and the color it had before we touched it.</summary>
         private static readonly Dictionary<int, Color32> _under = new Dictionary<int, Color32>();
 
+        /// <summary>The same pixels' forest mask, which is what was washing the color out.</summary>
+        private static readonly Dictionary<int, Color32> _underMask = new Dictionary<int, Color32>();
+
+        /// <summary>And their height, kept only for the pixels that had to be lifted out of the water.</summary>
+        private static readonly Dictionary<int, float> _underHeight = new Dictionary<int, float>();
+
+        /// <summary>
+        /// What we last wrote to each pixel. A repaint then touches only what actually moved: a
+        /// sweep that found one new shed writes nine pixels rather than every pixel in the world.
+        /// </summary>
+        private static readonly Dictionary<int, Color32> _shown = new Dictionary<int, Color32>();
+
         private static Texture2D _painted;      // the texture _under belongs to
         private static bool _dirty;
         private static float _nextApply;
@@ -90,6 +113,9 @@ namespace TheGreatestMap
             // dead one would be the error this guards against.
             _cells.Clear();
             _under.Clear();
+            _underMask.Clear();
+            _underHeight.Clear();
+            _shown.Clear();
             _painted = null;
             _dirty = false;
             _nextApply = 0f;
@@ -124,6 +150,9 @@ namespace TheGreatestMap
             if (!ReferenceEquals(tex, _painted))
             {
                 _under.Clear();
+                _underMask.Clear();
+                _underHeight.Clear();
+                _shown.Clear();
                 _painted = tex;
                 _dirty = true;
             }
@@ -140,8 +169,118 @@ namespace TheGreatestMap
 
         private static string ColorSignature()
         {
-            return (Wanted() ? "1" : "0") + "|" + Show(BuiltKind.Wood) + Show(BuiltKind.Stone)
+            return (Wanted() ? "1" : "0") + "|" + SpreadPixels() + "|" + (OverWater() ? "1" : "0") + "|"
+                   + Show(BuiltKind.Wood) + Show(BuiltKind.Stone)
                    + Show(BuiltKind.Iron) + Show(BuiltKind.Paved);
+        }
+
+        /// <summary>How far each painted pixel is grown into its neighbors, in map pixels.</summary>
+        private static int SpreadPixels() =>
+            Mathf.Clamp(TgmConfig.PaintSpread != null ? TgmConfig.PaintSpread.Value : 1, 0, 4);
+
+        /// <summary>Is a pixel under the water line lifted above it so that it can be seen?</summary>
+        private static bool OverWater() =>
+            TgmConfig.PaintOverWater == null || TgmConfig.PaintOverWater.Value;
+
+        /// <summary>How far above the water line a lifted pixel goes. Enough to be land, no more.</summary>
+        private const float Lift = 1f;
+
+        private static float WaterLine() =>
+            ZoneSystem.instance != null ? ZoneSystem.instance.m_waterLevel : 30f;
+
+        /// <summary>No forest, no mistlands haze, no ashlands sea: whatever we paint, drawn plainly.</summary>
+        private static readonly Color32 Clear = new Color32(0, 0, 0, 0);
+
+        private static FieldInfo _maskField;
+        private static FieldInfo _heightField;
+        private static bool _lookedForFields;
+
+        /// <summary>
+        /// The two pictures beside the colors. Both are private to the game, so they are reached
+        /// by reflection rather than through the publicized assembly -- that compiles against a
+        /// private field happily and then throws when it runs.
+        /// </summary>
+        private static void FindFields()
+        {
+            if (_lookedForFields) return;
+            _lookedForFields = true;
+            _maskField = AccessTools.Field(typeof(Minimap), "m_forestMaskTexture");
+            _heightField = AccessTools.Field(typeof(Minimap), "m_heightTexture");
+            if (_maskField == null || _heightField == null)
+                TheGreatestMapMod.Log.LogWarning(
+                    "[TheGreatestMap] The map's forest or height picture has moved in this version of the game. " +
+                    "The painting will still color the map, but forest will draw over it and anything over water " +
+                    "will not show. Markers are not affected.");
+        }
+
+        private static Texture2D MaskTexture(Minimap map)
+        {
+            FindFields();
+            return _maskField != null ? _maskField.GetValue(map) as Texture2D : null;
+        }
+
+        private static Texture2D HeightTexture(Minimap map)
+        {
+            FindFields();
+            return _heightField != null ? _heightField.GetValue(map) as Texture2D : null;
+        }
+
+        private static bool _maskRefused;
+        private static bool _heightRefused;
+        private static long _lastPaintMs;
+        private static int _lastPaintPixels;
+
+        /// <summary>
+        /// Clear the forest over one pixel, remembering what it was.
+        ///
+        /// <para>Written as a thing that can fail on its own. These two pictures are in whatever
+        /// format the game chose -- the heights are half-precision reds -- and a format that will
+        /// not take a single pixel write would otherwise throw in the middle of the paint, leaving
+        /// the colors half written and nothing uploaded, every time, forever. So each is tried
+        /// once and given up on with a word in the log, and the painting carries on without
+        /// it.</para>
+        /// </summary>
+        private static bool ClearForest(Texture2D mask, int pixel, int x, int y)
+        {
+            if (mask == null || _maskRefused) return false;
+            try
+            {
+                if (!_underMask.ContainsKey(pixel)) _underMask[pixel] = mask.GetPixel(x, y);
+                mask.SetPixel(x, y, Clear);
+                return true;
+            }
+            catch (System.Exception e)
+            {
+                _maskRefused = true;
+                _underMask.Clear();
+                TheGreatestMapMod.Log.LogWarning(
+                    "[TheGreatestMap] The map's forest picture would not take a write (" + e.Message +
+                    "); the painting will show but forest will draw over it.");
+                return false;
+            }
+        }
+
+        /// <summary>Lift one pixel above the water line, remembering the height it had.</summary>
+        private static bool LiftAboveWater(Texture2D height, int pixel, int x, int y, float line)
+        {
+            if (height == null || _heightRefused) return false;
+            try
+            {
+                float was = height.GetPixel(x, y).r;
+                if (was >= line) return false;
+                if (!_underHeight.ContainsKey(pixel)) _underHeight[pixel] = was;
+                height.SetPixel(x, y, new Color(line, 0f, 0f, 0f));
+                return true;
+            }
+            catch (System.Exception e)
+            {
+                _heightRefused = true;
+                _underHeight.Clear();
+                TheGreatestMapMod.Log.LogWarning(
+                    "[TheGreatestMap] The map's height picture would not take a write (" + e.Message +
+                    "); the painting will show on land but not over water.");
+                return false;
+            }
         }
 
         private static string Show(BuiltKind kind) => Wants(kind) ? ColorFor(kind).ToString() : "-";
@@ -172,9 +311,9 @@ namespace TheGreatestMap
         private static string Cfg(BepInEx.Configuration.ConfigEntry<string> entry) => entry != null ? entry.Value : null;
 
         /// <summary>
-        /// Rewrite the map texture: every pixel we want colored gets colored, every pixel we
-        /// colored before and no longer want gets the color it had back, and the whole thing is
-        /// uploaded once.
+        /// Rewrite the map: every pixel we want gets its color, its forest cleared and, if it was
+        /// under the sea, its height lifted; every pixel we changed before and no longer want gets
+        /// all three back exactly as they were; and each picture is uploaded at most once.
         /// </summary>
         private static void Paint(Minimap map, Texture2D tex)
         {
@@ -184,39 +323,105 @@ namespace TheGreatestMap
                 float pixelSize = map.m_pixelSize;
                 if (size <= 0 || pixelSize <= 0f) return;
 
-                var want = new Dictionary<int, Color>();
+                // Timed because the first paint of a session is the whole picture at once, and
+                // this client has been stalled into disconnecting by less. Nothing here waits on
+                // it: the number is in the log so that it is a measurement rather than a guess.
+                var clock = System.Diagnostics.Stopwatch.StartNew();
+                var mask = MaskTexture(map);
+                var height = HeightTexture(map);
+                bool lift = OverWater();
+                float line = WaterLine() + Lift;
+
+                var want = new Dictionary<int, BuiltKind>();
                 foreach (var kv in _cells)
                 {
                     if (!Wants(kv.Value)) continue;
-                    var color = ColorFor(kv.Value);
                     foreach (int pixel in PixelsOf(kv.Key, size, pixelSize))
                     {
                         // A building beats a road it stands on, and stone beats the wood beside
                         // it, so one pixel holding several cells says the most solid thing in it.
-                        if (want.TryGetValue(pixel, out var had) && Rank(had) >= Rank(color)) continue;
-                        want[pixel] = color;
+                        if (want.TryGetValue(pixel, out var had) && Rank(had) >= Rank(kv.Value)) continue;
+                        want[pixel] = kv.Value;
                     }
                 }
+                want = Spread(want, size);
+
+                // Worked out once rather than per pixel; a color is parsed from text every time
+                // it is asked for.
+                var paint = new Color32[5];
+                paint[(int)BuiltKind.Wood] = ColorFor(BuiltKind.Wood);
+                paint[(int)BuiltKind.Stone] = ColorFor(BuiltKind.Stone);
+                paint[(int)BuiltKind.Iron] = ColorFor(BuiltKind.Iron);
+                paint[(int)BuiltKind.Paved] = ColorFor(BuiltKind.Paved);
 
                 int changed = 0;
+                bool colorDirty = false, maskDirty = false, heightDirty = false;
                 foreach (var kv in want)
                 {
+                    var color = paint[(int)kv.Value];
+                    // Already standing: the picture is as we want it, so touching it would be a
+                    // texture upload for nothing.
+                    if (_shown.TryGetValue(kv.Key, out var already) && Same(already, color)) continue;
                     int x = kv.Key % size, y = kv.Key / size;
+
                     if (!_under.ContainsKey(kv.Key)) _under[kv.Key] = tex.GetPixel(x, y);
-                    tex.SetPixel(x, y, kv.Value);
+                    tex.SetPixel(x, y, color);
+                    _shown[kv.Key] = color;
+                    colorDirty = true;
                     changed++;
+
+                    // The forest mask drew trees over the color, which in the black forest is
+                    // everywhere: the game's own map has no notion of a clearing, so we make one.
+                    if (ClearForest(mask, kv.Key, x, y)) maskDirty = true;
+
+                    // And the height is why nothing showed over water: the sea is drawn from the
+                    // heights, not the colors, so a dock below the water line was painted and then
+                    // the sea was painted over it.
+                    if (lift && LiftAboveWater(height, kv.Key, x, y, line)) heightDirty = true;
+                }
+
+                // Switched the lifting off: the water comes back although the paint stays.
+                if (!lift && height != null && _underHeight.Count > 0)
+                {
+                    foreach (var kv in _underHeight)
+                        height.SetPixel(kv.Key % size, kv.Key / size, new Color(kv.Value, 0f, 0f, 0f));
+                    _underHeight.Clear();
+                    heightDirty = true;
                 }
 
                 var stale = new List<int>();
                 foreach (var kv in _under) if (!want.ContainsKey(kv.Key)) stale.Add(kv.Key);
                 foreach (int pixel in stale)
                 {
-                    tex.SetPixel(pixel % size, pixel / size, _under[pixel]);
+                    int x = pixel % size, y = pixel / size;
+                    tex.SetPixel(x, y, _under[pixel]);
                     _under.Remove(pixel);
+                    _shown.Remove(pixel);
+                    colorDirty = true;
                     changed++;
+                    if (_underMask.TryGetValue(pixel, out var wasMask))
+                    {
+                        if (mask != null) { mask.SetPixel(x, y, wasMask); maskDirty = true; }
+                        _underMask.Remove(pixel);
+                    }
+                    if (_underHeight.TryGetValue(pixel, out var wasHeight))
+                    {
+                        if (height != null) { height.SetPixel(x, y, new Color(wasHeight, 0f, 0f, 0f)); heightDirty = true; }
+                        _underHeight.Remove(pixel);
+                    }
                 }
 
-                if (changed > 0) tex.Apply();
+                if (colorDirty) tex.Apply();
+                if (maskDirty && mask != null) mask.Apply();
+                if (heightDirty && height != null) height.Apply();
+                if (changed > 0)
+                {
+                    _lastPaintMs = clock.ElapsedMilliseconds;
+                    _lastPaintPixels = changed;
+                    TheGreatestMapMod.Log.LogDebug(
+                        $"[TheGreatestMap] Painted {changed} map pixel(s) in {_lastPaintMs} ms; " +
+                        $"{_under.Count} standing.");
+                }
             }
             catch (System.Exception e)
             {
@@ -224,13 +429,57 @@ namespace TheGreatestMap
             }
         }
 
-        /// <summary>Which wins when two kinds land on one pixel. Nothing subtle: the heavier material.</summary>
-        private static int Rank(Color c)
+        /// <summary>The map has no alpha, so two colors are the same when they look the same.</summary>
+        private static bool Same(Color32 a, Color32 b) => a.r == b.r && a.g == b.g && a.b == b.b;
+
+        /// <summary>
+        /// Grow every painted pixel into the pixels around it.
+        ///
+        /// <para>A map pixel is about ten meters of world, so a shed is one pixel out of two
+        /// thousand, and the game draws that map scaled down and smoothed: a lone pixel is
+        /// averaged with the terrain around it until it is a smudge of the wrong color rather than
+        /// a building. Painting the ring around it as well costs nothing anybody can see -- the
+        /// map is already coarser than the thing it is drawing -- and makes a small place read as
+        /// a small place instead of as a stain.</para>
+        /// </summary>
+        private static Dictionary<int, BuiltKind> Spread(Dictionary<int, BuiltKind> want, int size)
         {
-            if (c == ColorFor(BuiltKind.Stone)) return 4;
-            if (c == ColorFor(BuiltKind.Iron)) return 3;
-            if (c == ColorFor(BuiltKind.Wood)) return 2;
-            return 1;
+            int reach = SpreadPixels();
+            if (reach <= 0 || want.Count == 0) return want;
+            var grown = new Dictionary<int, BuiltKind>(want);
+            foreach (var kv in want)
+            {
+                int x = kv.Key % size, y = kv.Key / size;
+                for (int dy = -reach; dy <= reach; dy++)
+                {
+                    int ny = y + dy;
+                    if (ny < 0 || ny >= size) continue;
+                    for (int dx = -reach; dx <= reach; dx++)
+                    {
+                        int nx = x + dx;
+                        if (nx < 0 || nx >= size) continue;
+                        int pixel = ny * size + nx;
+                        // What really stands on a pixel beats what spread onto it from next door.
+                        if (want.ContainsKey(pixel)) continue;
+                        if (grown.TryGetValue(pixel, out var had) && Rank(had) >= Rank(kv.Value)) continue;
+                        grown[pixel] = kv.Value;
+                    }
+                }
+            }
+            return grown;
+        }
+
+        /// <summary>Which wins when two kinds land on one pixel. Nothing subtle: the heavier material.</summary>
+        private static int Rank(BuiltKind kind)
+        {
+            switch (kind)
+            {
+                case BuiltKind.Stone: return 4;
+                case BuiltKind.Iron: return 3;
+                case BuiltKind.Wood: return 2;
+                case BuiltKind.Paved: return 1;
+                default: return 0;
+            }
         }
 
         private static readonly List<int> _pixels = new List<int>();
@@ -277,7 +526,16 @@ namespace TheGreatestMap
                 else if (kind == BuiltKind.Paved) paved++;
             }
             lines.Add($"cells from the server: {_cells.Count} (wood {wood}, stone {stone}, iron {iron}, paved {paved})");
-            lines.Add($"map pixels painted: {_under.Count}");
+            lines.Add($"map pixels painted: {_under.Count}, spread {SpreadPixels()} pixel(s) around each" +
+                      (_lastPaintPixels > 0 ? $"; last repaint {_lastPaintPixels} pixel(s) in {_lastPaintMs} ms" : ""));
+            FindFields();
+            lines.Add("forest cleared under the paint: " +
+                      (MaskTexture(map) != null && !_maskRefused
+                         ? "yes" : "NO -- the map's forest picture could not be written to"));
+            lines.Add("lifted above water: " + (!OverWater() ? "off (Paint Over Water)"
+                      : HeightTexture(map) != null && !_heightRefused
+                        ? $"yes, to {WaterLine() + Lift:0.#} m, for {_underHeight.Count} pixel(s)"
+                        : "NO -- the map's height picture could not be written to"));
             return lines;
         }
     }
