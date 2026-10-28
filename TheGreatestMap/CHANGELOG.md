@@ -56,6 +56,12 @@
     and if it stood under the water line it is lifted a meter above it ("Paint Over Water", on by
     default; off leaves the water alone and loses the docks). What is drawn is the paint and
     nothing else.
+  - **It survives the game drawing its own map.** The game generates the world map into the
+    texture it already has, and at a world load it does that *after* the first paint -- so the
+    paint was being written and then replaced seven seconds later, and because a repaint only
+    touches what has moved, nothing was ever drawn again. A map that has been rewritten
+    underneath us is noticed now by reading a few of our own pixels back every couple of
+    seconds, which costs nothing and catches any cause, not just this one.
   - **And it is drawn large enough to see.** A map pixel is about ten meters, so a shed is one
     pixel out of two thousand on a map the game scales down and smooths -- a lone pixel is
     averaged into the terrain around it until it is a stain rather than a building. Each painted

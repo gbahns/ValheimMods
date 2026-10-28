@@ -104,8 +104,38 @@ namespace TheGreatestMap
         /// <summary>How long after a change before the texture is rewritten. One upload, not one per cell.</summary>
         private const float Settle = 1.5f;
 
+        /// <summary>How often a few of our own pixels are read back to see whether they survived.</summary>
+        private const float CheckSeconds = 2f;
+
+        /// <summary>
+        /// How many pixels that check reads. A wipe is never partial -- the game writes the whole
+        /// picture at once -- so a handful answers the question, and a handful is free.
+        /// </summary>
+        private const int Sentinels = 16;
+
+        private static float _nextCheck;
+
         internal static int CellCount => _cells.Count;
         internal static int PaintedPixels => _under.Count;
+
+        /// <summary>
+        /// Everything we believed about the map is wrong: paint it all again from nothing.
+        ///
+        /// <para>Not the same as <see cref="Reset"/>, which is for a world change. This is for the
+        /// map being rewritten underneath us while we hold the same texture -- which the game does
+        /// at every world load, and did seven seconds after our first paint: the colors we had
+        /// written were replaced, the colors we had remembered as "underneath" were the empty
+        /// texture from before the map existed, and because we only touch what moved, nothing was
+        /// ever drawn again.</para>
+        /// </summary>
+        private static void Forget()
+        {
+            _under.Clear();
+            _underMask.Clear();
+            _underHeight.Clear();
+            _shown.Clear();
+            _dirty = true;
+        }
 
         internal static void Reset()
         {
@@ -145,16 +175,27 @@ namespace TheGreatestMap
             var tex = map.m_mapTexture;
             if (tex == null) return;
 
-            // The game rebuilt its world map (a world load): whatever we remembered was underneath
-            // belongs to a texture that no longer exists, and the new one is clean.
+            // A different texture altogether: whatever we remembered was underneath belongs to one
+            // that no longer exists, and this one is somebody else's.
             if (!ReferenceEquals(tex, _painted))
             {
-                _under.Clear();
-                _underMask.Clear();
-                _underHeight.Clear();
-                _shown.Clear();
                 _painted = tex;
-                _dirty = true;
+                Forget();
+            }
+
+            // The same texture, rewritten. This is the one that caught us out: the game generates
+            // its world map into the texture it already had, which it did seven seconds after our
+            // first paint, and nothing about the texture itself changes when it does. So the only
+            // honest way to know is to read back something we wrote.
+            if (Time.unscaledTime >= _nextCheck)
+            {
+                _nextCheck = Time.unscaledTime + CheckSeconds;
+                if (Wiped(tex, map.m_textureSize))
+                {
+                    TheGreatestMapMod.Log.LogDebug(
+                        "[TheGreatestMap] The game rewrote the world map; painting it again.");
+                    Forget();
+                }
             }
 
             // A color change is as much a change as a new cell, and costs the same repaint.
@@ -165,6 +206,23 @@ namespace TheGreatestMap
             _dirty = false;
             _nextApply = Time.unscaledTime + Settle;
             Paint(map, tex);
+        }
+
+        /// <summary>Is what we last wrote still there?</summary>
+        private static bool Wiped(Texture2D tex, int size)
+        {
+            if (_shown.Count == 0 || size <= 0) return false;
+            try
+            {
+                int looked = 0;
+                foreach (var kv in _shown)
+                {
+                    if (!Same(tex.GetPixel(kv.Key % size, kv.Key / size), kv.Value)) return true;
+                    if (++looked >= Sentinels) break;
+                }
+            }
+            catch (System.Exception) { return false; }
+            return false;
         }
 
         private static string ColorSignature()
