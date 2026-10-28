@@ -349,6 +349,11 @@ namespace TheGreatestMap
         private static void RPC_Cells(long sender, ZPackage pkg)
         {
             if (pkg == null) return;
+            // Everybody includes us: InvokeRoutedRPC runs the local handler too. Broadcast has
+            // already handed MapPaint the picture straight from the sweep, so re-reading our own
+            // package would be the same answer for the cost of parsing it -- and on a developed
+            // world that package is the largest thing this mod sends.
+            if (IsServer) return;
             var cells = new Dictionary<int, BuiltKind>();
             int n = pkg.ReadInt();
             for (int i = 0; i < n && pkg.GetPos() < pkg.Size(); i++)

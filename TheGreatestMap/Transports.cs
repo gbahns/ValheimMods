@@ -37,10 +37,18 @@ namespace TheGreatestMap
 
         /// <summary>
         /// How far a vessel must have moved since we last said so before it is worth saying
-        /// again. A moored ship rides the swell and a cart settles on its wheels; neither is
-        /// news, and below a meter nothing is visible on the map anyway.
+        /// again, measured flat.
+        ///
+        /// <para>Flat because the map has no third dimension: a moored ship rides the swell,
+        /// which is mostly up and down, and judging that as movement would have every harbor in
+        /// the world reporting itself forever. Horizontally a ship at anchor barely stirs.</para>
+        ///
+        /// <para>Three quarters of a meter because a cart is the slow case. A player at walking
+        /// pace covers about 0.6 m in a tick, so a threshold of a meter and a half meant a cart
+        /// was only reported every third tick -- the thing most in need of this got the least of
+        /// it. A ship under sail passes it every tick regardless.</para>
         /// </summary>
-        private const float MovedEnough = 1.5f;
+        private const float MovedEnough = 0.75f;
 
         /// <summary>
         /// A number for the list, so a move can say "the third vessel" without carrying an
@@ -51,6 +59,13 @@ namespace TheGreatestMap
         /// </summary>
         private static int _gen;
         private static float _nextLive;
+
+        // Counted so that a player can see whether movement is reaching them at all. Not having
+        // this is why the feature could be wholly absent and look like a tuning problem: the
+        // only honest answer to "is it working" was on the server, where nobody was looking.
+        private static int _movesSeen;
+        private static int _movesLast;
+        private static float _moveAt = -1f;
 
         /// <summary>How often a moving vessel's position is passed on. Server side only.</summary>
         private static float LiveSeconds =>
@@ -110,6 +125,9 @@ namespace TheGreatestMap
             _nextSweep = 0f;
             _nextLive = 0f;
             _gen = 0;
+            _movesSeen = 0;
+            _movesLast = 0;
+            _moveAt = -1f;
             _lastServerSignature = "";
         }
 
@@ -314,6 +332,14 @@ namespace TheGreatestMap
         private static void RPC_List(long sender, ZPackage pkg)
         {
             if (pkg == null) return;
+            // Our own broadcast, come back around. InvokeRoutedRPC with Everybody hands the call
+            // to the local handler as well as to the peers -- on a dedicated server just as much
+            // as on a host -- so this fires on the very machine that sent it. Taking it in
+            // replaced the list we had just built with a copy read off the wire, and the wire
+            // carries no object ids, so every vessel lost the handle that lets its position be
+            // read again. StepLive then skipped all of them and nothing ever moved between
+            // sweeps: the whole feature, silently absent, with no error anywhere.
+            if (IsServer) return;
             _live.Clear();
             int n = pkg.ReadInt();
             for (int i = 0; i < n; i++)
@@ -344,6 +370,9 @@ namespace TheGreatestMap
             int gen = pkg.ReadInt();
             if (gen != _gen) return;   // about a list we do not have
             int n = pkg.ReadInt();
+            _movesSeen++;
+            _movesLast = n;
+            _moveAt = Time.time;
             for (int i = 0; i < n && pkg.GetPos() < pkg.Size(); i++)
             {
                 int index = pkg.ReadInt();
@@ -367,7 +396,10 @@ namespace TheGreatestMap
                 {
                     _gen++;
                     Send(ZRoutedRpc.Everybody, _live);
-                    _redrawWanted = true;   // a host plays on its own server
+                    // A host plays on its own server and draws from this very list, so it is told
+                    // here rather than by the broadcast it is no longer allowed to read.
+                    _haveList = true;
+                    _redrawWanted = true;
                 }
                 // Whatever the sweep is doing, what is already known can still be moving.
                 StepLive();
@@ -412,7 +444,7 @@ namespace TheGreatestMap
                 var zdo = zdoMan.GetZDO(v.Id);
                 if (zdo == null || !zdo.IsValid()) continue;   // gone: the next sweep will say so
                 var now = zdo.GetPosition();
-                if (Vector3.Distance(now, v.Pos) < MovedEnough) continue;
+                if (Geo.FlatDistance(now, v.Pos) < MovedEnough) continue;
                 v.Pos = now;
                 if (moved == null) moved = new List<int>();
                 moved.Add(i);
@@ -630,7 +662,15 @@ namespace TheGreatestMap
                 lines.Add($"Passing on movement every {LiveSeconds:0.00} s for {tracked} of {_live.Count} vessel(s), " +
                           $"once they have moved {MovedEnough:0.#} m; list generation {_gen}");
             }
-            else lines.Add($"List generation {_gen}" + (_haveList ? "" : " (none yet)"));
+            else
+            {
+                lines.Add($"List generation {_gen}" + (_haveList ? "" : " (none yet)"));
+                lines.Add(_moveAt < 0f
+                    ? "Movement from the server: NONE received. Either nothing has moved since you " +
+                      "logged in, or the server is on a version without it."
+                    : $"Movement from the server: {_movesSeen} message(s), the last {Time.time - _moveAt:0.0} s " +
+                      $"ago about {_movesLast} vessel(s)");
+            }
             return lines;
         }
     }

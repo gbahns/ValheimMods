@@ -20,6 +20,14 @@
   end of the vessel list where an older client simply stops reading, and the movement message is
   one it never registered, so it keeps the five-second behavior it has today.
 
+  Carts are measured the same way as ships but they are the slow case: a player at walking pace
+  covers about 0.6 m in a tick, so the threshold is three quarters of a meter and is measured
+  flat. Flat because the map has no third dimension and a moored ship's swell is mostly up and
+  down; three quarters of a meter because a meter and a half meant a cart was only reported every
+  third tick, so the thing most in need of this got the least of it.
+
+  `tgm_transports` now says whether movement is reaching you at all, and how long ago.
+
 - **What players have built, and the roads they have paved, are colored into the map.** Not
   markers: a base is not a point, and a marker cannot say whether a place is a shed or a hall.
   Wooden building draws brown, stone gray, iron slate, and paved road its own pale color, all
