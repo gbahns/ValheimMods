@@ -236,9 +236,11 @@ Markers say *what is here*. They cannot say how big it is, or what runs between.
 building and paved roads are colored into the map instead — wooden building brown, stone gray,
 iron slate, paved road its own pale shade, each configurable under `[Map Painting]`.
 
-**Off by default.** `Player Structures Enabled` under `[Map Painting]` is the server's, and until it is on nothing
-here happens at all: no sweeping, no sampling, nothing sent, and any map already painted goes
-back to the way the game drew it.
+When enabled, draws colors on the map to represent player-built structures and roads.
+**`Player Structures Enabled` is off by default**, while this is still being got right. It lives
+under `[Map Painting]` and is the server's; until it is on nothing here happens at all — no
+sweeping, no sampling, nothing sent, and any map already painted goes back to the way the game
+drew it.
 
 It goes into the map picture the game itself draws, which means the large map, the minimap and
 the parchment in your hands all show it, with panning, zoom and fog handled for free: a base

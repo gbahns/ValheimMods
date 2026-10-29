@@ -19,8 +19,8 @@
 
   Both are the server's work, so the server needs this version before the map gets any tidier.
 
-- **The map painting is off by default now, behind one switch.** `Player Structures Enabled`
-  under `[Map Painting]`, the server's, and off means off: the server does not sweep, no client samples
+- **The map painting is off by default now, behind one switch**, while it is still being got
+  right. `Player Structures Enabled` under `[Map Painting]`, the server's, and off means off: the server does not sweep, no client samples
   the ground it walks over, nothing is sent, and a map that was already painted is put back
   exactly as the game drew it. Everything else in that section only matters once it is on.
 
