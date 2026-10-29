@@ -59,11 +59,12 @@ namespace TheGreatestMap
             int kinded = NameTheKindOnly();
             int rekinded = KindTheHandPlaced();
             int traders = RetireTraders();
+            int blanks = ForgetBlanks();
             // Whatever the catalog could not settle, the world is asked about -- and answers only
             // count where they agree with the icon the marker already wears. The answer comes
             // back later, over the network, and says what it did in the log itself.
             Repair.Run();
-            if (named == 0 && identified == 0 && kinded == 0 && rekinded == 0 && traders == 0) return;
+            if (named == 0 && identified == 0 && kinded == 0 && rekinded == 0 && traders == 0 && blanks == 0) return;
             ClientPins.Restyle();
             var parts = new System.Collections.Generic.List<string>();
             if (identified > 0) parts.Add($"worked out what {identified} marker(s) stand for");
@@ -71,10 +72,66 @@ namespace TheGreatestMap
             if (named > 0) parts.Add($"marked {named} as placed by hand");
             if (rekinded > 0) parts.Add($"gave {rekinded} placed by hand their kind back");
             if (traders > 0) parts.Add($"retired {traders} trader marker(s) the game marks by itself");
+            if (blanks > 0) parts.Add($"erased {blanks} marker(s) that stood for nothing beside one that stands for something");
             TheGreatestMapMod.Log.LogInfo(
                 "[TheGreatestMap] Brought the map up to date: " + string.Join(", ", parts.ToArray()) +
                 ". Markers written before the mod recorded what a thing is are filled in once, " +
                 "here, so nobody has to run anything.");
+        }
+
+        /// <summary>
+        /// Erase the markers that say nothing at all, where something else says it instead.
+        ///
+        /// <para>A marker with no source, no icon, no kind and no name is not a marker: it is a
+        /// plain dot on the map standing for nothing, and nothing on it can ever be identified,
+        /// because identifying works from the very fields it is missing. Twenty-five of these
+        /// were made on the live map by the bug noted on Identify.Mistaken, each
+        /// one a tar pit marker with its identity taken off, and each sitting on the spot of the
+        /// tar pit marker that came back from the server afterwards -- so the map showed every tar
+        /// pit twice, once properly and once as a dot.</para>
+        ///
+        /// <para>Only where a marker that does know what it is stands on the same spot, which is
+        /// what makes the blank one redundant rather than merely unhelpful. A blank standing on
+        /// its own is left alone: it is still noise, but erasing it would be this pass deciding
+        /// something it cannot see, and the rule above says not to.</para>
+        ///
+        /// <para>Erased without suppressing the spot, like the crop markers: nothing should stop
+        /// the thing being recorded again properly. The tombstone travels, so one player's
+        /// cleanup is everybody's, which it has to be -- otherwise the blank comes back from the
+        /// next map we merge with.</para>
+        /// </summary>
+        private const float Twin = 4f;
+
+        private static bool SaysNothing(SharedPin pin)
+        {
+            return pin != null && pin.Auto
+                && string.IsNullOrEmpty(pin.Source)
+                && string.IsNullOrEmpty(pin.StoredIcon)
+                && string.IsNullOrEmpty(pin.StoredKind)
+                && string.IsNullOrEmpty(pin.Name);
+        }
+
+        private static int ForgetBlanks()
+        {
+            var blanks = new System.Collections.Generic.List<SharedPin>();
+            foreach (var pin in ClientPins.All) if (SaysNothing(pin)) blanks.Add(pin);
+            if (blanks.Count == 0) return 0;   // the usual case, and it costs one pass of the map
+            int gone = 0;
+            foreach (var blank in blanks)
+            {
+                bool twinned = false;
+                foreach (var other in ClientPins.All)
+                {
+                    if (other == blank || string.IsNullOrEmpty(other.Source)) continue;
+                    if (Geo.FlatDistance(other.Pos, blank.Pos) > Twin) continue;
+                    twinned = true;
+                    break;
+                }
+                if (!twinned) continue;
+                ClientPins.RemoveStale(blank.Key);
+                gone++;
+            }
+            return gone;
         }
 
         /// <summary>

@@ -78,20 +78,43 @@ namespace TheGreatestMap
             return null;
         }
 
-        /// <summary>What kind the catalog files a thing under now, or null if it has no line for it.</summary>
+        /// <summary>
+        /// What kind the catalog files a thing under now, or null if it has no line for it.
+        ///
+        /// <para>The question goes to the catalog itself rather than to the table of rows built
+        /// above, because a row and a line are not the same thing. A line may be a prefix --
+        /// <c>TarPit*</c> covers TarPit1, TarPit2 and TarPit3 -- and the table is keyed by the
+        /// row's name with the star taken off, so asking it about TarPit3 found nothing while
+        /// every other part of the mod matched it happily. Read as "the catalog has no line for
+        /// this at all", which is what the callers do, that answer is a lie, and it cost the tar
+        /// pits their identity: see the note on Mistaken below.</para>
+        /// </summary>
         private static Category? Filed(string source, Dictionary<string, Category> byPrefab)
         {
             if (string.IsNullOrEmpty(source)) return null;
-            return byPrefab.TryGetValue(source, out var cat) ? cat : (Category?)null;
+            if (byPrefab.TryGetValue(source, out var cat)) return cat;
+            // Prefix lines, the built-in list, and the _frac twins of breakables -- all the ways
+            // a prefab can be catalogued without being spelled out as a row.
+            return Catalog.CategoryOf(source);
         }
 
         /// <summary>
         /// A marker whose remembered identity contradicts its kind. The one way that happens is a
         /// resource named after the building it stands in, which an earlier pass of this could do
         /// before it learned to leave supplies alone.
+        ///
+        /// <para>This wiped every tar pit marker on the live map, twenty-five of them, because
+        /// <c>TarPit*</c> is the one wildcard line in a resource kind: Filed said
+        /// the catalog had never heard of TarPit3, so the only remaining explanation for the name
+        /// was a building the world had answered with, and the source was thrown away. Plain
+        /// "TarPit" matched the table exactly and survived, which is what gave it away.</para>
+        ///
+        /// <para>A kind-only source already says as much as can be said and names no prefab, so
+        /// there is nothing here for it to contradict.</para>
         /// </summary>
         private static bool Mistaken(SharedPin pin, Dictionary<string, Category> byPrefab)
         {
+            if (SharedPin.IsKindOnly(pin.Source)) return false;
             var kind = ClientPins.KindOf(pin);
             if (!kind.HasValue || !Categories.IsResource(kind.Value)) return false;
             var filed = Filed(pin.Source, byPrefab);
@@ -174,11 +197,22 @@ namespace TheGreatestMap
                 {
                     // A supply of something that was told it is a building: that can only have
                     // come from standing inside one, and it makes the marker draw as a house.
-                    // Forgetting the answer puts it back to the icon it was written with.
+                    //
+                    // Forgetting the answer used to put the marker back to the icon it was
+                    // written with. Since a map goes out a field at a time there is no such icon:
+                    // a marker whose picture and kind both follow from its source writes neither
+                    // of them down, so clearing the source left a marker with no source, no icon,
+                    // no kind and no name -- a plain dot standing for nothing, and beyond
+                    // identifying ever again. The kind is the one thing still known here (it is
+                    // what brought us into this branch), so the marker keeps it: "some kind of
+                    // berry, we no longer claim to know which" draws the kind's own picture and
+                    // is the truth.
                     if (Mistaken(pin, byPrefab))
                     {
                         result.Corrected++;
-                        if (apply) ClientPins.Reidentify(pin, "");
+                        var known = ClientPins.KindOf(pin);
+                        if (apply)
+                            ClientPins.Reidentify(pin, known.HasValue ? SharedPin.KindOnly(known.Value) : "");
                         continue;
                     }
                     result.Known++;

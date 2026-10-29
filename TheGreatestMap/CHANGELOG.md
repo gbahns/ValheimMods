@@ -2,6 +2,29 @@
 
 ## 4.6.2 — unreleased
 
+- **Tar pit markers were losing what they are and turning into plain dots.** Every login, the
+  pass that brings a map up to date asked whether each marker's source was in the catalog, and
+  asked it in the one way that cannot see a wildcard line -- so `TarPit*` answered for TarPit1,
+  TarPit2 and TarPit3 everywhere in the mod except there. Reading that as "the catalog has never
+  heard of this", the pass concluded the name must be wrong and threw it away; and since a marker
+  whose picture and kind both follow from its source writes neither of them down, throwing the
+  source away left a marker with no source, no icon, no kind and no name. Twenty-five of them on
+  the live map, one for every tar pit anybody had marked since the 26th, each sitting beside the
+  tar pit marker that came back from the server afterwards. Plain `TarPit` matched exactly and was
+  never touched, which is what gave it away.
+
+  Three fixes, because it took three mistakes: the question now goes to the catalog itself, which
+  knows about prefix lines, the built-in list and the `_frac` twins of breakables; correcting a
+  marker that really is misidentified now leaves it saying what kind it is rather than saying
+  nothing at all; and the markers already blanked are erased at the next login where a marker
+  that does know what it is stands on the same spot. The erasure travels, so one player's login
+  tidies everybody's map.
+
+- **"Show all" on the map now shows all of it.** It put back the kinds, the master switch and the
+  crossed-off groups, but not icons hidden one picture at a time with "Hide all X markers" -- so
+  hiding cloudberries could only be undone from a marker's own menu, and every marker it applied
+  to was hidden. It now does exactly what `tgm_show` does, markers hidden one at a time included.
+
 - **Wooden building is drawn in the lighter brown of the game's own wood pieces.** The darker
   brown it used to be was close enough to the map's swamp color that people read it as swamp,
   which is worse than not drawing it -- a map that says the wrong thing costs more than a map

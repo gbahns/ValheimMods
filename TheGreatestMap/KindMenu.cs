@@ -249,14 +249,19 @@ namespace TheGreatestMap
             dimg.raycastTarget = false;
             Place((RectTransform)divider.transform, ColumnWidth + Gap * 0.5f - 0.5f, -Pad, 1f, -y - Pad);
 
-            // Everything back, both columns: the kinds, the master and every crossed-off switch.
+            // Everything back: the kinds, the master switch, the crossed-off groups, the icons
+            // hidden one picture at a time and the markers hidden one at a time. The same work as
+            // tgm_show, and it has to be, because this is the button people press.
+            //
+            // It used to put back only the kinds, the master switch and the crossed-off groups,
+            // which left "Hide all Cloudberries markers" with no way back on the map at all: the
+            // one control that undid it lived in a marker's own menu, and every marker it applied
+            // to was hidden. A button called "Show all" that shows most of it is worse than no
+            // button, because it answers the question and the answer is wrong.
             var showAll = MenuKit.Row(_root.transform, "Show all", true, () =>
             {
-                foreach (var k in Categories.All)
-                    if (TgmConfig.ShowKind.TryGetValue(k, out var e) && !e.Value) e.Value = true;
-                if (TgmConfig.ShowAllMarkers != null) TgmConfig.ShowAllMarkers.Value = true;
-                Focus.Clear();
-                CrossedOff.ShowAll();
+                ViewPrefs.Clear();
+                TgmConfig.ShowEverything();
                 ClientPins.Restyle();
                 Refresh();
             });

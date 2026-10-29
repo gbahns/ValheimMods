@@ -86,8 +86,9 @@ per-kind switches, it also covers markers that have no kind, such as ones you pl
 map, each with its icon; click any of them to hide or show that kind without leaving the map, and the
 list stays open so you can change several. On the right are the markers that have been crossed off,
 described below: cleared deposits as one switch, then searched places by type, with a count on each.
-The list also carries the hide-all row and a "Show all" row that turns everything in both columns
-back on. Config "Marker Button On Map" turns the button off.
+The list also carries the hide-all row and a "Show all" row that puts back everything any of these
+switches hides -- the kinds, the crossed-off groups, icons hidden one picture at a time and markers
+hidden one at a time -- the same as `tgm_show`. Config "Marker Button On Map" turns the button off.
 
 **Finding one thing.** At the top of that list is a find box. Type into it and the map keeps only
 the markers mentioning what you typed, as the letters go in: "frost" leaves the frost caves,
