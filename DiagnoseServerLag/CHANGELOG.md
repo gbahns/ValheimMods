@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.10.21 - 2026-10-29
+
+- **Fixed: 0.10.20 spammed dedicated server logs** with `Can't return the graphics config when
+  it's not loaded!` every five seconds. 0.10.20 added a line reporting which graphics preset is in
+  force, and read it through accessors that reach for a configuration asset a dedicated server
+  never loads - so the server logged an error on every poll, and the rest of its settings line was
+  lost to the exception that followed. The preset check is now skipped entirely on a machine with
+  no graphics device, and on machines that have one it reads only the two members that cannot
+  log or throw.
+
+  Thanks to DEX for the report. If you run a dedicated server, this is the only reason to take
+  0.10.21 - nothing else changed, and nothing was wrong on the client side.
+
+- The preset line no longer names the preset, because the name is only reachable through the asset
+  that caused the problem. It now reports what the preset changes, which is the part worth having:
+  `preset=overrides-the-menu (LOD 2->3 ShadowQuality 1->2 Vsync on->off)`. Nothing is printed when
+  the settings menu is in force, which is the ordinary case.
+
 ## 0.10.20 - 2026-10-27
 
 - **The settings line says which graphics preset is in force.** It was reading the individual

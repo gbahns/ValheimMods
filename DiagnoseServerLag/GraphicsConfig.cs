@@ -113,9 +113,6 @@ namespace DiagnoseServerLag
             { "SSAO",          "SSAO_2" },
         };
 
-        /// <summary>The "Custom" preset: the only one that leaves the player's own values in force.</summary>
-        private const int CustomPresetID = 100;
-
         /// <summary>
         /// Which graphics preset is in force, and what it changes about the values above.
         ///
@@ -140,13 +137,31 @@ namespace DiagnoseServerLag
         /// </summary>
         private static string PresetNote()
         {
+            // No graphics device, no graphics configuration.
+            //
+            // A dedicated server never loads the config asset, and GraphicsSettingsManager reaches
+            // for it on almost every public member. Its private Config property logs
+            // "Can't return the graphics config when it's not loaded!" on each call, and
+            // CurrentPresetID goes further: it dereferences the null that
+            // GetCurrentGraphicsModeConfiguration hands back, so it throws as well.
+            //
+            // 0.10.20 shipped without this guard and spammed dedicated server logs every five
+            // seconds - reported by DEX two days after release. The settings line is rebuilt on a
+            // timer, so a side effect inside it is a side effect forever, on somebody else's
+            // server. A diagnostic that reads state must not log, allocate or throw while doing it.
+            if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null)
+                return "";
+
             var mgr = GraphicsSettingsManager.Instance;
             if (mgr == null) return "";
-            if (mgr.CurrentPresetID == CustomPresetID) return "preset=Custom";
 
-            GraphicsSettingsPreset found;
-            GraphicsSettingsState live = mgr.GetCurrentSettingsWithCurrentPresetApplied(true, out found);
-            string name = found == null ? mgr.CurrentPresetID.ToString() : found.ToString();
+            // ActiveSettings and CurrentPlayerSettingsRaw return their backing fields and do
+            // nothing else, which is the whole reason they are the only two members used here.
+            // CurrentPresetID, GetCurrentSettingsWithCurrentPresetApplied and
+            // GetCurrentGraphicsModeConfiguration all read Config, so none of them can appear in a
+            // diagnostic - which also costs the preset's name, since that is only reachable
+            // through the config. The comparison below says what a name would have implied anyway.
+            GraphicsSettingsState live = mgr.ActiveSettings;
             GraphicsSettingsState raw = mgr.CurrentPlayerSettingsRaw;
 
             var diff = new List<string>();
@@ -164,9 +179,16 @@ namespace DiagnoseServerLag
             if (live.m_presentSettings.m_fpsLimit != raw.m_presentSettings.m_fpsLimit)
                 diff.Add($"FpsLimit {raw.m_presentSettings.m_fpsLimit}->{live.m_presentSettings.m_fpsLimit}");
 
+            // Nothing to say when the menu is in force - that is the ordinary case, and this line
+            // is long enough already.
+            //
+            // The parentheses are not decoration. GraphicsWatch.Parse splits this line on spaces,
+            // so a multi-word value has to arrive as a parenthesized group for it to be read back
+            // as one value instead of a handful of flags named after the words in it. That bug
+            // reported one setting change five times in 0.10.17.
             return diff.Count == 0
-                ? $"preset={name}"
-                : $"preset={name}, which is what is running and not the values above: " + string.Join(" ", diff.ToArray());
+                ? ""
+                : "preset=overrides-the-menu (" + string.Join(" ", diff.ToArray()) + ")";
         }
 
         private static string Yes(bool b) { return b ? "on" : "off"; }
