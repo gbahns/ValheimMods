@@ -160,6 +160,12 @@ namespace TheGreatestMap
                 if (prefab.GetComponent<Piece>() == null) return;
                 var wear = prefab.GetComponent<WearNTear>();
                 if (wear == null) return;
+                // A ship and a cart are built pieces like any other and wear out like any other,
+                // so they arrive here looking exactly like a wall. They are not building: they
+                // move, and Transports already draws them where they are. Painting them as well
+                // left a brown rectangle wherever anybody had parked.
+                if (prefab.GetComponentInChildren<Ship>(true) != null) return;
+                if (prefab.GetComponentInChildren<Vagon>(true) != null) return;
                 found[prefab.name.GetStableHashCode()] = Paint(wear.m_materialType);
             }
 
@@ -178,6 +184,8 @@ namespace TheGreatestMap
         {
             public int Sector;
             public readonly Dictionary<int, BuiltKind> Found = new Dictionary<int, BuiltKind>();
+            /// <summary>How many player-built pieces stand in each cell, which is what tells a hut from a torch.</summary>
+            public readonly Dictionary<int, int> Density = new Dictionary<int, int>();
             public int Pieces;
         }
 
@@ -240,8 +248,10 @@ namespace TheGreatestMap
                     // piece the world generator placed has no builder on it.
                     if (zdo.GetLong(ZDOVars.s_creator, 0L) == 0L) continue;
                     _sweep.Pieces++;
-                    if (_sweep.Found.Count >= MaxCells) continue;
                     int key = MapPaint.Key(zdo.GetPosition());
+                    _sweep.Density.TryGetValue(key, out int standing);
+                    _sweep.Density[key] = standing + 1;
+                    if (_sweep.Found.Count >= MaxCells && !_sweep.Found.ContainsKey(key)) continue;
                     // Stone shows through wood: a stone keep with a wooden roof is a stone keep.
                     if (_sweep.Found.TryGetValue(key, out var had) && Heavier(had, material)) continue;
                     _sweep.Found[key] = material;
@@ -249,7 +259,7 @@ namespace TheGreatestMap
                 if (++looked >= SectorsPerFrame) return false;   // pick this up next frame
             }
 
-            var picture = _sweep.Found;
+            var picture = Built(_sweep.Found, _sweep.Density);
             int pieces = _sweep.Pieces;
             _sweep = null;
             _nextSweep = Time.time + SweepSeconds;
@@ -257,6 +267,43 @@ namespace TheGreatestMap
                 TheGreatestMapMod.Log.LogWarning(
                     $"[TheGreatestMap] Player building fills more than {MaxCells} cells; the map painting stops there.");
             return Rebuild(picture);
+        }
+
+        private static int LeastPieces() =>
+            TgmConfig.PaintLeastPieces != null ? Mathf.Max(1, TgmConfig.PaintLeastPieces.Value) : 6;
+
+        /// <summary>
+        /// Throw away the cells that hold a thing rather than a place.
+        ///
+        /// <para>Everything a player raises counts as building to the sweep, because everything a
+        /// player raises is a piece: the campfire somebody lit while exploring, the workbench put
+        /// down to repair a hammer, the lone portal in a field, the torch on a hilltop. Each of
+        /// those was coming out as a brown rectangle on the map in a place with nothing in it,
+        /// which is worse than drawing nothing -- a map people cannot trust is a map they stop
+        /// reading.</para>
+        ///
+        /// <para>What tells those apart from a building is not what they are but how much of it
+        /// there is: a hut is twenty pieces in a few meters, a campfire is one. So a cell is kept
+        /// when the nine cells around it -- about twenty-four meters square, which is a small
+        /// house -- hold enough pieces between them. The neighborhood rather than the cell alone,
+        /// so that a long wall or a jetty running off the side of a base stays drawn instead of
+        /// being chopped off where the pieces thin out.</para>
+        /// </summary>
+        private static Dictionary<int, BuiltKind> Built(Dictionary<int, BuiltKind> found, Dictionary<int, int> density)
+        {
+            int least = LeastPieces();
+            if (least <= 1) return found;
+            var kept = new Dictionary<int, BuiltKind>();
+            foreach (var kv in found)
+            {
+                int around = 0;
+                for (int dz = -1; dz <= 1 && around < least; dz++)
+                    for (int dx = -1; dx <= 1 && around < least; dx++)
+                        if (density.TryGetValue(MapPaint.Neighbor(kv.Key, dx, dz), out int standing))
+                            around += standing;
+                if (around >= least) kept[kv.Key] = kv.Value;
+            }
+            return kept;
         }
 
         private static bool Heavier(BuiltKind had, BuiltKind now)
@@ -410,7 +457,8 @@ namespace TheGreatestMap
         {
             var lines = new List<string>();
             lines.Add(IsServer
-                ? $"server: {_paved.Count} paved cell(s) remembered, sweeping every {SweepSeconds:0} s" +
+                ? $"server: {_paved.Count} paved cell(s) remembered, sweeping every {SweepSeconds:0} s, " +
+                  $"drawing a cell only where {LeastPieces()} piece(s) stand within a cell of it" +
                   (_sweep != null ? $", one in progress ({_sweep.Pieces} player-built piece(s) in {_sweep.Found.Count} cells so far)" : "")
                 : "client: " + (_have ? "have the server's picture" : "WAITING for the server's picture"));
             lines.AddRange(Roads.Describe());

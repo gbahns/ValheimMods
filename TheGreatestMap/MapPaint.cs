@@ -68,6 +68,17 @@ namespace TheGreatestMap
             return (cx << 16) | (cz & 0xFFFF);
         }
 
+        /// <summary>
+        /// The key of the cell dx, dz cells away. Here rather than at the caller because the way
+        /// two cell numbers pack into one int is this file's business and nobody else's.
+        /// </summary>
+        internal static int Neighbor(int key, int dx, int dz)
+        {
+            int cx = (key >> 16) + dx;
+            int cz = (key & 0xFFFF) + dz;
+            return (cx << 16) | (cz & 0xFFFF);
+        }
+
         internal static Vector3 Center(int key)
         {
             int cx = (key >> 16) - CellBias;

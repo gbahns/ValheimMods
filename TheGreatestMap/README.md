@@ -253,6 +253,12 @@ single pixel of two thousand is averaged away into the terrain when the map is d
 Only pieces a player raised are drawn. Every piece the world generator places carries no
 builder, so ruins, camps and crypts are left out of it.
 
+And only where there is enough of it. Everything a player raises is a piece, so a campfire lit
+while exploring or a workbench put down to repair a hammer would otherwise be a building in the
+middle of nowhere; a cell is drawn where `Least Pieces To Draw` pieces stand within a cell of it,
+which is a hut and not a torch. Ships and carts are left out of it too — they are built pieces
+like any other, but they move, and the live markers already draw them.
+
 Roads work the other way round from everything else here. Paving is paint on the terrain, and
 terrain only exists where somebody is standing, so there is nothing to sweep: each client reports
 the paved ground it walks over, and the server keeps it for everybody and saves it beside the

@@ -1,5 +1,24 @@
 # Changelog
 
+## 4.6.1 — unreleased
+
+- **The map painting drew brown rectangles in places with nothing in them.** Two reasons, and
+  both of them are what the sweep was told rather than what it did.
+
+  - Everything a player raises is a piece, so a campfire lit while exploring, a workbench put
+    down to repair a hammer, a lone portal in a field and a torch on a hilltop all counted as
+    building -- and each came out as a rectangle thirty meters across, because a single map pixel
+    is grown so that small things can be seen at all. What tells those apart from a building is
+    not what they are but how much of it there is, so a cell is drawn now only where several
+    pieces stand within a cell of it ("Least Pieces To Draw", 6 by default; 1 draws everything,
+    as it used to). The neighborhood rather than the cell alone, so a wall or a jetty running off
+    the side of a base is not chopped off where the pieces thin out.
+  - A ship and a cart are built pieces that wear out like any other, so they reached the sweep
+    looking exactly like a wall -- and they move, which left a brown rectangle wherever anybody
+    had ever parked. They are left to the live markers that already draw them.
+
+  Both are the server's work, so the server needs this version before the map gets any tidier.
+
 ## 4.6.0 -- 2026-10-28
 
 - **A ship under sail slides along the map instead of jumping every five seconds.** Finding a

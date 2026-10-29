@@ -171,6 +171,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> PaintBuildings;
         internal static ConfigEntry<bool> PaintRoads;
         internal static ConfigEntry<float> BuildSweepSeconds;
+        internal static ConfigEntry<int> PaintLeastPieces;
         internal static ConfigEntry<bool> ShowMapPaint;
         internal static ConfigEntry<string> WoodColor;
         internal static ConfigEntry<string> StoneColor;
@@ -680,6 +681,14 @@ namespace TheGreatestMap
                 "sweep the mod does -- four hundred prefabs across every sector -- and a base does not move, so it is " +
                 "spread over many frames and run rarely. Paved ground does not wait on this: a road reported by a " +
                 "player is passed on at once.");
+            PaintLeastPieces = mod.BindSynced(Painting, "Least Pieces To Draw", 6,
+                "How much building has to stand in one place before the map draws it. Everything a player raises is " +
+                "a piece, so without this the campfire somebody lit while exploring, the workbench put down to " +
+                "repair a hammer and the lone torch on a hilltop all came out as buildings in the middle of " +
+                "nowhere. A cell is drawn when this many pieces stand within a cell of it -- about twenty-four " +
+                "meters square, which is a small house -- so a hut counts and a torch does not, and a wall running " +
+                "off the side of a base is not chopped off where the pieces thin out. 1 draws everything, as it " +
+                "used to. The server's, since the server is the one looking.");
             ShowMapPaint = mod.BindLocal(Painting, "Show Map Painting", true,
                 "Draw the painting on your own map. Off leaves the map exactly as the game drew it, whatever the " +
                 "server is sharing. The painting goes into the map picture itself, so it shows on the large map, the " +
