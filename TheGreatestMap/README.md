@@ -233,8 +233,9 @@ counts as well unless "Structures Include Unlisted" is off or its prefab name is
 ## What players have made, drawn on the map
 
 Markers say *what is here*. They cannot say how big it is, or what runs between. So player
-building and paved roads are colored into the map instead — wooden building brown, stone gray,
-iron slate, paved road its own pale shade, each configurable under `[Map Painting]`.
+building and paved roads are colored into the map instead — wooden building the light warm brown
+of the game's wood pieces, stone gray, iron slate, paved road its own pale shade, each
+configurable under `[Map Painting]`.
 
 When enabled, draws colors on the map to represent player-built structures and roads.
 **`Player Structures Enabled` is off by default**, while this is still being got right. It lives

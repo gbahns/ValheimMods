@@ -701,9 +701,11 @@ namespace TheGreatestMap
                 "Draw the painting on your own map. Off leaves the map exactly as the game drew it, whatever the " +
                 "server is sharing. The painting goes into the map picture itself, so it shows on the large map, the " +
                 "minimap and the parchment in your hands alike, and unexplored ground hides it like anything else.");
-            WoodColor = mod.BindLocal(Painting, "Wood Color", "#704F2E",
-                "The color wooden building is drawn in. A hex value such as #704F2E, or a name such as brown. " +
-                "Hardwood and the rest of the timbers count as wood.");
+            WoodColor = mod.BindRetuned(Painting, "Wood Color", "#704F2E", "#C49A6C",
+                "The color wooden building is drawn in. A hex value such as #C49A6C, or a name such as brown. " +
+                "Hardwood and the rest of the timbers count as wood. The light warm brown of the game's own wood " +
+                "pieces: the darker brown this used to be was close enough to the map's swamp color to be mistaken " +
+                "for it.");
             StoneColor = mod.BindLocal(Painting, "Stone Color", "#808085",
                 "The color stone building is drawn in. Marble, ashstone and ancient stone count as stone.");
             IronColor = mod.BindLocal(Painting, "Iron Color", "#555A66",

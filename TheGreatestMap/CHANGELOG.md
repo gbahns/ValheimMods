@@ -1,5 +1,14 @@
 # Changelog
 
+## 4.6.2 — unreleased
+
+- **Wooden building is drawn in the lighter brown of the game's own wood pieces.** The darker
+  brown it used to be was close enough to the map's swamp color that people read it as swamp,
+  which is worse than not drawing it -- a map that says the wrong thing costs more than a map
+  that says nothing. Anyone still holding the old color because their config file was written
+  before today is moved to the new one and told so in the log; anyone who chose a color of their
+  own keeps it.
+
 ## 4.6.1 -- 2026-10-29
 
 - **The map painting drew brown rectangles in places with nothing in them.** Two reasons, and

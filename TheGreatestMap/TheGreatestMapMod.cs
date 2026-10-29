@@ -30,7 +30,7 @@ namespace TheGreatestMap
     {
         public const string ModGuid    = "DeathMonger.TheGreatestMap";
         public const string ModName    = "The Greatest Map";
-        public const string ModVersion = "4.6.1";
+        public const string ModVersion = "4.6.2";
 
         // Oldest version whose shared-marker wire format this build still speaks. ServerSync
         // refuses peers below this, so bump it only when the format or an RPC changes, not on
@@ -251,6 +251,33 @@ namespace TheGreatestMap
         /// back. The old value is carried across once, and only when the new entry is still at its
         /// default, so a choice already made in the new place wins.
         /// </summary>
+        /// <summary>
+        /// Bind a setting whose default has changed, and carry over anybody who never chose for
+        /// themselves.
+        ///
+        /// <para>A config file is written once and kept forever, so changing a default in the
+        /// code reaches nobody who has already played: their file still holds the old value, and
+        /// the mod goes on doing the thing that was wrong. A player holding exactly the old
+        /// default never chose it -- the file chose it for them -- so they are moved to the new
+        /// one and told so. Anybody who picked something of their own keeps it.</para>
+        ///
+        /// <para>Somebody who deliberately set the old default is overridden once, which is the
+        /// price of the other hundred people getting the fix. The log line says what changed and
+        /// the setting is still theirs to set back.</para>
+        /// </summary>
+        internal ConfigEntry<T> BindRetuned<T>(string section, string key, T oldDefault, T defaultValue,
+                                               string description, bool synced = false)
+        {
+            var entry = synced
+                ? BindSynced(section, key, defaultValue, description)
+                : BindLocal(section, key, defaultValue, description);
+            if (!Equals(entry.Value, oldDefault) || Equals(oldDefault, defaultValue)) return entry;
+            entry.Value = defaultValue;
+            Log.LogInfo($"[TheGreatestMap] \"{key}\" has a better default than it used to, so yours is now " +
+                        $"{defaultValue} instead of {oldDefault}. Set it yourself if you preferred the old one.");
+            return entry;
+        }
+
         internal ConfigEntry<T> BindMoved<T>(string oldSection, string section, string key, T defaultValue, string description,
                                              bool synced = false)
         {
