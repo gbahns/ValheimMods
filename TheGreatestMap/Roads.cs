@@ -81,6 +81,7 @@ namespace TheGreatestMap
 
         internal static void Update(Action<List<int>> report)
         {
+            if (!MapPaint.On()) return;
             if (TgmConfig.PaintRoads != null && !TgmConfig.PaintRoads.Value) return;
             if (Time.time < _next) return;
             _next = Time.time + EverySeconds;

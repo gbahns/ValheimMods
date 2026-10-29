@@ -210,6 +210,14 @@ namespace TheGreatestMap
         /// </summary>
         private static bool StepSweep()
         {
+            if (!MapPaint.On())
+            {
+                // Switched off altogether: stop sweeping, and let one empty picture go out so
+                // that every client puts its map back rather than keeping the last thing it drew.
+                if (_sweep == null && _cells.Count == 0) return false;
+                _sweep = null;
+                return Rebuild(new Dictionary<int, BuiltKind>());
+            }
             if (TgmConfig.PaintBuildings != null && !TgmConfig.PaintBuildings.Value)
             {
                 // Switched off for the server: stop sweeping, and let the one empty picture go
@@ -315,7 +323,7 @@ namespace TheGreatestMap
         /// <summary>Fold the roads in with the buildings and see whether the whole picture moved.</summary>
         private static bool Rebuild(Dictionary<int, BuiltKind> buildings)
         {
-            bool roads = TgmConfig.PaintRoads == null || TgmConfig.PaintRoads.Value;
+            bool roads = MapPaint.On() && (TgmConfig.PaintRoads == null || TgmConfig.PaintRoads.Value);
             if (roads)
                 foreach (int key in _paved)
                     if (!buildings.ContainsKey(key) && buildings.Count < MaxCells) buildings[key] = BuiltKind.Paved;
@@ -456,6 +464,12 @@ namespace TheGreatestMap
         internal static List<string> Describe()
         {
             var lines = new List<string>();
+            if (!MapPaint.On())
+            {
+                lines.Add("the painting is switched off (Player Structures Enabled, the server's): nothing is swept for, " +
+                          "sampled or sent.");
+                return lines;
+            }
             lines.Add(IsServer
                 ? $"server: {_paved.Count} paved cell(s) remembered, sweeping every {SweepSeconds:0} s, " +
                   $"drawing a cell only where {LeastPieces()} piece(s) stand within a cell of it" +

@@ -354,9 +354,22 @@ namespace TheGreatestMap
 
         private static string Show(BuiltKind kind) => Wants(kind) ? ColorFor(kind).ToString() : "-";
 
+        /// <summary>
+        /// Is the whole thing switched on? The server's answer and not the player's: it decides
+        /// whether the sweeping and the sampling happen at all, so it is asked by everything that
+        /// does that work, not just by the drawing.
+        ///
+        /// <para>The fallback is off rather than on, which is the other way round from every
+        /// other setting here. They all default to on, so answering "on" for a setting that has
+        /// not been bound yet matches what it will say in a moment; this one defaults to off, and
+        /// the same reasoning gives the opposite answer.</para>
+        /// </summary>
+        internal static bool On() =>
+            TgmConfig.PaintEnabled != null && TgmConfig.PaintEnabled.Value;
+
         /// <summary>Is any of this to be drawn on this player's map at all?</summary>
         private static bool Wanted() =>
-            TgmConfig.ShowMapPaint == null || TgmConfig.ShowMapPaint.Value;
+            On() && (TgmConfig.ShowMapPaint == null || TgmConfig.ShowMapPaint.Value);
 
         private static bool Wants(BuiltKind kind)
         {
@@ -584,7 +597,7 @@ namespace TheGreatestMap
             if (map == null) { lines.Add("No map yet."); return lines; }
             lines.Add($"map texture {map.m_textureSize} px across, {map.m_pixelSize:0.#} m per pixel " +
                       $"(a cell is {CellSize:0} m, so about {Mathf.Max(1f, CellSize / map.m_pixelSize):0.0} cell(s) per pixel)");
-            lines.Add($"drawing: {(Wanted() ? "on" : "OFF (Show Map Painting)")}, " +
+            lines.Add($"drawing: {(!On() ? "OFF (Player Structures Enabled, the server's)" : Wanted() ? "on" : "OFF (Show Map Painting)")}, " +
                       $"buildings {(Wants(BuiltKind.Wood) ? "on" : "off")}, roads {(Wants(BuiltKind.Paved) ? "on" : "off")}");
             int wood = 0, stone = 0, iron = 0, paved = 0;
             foreach (var kind in _cells.Values)

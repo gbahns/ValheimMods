@@ -168,6 +168,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<float> ServerAutosaveMinutes;
         internal static ConfigEntry<float> TransportSweepSeconds;
         internal static ConfigEntry<float> TransportLiveSeconds;
+        internal static ConfigEntry<bool> PaintEnabled;
         internal static ConfigEntry<bool> PaintBuildings;
         internal static ConfigEntry<bool> PaintRoads;
         internal static ConfigEntry<float> BuildSweepSeconds;
@@ -661,9 +662,15 @@ namespace TheGreatestMap
 
             // ── what players have made, colored into the map ───────────────────────
             //
-            // Three of these are the server's because they decide whether the server sweeps the
-            // world and whether every client samples the ground it walks over. The colors and
-            // the master switch are nobody's business but the player looking at the map.
+            // The switches here are the server's because they decide whether the server sweeps
+            // the world and whether every client samples the ground it walks over. The colors and
+            // how boldly it is drawn are nobody's business but the player looking at the map.
+            PaintEnabled = mod.BindSynced(Painting, "Player Structures Enabled", false,
+                "Draw what players have built and the roads they have paved into the map at all. Off by default, " +
+                "and off means off: the server does not sweep the world for pieces, no client samples the ground " +
+                "it walks over, nothing is sent, and any map already painted is put back exactly as the game drew " +
+                "it. The server's, because every part of the work is the server's to ask for -- turning it on here " +
+                "turns it on for everybody playing. The settings below only matter once it is.");
             PaintBuildings = mod.BindSynced(Painting, "Paint Player Buildings", true,
                 "Color the ground players have built on into the map itself, wood in one color and stone in another, " +
                 "rather than putting a marker on it. A base is not a point and a marker cannot say how big it is. " +
