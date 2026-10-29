@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.6.1 — unreleased
+## 4.6.1 -- 2026-10-29
 
 - **The map painting drew brown rectangles in places with nothing in them.** Two reasons, and
   both of them are what the sweep was told rather than what it did.
