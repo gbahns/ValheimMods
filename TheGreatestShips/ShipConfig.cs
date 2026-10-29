@@ -43,6 +43,7 @@ namespace TheGreatestShips
         internal static ConfigEntry<float> SailOpacity;
         internal static ConfigEntry<bool>  SailOpacityBothSides;
         internal static ConfigEntry<bool>  SailOpacityOnDeck;
+        internal static ConfigEntry<bool>  RememberBoatZoom;
 
         // Raised when a release changes defaults that saved configs should follow.
         //   2 (0.9.1): speeds rebased on logged top speeds, Cargo Longship recipe.
@@ -118,6 +119,11 @@ namespace TheGreatestShips
                 "anywhere on the ship's deck. Off: the sail is drawn as the game draws it until you take the " +
                 "rudder. Yours alone; applies at once.");
             SailOpacityOnDeck.SettingChanged += (_, __) => SailLook.ApplySails();
+
+            RememberBoatZoom = mod.Config.Bind("General", "Remember Boat Zoom", true,
+                "Keep the camera zoom you had at the rudder and go back to it when you take the rudder again. " +
+                "The game has one zoom distance: letting go of the rudder clamps it to the on-foot limit, so " +
+                "retaking it always started you zoomed in. Yours alone.");
 
             LockConfiguration = mod.BindLocking("General", "Lock Configuration", true,
                 "While on, the settings marked as synced can be changed only by the server's admins " +

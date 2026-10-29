@@ -90,6 +90,7 @@ file (or just the entries you want reset) and start the game.
 | Sail Opacity (General) | 0 to 1, for the ship you are on: 1 draws its sail as the game does, lower draws the side you see from the tiller see-through, 0 hides it. Other ships are unchanged. This mod's ships and the vanilla ones | Yours alone; applies at once |
 | Sail Opacity Both Sides (General) | Off: only the tiller side of the sail is see-through, the bow side looks normal. On: both sides | Yours alone; applies at once |
 | Sail Opacity On Deck (General) | Sail Opacity always applies at the rudder. On: also anywhere on the deck. Off: only at the rudder | Yours alone; applies at once |
+| Remember Boat Zoom (General) | Go back to the zoom you had at the rudder when you take it again, instead of starting zoomed in | Yours alone |
 | Name Vanilla Ships (General) | Label the vanilla ships' rudders and holds too | Needs a restart |
 | Recipe | Comma-separated `ItemName:Amount` prefab names, at most five: the build HUD has room for five plus the crafting station (a sixth is shown, but the station's icon hangs off the panel) | Synced with the server |
 | Top Speed Multiplier | Relative to the vanilla ship it is based on | Synced with the server |

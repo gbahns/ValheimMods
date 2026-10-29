@@ -34,7 +34,9 @@ namespace TheGreatestShips
         private bool _failed;
         private void Update()
         {
-            if (_failed || Time.time < _next) return;
+            if (_failed) return;
+            try { SailLook.RememberBoatZoom(); } catch (System.Exception) { /* same guard as below, next frame */ }
+            if (Time.time < _next) return;
             _next = Time.time + 0.25f;
             try { SailLook.Update(); }
             catch (System.Exception e)
@@ -64,6 +66,32 @@ namespace TheGreatestShips
                 Jotunn.Logger.LogInfo($"[TheGreatestShips] The game's boat camera limit is {_vanillaBoatDistance} m (on foot {camera.m_maxDistance} m).");
             }
             camera.m_maxDistanceBoat = Mathf.Clamp(ShipConfig.BoatCameraDistance.Value, 8, 40);
+        }
+
+        // ── Boat zoom ───────────────────────────────────────────────────────────────
+
+        // The camera has one zoom distance.  While you steer, its cap is the boat limit; the
+        // moment you let go the cap is the on-foot limit and the distance is clamped down to it,
+        // so retaking the rudder always starts you zoomed in.  Remember the distance you had at
+        // the tiller and put it back the frame you take the rudder again.  Every frame: vanilla
+        // clamps in LateUpdate, after this.
+        private static bool  _wasSteering;
+        private static float _boatZoom = -1f;
+        // Private in the game; the publicized reference assembly only makes it compile.
+        private static readonly AccessTools.FieldRef<GameCamera, float> _distance =
+            AccessTools.FieldRefAccess<GameCamera, float>("m_distance");
+
+        internal static void RememberBoatZoom()
+        {
+            var camera = GameCamera.instance;
+            var player = Player.m_localPlayer;
+            if (camera == null || player == null) { _wasSteering = false; return; }
+
+            bool steering = player.GetControlledShip() != null;
+            if (steering && !_wasSteering && _boatZoom > 0f && ShipConfig.RememberBoatZoom.Value)
+                _distance(camera) = Mathf.Min(_boatZoom, camera.m_maxDistanceBoat);
+            if (steering) _boatZoom = _distance(camera);
+            _wasSteering = steering;
         }
 
         // ── Sails ───────────────────────────────────────────────────────────────────

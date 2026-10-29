@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.11 — unreleased
+
+- New "Remember Boat Zoom" setting (General, on, yours alone): the camera zoom you had at the
+  rudder comes back when you take the rudder again. The game has one zoom distance, and letting
+  go of the rudder clamps it to the on-foot limit, so retaking it always started you zoomed in.
+
 ## 0.9.10 — 2026-10-05
 
 - New "Boat Camera Max Distance" setting (General, yours alone): the farthest the camera can be
