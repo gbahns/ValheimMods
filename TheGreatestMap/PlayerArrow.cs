@@ -11,24 +11,35 @@ namespace TheGreatestMap
     /// player; the arrow could not, because it is not a marker at all -- vanilla draws it as its
     /// own piece of the map rather than as a pin.
     ///
-    /// Both arrows are covered: the one for a player on foot and the one shown while aboard a
-    /// ship, which is a separate object and would otherwise snap back to small the moment you
-    /// stepped on a boat.
+    /// Not at a ship's rudder, though. The arrow is made bigger to be found among markers, and
+    /// the sea has hardly any: there is nothing out there to lose it in, so the size buys nothing
+    /// and costs the precision you want while steering. Both arrows go back to normal for as long
+    /// as you have the helm -- the game shows your own arrow and the ship's together while you
+    /// steer, so leaving one large would have been the odd pair of the two.
     ///
     /// Set every frame the map is open, cheaply and only when it differs. Vanilla writes the
     /// arrow's rotation and position but never its scale, so this is not a fight -- it is simply
-    /// the safe place to put it back if anything ever does.
+    /// the safe place to put it back if anything ever does, and it is what lets the size come and
+    /// go with the helm without anything having to notice you took it or let it go.
     /// </summary>
     internal static class PlayerArrow
     {
         private static float Size =>
             TgmConfig.PlayerArrowSize != null ? Mathf.Clamp(TgmConfig.PlayerArrowSize.Value, 50, 400) / 100f : 1f;
 
+        /// <summary>
+        /// Has the local player the helm? The game's own test for steering a ship, the one it uses
+        /// to credit the sailing-at-the-helm stat: a passenger standing on the deck is not at the
+        /// rudder and keeps the larger arrow.
+        /// </summary>
+        private static bool AtTheRudder() =>
+            Player.m_localPlayer != null && Player.m_localPlayer.GetControlledShip() != null;
+
         internal static void Update()
         {
             var map = Minimap.instance;
             if (map == null || map.m_mode != Minimap.MapMode.Large) return;
-            float scale = Size;
+            float scale = AtTheRudder() ? 1f : Size;
             Apply(map.m_largeMarker, scale);
             Apply(map.m_largeShipMarker, scale);
         }

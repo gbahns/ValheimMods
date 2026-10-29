@@ -593,8 +593,9 @@ namespace TheGreatestMap
             PlayerArrowSize = mod.BindLocalRange("Display", "Player Arrow Size", 100, 50, 400,
                 "Size of your own arrow on the large map, as a percentage of the normal size. Pan and zoom around a " +
                 "few hundred markers and a small arrow is easy to lose; this is the one thing on the map that had no " +
-                "size of its own, because the game draws it as part of the map rather than as a marker. Covers the " +
-                "arrow shown while you are aboard a ship as well.");
+                "size of its own, because the game draws it as part of the map rather than as a marker. It does not " +
+                "apply while you have a ship's helm: there is next to nothing on the water to lose an arrow among, so " +
+                "the size buys nothing there and costs the precision you want while steering.");
             PlayerArrowSize.SettingChanged += (_, __) => { if (PlayerArrowSize.Value == 100) PlayerArrow.Reset(); };
 
             PlayerMarkerSize = mod.BindLocalRange("Display", "Player Marker Size", 100, 50, 400,

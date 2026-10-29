@@ -9,6 +9,12 @@
   before today is moved to the new one and told so in the log; anyone who chose a color of their
   own keeps it.
 
+- **"Player Arrow Size" no longer applies while you have a ship's helm.** The arrow is made
+  bigger so it can be found among markers, and the sea has hardly any -- so out there the size
+  buys nothing and costs the precision you want while steering. Both arrows go back to normal
+  for as long as you are at the rudder, since the game draws yours and the ship's together then,
+  and come back the moment you step away. A passenger on the deck keeps the larger arrow.
+
 ## 4.6.1 -- 2026-10-29
 
 - **The map painting drew brown rectangles in places with nothing in them.** Two reasons, and
