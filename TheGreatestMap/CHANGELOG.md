@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.6.0 — unreleased
+## 4.6.0 -- 2026-10-28
 
 - **A ship under sail slides along the map instead of jumping every five seconds.** Finding a
   vessel means walking the world, which is why the sweep is slow and rare, and until now the
