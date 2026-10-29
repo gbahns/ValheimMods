@@ -32,7 +32,7 @@ namespace ForsakenShrines
     {
         public const string ModGuid    = "DeathMonger.ForsakenShrines";
         public const string ModName    = "Forsaken Shrines";
-        public const string ModVersion = "0.8.5";
+        public const string ModVersion = "0.8.6";
         // The oldest version that can share a server with this one.  Kept apart from ModVersion
         // so a release that changes no network contract does not lock older clients out.
         public const string MinCompatibleVersion = "0.8.3";

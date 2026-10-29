@@ -1,6 +1,6 @@
 # Forsaken Shrines
 
-> **Alpha — Version 0.8.5**
+> **Alpha — Version 0.8.6**
 > This should be considered an early release version of this mod.  It seems to be working but you might encounter issues.  Recipes, placement rules, and balance are subject to change.  I wanted to make it available for people to use and also to get feedback.  If you're using it without issue let me know; that feedback will help me confirm it's working and promote it to v1.0.0. Join [my discord server](https://discord.gg/eH7UfRj5mG) to ask questions, provide feedback, or report issues.
 
 Build a shrine to each Forsaken boss you have defeated, then mount that boss's trophy on it to channel the guardian power remotely — no return trip to the world-center altar required for activation.

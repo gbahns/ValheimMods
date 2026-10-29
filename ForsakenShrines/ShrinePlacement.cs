@@ -67,17 +67,24 @@ namespace ForsakenShrines
     }
 
     /// <summary>
-    /// When the game sets a global key (boss defeated), re-evaluate shrine unlock states and
-    /// re-run the known-piece scan so the newly unlocked shrine appears in the Hammer at once,
-    /// without a relog or an inventory change.
+    /// When a boss dies the global keys change, and this is the one place a client learns of it:
+    /// the server answers every SetGlobalKey by broadcasting its whole key list, and
+    /// RPC_GlobalKeys is what stores it.  Re-evaluate shrine unlock states here and re-run the
+    /// known-piece scan, so the newly unlocked shrine appears in the Hammer at once, for every
+    /// player on the server, without a relog or an inventory change.
+    ///
+    /// Patching ZoneSystem.SetGlobalKey instead (what 0.8.5 and earlier did) never worked on a
+    /// dedicated server: the client's SetGlobalKey only sends the RPC and adds nothing locally,
+    /// so a postfix there runs before the key exists and only on the killer's client at that.
     /// </summary>
-    [HarmonyPatch(typeof(ZoneSystem), nameof(ZoneSystem.SetGlobalKey), typeof(string))]
-    internal static class ZoneSystemSetGlobalKeyPatch
+    [HarmonyPatch(typeof(ZoneSystem), "RPC_GlobalKeys")]
+    internal static class ZoneSystemGlobalKeysPatch
     {
         [HarmonyPostfix]
-        static void Postfix(string name)
+        static void Postfix()
         {
-            Jotunn.Logger.LogInfo($"[ForsakenShrines] ZoneSystem.SetGlobalKey('{name}') fired — refreshing unlocks.");
+            if (Player.m_localPlayer == null) return;   // keys at login are handled by OnSpawned
+            Jotunn.Logger.LogInfo("[ForsakenShrines] Global keys received — refreshing unlocks.");
             ShrinePieces.UpdateUnlocks();
             ShrinePieces.RefreshKnownPieces();
         }

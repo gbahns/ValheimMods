@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.6 — 2026-10-29
+
+- **Fixed: a shrine unlocked by a boss killed during your session stayed out of the Hammer until
+  you relogged.** The mod re-checked the boss keys when the game *set* a key, but on a dedicated
+  server a client never sets one — it asks the server to, and the server answers every client
+  with its full key list. That answer is now what triggers the re-check, so the new shrine appears
+  for everyone on the server the moment the boss dies.
+
 ## 0.8.5 — 2026-09-20
 
 - **Fixed: `Mod Enabled = false` on a dedicated server destroyed placed shrines.** The setting
