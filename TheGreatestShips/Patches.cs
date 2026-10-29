@@ -150,23 +150,24 @@ namespace TheGreatestShips
     /// center; the grid root, which UpdateGui sizes to the full grid every call (that is what
     /// makes it scroll), is sized to the drawn grid.  A hold that fits is left alone.
     ///
-    /// Only the container grid, and only while one of this mod's ships is open: the player's
+    /// Only the container grid, and only while it shows one of this mod's holds: the player's
     /// grid is another mod's to extend (AzuExtendedPlayerInventory lays its extra rows out
     /// itself, and re-spacing them scrambled its equipment slots), and other containers are
-    /// their own mods' business.
+    /// their own mods' business.  The hold is recognized by the inventory the grid is showing,
+    /// not by the container the player opened: a chest-peeking mod (PeekaChest) previews a hold
+    /// by handing its inventory straight to the grid, with nothing opened, and judged by the
+    /// opened container the preview drew a 10x5 hold at full size, with a scroll bar.
     /// </summary>
     [HarmonyPatch(typeof(InventoryGrid), "UpdateGui")]
     internal static class InventoryGridFitPatch
     {
-        static readonly HashSet<string> _ourShips =
-            new HashSet<string>(System.Linq.Enumerable.Select(ShipDefinitions.All, d => d.PrefabName));
+        static readonly AccessTools.FieldRef<InventoryGrid, Inventory> _inventory =
+            AccessTools.FieldRefAccess<InventoryGrid, Inventory>("m_inventory");
 
         // Private in the game; the publicized reference assembly only makes them compile, and
         // Mono refuses them at runtime (FieldAccessException, every frame the inventory is open).
         static readonly AccessTools.FieldRef<InventoryGui, InventoryGrid> _containerGrid =
             AccessTools.FieldRefAccess<InventoryGui, InventoryGrid>("m_containerGrid");
-        static readonly AccessTools.FieldRef<InventoryGui, Container> _currentContainer =
-            AccessTools.FieldRefAccess<InventoryGui, Container>("m_currentContainer");
         static readonly AccessTools.FieldRef<InventoryGrid, List<InventoryElement>> _elements =
             AccessTools.FieldRefAccess<InventoryGrid, List<InventoryElement>>("m_elements");
         static readonly AccessTools.FieldRef<InventoryGrid, int> _width  = AccessTools.FieldRefAccess<InventoryGrid, int>("m_width");
@@ -178,8 +179,7 @@ namespace TheGreatestShips
         {
             var gui = InventoryGui.instance;
             if (gui == null || __instance != _containerGrid(gui)) return;
-            var container = _currentContainer(gui);
-            if (container == null || !_ourShips.Contains(Utils.GetPrefabName(container.transform.root.gameObject))) return;
+            if (!ShipHolds.IsOurs(_inventory(__instance))) return;
 
             var elements = _elements(__instance);
             if (elements == null || elements.Count == 0) return;
@@ -214,6 +214,38 @@ namespace TheGreatestShips
                 rect.anchoredPosition = new Vector2(start + x * space * scale, -y * space * scale);
             }
             Jotunn.Logger.LogInfo($"[TheGreatestShips] Inventory grid {width}x{height} is bigger than its panel ({panel.rect.width:0}x{panel.rect.height:0}); slots drawn at {scale:0.00} scale to fit.");
+        }
+    }
+
+    /// <summary>
+    /// Which inventories are this mod's holds.  A ship's Container makes its Inventory once, in
+    /// Awake, and keeps that object for life (loading fills it, it does not replace it), so the
+    /// inventory identifies the hold wherever it turns up -- in the open-container GUI or in a
+    /// peek preview.  Entries of ships since destroyed are dropped when next looked at.
+    /// </summary>
+    [HarmonyPatch(typeof(Container), "Awake")]
+    internal static class ShipHolds
+    {
+        static readonly HashSet<string> _ourShips =
+            new HashSet<string>(System.Linq.Enumerable.Select(ShipDefinitions.All, d => d.PrefabName));
+        static readonly Dictionary<Inventory, Container> _holds = new Dictionary<Inventory, Container>();
+
+        [HarmonyPostfix]
+        static void Postfix(Container __instance)
+        {
+            if (__instance == null) return;
+            var inventory = __instance.GetInventory();
+            if (inventory == null) return;
+            if (_ourShips.Contains(Utils.GetPrefabName(__instance.transform.root.gameObject)))
+                _holds[inventory] = __instance;
+        }
+
+        internal static bool IsOurs(Inventory inventory)
+        {
+            if (inventory == null || !_holds.TryGetValue(inventory, out var container)) return false;
+            if (container != null) return true;
+            _holds.Remove(inventory);   // the ship is gone; the inventory is a stale key
+            return false;
         }
     }
 

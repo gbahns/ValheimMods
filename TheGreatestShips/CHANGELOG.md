@@ -2,6 +2,9 @@
 
 ## 0.9.11 — unreleased
 
+- A peeked hold (PeekaChest and the like) is drawn fitted to the panel, as the opened hold is,
+  instead of at full slot size with a scroll bar. The fit now recognizes the hold by its
+  inventory rather than by the container the player opened, which a peek never sets.
 - New "Remember Boat Zoom" setting (General, on, yours alone): the camera zoom you had at the
   rudder comes back when you take the rudder again. The game has one zoom distance, and letting
   go of the rudder clamps it to the on-foot limit, so retaking it always started you zoomed in.
