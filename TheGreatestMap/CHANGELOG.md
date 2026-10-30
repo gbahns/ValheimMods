@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.6.2 — unreleased
+## 4.6.2 -- 2026-10-30
 
 - **Tar pit markers were losing what they are and turning into plain dots.** Every login, the
   pass that brings a map up to date asked whether each marker's source was in the catalog, and
