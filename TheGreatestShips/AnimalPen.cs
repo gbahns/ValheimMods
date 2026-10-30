@@ -23,6 +23,8 @@ namespace TheGreatestShips
         public bool    Lip = true;                // the inward ceiling along the wall tops under way; not for animals taller than the wall
         public float   WallTop;                   // the invisible flat wall's height, and the lip's, when higher than the rails: a fence
                                                   // you see over that still holds an animal taller than it.  0 = the top rail
+        public bool    Ceiling;                   // the lip is the whole pen's width: a ceiling under way.  A lip along the wall tops
+                                                  // leans outboard with a heeling hull and ends up beside a tall animal, not over it
     }
 
     /// <summary>
@@ -228,7 +230,16 @@ namespace TheGreatestShips
             // sailing (PenLip switches it), so animals can still be dropped in over the wall at
             // rest.  Starts off; PenBallast restores that after its measurement.
             const float lipWidth = 0.6f, lipThickness = 0.2f;
-            if (spec.Lip) foreach (var (center, size) in new[] {
+            if (spec.Lip && spec.Ceiling)
+            {
+                var ceiling = new GameObject("pen_lip") { layer = post.layer };
+                ceiling.transform.SetParent(pen.transform, false);
+                ceiling.transform.localPosition = new Vector3(0f, DeckHeight + wallTop + lipThickness / 2f, spec.CenterZ);
+                var box = ceiling.AddComponent<BoxCollider>();
+                box.size = new Vector3(spec.Width, lipThickness, spec.Length);
+                box.enabled = false;
+            }
+            else if (spec.Lip) foreach (var (center, size) in new[] {
                 (new Vector3(0f, 0f, spec.CenterZ + halfLen - wallThickness - lipWidth / 2f), new Vector3(spec.Width, lipThickness, lipWidth)),   // bow
                 (new Vector3(0f, 0f, spec.CenterZ - halfLen + wallThickness + lipWidth / 2f), new Vector3(spec.Width, lipThickness, lipWidth)),   // stern
                 (new Vector3(halfWid - wallThickness - lipWidth / 2f, 0f, spec.CenterZ), new Vector3(lipWidth, lipThickness, spec.Length)),      // starboard

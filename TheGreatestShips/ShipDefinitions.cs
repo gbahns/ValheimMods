@@ -295,11 +295,13 @@ namespace TheGreatestShips
                 // its collider radius, 1.5 m, so that holds it as long as nothing shoves it, and
                 // the stalls are what stop the shoving -- but a lox weighs 60 and a deck heaving at
                 // speed tossed one over 2.25 m rails with nothing above them.  So the invisible
-                // wall and the lip go on up to 2.4 (3.6 m, above the lox's 3.5 m body, where the
-                // lip can catch it instead of running through it) while the rails you see stay at
-                // 1.5.  The gates stay rail-high: the lip over them is what matters.
+                // wall goes on up to 2.7 (4.05 m) while the rails you see stay at 1.5, and under
+                // way the whole stall has a ceiling at that height.  A ceiling, not a lip: the
+                // hull heels 20 degrees in a hard turn, and a lip along the wall top swings
+                // outboard with it by 2.4 x sin 20 = 0.8 -- beside the animal, not over it.  2.7
+                // leaves a lox's 3.5 m body half a meter of heave before it touches.
                 Pen = new PenSpec { Length = 9.4f, Width = 3.4f, CenterZ = 0.15f, PostHeight = 1.5f, RailHeights = new[] { 0.4f, 0.85f, 1.3f },
-                                    Dividers = new[] { 0.13f }, GateWidth = 3f, WallTop = 2.4f },
+                                    Dividers = new[] { 0.13f }, GateWidth = 3f, WallTop = 2.7f, Ceiling = true },
             },
         };
     }
