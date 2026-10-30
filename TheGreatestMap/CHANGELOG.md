@@ -65,6 +65,28 @@
   hiding cloudberries could only be undone from a marker's own menu, and every marker it applied
   to was hidden. It now does exactly what `tgm_show` does, markers hidden one at a time included.
 
+- **What is painted is the size of what was built.** A four meter wooden road was coming out
+  around thirty meters wide with edges that wandered, which is not a drawing of a road so much as
+  a rumor of one. Two things were making it:
+
+  - Every painted map pixel was grown into the ring of pixels around it, turning each one into a
+    three by three block. A map pixel is already about ten meters of world, so that is thirty.
+    The growing was there because a single pixel out of two thousand gets averaged into the
+    terrain when the game scales the map down, and a lone building reads as a smudge -- but for
+    anything longer than it is wide the cure was worse. `Paint Spread` is 0 now, and anyone still
+    holding the old 1 because their config file was written before today is moved to 0 and told
+    so in the log. Raise it again if you read the map at arm's length.
+  - A cell was drawn when a single piece stood in it, and a road clips the corner of the cells
+    to either side of it with a piece or two. Those cells were then painted whole -- eight meters
+    of map for a corner caught in passing, in and out along the length of the road, which is
+    where the ragged edge came from. A cell now has to hold a few pieces of its own before it is
+    drawn (`Least Pieces In One Cell`, 3 by default, the server's): a road or a wall passing
+    through a cell leaves several, a clipped corner leaves one.
+
+  A map pixel is still ten meters, so a four meter road is still drawn wider than it is. It is
+  drawn as one line of pixels now rather than a band three times that, and its edges follow what
+  was actually built.
+
 - **Wooden building is drawn in the lighter brown of the game's own wood pieces.** The darker
   brown it used to be was close enough to the map's swamp color that people read it as swamp,
   which is worse than not drawing it -- a map that says the wrong thing costs more than a map

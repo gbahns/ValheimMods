@@ -280,6 +280,10 @@ namespace TheGreatestMap
         private static int LeastPieces() =>
             TgmConfig.PaintLeastPieces != null ? Mathf.Max(1, TgmConfig.PaintLeastPieces.Value) : 6;
 
+        /// <summary>How much has to stand in the cell itself, as against its neighborhood.</summary>
+        private static int LeastInCell() =>
+            TgmConfig.PaintLeastInCell != null ? Mathf.Max(1, TgmConfig.PaintLeastInCell.Value) : 3;
+
         /// <summary>
         /// Throw away the cells that hold a thing rather than a place.
         ///
@@ -296,14 +300,24 @@ namespace TheGreatestMap
         /// house -- hold enough pieces between them. The neighborhood rather than the cell alone,
         /// so that a long wall or a jetty running off the side of a base stays drawn instead of
         /// being chopped off where the pieces thin out.</para>
+        ///
+        /// <para>And the cell itself has to hold something worth drawing, which the neighborhood
+        /// test cannot ask: a single piece was enough, so a four meter road clipping the corner
+        /// of the cells on either side of it painted those cells whole, and a road laid in a
+        /// straight line came out eight meters wider in places than in others. A road or a wall
+        /// passing through a cell leaves several pieces in it; a corner caught in passing leaves
+        /// one or two. That is the difference this measures, and it is the difference between a
+        /// drawn edge that follows what was built and one that wanders.</para>
         /// </summary>
         private static Dictionary<int, BuiltKind> Built(Dictionary<int, BuiltKind> found, Dictionary<int, int> density)
         {
             int least = LeastPieces();
-            if (least <= 1) return found;
+            int here = LeastInCell();
+            if (least <= 1 && here <= 1) return found;
             var kept = new Dictionary<int, BuiltKind>();
             foreach (var kv in found)
             {
+                if (here > 1 && (!density.TryGetValue(kv.Key, out int mine) || mine < here)) continue;
                 int around = 0;
                 for (int dz = -1; dz <= 1 && around < least; dz++)
                     for (int dx = -1; dx <= 1 && around < least; dx++)
@@ -472,7 +486,8 @@ namespace TheGreatestMap
             }
             lines.Add(IsServer
                 ? $"server: {_paved.Count} paved cell(s) remembered, sweeping every {SweepSeconds:0} s, " +
-                  $"drawing a cell only where {LeastPieces()} piece(s) stand within a cell of it" +
+                  $"drawing a cell only where {LeastInCell()} piece(s) stand in it and " +
+                  $"{LeastPieces()} within a cell of it" +
                   (_sweep != null ? $", one in progress ({_sweep.Pieces} player-built piece(s) in {_sweep.Found.Count} cells so far)" : "")
                 : "client: " + (_have ? "have the server's picture" : "WAITING for the server's picture"));
             lines.AddRange(Roads.Describe());

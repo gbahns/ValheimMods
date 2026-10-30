@@ -179,6 +179,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<string> IronColor;
         internal static ConfigEntry<string> PavedColor;
         internal static ConfigEntry<int> PaintSpread;
+        internal static ConfigEntry<int> PaintLeastInCell;
         internal static ConfigEntry<bool> PaintOverWater;
         internal static ConfigEntry<int> StopWaitingAfter;
         internal static ConfigEntry<bool> ShowTransportLabels;
@@ -698,6 +699,14 @@ namespace TheGreatestMap
                 "meters square, which is a small house -- so a hut counts and a torch does not, and a wall running " +
                 "off the side of a base is not chopped off where the pieces thin out. 1 draws everything, as it " +
                 "used to. The server's, since the server is the one looking.");
+            PaintLeastInCell = mod.BindSynced(Painting, "Least Pieces In One Cell", 3,
+                "How much building has to stand in a cell itself before that cell is drawn, as against the " +
+                "neighborhood test above. A cell is eight meters square and a four meter road clips the corner of " +
+                "the cells to either side of it with a piece or two, which painted those cells whole and gave a " +
+                "straight road ragged edges wandering in and out by eight meters. Three is about one square meter " +
+                "of floor in nine: enough that a road or a wall passing through a cell still draws it, little " +
+                "enough that a corner clipped in passing does not. 1 draws every cell anything stands in, as it " +
+                "used to. The server's, since the server is the one looking.");
             ShowMapPaint = mod.BindLocal(Painting, "Show Map Painting", true,
                 "Draw the painting on your own map. Off leaves the map exactly as the game drew it, whatever the " +
                 "server is sharing. The painting goes into the map picture itself, so it shows on the large map, the " +
@@ -715,12 +724,13 @@ namespace TheGreatestMap
             PavedColor = mod.BindLocal(Painting, "Paved Color", "#9E998C",
                 "The color paved road is drawn in. Building wins where a road runs under it, so a courtyard reads as " +
                 "the building it belongs to.");
-            PaintSpread = mod.BindLocal(Painting, "Paint Spread", 1,
-                "How many map pixels around each painted one are painted too. A map pixel is about ten meters, so a " +
-                "shed is one pixel out of two thousand, and the game draws the map scaled down and smoothed -- a lone " +
-                "pixel is averaged into the terrain around it until it is a smudge rather than a building. 1 paints " +
-                "the ring around it and makes small things read; 0 draws only what is really there, true to the meter " +
-                "but easy to miss; 2 and 3 are broader still, for a map you are reading at a glance.");
+            PaintSpread = mod.BindRetuned(Painting, "Paint Spread", 1, 0,
+                "How many map pixels around each painted one are painted too. A map pixel is about ten meters, which " +
+                "is already wider than most of what is drawn on it, so each step up this multiplies what you see: 1 " +
+                "makes every painted pixel a three by three block, about thirty meters across, and a four meter road " +
+                "comes out as a thirty meter band with soft edges. 0 draws what is really there and nothing more, " +
+                "which is the default; raise it only if you are reading the map at arm's length and want small " +
+                "things to shout.");
             PaintOverWater = mod.BindLocal(Painting, "Paint Over Water", true,
                 "Draw building and road that stand over water -- docks, bridges, a longhouse on stilts. The game " +
                 "decides where the sea is from the map's heights rather than its colors, so these have to be lifted " +
