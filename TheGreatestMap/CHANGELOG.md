@@ -35,6 +35,15 @@
   object in the world whether a player is near it or not, so it answers for the whole map at
   once, at the next login.
 
+  And the answer now sticks. Writing a marker down under the name just worked out for it takes
+  the old record off the map without leaving an erasure behind, which is right for every answer
+  that came out of the catalog -- every other copy of the map works the same answer out of the
+  same catalog and arrives there by itself. A marker that said nothing is the one case where
+  that is false: there is nothing on it for anyone to work anything out from, so a copy that has
+  not been repaired handed the blank straight back, and the folding pass could not settle the
+  pair either, because a dot and a tar pit are different pictures. Those are erased as they are
+  rewritten, so the answer travels instead of being argued with forever.
+
 - **"Show all" on the map now shows all of it.** It put back the kinds, the master switch and the
   crossed-off groups, but not icons hidden one picture at a time with "Hide all X markers" -- so
   hiding cloudberries could only be undone from a marker's own menu, and every marker it applied

@@ -429,11 +429,24 @@ namespace TheGreatestMap
             if (string.Equals(shared.Source, next, System.StringComparison.Ordinal)) return shared;
             var was = shared.Key;
             if (!Store.Pins.ContainsKey(was)) { shared.Source = next; return shared; }
+            // Asked before the source is changed, because changing it is what makes this marker
+            // stop saying nothing.
+            bool saidNothing = shared.SaysNothing;
             RemovePinData(was);
             // Lifted rather than erased: the marker is not gone, it is being written down under
             // the name we have just worked out for it, and an erasure here leaves a ghost that
             // outlives everything it was ever meant to guard.
-            Store.Lift(was, out _);
+            //
+            // Lifting is safe only because every other copy of the map works the same answer out
+            // of the same catalog and arrives here by itself. A marker that said nothing is the
+            // one case where that is false: there is nothing on it for anyone to work anything
+            // out from, so a copy that has not been repaired keeps handing the blank back, and
+            // the folding pass cannot settle the pair either, because the two wear different
+            // icons -- the dot and whatever the world named. That one is erased, so the answer
+            // travels instead of being argued with forever. There are a handful of these, not
+            // the four thousand fills that made lifting necessary in the first place.
+            if (saidNothing) Store.Delete(was, out _, suppress: false);
+            else Store.Lift(was, out _);
             shared.Source = next;
             Store.Upsert(shared);
             EnsurePin(shared);
