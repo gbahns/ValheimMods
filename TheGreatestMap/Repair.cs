@@ -26,6 +26,18 @@ namespace TheGreatestMap
     /// The server answers nearest first, so a greydwarf nest at arm's length is offered before the
     /// camp fifty meters around it, and both wear the same icon -- distance is what tells them
     /// apart, and the nearer thing is the one a marker at that spot was written for.
+    ///
+    /// <para><b>The markers that say nothing at all.</b> A blank has no icon for the world's
+    /// answer to agree with, so the rule above cannot be applied to it -- and it is the marker
+    /// that needs this most, since where it stands is the only thing left on it. The rule for
+    /// those is the weakest this will go: the nearest thing standing within six meters that the
+    /// catalog has a line for. The marker was written by the recorder, so whatever it was written
+    /// for is something the catalog knows, and the recorder marks the thing it walked up to. What
+    /// that cannot tell apart is two catalogued things within six meters of each other where the
+    /// lost one was the further -- a berry bush beside a beehive. A wrong answer there is a
+    /// marker for something that really is standing there, which is a far smaller wrong than the
+    /// dot it replaces, and a player can erase it; leaving every blank standing to avoid it is
+    /// not something a player can undo.</para>
     /// </summary>
     internal static class Repair
     {
@@ -54,6 +66,10 @@ namespace TheGreatestMap
             {
                 if (pin == null || !pin.Auto) continue;
                 if (!string.IsNullOrEmpty(pin.Source) && !string.IsNullOrEmpty(Catalog.IconFor(pin.Source))) continue;
+                // Nothing on it at all. The kind test below cannot speak for these, because the
+                // kind is one of the things they are missing -- which is how the case this was
+                // written for ended up being the one case it never asked about.
+                if (pin.SaysNothing) { list.Add(pin); continue; }
                 var kind = ClientPins.KindOf(pin);
                 // A kind with no prefab list has nothing to look up: the kind is the whole answer,
                 // and those are given one of their own rather than left looking unidentified.
@@ -96,21 +112,24 @@ namespace TheGreatestMap
 
             bool sent = LocationNames.AskStanding(places, answers =>
             {
-                int settled = 0, refused = 0;
+                int settled = 0, refused = 0, blanks = 0;
                 var byName = new Dictionary<string, int>();
                 for (int i = 0; i < unknown.Count && i < answers.Count; i++)
                 {
+                    bool blank = unknown[i].SaysNothing;
                     string prefab = Pick(unknown[i], answers[i]);
                     if (string.IsNullOrEmpty(prefab)) { refused++; continue; }
                     ClientPins.Reidentify(unknown[i], prefab);
                     settled++;
+                    if (blank) blanks++;
                     byName.TryGetValue(prefab, out int n);
                     byName[prefab] = n + 1;
                 }
                 if (settled > 0) ClientPins.Restyle();
                 TheGreatestMapMod.Log.LogInfo(
                     $"[TheGreatestMap] Asked the world about {unknown.Count} marker(s) that did not know what they were: " +
-                    $"settled {settled}, left {refused} alone because nothing there matched what the marker looks like.");
+                    $"settled {settled}, left {refused} alone because nothing there matched what the marker looks like." +
+                    (blanks > 0 ? $" {blanks} of those had nothing on them at all and were named by what stands there." : ""));
                 foreach (var kv in byName)
                     TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap]   {kv.Key}: {kv.Value}");
             });
@@ -125,18 +144,38 @@ namespace TheGreatestMap
         /// The first thing standing at that place whose icon is the icon this marker already
         /// wears. Nothing, if none of them agrees -- which is the whole safety of this: the
         /// world's answer has to be confirmed by the marker before it is written down.
+        ///
+        /// <para>A marker that says nothing has nothing to confirm with, and is answered by
+        /// <see cref="Nearest"/> instead. That is a weaker rule and is applied only there, where
+        /// the alternative is a dot that can never become anything else; see the note on the
+        /// class. Every marker that still wears an icon is held to the icon.</para>
         /// </summary>
         private static string Pick(SharedPin pin, List<string> standing)
         {
             if (pin == null || standing == null) return null;
             string wears = IconRegistry.Normalize(pin.Icon);
-            if (string.IsNullOrEmpty(wears)) return null;
+            if (string.IsNullOrEmpty(wears)) return pin.SaysNothing ? Nearest(standing) : null;
             foreach (string prefab in standing)
             {
                 if (string.IsNullOrEmpty(prefab)) continue;
                 string would = Catalog.IconFor(prefab);
                 if (string.IsNullOrEmpty(would)) continue;   // the catalog has no line for it
                 if (IconRegistry.SameKey(would, wears)) return prefab;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// The nearest thing standing there that the catalog has a line for. The answers come
+        /// nearest first, so this is the first one the catalog can draw: a thing it has no line
+        /// for would leave the marker as unreadable as it is now, which is no answer at all.
+        /// </summary>
+        private static string Nearest(List<string> standing)
+        {
+            foreach (string prefab in standing)
+            {
+                if (string.IsNullOrEmpty(prefab)) continue;
+                if (!string.IsNullOrEmpty(Catalog.IconFor(prefab))) return prefab;
             }
             return null;
         }

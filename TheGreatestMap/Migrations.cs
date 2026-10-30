@@ -61,8 +61,11 @@ namespace TheGreatestMap
             int traders = RetireTraders();
             int blanks = ForgetBlanks();
             // Whatever the catalog could not settle, the world is asked about -- and answers only
-            // count where they agree with the icon the marker already wears. The answer comes
-            // back later, over the network, and says what it did in the log itself.
+            // count where they agree with the icon the marker already wears, except for the
+            // markers wearing nothing, which have no icon to agree and are named by what stands
+            // there. After the erasing above, so a blank already answered for by the marker
+            // beside it is gone rather than made into a second marker of the same thing. The
+            // answer comes back later, over the network, and says what it did in the log itself.
             Repair.Run();
             if (named == 0 && identified == 0 && kinded == 0 && rekinded == 0 && traders == 0 && blanks == 0) return;
             ClientPins.Restyle();
@@ -92,8 +95,11 @@ namespace TheGreatestMap
         ///
         /// <para>Only where a marker that does know what it is stands on the same spot, which is
         /// what makes the blank one redundant rather than merely unhelpful. A blank standing on
-        /// its own is left alone: it is still noise, but erasing it would be this pass deciding
-        /// something it cannot see, and the rule above says not to.</para>
+        /// its own is left alone, and is not left for good: <see cref="Repair"/> asks the world
+        /// what stands where it stands, which is how a blank gets its identity back rather than
+        /// merely being tidied away. This runs first because erasing a blank that is already
+        /// answered for costs nothing, while identifying it would make a second marker of a thing
+        /// already marked.</para>
         ///
         /// <para>Erased without suppressing the spot, like the crop markers: nothing should stop
         /// the thing being recorded again properly. The tombstone travels, so one player's
@@ -102,14 +108,7 @@ namespace TheGreatestMap
         /// </summary>
         private const float Twin = 4f;
 
-        private static bool SaysNothing(SharedPin pin)
-        {
-            return pin != null && pin.Auto
-                && string.IsNullOrEmpty(pin.Source)
-                && string.IsNullOrEmpty(pin.StoredIcon)
-                && string.IsNullOrEmpty(pin.StoredKind)
-                && string.IsNullOrEmpty(pin.Name);
-        }
+        private static bool SaysNothing(SharedPin pin) => pin != null && pin.SaysNothing;
 
         private static int ForgetBlanks()
         {

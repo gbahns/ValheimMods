@@ -108,6 +108,20 @@ namespace TheGreatestMap
         /// </summary>
         public bool Auto { get { return !string.Equals(_source, Manual, StringComparison.Ordinal); } }
 
+        /// <summary>
+        /// Nothing on it to read: no source, no icon, no kind, no name. Not so much a marker as a
+        /// dot standing where one used to be, and the only thing left that can say what it was is
+        /// where it stands -- which the world can still be asked about. The fields are read as
+        /// stored rather than as derived, because every derivation starts from the source and
+        /// there is none.
+        /// </summary>
+        public bool SaysNothing =>
+            Auto
+            && string.IsNullOrEmpty(_source)
+            && string.IsNullOrEmpty(_icon)
+            && string.IsNullOrEmpty(_kindText)
+            && string.IsNullOrEmpty(Name);
+
         public bool Checked;
         public long Created;    // DateTime.UtcNow.Ticks
         public long Modified;   // DateTime.UtcNow.Ticks of the last change; decides merges

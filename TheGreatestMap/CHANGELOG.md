@@ -20,6 +20,21 @@
   that does know what it is stands on the same spot. The erasure travels, so one player's login
   tidies everybody's map.
 
+- **A marker with nothing left on it is asked about rather than left standing.** The repair that
+  asks the world what is at a place has always said that a blank marker is the obvious case for
+  it, and has never once asked about one: it skipped anything with no kind, and a blank has no
+  kind either, so the case it was written for was the one case it passed over. Those are asked
+  about now, and because a blank has no icon for the answer to agree with, they are named by the
+  nearest thing standing within six meters that the catalog has a line for. That is the weakest
+  rule in here and it is used nowhere else -- every marker that still wears an icon is held to
+  its icon, as before. It is used here because the alternative is a dot that can never become
+  anything else, and because the only thing a wrong answer can name is something that really is
+  standing there.
+
+  Nobody has to go anywhere: the server holds every location the generator placed and every
+  object in the world whether a player is near it or not, so it answers for the whole map at
+  once, at the next login.
+
 - **"Show all" on the map now shows all of it.** It put back the kinds, the master switch and the
   crossed-off groups, but not icons hidden one picture at a time with "Hide all X markers" -- so
   hiding cloudberries could only be undone from a marker's own menu, and every marker it applied
