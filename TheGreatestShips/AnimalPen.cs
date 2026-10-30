@@ -21,6 +21,8 @@ namespace TheGreatestShips
         public float[] Dividers = new float[0];   // cross walls, as z from the pen's center: a pen of several stalls
         public float   GateWidth = 2f;            // each stall's gate opening; a shorter side is all gate
         public bool    Lip = true;                // the inward ceiling along the wall tops under way; not for animals taller than the wall
+        public float   WallTop;                   // the invisible flat wall's height, and the lip's, when higher than the rails: a fence
+                                                  // you see over that still holds an animal taller than it.  0 = the top rail
     }
 
     /// <summary>
@@ -104,8 +106,9 @@ namespace TheGreatestShips
             // stall the whole side is the gate; on a long one it is a section between two more
             // posts, with the rails running out to them -- unless the stubs left over would be
             // shorter than half a meter, when the whole side is the gate again.
-            float wallTop = 0f;
-            foreach (float rail in spec.RailHeights) wallTop = Mathf.Max(wallTop, rail + 0.2f);
+            float railTop = 0f;
+            foreach (float rail in spec.RailHeights) railTop = Mathf.Max(railTop, rail + 0.2f);
+            float wallTop = Mathf.Max(railTop, spec.WallTop);   // the fixed walls and the lip; the gates stay rail-high, so a ramp is as long as it looks
             const float wallThickness = 0.2f;
 
             // Bow and stern: rails and the flat wall.
@@ -208,7 +211,7 @@ namespace TheGreatestShips
                         Wall(pen.transform, new Vector3(wallX, DeckHeight + wallTop / 2f, spec.CenterZ + zc + sideWallZ), new Vector3(wallThickness, wallTop, sideWall), post.layer);
                         Wall(pen.transform, new Vector3(wallX, DeckHeight + wallTop / 2f, spec.CenterZ + zc - sideWallZ), new Vector3(wallThickness, wallTop, sideWall), post.layer);
                     }
-                    Wall(gate.transform, new Vector3(-side * wallThickness / 2f, wallTop / 2f, 0f), new Vector3(wallThickness, wallTop, gateWidth), post.layer);
+                    Wall(gate.transform, new Vector3(-side * wallThickness / 2f, railTop / 2f, 0f), new Vector3(wallThickness, railTop, gateWidth), post.layer);
                 }
             }
 

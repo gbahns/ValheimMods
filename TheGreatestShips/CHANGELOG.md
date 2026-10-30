@@ -12,8 +12,10 @@
   wall at the mast divides it into two stalls of about 7 m, so an animal never has to pass the
   mast: a lox's body is a 3 m circle and can't fit beside the mast in a 5.1 m pen, and the
   shoving that followed is how it got out. Each stall's whole side is its gate, on both sides.
-  The rails stay at 2.25 m, which a lox can't jump or climb, and this pen has no lip under way:
-  a lox is 3.5 m tall, and a lip at the wall top would run through its body. The longship's deck
+  The rails you see stay at 2.25 m, which a lox can't jump or climb, but a lox weighs only 60
+  and a heaving deck tossed one over them, so behind the rails an invisible wall and the lip
+  run up to 3.6 m, above the lox's 3.5 m body, where the lip can catch it instead of running
+  through it. The gates are rail-high, so a ramp is as long as it looks. The longship's deck
   crates and barrels, which stood inside the pen, are put away. Gates of the old one-stall pens
   keep their saved state.
 - A peeked hold (PeekaChest and the like) is drawn fitted to the panel, as the opened hold is,

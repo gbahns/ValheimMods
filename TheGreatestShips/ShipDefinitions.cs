@@ -293,11 +293,13 @@ namespace TheGreatestShips
                 // beside it in a 5.1 m pen.  Each stall is about 7 m long at 1.5x; its whole side
                 // is the gate.  Rails to 2.25 m in the world: a lox can't jump and climbs about
                 // its collider radius, 1.5 m, so that holds it as long as nothing shoves it, and
-                // the stalls are what stop the shoving.  No lip: the lox's body is 3.5 m tall, and
-                // a lip at the wall top would run through it.  Walls a player can see over and a
-                // crew can live with were 3.6 m walls' price, and the 3.6 m was for the lip.
+                // the stalls are what stop the shoving -- but a lox weighs 60 and a deck heaving at
+                // speed tossed one over 2.25 m rails with nothing above them.  So the invisible
+                // wall and the lip go on up to 2.4 (3.6 m, above the lox's 3.5 m body, where the
+                // lip can catch it instead of running through it) while the rails you see stay at
+                // 1.5.  The gates stay rail-high: the lip over them is what matters.
                 Pen = new PenSpec { Length = 9.4f, Width = 3.4f, CenterZ = 0.15f, PostHeight = 1.5f, RailHeights = new[] { 0.4f, 0.85f, 1.3f },
-                                    Dividers = new[] { 0.13f }, GateWidth = 3f, Lip = false },
+                                    Dividers = new[] { 0.13f }, GateWidth = 3f, WallTop = 2.4f },
             },
         };
     }

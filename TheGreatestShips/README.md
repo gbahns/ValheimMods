@@ -69,7 +69,8 @@ pen the length of its deck, mast and all: room for a few boars, and a longship's
 **Greater Byrding** is scaled 1.5×, and its deck is a two-stall pen built for a lox: a cross wall
 at the mast so an animal never has to squeeze past it, and each stall about 7 m long with its
 whole side folding down as the gate. Its rails are 2.25 m, which a lox can't jump or climb, and
-it has no lip under way, since a lox stands taller than the rails.
+behind them an invisible wall with the lip on top runs to 3.6 m, above a lox's back, so a deck
+heaving at speed can't toss one over.
 The pen runs from the rowing benches to the forward benches, so the hold and the aft benches are
 inside it, and the longship's deck crates and barrels are put away to make room. A lox in each
 stall, or a herd of smaller animals. (A lox tramples what it runs through, and the game judged
