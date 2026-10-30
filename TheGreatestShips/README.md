@@ -66,12 +66,15 @@ rocks). Expect it to need retuning.
 
 That is the **Small Byrding**: a boar or two. The **Byrding** is the whole ship scaled 1.25×, with a
 pen the length of its deck, mast and all: room for a few boars, and a longship's hold. The
-**Greater Byrding** is scaled 1.5×, and its deck is a two-stall pen built for a lox: walls 3.6 m
-high, which is what it takes to top a lox's body, a cross wall at the mast so an animal never has
-to squeeze past it, and each stall about 7 m long with its whole side folding down as the gate.
+**Greater Byrding** is scaled 1.5×, and its deck is a two-stall pen built for a lox: a cross wall
+at the mast so an animal never has to squeeze past it, and each stall about 7 m long with its
+whole side folding down as the gate. Its rails are 2.25 m, which a lox can't jump or climb, and
+it has no lip under way, since a lox stands taller than the rails.
 The pen runs from the rowing benches to the forward benches, so the hold and the aft benches are
 inside it, and the longship's deck crates and barrels are put away to make room. A lox in each
-stall, or a herd of smaller animals. Each ship is slower than the last: 10%, 15% and 20% under a
+stall, or a herd of smaller animals. (A lox tramples what it runs through, and the game judged
+"running" by its speed over the world, so a lox carried at speed trampled the ship under it; on
+any ship, the deck's speed no longer counts.) Each ship is slower than the last: 10%, 15% and 20% under a
 longship, and each turns a little more slowly too. The Wood in the Small Byrding's and Byrding's
 recipes is exactly what the pen's poles and beams would cost to build by hand: 24 and 36. Each
 pen holds about one boar per two square meters -- three, ten and many more on the Greater

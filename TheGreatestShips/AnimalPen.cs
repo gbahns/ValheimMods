@@ -20,6 +20,7 @@ namespace TheGreatestShips
         public float[] RailHeights;  // rail centers above the deck; rails are 0.4 thick
         public float[] Dividers = new float[0];   // cross walls, as z from the pen's center: a pen of several stalls
         public float   GateWidth = 2f;            // each stall's gate opening; a shorter side is all gate
+        public bool    Lip = true;                // the inward ceiling along the wall tops under way; not for animals taller than the wall
     }
 
     /// <summary>
@@ -224,7 +225,7 @@ namespace TheGreatestShips
             // sailing (PenLip switches it), so animals can still be dropped in over the wall at
             // rest.  Starts off; PenBallast restores that after its measurement.
             const float lipWidth = 0.6f, lipThickness = 0.2f;
-            foreach (var (center, size) in new[] {
+            if (spec.Lip) foreach (var (center, size) in new[] {
                 (new Vector3(0f, 0f, spec.CenterZ + halfLen - wallThickness - lipWidth / 2f), new Vector3(spec.Width, lipThickness, lipWidth)),   // bow
                 (new Vector3(0f, 0f, spec.CenterZ - halfLen + wallThickness + lipWidth / 2f), new Vector3(spec.Width, lipThickness, lipWidth)),   // stern
                 (new Vector3(halfWid - wallThickness - lipWidth / 2f, 0f, spec.CenterZ), new Vector3(lipWidth, lipThickness, spec.Length)),      // starboard

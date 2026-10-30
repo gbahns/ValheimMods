@@ -281,237 +281,43 @@ namespace TheGreatestShips
         }
     }
 
-    // ── Temporary diagnostic (2026-10-19): what damages a ship with a lox aboard ──────────
-    // Every damage event that reaches one of this mod's ships, and every physics contact that
-    // reaches its impact handler, written to the log.  Remove once the lox question is settled.
-    [HarmonyPatch(typeof(WearNTear), "RPC_Damage")]
-    internal static class ShipDamageDiagnostic
+    /// <summary>
+    /// A lox tramples what it runs through: MovementDamage switches on its "RunHitDamager", an
+    /// area effect of 20 blunt and 40 chop every four seconds, whenever its rigidbody moves
+    /// faster than 6 m/s -- in world terms, with no account of what it is standing on.  Carried
+    /// on a deck doing 12 knots it is "running" while standing still, and the ship it stands on
+    /// is what it runs through: 60 a blow, a blow per hull collider in reach, all voyage.  The
+    /// speed that counts is the creature's over the deck, so on a ship the deck's velocity is
+    /// taken out first.  Any ship: standing on a moving deck is not running, whoever built it.
+    /// </summary>
+    [HarmonyPatch(typeof(MovementDamage), "Update")]
+    internal static class TrampleIsRelativeToDeckPatch
     {
-        static readonly HashSet<string> _ourShips =
-            new HashSet<string>(System.Linq.Enumerable.Select(ShipDefinitions.All, d => d.PrefabName));
-        static readonly AccessTools.FieldRef<MonsterAI, Character> _targetCreature =
-            AccessTools.FieldRefAccess<MonsterAI, Character>("m_targetCreature");
+        // Private in the game; the publicized reference assembly only makes it compile.  The last
+        // body the character stood on, which outlasts a bounce (GetStandingOnShip needs ground
+        // contact this very frame, and a deck at speed is bumpy).
+        static readonly AccessTools.FieldRef<Character, Rigidbody> _lastGroundBody =
+            AccessTools.FieldRefAccess<Character, Rigidbody>("m_lastGroundBody");
 
         [HarmonyPrefix]
-        static void Prefix(WearNTear __instance, HitData hit)
+        static bool Prefix(MovementDamage __instance)
         {
-            if (__instance == null || hit == null) return;
-            string prefab = Utils.GetPrefabName(__instance.transform.root.gameObject);
-            if (!_ourShips.Contains(prefab)) return;
-            var body = __instance.GetComponentInParent<Rigidbody>();
-            string nearby = "";
-            foreach (var c in Character.GetAllCharacters())
-                if (c != null && !c.IsPlayer() && Vector3.Distance(c.transform.position, hit.m_point) < 12f)
-                {
-                    var ai = c.GetComponent<MonsterAI>();
-                    var target = ai != null ? _targetCreature(ai) : null;
-                    var stat   = ai != null ? ai.GetStaticTarget() : null;
-                    nearby += $"{Utils.GetPrefabName(c.gameObject)}{(c.IsTamed() ? "(tamed)" : "")} {Vector3.Distance(c.transform.position, hit.m_point):0.0}m"
-                        + $"{(c.InAttack() ? " attacking" : "")}{(target != null ? " target=" + Utils.GetPrefabName(target.gameObject) : "")}"
-                        + $"{(stat != null ? " static=" + stat.name + "/" + Utils.GetPrefabName(stat.transform.root.gameObject) : "")}; ";
-                }
-            var attacker = hit.GetAttacker();
-            string who = hit.m_attacker.ToString();
-            if (attacker != null)
+            if (__instance == null || __instance.m_runDamageObject == null) return true;
+            var character = __instance.GetComponent<Character>();
+            var body      = __instance.GetComponent<Rigidbody>();
+            if (character == null || body == null) return true;
+            var ground = _lastGroundBody(character);
+            if (ground == null || ground.GetComponent<Ship>() == null) return true;   // not aboard: vanilla
+
+            var nview = __instance.GetComponent<ZNetView>();
+            if (nview == null || !nview.IsValid() || !nview.IsOwner())
             {
-                var weapon = (attacker as Humanoid)?.GetCurrentWeapon();
-                string aoes = "";
-                foreach (var aoe in Object.FindObjectsByType<Aoe>(FindObjectsSortMode.None))
-                    if (aoe != null && TamedAoeDiagnostic.Owner(aoe) == attacker) aoes += aoe.name + ",";
-                who = $"{Utils.GetPrefabName(attacker.gameObject)}{(attacker.IsTamed() ? "(tamed)" : "")} {Vector3.Distance(attacker.transform.position, hit.m_point):0.0}m from the hit"
-                    + $" inAttack={attacker.InAttack()} weapon={(weapon != null ? weapon.m_shared.m_name : "-")} aoes={(aoes == "" ? "none" : aoes)}";
+                __instance.m_runDamageObject.SetActive(false);
+                return false;
             }
-            var d = hit.m_damage;
-            Jotunn.Logger.LogInfo($"[TheGreatestShips][diag] {prefab} damaged: type={hit.m_hitType} total={hit.GetTotalDamage():0.#} "
-                + $"(blunt {d.m_blunt:0.#} slash {d.m_slash:0.#} pierce {d.m_pierce:0.#} chop {d.m_chop:0.#} pickaxe {d.m_pickaxe:0.#}) "
-                + $"collider={(hit.m_hitCollider != null ? hit.m_hitCollider.name : "-")} attacker={who} "
-                + $"speed={(body != null ? body.linearVelocity.magnitude : 0f):0.0} m/s creatures within 12 m: {(nearby == "" ? "none" : nearby)}");
-        }
-    }
-
-    // Once per world load: the longship's colliders and fittings in hull coordinates, to lay
-    // out a pen that clears the benches and the chest.  Temporary, with the rest of the diagnostic.
-    [HarmonyPatch(typeof(ZNetScene), "Awake")]
-    internal static class ShipLayoutDiagnostic
-    {
-        static bool _done;
-
-        [HarmonyPostfix, HarmonyPriority(Priority.Last)]
-        static void Postfix(ZNetScene __instance)
-        {
-            if (_done || __instance == null) return;
-            var ship = __instance.GetPrefab("VikingShip");
-            if (ship == null) return;
-            _done = true;
-            try
-            {
-                var root = ship.transform;
-                foreach (var col in ship.GetComponentsInChildren<Collider>(true))
-                {
-                    var t = col.transform;
-                    string shape;
-                    Vector3 center, size;
-                    if (col is BoxCollider b) { shape = "box"; center = b.center; size = Vector3.Scale(b.size, t.lossyScale); }
-                    else if (col is CapsuleCollider cc) { shape = "capsule"; center = cc.center; size = new Vector3(cc.radius * 2f, cc.height, cc.radius * 2f); }
-                    else if (col is MeshCollider mc && mc.sharedMesh != null) { shape = mc.convex ? "mesh(convex)" : "mesh"; center = mc.sharedMesh.bounds.center; size = Vector3.Scale(mc.sharedMesh.bounds.size, t.lossyScale); }
-                    else { shape = col.GetType().Name; center = Vector3.zero; size = Vector3.zero; }
-                    var c = root.InverseTransformPoint(t.TransformPoint(center));
-                    var rot = (Quaternion.Inverse(root.rotation) * t.rotation).eulerAngles;
-                    Jotunn.Logger.LogInfo($"[TheGreatestShips][layout] {Path(t, root)} {shape} layer={LayerMask.LayerToName(col.gameObject.layer)} trigger={col.isTrigger} active={col.gameObject.activeInHierarchy} "
-                        + $"center=({c.x:0.00}, {c.y:0.00}, {c.z:0.00}) size=({size.x:0.00}, {size.y:0.00}, {size.z:0.00}) rot=({rot.x:0}, {rot.y:0}, {rot.z:0})");
-                }
-                foreach (var mb in ship.GetComponentsInChildren<MonoBehaviour>(true))
-                {
-                    if (mb == null) continue;
-                    if (!(mb is Chair) && !(mb is Container) && !(mb is ShipControlls) && !(mb is Ladder) && !(mb is Ship) && !(mb is ImpactEffect)) continue;
-                    var c = root.InverseTransformPoint(mb.transform.position);
-                    Jotunn.Logger.LogInfo($"[TheGreatestShips][layout] {Path(mb.transform, root)} {mb.GetType().Name} at ({c.x:0.00}, {c.y:0.00}, {c.z:0.00})");
-                }
-                var sh = ship.GetComponent<Ship>();
-                if (sh != null)
-                {
-                    foreach (var (name, obj) in new[] { ("sail", sh.m_sailObject), ("mast", sh.m_mastObject), ("rudder", sh.m_rudderObject) })
-                        if (obj != null) { var c = root.InverseTransformPoint(obj.transform.position); Jotunn.Logger.LogInfo($"[TheGreatestShips][layout] {name} {Path(obj.transform, root)} at ({c.x:0.00}, {c.y:0.00}, {c.z:0.00})"); }
-                    Jotunn.Logger.LogInfo($"[TheGreatestShips][layout] Ship: stearForceOffset={sh.m_stearForceOffset} stearForce={sh.m_stearForce} stearVelForceFactor={sh.m_stearVelForceFactor} backwardForce={sh.m_backwardForce} rudderSpeed={sh.m_rudderSpeed} angularDamping={sh.m_angularDamping} dampingForward={sh.m_dampingForward} dampingSideway={sh.m_dampingSideway}");
-                }
-                var body = ship.GetComponent<Rigidbody>();
-                if (body != null) Jotunn.Logger.LogInfo($"[TheGreatestShips][layout] Rigidbody mass={body.mass} com=({body.centerOfMass.x:0.00}, {body.centerOfMass.y:0.00}, {body.centerOfMass.z:0.00}) inertia=({body.inertiaTensor.x:0}, {body.inertiaTensor.y:0}, {body.inertiaTensor.z:0}) angularDrag={body.angularDamping}");
-            }
-            catch (System.Exception e) { Jotunn.Logger.LogWarning($"[TheGreatestShips][layout] dump failed: {e.Message}"); }
-        }
-
-        static string Path(Transform t, Transform root)
-        {
-            string path = t.name;
-            for (var p = t.parent; p != null && p != root; p = p.parent) path = p.name + "/" + path;
-            return path;
-        }
-    }
-
-    // Every attack a tamed creature starts, with the call path: the AI's DoAttack, or something else.
-    [HarmonyPatch(typeof(Humanoid), "StartAttack")]
-    internal static class TamedAttackDiagnostic
-    {
-        [HarmonyPrefix]
-        static void Prefix(Humanoid __instance, Character target)
-        {
-            if (__instance == null || !__instance.IsTamed()) return;
-            var weapon = __instance.GetCurrentWeapon();
-            Jotunn.Logger.LogInfo($"[TheGreatestShips][diag] {Utils.GetPrefabName(__instance.gameObject)}(tamed) starts an attack: target={(target != null ? Utils.GetPrefabName(target.gameObject) : "none")} "
-                + $"weapon={(weapon != null ? weapon.m_shared.m_name : "-")} inAttack={__instance.InAttack()}\n{Frames()}");
-        }
-
-        internal static string Frames()
-        {
-            var trace = new System.Diagnostics.StackTrace(2, false);
-            var sb = new System.Text.StringBuilder();
-            int n = 0;
-            foreach (var frame in trace.GetFrames())
-            {
-                var m = frame.GetMethod();
-                if (m == null) continue;
-                sb.Append("    ").Append(m.DeclaringType?.Name).Append('.').Append(m.Name).Append('\n');
-                if (++n >= 12) break;
-            }
-            return sb.ToString();
-        }
-    }
-
-    [HarmonyPatch(typeof(Aoe), "Setup")]
-    internal static class TamedAoeDiagnostic
-    {
-        static readonly AccessTools.FieldRef<Aoe, Character> _owner = AccessTools.FieldRefAccess<Aoe, Character>("m_owner");
-        internal static Character Owner(Aoe aoe) => _owner(aoe);
-
-        [HarmonyPrefix]
-        static void Prefix(Aoe __instance, Character owner)
-        {
-            if (__instance == null || owner == null || !owner.IsTamed()) return;
-            var d = __instance.m_damage;
-            Jotunn.Logger.LogInfo($"[TheGreatestShips][diag] {Utils.GetPrefabName(owner.gameObject)}(tamed) gets an Aoe {__instance.name}: blunt {d.m_blunt:0.#} chop {d.m_chop:0.#} "
-                + $"triggers={__instance.m_useTriggers} interval={__instance.m_hitInterval} ttl={__instance.m_ttl} attached={__instance.m_attachToCaster}\n{TamedAttackDiagnostic.Frames()}");
-        }
-    }
-
-    // Once per world load: what the Lox carries -- its weapons' damage and AI settings, any Aoe
-    // on it -- so the 20 blunt + 40 chop blows can be matched to a weapon.
-    [HarmonyPatch(typeof(ZNetScene), "Awake")]
-    internal static class LoxLayoutDiagnostic
-    {
-        static bool _done;
-
-        [HarmonyPostfix, HarmonyPriority(Priority.Last)]
-        static void Postfix(ZNetScene __instance)
-        {
-            if (_done || __instance == null) return;
-            var lox = __instance.GetPrefab("Lox");
-            if (lox == null) return;
-            _done = true;
-            try
-            {
-                var humanoid = lox.GetComponent<Humanoid>();
-                if (humanoid != null && humanoid.m_defaultItems != null)
-                    foreach (var item in humanoid.m_defaultItems)
-                    {
-                        var drop = item != null ? item.GetComponent<ItemDrop>() : null;
-                        if (drop == null) continue;
-                        var sh = drop.m_itemData.m_shared;
-                        var a = sh.m_attack;
-                        Jotunn.Logger.LogInfo($"[TheGreatestShips][lox] weapon {item.name}: blunt {sh.m_damages.m_blunt:0.#} slash {sh.m_damages.m_slash:0.#} pierce {sh.m_damages.m_pierce:0.#} chop {sh.m_damages.m_chop:0.#} pickaxe {sh.m_damages.m_pickaxe:0.#} "
-                            + $"aiTarget={sh.m_aiTargetType} aiRange={sh.m_aiAttackRange} attackType={a?.m_attackType} range={a?.m_attackRange} height={a?.m_attackHeight} "
-                            + $"spawnOnTrigger={(a?.m_spawnOnTrigger != null ? a.m_spawnOnTrigger.name : "-")} projectile={(a?.m_attackProjectile != null ? a.m_attackProjectile.name : "-")}");
-                    }
-                foreach (var aoe in lox.GetComponentsInChildren<Aoe>(true))
-                    Jotunn.Logger.LogInfo($"[TheGreatestShips][lox] Aoe {aoe.name}: blunt {aoe.m_damage.m_blunt:0.#} chop {aoe.m_damage.m_chop:0.#} triggers={aoe.m_useTriggers} interval={aoe.m_hitInterval} ttl={aoe.m_ttl} attached={aoe.m_attachToCaster} active={aoe.gameObject.activeSelf}");
-                foreach (var col in lox.GetComponentsInChildren<Collider>(true))
-                {
-                    string shape = col is CapsuleCollider cc ? $"capsule r={cc.radius} h={cc.height} center={cc.center}" : col is BoxCollider b ? $"box size={b.size} center={b.center}" : col.GetType().Name;
-                    Jotunn.Logger.LogInfo($"[TheGreatestShips][lox] collider {col.name}: {shape} layer={LayerMask.LayerToName(col.gameObject.layer)} trigger={col.isTrigger}");
-                }
-                var ai = lox.GetComponent<MonsterAI>();
-                if (ai != null) Jotunn.Logger.LogInfo($"[TheGreatestShips][lox] MonsterAI attackPlayerObjects={ai.m_attackPlayerObjects} viewRange={ai.m_viewRange} alertRange={ai.m_alertRange}");
-                var body = lox.GetComponent<Rigidbody>();
-                if (body != null) Jotunn.Logger.LogInfo($"[TheGreatestShips][lox] Rigidbody mass={body.mass} scale={lox.transform.localScale}");
-            }
-            catch (System.Exception e) { Jotunn.Logger.LogWarning($"[TheGreatestShips][lox] dump failed: {e.Message}"); }
-        }
-    }
-
-    // Every hit a tamed creature takes: if the lox is hurt aboard, by what.
-    [HarmonyPatch(typeof(Character), "RPC_Damage")]
-    internal static class TamedDamageDiagnostic
-    {
-        [HarmonyPrefix]
-        static void Prefix(Character __instance, HitData hit)
-        {
-            if (__instance == null || hit == null || !__instance.IsTamed()) return;
-            var attacker = hit.GetAttacker();
-            Jotunn.Logger.LogInfo($"[TheGreatestShips][diag] {Utils.GetPrefabName(__instance.gameObject)}(tamed) hurt: type={hit.m_hitType} total={hit.GetTotalDamage():0.#} "
-                + $"attacker={(attacker != null ? Utils.GetPrefabName(attacker.gameObject) : hit.m_attacker.ToString())} collider={(hit.m_hitCollider != null ? hit.m_hitCollider.name : "-")} health={__instance.GetHealth():0}");
-        }
-    }
-
-    [HarmonyPatch(typeof(ImpactEffect), "OnCollisionEnter")]
-    internal static class ShipContactDiagnostic
-    {
-        static readonly HashSet<string> _ourShips =
-            new HashSet<string>(System.Linq.Enumerable.Select(ShipDefinitions.All, d => d.PrefabName));
-
-        [HarmonyPrefix, HarmonyPriority(Priority.First)]
-        static void Prefix(ImpactEffect __instance, Collision info)
-        {
-            if (__instance == null || info == null || info.contactCount == 0) return;
-            string name = __instance.name;
-            int clone = name.IndexOf('(');
-            if (clone > 0) name = name.Substring(0, clone).Trim();
-            if (!_ourShips.Contains(name)) return;
-            if (info.relativeVelocity.magnitude < __instance.m_minVelocity) return;   // vanilla ignores these too
-            var other = info.GetContact(0).otherCollider;
-            var hit = other != null ? Projectile.FindHitObject(other) : null;
-            var character = hit != null ? hit.GetComponent<Character>() : null;
-            Jotunn.Logger.LogInfo($"[TheGreatestShips][diag] {name} contact: other={(other != null ? other.name : "-")} root={(hit != null ? hit.name : "-")} "
-                + $"layer={(other != null ? LayerMask.LayerToName(other.gameObject.layer) : "-")} relVel={info.relativeVelocity.magnitude:0.0} "
-                + $"character={(character != null ? Utils.GetPrefabName(character.gameObject) + (character.IsTamed() ? "(tamed)" : "(wild)") + $" r={character.GetRadius():0.00} h={character.GetHeight():0.00}" : "none")} ourCollider={info.GetContact(0).thisCollider.name}");
+            bool running = (body.linearVelocity - ground.linearVelocity).magnitude > __instance.m_speedTreshold;
+            __instance.m_runDamageObject.SetActive(running);
+            return false;
         }
     }
 }

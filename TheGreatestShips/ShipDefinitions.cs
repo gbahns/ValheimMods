@@ -261,7 +261,7 @@ namespace TheGreatestShips
                 BaseName           = "Longship",
                 BaseTopSpeed       = 9.65f,
                 DisplayName        = "Greater Byrding",
-                Description        = "A longship half again the size, its deck a two-stall pen with walls a lox can't see over: a lox in each stall, or a herd of smaller animals. Slow to turn.",
+                Description        = "A longship half again the size, its deck a two-stall pen a lox can't climb: a lox in each stall, or a herd of smaller animals. Slow to turn.",
                 StorageWidth       = 6,
                 StorageHeight      = 4,
                 DefaultRecipe      = "FineWood:65,ElderBark:65,IronNails:200,Wood:50,LoxPelt:20",   // Wood = the pen's pieces exactly (gates included); weighs 480 (two trips, or one on Troll Endurance); Lox Pelt makes it Plains-tier, which a lox carrier is anyway
@@ -291,10 +291,13 @@ namespace TheGreatestShips
                 // this stretch.  A cross wall at the mast (z 0.28) makes two stalls, so an animal
                 // never has to pass the mast: a lox's collider is a 3 m circle and can't fit
                 // beside it in a 5.1 m pen.  Each stall is about 7 m long at 1.5x; its whole side
-                // is the gate.  Lox-height: the collider is 3.5 m tall, so the wall top and the
-                // lip must clear 3.5 m in the world -- 2.4 hull units here is 3.6 m.
-                Pen = new PenSpec { Length = 9.4f, Width = 3.4f, CenterZ = 0.15f, PostHeight = 2.4f, RailHeights = new[] { 0.4f, 0.85f, 1.3f, 1.75f, 2.2f },
-                                    Dividers = new[] { 0.13f }, GateWidth = 3f },
+                // is the gate.  Rails to 2.25 m in the world: a lox can't jump and climbs about
+                // its collider radius, 1.5 m, so that holds it as long as nothing shoves it, and
+                // the stalls are what stop the shoving.  No lip: the lox's body is 3.5 m tall, and
+                // a lip at the wall top would run through it.  Walls a player can see over and a
+                // crew can live with were 3.6 m walls' price, and the 3.6 m was for the lip.
+                Pen = new PenSpec { Length = 9.4f, Width = 3.4f, CenterZ = 0.15f, PostHeight = 1.5f, RailHeights = new[] { 0.4f, 0.85f, 1.3f },
+                                    Dividers = new[] { 0.13f }, GateWidth = 3f, Lip = false },
             },
         };
     }
