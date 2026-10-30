@@ -112,13 +112,24 @@ namespace TheGreatestMap
 
             bool sent = LocationNames.AskStanding(places, answers =>
             {
-                int settled = 0, refused = 0, blanks = 0;
+                int settled = 0, refused = 0, blanks = 0, already = 0;
                 var byName = new Dictionary<string, int>();
                 for (int i = 0; i < unknown.Count && i < answers.Count; i++)
                 {
                     bool blank = unknown[i].SaysNothing;
                     string prefab = Pick(unknown[i], answers[i]);
                     if (string.IsNullOrEmpty(prefab)) { refused++; continue; }
+                    // The thing it stands for is already marked, by a marker that can say so.
+                    // Writing the name on this one as well would put two markers on one tar pit
+                    // rather than none -- so it goes, and the one that can be read stays. Only
+                    // for the markers that say nothing: a marker still wearing its own picture
+                    // is a record of something somebody saw, not litter.
+                    if (blank && ClientPins.AlreadyStandsFor(prefab, unknown[i].Pos))
+                    {
+                        ClientPins.RemoveStale(unknown[i].Key);
+                        already++;
+                        continue;
+                    }
                     ClientPins.Reidentify(unknown[i], prefab);
                     settled++;
                     if (blank) blanks++;
@@ -129,7 +140,8 @@ namespace TheGreatestMap
                 TheGreatestMapMod.Log.LogInfo(
                     $"[TheGreatestMap] Asked the world about {unknown.Count} marker(s) that did not know what they were: " +
                     $"settled {settled}, left {refused} alone because nothing there matched what the marker looks like." +
-                    (blanks > 0 ? $" {blanks} of those had nothing on them at all and were named by what stands there." : ""));
+                    (blanks > 0 ? $" {blanks} of those had nothing on them at all and were named by what stands there." : "") +
+                    (already > 0 ? $" {already} stood for something already marked and were erased instead." : ""));
                 foreach (var kv in byName)
                     TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap]   {kv.Key}: {kv.Value}");
             });

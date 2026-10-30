@@ -680,6 +680,37 @@ namespace TheGreatestMap
             catch (Exception) { return true; }   // cannot tell, so do not cry wolf
         }
 
+        /// <summary>
+        /// How far a place of this name reaches, or zero where the game has no location by that
+        /// name. Which locations the generator placed, and where, is the server's business; how
+        /// big each kind of place is ships with the game, so a client can answer this alone.
+        ///
+        /// It is how far apart two markers for one place can stand: a marker sits where the
+        /// player who found the place was standing, and a tar pit is wide enough that two people
+        /// finding the same one write their markers nine meters apart.
+        /// </summary>
+        internal static float LocationRadius(string prefab)
+        {
+            if (string.IsNullOrEmpty(prefab)) return 0f;
+            try
+            {
+                var zone = ZoneSystem.instance;
+                var locations = zone != null ? zone.m_locations : null;
+                if (locations == null) return 0f;
+                foreach (var loc in locations)
+                {
+                    if (loc == null) continue;
+                    if (!string.Equals(loc.m_prefabName, prefab, StringComparison.OrdinalIgnoreCase)
+                        && !string.Equals(loc.m_name, prefab, StringComparison.OrdinalIgnoreCase)) continue;
+                    // Reached by name: the field is not public on the real assembly, and reading
+                    // it directly compiles against Libs and throws against the game.
+                    return HarmonyLib.Traverse.Create(loc).Field("m_exteriorRadius").GetValue<float>();
+                }
+            }
+            catch (Exception) { /* nothing loaded, or the field moved: no radius to offer */ }
+            return 0f;
+        }
+
         private static bool ItemExists(string name)
         {
             try { return IconRegistry.ItemPrefab(name) != null; }

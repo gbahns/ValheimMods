@@ -308,6 +308,12 @@ namespace TheGreatestMap
                 {
                     string prefab = names[i];
                     if (string.IsNullOrEmpty(prefab)) { nothing++; continue; }
+                    // A true name the catalog has no line for leaves the marker worse off than
+                    // it was: nothing can draw it, nothing can file it, and every later pass
+                    // reads the source and concludes the marker is accounted for. This is where
+                    // the fifteen Pickable_Tar markers came from -- the tar inside a tar pit,
+                    // correctly named and undrawable.
+                    if (string.IsNullOrEmpty(Catalog.IconFor(prefab))) { nothing++; continue; }
                     named++;
                     Count(byName, Catalog.Prettify(prefab) + " (" + prefab + ")");
                     if (!apply) continue;

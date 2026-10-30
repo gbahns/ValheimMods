@@ -109,18 +109,26 @@ namespace TheGreatestMap
         public bool Auto { get { return !string.Equals(_source, Manual, StringComparison.Ordinal); } }
 
         /// <summary>
-        /// Nothing on it to read: no source, no icon, no kind, no name. Not so much a marker as a
-        /// dot standing where one used to be, and the only thing left that can say what it was is
-        /// where it stands -- which the world can still be asked about. The fields are read as
-        /// stored rather than as derived, because every derivation starts from the source and
-        /// there is none.
+        /// Nothing on it that anything can read: no name, no picture it can be drawn with, no
+        /// kind it can be filed under. Not so much a marker as a dot standing where one used to
+        /// be, and the only thing left that can say what it was is where it stands -- which the
+        /// world can still be asked about.
+        ///
+        /// <para>Read through the derivations rather than off the stored fields, because a source
+        /// nothing can draw is worth exactly as much as no source at all. Fifteen markers on the
+        /// live map read Pickable_Tar and four read MountainGraveStone01 -- true names of real
+        /// things, for which the catalog has no line, so they drew as anonymous dots labelled
+        /// "marker" and no pass would touch them: the blank passes saw a source and left them
+        /// alone, and the catalog passes saw nothing they could look up.</para>
+        ///
+        /// <para>A marker that was given a picture of its own is never this, whatever became of
+        /// its source: the picture is still something a player can read.</para>
         /// </summary>
         public bool SaysNothing =>
             Auto
-            && string.IsNullOrEmpty(_source)
-            && string.IsNullOrEmpty(_icon)
-            && string.IsNullOrEmpty(_kindText)
-            && string.IsNullOrEmpty(Name);
+            && string.IsNullOrEmpty(Name)
+            && string.IsNullOrEmpty(Icon)
+            && string.IsNullOrEmpty(Kind);
 
         public bool Checked;
         public long Created;    // DateTime.UtcNow.Ticks

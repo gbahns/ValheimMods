@@ -700,6 +700,29 @@ namespace TheGreatestMap
             return string.Equals((a ?? "").Trim(), (b ?? "").Trim(), System.StringComparison.OrdinalIgnoreCase);
         }
 
+        /// <summary>
+        /// A marker that already stands for this very thing, near enough to be the same one.
+        ///
+        /// Near enough is the thing's own size where the game knows it. A tar pit is tens of
+        /// meters across and its marker sits wherever the player who found it stood, so two
+        /// markers for one pit are commonly five to nine meters apart -- further than any fixed
+        /// number small enough to be safe elsewhere. For a thing the world places many of, a rock
+        /// or a bush, there is no radius and the measure stays tight, because two copper rocks
+        /// four meters apart are two rocks.
+        /// </summary>
+        internal static bool AlreadyStandsFor(string source, Vector3 pos)
+        {
+            if (string.IsNullOrEmpty(source)) return false;
+            float radius = Mathf.Max(4f, Catalog.LocationRadius(source));
+            foreach (var pin in All)
+            {
+                if (pin == null) continue;
+                if (!string.Equals(pin.Source, source, System.StringComparison.Ordinal)) continue;
+                if (Geo.FlatDistance(pin.Pos, pos) <= radius) return true;
+            }
+            return false;
+        }
+
         /// <summary>Any pin on the map (personal or vanilla local) with this icon within the radius.</summary>
         internal static bool HasPinNear(string icon, Vector3 pos, float radius)
         {

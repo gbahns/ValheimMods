@@ -20,6 +20,22 @@
   that does know what it is stands on the same spot. The erasure travels, so one player's login
   tidies everybody's map.
 
+- **An anonymous dot labelled "marker" is one of these too, even when it has a name on the
+  record.** Nineteen markers on the live map carried a source nothing could draw -- fifteen
+  reading `Pickable_Tar`, the tar inside a tar pit, and four reading `MountainGraveStone01`.
+  Each is a true name for a real thing, and each was useless: no catalog line covers them, so
+  the marker had no picture and no kind, and every pass that might have repaired it read the
+  source, concluded the marker was accounted for, and moved on. A marker nobody can read is a
+  marker that says nothing, and it is treated as one now.
+
+  Those came from the world being asked what stands at a place and the answer being written down
+  whatever it was. The answer has to be a thing the catalog can draw now, or it is no answer.
+
+  And where the world names a thing that is already marked -- the tar pit the tar is lying in --
+  the unreadable marker is erased rather than named, so one pit ends up with one marker instead
+  of two. How near counts as the same place is the place's own size, which the game knows: a tar
+  pit is wide enough that two people who find it write their markers five to nine meters apart.
+
 - **A marker with nothing left on it is asked about rather than left standing.** The repair that
   asks the world what is at a place has always said that a blank marker is the obvious case for
   it, and has never once asked about one: it skipped anything with no kind, and a blank has no
