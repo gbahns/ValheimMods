@@ -2,6 +2,9 @@
 
 ## 0.9.11 — unreleased
 
+- The Greater Byrding's pen is lox-height: posts and lip at 3.6 m above the deck, five rails. A
+  lox's body is 3.5 m tall and 3 m across, so the old 2.25 m rails were below its back and the
+  lip ran through its body under way. Pen layout work continues.
 - A peeked hold (PeekaChest and the like) is drawn fitted to the panel, as the opened hold is,
   instead of at full slot size with a scroll bar. The fit now recognizes the hold by its
   inventory rather than by the container the player opened, which a peek never sets.

@@ -288,7 +288,9 @@ namespace TheGreatestShips
                 // The whole open deck, mast inside it, from the aft benches to the chest.  In hull
                 // units, so at 1.5x this is 5.1 x 8.1 m with rails to 2.25 m -- a wolf jumps, a
                 // lox doesn't fit anything smaller.
-                Pen = new PenSpec { Length = 5.4f, Width = 3.4f, CenterZ = 0.15f, PostHeight = 1.5f, RailHeights = new[] { 0.4f, 0.85f, 1.3f } },
+                // Lox-height: its collider is 3.5 m tall (radius 1.5), so the wall top and the lip
+                // must clear 3.5 m in the world -- 2.4 hull units here is 3.6 m.
+                Pen = new PenSpec { Length = 5.4f, Width = 3.4f, CenterZ = 0.15f, PostHeight = 2.4f, RailHeights = new[] { 0.4f, 0.85f, 1.3f, 1.75f, 2.2f } },
             },
         };
     }

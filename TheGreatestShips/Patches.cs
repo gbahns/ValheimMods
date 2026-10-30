@@ -305,8 +305,10 @@ namespace TheGreatestShips
                 {
                     var ai = c.GetComponent<MonsterAI>();
                     var target = ai != null ? _targetCreature(ai) : null;
+                    var stat   = ai != null ? ai.GetStaticTarget() : null;
                     nearby += $"{Utils.GetPrefabName(c.gameObject)}{(c.IsTamed() ? "(tamed)" : "")} {Vector3.Distance(c.transform.position, hit.m_point):0.0}m"
-                        + $"{(c.InAttack() ? " attacking" : "")}{(target != null ? " target=" + Utils.GetPrefabName(target.gameObject) : "")}; ";
+                        + $"{(c.InAttack() ? " attacking" : "")}{(target != null ? " target=" + Utils.GetPrefabName(target.gameObject) : "")}"
+                        + $"{(stat != null ? " static=" + stat.name + "/" + Utils.GetPrefabName(stat.transform.root.gameObject) : "")}; ";
                 }
             var attacker = hit.GetAttacker();
             string who = attacker != null
@@ -317,6 +319,65 @@ namespace TheGreatestShips
                 + $"(blunt {d.m_blunt:0.#} slash {d.m_slash:0.#} pierce {d.m_pierce:0.#} chop {d.m_chop:0.#} pickaxe {d.m_pickaxe:0.#}) "
                 + $"collider={(hit.m_hitCollider != null ? hit.m_hitCollider.name : "-")} attacker={who} "
                 + $"speed={(body != null ? body.linearVelocity.magnitude : 0f):0.0} m/s creatures within 12 m: {(nearby == "" ? "none" : nearby)}");
+        }
+    }
+
+    // Once per world load: the longship's colliders and fittings in hull coordinates, to lay
+    // out a pen that clears the benches and the chest.  Temporary, with the rest of the diagnostic.
+    [HarmonyPatch(typeof(ZNetScene), "Awake")]
+    internal static class ShipLayoutDiagnostic
+    {
+        static bool _done;
+
+        [HarmonyPostfix, HarmonyPriority(Priority.Last)]
+        static void Postfix(ZNetScene __instance)
+        {
+            if (_done || __instance == null) return;
+            var ship = __instance.GetPrefab("VikingShip");
+            if (ship == null) return;
+            _done = true;
+            try
+            {
+                var root = ship.transform;
+                foreach (var col in ship.GetComponentsInChildren<Collider>(true))
+                {
+                    var t = col.transform;
+                    string shape;
+                    Vector3 center, size;
+                    if (col is BoxCollider b) { shape = "box"; center = b.center; size = Vector3.Scale(b.size, t.lossyScale); }
+                    else if (col is CapsuleCollider cc) { shape = "capsule"; center = cc.center; size = new Vector3(cc.radius * 2f, cc.height, cc.radius * 2f); }
+                    else if (col is MeshCollider mc && mc.sharedMesh != null) { shape = mc.convex ? "mesh(convex)" : "mesh"; center = mc.sharedMesh.bounds.center; size = Vector3.Scale(mc.sharedMesh.bounds.size, t.lossyScale); }
+                    else { shape = col.GetType().Name; center = Vector3.zero; size = Vector3.zero; }
+                    var c = root.InverseTransformPoint(t.TransformPoint(center));
+                    var rot = (Quaternion.Inverse(root.rotation) * t.rotation).eulerAngles;
+                    Jotunn.Logger.LogInfo($"[TheGreatestShips][layout] {Path(t, root)} {shape} layer={LayerMask.LayerToName(col.gameObject.layer)} trigger={col.isTrigger} active={col.gameObject.activeInHierarchy} "
+                        + $"center=({c.x:0.00}, {c.y:0.00}, {c.z:0.00}) size=({size.x:0.00}, {size.y:0.00}, {size.z:0.00}) rot=({rot.x:0}, {rot.y:0}, {rot.z:0})");
+                }
+                foreach (var mb in ship.GetComponentsInChildren<MonoBehaviour>(true))
+                {
+                    if (mb == null) continue;
+                    if (!(mb is Chair) && !(mb is Container) && !(mb is ShipControlls) && !(mb is Ladder) && !(mb is Ship) && !(mb is ImpactEffect)) continue;
+                    var c = root.InverseTransformPoint(mb.transform.position);
+                    Jotunn.Logger.LogInfo($"[TheGreatestShips][layout] {Path(mb.transform, root)} {mb.GetType().Name} at ({c.x:0.00}, {c.y:0.00}, {c.z:0.00})");
+                }
+                var sh = ship.GetComponent<Ship>();
+                if (sh != null)
+                {
+                    foreach (var (name, obj) in new[] { ("sail", sh.m_sailObject), ("mast", sh.m_mastObject), ("rudder", sh.m_rudderObject) })
+                        if (obj != null) { var c = root.InverseTransformPoint(obj.transform.position); Jotunn.Logger.LogInfo($"[TheGreatestShips][layout] {name} {Path(obj.transform, root)} at ({c.x:0.00}, {c.y:0.00}, {c.z:0.00})"); }
+                    Jotunn.Logger.LogInfo($"[TheGreatestShips][layout] Ship: stearForceOffset={sh.m_stearForceOffset} stearForce={sh.m_stearForce} stearVelForceFactor={sh.m_stearVelForceFactor} backwardForce={sh.m_backwardForce} rudderSpeed={sh.m_rudderSpeed} angularDamping={sh.m_angularDamping} dampingForward={sh.m_dampingForward} dampingSideway={sh.m_dampingSideway}");
+                }
+                var body = ship.GetComponent<Rigidbody>();
+                if (body != null) Jotunn.Logger.LogInfo($"[TheGreatestShips][layout] Rigidbody mass={body.mass} com=({body.centerOfMass.x:0.00}, {body.centerOfMass.y:0.00}, {body.centerOfMass.z:0.00}) inertia=({body.inertiaTensor.x:0}, {body.inertiaTensor.y:0}, {body.inertiaTensor.z:0}) angularDrag={body.angularDamping}");
+            }
+            catch (System.Exception e) { Jotunn.Logger.LogWarning($"[TheGreatestShips][layout] dump failed: {e.Message}"); }
+        }
+
+        static string Path(Transform t, Transform root)
+        {
+            string path = t.name;
+            for (var p = t.parent; p != null && p != root; p = p.parent) path = p.name + "/" + path;
+            return path;
         }
     }
 
