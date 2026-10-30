@@ -261,7 +261,7 @@ namespace TheGreatestShips
                 BaseName           = "Longship",
                 BaseTopSpeed       = 9.65f,
                 DisplayName        = "Greater Byrding",
-                Description        = "A longship half again the size, with a high-railed pen the length of its deck: room for a lox, and a fence a wolf can't clear. Slow to turn.",
+                Description        = "A longship half again the size, its deck a two-stall pen with walls a lox can't see over: a lox in each stall, or a herd of smaller animals. Slow to turn.",
                 StorageWidth       = 6,
                 StorageHeight      = 4,
                 DefaultRecipe      = "FineWood:65,ElderBark:65,IronNails:200,Wood:50,LoxPelt:20",   // Wood = the pen's pieces exactly (gates included); weighs 480 (two trips, or one on Troll Endurance); Lox Pelt makes it Plains-tier, which a lox carrier is anyway
@@ -285,12 +285,16 @@ namespace TheGreatestShips
                 DefaultWidth       = 1f,
                 DefaultLength      = 1f,
                 DefaultScale       = 1.5f,
-                // The whole open deck, mast inside it, from the aft benches to the chest.  In hull
-                // units, so at 1.5x this is 5.1 x 8.1 m with rails to 2.25 m -- a wolf jumps, a
-                // lox doesn't fit anything smaller.
-                // Lox-height: its collider is 3.5 m tall (radius 1.5), so the wall top and the lip
-                // must clear 3.5 m in the world -- 2.4 hull units here is 3.6 m.
-                Pen = new PenSpec { Length = 5.4f, Width = 3.4f, CenterZ = 0.15f, PostHeight = 2.4f, RailHeights = new[] { 0.4f, 0.85f, 1.3f, 1.75f, 2.2f } },
+                // Nearly the whole deck: from just aft of the rowing benches (the rudder seat is
+                // at z -7) to just short of the forward benches (z 5.4), the chest (z 3.1-4.6) and
+                // the aft benches inside.  The hull is wide enough for the pen's 3.4 over exactly
+                // this stretch.  A cross wall at the mast (z 0.28) makes two stalls, so an animal
+                // never has to pass the mast: a lox's collider is a 3 m circle and can't fit
+                // beside it in a 5.1 m pen.  Each stall is about 7 m long at 1.5x; its whole side
+                // is the gate.  Lox-height: the collider is 3.5 m tall, so the wall top and the
+                // lip must clear 3.5 m in the world -- 2.4 hull units here is 3.6 m.
+                Pen = new PenSpec { Length = 9.4f, Width = 3.4f, CenterZ = 0.15f, PostHeight = 2.4f, RailHeights = new[] { 0.4f, 0.85f, 1.3f, 1.75f, 2.2f },
+                                    Dividers = new[] { 0.13f }, GateWidth = 3f },
             },
         };
     }

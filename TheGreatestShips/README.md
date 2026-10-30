@@ -66,15 +66,20 @@ rocks). Expect it to need retuning.
 
 That is the **Small Byrding**: a boar or two. The **Byrding** is the whole ship scaled 1.25×, with a
 pen the length of its deck, mast and all: room for a few boars, and a longship's hold. The
-**Greater Byrding** is scaled 1.5×, with a fence high enough that a wolf can't clear it: room for a
-lox, or a pack of wolves. Each is slower than the last: 10%, 15% and 20% under a longship, and
-each turns a little more slowly too. The Wood in each recipe is exactly what its pen's poles and
-beams would cost to build by hand: 24, 36 and 50. Each pen holds about one boar per two square
-meters -- three, ten and fifteen -- and past that the animals stand on one another and can be
-lost over the side. Under way, an invisible lip along the top of the rails keeps a jostled animal
-in; at rest it is gone, so animals can be dropped in over the rails from a dock. Each pen also has
-a gate on each side: look at it and Use, and it folds outboard into a ramp from the pen floor up
-over the gunwale, so with the ship alongside a dock at rail height animals can walk off, or on.
+**Greater Byrding** is scaled 1.5×, and its deck is a two-stall pen built for a lox: walls 3.6 m
+high, which is what it takes to top a lox's body, a cross wall at the mast so an animal never has
+to squeeze past it, and each stall about 7 m long with its whole side folding down as the gate.
+The pen runs from the rowing benches to the forward benches, so the hold and the aft benches are
+inside it, and the longship's deck crates and barrels are put away to make room. A lox in each
+stall, or a herd of smaller animals. Each ship is slower than the last: 10%, 15% and 20% under a
+longship, and each turns a little more slowly too. The Wood in the Small Byrding's and Byrding's
+recipes is exactly what the pen's poles and beams would cost to build by hand: 24 and 36. Each
+pen holds about one boar per two square meters -- three, ten and many more on the Greater
+Byrding -- and past that the animals stand on one another and can be lost over the side. Under
+way, an invisible lip along the top of the rails keeps a jostled animal in; at rest it is gone, so
+animals can be dropped in over the rails from a dock. Each stall has a gate on each side: look at
+it and Use, and it folds outboard into a ramp from the pen floor up over the gunwale, so with the
+ship alongside a dock at rail height animals can walk off, or on.
 
 ## Configuration
 

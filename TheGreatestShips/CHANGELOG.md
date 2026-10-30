@@ -2,9 +2,15 @@
 
 ## 0.9.11 — unreleased
 
-- The Greater Byrding's pen is lox-height: posts and lip at 3.6 m above the deck, five rails. A
-  lox's body is 3.5 m tall and 3 m across, so the old 2.25 m rails were below its back and the
-  lip ran through its body under way. Pen layout work continues.
+- The Greater Byrding's pen is rebuilt for a lox. Walls and lip at 3.6 m above the deck, five
+  rails: a lox's body is 3.5 m tall and 3 m across, so the old 2.25 m rails were below its back
+  and the lip ran through its body under way. The pen now runs nearly the whole deck, from the
+  rowing benches to the forward benches, with the hold and the aft benches inside, and a cross
+  wall at the mast divides it into two stalls of about 7 m, so an animal never has to pass the
+  mast: a lox can't fit beside it in a 5.1 m pen, and the shoving that followed is how it got
+  out. Each stall's whole side is its gate, on both sides. The longship's deck crates and
+  barrels, which stood inside the pen, are put away. Gates of the old one-stall pens keep their
+  saved state.
 - A peeked hold (PeekaChest and the like) is drawn fitted to the panel, as the opened hold is,
   instead of at full slot size with a scroll bar. The fit now recognizes the hold by its
   inventory rather than by the container the player opened, which a peek never sets.

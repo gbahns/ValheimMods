@@ -22,9 +22,11 @@ namespace TheGreatestShips
         // Set when built.  Public so Unity serializes it: Instantiate copies serialized fields
         // only, and an internal one left every spawned ship with two starboard gates.
         public bool Port;   // the port gate keeps its own state and swings the other way
+        public int  Stall;  // which stall of a divided pen; 0 keeps the keys the one-stall pens have always used
 
-        private string ZdoKey    => Port ? "DM_PenGateOpenPort" : "DM_PenGateOpen";
-        private string RpcName   => Port ? "DM_PenGatePort" : "DM_PenGate";
+        private string Suffix    => (Port ? "Port" : "") + (Stall > 0 ? Stall.ToString() : "");
+        private string ZdoKey    => "DM_PenGateOpen" + Suffix;
+        private string RpcName   => "DM_PenGate" + Suffix;
         private float  OpenAngle => Port ? SwingAngle : -SwingAngle;   // +X is starboard; a positive Z rotation tips +Y toward -X
 
         private ZNetView _nview;

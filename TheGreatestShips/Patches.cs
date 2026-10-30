@@ -316,7 +316,7 @@ namespace TheGreatestShips
             {
                 var weapon = (attacker as Humanoid)?.GetCurrentWeapon();
                 string aoes = "";
-                foreach (var aoe in Object.FindObjectsOfType<Aoe>())
+                foreach (var aoe in Object.FindObjectsByType<Aoe>(FindObjectsSortMode.None))
                     if (aoe != null && TamedAoeDiagnostic.Owner(aoe) == attacker) aoes += aoe.name + ",";
                 who = $"{Utils.GetPrefabName(attacker.gameObject)}{(attacker.IsTamed() ? "(tamed)" : "")} {Vector3.Distance(attacker.transform.position, hit.m_point):0.0}m from the hit"
                     + $" inAttack={attacker.InAttack()} weapon={(weapon != null ? weapon.m_shared.m_name : "-")} aoes={(aoes == "" ? "none" : aoes)}";
