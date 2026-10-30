@@ -107,6 +107,10 @@ namespace TheGreatestMap
             if (!string.IsNullOrEmpty(HiddenIcons.Value)) HiddenIcons.Value = "";
             foreach (var entry in ShowKind.Values) if (!entry.Value) entry.Value = true;
             if (ShowAllMarkers != null && !ShowAllMarkers.Value) ShowAllMarkers.Value = true;
+            // Worked-out deposits too. This was the one switch that hid markers and was not put
+            // back here, although AnythingHidden below has always counted it -- so the mod would
+            // say something was hidden, be asked to show everything, and go on hiding it.
+            if (ShowClearedDeposits != null && !ShowClearedDeposits.Value) ShowClearedDeposits.Value = true;
             CrossedOff.ShowAll();
         }
 

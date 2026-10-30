@@ -63,7 +63,10 @@
 - **"Show all" on the map now shows all of it.** It put back the kinds, the master switch and the
   crossed-off groups, but not icons hidden one picture at a time with "Hide all X markers" -- so
   hiding cloudberries could only be undone from a marker's own menu, and every marker it applied
-  to was hidden. It now does exactly what `tgm_show` does, markers hidden one at a time included.
+  to was hidden. It now does exactly what `tgm_show` does, markers hidden one at a time included
+  -- and both of them put worked-out deposits back as well, which neither of them did. The mod
+  already counted "Show Cleared Deposits" among the things that hide markers, so it would tell
+  you something was hidden, be asked to show everything, and go on hiding it.
 
 - **What is painted is the size of what was built.** A four meter wooden road was coming out
   around thirty meters wide with edges that wandered, which is not a drawing of a road so much as
