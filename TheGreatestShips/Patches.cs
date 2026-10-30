@@ -289,6 +289,8 @@ namespace TheGreatestShips
     {
         static readonly HashSet<string> _ourShips =
             new HashSet<string>(System.Linq.Enumerable.Select(ShipDefinitions.All, d => d.PrefabName));
+        static readonly AccessTools.FieldRef<MonsterAI, Character> _targetCreature =
+            AccessTools.FieldRefAccess<MonsterAI, Character>("m_targetCreature");
 
         [HarmonyPrefix]
         static void Prefix(WearNTear __instance, HitData hit)
@@ -299,11 +301,36 @@ namespace TheGreatestShips
             var body = __instance.GetComponentInParent<Rigidbody>();
             string nearby = "";
             foreach (var c in Character.GetAllCharacters())
-                if (c != null && !c.IsPlayer() && Vector3.Distance(c.transform.position, hit.m_point) < 6f)
-                    nearby += $"{Utils.GetPrefabName(c.gameObject)}{(c.IsTamed() ? "(tamed)" : "")} {Vector3.Distance(c.transform.position, hit.m_point):0.0}m; ";
-            Jotunn.Logger.LogInfo($"[TheGreatestShips][diag] {prefab} damaged: type={hit.m_hitType} total={hit.GetTotalDamage():0.#} blunt={hit.m_damage.m_blunt:0.#} "
-                + $"collider={(hit.m_hitCollider != null ? hit.m_hitCollider.name : "-")} attacker={hit.m_attacker} "
-                + $"speed={(body != null ? body.linearVelocity.magnitude : 0f):0.0} m/s creatures near hit: {(nearby == "" ? "none" : nearby)}");
+                if (c != null && !c.IsPlayer() && Vector3.Distance(c.transform.position, hit.m_point) < 12f)
+                {
+                    var ai = c.GetComponent<MonsterAI>();
+                    var target = ai != null ? _targetCreature(ai) : null;
+                    nearby += $"{Utils.GetPrefabName(c.gameObject)}{(c.IsTamed() ? "(tamed)" : "")} {Vector3.Distance(c.transform.position, hit.m_point):0.0}m"
+                        + $"{(c.InAttack() ? " attacking" : "")}{(target != null ? " target=" + Utils.GetPrefabName(target.gameObject) : "")}; ";
+                }
+            var attacker = hit.GetAttacker();
+            string who = attacker != null
+                ? $"{Utils.GetPrefabName(attacker.gameObject)}{(attacker.IsTamed() ? "(tamed)" : "")} {Vector3.Distance(attacker.transform.position, hit.m_point):0.0}m from the hit"
+                : hit.m_attacker.ToString();
+            var d = hit.m_damage;
+            Jotunn.Logger.LogInfo($"[TheGreatestShips][diag] {prefab} damaged: type={hit.m_hitType} total={hit.GetTotalDamage():0.#} "
+                + $"(blunt {d.m_blunt:0.#} slash {d.m_slash:0.#} pierce {d.m_pierce:0.#} chop {d.m_chop:0.#} pickaxe {d.m_pickaxe:0.#}) "
+                + $"collider={(hit.m_hitCollider != null ? hit.m_hitCollider.name : "-")} attacker={who} "
+                + $"speed={(body != null ? body.linearVelocity.magnitude : 0f):0.0} m/s creatures within 12 m: {(nearby == "" ? "none" : nearby)}");
+        }
+    }
+
+    // Every hit a tamed creature takes: if the lox is hurt aboard, by what.
+    [HarmonyPatch(typeof(Character), "RPC_Damage")]
+    internal static class TamedDamageDiagnostic
+    {
+        [HarmonyPrefix]
+        static void Prefix(Character __instance, HitData hit)
+        {
+            if (__instance == null || hit == null || !__instance.IsTamed()) return;
+            var attacker = hit.GetAttacker();
+            Jotunn.Logger.LogInfo($"[TheGreatestShips][diag] {Utils.GetPrefabName(__instance.gameObject)}(tamed) hurt: type={hit.m_hitType} total={hit.GetTotalDamage():0.#} "
+                + $"attacker={(attacker != null ? Utils.GetPrefabName(attacker.gameObject) : hit.m_attacker.ToString())} collider={(hit.m_hitCollider != null ? hit.m_hitCollider.name : "-")} health={__instance.GetHealth():0}");
         }
     }
 
