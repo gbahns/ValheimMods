@@ -327,7 +327,7 @@ namespace TheGreatestShips
             var character = hit != null ? hit.GetComponent<Character>() : null;
             Jotunn.Logger.LogInfo($"[TheGreatestShips][diag] {name} contact: other={(other != null ? other.name : "-")} root={(hit != null ? hit.name : "-")} "
                 + $"layer={(other != null ? LayerMask.LayerToName(other.gameObject.layer) : "-")} relVel={info.relativeVelocity.magnitude:0.0} "
-                + $"character={(character != null ? Utils.GetPrefabName(character.gameObject) + (character.IsTamed() ? "(tamed)" : "(wild)") : "none")} ourCollider={info.GetContact(0).thisCollider.name}");
+                + $"character={(character != null ? Utils.GetPrefabName(character.gameObject) + (character.IsTamed() ? "(tamed)" : "(wild)") + $" r={character.GetRadius():0.00} h={character.GetHeight():0.00}" : "none")} ourCollider={info.GetContact(0).thisCollider.name}");
         }
     }
 }
