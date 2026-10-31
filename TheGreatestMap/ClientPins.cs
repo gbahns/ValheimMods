@@ -1113,7 +1113,17 @@ namespace TheGreatestMap
             string color = pin.m_iconElement != null
                 ? $"{pin.m_iconElement.color.r:0.00}/{pin.m_iconElement.color.g:0.00}/{pin.m_iconElement.color.b:0.00} a{pin.m_iconElement.color.a:0.00}"
                 : "no icon";
-            bool shown = pin.m_uiElement != null && pin.m_uiElement.gameObject.activeSelf;
+            // The game draws only the part of the map on screen: UpdatePins destroys the icon of
+            // anything outside it (!IsPointVisible -> DestroyPinMarker) and builds it again when
+            // it comes back. A marker with no icon is therefore the game's own culling and not a
+            // switch of ours, and the styling pass skips it for the same reason.
+            //
+            // This used to be read as hidden, and then nothing could say what had hidden it: three
+            // hundred markers on one listing came out as "no reason found -- which is itself worth
+            // reporting", which is this diagnostic accusing the mod of a bug that was its own
+            // reading of a map scrolled somewhere else. Nothing about a marker off screen is known
+            // here -- not its color, not whether it would be faded -- so none of it is claimed.
+            bool offScreen = pin.m_uiElement == null;
             // The pin's own type against the type this marker should be drawn with. They differ
             // when the pin on screen was not made from this record -- the game made it and we
             // took it over, or it was never ours at all -- which is invisible from everything
@@ -1123,10 +1133,13 @@ namespace TheGreatestMap
             string drawn = got == want
                 ? $"type {got}"
                 : $"type {got} but the record wants {want}  <-- MISMATCH";
-            return $"icon {IconOf(shared)}, stored '{shared.StoredIcon}', {drawn}, " +
-                   $"crossed {(shared.Checked ? "yes" : "no")}/{(pin.m_checked ? "yes" : "no")}, " +
-                   $"{(_fadedPins.Contains(pin) ? "faded" : "not faded")}, {color}, " +
-                   (shown ? "shown" : "hidden -- " + WhyHidden(shared));
+            string state = $"icon {IconOf(shared)}, stored '{shared.StoredIcon}', {drawn}, " +
+                           $"crossed {(shared.Checked ? "yes" : "no")}/{(pin.m_checked ? "yes" : "no")}";
+            if (offScreen)
+                return state + ", not on screen -- outside the part of the map being drawn, so the " +
+                       "game keeps no icon for it and nothing here hid it";
+            return state + $", {(_fadedPins.Contains(pin) ? "faded" : "not faded")}, {color}, " +
+                   (pin.m_uiElement.gameObject.activeSelf ? "shown" : "hidden -- " + WhyHidden(shared));
         }
 
         /// <summary>
@@ -1151,6 +1164,10 @@ namespace TheGreatestMap
             }
             if (CrossedOff.IsHidden(shared)) return "it is crossed off and that kind of crossed-off marker is hidden";
             if (Focus.On && !Focus.Shows(shared)) return $"the map is showing only {Focus.What()}";
+            // Asked only of a marker whose icon exists and is switched off, so every way of
+            // hiding one has been tried by the time this is reached. If it answers, the pass that
+            // hid the marker and the list above disagree about why, which is a bug in this mod
+            // rather than a setting anybody can change.
             return "no reason found -- which is itself worth reporting";
         }
 
