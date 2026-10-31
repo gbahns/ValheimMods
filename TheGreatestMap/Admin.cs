@@ -550,7 +550,6 @@ namespace TheGreatestMap
 
             void Judge(Found found)
             {
-                if (written + capped >= cap) { capped++; return; }
                 switch (Consider(found, apply, sofar, out var wrote))   // nothing here was ever crossed off by hand
                 {
                     case Verdict.Written:
@@ -565,8 +564,16 @@ namespace TheGreatestMap
                 }
             }
 
-            // The places first, because the generator's table is small and says the most per line:
-            // a dungeon, a village, a tar pit.
+            // Everything worth a marker is gathered first and written nearest-first, because of
+            // what the cap does otherwise. The records are walked in the order the server keeps
+            // them -- sector by sector, from a corner of the world nobody chose -- so a run that
+            // stopped at five thousand filled in a region the player was not standing in and left
+            // their own surroundings bare. The first real run of this wrote 2,745 plants into some
+            // far part of the map and read, correctly, as "it marked no plants at all".
+            var player = Player.m_localPlayer;
+            var from = player != null ? player.transform.position : Vector3.zero;
+            var candidates = new List<KeyValuePair<float, Found>>();
+
             int locations = 0;
             foreach (var placed in LocationNames.Snapshot())
             {
@@ -574,7 +581,7 @@ namespace TheGreatestMap
                 if (!Catalog.TryClassifyLocation(Entry(placed.Prefab, placed.Pos, placed.Radius), out var found)) continue;
                 if (kinds != null && !kinds.Contains(found.Cat)) continue;
                 locations++;
-                Judge(found);
+                candidates.Add(new KeyValuePair<float, Found>(Geo.FlatDistance(found.DedupeCenter, from), found));
             }
 
             // Then the things standing about in it. Every object the server holds is asked what it
@@ -612,9 +619,22 @@ namespace TheGreatestMap
                         // The same reading the recorder takes off a deposit you are standing next
                         // to, taken off the record instead, so a mined-out vein is marked as one.
                         if (Catalog.MinedDown(Catalog.Remaining(zdo))) one.Cleared = true;
-                        Judge(one);
+                        candidates.Add(new KeyValuePair<float, Found>(Geo.FlatDistance(pos, from), one));
                     }
                 }
+            }
+
+            // Nearest first, and the cap falls on the far end of that rather than on an arbitrary
+            // corner. Writing in this order also leaves the dedupe sensible: of two bushes a meter
+            // apart, the one nearer the player is the one that gets the marker.
+            candidates.Sort((a, b) => a.Key.CompareTo(b.Key));
+            float reached = 0f;
+            foreach (var kv in candidates)
+            {
+                if (written + capped >= cap) { capped++; continue; }
+                int had = written;
+                Judge(kv.Value);
+                if (written > had) reached = kv.Key;
             }
             clock.Stop();
 
@@ -634,8 +654,8 @@ namespace TheGreatestMap
             if (interior > 0) lines.Add($"  {interior} are inside dungeons, where nothing on the map can stand for them.");
             if (!everywhere && unexplored > 0) lines.Add($"  {unexplored} are outside what you have explored. tgm_survey all takes those too.");
             if (capped > 0)
-                lines.Add($"  {capped} more were left alone: this stops at {cap}. " +
-                          $"Run it again for the next {cap}, or name a bigger number.");
+                lines.Add($"  {capped} more were left alone: this stops at {cap}, nearest to you first, " +
+                          $"which reached {reached:0} m out. Run it again for the next {cap}, or name a bigger number.");
             if (apply && written > 0) ClientPins.Restyle();
             lines.AddRange(Undoable(journal, snapshot, apply));
             return lines;

@@ -138,6 +138,15 @@
   refused and listed, because silently surveying everything because a word was misspelled is how a
   test map ends up with ten thousand markers nobody asked for.
 
+- **And it fills in what is nearest you first.** The world's records are walked in the order the
+  server keeps them, sector by sector from a corner nobody chose, so a run that stopped at its cap
+  used to fill in a region the player was not standing in and leave their own surroundings bare.
+  The first real run of it wrote 2,745 plant markers into a far part of the map and read, quite
+  correctly, as "it marked no plants at all". Everything worth a marker is now gathered first and
+  written nearest-first, so a cap falls on the far end of that; the listing says how far out it
+  reached. It also settles the dedupe sensibly -- of two bushes a meter apart, the marker goes on
+  the one nearer you.
+
 - **A marker you had crossed off stays crossed off.** A tick on a hand-placed pin is the one
   thing on it that no catalog can work out again: it is the difference between "there is copper
   here" and "there was", or between a chamber worth walking to and one somebody has already
