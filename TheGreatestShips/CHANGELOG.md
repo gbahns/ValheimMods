@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.11 — unreleased
+## 0.9.11 — 2026-10-30
 
 - A lox aboard no longer wrecks the ship under it. A lox tramples whatever it runs through, and
   the game decides it is running from its speed over the world, not over the deck: carried on a
