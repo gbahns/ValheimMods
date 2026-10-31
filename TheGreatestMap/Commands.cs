@@ -213,6 +213,36 @@ namespace TheGreatestMap
                     TheGreatestMapMod.Log.LogWarning($"[TheGreatestMap] tgm_scrub: erased {doomed.Count} marker(s) with source \"{source}\".");
                 }));
 
+            new Terminal.ConsoleCommand("tgm_adopt", "Admin, test worlds: turn markers you placed by hand into recorded ones by asking the world what they were pointing at, then remove the hand-placed pin. tgm_adopt [reach, default 20] lists; add apply to write it",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    if (Player.m_localPlayer == null) { args.Context.AddString("No player."); return; }
+                    bool apply = HasWord(args, "apply");
+                    float reach = Number(args, Admin.DefaultReach);
+                    foreach (var line in Admin.Adopt(reach, apply))
+                    {
+                        args.Context.AddString(line);
+                        TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_adopt: " + line);
+                    }
+                    if (!apply) args.Context.AddString("Run tgm_adopt apply to write it. The markers travel like any others.");
+                }));
+
+            new Terminal.ConsoleCommand("tgm_survey", "Admin, test worlds: mark every location and resource the world holds where you have already explored, as if you had recorded them. tgm_survey [count, default 1000] lists; add apply to write it, all to take the whole world rather than what you have explored",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    if (Player.m_localPlayer == null) { args.Context.AddString("No player."); return; }
+                    bool apply = HasWord(args, "apply");
+                    bool everywhere = HasWord(args, "all");
+                    int cap = (int)Number(args, Admin.DefaultCap);
+                    if (cap < 1) cap = 1;
+                    foreach (var line in Admin.Survey(everywhere, cap, apply))
+                    {
+                        args.Context.AddString(line);
+                        TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_survey: " + line);
+                    }
+                    if (!apply) args.Context.AddString("Run tgm_survey apply to write it. The markers travel like any others.");
+                }));
+
             new Terminal.ConsoleCommand("tgm_admin", "Ask the server whether it treats you as an admin, and what player id it sees for you",
                 (Terminal.ConsoleEvent)(args =>
                 {
@@ -502,6 +532,28 @@ namespace TheGreatestMap
                     }
                     if (pins.Count == 0) args.Context.AddString("No shared markers.");
                 }));
+        }
+
+        /// <summary>
+        /// Was this word given, wherever it stands? The admin tools take a word and a number in
+        /// either order, because "tgm_survey apply all" and "tgm_survey all apply" are the same
+        /// request and refusing one of them teaches nothing.
+        /// </summary>
+        private static bool HasWord(Terminal.ConsoleEventArgs args, string word)
+        {
+            for (int i = 1; i < args.Args.Length; i++)
+                if (string.Equals(args.Args[i], word, System.StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+
+        /// <summary>The first argument that is a number, or the default.</summary>
+        private static float Number(Terminal.ConsoleEventArgs args, float fallback)
+        {
+            for (int i = 1; i < args.Args.Length; i++)
+                if (float.TryParse(args.Args[i], System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out float n))
+                    return n;
+            return fallback;
         }
     }
 }

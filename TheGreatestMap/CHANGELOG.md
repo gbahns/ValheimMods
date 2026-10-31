@@ -1,5 +1,46 @@
 # Changelog
 
+## 4.7.0 -- unreleased
+
+- **Two tools for a test world: `tgm_adopt` and `tgm_survey`.** Neither is anything a player
+  needs, and both say so in their own help text. They exist because a map worth testing against
+  takes weeks to make by playing, and the mod can do in a second what it is designed to do slowly.
+
+  - **`tgm_adopt` turns markers you placed by hand into recorded ones.** A hammer dropped on a
+    burial chamber and a dot dropped on a copper vein say what they are only to the person who put
+    them there. The world standing underneath them knows exactly what was being pointed at, and
+    the server holds that knowledge for every place at once whether anybody is there or not -- so
+    it asks, writes the marker recording would have written, and removes the hand-placed pin, so
+    one thing ends up with one marker. It looks twenty meters around each pin by default, because
+    a pin dropped by eye on a map a thousand meters to the inch lands near a thing rather than on
+    it; `tgm_adopt 40` looks further.
+
+    A pin with nothing identifiable near it is left exactly where it is, and listed with its name
+    and position. It is the only outcome here that would lose something a player meant, and the
+    player is the only one who knows what they meant.
+
+  - **`tgm_survey` marks what was never looked at closely enough to record.** Every location the
+    generator placed and every berry bush, mushroom, thistle and deposit standing in the ground,
+    across the part of the map you have uncovered -- or `tgm_survey all` for the whole world,
+    explored or not. The locations come from the generator's own table and the loose things from
+    the server's own records, so nothing has to be walked to.
+
+  Both list what they would do and write nothing until told to `apply`. Both go through the same
+  spacing, the same respect for a spot where a marker was erased, the same switched-off kinds and
+  the same one-label-per-so-many-meters as ordinary recording, so a map made this way is made of
+  the same markers an honestly played one is -- which is the whole point of testing against it.
+  And both need the world itself rather than a copy of its map: single player, a world you are
+  hosting, or the server's own console. They say so plainly rather than half working.
+
+  `tgm_survey` stops at a thousand markers unless given a bigger number, because a developed world
+  holds hundreds of thousands of things worth a picture and a map carrying all of them is not a
+  map.
+
+  Neither can write the anonymous dots 4.6.2 spent a release repairing. Both go in through the
+  same door every recorded marker goes through, which resolves a picture before the marker exists
+  and writes it down when the catalog cannot derive it again -- so a thing the catalog has no line
+  for is not turned into a marker in the first place, rather than being caught on the way out.
+
 ## 4.6.2 -- 2026-10-30
 
 - **Tar pit markers were losing what they are and turning into plain dots.** Every login, the

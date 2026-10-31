@@ -268,6 +268,144 @@ namespace TheGreatestMap
             return names;
         }
 
+        // ── the same question, asked from inside the world ──────────────────────────
+
+        /// <summary>
+        /// Are we where the world is? Only there do the generator's table of locations and the
+        /// records of every object standing in it exist to be read at all.
+        /// </summary>
+        internal static bool HaveWorld => IsServer;
+
+        /// <summary>The game's own index of every object in the world, by sector, or null.</summary>
+        internal static List<ZDO>[] AllSectors()
+        {
+            try
+            {
+                var man = ZDOMan.instance;
+                return man != null ? ObjectsBySector(man) : null;
+            }
+            catch (Exception e)
+            {
+                TheGreatestMapMod.Log.LogWarning("[TheGreatestMap] Could not read the world's objects: " + e.Message);
+                return null;
+            }
+        }
+
+        /// <summary>One thing the world has at a place: what it is, where it is, how far it reaches.</summary>
+        internal struct Standing
+        {
+            public string Prefab;
+            public Vector3 Pos;
+            /// <summary>The exterior radius where the generator placed this; zero for a thing standing about.</summary>
+            public float Radius;
+        }
+
+        /// <summary>
+        /// Everything the world has at a place, nearest first, with the positions kept.
+        ///
+        /// <para>The same question StandingAt answers, and a richer answer. That one returns bare
+        /// names, because names are all that fits in a reply to a client who cannot see the world.
+        /// A caller standing in the world itself wants more: the position, so that a marker can go
+        /// on the thing rather than on the spot somebody guessed at, and a reach of its own,
+        /// because a pin dropped by hand lands near a thing rather than on it. The reply's shape
+        /// was fixed in 4.2.0 and carries neither, and widening it would partition anyone still
+        /// reading the old one -- so this is a second road to the same place rather than a change
+        /// to the first.</para>
+        /// </summary>
+        internal static List<Standing> WhatStandsAt(Vector3 pos, float reach, List<Placed> places)
+        {
+            var found = new List<KeyValuePair<float, Standing>>();
+            reach = Mathf.Max(reach, 1f);
+            try
+            {
+                var man = ZDOMan.instance;
+                var scene = ZNetScene.instance;
+                var bySector = man != null ? ObjectsBySector(man) : null;
+                if (scene != null && bySector != null)
+                {
+                    // A place near a sector's edge has its object in the next one along, so the
+                    // search box is sampled at its corners, sides and middle and whichever sectors
+                    // those fall in are the ones read. Nine lookups at most, usually one.
+                    var sectors = new HashSet<uint>();
+                    for (int dx = -1; dx <= 1; dx++)
+                        for (int dz = -1; dz <= 1; dz++)
+                            sectors.Add(ZoneSystem.GetSectorIndex(
+                                pos + new Vector3(dx * reach, 0f, dz * reach)).Sector);
+                    foreach (uint sector in sectors)
+                    {
+                        if (sector >= bySector.Length) continue;
+                        var list = bySector[sector];
+                        if (list == null) continue;
+                        foreach (var zdo in list)
+                        {
+                            if (zdo == null || !zdo.IsValid()) continue;
+                            var at = zdo.GetPosition();
+                            float d = Geo.FlatDistance(at, pos);
+                            if (d > reach) continue;
+                            var prefab = scene.GetPrefab(zdo.GetPrefab());
+                            if (prefab == null || string.IsNullOrEmpty(prefab.name)) continue;
+                            found.Add(new KeyValuePair<float, Standing>(d,
+                                new Standing { Prefab = prefab.name, Pos = at, Radius = 0f }));
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                TheGreatestMapMod.Log.LogWarning("[TheGreatestMap] Could not read what stands at a place: " + e.Message);
+            }
+
+            // And the place itself, offered last: a thing at arm's length is what a marker was
+            // pointing at more often than the ground it stands on.
+            try
+            {
+                if (TryPlacedAt(pos, places, out var here))
+                    found.Add(new KeyValuePair<float, Standing>(float.MaxValue, here));
+            }
+            catch (Exception e)
+            {
+                TheGreatestMapMod.Log.LogWarning("[TheGreatestMap] Could not name the place at a marker: " + e.Message);
+            }
+            found.Sort((a, b) => a.Key.CompareTo(b.Key));
+
+            var all = new List<Standing>();
+            foreach (var kv in found)
+            {
+                bool had = false;
+                for (int i = 0; i < all.Count && !had; i++)
+                    had = string.Equals(all[i].Prefab, kv.Value.Prefab, StringComparison.OrdinalIgnoreCase);
+                if (!had) all.Add(kv.Value);
+            }
+            return all;
+        }
+
+        /// <summary>The nearest placed location whose reach covers the point, with its own figures.</summary>
+        private static bool TryPlacedAt(Vector3 pos, List<Placed> places, out Standing standing)
+        {
+            standing = default(Standing);
+            var all = places ?? Snapshot();
+            float bestDistance = float.MaxValue;
+            bool any = false;
+            for (int i = 0; i < all.Count; i++)
+            {
+                float d = Geo.FlatDistance(all[i].Pos, pos);
+                if (d >= bestDistance) continue;
+                if (d > Mathf.Max(all[i].Radius, SearchRadius)) continue;
+                if (string.IsNullOrEmpty(all[i].Prefab)) continue;
+                standing = new Standing
+                {
+                    Prefab = all[i].Prefab,
+                    Pos = all[i].Pos,
+                    // A location always reaches at least as far as the catalog's own floor, so a
+                    // caller can tell a placed location from a thing standing about by this alone.
+                    Radius = Mathf.Max(all[i].Radius, 4f),
+                };
+                bestDistance = d;
+                any = true;
+            }
+            return any;
+        }
+
         private static void RPC_AskAll(long sender, ZPackage pkg)
         {
             if (!IsServer || pkg == null || ZRoutedRpc.instance == null)

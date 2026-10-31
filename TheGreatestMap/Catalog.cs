@@ -1092,6 +1092,87 @@ namespace TheGreatestMap
         }
 
         /// <summary>
+        /// What marker a prefab standing at a place would produce, worked out from the prefab and
+        /// its name rather than from an object in the world.
+        ///
+        /// <para>TryClassify above wants components with a transform, which is to say an object
+        /// that exists. A sweep of the world's own records has no such thing to hand: a berry bush
+        /// in a zone nobody is standing in exists only as a record of a prefab and a position. The
+        /// prefab carries everything that says what it is -- and the icon with it, the item a
+        /// pickable gives or the ore a deposit drops -- so this takes a prefab and a position and
+        /// puts the two together.</para>
+        ///
+        /// <para>Only the loose things that stand about in the world. A location comes from the
+        /// generator's own table and has its own road through here; portals and campfires are about
+        /// what a player built, which a prefab cannot say; and a structure is a piece of a location
+        /// rather than a thing in its own right.</para>
+        /// </summary>
+        internal static bool TryClassifyPrefab(GameObject prefab, string name, Vector3 pos, out Found found)
+        {
+            found = null;
+            if (!_built) Rebuild();
+            if (string.IsNullOrEmpty(name)) return false;
+            if (!Lookup(name, out var e) || !IsLooseObjectKind(e.Cat)) return false;
+
+            string icon = e.Icon ?? Categories.KnownIcon(name);
+            if (icon == null && prefab != null)
+            {
+                // The same sources recording reads, in the same order, off the prefab instead of
+                // off the thing: what a pickable gives, what a deposit drops, what a breakable
+                // leaves behind.
+                var pickable = prefab.GetComponent<Pickable>();
+                if (pickable != null) icon = IconRegistry.ItemKey(pickable.m_itemPrefab);
+                if (icon == null)
+                {
+                    var rock5 = prefab.GetComponent<MineRock5>();
+                    if (rock5 != null) icon = FirstDrop(rock5.m_dropItems);
+                }
+                if (icon == null)
+                {
+                    var rock = prefab.GetComponent<MineRock>();
+                    if (rock != null) icon = FirstDrop(rock.m_dropItems);
+                }
+                if (icon == null)
+                {
+                    var drops = prefab.GetComponent<DropOnDestroyed>();
+                    if (drops != null) icon = FirstDrop(drops.m_dropWhenDestroyed);
+                }
+            }
+            found = Make(e.Cat, e.Name ?? Prettify(name), icon, pos, "prefab:" + name, name);
+            return true;
+        }
+
+        /// <summary>
+        /// Does this kind of location have an inside? Read off the game's own location list, like
+        /// the radius beside it, and for the same reason: which locations the generator placed is
+        /// the server's business, but what each kind of place is like ships with the game.
+        ///
+        /// <para>It is how a cave the catalog has no line for is still filed as a dungeon rather
+        /// than as a building, which is the one thing the generator's table cannot say on its own.</para>
+        /// </summary>
+        internal static bool LocationHasInterior(string prefab)
+        {
+            if (string.IsNullOrEmpty(prefab)) return false;
+            try
+            {
+                var zone = ZoneSystem.instance;
+                var locations = zone != null ? zone.m_locations : null;
+                if (locations == null) return false;
+                foreach (var loc in locations)
+                {
+                    if (loc == null) continue;
+                    if (!string.Equals(loc.m_prefabName, prefab, StringComparison.OrdinalIgnoreCase)
+                        && !string.Equals(loc.m_name, prefab, StringComparison.OrdinalIgnoreCase)) continue;
+                    // By name, like the radius: not public on the real assembly, so reading it
+                    // directly compiles against Libs and throws against the game.
+                    return HarmonyLib.Traverse.Create(loc).Field("m_hasInterior").GetValue<bool>();
+                }
+            }
+            catch (Exception) { /* nothing loaded, or the field moved */ }
+            return false;
+        }
+
+        /// <summary>
         /// A location's marker: for structures it goes on the piece that was seen (the location
         /// origin of a farm is the middle of the yard, not the house); everything else sits on
         /// the origin. The location origin and radius are kept for deduplication either way.
