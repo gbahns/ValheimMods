@@ -464,6 +464,25 @@ namespace TheGreatestMap
             return shared;
         }
 
+        /// <summary>
+        /// Take a marker out as though it had never been written: no erasure, no suppression,
+        /// nothing left behind that says anything about the spot.
+        ///
+        /// This is for a tool undoing its own writing. An erasure is a claim about the world --
+        /// "the thing is not there" -- and it travels as one, which is right when a player says it
+        /// and wrong when a tool is being told to put a map back the way it was. The cost is that
+        /// it travels nowhere: a copy that already took these markers in, another player or a
+        /// cartography table, hands them straight back at the next merge, because nothing has told
+        /// it otherwise. Whoever asks for this has to want that trade.
+        /// </summary>
+        internal static void Lift(PinKey id)
+        {
+            if (id.IsNone || !Store.Pins.ContainsKey(id)) return;
+            RemovePinData(id);
+            Store.Lift(id, out _);
+            PersonalMap.Touch();
+        }
+
         /// <summary>Rename a marker on the personal map (the portal reconciler; the change merges like any other).</summary>
         internal static void RenameMarker(PinKey id, string name)
         {

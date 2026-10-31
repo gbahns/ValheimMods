@@ -281,8 +281,10 @@ namespace TheGreatestMap
                         args.Context.AddString($"{file}: {entry.Tool} on {entry.When} wrote {entry.Wrote.Count} marker(s), " +
                                                $"removed {entry.Removed.Count} hand-placed pin(s) and crossed off " +
                                                $"{entry.Crossed.Count} marker(s) that were already there.");
-                        args.Context.AddString("Taking it back removes those markers and puts those pins back. Markers anyone has " +
-                                               "recorded since are left alone; the removal carries to everyone at the next merge.");
+                        args.Context.AddString("Taking it back removes those markers and puts those pins back, leaving the map as it " +
+                                               "was. Markers anyone has recorded since are left alone.");
+                        args.Context.AddString("Nothing is erased, so nothing travels: a copy that already holds these markers -- another " +
+                                               "player, a cartography table -- would hand them back at the next merge.");
                         if (runs.Count > 1) args.Context.AddString($"{runs.Count} recorded runs in {AdminUndo.Folder}; this is the newest.");
                         args.Context.AddString("Run again with: tgm_undo " + file + " confirm");
                         return;

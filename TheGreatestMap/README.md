@@ -258,6 +258,9 @@ Either of them can be taken back. Applying one copies your whole map aside first
 lists it, `tgm_restore` puts it back) and writes down what it did, so `tgm_undo` can remove exactly
 the markers that run wrote and put back exactly the pins it removed, leaving anything recorded
 since where it is. `tgm_undo` on its own describes the most recent run; `tgm_undo confirm` does it.
+It lifts its markers rather than erasing them, so the map is simply as it was and nothing is
+suppressed -- which also means nothing travels, and a copy that already holds them (another
+player, a cartography table) would hand them back at the next merge.
 
 `tgm_adopt` reads the picture on each hand-placed pin before it reads the ground: a hammer means a
 place, a dot means a resource, a fire means a fire, and distance decides only between answers of

@@ -131,7 +131,14 @@
   map aside, where `tgm_backups` lists it and `tgm_restore` puts it back, and it writes down what
   it did -- the key of every marker written and every pin removed, whole. `tgm_undo` reads that
   back: those markers go, those pins return, and anything recorded since is left exactly where it
-  is, which is the one thing restoring a copy of the map cannot manage. It describes the run before
+  is, which is the one thing restoring a copy of the map cannot manage.
+
+  Its markers are **lifted rather than erased** -- no tombstone, no suppression, nothing left
+  behind that says anything about those places, so the map is simply as it was. An erasure is a
+  claim about the world and travels as one, which is right when a player makes it and wrong when a
+  tool is putting a map back. The trade is that it travels nowhere, so a copy that already took
+  these markers in -- another player, a cartography table -- would hand them back at the next
+  merge; the command says so both before and after. It describes the run before
   it touches anything and wants `confirm`, and a run that has been taken back is set aside so it
   cannot be taken back twice. Both tools print the line that undoes them when they finish.
 

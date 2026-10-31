@@ -21,9 +21,12 @@ namespace TheGreatestMap
     /// where it is -- which is the one thing a copy of the whole map cannot do. The pins removed
     /// are kept whole: picture, name, position, crossed off or not.</para>
     ///
-    /// <para>No tombstone is left behind when one of these markers is removed. This is a tool
-    /// taking back its own writing, not a player saying a thing is not there, and a suppression
-    /// would stop the spot ever being recorded again.</para>
+    /// <para>The markers are lifted rather than erased: no tombstone, no suppression, nothing
+    /// left behind that says anything about those places. An erasure is a claim about the world
+    /// and travels as one, and this is not a player saying a thing is not there -- it is a tool
+    /// being told to put a map back the way it was. The trade is that it travels nowhere: a copy
+    /// that already took these markers in, another player or a cartography table, would hand them
+    /// back at the next merge. The command says so when it has done it.</para>
     /// </summary>
     internal static class AdminUndo
     {
@@ -170,8 +173,8 @@ namespace TheGreatestMap
             foreach (var key in entry.Wrote)
             {
                 if (!PersonalMap.Loaded || !PersonalMap.Store.Pins.ContainsKey(key)) continue;
-                // Without a tombstone, for the reason in the class note above.
-                ClientPins.RemoveStale(key);
+                // Lifted, not erased, for the reason in the class note above.
+                ClientPins.Lift(key);
                 removed++;
             }
 
