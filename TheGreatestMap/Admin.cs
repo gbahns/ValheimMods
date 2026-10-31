@@ -91,6 +91,12 @@ namespace TheGreatestMap
                 return lines;
             }
 
+            // Before a word is written. Four hundred markers and four hundred pins removed is
+            // more than anybody can put back by hand, and the listing above this is a promise
+            // about what will happen rather than a record of what did.
+            var journal = new AdminUndo.Entry { Tool = "tgm_adopt" };
+            string snapshot = apply ? MapBackup.Snapshot(PersonalMap.Label, "tgm_adopt", PersonalMap.Store.ToBytes()) : null;
+
             var meanings = PinMeanings(map, out var pictures);
             var hints = Hints();
             var places = LocationNames.Snapshot();
@@ -180,7 +186,8 @@ namespace TheGreatestMap
                 }
 
                 Count(byThing, Catalog.Prettify(best.Source) + " (" + best.Source + ")");
-                var verdict = Consider(best, apply, sofar);
+                var verdict = Consider(best, apply, sofar, out var wrote);
+                if (verdict == Verdict.Written && apply) journal.Wrote.Add(wrote);
                 switch (verdict)
                 {
                     case Verdict.Written:  written++; break;
@@ -196,7 +203,17 @@ namespace TheGreatestMap
                 if (verdict != Verdict.Written && verdict != Verdict.Marked) continue;
                 if (typed.Length > 0)
                     renamed.Add($"  \"{pinData.m_name}\" -> {best.Name} ({best.Source}) at {bestDistance:0} m");
-                if (apply) map.RemovePin(pinData);
+                if (!apply) continue;
+                // Written down before it goes: nothing else in the game remembers a pin that has
+                // been removed, and the character file will have forgotten it by its next save.
+                journal.Removed.Add(new AdminUndo.Gone
+                {
+                    Type = (int)pinData.m_type,
+                    Name = pinData.m_name,
+                    Pos = pinData.m_pos,
+                    Checked = pinData.m_checked,
+                });
+                map.RemovePin(pinData);
             }
 
             lines.Add(apply
@@ -224,6 +241,7 @@ namespace TheGreatestMap
             }
             Section(lines, renamed, "names you had typed, and what the marker says now:", "the names you had typed");
             if (apply && written > 0) ClientPins.Restyle();
+            lines.AddRange(Undoable(journal, snapshot, apply));
             return lines;
         }
 
@@ -505,6 +523,9 @@ namespace TheGreatestMap
                 return lines;
             }
 
+            var journal = new AdminUndo.Entry { Tool = "tgm_survey" };
+            string snapshot = apply ? MapBackup.Snapshot(PersonalMap.Label, "tgm_survey", PersonalMap.Store.ToBytes()) : null;
+
             var sofar = new List<Written>();
             var byKind = new SortedDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             var kindsOff = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -514,9 +535,13 @@ namespace TheGreatestMap
             void Judge(Found found)
             {
                 if (written + capped >= cap) { capped++; return; }
-                switch (Consider(found, apply, sofar))
+                switch (Consider(found, apply, sofar, out var wrote))
                 {
-                    case Verdict.Written: written++; Count(byKind, Categories.Label(found.Cat)); break;
+                    case Verdict.Written:
+                        written++;
+                        Count(byKind, Categories.Label(found.Cat));
+                        if (apply) journal.Wrote.Add(wrote);
+                        break;
                     case Verdict.Marked:  already++; break;
                     case Verdict.Erased:  erased++;  break;
                     case Verdict.KindOff: off++; kindsOff.Add(Categories.Label(found.Cat)); break;
@@ -589,6 +614,27 @@ namespace TheGreatestMap
                 lines.Add($"  {capped} more were left alone: this stops at {cap}. " +
                           $"Run it again for the next {cap}, or name a bigger number.");
             if (apply && written > 0) ClientPins.Restyle();
+            lines.AddRange(Undoable(journal, snapshot, apply));
+            return lines;
+        }
+
+        /// <summary>
+        /// How to take this back, said at the end of the run that did it rather than left in a
+        /// readme. A tool that changes several hundred things at once has to say so.
+        /// </summary>
+        private static List<string> Undoable(AdminUndo.Entry journal, string snapshot, bool apply)
+        {
+            var lines = new List<string>();
+            if (!apply) return lines;
+            string path = AdminUndo.Write(journal);
+            if (path != null)
+                lines.Add($"Undo all of this with: tgm_undo {System.IO.Path.GetFileName(path)} confirm   " +
+                          "(or tgm_undo confirm for the most recent run)");
+            if (snapshot != null)
+                lines.Add("The whole map as it was a moment ago is in " +
+                          $"{System.IO.Path.GetFileName(snapshot)}; tgm_backups lists it, tgm_restore puts it back.");
+            if (path == null && snapshot == null)
+                lines.Add("Nothing was written down about this run, so it cannot be undone by itself. The log says why.");
             return lines;
         }
 
@@ -661,8 +707,9 @@ namespace TheGreatestMap
         /// the same respect for a spot where a marker was erased, the same one label per so many
         /// meters. Both of these tools come through here.
         /// </summary>
-        private static Verdict Consider(Found found, bool apply, List<Written> sofar)
+        private static Verdict Consider(Found found, bool apply, List<Written> sofar, out PinKey wrote)
         {
+            wrote = default(PinKey);
             if (!TgmConfig.CategoryEnabled.TryGetValue(found.Cat, out var enabled) || !enabled.Value)
                 return Verdict.KindOff;
 
@@ -683,9 +730,13 @@ namespace TheGreatestMap
             // A refusal has to be reported as one. The store turns a marker down when there is
             // nobody to own it -- spawning, logging out -- and counting that as written would have
             // a test session built on a report of markers that are not there.
-            if (apply && ClientPins.CreateShared(label ? found.Name : "", found.Pos, found.Icon,
-                    found.Cat.ToString(), auto: true, source: found.Source) == null)
-                return Verdict.Refused;
+            if (apply)
+            {
+                var made = ClientPins.CreateShared(label ? found.Name : "", found.Pos, found.Icon,
+                    found.Cat.ToString(), auto: true, source: found.Source);
+                if (made == null) return Verdict.Refused;
+                wrote = made.Key;
+            }
             sofar.Add(new Written
             {
                 Icon = found.Icon, Name = label ? found.Name : "", At = at, Radius = found.Radius,

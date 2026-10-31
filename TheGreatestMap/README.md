@@ -243,11 +243,17 @@ counts as well unless "Structures Include Unlisted" is off or its prefab name is
 | `tgm_mapui` | What the large map's layout measures: how much screen it uses and how its parts are anchored |
 | `tgm_adopt [reach] [apply] [plants]` | Test worlds: ask the world what your hand-placed markers were pointing at, write the recorded marker for it, and remove the hand-placed pin |
 | `tgm_survey [count] [all] [apply]` | Test worlds: mark every location and resource the world holds where you have explored, as if you had recorded them |
+| `tgm_undo [name] [confirm]` | Take back a `tgm_adopt` or `tgm_survey` run: its markers go, the hand-placed pins it removed come back |
 
 `tgm_adopt` and `tgm_survey` are for building a map to test against, not for playing. Both list
 what they would do and write nothing until told to `apply`, both obey the same spacing, label and
 erasure rules as ordinary recording, and both need the world itself -- single player, a world you
 are hosting, or the server's own console.
+
+Either of them can be taken back. Applying one copies your whole map aside first (`tgm_backups`
+lists it, `tgm_restore` puts it back) and writes down what it did, so `tgm_undo` can remove exactly
+the markers that run wrote and put back exactly the pins it removed, leaving anything recorded
+since where it is. `tgm_undo` on its own describes the most recent run; `tgm_undo confirm` does it.
 
 `tgm_adopt` reads the picture on each hand-placed pin before it reads the ground: a hammer means a
 place, a dot means a resource, a fire means a fire, and distance decides only between answers of

@@ -225,7 +225,8 @@ namespace TheGreatestMap
                         args.Context.AddString(line);
                         TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_adopt: " + line);
                     }
-                    if (!apply) args.Context.AddString("Run tgm_adopt apply to write it. The markers travel like any others.");
+                    if (!apply) args.Context.AddString("Run tgm_adopt apply to write it. The markers travel like any others, " +
+                                                      "and tgm_undo takes the whole run back.");
                 }));
 
             new Terminal.ConsoleCommand("tgm_survey", "Admin, test worlds: mark every location and resource the world holds where you have already explored, as if you had recorded them. tgm_survey [count, default 1000] lists; add apply to write it, all to take the whole world rather than what you have explored",
@@ -241,7 +242,61 @@ namespace TheGreatestMap
                         args.Context.AddString(line);
                         TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_survey: " + line);
                     }
-                    if (!apply) args.Context.AddString("Run tgm_survey apply to write it. The markers travel like any others.");
+                    if (!apply) args.Context.AddString("Run tgm_survey apply to write it. The markers travel like any others, " +
+                                                      "and tgm_undo takes the whole run back.");
+                }));
+
+            new Terminal.ConsoleCommand("tgm_undo", "Take back a tgm_adopt or tgm_survey run: the markers it wrote go, and the hand-placed pins it removed come back. tgm_undo lists the most recent run; add confirm to do it, or name one of the files it lists",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    if (Player.m_localPlayer == null) { args.Context.AddString("No player."); return; }
+                    var runs = AdminUndo.All();
+                    if (runs.Count == 0)
+                    {
+                        args.Context.AddString("Nothing to take back: no run of tgm_adopt or tgm_survey has been recorded on this machine.");
+                        args.Context.AddString("They live in " + AdminUndo.Folder);
+                        return;
+                    }
+                    // A name picks one; "confirm" is not a name. Without either, the newest run is
+                    // the one being talked about, which is nearly always the one somebody means.
+                    string want = null;
+                    for (int i = 1; i < args.Args.Length; i++)
+                        if (!string.Equals(args.Args[i], "confirm", System.StringComparison.OrdinalIgnoreCase)) { want = args.Args[i]; break; }
+                    string path = runs[0];
+                    if (want != null)
+                    {
+                        path = null;
+                        foreach (var f in runs)
+                            if (System.IO.Path.GetFileName(f).IndexOf(want, System.StringComparison.OrdinalIgnoreCase) >= 0) { path = f; break; }
+                        if (path == null) { args.Context.AddString($"No recorded run matching \"{want}\". Run tgm_undo to see them."); return; }
+                    }
+
+                    AdminUndo.Entry entry;
+                    try { entry = AdminUndo.Read(path); }
+                    catch (System.Exception e) { args.Context.AddString("Could not read that record: " + e.Message); return; }
+
+                    string file = System.IO.Path.GetFileName(path);
+                    if (!HasWord(args, "confirm"))
+                    {
+                        args.Context.AddString($"{file}: {entry.Tool} on {entry.When} wrote {entry.Wrote.Count} marker(s) " +
+                                               $"and removed {entry.Removed.Count} hand-placed pin(s).");
+                        args.Context.AddString("Taking it back removes those markers and puts those pins back. Markers anyone has " +
+                                               "recorded since are left alone; the removal carries to everyone at the next merge.");
+                        if (runs.Count > 1) args.Context.AddString($"{runs.Count} recorded runs in {AdminUndo.Folder}; this is the newest.");
+                        args.Context.AddString("Run again with: tgm_undo " + file + " confirm");
+                        return;
+                    }
+
+                    AdminUndo.Apply(entry, out int removed, out int restored);
+                    AdminUndo.Done(path);
+                    args.Context.AddString($"Took back {entry.Tool}: removed {removed} of its {entry.Wrote.Count} marker(s) " +
+                                           $"and put back {restored} of {entry.Removed.Count} pin(s).");
+                    if (removed < entry.Wrote.Count)
+                        args.Context.AddString($"{entry.Wrote.Count - removed} of its markers were already gone, so somebody has " +
+                                               "been working on this map since.");
+                    TheGreatestMapMod.Log.LogWarning(
+                        $"[TheGreatestMap] tgm_undo: {file} -- removed {removed}/{entry.Wrote.Count} markers, " +
+                        $"restored {restored}/{entry.Removed.Count} pins.");
                 }));
 
             new Terminal.ConsoleCommand("tgm_admin", "Ask the server whether it treats you as an admin, and what player id it sees for you",

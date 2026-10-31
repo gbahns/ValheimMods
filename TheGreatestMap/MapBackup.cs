@@ -71,6 +71,33 @@ namespace TheGreatestMap
             }
         }
 
+        /// <summary>
+        /// A copy of the map as it is right now, before something writes a great deal of it at
+        /// once. Always written and never over an earlier one, which is the difference between
+        /// this and the copy above: that one is a once-ever record of what a map was before this
+        /// version of the mod existed, and this one is "what it was a minute before I pressed
+        /// the button". Both are put back with tgm_restore.
+        /// </summary>
+        internal static string Snapshot(string label, string why, byte[] bytes)
+        {
+            if (bytes == null || bytes.Length == 0) return null;
+            try
+            {
+                Directory.CreateDirectory(Folder);
+                string path = Path.Combine(Folder,
+                    $"{Clean(label)}.{Clean(why)}.{DateTime.Now:yyyyMMdd-HHmmss}.pins.bin");
+                File.WriteAllBytes(path, bytes);
+                TheGreatestMapMod.Log.LogInfo(
+                    $"[TheGreatestMap] Copied this map aside before {why}: {path} ({bytes.Length:n0} bytes).");
+                return path;
+            }
+            catch (Exception e)
+            {
+                TheGreatestMapMod.Log.LogWarning($"[TheGreatestMap] Could not copy the map aside before {why}: {e.Message}");
+                return null;
+            }
+        }
+
         /// <summary>Every backup on this machine, newest first.</summary>
         internal static List<string> All()
         {

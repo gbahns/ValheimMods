@@ -72,6 +72,9 @@ namespace TheGreatestMap
         internal static void Sent() => Dirty = false;
 
         /// <summary>Which character on which world, for naming a backup of this map.</summary>
+        /// <summary>What this map is called in a file name: the character and the world.</summary>
+        internal static string Label => Name(Player.m_localPlayer);
+
         private static string Name(Player player)
         {
             string who = player != null ? player.GetPlayerName() : "character";

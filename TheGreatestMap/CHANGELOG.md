@@ -114,6 +114,18 @@
   than a building, and which was 246 of those 609 markers. Those four are now known by name
   instead of being guessed at from the words in them.
 
+- **Both tools can be taken back: `tgm_undo`.** `tgm_adopt apply` writes several hundred markers
+  and removes several hundred hand-placed pins on one press, and until now neither half could be
+  undone. A recorded marker needs the server's permission to erase and is erased one at a time; a
+  pin that has been removed is gone from the character file at its next save, and nothing else in
+  the game remembers it. So applying either tool now does two things first: it copies your whole
+  map aside, where `tgm_backups` lists it and `tgm_restore` puts it back, and it writes down what
+  it did -- the key of every marker written and every pin removed, whole. `tgm_undo` reads that
+  back: those markers go, those pins return, and anything recorded since is left exactly where it
+  is, which is the one thing restoring a copy of the map cannot manage. It describes the run before
+  it touches anything and wants `confirm`, and a run that has been taken back is set aside so it
+  cannot be taken back twice. Both tools print the line that undoes them when they finish.
+
   Two smaller things came out of the same run: the visible spawners a player can walk up to and
   break (a greydwarf nest, a draugr pile) were missing from the road both tools read the world
   with, so a hammer dropped on a nest found nothing; and both listings capped their lists at
