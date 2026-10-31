@@ -44,6 +44,8 @@ namespace TheGreatestShips
         internal static ConfigEntry<bool>  SailOpacityBothSides;
         internal static ConfigEntry<bool>  SailOpacityOnDeck;
         internal static ConfigEntry<bool>  RememberBoatZoom;
+        internal static ConfigEntry<Vector2> HoldFastOffsetLongship;
+        internal static ConfigEntry<Vector2> HoldFastOffsetKarve;
 
         // Raised when a release changes defaults that saved configs should follow.
         //   2 (0.9.1): speeds rebased on logged top speeds, Cargo Longship recipe.
@@ -124,6 +126,19 @@ namespace TheGreatestShips
                 "Keep the camera zoom you had at the rudder and go back to it when you take the rudder again. " +
                 "The game has one zoom distance: letting go of the rudder clamps it to the on-foot limit, so " +
                 "retaking it always started you zoomed in. Yours alone.");
+
+            // The game's own standing spot for holding fast is a few centimeters off: on a longship
+            // the hand is a little inside the pole, forward of where it should rest.  Tunable so the
+            // last centimeters can be settled by eye, in game, with the ship afloat.
+            HoldFastOffsetLongship = mod.Config.Bind("General", "Hold Fast Offset (Longship hulls)", new Vector2(0.03f, -0.04f),
+                "Where you stand when you hold fast to the mast of this mod's longship-hulled ships, as (right, forward) " +
+                "in meters from the game's own spot, as you face while holding. The game's spot leaves the hand a little " +
+                "inside the pole, so the default steps you a few centimeters back and out. Yours alone; applies at once.");
+            HoldFastOffsetLongship.SettingChanged += (_, __) => ShipPrefabs.RefitCrew();
+            HoldFastOffsetKarve = mod.Config.Bind("General", "Hold Fast Offset (Karve hull)", new Vector2(0.04f, 0f),
+                "The same for the Fast Karve: (right, forward) in meters from the game's own spot at the Karve's mast, " +
+                "which puts the fingers a little inside the pole. Yours alone; applies at once.");
+            HoldFastOffsetKarve.SettingChanged += (_, __) => ShipPrefabs.RefitCrew();
 
             LockConfiguration = mod.BindLocking("General", "Lock Configuration", true,
                 "While on, the settings marked as synced can be changed only by the server's admins " +

@@ -151,7 +151,7 @@ namespace TheGreatestShips
             var baseScale = clone.transform.localScale;
             var scale = Dimensions(baseScale, cfg);
             clone.transform.localScale = scale;
-            var fit = CrewFit.Apply(clone, basePrefab, Ratio(scale, baseScale));
+            var fit = FitCrew(def, clone, basePrefab, Ratio(scale, baseScale));
             if (fit != null) Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: {fit}.");
 
             if (def.Pen != null)
@@ -281,6 +281,30 @@ namespace TheGreatestShips
         private static Vector3 Ratio(Vector3 scale, Vector3 baseScale) =>
             new Vector3(scale.x / baseScale.x, scale.y / baseScale.y, scale.z / baseScale.z);
 
+        // The crew's places on one ship object, for its hull's scale and the player's Hold Fast
+        // Offset for that kind of hull.
+        private static string FitCrew(ShipDefinition def, GameObject ship, GameObject vanilla, Vector3 ratio)
+        {
+            var nudge = def.BasePrefab == "Karve" ? ShipConfig.HoldFastOffsetKarve.Value : ShipConfig.HoldFastOffsetLongship.Value;
+            return CrewFit.Apply(ship, vanilla, ratio, nudge, def.MastHoldBearing);
+        }
+
+        // A Hold Fast Offset changed: every ship, prefab and afloat, at its current scale.
+        internal static void RefitCrew()
+        {
+            foreach (var pair in _built)
+            {
+                var def = pair.Key; var built = pair.Value;
+                if (built.Clone == null) continue;
+                var ratio = Ratio(built.Clone.transform.localScale, built.BaseScale);
+                var fit = FitCrew(def, built.Clone, built.Base, ratio);
+                foreach (var updater in Ship.Instances)
+                    if (updater is Ship ship && Utils.GetPrefabName(ship.gameObject) == def.PrefabName)
+                        FitCrew(def, ship.gameObject, built.Base, ratio);
+                if (fit != null) Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: {fit}.");
+            }
+        }
+
         private static Vector3 Dimensions(Vector3 baseScale, ShipConfig.Entries cfg)
         {
             float scale  = Mathf.Clamp(cfg.Scale.Value,  0.5f, 2f);
@@ -301,7 +325,7 @@ namespace TheGreatestShips
             if (built.Clone.transform.localScale == target) return;
             built.Clone.transform.localScale = target;
             var ratio = Ratio(target, built.BaseScale);
-            var fit = CrewFit.Apply(built.Clone, built.Base, ratio);
+            var fit = FitCrew(def, built.Clone, built.Base, ratio);
 
             int updated = 0;
             foreach (var updater in Ship.Instances)
@@ -309,7 +333,7 @@ namespace TheGreatestShips
                 if (updater is Ship ship && Utils.GetPrefabName(ship.gameObject) == def.PrefabName)
                 {
                     ship.transform.localScale = target;
-                    CrewFit.Apply(ship.gameObject, built.Base, ratio);
+                    FitCrew(def, ship.gameObject, built.Base, ratio);
                     updated++;
                 }
             }

@@ -64,13 +64,15 @@ size and deck height are estimates rather than measured in-game, and it only sto
 escaping -- it does nothing to protect them from outside damage (monsters, the ship hitting
 rocks). Expect it to need retuning.
 
-That is the **Small Byrding**: a boar or two. The **Byrding** is the whole ship scaled 1.25×, with a
+That is the **Small Byrding**: a boar or two; you hold fast to its mast from the forward side,
+facing aft over the pen. The **Byrding** is the whole ship scaled 1.25×, with a
 pen the length of its deck, mast and all: room for a few boars, and a longship's hold. The
 **Greater Byrding** is scaled 1.5×, and its deck is a two-stall pen built for a lox: a cross wall
 at the mast so an animal never has to squeeze past it, and each stall about 7 m long with its
 whole side folding down as the gate. Its rails are 2.25 m, which a lox can't jump or climb, and
 behind them an invisible wall runs to 4 m with, under way, an invisible ceiling over each stall,
-so a deck heaving or heeling at speed can't toss one over.
+so a deck heaving or heeling at speed can't toss one over. You hold fast to its mast from
+starboard, standing in a gap in the cross wall's rails that a boar fits through and a lox does not.
 The pen runs from the rowing benches to the forward benches, so the hold and the aft benches are
 inside it, and the longship's deck crates and barrels are put away to make room. A lox in each
 stall, or a herd of smaller animals. (A lox tramples what it runs through, and the game judged

@@ -33,6 +33,8 @@ namespace TheGreatestShips
         public float  DefaultLength = 1f; // bow-to-stern scale of the whole ship
         public float  DefaultScale  = 1f; // uniform scale of the whole ship, all three axes
         public PenSpec Pen;               // a livestock pen on deck, or null
+        public float? MastHoldBearing;    // where round the mast you stand to hold fast, degrees clockwise from the
+                                          // bow (90 = starboard of it); null = the game's spot, 125 (starboard-aft)
 
         // Defaults an earlier release shipped.  A saved config still holding one of these was
         // never changed by hand, so it is moved to the current default (see ShipConfig.Migrate).
@@ -223,6 +225,9 @@ namespace TheGreatestShips
                 // 0.4 thick at 0.4 and 0.85 make a solid band from 0.2 to 1.05: a boar can't get
                 // under, over, or see out.
                 Pen = new PenSpec { Length = 2.4f, Width = 3.4f, CenterZ = -1.4f, PostHeight = 1f, RailHeights = new[] { 0.4f, 0.85f } },
+                // The game's hold-fast spot stands in the pen's forward wall; this is the far side
+                // of the mast, forward of the pen, facing aft over the animals.
+                MastHoldBearing = 305.5f,
             },
             new ShipDefinition
             {
@@ -301,7 +306,12 @@ namespace TheGreatestShips
                 // outboard with it by 2.4 x sin 20 = 0.8 -- beside the animal, not over it.  2.7
                 // leaves a lox's 3.5 m body half a meter of heave before it touches.
                 Pen = new PenSpec { Length = 9.4f, Width = 3.4f, CenterZ = 0.15f, PostHeight = 1.5f, RailHeights = new[] { 0.4f, 0.85f, 1.3f },
-                                    Dividers = new[] { 0.13f }, GateWidth = 3f, WallTop = 2.7f, Ceiling = true },
+                                    Dividers = new[] { 0.13f }, GateWidth = 3f, WallTop = 2.7f, Ceiling = true,
+                                    DividerGapFrom = -0.03f, DividerGapTo = 1f },
+                // The mast stands in the cross wall, so from the game's spot the hand goes through
+                // the wall's rails.  You stand in the wall's line instead, to starboard of the mast,
+                // in a gap in the rails (0.9 m from the pole: a person's width, not a lox's).
+                MastHoldBearing = 90f,
             },
         };
     }

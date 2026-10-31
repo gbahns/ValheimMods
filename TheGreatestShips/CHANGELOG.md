@@ -9,8 +9,17 @@
   hull's scale stretched the one but not the other. The standing spot now moves so the hand
   lands on the pole, and the same for the prow hold. On ships scaled up in height (Byrding,
   Greater Byrding) the stools and the helmsman's seat grew taller than a sitting player's hips,
-  so a sitter was drawn inside the stool; seats stay at human height now, whatever the hull's
-  size.
+  so a sitter was drawn inside the stool, and on ships scaled up in length the deeper stools
+  caught the knees; seats stay human-sized now, whatever the hull's size.
+- Two settings, `Hold Fast Offset (Longship hulls)` and `Hold Fast Offset (Karve hull)`: where
+  you stand when you hold fast, as (right, forward) meters from the game's own spot. The game's
+  spot leaves the hand a little inside the pole on both hulls, so the defaults step you a few
+  centimeters back and out. Yours alone; they apply at once, afloat.
+- The Small Byrding's hold-fast spot is on the far side of the mast, forward of the pen, facing
+  aft over the animals: the game's spot stood in the pen's forward wall. The Greater Byrding's is
+  to starboard of the mast, in the line of the cross wall, where the wall's rails now leave a gap
+  between the mast and a post 1.5 m out -- a person's width, not a lox's; a boar can pass between
+  the stalls there. From the game's spot the hand reached the mast through the wall's rails.
 
 ## 0.9.11 — 2026-10-30
 
