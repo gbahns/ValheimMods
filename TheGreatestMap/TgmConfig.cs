@@ -218,6 +218,8 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> PinMarkerMenu;
         internal static ConfigEntry<bool> MarkerListTree;
         internal static ConfigEntry<bool> MarkerListHoverButtons;
+        internal static ConfigEntry<string> AdoptNameHints;
+        internal static ConfigEntry<string> AdoptPinMeanings;
         internal static ConfigEntry<Vector2> PinnedMenuSpot;
 
         /// <summary>
@@ -630,6 +632,22 @@ namespace TheGreatestMap
                 "row shows all three at once, which is three times as many things to read as there are names to read.");
             MarkerListTree.SettingChanged += (_, __) => KindMenu.Relayout();
             MarkerListHoverButtons.SettingChanged += (_, __) => KindMenu.Relayout();
+
+            AdoptNameHints = mod.BindLocal("Catalog", "Adopt Name Hints", "",
+                "What your own shorthand on a hand-placed marker means, for tgm_adopt, as " +
+                "name=answer pairs: \"T=TrollCave, S=Greydwarf_camp, BARNACLE=none, PLAINS=none\". The answer is " +
+                "part of a prefab name or of the name this mod would give the thing, and the marker is only " +
+                "converted if something matching it is within reach; \"none\" means never convert that marker at " +
+                "all, which is the answer for a note about a biome or a two-star boar. A leading star level is " +
+                "ignored, so T covers 1*T and 2*T. Without a hint, a marker you named is converted only if the " +
+                "answer agrees with the name, so nothing you wrote is lost quietly -- the listing names every " +
+                "marker it left alone and what the world offered for it, which is how you know what to put here.");
+            AdoptPinMeanings = mod.BindLocal("Catalog", "Adopt Pin Meanings", "",
+                "Which of the game's five placeable pins mean what, for tgm_adopt, as type=meaning pairs: " +
+                "\"Icon3=place, Icon0=fire, Icon1=resource\". The meanings are place, resource, fire and unknown. " +
+                "Left empty it reads the name of the picture the game draws for each pin -- a hammer is a place, a " +
+                "dot is a resource -- and the listing prints what it decided for each of your pins, so a wrong " +
+                "guess is something you can see rather than something that happens to your map.");
 
             PlayerArrowSize = mod.BindLocalRange("Display", "Player Arrow Size", 100, 50, 400,
                 "Size of your own arrow on the large map, as a percentage of the normal size. Pan and zoom around a " +

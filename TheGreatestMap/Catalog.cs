@@ -866,7 +866,13 @@ namespace TheGreatestMap
                 case Category.Herbs:
                 case Category.Seeds:
                 case Category.Plants:
-                case Category.Ore:  return true;
+                case Category.Ore:
+                // A nest, a draugr pile, a charred stone: things standing in the world that you
+                // walk up to and break, and the catalog lists the four of them by name rather
+                // than by pattern, so the thousands of invisible spawn points inside dungeons and
+                // camps cannot come in with them. They were left out of this road when it was
+                // written, which left a hammer dropped on a greydwarf nest with nothing to find.
+                case Category.Spawner: return true;
                 default:            return false;
             }
         }
@@ -1177,6 +1183,27 @@ namespace TheGreatestMap
         /// origin of a farm is the middle of the yard, not the house); everything else sits on
         /// the origin. The location origin and radius are kept for deduplication either way.
         /// </summary>
+        /// <summary>
+        /// What a piece somebody built would become, read from the prefab and a position rather
+        /// than from the piece.
+        ///
+        /// <para>Only the kinds that are about building, which today means campfires. A campfire
+        /// is one of this mod's markers only because a player lit it -- the world lights its own
+        /// in camps and villages and those are not finds -- so the caller has to have established
+        /// that from the record's creator before asking. The prefab road above refuses these for
+        /// exactly that reason, and without this a pin dropped on a fire in the Ashlands answers
+        /// "charred spawner": the thing the fire was lit to suppress.</para>
+        /// </summary>
+        internal static bool TryClassifyBuilt(GameObject prefab, string name, Vector3 pos, out Found found)
+        {
+            found = null;
+            if (!_built) Rebuild();
+            if (string.IsNullOrEmpty(name)) return false;
+            if (!Lookup(name, out var e) || e.Cat != Category.Campfire) return false;
+            found = Make(e.Cat, e.Name ?? Prettify(name), e.Icon, pos, "prefab:" + name, name);
+            return true;
+        }
+
         private static bool ClassifyLocation(string prefab, bool hasInterior, Vector3 center, float radius, Vector3 hitPos, out Found found)
         {
             found = null;

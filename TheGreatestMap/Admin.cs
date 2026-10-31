@@ -56,7 +56,7 @@ namespace TheGreatestMap
         /// only outcome here that loses something a player meant, and the player is the only one
         /// who knows what they meant.</para>
         /// </summary>
-        internal static List<string> Adopt(float reach, bool apply)
+        internal static List<string> Adopt(float reach, bool apply, bool plants)
         {
             var lines = new List<string>();
             var map = Minimap.instance;
@@ -91,37 +91,102 @@ namespace TheGreatestMap
                 return lines;
             }
 
+            var meanings = PinMeanings(map, out var pictures);
+            var hints = Hints();
             var places = LocationNames.Snapshot();
             var sofar = new List<Written>();
             var byThing = new SortedDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var byPicture = new SortedDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             var kindsOff = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
             var puzzling = new List<string>();
+            var disagreed = new List<string>();
+            var byRule = new List<string>();
+            var plantOnly = new List<string>();
             var renamed = new List<string>();
-            int written = 0, already = 0, erased = 0, off = 0, nothing = 0, refused = 0;
+            int written = 0, already = 0, erased = 0, off = 0, refused = 0;
 
             foreach (var pinData in hand)
             {
-                Found found = null;
-                // Nearest first, and the first answer the catalog can make a marker of wins. A
-                // thing at arm's length is what a pin was pointing at more often than the ground
-                // it stands on, which is why the place the generator put there is offered last.
+                var meant = Meaning(meanings, (int)pinData.m_type);
+                Count(byPicture, Picture(pictures, (int)pinData.m_type) + ", taken to mean " + Says(meant));
+
+                string typed = (pinData.m_name ?? "").Trim();
+                string hint = Hint(hints, typed);
+                if (IsNever(hint)) { byRule.Add("  " + Where(pinData)); continue; }
+
+                // Every answer the world has, ranked by what this pin was for and only then by
+                // which is nearest. Nearest alone was the first rule here and it was wrong: a
+                // hammer dropped on a troll cave has a mushroom eight meters from it and the cave
+                // fifteen, so the mushroom answered, and the cave was never marked at all.
+                var order = Order[meant];
+                Found best = null, nearest = null;
+                string nearestPrefab = null;
+                Found plantPick = null;
+                float bestDistance = 0f, nearestDistance = 0f, plantDistance = 0f;
+                int bestRank = int.MaxValue;
                 foreach (var hit in LocationNames.WhatStandsAt(pinData.m_pos, reach, places))
-                    if (Build(hit, out found)) break;
-                if (found == null)
                 {
-                    nothing++;
-                    if (puzzling.Count < 12) puzzling.Add("  " + Where(pinData));
+                    if (!Build(hit, out var candidate)) continue;
+                    float d = Geo.FlatDistance(hit.Pos, pinData.m_pos);
+                    if (nearest == null || d < nearestDistance)
+                    {
+                        nearest = candidate;
+                        nearestPrefab = hit.Prefab;
+                        nearestDistance = d;
+                    }
+
+                    // What the player wrote on the pin outranks everything: it is the only record
+                    // of what was meant, and an answer that disagrees with it is an answer about
+                    // something else standing nearby.
+                    if (hint != null) { if (!Matches(hint, hit.Prefab, candidate)) continue; }
+                    else if (typed.Length > 0 && !Agrees(typed, hit.Prefab, candidate)) continue;
+
+                    // Nobody marks plants, and a plant grows within twenty meters of everything,
+                    // so left in the running it answers for whatever the pin really meant. Kept
+                    // aside rather than dropped, so the listing can say that a plant is all there
+                    // was -- and tested after the name, so a marker you did call "dandelion" is
+                    // reported as a plant you declined rather than as a name nothing matched.
+                    var sort = ClassOf(candidate.Cat);
+                    if (sort == Sort.Plant && !plants)
+                    {
+                        if (plantPick == null || d < plantDistance) { plantPick = candidate; plantDistance = d; }
+                        continue;
+                    }
+
+                    int rank = Array.IndexOf(order, sort);
+                    if (best != null && rank > bestRank) continue;
+                    if (best != null && rank == bestRank && d >= bestDistance) continue;
+                    best = candidate;
+                    bestRank = rank;
+                    bestDistance = d;
+                }
+
+                if (best == null)
+                {
+                    // Four ways to find nothing, and they want four different answers -- these are
+                    // the markers that stay, and what to do about each is a different decision.
+                    if (plantPick != null)
+                        plantOnly.Add($"  {Where(pinData)} -- nothing but {plantPick.Name} within {reach:0} m");
+                    else if (hint != null)
+                        disagreed.Add($"  {Where(pinData)} -- nothing matching \"{hint}\" within {reach:0} m");
+                    else if (typed.Length > 0 && nearest != null)
+                        disagreed.Add($"  {Where(pinData)} -- nearest is {nearest.Name} ({nearestPrefab}) " +
+                                      $"at {nearestDistance:0} m, which does not match the name");
+                    else if (typed.Length > 0)
+                        disagreed.Add($"  {Where(pinData)} -- nothing at all within {reach:0} m");
+                    else
+                        puzzling.Add("  " + Where(pinData));
                     continue;
                 }
 
-                Count(byThing, Catalog.Prettify(found.Source) + " (" + found.Source + ")");
-                var verdict = Consider(found, apply, sofar);
+                Count(byThing, Catalog.Prettify(best.Source) + " (" + best.Source + ")");
+                var verdict = Consider(best, apply, sofar);
                 switch (verdict)
                 {
                     case Verdict.Written:  written++; break;
                     case Verdict.Marked:   already++; break;
                     case Verdict.Erased:   erased++;  break;
-                    case Verdict.KindOff:  off++; kindsOff.Add(Categories.Label(found.Cat)); break;
+                    case Verdict.KindOff:  off++; kindsOff.Add(Categories.Label(best.Cat)); break;
                     case Verdict.Refused:  refused++; break;
                 }
                 // The pin goes when there is a marker standing for the same thing, whether this
@@ -129,37 +194,257 @@ namespace TheGreatestMap
                 // that nothing is lost quietly: an erased spot and a switched-off kind are both
                 // reasons to look rather than reasons to tidy up.
                 if (verdict != Verdict.Written && verdict != Verdict.Marked) continue;
-                if (!string.IsNullOrEmpty(pinData.m_name) && renamed.Count < 12)
-                    renamed.Add($"  \"{pinData.m_name}\" -> {found.Name}");
+                if (typed.Length > 0)
+                    renamed.Add($"  \"{pinData.m_name}\" -> {best.Name} ({best.Source}) at {bestDistance:0} m");
                 if (apply) map.RemovePin(pinData);
             }
 
             lines.Add(apply
                 ? $"{hand.Count} marker(s) placed by hand, looking {reach:0} m around each one."
                 : $"{hand.Count} marker(s) placed by hand, looking {reach:0} m around each one. Nothing written yet.");
+            if (byPicture.Count > 0)
+            {
+                lines.Add("The pictures on them, and what each one was read as:");
+                foreach (var kv in byPicture) lines.Add($"  {kv.Value} x {kv.Key}");
+            }
             lines.Add($"  {written} became recorded markers" + (apply ? ", and their hand-placed pins are gone." : "."));
             if (already > 0) lines.Add($"  {already} stood for something already marked" + (apply ? ", so the pin went and nothing was written." : "."));
             if (erased > 0) lines.Add($"  {erased} stand where a marker was erased, so none was written and the pin stays.");
             if (refused > 0) lines.Add($"  {refused} could not be written at all; the log says why. Their pins stay.");
             if (off > 0) lines.Add($"  {off} are of a kind that is switched off ({string.Join(", ", New(kindsOff))}), so the pin stays.");
-            if (nothing > 0)
-            {
-                lines.Add($"  {nothing} have nothing the catalog knows within {reach:0} m, so they stay exactly as they are:");
-                lines.AddRange(puzzling);
-                if (nothing > puzzling.Count) lines.Add($"  ... and {nothing - puzzling.Count} more.");
-            }
+            Section(lines, byRule, "your own hints say never to convert these, so nothing happens to them:", "the ones your hints keep");
+            Section(lines, disagreed, $"these carry a name that nothing within {reach:0} m matches, so they stay as they are:", "the ones whose name disagreed");
+            Section(lines, plantOnly, "these have nothing but plants near them. Nobody marks plants, so they stay; " +
+                                      "tgm_adopt plants takes them anyway:", "the ones with only plants nearby");
+            Section(lines, puzzling, $"these have nothing the catalog knows within {reach:0} m, so they stay exactly as they are:", "the ones with nothing nearby");
             if (byThing.Count > 0)
             {
                 lines.Add("What the world said they were:");
                 foreach (var kv in byThing) lines.Add($"  {kv.Key}: {kv.Value}");
             }
-            if (renamed.Count > 0)
-            {
-                lines.Add("Names you had typed, and what the marker says now:");
-                lines.AddRange(renamed);
-            }
+            Section(lines, renamed, "names you had typed, and what the marker says now:", "the names you had typed");
             if (apply && written > 0) ClientPins.Restyle();
             return lines;
+        }
+
+        /// <summary>
+        /// How many of a listing's own lines reach the console. The whole list goes to the log
+        /// whenever it is longer than that, because these lists are the point of a dry run -- they
+        /// are the markers the tool will not touch, and a report showing twelve of forty-eight
+        /// cannot be acted on. The console is spared six hundred lines; the log is not.
+        /// </summary>
+        private const int Shown = 40;
+
+        private static void Section(List<string> lines, List<string> detail, string header, string what)
+        {
+            if (detail.Count == 0) return;
+            lines.Add($"  {detail.Count}: " + header);
+            for (int i = 0; i < detail.Count && i < Shown; i++) lines.Add(detail[i]);
+            if (detail.Count <= Shown) return;
+            lines.Add($"  ... and {detail.Count - Shown} more; all of them are in the log.");
+            TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] tgm_adopt: {what}, in full:");
+            foreach (var line in detail) TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_adopt:" + line);
+        }
+
+        // ── what a marker placed by hand was for ────────────────────────────────────
+
+        /// <summary>
+        /// What a hand-placed marker was for, as far as the picture on it says. Somebody who uses
+        /// hammers for dungeons and dots for ore has already written down what each pin means, and
+        /// reading the picture is reading that.
+        /// </summary>
+        private enum Meant { Unknown, Place, Resource, Fire }
+
+        /// <summary>The kinds of answer the world can give, in the order they are worth ranking.</summary>
+        private enum Sort { Place, Weak, Resource, Fire, Plant }
+
+        /// <summary>
+        /// Which answers come first for a pin that meant what. Distance decides only between
+        /// answers of the same sort, which is the whole correction: the nearest thing to a hammer
+        /// on a troll cave is a mushroom, and the nearest thing to a dot on a copper vein really
+        /// is the copper.
+        /// </summary>
+        private static readonly Dictionary<Meant, Sort[]> Order = new Dictionary<Meant, Sort[]>
+        {
+            { Meant.Place,    new[] { Sort.Place, Sort.Weak, Sort.Resource, Sort.Fire, Sort.Plant } },
+            { Meant.Resource, new[] { Sort.Resource, Sort.Place, Sort.Weak, Sort.Fire, Sort.Plant } },
+            { Meant.Fire,     new[] { Sort.Fire, Sort.Place, Sort.Weak, Sort.Resource, Sort.Plant } },
+            { Meant.Unknown,  new[] { Sort.Place, Sort.Resource, Sort.Weak, Sort.Fire, Sort.Plant } },
+        };
+
+        /// <summary>
+        /// Which sort of answer a kind is. A structure is a weaker place than a dungeon or a camp
+        /// on purpose: half of them are the scenery the generator scatters -- a dolmen, a ruin, a
+        /// ship setting -- and a marker is not what anybody was pointing at when a real place is
+        /// also in reach.
+        /// </summary>
+        private static Sort ClassOf(Category c)
+        {
+            switch (c)
+            {
+                case Category.Dungeon:
+                case Category.Camp:
+                case Category.BossAltar:
+                case Category.Spawner:
+                case Category.Runestone:
+                case Category.Trader:    return Sort.Place;
+                case Category.Structure: return Sort.Weak;
+                case Category.Ore:       return Sort.Resource;
+                case Category.Campfire:  return Sort.Fire;
+                default:                 return Categories.IsGrown(c) ? Sort.Plant : Sort.Weak;
+            }
+        }
+
+        /// <summary>
+        /// What each of the game's placeable pins is taken to mean, and the picture it wears.
+        ///
+        /// <para>Read from the name of the sprite the game draws, because that is the only place
+        /// the meaning lives: the five types are Icon0 to Icon4 and nothing in the game's own code
+        /// says which of them is the hammer. Reading somebody else's asset names is a guess, so
+        /// the config overrides it and the listing prints what it decided for every pin -- a wrong
+        /// guess should be something you can see rather than something that happens to your map.
+        /// </para>
+        /// </summary>
+        private static Dictionary<int, Meant> PinMeanings(Minimap map, out Dictionary<int, string> pictures)
+        {
+            var meanings = new Dictionary<int, Meant>();
+            pictures = new Dictionary<int, string>();
+            if (map != null && map.m_icons != null)
+                foreach (var data in map.m_icons)
+                {
+                    int type = (int)data.m_name;
+                    if (!PinTypes.IsPlayerPlaceable(type) || PinTypes.IsCustom(type)) continue;
+                    string sprite = data.m_icon != null ? data.m_icon.name : "";
+                    pictures[type] = (Minimap.PinType)type + " (" +
+                                     (string.IsNullOrEmpty(sprite) ? "no picture" : sprite) + ")";
+                    meanings[type] = FromPicture(sprite);
+                }
+            foreach (var pair in Split(TgmConfig.AdoptPinMeanings != null ? TgmConfig.AdoptPinMeanings.Value : ""))
+            {
+                if (!Enum.TryParse(pair.Key, true, out Minimap.PinType type)) continue;
+                if (!Enum.TryParse(pair.Value, true, out Meant said)) continue;
+                meanings[(int)type] = said;
+            }
+            return meanings;
+        }
+
+        /// <summary>
+        /// A picture's name, read for what it is a picture of. The names are the game's and could
+        /// change under us, which is why this is overridable and printed rather than relied on.
+        /// </summary>
+        private static Meant FromPicture(string sprite)
+        {
+            string name = (sprite ?? "").ToLowerInvariant();
+            if (name.Length == 0) return Meant.Unknown;
+            if (name.Contains("fire") || name.Contains("camp") || name.Contains("hearth")) return Meant.Fire;
+            if (name.Contains("hammer") || name.Contains("house") || name.Contains("hut")
+                || name.Contains("cave") || name.Contains("castle") || name.Contains("village")
+                || name.Contains("mine")) return Meant.Place;
+            if (name.Contains("dot") || name.Contains("circle") || name.Contains("point")
+                || name.Contains("ore") || name.Contains("rock") || name.Contains("pick")) return Meant.Resource;
+            return Meant.Unknown;
+        }
+
+        private static Meant Meaning(Dictionary<int, Meant> meanings, int type) =>
+            meanings.TryGetValue(type, out var meant) ? meant : Meant.Unknown;
+
+        private static string Picture(Dictionary<int, string> pictures, int type) =>
+            pictures.TryGetValue(type, out var picture) ? picture : ((Minimap.PinType)type).ToString();
+
+        private static string Says(Meant meant)
+        {
+            switch (meant)
+            {
+                case Meant.Place:    return "a place";
+                case Meant.Resource: return "a resource";
+                case Meant.Fire:     return "a campfire";
+                default:             return "anything (no picture this knows)";
+            }
+        }
+
+        // ── what the player wrote on the pin ────────────────────────────────────────
+
+        /// <summary>The name hints from the config, keyed by the name as typed, in lower case.</summary>
+        private static Dictionary<string, string> Hints()
+        {
+            var hints = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var pair in Split(TgmConfig.AdoptNameHints != null ? TgmConfig.AdoptNameHints.Value : ""))
+                hints[pair.Key] = pair.Value;
+            return hints;
+        }
+
+        /// <summary>
+        /// The hint for what somebody typed on a pin, or null. A leading star level is ignored, so
+        /// one hint covers T, 1*T and 2*T: the star says how good the thing is rather than what it
+        /// is.
+        /// </summary>
+        private static string Hint(Dictionary<string, string> hints, string typed)
+        {
+            if (hints.Count == 0 || string.IsNullOrEmpty(typed)) return null;
+            if (hints.TryGetValue(typed, out var hit)) return hit;
+            return hints.TryGetValue(Bare(typed), out hit) ? hit : null;
+        }
+
+        /// <summary>A hint that says this marker is never to be converted at all.</summary>
+        private static bool IsNever(string hint) =>
+            hint != null && (hint.Equals("none", StringComparison.OrdinalIgnoreCase)
+                          || hint.Equals("never", StringComparison.OrdinalIgnoreCase)
+                          || hint.Equals("leave", StringComparison.OrdinalIgnoreCase)
+                          || hint == "-");
+
+        /// <summary>Does this answer satisfy the hint? The hint names part of a prefab or of a name.</summary>
+        private static bool Matches(string hint, string prefab, Found candidate) =>
+            Has(prefab, hint) || Has(candidate.Name, hint);
+
+        /// <summary>
+        /// Does an answer agree with what the player wrote on the pin?
+        ///
+        /// <para>A name typed by hand is the only record of what was meant, and what was meant is
+        /// often not the nearest thing: "draugr" on a swamp hut agrees, "2*boar" on a dandelion
+        /// does not. Two letters cannot be tested this way at all -- "t" is inside half the words
+        /// in the game -- so a short name agrees with nothing and waits for a hint. That is the
+        /// honest answer rather than a cautious one: converting it would be a guess that destroys
+        /// the only evidence of what the guess was about.</para>
+        /// </summary>
+        private static bool Agrees(string typed, string prefab, Found candidate)
+        {
+            foreach (var word in Bare(typed).Split(' ', ',', '-', '_', '/', '+'))
+            {
+                if (word.Length < 3) continue;
+                if (Has(candidate.Name, word) || Has(prefab, word)
+                    || Has(Categories.Label(candidate.Cat), word)) return true;
+            }
+            return false;
+        }
+
+        /// <summary>"2*boar" becomes "boar". Anything without a star level comes back as it went in.</summary>
+        private static string Bare(string name)
+        {
+            int star = name.IndexOf('*');
+            if (star <= 0 || star + 1 >= name.Length) return name;
+            for (int i = 0; i < star; i++) if (!char.IsDigit(name[i])) return name;
+            return name.Substring(star + 1).Trim();
+        }
+
+        private static bool Has(string haystack, string needle) =>
+            !string.IsNullOrEmpty(haystack) && !string.IsNullOrEmpty(needle)
+            && haystack.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0;
+
+        /// <summary>A "key=value, key=value" setting as pairs, both sides trimmed.</summary>
+        private static List<KeyValuePair<string, string>> Split(string text)
+        {
+            var pairs = new List<KeyValuePair<string, string>>();
+            if (string.IsNullOrEmpty(text)) return pairs;
+            foreach (var part in text.Split(','))
+            {
+                int at = part.IndexOf('=');
+                if (at <= 0) continue;
+                string key = part.Substring(0, at).Trim();
+                string value = part.Substring(at + 1).Trim();
+                if (key.Length > 0 && value.Length > 0)
+                    pairs.Add(new KeyValuePair<string, string>(key, value));
+            }
+            return pairs;
         }
 
         /// <summary>Where a pin is, in the terms a player can go and look at.</summary>
@@ -201,7 +486,7 @@ namespace TheGreatestMap
             var sofar = new List<Written>();
             var byKind = new SortedDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             var kindsOff = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
-            int written = 0, already = 0, erased = 0, off = 0, unexplored = 0, capped = 0, refused = 0;
+            int written = 0, already = 0, erased = 0, off = 0, unexplored = 0, capped = 0, refused = 0, interior = 0;
             var clock = System.Diagnostics.Stopwatch.StartNew();
 
             void Judge(Found found)
@@ -250,6 +535,12 @@ namespace TheGreatestMap
                         // seeds that never grow back are not in the catalog at all.
                         if (zdo.GetBool(ZDOVars.s_picked, false)) continue;
                         var pos = zdo.GetPosition();
+                        // A dungeon's contents are not on the map. Valheim builds the inside above
+                        // y = 3000, so a marker written for one lands on the ground over its
+                        // entrance: eighty yellow mushrooms on one hillside, which is what the
+                        // burial chambers under it really hold. Recording skips them the same way,
+                        // by refusing to record at all while the player is inside one.
+                        if (Character.InInterior(pos)) { interior++; continue; }
                         if (!everywhere && !Explored(map, pos)) { unexplored++; continue; }
                         objects++;
                         Judge(template.At(pos));
@@ -270,6 +561,7 @@ namespace TheGreatestMap
             if (erased > 0) lines.Add($"  {erased} stand where a marker was erased, so none is written.");
             if (off > 0) lines.Add($"  {off} are of a kind that is switched off ({string.Join(", ", New(kindsOff))}).");
             if (refused > 0) lines.Add($"  {refused} could not be written at all; the log says why.");
+            if (interior > 0) lines.Add($"  {interior} are inside dungeons, where nothing on the map can stand for them.");
             if (!everywhere && unexplored > 0) lines.Add($"  {unexplored} are outside what you have explored. tgm_survey all takes those too.");
             if (capped > 0)
                 lines.Add($"  {capped} more were left alone: this stops at {cap}. " +
@@ -416,8 +708,14 @@ namespace TheGreatestMap
             if (hit.Radius > 0f)
                 return Catalog.TryClassifyLocation(Entry(hit.Prefab, hit.Pos, hit.Radius), out found);
             var scene = ZNetScene.instance;
-            return Catalog.TryClassifyPrefab(scene != null ? scene.GetPrefab(hit.Prefab) : null,
-                hit.Prefab, hit.Pos, out found);
+            var prefab = scene != null ? scene.GetPrefab(hit.Prefab) : null;
+            // A campfire first, where somebody built one. The catalog's prefab road refuses these
+            // because a prefab cannot say who lit it, and the world lights its own in every camp
+            // and village -- but the record carries a creator, which is the same question the
+            // piece road asks the piece. Without this a pin dropped on a fire in the Ashlands
+            // answers "charred spawner": the thing the fire was lit to suppress.
+            if (hit.Built && Catalog.TryClassifyBuilt(prefab, hit.Prefab, hit.Pos, out found)) return true;
+            return Catalog.TryClassifyPrefab(prefab, hit.Prefab, hit.Pos, out found);
         }
 
         private static LocationIndex.Entry Entry(string prefab, Vector3 pos, float radius) =>

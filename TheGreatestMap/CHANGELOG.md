@@ -69,6 +69,51 @@
   holds hundreds of thousands of things worth a picture and a map carrying all of them is not a
   map.
 
+  A first run over a map with six hundred hand-placed markers on it taught both tools five things,
+  which are now in them:
+
+  - **Nothing underground is an answer about the surface.** Valheim builds the inside of a dungeon
+    in a space of its own above y = 3000, and both tools measured flat distance -- so the eighty
+    yellow mushrooms in the burial chambers under a hill stood a few meters from a pin dropped on
+    the hill and answered for it. Yellow mushrooms grow nowhere else, which is how it was caught.
+    Both tools now skip anything on the other side of that line, which is the rule recording has
+    always followed by refusing to record at all while you are inside a dungeon.
+
+  - **What a marker was for now outranks what is nearest to it.** A hammer dropped on a troll cave
+    has a mushroom eight meters away and the cave fifteen, and the old rule took the mushroom: it
+    offered the place the generator put there last of all, on the reasoning that a thing at arm's
+    length is usually what a marker means. That is true of a marker this mod wrote and false of
+    one dropped by eye on a map a thousand meters to the inch. So the picture on the pin is read
+    first -- a hammer means a place, a dot means a resource, a fire means a fire -- and distance
+    now decides only between answers of the same sort. Every location within reach is a candidate
+    rather than only the nearest one, so a ruin ten meters away can no longer answer for a cave
+    fifteen meters away.
+
+  - **A name you typed is never thrown away quietly.** "2*boar" became Dandelion and "T" became
+    Yellow Mushrooms, and because the hand-placed pin is removed after a marker is written, each
+    of those was the loss of the only record of what was meant. A marker you named is now
+    converted only if the answer agrees with the name, and the listing names every one it left
+    alone together with what the world offered for it. **Adopt Name Hints** is where your own
+    shorthand goes -- `T=TrollCave, S=Greydwarf, PLAINS=none, BARNACLE=none` -- for the names no
+    answer can agree with because they are one letter long, and for the notes that are not about
+    anything in the world at all. A leading star level is ignored, so one hint covers T and 1*T.
+
+  - **Plants are not an answer unless you ask for them.** A plant grows within twenty meters of
+    very nearly everything, so while plants were in the running they answered for whatever a pin
+    really meant: 175 of 565 answers were a berry, a mushroom or a herb. `tgm_adopt plants` takes
+    them anyway.
+
+  - **A campfire is a campfire.** A pin dropped on a fire you lit in the Ashlands answered "charred
+    spawner" -- the thing the fire was lit to suppress -- because the catalog's prefab road refuses
+    campfires, a prefab being unable to say who lit it. The record carries a creator, which is the
+    same question the piece road asks the piece, so a fire somebody built is now read as one.
+
+  Two smaller things came out of the same run: the visible spawners a player can walk up to and
+  break (a greydwarf nest, a draugr pile) were missing from the road both tools read the world
+  with, so a hammer dropped on a nest found nothing; and both listings capped their lists at
+  twelve lines, which is no use at all when those lists are the markers the tool is *not* going to
+  touch. The console still gets forty of each; the log gets all of them.
+
   Neither can write the anonymous dots 4.6.2 spent a release repairing. Both go in through the
   same door every recorded marker goes through, which resolves a picture before the marker exists
   and writes it down when the catalog cannot derive it again -- so a thing the catalog has no line

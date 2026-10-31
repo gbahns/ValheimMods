@@ -213,13 +213,14 @@ namespace TheGreatestMap
                     TheGreatestMapMod.Log.LogWarning($"[TheGreatestMap] tgm_scrub: erased {doomed.Count} marker(s) with source \"{source}\".");
                 }));
 
-            new Terminal.ConsoleCommand("tgm_adopt", "Admin, test worlds: turn markers you placed by hand into recorded ones by asking the world what they were pointing at, then remove the hand-placed pin. tgm_adopt [reach, default 20] lists; add apply to write it",
+            new Terminal.ConsoleCommand("tgm_adopt", "Admin, test worlds: turn markers you placed by hand into recorded ones by asking the world what they were pointing at, then remove the hand-placed pin. tgm_adopt [reach, default 20] lists; add apply to write it, plants to allow plants as answers. Reads the Adopt Name Hints setting for your own shorthand",
                 (Terminal.ConsoleEvent)(args =>
                 {
                     if (Player.m_localPlayer == null) { args.Context.AddString("No player."); return; }
                     bool apply = HasWord(args, "apply");
+                    bool plants = HasWord(args, "plants");
                     float reach = Number(args, Admin.DefaultReach);
-                    foreach (var line in Admin.Adopt(reach, apply))
+                    foreach (var line in Admin.Adopt(reach, apply, plants))
                     {
                         args.Context.AddString(line);
                         TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_adopt: " + line);

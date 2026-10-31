@@ -298,6 +298,12 @@ namespace TheGreatestMap
             public Vector3 Pos;
             /// <summary>The exterior radius where the generator placed this; zero for a thing standing about.</summary>
             public float Radius;
+            /// <summary>
+            /// Somebody built this: its record carries a creator. A campfire is one of this mod's
+            /// markers only because a player lit it, and this is the same question the piece road
+            /// asks the piece itself -- a prefab cannot say who put it there.
+            /// </summary>
+            public bool Built;
         }
 
         /// <summary>
@@ -342,10 +348,25 @@ namespace TheGreatestMap
                             var at = zdo.GetPosition();
                             float d = Geo.FlatDistance(at, pos);
                             if (d > reach) continue;
+                            // Valheim builds the inside of a dungeon in a space of its own above
+                            // y = 3000 (Character.InInterior is that line), at no particular
+                            // relation to the ground above it -- and this measures flat distance,
+                            // which cannot tell the two apart. So the yellow mushrooms in a
+                            // burial chamber stood eight meters from a pin dropped on the hill
+                            // above them and answered for it. A thing is an answer about a place
+                            // only if it is on the same side of that line as the place. It is the
+                            // rule recording already follows by refusing to record at all while
+                            // the player is inside one.
+                            if (Character.InInterior(at) != Character.InInterior(pos)) continue;
                             var prefab = scene.GetPrefab(zdo.GetPrefab());
                             if (prefab == null || string.IsNullOrEmpty(prefab.name)) continue;
-                            found.Add(new KeyValuePair<float, Standing>(d,
-                                new Standing { Prefab = prefab.name, Pos = at, Radius = 0f }));
+                            found.Add(new KeyValuePair<float, Standing>(d, new Standing
+                            {
+                                Prefab = prefab.name,
+                                Pos = at,
+                                Radius = 0f,
+                                Built = zdo.GetLong(ZDOVars.s_creator, 0L) != 0L,
+                            }));
                         }
                     }
                 }
@@ -355,12 +376,9 @@ namespace TheGreatestMap
                 TheGreatestMapMod.Log.LogWarning("[TheGreatestMap] Could not read what stands at a place: " + e.Message);
             }
 
-            // And the place itself, offered last: a thing at arm's length is what a marker was
-            // pointing at more often than the ground it stands on.
             try
             {
-                if (TryPlacedAt(pos, places, out var here))
-                    found.Add(new KeyValuePair<float, Standing>(float.MaxValue, here));
+                AddPlacedAt(pos, reach, places, found);
             }
             catch (Exception e)
             {
@@ -379,31 +397,36 @@ namespace TheGreatestMap
             return all;
         }
 
-        /// <summary>The nearest placed location whose reach covers the point, with its own figures.</summary>
-        private static bool TryPlacedAt(Vector3 pos, List<Placed> places, out Standing standing)
+        /// <summary>
+        /// Every location whose footprint covers the point, or whose middle is within reach, each
+        /// at its own distance.
+        ///
+        /// <para>It used to be the nearest one only, and offered after everything standing on the
+        /// ground rather than among it: the reasoning was that a thing at arm's length is what a
+        /// marker points at more often than the ground it stands on. That is true of a marker this
+        /// mod wrote and false of one a player dropped by eye. A hammer on a troll cave is a
+        /// hammer about the cave, and offering the cave last let a mushroom answer for it; offering
+        /// only the nearest location let a ruin ten meters away answer for a cave fifteen meters
+        /// away. Both are now candidates, with their distances, and the caller ranks them.</para>
+        /// </summary>
+        private static void AddPlacedAt(Vector3 pos, float reach, List<Placed> places,
+                                        List<KeyValuePair<float, Standing>> found)
         {
-            standing = default(Standing);
             var all = places ?? Snapshot();
-            float bestDistance = float.MaxValue;
-            bool any = false;
             for (int i = 0; i < all.Count; i++)
             {
-                float d = Geo.FlatDistance(all[i].Pos, pos);
-                if (d >= bestDistance) continue;
-                if (d > Mathf.Max(all[i].Radius, SearchRadius)) continue;
                 if (string.IsNullOrEmpty(all[i].Prefab)) continue;
-                standing = new Standing
+                float d = Geo.FlatDistance(all[i].Pos, pos);
+                if (d > Mathf.Max(all[i].Radius, reach)) continue;
+                found.Add(new KeyValuePair<float, Standing>(d, new Standing
                 {
                     Prefab = all[i].Prefab,
                     Pos = all[i].Pos,
                     // A location always reaches at least as far as the catalog's own floor, so a
                     // caller can tell a placed location from a thing standing about by this alone.
                     Radius = Mathf.Max(all[i].Radius, 4f),
-                };
-                bestDistance = d;
-                any = true;
+                }));
             }
-            return any;
         }
 
         private static void RPC_AskAll(long sender, ZPackage pkg)

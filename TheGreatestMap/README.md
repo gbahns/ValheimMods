@@ -241,13 +241,24 @@ counts as well unless "Structures Include Unlisted" is off or its prefab name is
 | `tgm_legend` | Open the legend (same as the legend key) |
 | `tgm_show` | Show every hidden marker again (single markers, hidden icons, hidden kinds and hidden crossed-off markers) |
 | `tgm_mapui` | What the large map's layout measures: how much screen it uses and how its parts are anchored |
-| `tgm_adopt [reach] [apply]` | Test worlds: ask the world what your hand-placed markers were pointing at, write the recorded marker for it, and remove the hand-placed pin |
+| `tgm_adopt [reach] [apply] [plants]` | Test worlds: ask the world what your hand-placed markers were pointing at, write the recorded marker for it, and remove the hand-placed pin |
 | `tgm_survey [count] [all] [apply]` | Test worlds: mark every location and resource the world holds where you have explored, as if you had recorded them |
 
 `tgm_adopt` and `tgm_survey` are for building a map to test against, not for playing. Both list
 what they would do and write nothing until told to `apply`, both obey the same spacing, label and
 erasure rules as ordinary recording, and both need the world itself -- single player, a world you
 are hosting, or the server's own console.
+
+`tgm_adopt` reads the picture on each hand-placed pin before it reads the ground: a hammer means a
+place, a dot means a resource, a fire means a fire, and distance decides only between answers of
+the same sort. It never answers with a plant unless told `plants`, and it never answers with
+anything inside a dungeon, since Valheim keeps those interiors in a space of their own and a
+marker written for one would land on the surface above the entrance. A marker you had named is
+converted only if the answer agrees with the name; everything it leaves alone is listed with what
+the world offered for it, and **Adopt Name Hints** in the config is where your own shorthand goes
+(`T=TrollCave, S=Greydwarf, PLAINS=none`), including `none` for the notes that are not about
+anything in the world. **Adopt Pin Meanings** overrides what it made of each picture, which the
+listing prints.
 
 ## What players have made, drawn on the map
 
