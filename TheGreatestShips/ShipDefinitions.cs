@@ -293,10 +293,13 @@ namespace TheGreatestShips
                 // Nearly the whole deck: from just aft of the rowing benches (the rudder seat is
                 // at z -7) to just short of the forward benches (z 5.4), the chest (z 3.1-4.6) and
                 // the aft benches inside.  The hull is wide enough for the pen's 3.4 over exactly
-                // this stretch.  A cross wall at the mast (z 0.28) makes two stalls, so an animal
-                // never has to pass the mast: a lox's collider is a 3 m circle and can't fit
-                // beside it in a 5.1 m pen.  Each stall is about 7 m long at 1.5x; its whole side
-                // is the gate.  Rails to 2.25 m in the world: a lox can't jump and climbs about
+                // this stretch.  A cross wall half a meter forward of the mast (z 0.65) makes two
+                // stalls, so an animal never has to pass the mast: a lox's collider is a 3 m circle
+                // and can't fit beside it in a 5.1 m pen.  The wall doesn't run through the mast
+                // itself because holding fast you stand aft of the mast with your hand wrapped
+                // round it, and a wall there had the hand inside its rails; 0.75 m forward of the
+                // pole in the world, it clears the hand.  The stalls are 7.8 m and 6.3 m long at
+                // 1.5x (a lox is 3.5 m); each one's whole side is the gate.  Rails to 2.25 m in the world: a lox can't jump and climbs about
                 // its collider radius, 1.5 m, so that holds it as long as nothing shoves it, and
                 // the stalls are what stop the shoving -- but a lox weighs 60 and a deck heaving at
                 // speed tossed one over 2.25 m rails with nothing above them.  So the invisible
@@ -306,12 +309,7 @@ namespace TheGreatestShips
                 // outboard with it by 2.4 x sin 20 = 0.8 -- beside the animal, not over it.  2.7
                 // leaves a lox's 3.5 m body half a meter of heave before it touches.
                 Pen = new PenSpec { Length = 9.4f, Width = 3.4f, CenterZ = 0.15f, PostHeight = 1.5f, RailHeights = new[] { 0.4f, 0.85f, 1.3f },
-                                    Dividers = new[] { 0.13f }, GateWidth = 3f, WallTop = 2.7f, Ceiling = true,
-                                    DividerGapFrom = -0.03f, DividerGapTo = 1f },
-                // The mast stands in the cross wall, so from the game's spot the hand goes through
-                // the wall's rails.  You stand in the wall's line instead, to starboard of the mast,
-                // in a gap in the rails (0.9 m from the pole: a person's width, not a lox's).
-                MastHoldBearing = 90f,
+                                    Dividers = new[] { 0.5f }, GateWidth = 3f, WallTop = 2.7f, Ceiling = true },
             },
         };
     }

@@ -14,12 +14,14 @@
 - Two settings, `Hold Fast Offset (Longship hulls)` and `Hold Fast Offset (Karve hull)`: where
   you stand when you hold fast, as (right, forward) meters from the game's own spot. The game's
   spot leaves the hand a little inside the pole on both hulls, so the defaults step you a few
-  centimeters back and out. Yours alone; they apply at once, afloat.
+  centimeters back or out. Yours alone; they apply at once, afloat. The console command
+  `tgs_hold` shows the one for the hull you are aboard, and `tgs_hold <right> <forward>` sets it,
+  so the spot can be settled by eye while you hold the mast.
 - The Small Byrding's hold-fast spot is on the far side of the mast, forward of the pen, facing
-  aft over the animals: the game's spot stood in the pen's forward wall. The Greater Byrding's is
-  to starboard of the mast, in the line of the cross wall, where the wall's rails now leave a gap
-  between the mast and a post 1.5 m out -- a person's width, not a lox's; a boar can pass between
-  the stalls there. From the game's spot the hand reached the mast through the wall's rails.
+  aft over the animals: the game's spot stood in the pen's forward wall. The Greater Byrding's
+  cross wall stands 0.75 m forward of the mast instead of running through it, since from the
+  hold-fast spot the hand wrapped the mast inside the wall's rails; the stalls are 7.8 m and
+  6.3 m long now instead of 7 m each.
 
 ## 0.9.11 — 2026-10-30
 

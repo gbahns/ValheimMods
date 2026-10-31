@@ -286,7 +286,7 @@ namespace TheGreatestShips
         private static string FitCrew(ShipDefinition def, GameObject ship, GameObject vanilla, Vector3 ratio)
         {
             var nudge = def.BasePrefab == "Karve" ? ShipConfig.HoldFastOffsetKarve.Value : ShipConfig.HoldFastOffsetLongship.Value;
-            return CrewFit.Apply(ship, vanilla, ratio, nudge, def.MastHoldBearing);
+            return CrewFit.Apply(ship, vanilla, ratio, nudge, def.MastHoldBearing, CrewFit.MastRadius(def.BasePrefab));
         }
 
         // A Hold Fast Offset changed: every ship, prefab and afloat, at its current scale.

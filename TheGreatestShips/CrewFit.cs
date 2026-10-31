@@ -9,18 +9,24 @@ namespace TheGreatestShips
     /// stretches everything aboard, but the player who sits or stands there is not stretched.
     /// A stool's attach point is at the sitter's feet and the sitting pose lifts the hips half
     /// a meter, so a stool half again as tall swallows the hips, and one half again as deep
-    /// catches the knees.  The mast hold stands 0.9 m from the mast's axis and the pose reaches
+    /// catches the knees.  The mast hold stands 0.86 m from the mast's axis and the pose reaches
     /// a fixed arm's length, so a wider hull leaves the hand short of the pole and a narrower
     /// one puts the wrist through it.
     ///
     /// Seats are scaled back to human height and depth (a bigger ship does not need bigger
-    /// stools); a hold's attach point is moved so that, in world meters, it stands where the
-    /// vanilla pose was made to stand relative to the thing held.  Everything is measured on
-    /// the vanilla hull, so applying it again with a new scale -- the server's dimensions
+    /// stools); a hold's attach point is moved so that, in world meters, the hand lands on the
+    /// scaled surface where the vanilla hand landed on the vanilla one.  Everything is measured
+    /// on the vanilla hull, so applying it again with a new scale -- the server's dimensions
     /// arriving after login, or a setting changed -- lands in the same place.
     /// </summary>
     internal static class CrewFit
     {
+        /// <summary>The visual mast's radius about hand height, in meters, on each hull this mod
+        /// clones: read off the mast mesh's vertex rings, which taper from the deck to the top
+        /// (longship 0.128 to 0.081 over 9.8 m; Karve 0.106 to 0.067 over 8.1 m).  The pole's
+        /// box collider is a good deal thinner than the wood on both, which is why it isn't used.</summary>
+        internal static float MastRadius(string basePrefab) => basePrefab == "Karve" ? 0.10f : 0.12f;
+
         /// <param name="ship">The clone prefab or a ship in the world, already at its scale.</param>
         /// <param name="vanilla">The hull it was cloned from, unscaled.</param>
         /// <param name="ratio">The ship's transform scale over the vanilla hull's, per axis.</param>
@@ -28,8 +34,9 @@ namespace TheGreatestShips
         /// (right, forward) as the holder faces: the game's spot is a few centimeters off.</param>
         /// <param name="mastBearing">Where around the mast the holder stands, in degrees from the bow
         /// clockwise (90 = to starboard of the mast), facing turned the same way; null = the game's spot.</param>
+        /// <param name="mastRadius">The visual mast's radius at hand height, meters: <see cref="MastRadius"/>.</param>
         /// <returns>A summary of what moved, or null when nothing did.</returns>
-        internal static string Apply(GameObject ship, GameObject vanilla, Vector3 ratio, Vector2 holdNudge, float? mastBearing)
+        internal static string Apply(GameObject ship, GameObject vanilla, Vector3 ratio, Vector2 holdNudge, float? mastBearing, float mastRadius)
         {
             if (ship == null || vanilla == null) return null;
             var root  = ship.transform;
@@ -44,7 +51,7 @@ namespace TheGreatestShips
                 if (box == null || Inside(box, vChair.m_attachPoint.position))
                     Seat(root, vRoot, vChair.transform, ratio, notes);
                 else
-                    Hold(root, vRoot, vChair.transform, vChair.m_attachPoint, Surface(poles, box, vChair.m_attachPoint.position), ratio, holdNudge, mastBearing, notes);
+                    Hold(root, vRoot, vChair.transform, vChair.m_attachPoint, Surface(poles, box, vChair.m_attachPoint.position, mastRadius), ratio, holdNudge, mastBearing, notes);
             }
 
             foreach (var vControls in vanilla.GetComponentsInChildren<ShipControlls>(true))
@@ -100,16 +107,24 @@ namespace TheGreatestShips
 
         private struct Held
         {
-            public Vector3 Point;   // the nearest point of the held surface, world
+            public Vector3 Point;   // the nearest point of the held surface, world (a box)
             public bool    IsPole;
             public Vector3 Axis;    // a pole's axis (any point on it), world
+            public float   Radius;  // a pole's visual radius at hand height, meters
         }
 
         // A hold is a Chair whose attach point stands beside its collider: the player holds the
-        // thing.  The pose is rigid, so the attach point is placed where the vanilla one stood
-        // relative to the held surface, in world meters -- the surface scales with the hull,
-        // the reach does not.  A mast is round, so the holder can stand anywhere around it:
-        // the spot and the facing swing together about the pole's axis to the bearing asked.
+        // thing.  The pose is rigid, so the attach point moves so that the hand, a fixed reach
+        // from it, lands on the scaled surface where the vanilla hand landed on the vanilla one.
+        //
+        // A mast is a round pole: the hand lies on the line from the axis to the holder, at the
+        // pole's radius.  A hull scaled unevenly makes the pole an ellipse, so the surface along
+        // that line moves out by the ellipse's radius there less the pole's, and the holder with
+        // it.  A pole is also the same all round, so the holder can stand anywhere about it: the
+        // spot and the facing swing together about the axis to the bearing asked.
+        //
+        // Anything else (the prow's stem) is held at the nearest point of its collider, which
+        // scales with the hull, the vanilla reach kept from there.
         private static void Hold(Transform root, Transform vRoot, Transform vChair, Transform vAttach, Held held, Vector3 ratio,
                                  Vector2 nudge, float? bearing, List<string> notes)
         {
@@ -117,31 +132,34 @@ namespace TheGreatestShips
             if (attach == null) return;
 
             var h = vRoot.InverseTransformPoint(vAttach.position);   // hull units = vanilla meters
-            var p = vRoot.InverseTransformPoint(held.Point);
-            var u = h - p; u.y = 0f;
-            if (u.magnitude < 0.05f) return;
-
-            // The vanilla reach, plus the nudge in the pose's frame (the vanilla holds face the
-            // bow: right is +x, forward +z).
             var vFacing = Quaternion.Inverse(vRoot.rotation) * vAttach.rotation;
-            var reach = u + (held.IsPole ? vFacing * new Vector3(nudge.x, 0f, nudge.y) : Vector3.zero);
-
             float turn = 0f;
-            var pivot = p;
-            if (held.IsPole && bearing.HasValue)
+            Vector3 anchor;   // a point of the hull, in hull units: the scale carries it
+            Vector3 reach;    // from the anchor, once scaled, to the holder: world meters
+            if (held.IsPole)
             {
-                var axis = vRoot.InverseTransformPoint(held.Axis);
-                var off = h - axis; off.y = 0f;
-                float vanillaBearing = Mathf.Atan2(off.x, off.z) * Mathf.Rad2Deg;
-                turn = Mathf.DeltaAngle(0f, bearing.Value - vanillaBearing);
+                anchor = vRoot.InverseTransformPoint(held.Axis);
+                var toHolder = Flat(h - anchor);
+                if (toHolder.magnitude < 0.05f) return;
+                if (bearing.HasValue)
+                    turn = Mathf.DeltaAngle(0f, bearing.Value - Mathf.Atan2(toHolder.x, toHolder.z) * Mathf.Rad2Deg);
                 var swing = Quaternion.Euler(0f, turn, 0f);
-                var pOff = p - axis; pOff.y = 0f;
-                pivot = new Vector3(axis.x, p.y, axis.z) + swing * pOff;   // the surface point, swung round the pole
-                reach = swing * reach;
+                toHolder = swing * toHolder;
+                var dir = toHolder.normalized;
+                // the scaled pole's radius along the holder's line: a round pole's across a hull
+                // scaled evenly, more across one widened
+                float radius = held.Radius / Mathf.Sqrt(Sq(dir.x / ratio.x) + Sq(dir.z / ratio.z));
+                reach = toHolder + dir * (radius - held.Radius) + swing * vFacing * new Vector3(nudge.x, 0f, nudge.y);
+            }
+            else
+            {
+                anchor = vRoot.InverseTransformPoint(held.Point);
+                reach  = Flat(h - anchor);
+                if (reach.magnitude < 0.05f) return;
             }
 
             // Hull units again: the reach is world meters, and the hull's scale will multiply.
-            var hFit = pivot + new Vector3(reach.x / ratio.x, 0f, reach.z / ratio.z);
+            var hFit = anchor + new Vector3(reach.x / ratio.x, 0f, reach.z / ratio.z);
             hFit.y = h.y;
 
             var worldFit = root.TransformPoint(hFit);
@@ -174,7 +192,7 @@ namespace TheGreatestShips
 
         // The thing the hand is reaching for: the nearest pole within arm's reach, else the
         // chair's own collider (the prow's stem is the "front" chair's collider).
-        private static Held Surface(List<BoxCollider> poles, BoxCollider own, Vector3 attachWorld)
+        private static Held Surface(List<BoxCollider> poles, BoxCollider own, Vector3 attachWorld, float poleRadius)
         {
             var held = new Held { Point = Nearest(own, attachWorld), IsPole = false };
             float bestD = Flat(held.Point - attachWorld).magnitude;
@@ -184,7 +202,7 @@ namespace TheGreatestShips
                 float dist = Flat(n - attachWorld).magnitude;
                 if (dist < 1.5f && dist < bestD)
                 {
-                    held = new Held { Point = n, IsPole = true, Axis = pole.transform.TransformPoint(pole.center) };
+                    held = new Held { Point = n, IsPole = true, Axis = pole.transform.TransformPoint(pole.center), Radius = poleRadius };
                     bestD = dist;
                 }
             }
@@ -206,6 +224,7 @@ namespace TheGreatestShips
         }
 
         private static Vector3 Flat(Vector3 v) { v.y = 0f; return v; }
+        private static float Sq(float v) => v * v;
 
         // The ship's counterpart of a vanilla transform, by path under the root.
         private static Transform Find(Transform root, Transform vRoot, Transform vanilla)

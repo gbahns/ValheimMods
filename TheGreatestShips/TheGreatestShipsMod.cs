@@ -42,6 +42,7 @@ namespace TheGreatestShips
             };
 
             ShipConfig.Bind(this);
+            HoldCommand.Register();
             _harmony.PatchAll();
             gameObject.AddComponent<SailWatch>();
 

@@ -19,8 +19,6 @@ namespace TheGreatestShips
         public float   PostHeight;   // corner posts; the 1 m pole is scaled to this
         public float[] RailHeights;  // rail centers above the deck; rails are 0.4 thick
         public float[] Dividers = new float[0];   // cross walls, as z from the pen's center: a pen of several stalls
-        public float   DividerGapFrom, DividerGapTo;  // no rails or wall between these x in every cross wall (a post at
-                                                  // the far end): room to stand at the mast.  Equal = none
         public float   GateWidth = 2f;            // each stall's gate opening; a shorter side is all gate
         public bool    Lip = true;                // the inward ceiling along the wall tops under way; not for animals taller than the wall
         public float   WallTop;                   // the invisible flat wall's height, and the lip's, when higher than the rails: a fence
@@ -130,35 +128,25 @@ namespace TheGreatestShips
             Wall(pen.transform, new Vector3(0f, DeckHeight + wallTop / 2f, spec.CenterZ - halfLen + wallThickness / 2f), new Vector3(spec.Width, wallTop, wallThickness), post.layer);
 
             // Dividers: a post at each end, rails across, and the flat wall.  (A mast standing in
-            // a divider simply passes through it.)  With a gap, the rails and wall run in two
-            // pieces either side of it, with a post at its far end; the mast is the near one.
+            // a divider simply passes through it -- but keep a divider clear of the mast hold's
+            // hand: the Greater Byrding's stands forward of its mast for that.)
             var bounds = new List<float> { -halfLen };
-            bool gapped = spec.DividerGapTo > spec.DividerGapFrom;
-            var spans = gapped
-                ? new[] { (-halfWid + PostWidth / 2f, spec.DividerGapFrom), (spec.DividerGapTo + PostWidth / 2f, halfWid - PostWidth / 2f) }
-                : new[] { (-halfWid + PostWidth / 2f, halfWid - PostWidth / 2f) };
-            var walls = gapped
-                ? new[] { (-halfWid, spec.DividerGapFrom), (spec.DividerGapTo, halfWid) }
-                : new[] { (-halfWid, halfWid) };
             foreach (float d in spec.Dividers)
             {
                 bounds.Add(d);
-                var postsX = gapped ? new[] { halfWid, -halfWid, spec.DividerGapTo } : new[] { halfWid, -halfWid };
-                foreach (float x in postsX)
+                foreach (float x in new[] { halfWid, -halfWid })
                 {
                     var p = Place(post, pen.transform, new Vector3(x, DeckHeight + spec.PostHeight / 2f, spec.CenterZ + d), Quaternion.identity);
                     p.transform.localScale = new Vector3(1f, spec.PostHeight, 1f);
                     pieces++; wood += 1;
                 }
-                foreach (var (a, b) in spans)
-                    foreach (float rail in spec.RailHeights)
-                    {
-                        var (long2, short1) = PlaceRail(pen.transform, beam2, beam1, new Vector3((a + b) / 2f, DeckHeight + rail, spec.CenterZ + d), 0f, b - a);
-                        pieces += long2 + short1;
-                        wood   += long2 * 2 + short1;
-                    }
-                foreach (var (a, b) in walls)
-                    Wall(pen.transform, new Vector3((a + b) / 2f, DeckHeight + wallTop / 2f, spec.CenterZ + d), new Vector3(b - a, wallTop, wallThickness), post.layer);
+                foreach (float rail in spec.RailHeights)
+                {
+                    var (long2, short1) = PlaceRail(pen.transform, beam2, beam1, new Vector3(0f, DeckHeight + rail, spec.CenterZ + d), 0f, spec.Width - PostWidth);
+                    pieces += long2 + short1;
+                    wood   += long2 * 2 + short1;
+                }
+                Wall(pen.transform, new Vector3(0f, DeckHeight + wallTop / 2f, spec.CenterZ + d), new Vector3(spec.Width, wallTop, wallThickness), post.layer);
             }
             bounds.Add(halfLen);
             bounds.Sort();

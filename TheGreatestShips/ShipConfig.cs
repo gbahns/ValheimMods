@@ -130,14 +130,15 @@ namespace TheGreatestShips
             // The game's own standing spot for holding fast is a few centimeters off: on a longship
             // the hand is a little inside the pole, forward of where it should rest.  Tunable so the
             // last centimeters can be settled by eye, in game, with the ship afloat.
-            HoldFastOffsetLongship = mod.Config.Bind("General", "Hold Fast Offset (Longship hulls)", new Vector2(0.03f, -0.04f),
+            HoldFastOffsetLongship = mod.Config.Bind("General", "Hold Fast Offset (Longship hulls)", new Vector2(0f, -0.06f),
                 "Where you stand when you hold fast to the mast of this mod's longship-hulled ships, as (right, forward) " +
                 "in meters from the game's own spot, as you face while holding. The game's spot leaves the hand a little " +
-                "inside the pole, so the default steps you a few centimeters back and out. Yours alone; applies at once.");
+                "inside the pole, so the default steps you a few centimeters back. Yours alone; applies at once, and the " +
+                "console command tgs_hold reads and sets it while you stand there.");
             HoldFastOffsetLongship.SettingChanged += (_, __) => ShipPrefabs.RefitCrew();
             HoldFastOffsetKarve = mod.Config.Bind("General", "Hold Fast Offset (Karve hull)", new Vector2(0.04f, 0f),
                 "The same for the Fast Karve: (right, forward) in meters from the game's own spot at the Karve's mast, " +
-                "which puts the fingers a little inside the pole. Yours alone; applies at once.");
+                "which puts the fingers a little inside the pole. Yours alone; applies at once; tgs_hold reads and sets it.");
             HoldFastOffsetKarve.SettingChanged += (_, __) => ShipPrefabs.RefitCrew();
 
             LockConfiguration = mod.BindLocking("General", "Lock Configuration", true,
