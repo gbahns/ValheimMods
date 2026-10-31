@@ -329,19 +329,41 @@ namespace TheGreatestMap
         }
 
         /// <summary>
-        /// A picture's name, read for what it is a picture of. The names are the game's and could
-        /// change under us, which is why this is overridable and printed rather than relied on.
+        /// What each of the game's own pictures is a picture of, by the name the game gives it.
+        /// Read off a real map rather than guessed at: Icon0 is mapicon_fire, Icon1 mapicon_house,
+        /// Icon2 mapicon_hammer and Icon3 mapicon_pin -- the plain dot, which is what a player
+        /// reaches for when the thing is a vein of copper rather than a building. The guessing
+        /// below could not name that one, and it is the commonest pin on a map by far: 246 of 609
+        /// on the first map this was tried against, all of them read as meaning nothing in
+        /// particular.
+        /// </summary>
+        private static readonly Dictionary<string, Meant> Pictures =
+            new Dictionary<string, Meant>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "mapicon_fire",   Meant.Fire },
+                { "mapicon_house",  Meant.Place },
+                { "mapicon_hammer", Meant.Place },
+                { "mapicon_pin",    Meant.Resource },
+            };
+
+        /// <summary>
+        /// A picture's name, read for what it is a picture of: the four known by name first, then
+        /// the words in the name for a picture some other mod or some later version supplies. The
+        /// listing prints whatever this decided, and the config overrides it, because a name is
+        /// somebody else's and can change.
         /// </summary>
         private static Meant FromPicture(string sprite)
         {
             string name = (sprite ?? "").ToLowerInvariant();
             if (name.Length == 0) return Meant.Unknown;
+            if (Pictures.TryGetValue(name, out var known)) return known;
             if (name.Contains("fire") || name.Contains("camp") || name.Contains("hearth")) return Meant.Fire;
             if (name.Contains("hammer") || name.Contains("house") || name.Contains("hut")
                 || name.Contains("cave") || name.Contains("castle") || name.Contains("village")
                 || name.Contains("mine")) return Meant.Place;
-            if (name.Contains("dot") || name.Contains("circle") || name.Contains("point")
-                || name.Contains("ore") || name.Contains("rock") || name.Contains("pick")) return Meant.Resource;
+            if (name.Contains("pin") || name.Contains("dot") || name.Contains("circle")
+                || name.Contains("point") || name.Contains("ore") || name.Contains("rock")
+                || name.Contains("pick")) return Meant.Resource;
             return Meant.Unknown;
         }
 

@@ -108,6 +108,12 @@
     campfires, a prefab being unable to say who lit it. The record carries a creator, which is the
     same question the piece road asks the piece, so a fire somebody built is now read as one.
 
+  And the pin that mattered most was the one the guessing could not name. The game calls its five
+  placeable pictures mapicon_fire, mapicon_house, mapicon_hammer and mapicon_pin -- that last one
+  being the plain dot, which is what anybody reaches for when the thing is a vein of copper rather
+  than a building, and which was 246 of those 609 markers. Those four are now known by name
+  instead of being guessed at from the words in them.
+
   Two smaller things came out of the same run: the visible spawners a player can walk up to and
   break (a greydwarf nest, a draugr pile) were missing from the road both tools read the world
   with, so a hammer dropped on a nest found nothing; and both listings capped their lists at
