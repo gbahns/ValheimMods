@@ -114,6 +114,30 @@
   than a building, and which was 246 of those 609 markers. Those four are now known by name
   instead of being guessed at from the words in them.
 
+- **A deposit somebody has already mined is written crossed off.** The game keeps a health for
+  every piece a vein is made of, in the vein's own record, so a copper deposit mined down to a
+  stub can be told from a fresh one -- and until now the map said "copper here" with exactly the
+  same confidence either way. Both the recorder and the admin sweep now read it, which also means
+  it works for a vein somebody else emptied last month and for one nobody is standing near.
+  **Cross Off Deposits Mined Down To** is where that line sits, as a percentage of the pieces left
+  (25 by default, 0 to switch it off). A vein mined to nothing is not covered, because the game
+  destroys that one outright, record and all -- which is why a marker never appears for one.
+
+- **A deposit the catalog has no line for is marked by the sweep too.** Asking the game what every
+  mineable prefab yields turned up silver, copper and gold deposits the catalog had never listed:
+  `rock3_silver`, `MineRock_Copper`, `goldvein` and the gold-bearing frozen trolls are now in it by
+  name. More to the point, `tgm_survey` and `tgm_adopt` used to refuse anything unlisted while
+  ordinary recording had always fallen back to "does it yield something worth mining" -- so a
+  silver vein the catalog happened to miss was recorded when you walked up to it and invisible to
+  the sweep. Both roads now ask the same question. Grausten and ice join stone as rubble in the
+  process: the Ashlands is made of cliffs that yield Grausten, and a marker on each of those is a
+  marker on the ground itself.
+
+- **`tgm_survey` can be given the kinds to take**: `tgm_survey 5000 apply Berries,Mushrooms,Herbs,Seeds`
+  marks the plants in explored land and leaves everything else alone. A word that is not a kind is
+  refused and listed, because silently surveying everything because a word was misspelled is how a
+  test map ends up with ten thousand markers nobody asked for.
+
 - **A marker you had crossed off stays crossed off.** A tick on a hand-placed pin is the one
   thing on it that no catalog can work out again: it is the difference between "there is copper
   here" and "there was", or between a chamber worth walking to and one somebody has already

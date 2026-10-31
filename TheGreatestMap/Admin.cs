@@ -190,7 +190,7 @@ namespace TheGreatestMap
                 var verdict = Consider(best, apply, sofar, out var wrote,
                                        pinData.m_checked, journal.Crossed);
                 if (verdict == Verdict.Written && apply) journal.Wrote.Add(wrote);
-                if (pinData.m_checked)
+                if (pinData.m_checked || best.Cleared)
                 {
                     if (verdict == Verdict.Written) crossedOn++;
                     // A listing crosses nothing off, so it counts the ones it would reach for.
@@ -239,7 +239,8 @@ namespace TheGreatestMap
             if (erased > 0) lines.Add($"  {erased} stand where a marker was erased, so none was written and the pin stays.");
             if (refused > 0) lines.Add($"  {refused} could not be written at all; the log says why. Their pins stay.");
             if (off > 0) lines.Add($"  {off} are of a kind that is switched off ({string.Join(", ", New(kindsOff))}), so the pin stays.");
-            if (crossedOn > 0) lines.Add($"  {crossedOn} of them you had crossed off, and their markers are written crossed off.");
+            if (crossedOn > 0) lines.Add($"  {crossedOn} are crossed off -- you had ticked the pin, or the world says the " +
+                                         "deposit has been mined out -- and their markers are written crossed off.");
             if (crossedOver > 0) lines.Add(apply
                 ? $"  {crossedOver} you had crossed off were already marked, so that marker is crossed off now."
                 : $"  {crossedOver} you had crossed off are already marked; those markers will be crossed off too, "
@@ -521,7 +522,7 @@ namespace TheGreatestMap
         /// it holds, which in a developed world is about a million of them: a visible pause, once,
         /// on purpose.</para>
         /// </summary>
-        internal static List<string> Survey(bool everywhere, int cap, bool apply)
+        internal static List<string> Survey(bool everywhere, int cap, bool apply, HashSet<Category> kinds = null)
         {
             var lines = new List<string>();
             if (!LocationNames.HaveWorld)
@@ -571,6 +572,7 @@ namespace TheGreatestMap
             {
                 if (!everywhere && !Explored(map, placed.Pos)) { unexplored++; continue; }
                 if (!Catalog.TryClassifyLocation(Entry(placed.Prefab, placed.Pos, placed.Radius), out var found)) continue;
+                if (kinds != null && !kinds.Contains(found.Cat)) continue;
                 locations++;
                 Judge(found);
             }
@@ -593,6 +595,7 @@ namespace TheGreatestMap
                         var zdo = list[j];
                         if (zdo == null || !zdo.IsValid()) continue;
                         if (!templates.TryGetValue(zdo.GetPrefab(), out var template)) continue;
+                        if (kinds != null && !kinds.Contains(template.Cat)) continue;
                         // Picked, and there is nothing to go there for until it grows back. The
                         // seeds that never grow back are not in the catalog at all.
                         if (zdo.GetBool(ZDOVars.s_picked, false)) continue;
@@ -605,16 +608,21 @@ namespace TheGreatestMap
                         if (Character.InInterior(pos)) { interior++; continue; }
                         if (!everywhere && !Explored(map, pos)) { unexplored++; continue; }
                         objects++;
-                        Judge(template.At(pos));
+                        var one = template.At(pos);
+                        // The same reading the recorder takes off a deposit you are standing next
+                        // to, taken off the record instead, so a mined-out vein is marked as one.
+                        if (Catalog.MinedDown(Catalog.Remaining(zdo))) one.Cleared = true;
+                        Judge(one);
                     }
                 }
             }
             clock.Stop();
 
+            string only = kinds == null ? "" : " for " + Kinds(kinds);
             lines.Add(apply
-                ? $"Surveyed {(everywhere ? "the whole world" : "what you have explored")}: " +
+                ? $"Surveyed {(everywhere ? "the whole world" : "what you have explored")}{only}: " +
                   $"{locations} location(s) and {objects} thing(s) standing about, in {clock.ElapsedMilliseconds} ms."
-                : $"Surveying {(everywhere ? "the whole world" : "what you have explored")} would look at " +
+                : $"Surveying {(everywhere ? "the whole world" : "what you have explored")}{only} would look at " +
                   $"{locations} location(s) and {objects} thing(s) standing about ({clock.ElapsedMilliseconds} ms). " +
                   "Nothing written yet.");
             lines.Add($"  {written} marker(s) {(apply ? "written" : "to write")}" + (written > 0 ? ":" : "."));
@@ -726,6 +734,9 @@ namespace TheGreatestMap
                                         bool crossedOff = false, List<PinKey> alsoCrossed = null)
         {
             wrote = default(PinKey);
+            // Either the pin said so or the thing itself does: a deposit the world says is mined
+            // out is crossed off whether or not anybody had ticked a pin over it.
+            crossedOff = crossedOff || found.Cleared;
             if (!TgmConfig.CategoryEnabled.TryGetValue(found.Cat, out var enabled) || !enabled.Value)
                 return Verdict.KindOff;
 
@@ -816,7 +827,10 @@ namespace TheGreatestMap
             // piece road asks the piece. Without this a pin dropped on a fire in the Ashlands
             // answers "charred spawner": the thing the fire was lit to suppress.
             if (hit.Built && Catalog.TryClassifyBuilt(prefab, hit.Prefab, hit.Pos, out found)) return true;
-            return Catalog.TryClassifyPrefab(prefab, hit.Prefab, hit.Pos, out found);
+            if (!Catalog.TryClassifyPrefab(prefab, hit.Prefab, hit.Pos, out found)) return false;
+            // Mined down to a stub, so the marker says so from the moment it is written.
+            if (Catalog.MinedDown(hit.Left)) found.Cleared = true;
+            return true;
         }
 
         private static LocationIndex.Entry Entry(string prefab, Vector3 pos, float radius) =>
@@ -854,6 +868,45 @@ namespace TheGreatestMap
         {
             tally.TryGetValue(key, out int n);
             tally[key] = n + 1;
+        }
+
+        /// <summary>The kinds asked for, named the way the rest of the mod names them.</summary>
+        private static string Kinds(HashSet<Category> kinds)
+        {
+            var names = new List<string>();
+            foreach (var cat in Categories.All) if (kinds.Contains(cat)) names.Add(Categories.Label(cat).ToLowerInvariant());
+            return names.Count == 0 ? "nothing" : string.Join(", ", names.ToArray());
+        }
+
+        /// <summary>
+        /// The kinds named on the command line, or null for every kind. A word that is not a kind
+        /// is reported rather than ignored: silently surveying everything because a word was
+        /// misspelled is how a test map gets ten thousand markers nobody asked for.
+        /// </summary>
+        internal static bool TryKinds(string text, out HashSet<Category> kinds, out string bad)
+        {
+            kinds = null;
+            bad = null;
+            if (string.IsNullOrEmpty(text)) return true;
+            var found = new HashSet<Category>();
+            foreach (var word in text.Split(','))
+            {
+                string one = word.Trim();
+                if (one.Length == 0) continue;
+                bool got = false;
+                foreach (var cat in Categories.All)
+                {
+                    if (!string.Equals(one, cat.ToString(), StringComparison.OrdinalIgnoreCase)
+                        && !string.Equals(one, Categories.Label(cat), StringComparison.OrdinalIgnoreCase)) continue;
+                    found.Add(cat);
+                    got = true;
+                    break;
+                }
+                if (!got) { bad = one; return false; }
+            }
+            if (found.Count == 0) return true;
+            kinds = found;
+            return true;
         }
 
         /// <summary>A sorted set as a list, because string.Join wants one and this targets an old framework.</summary>

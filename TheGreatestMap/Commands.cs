@@ -229,7 +229,7 @@ namespace TheGreatestMap
                                                       "and tgm_undo takes the whole run back.");
                 }));
 
-            new Terminal.ConsoleCommand("tgm_survey", "Admin, test worlds: mark every location and resource the world holds where you have already explored, as if you had recorded them. tgm_survey [count, default 1000] lists; add apply to write it, all to take the whole world rather than what you have explored",
+            new Terminal.ConsoleCommand("tgm_survey", "Admin, test worlds: mark every location and resource the world holds where you have already explored, as if you had recorded them. tgm_survey [count, default 1000] lists; add apply to write it, all to take the whole world rather than what you have explored, and a comma-separated list of kinds to take only those (tgm_survey 5000 apply Berries,Mushrooms,Herbs,Seeds)",
                 (Terminal.ConsoleEvent)(args =>
                 {
                     if (Player.m_localPlayer == null) { args.Context.AddString("No player."); return; }
@@ -237,7 +237,25 @@ namespace TheGreatestMap
                     bool everywhere = HasWord(args, "all");
                     int cap = (int)Number(args, Admin.DefaultCap);
                     if (cap < 1) cap = 1;
-                    foreach (var line in Admin.Survey(everywhere, cap, apply))
+                    // Whatever is left over is the list of kinds: a word that is neither a number
+                    // nor one of this command's own words.
+                    string wanted = null;
+                    for (int i = 1; i < args.Args.Length; i++)
+                    {
+                        string one = args.Args[i];
+                        if (string.Equals(one, "apply", System.StringComparison.OrdinalIgnoreCase)) continue;
+                        if (string.Equals(one, "all", System.StringComparison.OrdinalIgnoreCase)) continue;
+                        if (float.TryParse(one, System.Globalization.NumberStyles.Float,
+                                           System.Globalization.CultureInfo.InvariantCulture, out _)) continue;
+                        wanted = wanted == null ? one : wanted + "," + one;
+                    }
+                    if (!Admin.TryKinds(wanted, out var kinds, out string bad))
+                    {
+                        args.Context.AddString($"\"{bad}\" is not a kind. Kinds: " +
+                            string.Join(", ", System.Array.ConvertAll(Categories.All, c => c.ToString())));
+                        return;
+                    }
+                    foreach (var line in Admin.Survey(everywhere, cap, apply, kinds))
                     {
                         args.Context.AddString(line);
                         TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_survey: " + line);

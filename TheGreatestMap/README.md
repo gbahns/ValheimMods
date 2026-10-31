@@ -242,7 +242,7 @@ counts as well unless "Structures Include Unlisted" is off or its prefab name is
 | `tgm_show` | Show every hidden marker again (single markers, hidden icons, hidden kinds and hidden crossed-off markers) |
 | `tgm_mapui` | What the large map's layout measures: how much screen it uses and how its parts are anchored |
 | `tgm_adopt [reach] [apply] [plants]` | Test worlds: ask the world what your hand-placed markers were pointing at, write the recorded marker for it, and remove the hand-placed pin |
-| `tgm_survey [count] [all] [apply]` | Test worlds: mark every location and resource the world holds where you have explored, as if you had recorded them |
+| `tgm_survey [count] [all] [apply] [kinds]` | Test worlds: mark every location and resource the world holds where you have explored, as if you had recorded them; name kinds to take only those |
 | `tgm_undo [name] [confirm]` | Take back a `tgm_adopt` or `tgm_survey` run: its markers go, the hand-placed pins it removed come back |
 
 `tgm_adopt` and `tgm_survey` are for building a map to test against, not for playing. Both list

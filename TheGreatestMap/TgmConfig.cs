@@ -23,6 +23,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> AllowErasingMarkers;
         internal static ConfigEntry<bool> RequireMapOutToEdit;
         internal static ConfigEntry<bool> RequireMapOutToRecord;
+        internal static ConfigEntry<int> CrossOffMinedDownTo;
         internal static ConfigEntry<bool> SharePlacedPins;
         internal static ConfigEntry<bool> TableCarriesPins;
         internal static ConfigEntry<float> ExchangeRadius;
@@ -309,6 +310,14 @@ namespace TheGreatestMap
                 "not gated on it at all, so switching it off leaves you receiving everything and giving nothing back. " +
                 "That is a rule about what sharing means on this server rather than a preference, and it is not one " +
                 "player's to make.");
+            CrossOffMinedDownTo = mod.BindLocalRange("Recording", "Cross Off Deposits Mined Down To", 25, 0, 100,
+                "Write a deposit's marker crossed off when this much or less of it is left, as a percentage of the " +
+                "pieces it is made of. The game keeps a health for every piece of a vein, so a deposit somebody has " +
+                "mined down to a stub can be told from a fresh one without standing on it -- and until this the map " +
+                "said \"copper here\" with the same confidence either way. A deposit mined to nothing is not covered, " +
+                "because the game destroys that one outright and there is nothing left to mark. 0 switches it off and " +
+                "every deposit is written the same.");
+
             HiddenIcons = mod.BindLocal("Display", "Hidden Icons", "",
                 "Comma-separated marker icons never drawn on your map, as item prefab names or icon keys, e.g. Dandelion,Thistle,pin:Icon1. " +
                 "Hidden markers stay on your map and keep syncing; they are just not shown. Applies at once.");

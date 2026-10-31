@@ -304,6 +304,12 @@ namespace TheGreatestMap
             /// asks the piece itself -- a prefab cannot say who put it there.
             /// </summary>
             public bool Built;
+            /// <summary>
+            /// How much of a deposit is left, as a fraction of its pieces, or -1 for anything that
+            /// is not a deposit or has never been touched. Read here because it comes off the
+            /// record, which the caller no longer has.
+            /// </summary>
+            public float Left;
         }
 
         /// <summary>
@@ -366,6 +372,7 @@ namespace TheGreatestMap
                                 Pos = at,
                                 Radius = 0f,
                                 Built = zdo.GetLong(ZDOVars.s_creator, 0L) != 0L,
+                                Left = Catalog.Remaining(zdo),
                             }));
                         }
                     }

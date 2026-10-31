@@ -288,7 +288,13 @@ namespace TheGreatestMap
                            "mudpile_beacon=Scrap Pile|IronScrap,mudpile2=Scrap Pile|IronScrap,mudpile=Scrap Pile|IronScrap,TarPit*=Tar Pit|Tar," +
                            "giant_brain=Giant Brain|SoftTissue,giant_helmet1=Giant Helmet|CopperScrap,giant_helmet2=Giant Helmet|CopperScrap,giant_ribs=Giant Ribs|BlackMarble," +
                            "giant_skull=Giant Skull|BlackMarble,giant_sword1=Giant Sword|CopperScrap,giant_sword2=Giant Sword|CopperScrap," +
-                           "YggdrasilRoot*=Yggdrasil Root|Sap,GuckSack=Guck|Guck,GuckSack_small=Guck|Guck";
+                           "YggdrasilRoot*=Yggdrasil Root|Sap,GuckSack=Guck|Guck,GuckSack_small=Guck|Guck," +
+                           // Deposits the catalog had no line for, found by asking the game what
+                           // every mineable prefab yields (tgm_deposits). Each of these is a thing
+                           // somebody would go to: the fractured twins come with them, since a
+                           // name ending _frac falls back to the whole one.
+                           "rock3_silver=Silver|SilverOre,MineRock_Copper=Copper|CopperOre," +
+                           "goldvein=Gold|GoldOre,TrollFrost*=Frozen Troll|GoldOre";
                 case Category.Dungeon:
                     return "Crypt2=Burial Chambers|TrophySkeleton,Crypt3=Burial Chambers|TrophySkeleton,Crypt4=Burial Chambers|TrophySkeleton," +
                            "SunkenCrypt4=Sunken Crypt|TrophyDraugr,MountainCave02=Frost Cave|TrophyCultist,TrollCave02=Troll Cave|TrophyFrostTroll," +
@@ -882,17 +888,73 @@ namespace TheGreatestMap
             found = null;
             string prefab = PrefabName(owner);
             string drop = FirstDrop(drops);
+            // Mined down to a stub: written crossed off, the same as a thing used up in front of
+            // you. A vein somebody else emptied last month is no more worth walking to.
+            var view = owner.GetComponent<ZNetView>();
+            bool mined = MinedDown(Remaining(view != null && view.IsValid() ? view.GetZDO() : null));
             if (Lookup(prefab, out var e))
             {
                 string icon = e.Icon ?? Categories.KnownIcon(prefab) ?? drop;
                 found = Make(e.Cat, e.Name ?? Loc(displayName, Prettify(prefab)), icon, owner.transform.position, KeyOf(owner, prefab), prefab);
+                found.Cleared = mined;
                 return true;
             }
             if (!WorthMining(drop)) return false;
             if (_unlistedDeposits.Add(prefab ?? ""))
                 TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] Deposit '{prefab}' is not in the catalog; marking it anyway because it yields {drop}.");
             found = Make(Category.Ore, Loc(displayName, Prettify(prefab)), drop, owner.transform.position, KeyOf(owner, prefab), prefab);
+            found.Cleared = mined;
             return true;
+        }
+
+        /// <summary>
+        /// How much of a deposit is still there, as a fraction of its pieces: 1 for untouched, 0.2
+        /// for a vein mined down to a fifth of itself, and -1 when the question does not apply.
+        ///
+        /// <para>MineRock5 keeps one health per piece in its own record -- a base64 package of a
+        /// count and that many floats -- and a piece at or below zero has been mined away. Nothing
+        /// else in the world says this: the object looks much the same from the map whether it is
+        /// whole or a stub, and the mod has been telling players "copper here" with equal
+        /// confidence either way. A deposit mined to nothing is not the question, because the game
+        /// destroys that one outright, record and all.</para>
+        ///
+        /// <para>Read from the record rather than from the object, so it can be asked of a vein
+        /// nobody is standing near -- which is what the admin sweep needs -- and so there is one
+        /// answer rather than two.</para>
+        /// </summary>
+        internal static float Remaining(ZDO zdo)
+        {
+            if (zdo == null) return -1f;
+            // Floats and strings live in separate tables under the same name, so this cannot pick
+            // up the plain health a destructible or a piece keeps under the same key.
+            string text = zdo.GetString(ZDOVars.s_health, "");
+            if (string.IsNullOrEmpty(text)) return -1f;      // never touched: nothing is written yet
+            try
+            {
+                var pkg = new ZPackage(Convert.FromBase64String(text));
+                int count = pkg.ReadInt();
+                if (count <= 0) return -1f;
+                int alive = 0;
+                for (int i = 0; i < count; i++) if (pkg.ReadSingle() > 0f) alive++;
+                return (float)alive / count;
+            }
+            catch (Exception)
+            {
+                // Somebody else's data in a field we only read. Not knowing is the honest answer.
+                return -1f;
+            }
+        }
+
+        /// <summary>
+        /// Has this much of a deposit been mined away for the marker to be written crossed off?
+        /// The player sets where that line is, because how much of a vein is worth a walk is
+        /// theirs to judge; zero turns it off and the marker is written the same either way.
+        /// </summary>
+        internal static bool MinedDown(float remaining)
+        {
+            if (remaining < 0f) return false;
+            float limit = TgmConfig.CrossOffMinedDownTo != null ? TgmConfig.CrossOffMinedDownTo.Value : 0;
+            return limit > 0 && remaining * 100f <= limit;
         }
 
         /// <summary>True when a deposit gives something you would go there for, rather than rubble.</summary>
@@ -1118,7 +1180,25 @@ namespace TheGreatestMap
             found = null;
             if (!_built) Rebuild();
             if (string.IsNullOrEmpty(name)) return false;
-            if (!Lookup(name, out var e) || !IsLooseObjectKind(e.Cat)) return false;
+            if (!Lookup(name, out var e) || !IsLooseObjectKind(e.Cat))
+            {
+                // Not in the catalog, but a deposit says what it is by what it gives: the live
+                // road above has always fallen back to that, and this one never did, so a silver
+                // vein the catalog happens not to list was recorded when you walked up to it and
+                // invisible to the sweep. The two roads now agree.
+                if (prefab == null) return false;
+                var rock5 = prefab.GetComponent<MineRock5>();
+                var rock = prefab.GetComponent<MineRock>();
+                if (rock5 == null && rock == null) return false;
+                string yield = rock5 != null ? FirstDrop(rock5.m_dropItems) : FirstDrop(rock.m_dropItems);
+                if (!WorthMining(yield)) return false;
+                if (_unlistedDeposits.Add(name))
+                    TheGreatestMapMod.Log.LogInfo(
+                        $"[TheGreatestMap] Deposit '{name}' is not in the catalog; the sweep marks it " +
+                        $"anyway because it yields {yield}.");
+                found = Make(Category.Ore, Prettify(name), yield, pos, "prefab:" + name, name);
+                return true;
+            }
 
             string icon = e.Icon ?? Categories.KnownIcon(name);
             if (icon == null && prefab != null)
@@ -1317,6 +1397,11 @@ namespace TheGreatestMap
         private static readonly HashSet<string> Rubble = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "Stone", "Wood", "RoundLog", "FineWood", "Resin", "Flint",
+            // Grausten and ice are the stone of their own biomes: the Ashlands is made of cliffs
+            // that yield Grausten and the Deep North of rocks that yield ice, and a marker on each
+            // would be a marker on the ground itself. Without these, asking what a thing yields
+            // put a deposit marker on every cliff face in the Ashlands.
+            "Grausten", "Ice",
         };
 
         /// <summary>
