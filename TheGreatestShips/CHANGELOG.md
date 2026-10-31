@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.12 — unreleased
+
+- The crew fits the ship again on scaled hulls. Holding the mast on a wider ship (Knarr,
+  Busse, Big Busse, Byrding, Greater Byrding) left a gap between the hand and the pole, and on
+  a narrower one (Fast Karve, Fast Longship) put the wrist through it: the hold's standing spot
+  is a fixed distance from the mast's axis and the pose reaches a fixed arm's length, and the
+  hull's scale stretched the one but not the other. The standing spot now moves so the hand
+  lands on the pole, and the same for the prow hold. On ships scaled up in height (Byrding,
+  Greater Byrding) the stools and the helmsman's seat grew taller than a sitting player's hips,
+  so a sitter was drawn inside the stool; seats stay at human height now, whatever the hull's
+  size.
+
 ## 0.9.11 — 2026-10-30
 
 - A lox aboard no longer wrecks the ship under it. A lox tramples whatever it runs through, and

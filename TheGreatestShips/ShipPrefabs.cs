@@ -24,6 +24,8 @@ namespace TheGreatestShips
             public float BaseSailForceFactor;
             // The base hull's transform scale, which Hull Width / Length / Scale multiply.
             public Vector3 BaseScale;
+            // The vanilla hull itself, unscaled: the crew's places are measured on it.
+            public GameObject Base;
         }
 
         private static readonly Dictionary<ShipDefinition, Built> _built =
@@ -147,7 +149,10 @@ namespace TheGreatestShips
             TintSail(def, clone, cfg.SailColor.Value);
             TintHull(def, clone, cfg.HullColor.Value, cfg.HullStripes.Value);
             var baseScale = clone.transform.localScale;
-            clone.transform.localScale = Dimensions(baseScale, cfg);
+            var scale = Dimensions(baseScale, cfg);
+            clone.transform.localScale = scale;
+            var fit = CrewFit.Apply(clone, basePrefab, Ratio(scale, baseScale));
+            if (fit != null) Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: {fit}.");
 
             if (def.Pen != null)
                 AnimalPen.Build(clone, def.Pen);
@@ -156,7 +161,7 @@ namespace TheGreatestShips
             var icon = piece != null ? ShipIcons.Render(def, clone) : null;
             if (icon != null) piece.m_icon = icon;
 
-            _built[def] = new Built { Clone = clone, BaseSailForceFactor = ship.m_sailForceFactor, BaseScale = baseScale };
+            _built[def] = new Built { Clone = clone, Base = basePrefab, BaseSailForceFactor = ship.m_sailForceFactor, BaseScale = baseScale };
             ApplyHandling(def);
             Jotunn.Logger.LogInfo($"[TheGreatestShips] Cloned {def.BasePrefab} as {def.PrefabName} ({def.BaseName} sail force {ship.m_sailForceFactor}).");
         }
@@ -273,6 +278,9 @@ namespace TheGreatestShips
         // Ship.CustomFixedUpdate's transform.forward).  The game floats a hull by where its
         // center of mass sits against the water, so a scaled-up hull rides deeper: its deck ends
         // up at about the same height above the water, with more hull beneath.
+        private static Vector3 Ratio(Vector3 scale, Vector3 baseScale) =>
+            new Vector3(scale.x / baseScale.x, scale.y / baseScale.y, scale.z / baseScale.z);
+
         private static Vector3 Dimensions(Vector3 baseScale, ShipConfig.Entries cfg)
         {
             float scale  = Mathf.Clamp(cfg.Scale.Value,  0.5f, 2f);
@@ -292,6 +300,8 @@ namespace TheGreatestShips
             var target = Dimensions(built.BaseScale, ShipConfig.For(def));
             if (built.Clone.transform.localScale == target) return;
             built.Clone.transform.localScale = target;
+            var ratio = Ratio(target, built.BaseScale);
+            var fit = CrewFit.Apply(built.Clone, built.Base, ratio);
 
             int updated = 0;
             foreach (var updater in Ship.Instances)
@@ -299,9 +309,11 @@ namespace TheGreatestShips
                 if (updater is Ship ship && Utils.GetPrefabName(ship.gameObject) == def.PrefabName)
                 {
                     ship.transform.localScale = target;
+                    CrewFit.Apply(ship.gameObject, built.Base, ratio);
                     updated++;
                 }
             }
+            if (fit != null) Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: {fit}.");
 
             var piece = built.Clone.GetComponent<Piece>();
             var icon  = piece != null ? ShipIcons.Render(def, built.Clone) : null;
