@@ -305,8 +305,17 @@ namespace TheGreatestMap
         }
 
         /// <summary>Crosses off the nearest marker with this icon within the radius. False if none or already crossed off.</summary>
-        internal static bool TryCheckOff(string icon, Vector3 pos, float radius)
+        internal static bool TryCheckOff(string icon, Vector3 pos, float radius) =>
+            TryCheckOff(icon, pos, radius, out _);
+
+        /// <summary>
+        /// The same, saying which marker it was. A caller that has to be able to put this back
+        /// needs the key: crossing a marker off is a change to somebody else's marker as much as
+        /// to your own, and an admin tool that did it has to be able to undo exactly that one.
+        /// </summary>
+        internal static bool TryCheckOff(string icon, Vector3 pos, float radius, out PinKey crossed)
         {
+            crossed = default(PinKey);
             SharedPin best = null;
             float bestDistance = float.MaxValue;
             foreach (var pin in Store.Pins.Values)
@@ -316,6 +325,7 @@ namespace TheGreatestMap
                 if (d <= radius && d < bestDistance) { bestDistance = d; best = pin; }
             }
             if (best == null) return false;
+            crossed = best.Key;
             best.Checked = true;
             Store.Upsert(best);
             if (_pinById.TryGetValue(best.Key, out var pinData))

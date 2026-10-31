@@ -278,8 +278,9 @@ namespace TheGreatestMap
                     string file = System.IO.Path.GetFileName(path);
                     if (!HasWord(args, "confirm"))
                     {
-                        args.Context.AddString($"{file}: {entry.Tool} on {entry.When} wrote {entry.Wrote.Count} marker(s) " +
-                                               $"and removed {entry.Removed.Count} hand-placed pin(s).");
+                        args.Context.AddString($"{file}: {entry.Tool} on {entry.When} wrote {entry.Wrote.Count} marker(s), " +
+                                               $"removed {entry.Removed.Count} hand-placed pin(s) and crossed off " +
+                                               $"{entry.Crossed.Count} marker(s) that were already there.");
                         args.Context.AddString("Taking it back removes those markers and puts those pins back. Markers anyone has " +
                                                "recorded since are left alone; the removal carries to everyone at the next merge.");
                         if (runs.Count > 1) args.Context.AddString($"{runs.Count} recorded runs in {AdminUndo.Folder}; this is the newest.");
@@ -287,10 +288,12 @@ namespace TheGreatestMap
                         return;
                     }
 
-                    AdminUndo.Apply(entry, out int removed, out int restored);
+                    AdminUndo.Apply(entry, out int removed, out int restored, out int uncrossed);
                     AdminUndo.Done(path);
                     args.Context.AddString($"Took back {entry.Tool}: removed {removed} of its {entry.Wrote.Count} marker(s) " +
                                            $"and put back {restored} of {entry.Removed.Count} pin(s).");
+                    if (entry.Crossed.Count > 0)
+                        args.Context.AddString($"{uncrossed} of {entry.Crossed.Count} marker(s) it had crossed off are not crossed off any more.");
                     if (removed < entry.Wrote.Count)
                         args.Context.AddString($"{entry.Wrote.Count - removed} of its markers were already gone, so somebody has " +
                                                "been working on this map since.");

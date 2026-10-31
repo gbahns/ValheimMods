@@ -46,8 +46,10 @@ namespace TheGreatestMap
             public string When = "";
             public readonly List<PinKey> Wrote = new List<PinKey>();
             public readonly List<Gone> Removed = new List<Gone>();
+            /// <summary>Markers that were already there and were crossed off to match a pin.</summary>
+            public readonly List<PinKey> Crossed = new List<PinKey>();
 
-            public bool Nothing => Wrote.Count == 0 && Removed.Count == 0;
+            public bool Nothing => Wrote.Count == 0 && Removed.Count == 0 && Crossed.Count == 0;
         }
 
         /// <summary>
@@ -68,6 +70,7 @@ namespace TheGreatestMap
                     writer.WriteLine("tool\t" + entry.Tool);
                     writer.WriteLine("when\t" + DateTime.Now.ToString("u", CultureInfo.InvariantCulture));
                     foreach (var key in entry.Wrote) writer.WriteLine("wrote\t" + key.Encode());
+                    foreach (var key in entry.Crossed) writer.WriteLine("crossed\t" + key.Encode());
                     // The name goes last, so that a tab or anything else somebody typed into it
                     // cannot be read as another field.
                     foreach (var gone in entry.Removed)
@@ -119,6 +122,9 @@ namespace TheGreatestMap
                     case "wrote":
                         if (PinKey.TryDecode(parts[1], out var key)) entry.Wrote.Add(key);
                         break;
+                    case "crossed":
+                        if (PinKey.TryDecode(parts[1], out var was)) entry.Crossed.Add(was);
+                        break;
                     case "gone":
                         if (parts.Length < 7) break;
                         if (!int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int type)) break;
@@ -144,11 +150,22 @@ namespace TheGreatestMap
         /// are worth saying out loud, because they mean somebody has been working on this map
         /// since and the undo is not the whole story.
         /// </summary>
-        internal static void Apply(Entry entry, out int removed, out int restored)
+        internal static void Apply(Entry entry, out int removed, out int restored, out int uncrossed)
         {
             removed = 0;
             restored = 0;
+            uncrossed = 0;
             if (entry == null) return;
+
+            // The markers it crossed off go back to not being crossed off. These are markers that
+            // were already on the map, so this is the one part of an undo that touches something
+            // the tool did not write.
+            foreach (var key in entry.Crossed)
+            {
+                if (!PersonalMap.Loaded || !PersonalMap.Store.Pins.ContainsKey(key)) continue;
+                ClientPins.SetChecked(key, false);
+                uncrossed++;
+            }
 
             foreach (var key in entry.Wrote)
             {
@@ -165,7 +182,7 @@ namespace TheGreatestMap
                     if (map.AddPin(gone.Pos, (Minimap.PinType)gone.Type, gone.Name ?? "", true, gone.Checked) == null) continue;
                     restored++;
                 }
-            if (removed > 0) ClientPins.Restyle();
+            if (removed > 0 || uncrossed > 0) ClientPins.Restyle();
         }
 
         /// <summary>Mark a record used, so the same run cannot be undone twice.</summary>

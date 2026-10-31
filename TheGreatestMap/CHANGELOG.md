@@ -114,6 +114,15 @@
   than a building, and which was 246 of those 609 markers. Those four are now known by name
   instead of being guessed at from the words in them.
 
+- **A marker you had crossed off stays crossed off.** A tick on a hand-placed pin is the one
+  thing on it that no catalog can work out again: it is the difference between "there is copper
+  here" and "there was", or between a chamber worth walking to and one somebody has already
+  emptied. `tgm_adopt` wrote its markers unticked and the tick was lost at the moment the pin was
+  removed. Now the marker is written crossed off, and where something already stood for the thing
+  -- so no marker is written at all -- that marker is crossed off instead, since otherwise the
+  only record of it would still be going in the bin. `tgm_undo` unticks those again, which is the
+  one part of an undo that touches a marker the tool did not write.
+
 - **Both tools can be taken back: `tgm_undo`.** `tgm_adopt apply` writes several hundred markers
   and removes several hundred hand-placed pins on one press, and until now neither half could be
   undone. A recorded marker needs the server's permission to erase and is erased one at a time; a

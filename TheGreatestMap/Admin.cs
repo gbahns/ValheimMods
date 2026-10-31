@@ -109,7 +109,7 @@ namespace TheGreatestMap
             var byRule = new List<string>();
             var plantOnly = new List<string>();
             var renamed = new List<string>();
-            int written = 0, already = 0, erased = 0, off = 0, refused = 0;
+            int written = 0, already = 0, erased = 0, off = 0, refused = 0, crossedOn = 0, crossedOver = 0;
 
             foreach (var pinData in hand)
             {
@@ -186,8 +186,18 @@ namespace TheGreatestMap
                 }
 
                 Count(byThing, Catalog.Prettify(best.Source) + " (" + best.Source + ")");
-                var verdict = Consider(best, apply, sofar, out var wrote);
+                int crossedBefore = journal.Crossed.Count;
+                var verdict = Consider(best, apply, sofar, out var wrote,
+                                       pinData.m_checked, journal.Crossed);
                 if (verdict == Verdict.Written && apply) journal.Wrote.Add(wrote);
+                if (pinData.m_checked)
+                {
+                    if (verdict == Verdict.Written) crossedOn++;
+                    // A listing crosses nothing off, so it counts the ones it would reach for.
+                    // Some of those markers will be crossed off already, which is why the line it
+                    // prints says so rather than claiming a number.
+                    else if (verdict == Verdict.Marked && (!apply || journal.Crossed.Count > crossedBefore)) crossedOver++;
+                }
                 switch (verdict)
                 {
                     case Verdict.Written:  written++; break;
@@ -229,6 +239,11 @@ namespace TheGreatestMap
             if (erased > 0) lines.Add($"  {erased} stand where a marker was erased, so none was written and the pin stays.");
             if (refused > 0) lines.Add($"  {refused} could not be written at all; the log says why. Their pins stay.");
             if (off > 0) lines.Add($"  {off} are of a kind that is switched off ({string.Join(", ", New(kindsOff))}), so the pin stays.");
+            if (crossedOn > 0) lines.Add($"  {crossedOn} of them you had crossed off, and their markers are written crossed off.");
+            if (crossedOver > 0) lines.Add(apply
+                ? $"  {crossedOver} you had crossed off were already marked, so that marker is crossed off now."
+                : $"  {crossedOver} you had crossed off are already marked; those markers will be crossed off too, "
+                  + "bar any that are crossed off already.");
             Section(lines, byRule, "your own hints say never to convert these, so nothing happens to them:", "the ones your hints keep");
             Section(lines, disagreed, $"these carry a name that nothing within {reach:0} m matches, so they stay as they are:", "the ones whose name disagreed");
             Section(lines, plantOnly, "these have nothing but plants near them. Nobody marks plants, so they stay; " +
@@ -535,7 +550,7 @@ namespace TheGreatestMap
             void Judge(Found found)
             {
                 if (written + capped >= cap) { capped++; return; }
-                switch (Consider(found, apply, sofar, out var wrote))
+                switch (Consider(found, apply, sofar, out var wrote))   // nothing here was ever crossed off by hand
                 {
                     case Verdict.Written:
                         written++;
@@ -707,7 +722,8 @@ namespace TheGreatestMap
         /// the same respect for a spot where a marker was erased, the same one label per so many
         /// meters. Both of these tools come through here.
         /// </summary>
-        private static Verdict Consider(Found found, bool apply, List<Written> sofar, out PinKey wrote)
+        private static Verdict Consider(Found found, bool apply, List<Written> sofar, out PinKey wrote,
+                                        bool crossedOff = false, List<PinKey> alsoCrossed = null)
         {
             wrote = default(PinKey);
             if (!TgmConfig.CategoryEnabled.TryGetValue(found.Cat, out var enabled) || !enabled.Value)
@@ -717,7 +733,16 @@ namespace TheGreatestMap
             float radius = Mathf.Max(spacing, found.Radius);
             var at = found.DedupeCenter;
             if (ClientPins.HasPinNear(found.Icon, at, radius) || Near(sofar, found.Icon, at, radius))
+            {
+                // Something already stands for this thing, but it does not know what the pin knew.
+                // A marker somebody crossed off is a marker about a mined-out vein or a chamber
+                // that has been emptied, and that is the half of a hand-placed pin with no other
+                // record anywhere -- so it is carried over even though no marker is written.
+                if (crossedOff && apply
+                    && ClientPins.TryCheckOff(found.Icon, at, radius, out var alsoCrossedOff))
+                    alsoCrossed?.Add(alsoCrossedOff);
                 return Verdict.Marked;
+            }
             if (ClientPins.IsSuppressed(found.Icon, at, radius))
                 return Verdict.Erased;
 
@@ -732,8 +757,11 @@ namespace TheGreatestMap
             // a test session built on a report of markers that are not there.
             if (apply)
             {
+                // Crossed off if the pin was. Nothing else remembers that a player had crossed a
+                // pin off, and on a deposit it is the difference between "there is copper here"
+                // and "there was".
                 var made = ClientPins.CreateShared(label ? found.Name : "", found.Pos, found.Icon,
-                    found.Cat.ToString(), auto: true, source: found.Source);
+                    found.Cat.ToString(), auto: true, isChecked: crossedOff, source: found.Source);
                 if (made == null) return Verdict.Refused;
                 wrote = made.Key;
             }

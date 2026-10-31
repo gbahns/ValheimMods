@@ -250,6 +250,10 @@ what they would do and write nothing until told to `apply`, both obey the same s
 erasure rules as ordinary recording, and both need the world itself -- single player, a world you
 are hosting, or the server's own console.
 
+A marker you had crossed off is written crossed off, and if something already stood for that
+thing, that marker is crossed off instead -- the tick is the one thing on a hand-placed pin that
+nothing else in the world remembers.
+
 Either of them can be taken back. Applying one copies your whole map aside first (`tgm_backups`
 lists it, `tgm_restore` puts it back) and writes down what it did, so `tgm_undo` can remove exactly
 the markers that run wrote and put back exactly the pins it removed, leaving anything recorded
