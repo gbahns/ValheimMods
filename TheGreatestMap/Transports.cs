@@ -110,6 +110,18 @@ namespace TheGreatestMap
         internal static bool HaveList => _haveList;
         internal static int Count => _live.Count;
 
+        /// <summary>
+        /// How many of one of the two are out there. Ships and carts share one list, so the count
+        /// of the list is the answer to neither row's question: a map with four ships and three
+        /// carts would have told both rows seven.
+        /// </summary>
+        internal static int CountOf(bool cart)
+        {
+            int n = 0;
+            foreach (var v in _live) if (v.Cart == cart) n++;
+            return n;
+        }
+
         internal static void Reset()
         {
             _live.Clear();

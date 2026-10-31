@@ -83,12 +83,23 @@ this mod at once, the pin turning gray while they are hidden. That is the same g
 on its own icon buttons, so right-click means the same thing everywhere in that column. Unlike the
 per-kind switches, it also covers markers that have no kind, such as ones you placed yourself.
 **Left-click** it for a list in two columns. On the left are the kinds that have markers on your
-map, each with its icon; click any of them to hide or show that kind without leaving the map, and the
-list stays open so you can change several. On the right are the markers that have been crossed off,
-described below: cleared deposits as one switch, then searched places by type, with a count on each.
-The list also carries the hide-all row and a "Show all" row that puts back everything any of these
-switches hides -- the kinds, the crossed-off groups, icons hidden one picture at a time and markers
-hidden one at a time -- the same as `tgm_show`. Config "Marker Button On Map" turns the button off.
+map, each with its icon and how many of it there are; click any of them to hide or show that kind
+without leaving the map, and the list stays open so you can change several. A kind that covers
+several types -- ore, dungeons, plants -- has a triangle at the head of its row: open it and the
+types are listed underneath, each with a switch of its own, so the copper can go and the silver
+stay. One kind is open at a time, and "Marker List Tree" turns the triangles off. On the right are
+the markers that have been crossed off, described below: cleared deposits as one switch, then
+searched places by type, with a count on each.
+
+The three small buttons at the end of a row -- place by hand, only, ping -- are drawn on the row
+the pointer is resting on, and on any row whose button is already doing something, so an armed or
+filtered kind goes on saying so. "Marker List Buttons On Hover" shows all of them at once instead.
+
+At the foot of the list is the row that puts back everything these switches hide -- the kinds, the
+crossed-off groups, icons hidden one picture at a time and markers hidden one at a time, the same
+as `tgm_show`. It names what it will put back ("Show everything hidden -- 2 kinds, 5 markers") and
+is there only while there is something to put back, so it cannot be read as another copy of the
+hide-all row above it. Config "Marker Button On Map" turns the button off.
 
 **Finding one thing.** At the top of that list is a find box. Type into it and the map keeps only
 the markers mentioning what you typed, as the letters go in: "frost" leaves the frost caves,

@@ -93,6 +93,25 @@ namespace TheGreatestMap
             HiddenIcons.Value = current.Length == 0 ? entry : current + "," + entry;
         }
 
+        /// <summary>
+        /// Take an icon back off the hidden list. The list is rewritten from what is left rather
+        /// than cut out of the text, because it is text a player can edit: somebody who typed
+        /// "Dandelion, dandelion" has one icon hidden and two words saying so, and removing one
+        /// word would leave the icon hidden by the other.
+        /// </summary>
+        internal static void RemoveHiddenIcon(string icon)
+        {
+            string key = IconRegistry.Normalize(icon);
+            if (key == null || !IsIconHidden(key)) return;
+            var keep = new List<string>();
+            foreach (var k in HiddenIconKeys())
+            {
+                if (IconRegistry.SameKey(k, key)) continue;
+                keep.Add(k.StartsWith("item:") ? k.Substring(5) : k);   // the documented forms again
+            }
+            HiddenIcons.Value = string.Join(",", keep.ToArray());
+        }
+
         internal static int HiddenKindCount()
         {
             int n = 0;
@@ -121,6 +140,10 @@ namespace TheGreatestMap
             if (ShowClearedDeposits != null && !ShowClearedDeposits.Value) return true;
             if (Focus.On) return true;
             if (CrossedOff.HiddenGroupCount() > 0) return true;
+            // Markers hidden one at a time count too. They did not, and the question this answers
+            // is asked to decide whether to offer a way back -- so a player who had hidden five
+            // markers by hand and nothing else was told nothing was hidden and offered nothing.
+            if (ViewPrefs.Count > 0) return true;
             return HiddenIconCount() > 0 || HiddenKindCount() > 0;
         }
 
@@ -193,6 +216,8 @@ namespace TheGreatestMap
         internal static ConfigEntry<int> PlayerMarkerSize;
         internal static ConfigEntry<int> PlayerArrowSize;
         internal static ConfigEntry<bool> PinMarkerMenu;
+        internal static ConfigEntry<bool> MarkerListTree;
+        internal static ConfigEntry<bool> MarkerListHoverButtons;
         internal static ConfigEntry<Vector2> PinnedMenuSpot;
 
         /// <summary>
@@ -594,6 +619,17 @@ namespace TheGreatestMap
             PinnedMenuSpot = mod.BindLocal("Display", "Pinned Marker List Spot", Vector2.zero,
                 "Where a pinned marker list sits, as a fraction of the screen. Set when you pin it; zero means it has " +
                 "not been pinned anywhere yet.");
+            MarkerListTree = mod.BindLocal("Display", "Marker List Tree", true,
+                "Let a kind in the marker list unfold into the types under it, each with a switch of its own: ore into " +
+                "copper, tin, silver and obsidian. The triangle at the head of the row opens it, and opening one closes " +
+                "the last, so the list cannot grow off the bottom of the map. Off, the list names kinds only, and a " +
+                "single type is hidden from a marker's own right-click menu as before.");
+            MarkerListHoverButtons = mod.BindLocal("Display", "Marker List Buttons On Hover", true,
+                "Show a row's place, only and ping buttons only while the pointer is on that row -- and on any row " +
+                "whose button is already doing something, so an armed or filtered kind goes on saying so. Off, every " +
+                "row shows all three at once, which is three times as many things to read as there are names to read.");
+            MarkerListTree.SettingChanged += (_, __) => KindMenu.Relayout();
+            MarkerListHoverButtons.SettingChanged += (_, __) => KindMenu.Relayout();
 
             PlayerArrowSize = mod.BindLocalRange("Display", "Player Arrow Size", 100, 50, 400,
                 "Size of your own arrow on the large map, as a percentage of the normal size. Pan and zoom around a " +

@@ -2,6 +2,39 @@
 
 ## 4.7.0 -- unreleased
 
+- **The marker list says less and tells you more.** Players have called it confusing and
+  overwhelming, and the four things in it that earned that are gone:
+
+  - **"Show all" and "Show all markers" are no longer two rows four apart.** One was the master
+    switch and the other undid every hide in the mod, and from the words there was no telling
+    which was which. The master switch keeps its row, since that is the only row those words were
+    ever about. The other now names what it will put back -- "Show everything hidden -- 2 kinds,
+    5 markers" -- and is drawn only when it would put something back, which on most maps means
+    not at all.
+
+  - **Every kind says how many it has.** "Ore (3)" and "Ore (219)" are different maps, and the
+    only way to tell them apart before this was to look at the map and count. Counted afresh as
+    the list refreshes rather than when it opened, because recording goes on while a pinned list
+    stays open.
+
+  - **A kind unfolds into the types under it.** The triangle at the head of a row opens it:
+    copper, tin, silver and obsidian under ore, each with its own switch, its own "only" and its
+    own ping. Until now the only switch for a single type lived in the right-click menu of a
+    marker of that type, which you had to find on the map first -- and hiding ore to be rid of
+    the tin took the silver with it. One kind is open at a time, so the list cannot grow off the
+    bottom of the map; "Marker List Tree" turns the triangles off.
+
+  - **A row's three buttons wait for the pointer.** Twenty rows with place, only and ping on each
+    is sixty things to read before the first decision, and what a reader wants from this list is
+    the names. They are drawn on the row the pointer is on, and on any row whose button is
+    already doing something -- an armed or filtered kind has to go on saying so. The names have
+    the whole row while the buttons are away, so most of them no longer end in an ellipsis.
+    "Marker List Buttons On Hover" puts all three back on every row.
+
+  The header above the kinds no longer reads "Marker kinds + place, only, ping". It named three
+  buttons at the end of every row, which is the one place a reader does not need them named: each
+  has a tooltip of its own, and there is nothing to explain until the pointer brings one out.
+
 - **Two tools for a test world: `tgm_adopt` and `tgm_survey`.** Neither is anything a player
   needs, and both say so in their own help text. They exist because a map worth testing against
   takes weeks to make by playing, and the mod can do in a second what it is designed to do slowly.

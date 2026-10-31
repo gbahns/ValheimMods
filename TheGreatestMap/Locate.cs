@@ -39,6 +39,10 @@ namespace TheGreatestMap
         /// <summary>True while the ping is pointing at this whole kind.</summary>
         internal static bool Pointing(Category kind) => On && _kind.HasValue && _kind.Value == kind;
 
+        /// <summary>True while the ping is pointing at one type -- a frost cave rather than a dungeon.</summary>
+        internal static bool PointingAt(string icon) =>
+            On && _icon != null && IconRegistry.SameKey(_icon, icon);
+
         private static float Seconds =>
             TgmConfig.LocateSeconds != null ? Mathf.Max(1f, TgmConfig.LocateSeconds.Value) : 6f;
 

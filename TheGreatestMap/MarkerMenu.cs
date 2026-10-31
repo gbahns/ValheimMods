@@ -122,6 +122,50 @@ namespace TheGreatestMap
             return false;
         }
 
+        private static Sprite _triangle;
+
+        /// <summary>
+        /// A right-pointing triangle, for the head of a row that unfolds into the rows under it.
+        /// Drawn rather than written for the same reason the ping is: the game's font is a display
+        /// face, and what it has beyond the Latin alphabet cannot be relied on. Turned a quarter
+        /// turn to point down, the way the stick pin turns.
+        /// </summary>
+        internal static Sprite Triangle()
+        {
+            if (_triangle != null) return _triangle;
+            const int n = 32;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+            {
+                for (int x = 0; x < n; x++)
+                {
+                    int hits = 0;
+                    for (int sy = 0; sy < 3; sy++)
+                        for (int sx = 0; sx < 3; sx++)
+                            if (InTriangle(x + (sx + 0.5f) / 3f, y + (sy + 0.5f) / 3f, n)) hits++;
+                    px[y * n + x] = new Color32(255, 255, 255, (byte)(255 * hits / 9));
+                }
+            }
+            tex.SetPixels32(px);
+            tex.Apply();
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.hideFlags = HideFlags.HideAndDontSave;
+            _triangle = Sprite.Create(tex, new Rect(0f, 0f, n, n), new Vector2(0.5f, 0.5f), 100f);
+            _triangle.hideFlags = HideFlags.HideAndDontSave;
+            return _triangle;
+        }
+
+        /// <summary>Flat side at the left, point at the right, and no wider than it is tall.</summary>
+        private static bool InTriangle(float x, float y, float n)
+        {
+            float lo = n * 0.22f, hi = n * 0.78f;
+            if (x < lo || x > hi) return false;
+            float t = (x - lo) / (hi - lo);              // 0 at the flat side, 1 at the point
+            float half = n * 0.5f * (1f - t);
+            return Mathf.Abs(y - n * 0.5f) <= half;
+        }
+
         private static bool InTack(float x, float y)
         {
             float dx = x - 32f;
@@ -492,7 +536,7 @@ namespace TheGreatestMap
                 ? (Action)(() => { if (ClientPins.EraseById(id)) Note(pin.Auto ? "Marker erased." : "Marker deleted."); })
                 : null, "take out your map"));
 
-            if (ViewPrefs.Count > 0 || TgmConfig.AnythingHidden())
+            if (TgmConfig.AnythingHidden())
                 items.Add(Item("Show all hidden", () =>
                 {
                     ViewPrefs.Clear();
