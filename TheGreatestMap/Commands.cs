@@ -405,9 +405,15 @@ namespace TheGreatestMap
                     }
                 }));
 
-            new Terminal.ConsoleCommand("tgm_identify", "Tell markers written by older versions what they are, so their icons follow the catalog; lists first, tgm_identify apply writes it",
+            new Terminal.ConsoleCommand("tgm_identify", "Tell markers written by older versions what they are, so their icons follow the catalog; lists first, tgm_identify apply writes it. tgm_identify blanks also reads the markers carrying nothing at all, by what stands where they stand -- which nothing does by itself, since one of those may be a vanilla pin you placed and meant something by",
                 (Terminal.ConsoleEvent)(args =>
                 {
+                    if (args.Args.Length >= 2 && args.Args[1].ToLowerInvariant() == "blanks")
+                    {
+                        args.Context.AddString("Asking the world about the markers that carry nothing at all...");
+                        Repair.Run(force: true, asked: true);
+                        return;
+                    }
                     bool apply = args.Args.Length >= 2 && args.Args[1].ToLowerInvariant() == "apply";
                     var result = Identify.Run(apply);
                     foreach (var line in Identify.Describe(result, apply))
@@ -487,7 +493,9 @@ namespace TheGreatestMap
                         foreach (var kv in unknownByKind) bits.Add($"{kv.Value} {kv.Key}");
                         bits.Sort();
                         Say($"{unknown.Count} do not know what they are ({string.Join(", ", bits.ToArray())}); " +
-                            "the world is asked about these at every login, and tgm_identify asks now.");
+                            "the world is asked about these at every login, and tgm_identify asks now. " +
+                            "Markers carrying nothing at all are not counted here and are never read by " +
+                            "themselves -- tgm_identify blanks asks about those.");
                     }
                     foreach (var kv in byKind)
                         Say($"  {kv.Key}: {kv.Value} ({100f * kv.Value / total:0.#}%)");

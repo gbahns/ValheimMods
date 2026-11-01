@@ -61,16 +61,13 @@ namespace TheGreatestMap
             int traders = RetireTraders();
             int unnamed = UnnameWhatTheIconSays();
             int unguessed = ForgetKindsGuessedFromADot();
-            int blanks = ForgetBlanks();
             // Whatever the catalog could not settle, the world is asked about -- and answers only
-            // count where they agree with the icon the marker already wears, except for the
-            // markers wearing nothing, which have no icon to agree and are named by what stands
-            // there. After the erasing above, so a blank already answered for by the marker
-            // beside it is gone rather than made into a second marker of the same thing. The
-            // answer comes back later, over the network, and says what it did in the log itself.
+            // count where they agree with the icon the marker already wears. A marker wearing
+            // nothing has no icon to agree, so it is left out of this entirely: see Repair.
+            // The answer comes back later, over the network, and says what it did in the log.
             Repair.Run();
             if (named == 0 && identified == 0 && kinded == 0 && rekinded == 0 && traders == 0
-                && unnamed == 0 && unguessed == 0 && blanks == 0) return;
+                && unnamed == 0 && unguessed == 0) return;
             ClientPins.Restyle();
             var parts = new System.Collections.Generic.List<string>();
             if (identified > 0) parts.Add($"worked out what {identified} marker(s) stand for");
@@ -80,7 +77,6 @@ namespace TheGreatestMap
             if (traders > 0) parts.Add($"retired {traders} trader marker(s) the game marks by itself");
             if (unnamed > 0) parts.Add($"took the name off {unnamed} spawner marker(s), whose icon says it");
             if (unguessed > 0) parts.Add($"stopped calling {unguessed} marker(s) that know nothing about themselves a dungeon");
-            if (blanks > 0) parts.Add($"erased {blanks} marker(s) that stood for nothing beside one that stands for something");
             TheGreatestMapMod.Log.LogInfo(
                 "[TheGreatestMap] Brought the map up to date: " + string.Join(", ", parts.ToArray()) +
                 ". Markers written before the mod recorded what a thing is are filled in once, " +
@@ -163,57 +159,6 @@ namespace TheGreatestMap
                 n++;
             }
             return n;
-        }
-
-        /// <summary>
-        /// Erase the markers that say nothing at all, where something else says it instead.
-        ///
-        /// <para>A marker with no source, no icon, no kind and no name is not a marker: it is a
-        /// plain dot on the map standing for nothing, and nothing on it can ever be identified,
-        /// because identifying works from the very fields it is missing. Twenty-five of these
-        /// were made on the live map by the bug noted on Identify.Mistaken, each
-        /// one a tar pit marker with its identity taken off, and each sitting on the spot of the
-        /// tar pit marker that came back from the server afterwards -- so the map showed every tar
-        /// pit twice, once properly and once as a dot.</para>
-        ///
-        /// <para>Only where a marker that does know what it is stands on the same spot, which is
-        /// what makes the blank one redundant rather than merely unhelpful. A blank standing on
-        /// its own is left alone, and is not left for good: <see cref="Repair"/> asks the world
-        /// what stands where it stands, which is how a blank gets its identity back rather than
-        /// merely being tidied away. This runs first because erasing a blank that is already
-        /// answered for costs nothing, while identifying it would make a second marker of a thing
-        /// already marked.</para>
-        ///
-        /// <para>Erased without suppressing the spot, like the crop markers: nothing should stop
-        /// the thing being recorded again properly. The tombstone travels, so one player's
-        /// cleanup is everybody's, which it has to be -- otherwise the blank comes back from the
-        /// next map we merge with.</para>
-        /// </summary>
-        private const float Twin = 4f;
-
-        private static bool SaysNothing(SharedPin pin) => pin != null && pin.SaysNothing;
-
-        private static int ForgetBlanks()
-        {
-            var blanks = new System.Collections.Generic.List<SharedPin>();
-            foreach (var pin in ClientPins.All) if (SaysNothing(pin)) blanks.Add(pin);
-            if (blanks.Count == 0) return 0;   // the usual case, and it costs one pass of the map
-            int gone = 0;
-            foreach (var blank in blanks)
-            {
-                bool twinned = false;
-                foreach (var other in ClientPins.All)
-                {
-                    if (other == blank || string.IsNullOrEmpty(other.Source)) continue;
-                    if (Geo.FlatDistance(other.Pos, blank.Pos) > Twin) continue;
-                    twinned = true;
-                    break;
-                }
-                if (!twinned) continue;
-                ClientPins.RemoveStale(blank.Key);
-                gone++;
-            }
-            return gone;
         }
 
         /// <summary>

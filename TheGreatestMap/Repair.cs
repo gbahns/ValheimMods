@@ -27,6 +27,13 @@ namespace TheGreatestMap
     /// camp fifty meters around it, and both wear the same icon -- distance is what tells them
     /// apart, and the nearer thing is the one a marker at that spot was written for.
     ///
+    /// <para><b>Only when asked, for the markers that say nothing.</b> Everything below about
+    /// blanks happens on <c>tgm_identify blanks</c> and never by itself. A marker carrying no
+    /// source, no icon and no name may be this mod's own damage -- and may equally be a vanilla
+    /// pin somebody dropped to mean something only they know, which the mod took on when they
+    /// asked it to and has no business explaining to them afterwards. Nothing can tell those
+    /// apart, so the automatic pass leaves every one of them alone.</para>
+    ///
     /// <para><b>The markers that say nothing at all.</b> A blank has no icon for the world's
     /// answer to agree with, so the rule above cannot be applied to it -- and it is the marker
     /// that needs this most, since where it stands is the only thing left on it. The rule for
@@ -59,7 +66,7 @@ namespace TheGreatestMap
         /// ten markers reading Pickable_Tar on the live map are all inside tar pits the catalog
         /// does know about.
         /// </summary>
-        internal static List<SharedPin> Unknown()
+        internal static List<SharedPin> Unknown(bool asked = false)
         {
             var list = new List<SharedPin>();
             foreach (var pin in ClientPins.All)
@@ -69,7 +76,14 @@ namespace TheGreatestMap
                 // Nothing on it at all. The kind test below cannot speak for these, because the
                 // kind is one of the things they are missing -- which is how the case this was
                 // written for ended up being the one case it never asked about.
-                if (pin.SaysNothing) { list.Add(pin); continue; }
+                // A marker with nothing on it at all is not this mod's to interpret unless
+                // somebody asks. It may well be a vanilla pin a player dropped to mean something
+                // only they know, taken onto the map when they asked for that and not since
+                // explained to anybody -- and the rule below, "the nearest catalogued thing
+                // within six meters", would quietly turn that into a berry bush because one
+                // happens to grow beside it. The player asked for their pins to be kept, not
+                // read.
+                if (pin.SaysNothing) { if (asked) list.Add(pin); continue; }
                 var kind = ClientPins.KindOf(pin);
                 // A kind with no prefab list has nothing to look up: the kind is the whole answer,
                 // and those are given one of their own rather than left looking unidentified.
@@ -83,14 +97,14 @@ namespace TheGreatestMap
         /// Ask the world about everything that does not know what it is, once per session. False
         /// when there is nothing to ask or nobody to ask; the answer arrives later.
         /// </summary>
-        internal static bool Run(bool force = false)
+        internal static bool Run(bool force = false, bool asked = false)
         {
             if (_asked && !force)
             {
                 TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] The world has already been asked this session.");
                 return false;
             }
-            var unknown = Unknown();
+            var unknown = Unknown(asked);
             if (unknown.Count == 0)
             {
                 _asked = true;
