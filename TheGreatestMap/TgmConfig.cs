@@ -212,6 +212,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<int> StopWaitingAfter;
         internal static ConfigEntry<bool> ShowTransportLabels;
         internal static ConfigEntry<bool> ShowMarkerLabels;
+        internal static ConfigEntry<bool> ShowBossLabels;
         internal static ConfigEntry<bool> ShowPortalLabels;
         internal static ConfigEntry<float> LocateSeconds;
         internal static ConfigEntry<int> PlayerMarkerSize;
@@ -670,6 +671,14 @@ namespace TheGreatestMap
                 "still names it, the marker list still finds it by name, and switching this back on writes them all " +
                 "again. There is a row in the marker list that does the same thing without leaving the map.");
             ShowMarkerLabels.SettingChanged += (_, __) => ClientPins.RedrawLabels();
+
+            ShowBossLabels = mod.BindLocal("Display", "Show Boss Labels", true,
+                "Write the names of the boss altars on the large map -- the ones the game writes itself when you find " +
+                "a summoning stone. Kept apart from the marker labels for the same reason the portal names are: there " +
+                "are five of them on a whole world, each one is worth reading, and they have nothing in common with " +
+                "the thousands of names a recorded map carries. Turning the marker labels off used to take these with " +
+                "them, which is a lot to lose for a change made about berry bushes.");
+            ShowBossLabels.SettingChanged += (_, __) => ClientPins.RedrawLabels();
 
             ShowPortalLabels = mod.BindLocal("Display", "Show Portal Labels", true,
                 "Write portal names on the large map. Kept apart from the marker labels because the two are not the " +

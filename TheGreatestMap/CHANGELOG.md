@@ -26,6 +26,11 @@
   holds a setting, and words that change under the pointer are what make a settings panel hard to
   read at a glance.
 
+- **The boss altars' names have a switch of their own.** The game writes those itself when you
+  find a summoning stone, and turning the marker labels off took them with it -- five names on a
+  whole world, each one worth reading, lost to a change made about berry bushes. **Show Boss
+  Labels** keeps them, and it is the third checkbox behind the gear.
+
   The marker button keeps the corner it has always had, since its own offset setting is measured
   from there -- so the gear takes the place next along, and the maximize square and the pause mark
   step one to the left.

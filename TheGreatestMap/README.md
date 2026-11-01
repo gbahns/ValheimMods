@@ -97,7 +97,10 @@ portals and other players, none of which is recorded -- those are where a thing 
 Pressing a heading hides every kind under it.
 
 **The gear** beside the marker button holds the settings about how the map is drawn rather than
-about which markers are on it: marker labels and portal labels, for now.
+about which markers are on it. Three checkboxes for now: **Show Marker Labels**, **Show Portal
+Labels** and **Show Boss Labels**. Those are three switches rather than one because the three are
+not the same complaint -- marker names run to thousands, a base writes six portal names across
+itself, and the five boss names the game writes itself are each worth reading.
 
 The small buttons at the end of a row -- place by hand, only, ping, and the count of the ones you
 have crossed off -- are drawn on the row the pointer is resting on, and on any row whose button is

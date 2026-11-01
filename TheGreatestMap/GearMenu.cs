@@ -27,7 +27,6 @@ namespace TheGreatestMap
     {
         private const float Width = 230f;
         private const float RowHeight = 26f;
-        private const float HeaderHeight = 26f;
         private const float Pad = 4f;
 
         /// <summary>
@@ -88,17 +87,16 @@ namespace TheGreatestMap
             _entries.Clear();
 
             float y = -Pad;
-            var header = MenuKit.Text(_root.transform, "Header", "How the map is drawn", 15f, MenuKit.Header);
-            Place(header.rectTransform, 10f, y, Width - 20f, HeaderHeight);
-            header.alignment = TextAlignmentOptions.MidlineLeft;
-            y -= HeaderHeight;
-
             Row(y, () => TgmConfig.ShowMarkerLabels, "Show Marker Labels",
                 "Marker Labels", "Write a marker's name beside it, where it has one");
             y -= RowHeight;
 
             Row(y, () => TgmConfig.ShowPortalLabels, "Show Portal Labels",
                 "Portal Labels", "Write a portal's tag beside it on the map");
+            y -= RowHeight;
+
+            Row(y, () => TgmConfig.ShowBossLabels, "Show Boss Labels",
+                "Boss Labels", "Write a boss altar's name beside it, as the game does when you find one");
             y -= RowHeight;
 
             float height = -y + Pad;

@@ -910,19 +910,20 @@ namespace TheGreatestMap
         /// layout pass runs every time the map moves.
         /// </summary>
         /// <summary>Whether a label is currently switched off, so the pass that puts them back
-        /// still runs the once after both switches are on again.</summary>
+        /// still runs the once after every switch is on again.</summary>
         private static bool _labelsHidden;
 
         private static void ApplyLabelVisibility(Minimap map)
         {
             bool markers = TgmConfig.ShowMarkerLabels == null || TgmConfig.ShowMarkerLabels.Value;
             bool portals = TgmConfig.ShowPortalLabels == null || TgmConfig.ShowPortalLabels.Value;
+            bool bosses = TgmConfig.ShowBossLabels == null || TgmConfig.ShowBossLabels.Value;
             // Nothing to hide and nothing hidden: the common case, and the only one worth
-            // skipping. Returning merely because both switches are on would leave whatever was
+            // skipping. Returning merely because every switch is on would leave whatever was
             // hidden earlier hidden for good, since this is the only thing that puts a label
             // back.
-            if (markers && portals && !_labelsHidden) return;
-            _labelsHidden = !(markers && portals);
+            if (markers && portals && bosses && !_labelsHidden) return;
+            _labelsHidden = !(markers && portals && bosses);
             foreach (var pin in Access.Pins(map))
             {
                 var data = pin != null ? pin.m_NamePinData : null;
@@ -932,7 +933,13 @@ namespace TheGreatestMap
                 // transient, there are a handful, and hiding who is where is not what either
                 // switch was asked for.
                 if (pin.m_type == Minimap.PinType.Player || pin.m_type == Minimap.PinType.Ping) continue;
-                bool want = Portals.IsPortalPin(pin) ? portals : markers;
+                // A boss's name is one of five on a whole world and each is worth reading, so it
+                // follows its own switch rather than the one about berry bushes. The pin type is
+                // what says so, which also covers a boss altar this mod recorded itself: those
+                // wear the same picture, and "the boss labels" means the labels on those.
+                bool want = Portals.IsPortalPin(pin) ? portals
+                    : pin.m_type == Minimap.PinType.Boss ? bosses
+                    : markers;
                 if (go.activeSelf != want) go.SetActive(want);
             }
         }
