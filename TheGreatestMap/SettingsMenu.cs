@@ -87,8 +87,8 @@ namespace TheGreatestMap
             y = Order(y, TypeOrder.AToZ, "A to Z", "By name");
 
             y = Heading("Labels", y);
-            y = Switch(y, () => TgmConfig.ShowMarkerLabels, "Marker names",
-                "Write a marker's name beside it, where it has one");
+            y = Switch(y, () => TgmConfig.ShowMarkerLabels, "Marker labels",
+                "Write a marker's label beside it, where it has one");
             y = Switch(y, () => TgmConfig.ShowPortalLabels, "Portal names",
                 "Write a portal's tag beside it on the map");
             y = Switch(y, () => TgmConfig.ShowBossLabels, "Boss names",
