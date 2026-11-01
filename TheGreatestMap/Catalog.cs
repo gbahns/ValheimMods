@@ -395,7 +395,12 @@ namespace TheGreatestMap
                 case Category.Plants:
                     return "Pickable_Flax_Wild=Wild Flax,Pickable_Barley_Wild=Wild Barley,Pickable_Fiddlehead=Fiddlehead";
                 case Category.Ore:
-                    return "rock4_copper=Copper,MineRock_Tin=Tin,silvervein=Silver|SilverOre,MineRock_Obsidian=Obsidian,MineRock_Meteorite=Meteorite," +
+                    // rock4_copper carries its icon rather than deriving one: it is the only ore
+                    // entry the loaded world cannot answer for, so it fell through to the kind's
+                    // own picture -- and since MineRock_Copper is also called Copper, the marker
+                    // list showed Copper twice, once as a pickaxe and once as copper ore. Two
+                    // entries of one name have to resolve to one icon or they are two rows.
+                    return "rock4_copper=Copper|CopperOre,MineRock_Tin=Tin,silvervein=Silver|SilverOre,MineRock_Obsidian=Obsidian,MineRock_Meteorite=Meteorite," +
                            "mudpile_beacon=Scrap Pile|IronScrap,mudpile2=Scrap Pile|IronScrap,mudpile=Scrap Pile|IronScrap,TarPit*=Tar Pit|Tar," +
                            "giant_brain=Giant Brain|SoftTissue,giant_helmet1=Giant Helmet|CopperScrap,giant_helmet2=Giant Helmet|CopperScrap,giant_ribs=Giant Ribs|BlackMarble," +
                            "giant_skull=Giant Skull|BlackMarble,giant_sword1=Giant Sword|CopperScrap,giant_sword2=Giant Sword|CopperScrap," +

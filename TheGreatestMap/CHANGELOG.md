@@ -15,6 +15,14 @@
   cannot be helped: the game draws no picture of an abandoned farm, so every structure wears
   vanilla's house pin for want of anything else to wear.
 
+  Giving the kinds a picture of their own also made one old gap visible: an entry the catalog has
+  no icon for, and whose prefab the loaded world cannot answer for either, ends up wearing the
+  kind's picture. `rock4_copper` is the only ore entry in that position, and because
+  `MineRock_Copper` is also called Copper, the marker list listed Copper twice -- once as a
+  pickaxe and once as copper ore. It carries its icon outright now. Two entries of one name have
+  to settle on one icon or they are two rows, and the pickaxe is what made that audible. The
+  legend (`tgm_legend`) counts what is still on a kind's fallback.
+
 - **A gear beside the marker button, for how the map is drawn.** The two label switches were at
   the foot of the marker list, which is a list of markers: whether a marker's name is written
   beside it is about the whole map and about no marker in particular, so a reader looking for
