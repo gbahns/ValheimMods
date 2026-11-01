@@ -463,9 +463,13 @@ namespace TheGreatestMap
             // by typing in the box above it and the row has to be there to say so.
             ActionRow(_root.transform, 0f, y, Focus.Clear, () =>
                 {
-                    Focus.Tally(out int shown, out int all);
-                    return Focus.On
-                        ? $"Only {Focus.What()} — {shown} of {all}, click for all"
+                    // Every switch, not only the find box. This line used to count what the find
+                    // box matched, so hiding two thousand resources left it saying "showing all
+                    // 2662 markers" while the row at the foot offered to put a kind back.
+                    ClientPins.Tally(out int drawn, out int all);
+                    if (Focus.On) return $"Only {Focus.What()} — {drawn} of {all}, click for all";
+                    return drawn < all
+                        ? $"Showing {drawn} of {all} markers"
                         : $"Showing all {all} markers";
                 },
                 () => !Focus.On);

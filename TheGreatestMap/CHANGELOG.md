@@ -57,13 +57,21 @@
     carries its own, so the burial chambers you are done with can go while the sunken crypts you
     have cleared stay. One switch at the foot covers the lot.
 
+  - **Workbenches are recorded, the way campfires are.** Some players hold the spawning off
+    around a base with benches rather than with fires, and the two want the same treatment: only
+    one a player built counts, never the ones standing in a camp or a village, and the marker
+    comes off when the bench does. Any crafting station can be listed under **Workbenches** in the
+    Catalog section -- a forge, a stonecutter -- and the workbench is the one listed because it is
+    the one that holds the spawning off.
+
   - **Every kind sits under a heading.** Nineteen kinds in one flat list put a raspberry bush and
     a ship at the same level, and they are not the same sort of thing at all: one is where
     something grows, written down weeks ago, the other is where a boat is floating this second.
     So there are four headings, each folding away: **Resources** (what you harvest, and what runs
-    out), **Places** (what you go to, and what stays put), **Your Stuff** (the fires you lit
-    and what you noted by hand) and **Dynamic Markers** (ships, carts, portals and other players
-    -- nothing here is recorded, it is where a thing is right now). Pressing a heading hides every
+    out), **Places** (what you go to, and what stays put), **Your Stuff** (what you noted by hand,
+    about something the catalog will never know) and **Dynamic Markers** (ships, carts, portals,
+    other players, and the fires and benches a base is made of -- what is standing now rather than
+    what was found, and none of it to be trusted a week from now). Pressing a heading hides every
     kind under it; its count is all of their markers added up. Nothing is stored per heading --
     hiding one is hiding each of its kinds, which is the setting that already existed.
 
@@ -73,6 +81,13 @@
     marker of that type, which you had to find on the map first -- and hiding ore to be rid of
     the tin took the silver with it. As many kinds open at once as you like, and a kind with forty
     types lists all forty: the scroll is what makes that affordable.
+
+  - **"Showing all 2662 markers" stops saying that while two thousand are hidden.** That line
+    counted what the find box matched, which is one filter out of six: hide a heading's worth of
+    kinds and it went on claiming everything was drawn, while the row at the panel's own foot
+    offered to put them back. It now counts what is really drawn -- the master switch, a kind, a
+    single type, a marker put away by hand, the crossed-off ones, and the find box -- and reads
+    "Showing 383 of 2662 markers" when it should.
 
   - **Every kind says how many it has.** "Ore (3)" and "Ore (219)" are different maps, and the
     only way to tell them apart before this was to look at the map and count. Counted afresh as

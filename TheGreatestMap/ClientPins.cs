@@ -92,6 +92,51 @@ namespace TheGreatestMap
             return shared.Icon;
         }
 
+        /// <summary>
+        /// Would this marker be drawn on the large map as the switches stand?
+        ///
+        /// <para>Asked so that the list can say how much of the map it is showing. It used to ask
+        /// the find box instead, which knows about one filter out of six: hiding two thousand
+        /// resources and being told "showing all 2662 markers" is the panel contradicting the row
+        /// at its own foot, which was busy offering to put a kind back.</para>
+        ///
+        /// <para>The switches only. The two rules that un-hide a marker for a moment -- the few
+        /// seconds after it is recorded, and the pulse while something is being pointed at -- are
+        /// left out on purpose: a number that counted those would tick up and down on its own
+        /// while nobody touched anything. The minimap's own switches are left out because this
+        /// answers for the large map, where the list lives. <see cref="Restyle"/> is what actually
+        /// draws, and it applies those four on top of this answer; the two have to be read
+        /// together if either is changed.</para>
+        /// </summary>
+        internal static bool IsShown(SharedPin shared)
+        {
+            if (shared == null) return false;
+            // The master switch and a marker put away by hand mean "not this one", and nothing
+            // below overrides them -- not even being searched for.
+            if (TgmConfig.ShowAllMarkers != null && !TgmConfig.ShowAllMarkers.Value) return false;
+            if (PlayerSpotlight.On) return false;
+            if (ViewPrefs.IsHidden(shared.Key)) return false;
+            // Looking for one thing wins over every switch below it, since a player who asks for
+            // frost caves means the frost caves whether or not dungeons are switched off.
+            if (Focus.On) return Focus.Shows(shared);
+            if (TgmConfig.IsIconHidden(IconOf(shared))) return false;
+            var kind = KindOf(shared);
+            if (kind.HasValue && TgmConfig.ShowKind.TryGetValue(kind.Value, out var showKind) && !showKind.Value) return false;
+            return !CrossedOff.IsHidden(shared);
+        }
+
+        /// <summary>How many markers are drawn, and how many there are.</summary>
+        internal static void Tally(out int drawn, out int all)
+        {
+            drawn = 0;
+            all = 0;
+            foreach (var pin in All)
+            {
+                all++;
+                if (IsShown(pin)) drawn++;
+            }
+        }
+
         private static int LocalType(SharedPin shared)
         {
             string icon = IconOf(shared);
