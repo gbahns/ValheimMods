@@ -46,6 +46,7 @@ namespace TheGreatestMap
             InTableRead = false;
             MarkerToggle.Reset();
             MarkerMenu.Close();
+            LabelEditor.Close();
             MarkerTooltip.Reset();
             IconRegistry.ForgetPicks();
             Reveals.Reset();

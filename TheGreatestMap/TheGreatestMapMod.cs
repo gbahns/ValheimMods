@@ -181,6 +181,7 @@ namespace TheGreatestMap
             if (Keys.IsDown(TgmConfig.LegendKey.Value) && Keys.CanTakeInput()) LegendPanel.Toggle();
             LegendPanel.Update();
             MarkerMenu.Update();
+            LabelEditor.Update();
             MapFrame.Update();
             MarkerToggle.Update();
             ManualPlace.Update();

@@ -32,6 +32,15 @@
   to settle on one icon or they are two rows, and the pickaxe is what made that audible. The
   legend (`tgm_legend`) counts what is still on a kind's fallback.
 
+- **A marker can be given a name by hand.** "Add a name" in a marker's right-click menu, or
+  "Change the name" if it has one, opens a box to type into: Enter keeps it, Escape leaves it be,
+  and an empty box takes the name off again. Most markers carry no name on purpose -- the picture
+  says what a berry bush is, and a thousand names written across a map is a wall of words over the
+  terrain -- but the names worth having are the ones nothing can work out: "good fishing",
+  "Marco's base", "the tin we never finished". The name travels like any other change to a marker,
+  so it is on everybody's map at the next sync, which is the point: those are the names you would
+  otherwise have to say out loud.
+
 - **A gear beside the marker button, for how the map is drawn.** The two label switches were at
   the foot of the marker list, which is a list of markers: whether a marker's name is written
   beside it is about the whole map and about no marker in particular, so a reader looking for
@@ -251,7 +260,7 @@
   labels, and which is there for traders, where three different ones share one coin icon. So every
   nest and bone pile came out with "Greydwarf Nest" drawn beside a greydwarf trophy. The nests
   already on your map lose the text too, on the next login, without anybody running anything --
-  and only where the text is the catalog's own words, so a name you typed or edited yourself
+  and only where the text is the catalog's own words for a spawner, so a name you typed yourself
   stays. If you want spawners named after all, **Spawners Label Spacing** is the setting, and 0
   means always.
 

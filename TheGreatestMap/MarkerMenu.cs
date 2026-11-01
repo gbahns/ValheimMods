@@ -768,6 +768,13 @@ namespace TheGreatestMap
             var kind = ClientPins.KindOf(pin);
             bool canEdit = !TgmConfig.RequireMapOutToEdit.Value || PocketMap.IsOut;
 
+            // Naming it first, because it is the one thing in here that adds something rather
+            // than taking something away, and because a marker worth right-clicking is often one
+            // you want to say something about.
+            items.Add(Item(string.IsNullOrEmpty(pin.Name) ? "Add a name" : "Change the name",
+                canEdit ? (Action)(() => LabelEditor.Open(pin, ZInput.pointerPosition)) : null,
+                "take the map out first"));
+
             items.Add(Item("Hide this marker", () =>
             {
                 ViewPrefs.Hide(id);

@@ -77,7 +77,7 @@ namespace TheGreatestMap
             if (named > 0) parts.Add($"marked {named} as placed by hand");
             if (rekinded > 0) parts.Add($"gave {rekinded} placed by hand their kind back");
             if (traders > 0) parts.Add($"retired {traders} trader marker(s) the game marks by itself");
-            if (unnamed > 0) parts.Add($"took the name off {unnamed} marker(s) of a kind whose icon says it");
+            if (unnamed > 0) parts.Add($"took the name off {unnamed} spawner marker(s), whose icon says it");
             if (blanks > 0) parts.Add($"erased {blanks} marker(s) that stood for nothing beside one that stands for something");
             TheGreatestMapMod.Log.LogInfo(
                 "[TheGreatestMap] Brought the map up to date: " + string.Join(", ", parts.ToArray()) +
@@ -101,10 +101,19 @@ namespace TheGreatestMap
         /// not the only one whose map should come right.</para>
         ///
         /// <para>Only a name this mod would have written itself is taken off -- the catalog's own
-        /// text for what the marker stands for. A name that differs by a character is someone's
-        /// own words and is left alone, which is the one thing that makes this safe to apply to
-        /// every kind rather than to spawners alone. The rule is read from the setting rather
-        /// than from the default, so a player who turns labels on for a kind keeps them.</para>
+        /// text for what the marker stands for -- and only on a spawner, which is the kind the
+        /// oversight was about. The rule is read from the setting rather than from the default, so
+        /// a player who turns the spawner labels on keeps them.</para>
+        ///
+        /// <para><b>Why spawners only.</b> This was written to run on every kind that never
+        /// labels, on the grounds that a name matching the catalog's own words is the mod's text
+        /// rather than anybody's. That stopped being true the moment a player could type a name
+        /// into a marker by hand: "Copper" typed onto a copper vein is a player asking for that
+        /// word on the map, and is character for character what the catalog would have written.
+        /// Nothing stored can tell the two apart, so the general form would quietly eat a name
+        /// somebody meant -- on the next login, with no way to tell what had happened. A pass
+        /// that cannot distinguish its own writing from a player's has no business guessing, so
+        /// it is given the one kind it was needed for.</para>
         /// </summary>
         private static int UnnameWhatTheIconSays()
         {
@@ -114,6 +123,7 @@ namespace TheGreatestMap
                 if (pin == null || !pin.Auto || string.IsNullOrEmpty(pin.Name)) continue;
                 var kind = ClientPins.KindOf(pin);
                 if (!kind.HasValue) continue;
+                if (kind.Value != Category.Spawner) continue;
                 if (!TgmConfig.LabelSpacing.TryGetValue(kind.Value, out var spacing) || spacing.Value >= 0f) continue;
                 if (!string.Equals(pin.Name, Catalog.NameForSource(pin.Source), System.StringComparison.Ordinal)) continue;
                 ClientPins.RenameMarker(pin.Key, "");
