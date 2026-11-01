@@ -30,11 +30,22 @@ namespace TheGreatestMap
         private const float HeaderHeight = 26f;
         private const float Pad = 4f;
 
-        /// <summary>A row whose words say what pressing it will do, read again after every press.</summary>
+        /// <summary>
+        /// A row with a checkbox: the words name the setting and stay put, and the box says
+        /// whether it is on.
+        ///
+        /// <para>These rows used to be captioned with what pressing them would do -- "Hide Marker
+        /// Labels" when the labels were on -- which is right for a row that performs an action and
+        /// wrong for one that holds a setting. The words changing under the pointer is also what
+        /// makes a settings panel hard to read at a glance: you cannot see what is on without
+        /// reading each line and working out the inverse.</para>
+        /// </summary>
         private sealed class Entry
         {
-            public Func<string> Text;
+            public Func<bool> On;
             public TextMeshProUGUI Label;
+            public Image Box;
+            public Image Tick;
         }
 
         private static readonly List<Entry> _entries = new List<Entry>();
@@ -82,13 +93,11 @@ namespace TheGreatestMap
             header.alignment = TextAlignmentOptions.MidlineLeft;
             y -= HeaderHeight;
 
-            Row(y, () => TgmConfig.ShowMarkerLabels,
-                () => On(TgmConfig.ShowMarkerLabels) ? "Hide Marker Labels" : "Show Marker Labels",
+            Row(y, () => TgmConfig.ShowMarkerLabels, "Show Marker Labels",
                 "Marker Labels", "Write a marker's name beside it, where it has one");
             y -= RowHeight;
 
-            Row(y, () => TgmConfig.ShowPortalLabels,
-                () => On(TgmConfig.ShowPortalLabels) ? "Hide Portal Labels" : "Show Portal Labels",
+            Row(y, () => TgmConfig.ShowPortalLabels, "Show Portal Labels",
                 "Portal Labels", "Write a portal's tag beside it on the map");
             y -= RowHeight;
 
@@ -113,11 +122,10 @@ namespace TheGreatestMap
         private static bool On(ConfigEntry<bool> entry) => entry != null && entry.Value;
 
         /// <summary>
-        /// A row captioned with what pressing it will do rather than with the state it is in.
-        /// "Hide Marker Labels" is an instruction; "Marker Labels: on" is a report that leaves the
-        /// reader to work out what a press does.
+        /// One setting: a checkbox, then the name of the thing it draws. The whole row is the
+        /// target, box included, so there is no small square to hit.
         /// </summary>
-        private static void Row(float y, Func<ConfigEntry<bool>> entry, Func<string> text, string topic, string tip)
+        private static void Row(float y, Func<ConfigEntry<bool>> entry, string text, string topic, string tip)
         {
             var row = MenuKit.Row(_root.transform, "", true, () =>
             {
@@ -127,9 +135,34 @@ namespace TheGreatestMap
             });
             Place(row, 0f, y, Width, RowHeight);
             MenuKit.Tip(row.gameObject, topic, tip);
+
+            var box = Picture(row, MenuKit.Box(), 16f);
+            var tick = Picture(row, MenuKit.Check(), 12f);
+
             var label = row.GetComponentInChildren<TextMeshProUGUI>();
-            if (label != null) label.alignment = TextAlignmentOptions.MidlineLeft;
-            _entries.Add(new Entry { Text = text, Label = label });
+            if (label != null)
+            {
+                label.text = text;
+                label.alignment = TextAlignmentOptions.MidlineLeft;
+                label.rectTransform.offsetMin = new Vector2(34f, 0f);
+            }
+            _entries.Add(new Entry { On = () => On(entry()), Label = label, Box = box, Tick = tick });
+        }
+
+        /// <summary>One of the drawn marks, at the head of a row where the checkbox goes.</summary>
+        private static Image Picture(RectTransform row, Sprite sprite, float size)
+        {
+            var go = new GameObject("Mark", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            go.transform.SetParent(row, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0f, 0.5f);
+            rt.anchoredPosition = new Vector2(10f + (16f - size) * 0.5f, 0f);
+            rt.sizeDelta = new Vector2(size, size);
+            var img = go.GetComponent<Image>();
+            img.sprite = sprite;
+            img.preserveAspect = true;
+            img.raycastTarget = false;
+            return img;
         }
 
         private static void Place(RectTransform rt, float x, float y, float width, float height)
@@ -144,9 +177,13 @@ namespace TheGreatestMap
         {
             foreach (var entry in _entries)
             {
-                if (entry.Label == null || entry.Text == null) continue;
-                entry.Label.text = entry.Text();
-                entry.Label.color = MenuKit.Header;
+                bool on = entry.On == null || entry.On();
+                // Dimmed while it is off, the way the marker list dims a kind it is not drawing:
+                // across this mod, faint means "not on the map".
+                if (entry.Label != null) entry.Label.color = on ? MenuKit.Body : MenuKit.Dim;
+                if (entry.Tick != null) entry.Tick.enabled = on;
+                if (entry.Box != null)
+                    entry.Box.color = on ? MenuKit.Header : new Color(1f, 0.85f, 0.45f, 0.4f);
             }
         }
 

@@ -20,7 +20,11 @@
   beside it is about the whole map and about no marker in particular, so a reader looking for
   "turn the labels off" had to go through the kinds to find it, and a reader going through the
   kinds had to step over it. They now live behind a gear next to the marker button. It is
-  deliberately small, and it is where the other settings about drawing will go.
+  deliberately small, and it is where the other settings about drawing will go. Each is a
+  checkbox beside the name of what it draws, rather than a row captioned with what pressing it
+  would do: "Hide Marker Labels" is right for a row that performs an action and wrong for one that
+  holds a setting, and words that change under the pointer are what make a settings panel hard to
+  read at a glance.
 
   The marker button keeps the corner it has always had, since its own offset setting is measured
   from there -- so the gear takes the place next along, and the maximize square and the pause mark

@@ -305,6 +305,82 @@ namespace TheGreatestMap
             void IEndDragHandler.OnEndDrag(PointerEventData e) { OnEnd?.Invoke(); }
         }
 
+        private static Sprite _box, _check;
+
+        /// <summary>
+        /// An empty square: the box half of a checkbox, drawn once at runtime like the rest of the
+        /// marks here. A ring rather than a filled square, so the row behind it shows through.
+        /// </summary>
+        internal static Sprite Box()
+        {
+            if (_box != null) return _box;
+            const int n = 32;
+            const int edge = 3;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    bool on = x < edge || y < edge || x >= n - edge || y >= n - edge;
+                    px[y * n + x] = new Color32(255, 255, 255, (byte)(on ? 255 : 0));
+                }
+            _box = Bake(tex, px, n);
+            return _box;
+        }
+
+        /// <summary>
+        /// A tick, for inside the box. Written as two strokes rather than as a letter because the
+        /// game's font is a display face and what it has beyond the Latin alphabet cannot be
+        /// relied on -- which is the same reason the buttons in the marker list say words.
+        /// </summary>
+        internal static Sprite Check()
+        {
+            if (_check != null) return _check;
+            const int n = 32;
+            float t = n * 0.115f;                      // half the stroke's width
+            var a = new Vector2(n * 0.16f, n * 0.52f); // the short stroke's start, down the left
+            var b = new Vector2(n * 0.40f, n * 0.26f); // the corner at the bottom
+            var c = new Vector2(n * 0.86f, n * 0.78f); // the long stroke's end, up the right
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    int hits = 0;
+                    for (int sy = 0; sy < 3; sy++)
+                        for (int sx = 0; sx < 3; sx++)
+                        {
+                            var p = new Vector2(x + (sx + 0.5f) / 3f, y + (sy + 0.5f) / 3f);
+                            if (ToSegment(p, a, b) <= t || ToSegment(p, b, c) <= t) hits++;
+                        }
+                    px[y * n + x] = new Color32(255, 255, 255, (byte)(255 * hits / 9));
+                }
+            _check = Bake(tex, px, n);
+            return _check;
+        }
+
+        /// <summary>How far a point lies from a line segment, for drawing a stroke of some width.</summary>
+        private static float ToSegment(Vector2 p, Vector2 a, Vector2 b)
+        {
+            var ab = b - a;
+            float len = ab.sqrMagnitude;
+            float t = len <= 0.0001f ? 0f : Mathf.Clamp01(Vector2.Dot(p - a, ab) / len);
+            return Vector2.Distance(p, a + ab * t);
+        }
+
+        /// <summary>The last few lines every one of these drawn marks ends with.</summary>
+        private static Sprite Bake(Texture2D tex, Color32[] px, int n)
+        {
+            tex.SetPixels32(px);
+            tex.Apply(false, true);
+            tex.filterMode = FilterMode.Bilinear;
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.hideFlags = HideFlags.HideAndDontSave;
+            var sprite = Sprite.Create(tex, new Rect(0f, 0f, n, n), new Vector2(0.5f, 0.5f), 100f);
+            sprite.hideFlags = HideFlags.HideAndDontSave;
+            return sprite;
+        }
+
         private static Sprite _gear;
 
         /// <summary>
