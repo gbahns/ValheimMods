@@ -1,5 +1,4 @@
 using System;
-using BepInEx.Configuration;
 using System.Collections.Generic;
 using HarmonyLib;
 using TMPro;
@@ -33,7 +32,7 @@ namespace TheGreatestMap
         /// One column, wide enough for a kind's name, its count and four buttons at the end --
         /// which it has to be, since the buttons appear over the tail of the longest names.
         /// </summary>
-        private const float Width = 350f;
+        private const float Width = 370f;
 
         /// <summary>The strip down the right edge the scroll bar lives in, kept clear on every row.</summary>
         private const float Bar = 6f;
@@ -54,6 +53,15 @@ namespace TheGreatestMap
         private const float Twist = 14f;
 
         /// <summary>
+        /// Three levels, each stepped in far enough to hold its own triangle: the heading, the
+        /// kinds under it, the types under those. The triangle sits in the step, which is why a
+        /// level's indent is the one above it plus a step rather than a step plus a triangle.
+        /// </summary>
+        private const float GroupIndent = Twist;
+        private const float KindIndent = Twist + Indent;
+        private const float TypeIndent = Twist + Indent * 2f;
+
+        /// <summary>
         /// The shortest the scrolling part is allowed to be. A map squeezed into a small window
         /// still gets a list worth reading rather than a slot showing two rows at a time.
         /// </summary>
@@ -71,6 +79,8 @@ namespace TheGreatestMap
             /// <summary>Live text for a switch row, for one whose label can change while the list is open.</summary>
             public Func<string> Caption;
             public Func<bool> Quiet;
+            /// <summary>A heading rather than a thing: drawn in the header gold while it is shown.</summary>
+            public bool Head;
             public TextMeshProUGUI Label;
             public Image Icon;
         }
@@ -110,6 +120,13 @@ namespace TheGreatestMap
         /// config, because it is where you are in the list rather than a preference.
         /// </summary>
         private static readonly HashSet<Category> _unfolded = new HashSet<Category>();
+
+        /// <summary>
+        /// Which headings are folded away. Empty to begin with, so the list opens saying
+        /// everything it used to say: a panel that opens as four words is quiet, but it is quiet
+        /// about the markers somebody opened it to look at. Kept for the session, like the kinds.
+        /// </summary>
+        private static readonly HashSet<Group> _foldedGroups = new HashSet<Group>();
 
         /// <summary>The types on the map under each kind, commonest first.</summary>
         private static Dictionary<Category, List<Focus.TypeCount>> _types;
@@ -339,7 +356,7 @@ namespace TheGreatestMap
             // left over, and whether the put-back row is there is part of that.
             _resetShown = AnythingPutBack();
             float head = BuildHead(map);
-            float foot = (_resetShown ? 4f : 3f) * RowHeight;
+            float foot = (_resetShown ? 3f : 2f) * RowHeight;
 
             // Anything outside the viewport is clipped, which is what allows scrolling without a
             // full ScrollRect and its scrollbars. The same arrangement the map legend uses.
@@ -496,28 +513,74 @@ namespace TheGreatestMap
                 return y;
             }
 
-            // Every kind that has markers, vanilla-icon ones included. Structures, portals, camps
-            // and boss altars are also hidden and shown by vanilla's own icon buttons, so listing
-            // them here is redundant, but leaving them out was worse: a player looking for the
-            // switch expects to find it with the rest, and does not care which mod owns the icon.
-            // The two are not identical, and the difference is in our favor: vanilla's button hides
-            // every pin with that icon, while this one covers only the markers this mod recorded.
-            foreach (var kind in Categories.All)
+            // Under headings, because nineteen kinds in one flat list put a raspberry bush and a
+            // ship at the same level and they are not the same sort of thing at all. Every kind
+            // belongs to exactly one heading, and a heading is drawn only if something under it
+            // is worth listing.
+            foreach (var group in Categories.AllGroups)
             {
-                // A kind that is only ever placed by hand has no markers until one is placed, so
-                // it must be listed anyway -- it is the list that places it. A live kind has no
-                // markers ever, its pins being the server's answer, so it is listed as soon as
-                // there is an answer to draw from.
-                bool live = Categories.IsLive(kind)
-                    && (kind == Category.Portal ? Portals.HaveList : Transports.HaveList);
-                // Players have a row of their own further down -- the live one, which is also
-                // where a hand-placed player marker is armed and filtered -- so the kind is not
-                // listed twice.
-                if (kind == Category.Player) continue;
-                if (!_counts.ContainsKey(kind) && !Categories.IsPlacedOnly(kind) && !live
-                    && !Categories.VanillaMarks(kind)) continue;
+                var g = group;
+                var kinds = new List<Category>();
+                foreach (var kind in Categories.All) if (Categories.GroupOf(kind) == g && Listed(kind)) kinds.Add(kind);
+                if (kinds.Count == 0) continue;
+                bool resources = AllResources(kinds);
+
+                // The heading is a switch like every other row here: pressed, it hides the kinds
+                // under it, which is the setting those kinds already had. The triangle folds it.
+                var heading = SwitchRow(map, _content, 0f, y, GroupIndent, null,
+                    GroupHeading(map, g, kinds),
+                    () => SetKinds(kinds, !AnyKindShown(kinds)),
+                    () => AllShown && AnyKindShown(kinds),
+                    caption: () => GroupHeading(map, g, kinds),
+                    doneCount: () => DoneIn(kinds),
+                    doneShown: () => GroupDoneShown(kinds),
+                    doneToggle: () => SetKindsDone(kinds, !GroupDoneShown(kinds)),
+                    gone: resources,
+                    head: true, icon: false, tip: Categories.GroupTip(g));
+                Twisty(heading, GroupIndent, !_foldedGroups.Contains(g),
+                       () => { if (!_foldedGroups.Remove(g)) _foldedGroups.Add(g); },
+                       "List the kinds under this heading");
+                y -= RowHeight;
+                if (_foldedGroups.Contains(g)) continue;
+
+                foreach (var kind in kinds)
+                {
+                    // The other players are vanilla's markers rather than ours, and the row for
+                    // them answers a different question, so it is built in full below rather than
+                    // squeezed through the same call.
+                    if (kind == Category.Player) { y = PlayersRow(map, y); continue; }
+                    y = KindRow(map, kind, y);
+                }
+            }
+            return LooseEnds(y);
+        }
+
+        /// <summary>
+        /// A kind that has a row: one with markers, one that is only ever placed by hand (the
+        /// list is what places it), one the server is answering for right now, or one the game
+        /// marks by itself.
+        ///
+        /// <para>Structures, portals, camps and boss altars are also hidden and shown by vanilla's
+        /// own icon buttons, so listing them here is redundant, but leaving them out was worse: a
+        /// player looking for the switch expects to find it with the rest, and does not care which
+        /// mod owns the icon. The two are not identical, and the difference is in our favor:
+        /// vanilla's button hides every pin with that icon, while this one covers only the markers
+        /// this mod recorded.</para>
+        /// </summary>
+        private static bool Listed(Category kind)
+        {
+            if (Categories.IsPlacedOnly(kind)) return true;
+            if (Categories.IsLive(kind))
+                return kind == Category.Portal ? Portals.HaveList : Transports.HaveList;
+            return _counts.ContainsKey(kind) || Categories.VanillaMarks(kind);
+        }
+
+        /// <summary>One kind, and its types under it when it is unfolded. Returns the y below them.</summary>
+        private static float KindRow(Minimap map, Category kind, float y)
+        {
+            {
                 var k = kind;
-                var row = SwitchRow(map, _content, 0f, y, Twist, IconKeyFor(k), KindLabel(k),
+                var row = SwitchRow(map, _content, 0f, y, KindIndent, IconKeyFor(k), KindLabel(k),
                     () => { if (TgmConfig.ShowKind.TryGetValue(k, out var e)) e.Value = !e.Value; },
                     () => AllShown && IsShown(k),
                     // The small pin at the row's end arms that kind for placing by hand. It is a
@@ -567,18 +630,25 @@ namespace TheGreatestMap
                 y -= RowHeight;
                 y = Unfold(map, row, y, k);
             }
+            return y;
+        }
 
-            // The other players, which are vanilla's markers rather than ours: nothing here
-            // records them and nothing hides them, but "where is everybody" is the same question
-            // this column answers for everything else, so it belongs in the same place. The row
-            // itself is the spotlight the H key gives; the ping only makes them wave.
-            // Shown even when there are none, dimmed, saying so. Leaving the row out entirely
-            // when nobody is sharing looks exactly like the feature not existing, which is how
-            // it read the first time somebody went looking for it. The count is read afresh on
-            // every refresh rather than fixed when the list opened: players come and go, and a
-            // pinned list stays open for hours.
+        /// <summary>
+        /// The other players, which are vanilla's markers rather than ours: nothing here records
+        /// them and nothing hides them, but "where is everybody" is the same question this list
+        /// answers for everything else, so it belongs in the same place. The row itself is the
+        /// spotlight the H key gives; the ping only makes them wave.
+        ///
+        /// <para>Shown even when there are none, dimmed, saying so. Leaving the row out entirely
+        /// when nobody is sharing looks exactly like the feature not existing, which is how it
+        /// read the first time somebody went looking for it. The count is read afresh on every
+        /// refresh rather than fixed when the list opened: players come and go, and a pinned list
+        /// stays open for hours.</para>
+        /// </summary>
+        private static float PlayersRow(Minimap map, float y)
+        {
             Func<int> players = () => PlayerSpotlight.Players(map);
-            SwitchRow(map, _content, 0f, y, Twist, "pin:Player", "Players",
+            SwitchRow(map, _content, 0f, y, KindIndent, "pin:Player", "Players",
                 () =>
                 {
                     if (players() > 0) PlayerSpotlight.Toggle(map);
@@ -604,10 +674,16 @@ namespace TheGreatestMap
                 onLocate: () => Locate.Players(map),
                 caption: () => players() > 0 ? $"Players ({players()})" : "Players (none sharing)",
                 placeKind: Category.Player);
-            y -= RowHeight;
+            return y - RowHeight;
+        }
 
-            // And the crossed-off markers belonging to no kind, which would otherwise have lost
-            // their switch along with the column it used to live in.
+        /// <summary>
+        /// The crossed-off markers belonging to no kind, which would otherwise have lost their
+        /// switch along with the column it used to live in. Below every heading, because they
+        /// belong under none of them: that is what is wrong with them.
+        /// </summary>
+        private static float LooseEnds(float y)
+        {
             foreach (var bucket in new[] { CrossedOff.Placed, CrossedOff.Unsorted })
             {
                 if (!_doneOther.TryGetValue(bucket, out int n) || n == 0) continue;
@@ -652,19 +728,10 @@ namespace TheGreatestMap
                 () => Erasures.On ? "Hide erased markers" : "Show erased markers", null);
             y -= RowHeight;
 
-            // Side by side, because they are the same question asked of two things, and a player
-            // deciding to quieten the map wants to see both answers at once rather than hunt for
-            // the second one.
-            float half = (RowWidth - Pad) * 0.5f;
-            LabelButton(0f, y, half,
-                () => TgmConfig.ShowMarkerLabels,
-                () => TgmConfig.ShowMarkerLabels != null && TgmConfig.ShowMarkerLabels.Value
-                    ? "Hide Marker Labels" : "Show Marker Labels");
-            LabelButton(half + Pad, y, half,
-                () => TgmConfig.ShowPortalLabels,
-                () => TgmConfig.ShowPortalLabels != null && TgmConfig.ShowPortalLabels.Value
-                    ? "Hide Portal Labels" : "Show Portal Labels");
-            y -= RowHeight;
+            // The two label switches used to sit here. They are about how the whole map is
+            // drawn rather than about which markers are on it, which is a different question from
+            // the one every other row in this list answers -- so they live behind the gear beside
+            // the marker button now, with the rest of the drawing settings.
 
             // Everything back: the kinds, the master switch, the crossed-off groups, the icons
             // hidden one picture at a time and the markers hidden one at a time. The same work as
@@ -818,6 +885,79 @@ namespace TheGreatestMap
         }
 
         /// <summary>
+        /// A heading and what is under it: "Places (143)". The number is the markers of every
+        /// kind under it added up, which for the dynamic ones is what the server is answering
+        /// right now rather than anything recorded.
+        /// </summary>
+        private static string GroupHeading(Minimap map, Group group, List<Category> kinds)
+        {
+            int n = 0;
+            foreach (var kind in kinds) n += KindCount(map, kind);
+            string label = Categories.GroupLabel(group);
+            return n > 0 ? $"{label} ({n})" : label;
+        }
+
+        /// <summary>
+        /// How many markers a kind has. A live kind counts the server's answer and a player
+        /// counts who is sharing, because for those there is nothing recorded to count.
+        /// </summary>
+        private static int KindCount(Minimap map, Category kind)
+        {
+            if (Categories.IsLive(kind))
+                return kind == Category.Portal ? Portals.Count : Transports.CountOf(kind == Category.Cart);
+            if (kind == Category.Player) return PlayerSpotlight.Players(map);
+            _counts.TryGetValue(kind, out int n);
+            return n;
+        }
+
+        private static bool AnyKindShown(List<Category> kinds)
+        {
+            foreach (var kind in kinds) if (IsShown(kind)) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Show or hide every kind under a heading. Nothing is stored per heading: this is the
+        /// per-kind setting that already existed, set several at once.
+        /// </summary>
+        private static void SetKinds(List<Category> kinds, bool show)
+        {
+            foreach (var kind in kinds)
+                if (TgmConfig.ShowKind.TryGetValue(kind, out var entry) && entry.Value != show) entry.Value = show;
+        }
+
+        /// <summary>True when everything under a heading is a supply rather than a place.</summary>
+        private static bool AllResources(List<Category> kinds)
+        {
+            foreach (var kind in kinds) if (!Categories.IsResource(kind)) return false;
+            return kinds.Count > 0;
+        }
+
+        private static int DoneIn(List<Category> kinds)
+        {
+            int n = 0;
+            foreach (var kind in kinds) n += DoneOf(kind);
+            return n;
+        }
+
+        /// <summary>
+        /// Is anything crossed off under this heading still drawn? Only the kinds that have
+        /// something crossed off are asked: a kind with none of them would otherwise answer
+        /// "shown" forever and leave the heading's switch saying hide when there is nothing left
+        /// to hide.
+        /// </summary>
+        private static bool GroupDoneShown(List<Category> kinds)
+        {
+            foreach (var kind in kinds) if (DoneOf(kind) > 0 && DoneShown(kind)) return true;
+            return false;
+        }
+
+        private static void SetKindsDone(List<Category> kinds, bool show)
+        {
+            foreach (var kind in kinds) if (DoneOf(kind) > 0) SetKindDone(kind, show);
+        }
+
+        /// <summary>
         /// How many of this kind you have crossed off. Read afresh on every refresh, like the
         /// counts beside the names, because crossing one off is a thing you do with the list open.
         /// </summary>
@@ -848,35 +988,17 @@ namespace TheGreatestMap
             return !CrossedOff.IsGroupHidden(Categories.Label(kind));
         }
 
-        private static void ToggleDone(Category kind)
+        private static void ToggleDone(Category kind) => SetKindDone(kind, !DoneShown(kind));
+
+        private static void SetKindDone(Category kind, bool show)
         {
-            bool shown = DoneShown(kind);
             if (Categories.IsResource(kind))
             {
-                if (TgmConfig.ShowClearedDeposits != null) TgmConfig.ShowClearedDeposits.Value = !shown;
+                if (TgmConfig.ShowClearedDeposits != null) TgmConfig.ShowClearedDeposits.Value = show;
                 return;
             }
-            if (CrossedOff.Splits(kind)) { CrossedOff.SetTypesHidden(kind, shown); return; }
-            CrossedOff.SetGroupHidden(Categories.Label(kind), shown);
-        }
-
-        /// <summary>
-        /// A button that turns one label switch off and on, captioned with what pressing it will
-        /// do rather than with the state it is in. "Hide Marker Labels" is an instruction; "Marker
-        /// Labels: on" is a report that leaves the reader to work out what a press does.
-        /// </summary>
-        private static void LabelButton(float x, float y, float width, Func<ConfigEntry<bool>> entry, Func<string> text)
-        {
-            var row = MenuKit.Row(_root.transform, "", true, () =>
-            {
-                var e = entry();
-                if (e != null) e.Value = !e.Value;
-                Refresh();
-            });
-            Place(row, x, y, width, RowHeight);
-            var label = row.GetComponentInChildren<TextMeshProUGUI>();
-            if (label != null) label.alignment = TextAlignmentOptions.Center;
-            _entries.Add(new Entry { Text = text, Quiet = () => false, Label = label });
+            if (CrossedOff.Splits(kind)) { CrossedOff.SetTypesHidden(kind, !show); return; }
+            CrossedOff.SetGroupHidden(Categories.Label(kind), !show);
         }
 
         private static void ActionRow(Transform host, float x, float y, Action onClick, Func<string> text, Func<bool> quiet)
@@ -899,7 +1021,8 @@ namespace TheGreatestMap
                                                Func<string> caption = null, Category? placeKind = null,
                                                Func<bool> onlyLit = null, Func<bool> pingLit = null,
                                                Func<int> doneCount = null, Func<bool> doneShown = null,
-                                               Action doneToggle = null, bool gone = false)
+                                               Action doneToggle = null, bool gone = false,
+                                               bool head = false, bool icon = true, string tip = null)
         {
             var row = MenuKit.Row(host, "", true, () =>
             {
@@ -908,21 +1031,27 @@ namespace TheGreatestMap
                 Refresh();
             });
             Place(row, x, y, RowWidth, RowHeight);
-            var entry = new Entry { Shown = shown, Caption = caption };
+            var entry = new Entry { Shown = shown, Caption = caption, Head = head };
+            MenuKit.Tip(row.gameObject, null, tip);
 
-            var sprite = (iconKey != null ? IconRegistry.Resolve(map, iconKey) : null) ?? IconRegistry.Resolve(map, IconRegistry.FallbackKey);
-            var iconGo = new GameObject("Icon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-            iconGo.transform.SetParent(row, false);
-            var irt = (RectTransform)iconGo.transform;
-            irt.anchorMin = new Vector2(0f, 0.5f);
-            irt.anchorMax = new Vector2(0f, 0.5f);
-            irt.pivot = new Vector2(0f, 0.5f);
-            irt.anchoredPosition = new Vector2(8f + indent, 0f);
-            irt.sizeDelta = new Vector2(IconSize, IconSize);
-            entry.Icon = iconGo.GetComponent<Image>();
-            entry.Icon.sprite = sprite;
-            entry.Icon.raycastTarget = false;
-            entry.Icon.preserveAspect = true;
+            // A heading has no picture, there being no one picture for "Places". Its name starts
+            // where a kind's picture would, which is what outdents it.
+            if (icon)
+            {
+                var sprite = (iconKey != null ? IconRegistry.Resolve(map, iconKey) : null) ?? IconRegistry.Resolve(map, IconRegistry.FallbackKey);
+                var iconGo = new GameObject("Icon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                iconGo.transform.SetParent(row, false);
+                var irt = (RectTransform)iconGo.transform;
+                irt.anchorMin = new Vector2(0f, 0.5f);
+                irt.anchorMax = new Vector2(0f, 0.5f);
+                irt.pivot = new Vector2(0f, 0.5f);
+                irt.anchoredPosition = new Vector2(8f + indent, 0f);
+                irt.sizeDelta = new Vector2(IconSize, IconSize);
+                entry.Icon = iconGo.GetComponent<Image>();
+                entry.Icon.sprite = sprite;
+                entry.Icon.raycastTarget = false;
+                entry.Icon.preserveAspect = true;
+            }
 
             // Each button keeps its own column, so a row missing one leaves a gap rather than
             // sliding the others along: ships have no "place by hand", and their only and ping
@@ -994,7 +1123,7 @@ namespace TheGreatestMap
             {
                 entry.Label.text = text;
                 entry.Label.alignment = TextAlignmentOptions.MidlineLeft;
-                entry.Label.rectTransform.offsetMin = new Vector2(indent + IconSize + 14f, 0f);
+                entry.Label.rectTransform.offsetMin = new Vector2(icon ? indent + IconSize + 14f : indent + 8f, 0f);
                 // Keep the name clear of the buttons rather than letting a long kind run under
                 // them, where it reads as part of the word on the button. While the buttons are
                 // waiting for the pointer the name has the whole row and gives it back when they
@@ -1324,7 +1453,10 @@ namespace TheGreatestMap
             // One type needs no triangle: the row under it would say the same thing as the row
             // above it, and a control that reveals a copy of itself is a control that lies.
             if (!_types.TryGetValue(kind, out var types) || types.Count < 2) return y;
-            Twisty(row, kind);
+            var k = kind;
+            Twisty(row, KindIndent, _unfolded.Contains(kind),
+                   () => { if (!_unfolded.Remove(k)) _unfolded.Add(k); },
+                   "List the types of this kind, each with a switch of its own");
             if (!_unfolded.Contains(kind)) return y;
 
             foreach (var type in types)
@@ -1340,15 +1472,16 @@ namespace TheGreatestMap
         /// its own rather than another meaning for the row, which already means "show or hide
         /// these".
         /// </summary>
-        private static void Twisty(RectTransform row, Category kind)
+        private static void Twisty(RectTransform row, float indent, bool open, Action toggle, string shutTip)
         {
-            bool open = _unfolded.Contains(kind);
             var go = new GameObject("Twisty", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
             go.transform.SetParent(row, false);
             var rt = (RectTransform)go.transform;
             rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f);
             rt.pivot = new Vector2(0f, 0.5f);
-            rt.anchoredPosition = new Vector2(2f, 0f);
+            // In the step this level is indented by, which is what keeps one level's triangles
+            // in a column of their own.
+            rt.anchoredPosition = new Vector2(indent - Twist + 2f, 0f);
             rt.sizeDelta = new Vector2(Twist, RowHeight - 6f);
             var hit = go.GetComponent<Image>();
             // Invisible: the triangle is what there is to press, and a box drawn round every one
@@ -1358,17 +1491,14 @@ namespace TheGreatestMap
             var button = go.GetComponent<Button>();
             button.transition = Selectable.Transition.None;
             button.targetGraphic = hit;
-            var k = kind;
             button.onClick.AddListener(() =>
             {
-                if (open) _unfolded.Remove(k); else _unfolded.Add(k);
+                toggle();
                 // The rows themselves change rather than their colors, so this is a redraw in
                 // place -- the same thing pressing Enter in the find box asks for.
                 _rebuildWanted = true;
             });
-            MenuKit.Tip(go, open ? "Fold up" : "The types",
-                open ? "Fold this kind back up"
-                     : "List the types of this kind, each with a switch of its own");
+            MenuKit.Tip(go, open ? "Fold up" : "Unfold", open ? "Fold this back up" : shutTip);
 
             var glyph = new GameObject("Triangle", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             glyph.transform.SetParent(go.transform, false);
@@ -1397,7 +1527,7 @@ namespace TheGreatestMap
             var t = type;
             string group = CrossedOff.GroupFor(kind, t.Icon);
             bool gone = Categories.IsResource(kind);
-            SwitchRow(map, _content, 0f, y, Twist + Indent, t.Icon, $"{t.Label} ({t.Count})",
+            SwitchRow(map, _content, 0f, y, TypeIndent, t.Icon, $"{t.Label} ({t.Count})",
                 () => ToggleType(kind, t.Icon),
                 () => AllShown && IsShown(kind) && !TgmConfig.IsIconHidden(t.Icon),
                 onOnly: () => Focus.SetIcon(t.Icon),
@@ -1545,7 +1675,7 @@ namespace TheGreatestMap
                 }
                 if (entry.Caption != null) entry.Label.text = entry.Caption();
                 bool shown = entry.Shown == null || entry.Shown();
-                entry.Label.color = shown ? MenuKit.Body : MenuKit.Dim;
+                entry.Label.color = shown ? (entry.Head ? MenuKit.Header : MenuKit.Body) : MenuKit.Dim;
                 if (entry.Icon != null) entry.Icon.color = shown ? Color.white : new Color(1f, 1f, 1f, 0.3f);
             }
             // The put-back row is drawn only while there is something to put back, and the press

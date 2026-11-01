@@ -90,6 +90,15 @@ underneath, each with a switch of its own, so the copper can go and the silver s
 as you like; the list scrolls on the wheel while the pointer is on it, and the title strip, the
 find box and the foot stay put while it does.
 
+Every kind sits under one of four headings, each with a triangle of its own: **Resources** (what
+you harvest, and what runs out), **Places** (what you go to, and what stays put), **Your Own
+Marks** (the fires you lit and what you noted by hand) and **Dynamic Markers** (ships, carts,
+portals and other players, none of which is recorded -- those are where a thing is right now).
+Pressing a heading hides every kind under it.
+
+**The gear** beside the marker button holds the settings about how the map is drawn rather than
+about which markers are on it: marker labels and portal labels, for now.
+
 The small buttons at the end of a row -- place by hand, only, ping, and the count of the ones you
 have crossed off -- are drawn on the row the pointer is resting on, and on any row whose button is
 already doing something, so an armed kind, a filtered one, or one hiding its crossed-off markers

@@ -36,9 +36,92 @@ namespace TheGreatestMap
         Spawner,
     }
 
+    /// <summary>
+    /// What a kind is, one level up: the heading it sits under in the marker list.
+    ///
+    /// <para>Nineteen kinds in one flat list put a raspberry bush and a ship at the same level,
+    /// and they are not remotely the same sort of thing -- one is a place something grows that
+    /// was written down weeks ago, the other is where a boat is floating this second. Nothing in
+    /// the mod disagreed about that; the distinctions were all there in the predicates below,
+    /// used by the recorder and never shown to the reader.</para>
+    ///
+    /// <para>These are groupings for reading, not for storing: nothing is saved per group and no
+    /// setting mentions one. Hiding a group is hiding each of its kinds, which is the setting
+    /// that already existed.</para>
+    /// </summary>
+    internal enum Group
+    {
+        /// <summary>Things you go and harvest, which run out: berries, mushrooms, herbs, seeds, plants, ore.</summary>
+        Resources,
+        /// <summary>Things you go to, which stay where they are: dungeons, camps, altars, ruins, runestones, traders, spawners.</summary>
+        Places,
+        /// <summary>Marks about your own doings: the fires you lit, and the things you noted by hand.</summary>
+        Yours,
+        /// <summary>Not recorded at all -- where a thing is right now, as the server answers it.</summary>
+        Dynamic,
+    }
+
     /// <summary>Static facts about each category: defaults, labels.</summary>
     internal static class Categories
     {
+        internal static readonly Group[] AllGroups = (Group[])Enum.GetValues(typeof(Group));
+
+        /// <summary>
+        /// Which heading a kind belongs under. Everything not named here is a place, which is the
+        /// honest default: a kind nobody has sorted yet is something you go to.
+        /// </summary>
+        internal static Group GroupOf(Category c)
+        {
+            switch (c)
+            {
+                case Category.Berries:
+                case Category.Mushrooms:
+                case Category.Herbs:
+                case Category.Seeds:
+                case Category.Plants:
+                case Category.Ore:       return Group.Resources;
+                case Category.Campfire:
+                case Category.Sighting:  return Group.Yours;
+                case Category.Ship:
+                case Category.Cart:
+                case Category.Portal:
+                case Category.Player:    return Group.Dynamic;
+                // Dungeons, camps, boss altars, structures, runestones, traders, spawners.
+                default:                 return Group.Places;
+            }
+        }
+
+        internal static string GroupLabel(Group g)
+        {
+            switch (g)
+            {
+                case Group.Resources: return "Resources";
+                case Group.Places:    return "Places";
+                case Group.Yours:     return "Your Own Marks";
+                case Group.Dynamic:   return "Dynamic Markers";
+                default:              return g.ToString();
+            }
+        }
+
+        /// <summary>What the heading means, for the row's tooltip.</summary>
+        internal static string GroupTip(Group g)
+        {
+            switch (g)
+            {
+                case Group.Resources:
+                    return "What you go and harvest, and what runs out. Crossing one of these off means it is gone.";
+                case Group.Places:
+                    return "What you go to, and what stays where it is. Crossing one of these off means you are done with it.";
+                case Group.Yours:
+                    return "The fires you lit and the things you noted by hand, rather than anything the world put there.";
+                case Group.Dynamic:
+                    return "Nothing here is recorded: it is where a thing is right now, as the server answers it. " +
+                           "A ship moves and a portal is rebuilt, so a marker written once would be wrong by tomorrow.";
+                default:
+                    return null;
+            }
+        }
+
         internal static readonly Category[] All = (Category[])Enum.GetValues(typeof(Category));
 
         internal static bool UsesPrefabList(Category c) =>

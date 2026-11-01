@@ -2,6 +2,17 @@
 
 ## 4.7.0 -- unreleased
 
+- **A gear beside the marker button, for how the map is drawn.** The two label switches were at
+  the foot of the marker list, which is a list of markers: whether a marker's name is written
+  beside it is about the whole map and about no marker in particular, so a reader looking for
+  "turn the labels off" had to go through the kinds to find it, and a reader going through the
+  kinds had to step over it. They now live behind a gear next to the marker button. It is
+  deliberately small, and it is where the other settings about drawing will go.
+
+  The marker button keeps the corner it has always had, since its own offset setting is measured
+  from there -- so the gear takes the place next along, and the maximize square and the pause mark
+  step one to the left.
+
 - **The marker list is one column instead of two, and it scrolls.** Players called it confusing
   and overwhelming, and about a hundred things to press in one pop-up earned both. It is now a
   single list of the kinds on your map, each unfolding into the types under it, with everything
@@ -15,6 +26,16 @@
     been used up -- which hides exactly those and lights up to say it is doing so. A type row
     carries its own, so the burial chambers you are done with can go while the sunken crypts you
     have cleared stay. One switch at the foot covers the lot.
+
+  - **Every kind sits under a heading.** Nineteen kinds in one flat list put a raspberry bush and
+    a ship at the same level, and they are not the same sort of thing at all: one is where
+    something grows, written down weeks ago, the other is where a boat is floating this second.
+    So there are four headings, each folding away: **Resources** (what you harvest, and what runs
+    out), **Places** (what you go to, and what stays put), **Your Own Marks** (the fires you lit
+    and what you noted by hand) and **Dynamic Markers** (ships, carts, portals and other players
+    -- nothing here is recorded, it is where a thing is right now). Pressing a heading hides every
+    kind under it; its count is all of their markers added up. Nothing is stored per heading --
+    hiding one is hiding each of its kinds, which is the setting that already existed.
 
   - **A kind unfolds into the types under it.** The triangle at the head of a row opens it:
     copper, tin, silver and obsidian under ore, each with its own switch, its own "only" and its

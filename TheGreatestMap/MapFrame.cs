@@ -34,7 +34,7 @@ namespace TheGreatestMap
         private const float SmallestIcons = 0.4f;
         private const float MoverHeight = 16f;
 
-        private static RectTransform _grip, _mover, _maximize;
+        private static RectTransform _grip, _mover, _maximize, _gear;
         private static GameObject _root;          // the large root we built our handles into
         private static Vector2 _base = new Vector2(float.NaN, float.NaN); // the game's own inset
         private static Vector2 _grow, _pos;
@@ -74,6 +74,8 @@ namespace TheGreatestMap
             _grip = null;
             _mover = null;
             _maximize = null;
+            _gear = null;
+            GearMenu.Close();
             _root = null;
             _read = false;
         }
@@ -87,7 +89,7 @@ namespace TheGreatestMap
 
             // The HUD is rebuilt on every login, which takes the map with it, so handles built into
             // the old one are gone and the ones we hold are dead references.
-            if (_root != map.m_largeRoot || _grip == null || _mover == null || _maximize == null)
+            if (_root != map.m_largeRoot || _grip == null || _mover == null || _maximize == null || _gear == null)
             {
                 _root = map.m_largeRoot;
                 _base = new Vector2(float.NaN, float.NaN);
@@ -109,6 +111,18 @@ namespace TheGreatestMap
             _mover.sizeDelta = new Vector2(0f, MoverHeight);
             _mover.anchoredPosition = Vector2.zero;
             _mover.gameObject.AddComponent<DoubleClick>().OnDouble = ToggleFullScreen;
+
+            // Beside the marker button rather than anywhere else in this row, because what it
+            // opens is the other half of what that button opens: which markers are drawn, and how
+            // they are drawn. The marker button keeps the corner it has always had -- its own
+            // offset setting is measured from there -- so the gear takes the place next along and
+            // the maximize square and the pause mark step one to the left.
+            _gear = Handle(root, "TGM_MapGear", GearColor, MenuKit.Gear(), null);
+            _gear.anchorMin = _gear.anchorMax = new Vector2(1f, 1f);
+            _gear.pivot = new Vector2(0.5f, 0.5f);
+            _gear.sizeDelta = new Vector2(ButtonSize, ButtonSize);
+            _gear.gameObject.AddComponent<Click>().OnClick = () => GearMenu.Toggle(ZInput.pointerPosition);
+            _gear.gameObject.AddComponent<MenuKit.Glow>();
 
             _maximize = Handle(root, "TGM_MapMaximize", MaximizeColor, Square(), null);
             _maximize.anchorMin = _maximize.anchorMax = new Vector2(1f, 1f);
@@ -164,9 +178,21 @@ namespace TheGreatestMap
                 var slack = new Vector2(Mathf.Max(0f, -size.x) * 0.5f, Mathf.Max(0f, -size.y) * 0.5f);
                 _pos = new Vector2(Mathf.Clamp(_pos.x, -slack.x, slack.x), Mathf.Clamp(_pos.y, -slack.y, slack.y));
             }
+            if (_gear != null)
+            {
+                if (_gear.anchoredPosition != Slot(1)) _gear.anchoredPosition = Slot(1);
+                var img = _gear.GetComponent<Image>();
+                var hover = _gear.GetComponent<MenuKit.Glow>();
+                bool lit = hover != null && hover.Over;
+                // Orange while its menu is up, the same orange the pause mark wears while pausing
+                // is on, so "this one is doing something" reads the same way along the whole row.
+                if (img != null) img.color = MenuKit.Lit(GearMenu.IsOpen ? PauseToggle.Paused : GearColor, lit);
+                _gear.localScale = MenuKit.Magnified(Vector3.one, lit);
+            }
+            GearMenu.Update();
             if (_maximize != null)
             {
-                if (_maximize.anchoredPosition != Slot(1)) _maximize.anchoredPosition = Slot(1);
+                if (_maximize.anchoredPosition != Slot(2)) _maximize.anchoredPosition = Slot(2);
                 var img = _maximize.GetComponent<Image>();
                 var hover = _maximize.GetComponent<MenuKit.Glow>();
                 bool lit = hover != null && hover.Over;
@@ -203,6 +229,7 @@ namespace TheGreatestMap
         }
 
         private static readonly Color MaximizeColor = new Color(1f, 0.93f, 0.72f, 0.85f);
+        private static readonly Color GearColor = new Color(1f, 0.93f, 0.72f, 0.85f);
 
         /// <summary>
         /// Keep markers and their labels inside the map. Both are given a marker's own place, and

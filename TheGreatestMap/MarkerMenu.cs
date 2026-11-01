@@ -305,6 +305,50 @@ namespace TheGreatestMap
             void IEndDragHandler.OnEndDrag(PointerEventData e) { OnEnd?.Invoke(); }
         }
 
+        private static Sprite _gear;
+
+        /// <summary>
+        /// The usual gear: a toothed ring with a hole through it, drawn once at runtime like the
+        /// stick pin and the resize grip rather than shipped as a picture. White, so whoever puts
+        /// it on a button can tint it.
+        /// </summary>
+        internal static Sprite Gear()
+        {
+            if (_gear != null) return _gear;
+            const int n = 64;
+            const int teeth = 8;
+            const float cx = n * 0.5f, cy = n * 0.5f;
+            const float rim = n * 0.30f, root = n * 0.235f, hole = n * 0.115f;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    int hits = 0;
+                    for (int sy = 0; sy < 3; sy++)
+                        for (int sx = 0; sx < 3; sx++)
+                        {
+                            float fx = x + (sx + 0.5f) / 3f - cx;
+                            float fy = y + (sy + 0.5f) / 3f - cy;
+                            float d = Mathf.Sqrt(fx * fx + fy * fy);
+                            if (d <= hole) continue;                 // the bore through the middle
+                            // A tooth every so many degrees: the rim steps out where the cosine
+                            // is high, which gives flat-topped teeth rather than a wavy edge.
+                            float edge = Mathf.Cos(teeth * Mathf.Atan2(fy, fx)) > 0.25f ? rim : root;
+                            if (d <= edge) hits++;
+                        }
+                    px[y * n + x] = new Color32(255, 255, 255, (byte)(255 * hits / 9));
+                }
+            tex.SetPixels32(px);
+            tex.Apply(false, true);
+            tex.filterMode = FilterMode.Bilinear;
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.hideFlags = HideFlags.HideAndDontSave;
+            _gear = Sprite.Create(tex, new Rect(0f, 0f, n, n), new Vector2(0.5f, 0.5f), 100f);
+            _gear.hideFlags = HideFlags.HideAndDontSave;
+            return _gear;
+        }
+
         private static Sprite _grip;
 
         /// <summary>Three diagonal lines in the corner: the usual resize grip, drawn rather than shipped.</summary>

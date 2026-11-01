@@ -56,6 +56,7 @@ namespace TheGreatestMap
             // that was this line.
             if (MarkerMenu.Hovered) { Hide(); return; }
             if (KindMenu.Hovered) { Hide(); return; }
+            if (GearMenu.Hovered) { Hide(); return; }
             if (Portals.PortalListHovered()) { Hide(); return; }
             if (Time.unscaledTime < _next) return;
             _next = Time.unscaledTime + Interval;
