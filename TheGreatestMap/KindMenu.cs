@@ -68,6 +68,9 @@ namespace TheGreatestMap
         /// </summary>
         private const float MinViewport = RowHeight * 6f;
 
+        /// <summary>How much of the title strip's right end the gear and the stick pin take.</summary>
+        private const float CornerButtons = 52f;
+
         /// <summary>
         /// A switch row is an icon and a name, drawn the way the map draws what it covers: full
         /// strength when shown, dimmed when hidden. An action row is gold text saying what a click
@@ -536,7 +539,10 @@ namespace TheGreatestMap
             // could not keep: with the markers off it read "show all", and pressing it put the
             // master switch back without showing anything a kind or a type was hiding. What it
             // does is hold every marker off at once, so it says that and shows whether it is on.
-            CheckBox(RowWidth - 36f - 76f, y + 3f, 76f,
+            // Clear of the two round buttons in the corner and level with them: the stick pin
+            // sits 6 from the right edge and the gear 30, both 22 across, so the strip they
+            // occupy is 52 wide and its middle is 17 below the top.
+            CheckBox(Width - CornerButtons - 6f - 76f, -(17f - 20f * 0.5f), 76f,
                 "hide all",
                 () => !AllShown,
                 () => { MarkerToggle.ToggleAll(); Refresh(); },
@@ -966,7 +972,7 @@ namespace TheGreatestMap
             img.raycastTarget = true;
             // Up to the master switch and no further, so the one word in the strip is still a
             // button rather than a place the panel can be grabbed by.
-            Place((RectTransform)go.transform, 0f, 0f, RowWidth - 110f, HeaderHeight + Pad);
+            Place((RectTransform)go.transform, 0f, 0f, Width - CornerButtons - 6f - 76f, HeaderHeight + Pad);
             var handle = go.GetComponent<MenuKit.DragHandle>();
             handle.OnDrag = OnMoveDrag;
             handle.OnEnd = RememberSpot;
@@ -1581,7 +1587,7 @@ namespace TheGreatestMap
         private static void Header(string text, float x, float y)
         {
             var header = MenuKit.Text(_root.transform, "Header", text, 15f, MenuKit.Header);
-            Place(header.rectTransform, x + 10f, y, RowWidth - 130f, HeaderHeight);
+            Place(header.rectTransform, x + 10f, y, Width - CornerButtons - 6f - 76f - 20f, HeaderHeight);
             header.alignment = TextAlignmentOptions.MidlineLeft;
         }
 
