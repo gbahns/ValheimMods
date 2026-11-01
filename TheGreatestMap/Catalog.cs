@@ -68,6 +68,17 @@ namespace TheGreatestMap
         Dynamic,
     }
 
+    /// <summary>How the types under a kind are listed.</summary>
+    internal enum TypeOrder
+    {
+        /// <summary>The catalog's own order, which is the order a player meets the things in it.</summary>
+        Progression,
+        /// <summary>Commonest first, which is what the list did before there was a choice.</summary>
+        MostFirst,
+        /// <summary>By name.</summary>
+        AToZ,
+    }
+
     /// <summary>Static facts about each category: defaults, labels.</summary>
     internal static class Categories
     {
@@ -430,7 +441,10 @@ namespace TheGreatestMap
                     return "Pickable_Mushroom=Mushrooms,Pickable_Mushroom_yellow=Yellow Mushrooms,Pickable_Mushroom_blue=Blue Mushrooms," +
                            "Pickable_Mushroom_Magecap=Magecap,Pickable_Mushroom_JotunPuffs=Jotun Puffs,Pickable_SmokePuff=Smoke Puffs";
                 case Category.Herbs:
-                    return "Pickable_Thistle=Thistle,Pickable_Dandelion=Dandelion";
+                    // In the order a player meets them, which is what the marker list reads to
+                    // put its rows in progression order: a dandelion in the meadows long before
+                    // a thistle in the black forest.
+                    return "Pickable_Dandelion=Dandelion,Pickable_Thistle=Thistle";
                 case Category.Seeds:
                     return "Pickable_SeedCarrot=Carrot Seeds,Pickable_SeedTurnip=Turnip Seeds,Pickable_SeedOnion=Onion Seeds";
                 case Category.Plants:
@@ -596,6 +610,9 @@ namespace TheGreatestMap
 
         private static void Rebuild()
         {
+            _orderByPrefab.Clear();
+            _orderByIcon = null;
+            _ordered = 0;
             _iconBySource.Clear();
             _byPrefab.Clear();
             _byPrefix.Clear();
@@ -623,6 +640,40 @@ namespace TheGreatestMap
             _built = true;
         }
 
+        /// <summary>
+        /// Where each prefab stands in its kind's catalog line, and from that where each icon
+        /// stands. The lines are written in the order a player meets the things in them --
+        /// dandelions before thistles, raspberries before cloudberries, copper before silver --
+        /// so the order is already there to be read, and a player who disagrees can reorder the
+        /// line and the map's lists follow.
+        /// </summary>
+        private static readonly Dictionary<string, int> _orderByPrefab = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        private static Dictionary<string, int> _orderByIcon;
+        private static int _ordered;
+
+        /// <summary>
+        /// Where this icon's type stands in its kind, or a number past the end for one the
+        /// catalog does not list. Built the first time it is wanted, from the catalog as parsed.
+        /// </summary>
+        internal static int OrderOf(string icon)
+        {
+            if (!_built) Rebuild();
+            if (_orderByIcon == null)
+            {
+                _orderByIcon = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                foreach (var kv in _orderByPrefab)
+                {
+                    string key = IconFor(kv.Key);
+                    if (key == null) continue;
+                    // The first line to claim a picture owns its place: two prefabs drawn alike
+                    // are one row in the list, and it stands where the earlier of them does.
+                    if (!_orderByIcon.ContainsKey(key) || _orderByIcon[key] > kv.Value) _orderByIcon[key] = kv.Value;
+                }
+            }
+            string norm = IconRegistry.Normalize(icon);
+            return norm != null && _orderByIcon.TryGetValue(norm, out int at) ? at : int.MaxValue;
+        }
+
         private static void Parse(Category cat, string list, Dictionary<string, Entry> byPrefab, List<KeyValuePair<string, Entry>> byPrefix)
         {
             foreach (var raw in (list ?? "").Split(','))
@@ -641,6 +692,10 @@ namespace TheGreatestMap
                     Name = string.IsNullOrEmpty(name) ? null : name,
                     Icon = string.IsNullOrEmpty(icon) ? null : icon,
                 };
+                // Counted across every kind rather than within one: the lists these order are
+                // always of one kind, and one running number needs no second bookkeeping.
+                string bare = prefab.TrimEnd('*');
+                if (bare.Length > 0 && !_orderByPrefab.ContainsKey(bare)) _orderByPrefab[bare] = ++_ordered;
                 if (prefab.EndsWith("*"))
                 {
                     string prefix = prefab.Substring(0, prefab.Length - 1);

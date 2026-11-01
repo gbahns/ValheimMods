@@ -212,9 +212,20 @@ namespace TheGreatestMap
                 entry.Count++;
             }
             var list = new List<TypeCount>(byIcon.Values);
-            list.Sort((a, b) => a.Count != b.Count
-                ? b.Count.CompareTo(a.Count)
-                : string.Compare(a.Label, b.Label, StringComparison.OrdinalIgnoreCase));
+            var order = TgmConfig.TypeRowOrder != null ? TgmConfig.TypeRowOrder.Value : TypeOrder.Progression;
+            list.Sort((a, b) =>
+            {
+                if (order == TypeOrder.MostFirst && a.Count != b.Count) return b.Count.CompareTo(a.Count);
+                if (order == TypeOrder.Progression)
+                {
+                    // The catalog's own order, which its lines are written in: a dandelion before
+                    // a thistle. Anything the catalog does not list sorts after everything it
+                    // does, by name, rather than jumbling in among them.
+                    int ra = Catalog.OrderOf(a.Icon), rb = Catalog.OrderOf(b.Icon);
+                    if (ra != rb) return ra.CompareTo(rb);
+                }
+                return string.Compare(a.Label, b.Label, StringComparison.OrdinalIgnoreCase);
+            });
             return list;
         }
     }

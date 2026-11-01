@@ -34,6 +34,7 @@ namespace TheGreatestMap
         internal static readonly Dictionary<Category, ConfigEntry<bool>> ShowKind = new Dictionary<Category, ConfigEntry<bool>>();
         internal static ConfigEntry<string> HiddenIcons;
         internal static ConfigEntry<string> MapsTidied;
+        internal static ConfigEntry<TypeOrder> TypeRowOrder;
         internal static ConfigEntry<bool> PauseWhileMapOpen;
         internal static ConfigEntry<bool> ShowPauseButton;
         internal static ConfigEntry<bool> MarkerButton;
@@ -317,6 +318,13 @@ namespace TheGreatestMap
                 "said \"copper here\" with the same confidence either way. A deposit mined to nothing is not covered, " +
                 "because the game destroys that one outright and there is nothing left to mark. 0 switches it off and " +
                 "every deposit is written the same.");
+
+            TypeRowOrder = mod.BindLocal("Display", "Type Order", TypeOrder.Progression,
+                "How the types under a kind are listed in the marker list. Progression is the order the catalog " +
+                "lines are written in, which is the order you meet the things in them -- a dandelion before a " +
+                "thistle, copper before silver -- and reordering a Catalog line reorders these to match. Most First " +
+                "puts the commonest at the top, which is what this did before there was a choice. A To Z is by name.");
+            TypeRowOrder.SettingChanged += (_, __) => KindMenu.Relayout();
 
             MapsTidied = mod.BindLocal("Internal", "Maps Tidied", "",
                 "Which version of this mod last brought each of your maps up to date, as name=version pairs. Written " +

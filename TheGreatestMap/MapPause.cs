@@ -82,7 +82,7 @@ namespace TheGreatestMap
             // legend has a pause mark of its own, built the same way, which keeps its own corner.
             var center = new Vector2(0.5f, 0.5f);
             if (rect.pivot != center) rect.pivot = center;
-            var want = MapFrame.Slot(3);   // leftmost of the row along the map's top edge
+            var want = MapFrame.Slot(2);   // leftmost of the row along the map's top edge
             if (rect.anchoredPosition != want) rect.anchoredPosition = want;
         }
     }

@@ -86,25 +86,33 @@
   so it is on everybody's map at the next sync, which is the point: those are the names you would
   otherwise have to say out loud.
 
-- **A gear beside the marker button, for how the map is drawn.** The two label switches were at
-  the foot of the marker list, which is a list of markers: whether a marker's name is written
-  beside it is about the whole map and about no marker in particular, so a reader looking for
-  "turn the labels off" had to go through the kinds to find it, and a reader going through the
-  kinds had to step over it. They now live behind a gear next to the marker button. It is
-  deliberately small, and it is where the other settings about drawing will go. Each is a
-  checkbox beside the name of what it draws, rather than a row captioned with what pressing it
-  would do: "Hide Marker Labels" is right for a row that performs an action and wrong for one that
-  holds a setting, and words that change under the pointer are what make a settings panel hard to
-  read at a glance.
+- **A gear in the marker list's title strip, for its settings.** The switches that say whether a
+  marker's name is written beside it were at the foot of the list, which is a list of markers:
+  that is about the whole map and about no marker in particular, so a reader looking for "turn
+  the labels off" had to go through the kinds to find it, and a reader going through the kinds
+  had to step over it. Press the gear, beside the stick pin, and the list shows its settings in
+  the place of the markers; press it again for the markers back.
+
+  Each is a box to check beside the name of what it does, rather than a row captioned with what
+  pressing it would do: "Hide Marker Labels" is right for a row that performs an action and wrong
+  for one that holds a setting, and words that change under the pointer are what make a settings
+  panel hard to read at a glance.
+
+  A view of the list rather than a window of its own, which is what it was for an afternoon. How
+  the map draws what this list decides to show is the same subject looked at from the other end,
+  and a second panel on the map's edge made it a peer of the markers when it is a part of them.
+
+- **The types under a kind can be ordered three ways.** They were listed commonest first, which
+  answers "what is there a lot of" and nothing else. **Progression** is now the default: the
+  order the catalog lists them in, which is the order you meet them -- a dandelion before a
+  thistle, copper before silver -- and reordering a Catalog line reorders these to match, so a
+  player who disagrees with the order can write their own. **Most first** is what it did before,
+  and **A to Z** is by name.
 
 - **The boss altars' names have a switch of their own.** The game writes those itself when you
   find a summoning stone, and turning the marker labels off took them with it -- five names on a
   whole world, each one worth reading, lost to a change made about berry bushes. **Show Boss
-  Labels** keeps them, and it is the third checkbox behind the gear.
-
-  The marker button keeps the corner it has always had, since its own offset setting is measured
-  from there -- so the gear takes the place next along, and the maximize square and the pause mark
-  step one to the left.
+  Labels** keeps them, and it is the third of the name switches behind the gear.
 
 - **The marker list is one column instead of two, and it scrolls.** Players called it confusing
   and overwhelming, and about a hundred things to press in one pop-up earned both. It is now a

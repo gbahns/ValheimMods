@@ -96,11 +96,16 @@ you harvest, and what runs out), **Places** (what you go to, and what stays put)
 (ships, carts, portals, other players, and the fires and benches a base is made of -- what is
 standing now rather than what was found). Pressing a heading hides every kind under it.
 
-**The gear** beside the marker button holds the settings about how the map is drawn rather than
-about which markers are on it. Three checkboxes for now: **Show Marker Labels**, **Show Portal
-Labels** and **Show Boss Labels**. Those are three switches rather than one because the three are
-not the same complaint -- marker names run to thousands, a base writes six portal names across
-itself, and the five boss names the game writes itself are each worth reading.
+**The gear** in the list's title strip, beside the stick pin, shows the list's settings in the
+place of the markers; press it again for the markers back.
+
+- **The order the types come in**: **Progression** (the order the catalog lists them in, which is
+  the order you meet them -- a dandelion before a thistle, copper before silver), **Most first**,
+  or **A to Z**. Reorder a Catalog line and the progression order follows it.
+- **What the map writes beside a marker**: marker names, portal names and boss names, each with a
+  switch. Three rather than one because they are not the same complaint -- marker names run to
+  thousands, a base writes six portal names across itself, and the five boss names the game writes
+  itself are each worth reading.
 
 The small buttons at the end of a row -- place by hand, only, ping, and the count of the ones you
 have crossed off -- are drawn on the row the pointer is resting on, and on any row whose button is
