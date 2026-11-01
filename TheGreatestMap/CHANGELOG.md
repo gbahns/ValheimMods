@@ -11,16 +11,23 @@
   for the herbs, the pickaxe you mine any vein with, tree seeds for the seeds, the cultivator for
   the wild crops, and a pile of bones rather than the skeleton trophy the evil bone pile itself
   wears. They are all settings in the Icons section, and
-  `tgm_items <word>` lists what else the game has to choose from. The berries, the mushrooms and the herbs
-  are drawn in the mod rather than borrowed, under the icon keys `drawn:berries`, `drawn:mushrooms`
-  and `drawn:herbs`. Those three are the kinds the game has no single item for -- there is nothing
-  in Valheim that means "berries, any of them" -- and what stood in for them read as a jar of jam,
+  `tgm_items <word>` lists what else the game has to choose from. Five of them are drawn in the mod
+  rather than borrowed, under the icon keys `drawn:berries`, `drawn:mushrooms`, `drawn:herbs`,
+  `drawn:dungeons` (a cave mouth) and `drawn:spawners` (a skull). Those are the kinds the game has no single item for -- there is nothing in
+  Valheim that means "berries, any of them", and the dungeon keys it has are each for one
+  dungeon -- and what stood in for them read as a jar of jam,
   a plate of omelette and a bowl of salad: food, rather than the thing you went looking for. Each
   is drawn plural, since one of anything is a picture of that one thing, which is the mistake this
   whole set of icons exists to undo. They arrive on the map as silhouettes, every recorded marker
   being painted one pale gold there, so the berries carry a seam carved between them and the two
-  mushrooms stand apart rather than being told apart by their colors; the colors show in the marker
-  list, which draws an icon as it is. Structures are the exception and
+  mushrooms stand apart rather than being told apart by their colors; the cave's way in and the
+  skull's sockets are cut out rather than shaded, a hole having to be a hole. The colors show in
+  the marker list, which draws an icon as it is.
+
+  Dungeons wore a plain dot before, on the grounds that nothing is "a crypt in general" and a
+  wrong picture is worse than a plain one. Both halves still hold -- which is why it is a hole in
+  the ground you walk into, the one thing a burial chamber, a sunken crypt, a frost cave, a troll
+  cave, an infested mine and a bear's den have in common. Structures are the exception and
   cannot be helped: the game draws no picture of an abandoned farm, so every structure wears
   vanilla's house pin for want of anything else to wear.
 

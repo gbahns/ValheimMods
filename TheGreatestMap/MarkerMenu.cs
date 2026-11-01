@@ -326,6 +326,8 @@ namespace TheGreatestMap
                 case "berries":   made = Berries(); break;
                 case "mushrooms": made = Mushrooms(); break;
                 case "herbs":     made = Herbs(); break;
+                case "dungeons":  made = Dungeons(); break;
+                case "spawners":  made = Spawners(); break;
             }
             _drawn[name] = made;
             return made;
@@ -547,6 +549,98 @@ namespace TheGreatestMap
                         }
                     if (leaf > 0) px[y * n + x] = new Color(green.r, green.g, green.b, leaf / 9f);
                     else if (stem > 0) px[y * n + x] = new Color(stemColor.r, stemColor.g, stemColor.b, stem / 9f);
+                }
+            return Bake(tex, px, n);
+        }
+
+        /// <summary>
+        /// A cave mouth: a dome standing on the ground with a way in cut out of it.
+        ///
+        /// <para>The kinds under Dungeons are a burial chamber, a sunken crypt, a frost cave, a
+        /// troll cave, an infested mine and a bear's den, and each of those wears the trophy of
+        /// whatever lives in it. There is no picture of "a dungeon" to borrow -- the keys the game
+        /// has are each for one dungeon, and a torch is a light source -- and the thing all six
+        /// have in common is a hole in the ground you walk into.</para>
+        ///
+        /// <para>The way in is cut out rather than colored dark, because the map paints every
+        /// recorded marker one color: a hole has to be a hole or it is not there at all.</para>
+        /// </summary>
+        private static Sprite Dungeons()
+        {
+            const int n = 64;
+            var rock = new Color(0.52f, 0.49f, 0.46f);
+            var ground = n * 0.13f;
+            var hill = new Vector2(n * 0.5f, n * 0.26f);     // the dome's centre, on the ground
+            float hillR = n * 0.35f;
+            var mouth = new Vector2(n * 0.5f, n * 0.25f);    // the way in, the same shape smaller
+            float mouthR = n * 0.145f;
+
+            bool Inside(Vector2 p, Vector2 c, float r)
+                => p.y >= ground && (p.y <= c.y ? Mathf.Abs(p.x - c.x) <= r : Vector2.Distance(p, c) <= r);
+
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    int hits = 0;
+                    for (int sy = 0; sy < 3; sy++)
+                        for (int sx = 0; sx < 3; sx++)
+                        {
+                            var p = new Vector2(x + (sx + 0.5f) / 3f, y + (sy + 0.5f) / 3f);
+                            if (Inside(p, hill, hillR) && !Inside(p, mouth, mouthR)) hits++;
+                        }
+                    if (hits > 0) px[y * n + x] = new Color(rock.r, rock.g, rock.b, hits / 9f);
+                }
+            return Bake(tex, px, n);
+        }
+
+        /// <summary>
+        /// A skull: what comes out of a nest, a draugr pile, a bone pile or a charred stone.
+        ///
+        /// <para>Each of those wears the trophy of its own creature, which is the thing worth
+        /// knowing before breaking one open. The kind itself needs the one picture they have in
+        /// common, and what a spawner is, is a place that keeps sending something at you. The
+        /// skeleton's own trophy was standing in for that, which made the kind and one of its
+        /// four members the same picture.</para>
+        /// </summary>
+        private static Sprite Spawners()
+        {
+            const int n = 64;
+            var bone = new Color(0.88f, 0.86f, 0.78f);
+            var head = new Vector2(n * 0.5f, n * 0.56f);
+            float headR = n * 0.235f;
+            var jawLeft = n * 0.375f;
+            var jawRight = n * 0.625f;
+            var jawTop = n * 0.40f;
+            var jawFoot = n * 0.23f;
+            var eyeL = new Vector2(n * 0.415f, n * 0.59f);
+            var eyeR = new Vector2(n * 0.585f, n * 0.59f);
+            float eyeR2 = n * 0.078f;
+            var nose = new Vector2(n * 0.5f, n * 0.465f);
+            float noseR = n * 0.042f;
+
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    int hits = 0;
+                    for (int sy = 0; sy < 3; sy++)
+                        for (int sx = 0; sx < 3; sx++)
+                        {
+                            var p = new Vector2(x + (sx + 0.5f) / 3f, y + (sy + 0.5f) / 3f);
+                            bool solid = Vector2.Distance(p, head) <= headR
+                                || (p.x >= jawLeft && p.x <= jawRight && p.y >= jawFoot && p.y <= jawTop);
+                            if (!solid) continue;
+                            // The sockets are cut out, not shaded: on the map this arrives as one
+                            // flat color, and a skull without holes in it is a stone.
+                            if (Vector2.Distance(p, eyeL) <= eyeR2) continue;
+                            if (Vector2.Distance(p, eyeR) <= eyeR2) continue;
+                            if (Vector2.Distance(p, nose) <= noseR) continue;
+                            hits++;
+                        }
+                    if (hits > 0) px[y * n + x] = new Color(bone.r, bone.g, bone.b, hits / 9f);
                 }
             return Bake(tex, px, n);
         }

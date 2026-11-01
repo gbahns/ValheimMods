@@ -306,7 +306,11 @@ namespace TheGreatestMap
                 case Category.Seeds:     return "BeechSeeds";         // seeds, and not any of the three crops' seeds
                 case Category.Plants:    return "Cultivator";         // what you plant a wild crop with
                 case Category.Ore:       return "PickaxeIron";        // mining, rather than one metal
-                case Category.Dungeon:   return "pin:Icon3"; // nothing is "a crypt in general": a wrong picture is worse than a plain one
+                // Was a plain dot, on the grounds that nothing is "a crypt in general" and a
+                // wrong picture is worse than a plain one. Both halves still hold -- the keys the
+                // game has are each for one dungeon -- so this is drawn rather than borrowed: a
+                // hole in the ground you walk into, which is what the six of them have in common.
+                case Category.Dungeon:   return "drawn:dungeons";
                 case Category.Runestone: return "pin:Memorial";
                 case Category.Trader:    return "Coins";
                 case Category.Camp:      return "pin:Icon0";
@@ -325,9 +329,10 @@ namespace TheGreatestMap
                 case Category.Cart:      return "piece:Cart";
                 // Only the fallback: every spawner in the list wears the trophy of whatever
                 // comes out of it, which is the thing worth knowing before you break one open.
-                // Bones rather than the skeleton's trophy, which is what the evil bone pile
-                // wears -- the kind and one of its own members should not be one picture.
-                case Category.Spawner:   return "BoneFragments";
+                // A skull for the kind itself, rather than the skeleton's trophy, which is what
+                // the evil bone pile wears -- the kind and one of its members should not be one
+                // picture.
+                case Category.Spawner:   return "drawn:spawners";
                 default:                 return "pin:Icon3";
             }
         }
