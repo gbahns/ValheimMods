@@ -292,6 +292,7 @@ counts as well unless "Structures Include Unlisted" is off or its prefab name is
 | `tgm_deposits` | Every deposit in the game, what it yields, and whether the catalog knows it |
 | `tgm_admin` | Ask the server whether it treats you as an admin, and what player id it sees |
 | `tgm_items <word>` | List the game's items matching a word, for choosing a marker icon |
+| `tgm_missing [all]` | What this mod can record that your map has none of yet, by kind |
 | `tgm_legend` | Open the legend (same as the legend key) |
 | `tgm_show` | Show every hidden marker again (single markers, hidden icons, hidden kinds and hidden crossed-off markers) |
 | `tgm_mapui` | What the large map's layout measures: how much screen it uses and how its parts are anchored |

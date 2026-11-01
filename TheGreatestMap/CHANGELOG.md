@@ -74,6 +74,13 @@
   catalog has no line for is left alone: that one knows what it is, and the catalog is what is
   missing.
 
+- **`tgm_missing` lists what this mod can record that your map has none of**, by kind. It is the
+  question the marker list cannot answer by its nature: a kind with no markers has no row, so the
+  thing you have never found is also the thing you cannot see missing. Catalog lines for things
+  this game does not have are counted and left out unless you ask for them with
+  `tgm_missing all`. What you have not recorded is not the same as what is not out there, which
+  is what `tgm_survey` reads off the world.
+
 - **`tgm_list` says what each marker is**, not only what it is called: its kind and the thing it
   was written for, which is the question somebody reading that list is usually asking.
 
@@ -160,6 +167,13 @@
     what was found, and none of it to be trusted a week from now). Pressing a heading hides every
     kind under it; its count is all of their markers added up. Nothing is stored per heading --
     hiding one is hiding each of its kinds, which is the setting that already existed.
+
+  - **A kind with one type still unfolds, where the type is not the kind under another name.**
+    The triangle was held back whenever a kind had a single type, on the grounds that the row
+    under it would only repeat the row above. That is true of Campfires over "Campfire" and false
+    of "Seeds (4)" over a map holding nothing but carrot seeds -- which said how many and never
+    which, and hid the one row that would have said. The test is now whether the type is named
+    after its kind rather than whether it happens to be alone.
 
   - **A kind unfolds into the types under it.** The triangle at the head of a row opens it:
     copper, tin, silver and obsidian under ore, each with its own switch, its own "only" and its

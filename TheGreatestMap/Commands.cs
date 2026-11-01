@@ -363,6 +363,57 @@ namespace TheGreatestMap
                     foreach (var name in found) args.Context.AddString("  " + name);
                 }));
 
+            new Terminal.ConsoleCommand("tgm_missing", "What this mod can record that your map has none of yet, by kind. Add all to include the things this game does not have at all",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    bool all = args.Args.Length >= 2 && args.Args[1].ToLowerInvariant() == "all";
+                    // What the map already stands for, by the prefab each marker was written
+                    // from. A prefix line counts as found when anything starting with it is.
+                    var have = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+                    foreach (var pin in ClientPins.All)
+                        if (!string.IsNullOrEmpty(pin.Source)) have.Add(pin.Source);
+
+                    var byKind = new SortedDictionary<string, List<string>>(System.StringComparer.OrdinalIgnoreCase);
+                    int absent = 0, known = 0;
+                    foreach (var row in Catalog.Legend())
+                    {
+                        if (row.NoPrefab && !all) { absent++; continue; }
+                        known++;
+                        string bare = row.Prefab.TrimEnd('*');
+                        bool found = false;
+                        foreach (var source in have)
+                        {
+                            if (row.Prefab.EndsWith("*", System.StringComparison.Ordinal)
+                                ? source.StartsWith(bare, System.StringComparison.OrdinalIgnoreCase)
+                                : string.Equals(source, bare, System.StringComparison.OrdinalIgnoreCase))
+                            { found = true; break; }
+                        }
+                        if (found) continue;
+                        string label = Categories.Label(row.Cat);
+                        if (!byKind.TryGetValue(label, out var list)) byKind[label] = list = new List<string>();
+                        list.Add(row.Name + (row.NoPrefab ? " (not in this game)" : ""));
+                    }
+
+                    void Out(string line)
+                    {
+                        args.Context.AddString(line);
+                        TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_missing: " + line);
+                    }
+                    int count = 0;
+                    foreach (var kv in byKind) count += kv.Value.Count;
+                    Out($"{count} of {known} things this mod can record are on none of your markers:");
+                    foreach (var kv in byKind)
+                    {
+                        kv.Value.Sort(System.StringComparer.OrdinalIgnoreCase);
+                        Out($"  {kv.Key}: {string.Join(", ", kv.Value.ToArray())}");
+                    }
+                    if (count == 0) Out("  nothing: your map has at least one of everything.");
+                    if (absent > 0 && !all)
+                        Out($"  {absent} more are catalog lines for things this game does not have; tgm_missing all lists those too.");
+                    Out("This is what you have not recorded, which is not the same as what you have not found: " +
+                        "tgm_survey names what is standing in the ground you have explored.");
+                }));
+
             new Terminal.ConsoleCommand("tgm_legend", "Open the legend: every marker this mod can draw and the thing it stands for",
                 (Terminal.ConsoleEvent)(args =>
                 {

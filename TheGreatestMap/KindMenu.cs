@@ -1606,9 +1606,13 @@ namespace TheGreatestMap
         private static float Unfold(Minimap map, RectTransform row, float y, Category kind)
         {
             if (row == null || _types == null) return y;
-            // One type needs no triangle: the row under it would say the same thing as the row
-            // above it, and a control that reveals a copy of itself is a control that lies.
-            if (!_types.TryGetValue(kind, out var types) || types.Count < 2) return y;
+            if (!_types.TryGetValue(kind, out var types) || types.Count == 0) return y;
+            // One type usually needs no triangle, the row under it saying what the row above it
+            // already says -- but only where the two are the same word. "Seeds (4)" over a map
+            // holding nothing but carrot seeds says how many and not which, and the one thing
+            // that would have said which was being hidden for being the only one. So the test is
+            // whether the type is named after its kind rather than whether it is alone.
+            if (types.Count == 1 && SaysTheSame(types[0].Label, Categories.Label(kind))) return y;
             var k = kind;
             Twisty(row, KindIndent, _unfolded.Contains(kind),
                    () => { if (!_unfolded.Remove(k)) _unfolded.Add(k); });
@@ -1620,6 +1624,17 @@ namespace TheGreatestMap
                 y -= RowHeight;
             }
             return y;
+        }
+
+        /// <summary>
+        /// Two names that say the same thing, give or take the plural: "Campfire" is what the
+        /// Campfires row already says, while "Carrot Seeds" is not what the Seeds row says.
+        /// </summary>
+        private static bool SaysTheSame(string type, string kind)
+        {
+            if (string.IsNullOrEmpty(type) || string.IsNullOrEmpty(kind)) return false;
+            return string.Equals(type.TrimEnd('s', 'S'), kind.TrimEnd('s', 'S'),
+                                 StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
