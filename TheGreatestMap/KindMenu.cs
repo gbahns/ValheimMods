@@ -792,7 +792,6 @@ namespace TheGreatestMap
             var handle = go.GetComponent<MenuKit.DragHandle>();
             handle.OnDrag = OnMoveDrag;
             handle.OnEnd = RememberSpot;
-            MenuKit.Tip(go, "Move the list", "Drag the title to move this list about the map");
         }
 
         private static void OnMoveDrag(Vector2 screenDelta)
