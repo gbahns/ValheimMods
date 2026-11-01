@@ -244,17 +244,37 @@ namespace TheGreatestMap
             return !string.IsNullOrEmpty(prefab) && KnownIcons.TryGetValue(prefab, out var icon) ? icon : null;
         }
 
-        /// <summary>Icon used when a thing's own item icon cannot be worked out. Item prefab name or pin:&lt;PinType&gt;.</summary>
+        /// <summary>
+        /// Icon used when a thing's own item icon cannot be worked out, and the picture the kind
+        /// itself wears in the marker list. Item prefab name or pin:&lt;PinType&gt;.
+        ///
+        /// <para><b>Never one of the kind's own members.</b> These used to be: berries wore a
+        /// raspberry, ore wore copper ore, herbs wore a dandelion. Unfold such a kind in the
+        /// marker list and the heading and one of the rows under it are the same picture, which
+        /// says the two are the same thing. Worse on the map: a hand-placed "there is ore here"
+        /// marker drew as copper, claiming to know a metal nobody had looked at.</para>
+        ///
+        /// <para>So each of these is something that stands for the whole kind and is nothing in
+        /// it: the jam you make of any berries, an omelette of any mushrooms, the pickaxe you mine
+        /// any vein with, a bowl of greens, a handful of tree seeds, the cultivator you plant a
+        /// wild crop with. Every one was checked against the game's own item list rather than
+        /// guessed -- a name the game does not have draws a plain dot. Each is a setting in the
+        /// Icons section, and `tgm_items &lt;word&gt;` lists what else there is to choose from.</para>
+        ///
+        /// <para>Structures are the exception, and cannot be helped: every structure wears
+        /// vanilla's house pin because the game draws no picture of an abandoned farm, so the kind
+        /// and its types look alike for want of anything else to look like.</para>
+        /// </summary>
         internal static string DefaultIcon(Category c)
         {
             switch (c)
             {
-                case Category.Berries:   return "Raspberry";
-                case Category.Mushrooms: return "Mushroom";
-                case Category.Herbs:     return "Dandelion";
-                case Category.Seeds:     return "CarrotSeeds";
-                case Category.Plants:    return "Flax";
-                case Category.Ore:       return "CopperOre";
+                case Category.Berries:   return "QueensJam";          // jam of raspberries and blueberries both
+                case Category.Mushrooms: return "MushroomOmelette";   // the dish, not one of the six mushrooms
+                case Category.Herbs:     return "Salad";              // a bowl of greens, rather than the thistle or the dandelion
+                case Category.Seeds:     return "BeechSeeds";         // seeds, and not any of the three crops' seeds
+                case Category.Plants:    return "Cultivator";         // what you plant a wild crop with
+                case Category.Ore:       return "PickaxeIron";        // mining, rather than one metal
                 case Category.Dungeon:   return "pin:Icon3"; // nothing is "a crypt in general": a wrong picture is worse than a plain one
                 case Category.Runestone: return "pin:Memorial";
                 case Category.Trader:    return "Coins";
@@ -273,7 +293,9 @@ namespace TheGreatestMap
                 case Category.Cart:      return "piece:Cart";
                 // Only the fallback: every spawner in the list wears the trophy of whatever
                 // comes out of it, which is the thing worth knowing before you break one open.
-                case Category.Spawner:   return "TrophySkeleton";
+                // Bones rather than the skeleton's trophy, which is what the evil bone pile
+                // wears -- the kind and one of its own members should not be one picture.
+                case Category.Spawner:   return "BoneFragments";
                 default:                 return "pin:Icon3";
             }
         }

@@ -2,6 +2,19 @@
 
 ## 4.7.0 -- unreleased
 
+- **A kind's own picture is no longer one of its members' pictures.** Berries wore a raspberry,
+  ore wore copper ore, herbs wore a dandelion -- so unfolding one of those kinds in the marker
+  list showed the same picture on the kind and on one of the rows under it, saying the two were
+  the same thing. It read worse on the map: a hand-placed "there is ore here" marker drew as
+  copper, claiming to know a metal nobody had looked at. Each of these now wears something that
+  stands for the whole kind and is nothing in it -- the jam you make of any berries, an omelette
+  of any mushrooms, the pickaxe you mine any vein with, a bowl of greens for the herbs, tree seeds
+  for the seeds, the cultivator for the wild crops, and a pile of bones rather than the skeleton
+  trophy the evil bone pile itself wears. They are all settings in the Icons section, and
+  `tgm_items <word>` lists what else the game has to choose from. Structures are the exception and
+  cannot be helped: the game draws no picture of an abandoned farm, so every structure wears
+  vanilla's house pin for want of anything else to wear.
+
 - **A gear beside the marker button, for how the map is drawn.** The two label switches were at
   the foot of the marker list, which is a list of markers: whether a marker's name is written
   beside it is about the whole map and about no marker in particular, so a reader looking for
