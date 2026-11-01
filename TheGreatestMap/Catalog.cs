@@ -97,7 +97,7 @@ namespace TheGreatestMap
             {
                 case Group.Resources: return "Resources";
                 case Group.Places:    return "Places";
-                case Group.Yours:     return "Your Own Marks";
+                case Group.Yours:     return "Your Stuff";
                 case Group.Dynamic:   return "Dynamic Markers";
                 default:              return g.ToString();
             }

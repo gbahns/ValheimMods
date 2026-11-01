@@ -91,8 +91,8 @@ as you like; the list scrolls on the wheel while the pointer is on it, and the t
 find box and the foot stay put while it does.
 
 Every kind sits under one of four headings, each with a triangle of its own: **Resources** (what
-you harvest, and what runs out), **Places** (what you go to, and what stays put), **Your Own
-Marks** (the fires you lit and what you noted by hand) and **Dynamic Markers** (ships, carts,
+you harvest, and what runs out), **Places** (what you go to, and what stays put), **Your
+Stuff** (the fires you lit and what you noted by hand) and **Dynamic Markers** (ships, carts,
 portals and other players, none of which is recorded -- those are where a thing is right now).
 Pressing a heading hides every kind under it.
 

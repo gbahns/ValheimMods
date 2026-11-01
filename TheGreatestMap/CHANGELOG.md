@@ -61,7 +61,7 @@
     a ship at the same level, and they are not the same sort of thing at all: one is where
     something grows, written down weeks ago, the other is where a boat is floating this second.
     So there are four headings, each folding away: **Resources** (what you harvest, and what runs
-    out), **Places** (what you go to, and what stays put), **Your Own Marks** (the fires you lit
+    out), **Places** (what you go to, and what stays put), **Your Stuff** (the fires you lit
     and what you noted by hand) and **Dynamic Markers** (ships, carts, portals and other players
     -- nothing here is recorded, it is where a thing is right now). Pressing a heading hides every
     kind under it; its count is all of their markers added up. Nothing is stored per heading --
