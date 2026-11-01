@@ -133,6 +133,12 @@
   process: the Ashlands is made of cliffs that yield Grausten, and a marker on each of those is a
   marker on the ground itself.
 
+- **`tgm_survey` no longer counts its own markers as ones your map already had.** One line
+  reported both "something was already here" and "the marker written a moment ago, four meters
+  away, is the same bush", so a survey of a 667-marker map could report 1,158 things already
+  marked and leave no way to tell which number was which. They are now two lines, and the second
+  one is worth reading: it is how twenty thousand bushes become a few hundred markers.
+
 - **`tgm_survey` can be given the kinds to take**: `tgm_survey 5000 apply Berries,Mushrooms,Herbs,Seeds`
   marks the plants in explored land and leaves everything else alone. A word that is not a kind is
   refused and listed, because silently surveying everything because a word was misspelled is how a

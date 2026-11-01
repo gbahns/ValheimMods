@@ -187,7 +187,7 @@ namespace TheGreatestMap
 
                 Count(byThing, Catalog.Prettify(best.Source) + " (" + best.Source + ")");
                 int crossedBefore = journal.Crossed.Count;
-                var verdict = Consider(best, apply, sofar, out var wrote,
+                var verdict = Consider(best, apply, sofar, out var wrote, out _,
                                        pinData.m_checked, journal.Crossed);
                 if (verdict == Verdict.Written && apply) journal.Wrote.Add(wrote);
                 if (pinData.m_checked || best.Cleared)
@@ -545,19 +545,25 @@ namespace TheGreatestMap
             var sofar = new List<Written>();
             var byKind = new SortedDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             var kindsOff = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
-            int written = 0, already = 0, erased = 0, off = 0, unexplored = 0, capped = 0, refused = 0, interior = 0;
+            int written = 0, already = 0, deduped = 0, erased = 0, off = 0, unexplored = 0, capped = 0, refused = 0, interior = 0;
             var clock = System.Diagnostics.Stopwatch.StartNew();
 
             void Judge(Found found)
             {
-                switch (Consider(found, apply, sofar, out var wrote))   // nothing here was ever crossed off by hand
+                // Nothing here was ever crossed off by hand.
+                switch (Consider(found, apply, sofar, out var wrote, out bool wasOnMap))
                 {
                     case Verdict.Written:
                         written++;
                         Count(byKind, Categories.Label(found.Cat));
                         if (apply) journal.Wrote.Add(wrote);
                         break;
-                    case Verdict.Marked:  already++; break;
+                    // One word was covering two different facts: a marker that was on the map
+                    // before this ran, and one this run wrote moments ago a few meters away. The
+                    // second is how twenty thousand bushes become a few hundred markers, and
+                    // counting it with the first made the report claim the map already held
+                    // markers it never had -- a run on a 667-marker map said 1,158 were marked.
+                    case Verdict.Marked:  if (wasOnMap) already++; else deduped++; break;
                     case Verdict.Erased:  erased++;  break;
                     case Verdict.KindOff: off++; kindsOff.Add(Categories.Label(found.Cat)); break;
                     case Verdict.Refused: refused++; break;
@@ -647,7 +653,9 @@ namespace TheGreatestMap
                   "Nothing written yet.");
             lines.Add($"  {written} marker(s) {(apply ? "written" : "to write")}" + (written > 0 ? ":" : "."));
             foreach (var kv in byKind) lines.Add($"    {kv.Key}: {kv.Value}");
-            if (already > 0) lines.Add($"  {already} are already marked, within the marker spacing of their kind.");
+            if (already > 0) lines.Add($"  {already} stand within the marker spacing of a marker or pin your map already had.");
+            if (deduped > 0) lines.Add($"  {deduped} stand close enough to one of the markers above to be the same find, " +
+                                       "so one marker speaks for all of them.");
             if (erased > 0) lines.Add($"  {erased} stand where a marker was erased, so none is written.");
             if (off > 0) lines.Add($"  {off} are of a kind that is switched off ({string.Join(", ", New(kindsOff))}).");
             if (refused > 0) lines.Add($"  {refused} could not be written at all; the log says why.");
@@ -751,9 +759,10 @@ namespace TheGreatestMap
         /// meters. Both of these tools come through here.
         /// </summary>
         private static Verdict Consider(Found found, bool apply, List<Written> sofar, out PinKey wrote,
-                                        bool crossedOff = false, List<PinKey> alsoCrossed = null)
+                                        out bool wasOnMap, bool crossedOff = false, List<PinKey> alsoCrossed = null)
         {
             wrote = default(PinKey);
+            wasOnMap = false;
             // Either the pin said so or the thing itself does: a deposit the world says is mined
             // out is crossed off whether or not anybody had ticked a pin over it.
             crossedOff = crossedOff || found.Cleared;
@@ -763,7 +772,8 @@ namespace TheGreatestMap
             float spacing = TgmConfig.MarkerSpacing.TryGetValue(found.Cat, out var s) ? s.Value : 1f;
             float radius = Mathf.Max(spacing, found.Radius);
             var at = found.DedupeCenter;
-            if (ClientPins.HasPinNear(found.Icon, at, radius) || Near(sofar, found.Icon, at, radius))
+            wasOnMap = ClientPins.HasPinNear(found.Icon, at, radius);
+            if (wasOnMap || Near(sofar, found.Icon, at, radius))
             {
                 // Something already stands for this thing, but it does not know what the pin knew.
                 // A marker somebody crossed off is a marker about a mined-out vein or a chamber
