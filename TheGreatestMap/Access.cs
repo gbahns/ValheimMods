@@ -25,6 +25,31 @@ namespace TheGreatestMap
             AccessTools.FieldRefAccess<Minimap, bool>("m_pinUpdateRequired");
         internal static readonly AccessTools.FieldRef<Minimap, bool[]> VisibleIconTypes =
             AccessTools.FieldRefAccess<Minimap, bool[]>("m_visibleIconTypes");
+        /// <summary>
+        /// The little highlight on each of the map's icon buttons, by the type it stands for. The
+        /// game colors the button *behind* each of these to gray a filtered type out, so this is
+        /// the way to the buttons themselves as well.
+        /// </summary>
+        internal static readonly AccessTools.FieldRef<Minimap, Dictionary<Minimap.PinType, UnityEngine.UI.Image>> SelectedIcons =
+            AccessTools.FieldRefAccess<Minimap, Dictionary<Minimap.PinType, UnityEngine.UI.Image>>("m_selectedIcons");
+
+        private static readonly MethodInfo _selectIcon = AccessTools.Method(typeof(Minimap), "SelectIcon");
+
+        /// <summary>
+        /// Arm the game's own pin placing for one icon, as clicking that icon's button does. The
+        /// game's method rather than setting the field: it also moves the highlight from one
+        /// button to the next and turns the ping selection off, and a player who looks down at
+        /// the buttons has to see the one that is armed.
+        /// </summary>
+        internal static void SelectIcon(Minimap map, Minimap.PinType type)
+        {
+            if (map == null || _selectIcon == null) return;
+            try { _selectIcon.Invoke(map, new object[] { type }); }
+            catch (System.Exception e)
+            {
+                TheGreatestMapMod.Log.LogWarning("[TheGreatestMap] Could not arm the game's pin icon: " + e.Message);
+            }
+        }
 
         private static readonly MethodInfo _worldToMapPoint = AccessTools.Method(typeof(Minimap), "WorldToMapPoint");
 

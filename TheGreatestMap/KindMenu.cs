@@ -69,7 +69,7 @@ namespace TheGreatestMap
         private const float MinViewport = RowHeight * 6f;
 
         /// <summary>How much of the title strip's right end the gear and the stick pin take.</summary>
-        private const float CornerButtons = 52f;
+        private const float CornerButtons = 76f;
 
         /// <summary>
         /// A switch row is an icon and a name, drawn the way the map draws what it covers: full
@@ -314,6 +314,124 @@ namespace TheGreatestMap
                 : new Color(0.75f, 0.73f, 0.7f, 0.55f);
         }
 
+        /// <summary>
+        /// The triangle in the corner: one press opens every heading and every kind under them,
+        /// and the next shuts the lot.
+        ///
+        /// <para>It is the twisties' own control, raised a level, so it says what they say: a
+        /// triangle lying on its side for shut and turned down for open, showing the state the
+        /// list is in rather than the state the press would put it in. Anything folded anywhere
+        /// counts as shut, because what a reader wants from this button when part of the list is
+        /// away is the rest of it back -- not half of what is in front of them folded to match.
+        /// </para>
+        /// </summary>
+        private static void BuildFoldAll()
+        {
+            var go = new GameObject("FoldAll", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image),
+                                    typeof(Button), typeof(MenuKit.Glow));
+            go.transform.SetParent(_root.transform, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(1f, 1f);
+            rt.anchoredPosition = new Vector2(-54f, -6f);
+            rt.sizeDelta = new Vector2(22f, 22f);
+            var hit = go.GetComponent<Image>();
+            hit.color = new Color(1f, 1f, 1f, 0.07f);
+            hit.raycastTarget = true;
+
+            var face = new GameObject("Triangle", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            face.transform.SetParent(go.transform, false);
+            var frt = (RectTransform)face.transform;
+            frt.anchorMin = frt.anchorMax = frt.pivot = new Vector2(0.5f, 0.5f);
+            frt.anchoredPosition = Vector2.zero;
+            frt.sizeDelta = new Vector2(12f, 12f);
+            _foldImage = face.GetComponent<Image>();
+            _foldImage.sprite = MenuKit.Triangle();
+            _foldImage.preserveAspect = true;
+            _foldImage.raycastTarget = false;
+            _foldRect = frt;
+            _foldGlow = go.GetComponent<MenuKit.Glow>();
+
+            var button = go.GetComponent<Button>();
+            button.transition = Selectable.Transition.None;
+            button.targetGraphic = hit;
+            button.onClick.AddListener(() =>
+            {
+                if (AnythingFolded()) OpenEverything(); else ShutEverything();
+                // The rows themselves change rather than their colors, so this is a redraw in
+                // place, asked for between frames like every other one here.
+                _rebuildWanted = true;
+            });
+            MenuKit.Tip(go, "Open or shut", "Open every heading and kind at once, or shut them all");
+            PaintFoldAll();
+        }
+
+        private static Image _foldImage;
+        private static RectTransform _foldRect;
+        private static MenuKit.Glow _foldGlow;
+
+        private static void PaintFoldAll()
+        {
+            if (_foldImage == null) return;
+            bool open = !AnythingFolded();
+            bool over = _foldGlow != null && _foldGlow.Over;
+            _foldImage.color = over ? MenuKit.HoverColor
+                : open ? new Color(1f, 0.85f, 0.45f, 1f)
+                : new Color(0.75f, 0.73f, 0.7f, 0.55f);
+            // Turned a quarter turn to point down at what it opened, the way the row triangles do
+            // and the way the stick pin turns rather than changing picture.
+            if (_foldRect != null) _foldRect.localRotation = Quaternion.Euler(0f, 0f, open ? -90f : 0f);
+        }
+
+        /// <summary>
+        /// Is any triangle in the list shut -- a heading, a kind with types under it, or a plant
+        /// half? Only rows that are really drawn are asked: a kind with nothing on the map has no
+        /// triangle, and counting it would leave the corner saying shut forever.
+        /// </summary>
+        private static bool AnythingFolded()
+        {
+            if (_foldedGroups.Count > 0) return true;
+            if (SplitPlants)
+                foreach (var half in new[] { Harvest.Farm, Harvest.Gather })
+                    if (PlantTypes(half).Count > 0 && !_unfoldedPlants.Contains(half)) return true;
+            foreach (var kind in Categories.All)
+                if (Foldable(kind) && !_unfolded.Contains(kind)) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Does this kind have a triangle? The same three questions <see cref="Unfold"/> asks
+        /// before it draws one, in the same order, so the corner button and the rows cannot
+        /// disagree about what there is to open.
+        /// </summary>
+        private static bool Foldable(Category kind)
+        {
+            if (_types == null || !_types.TryGetValue(kind, out var types) || types.Count == 0) return false;
+            // Drawn in the plant halves instead, which have triangles of their own.
+            if (SplitPlants && Categories.IsGrown(kind)) return false;
+            return types.Count > 1 || !SaysTheSame(types[0].Label, Categories.Label(kind));
+        }
+
+        private static void OpenEverything()
+        {
+            _foldedGroups.Clear();
+            _unfolded.Clear();
+            foreach (var kind in Categories.All) if (Foldable(kind)) _unfolded.Add(kind);
+            _unfoldedPlants.Clear();
+            if (SplitPlants)
+                foreach (var half in new[] { Harvest.Farm, Harvest.Gather })
+                    if (PlantTypes(half).Count > 0) _unfoldedPlants.Add(half);
+        }
+
+        private static void ShutEverything()
+        {
+            _unfolded.Clear();
+            _unfoldedPlants.Clear();
+            // The headings as well, which is what makes this worth a button: shut, the whole list
+            // is the four words it is made of, and nothing is lost -- a heading opens again onto
+            // kinds that are themselves shut, which is how the list first looked.
+            foreach (var group in Categories.AllGroups) _foldedGroups.Add(group);
+        }
+
         private static void BuildPin()
         {
             // Two objects, because a rect turns about its pivot and this one's pivot is its
@@ -488,6 +606,7 @@ namespace TheGreatestMap
 
             float height = -y + Pad;
             _rect.sizeDelta = new Vector2(Width, height);
+            BuildFoldAll();
             BuildGear();
             BuildPin();
 
@@ -639,15 +758,24 @@ namespace TheGreatestMap
                 var g = group;
                 var kinds = new List<Category>();
                 foreach (var kind in Categories.All) if (Categories.GroupOf(kind) == g && Listed(kind)) kinds.Add(kind);
-                if (kinds.Count == 0) continue;
+                // A heading stands for its vanilla pins as well, and for nothing else if that is
+                // all it has: Your Stuff with no sightings on the map still has the hundred pins
+                // the player dropped by hand under it.
+                var vanilla = VanillaRows(map, g);
+                if (kinds.Count == 0 && vanilla.Count == 0) continue;
                 bool resources = AllResources(kinds);
 
                 // The heading is a switch like every other row here: pressed, it hides the kinds
                 // under it, which is the setting those kinds already had. The triangle folds it.
                 var heading = SwitchRow(map, _content, 0f, y, GroupIndent, null,
                     GroupHeading(map, g, kinds),
-                    () => SetKinds(kinds, !AnyKindShown(kinds)),
-                    () => AllShown && AnyKindShown(kinds),
+                    () =>
+                    {
+                        bool show = !GroupShown(map, g, kinds);
+                        SetKinds(kinds, show);
+                        VanillaPins.SetAll(map, g, show);
+                    },
+                    () => AllShown && GroupShown(map, g, kinds),
                     caption: () => GroupHeading(map, g, kinds),
                     doneCount: () => DoneIn(kinds),
                     doneShown: () => GroupDoneShown(kinds),
@@ -679,6 +807,10 @@ namespace TheGreatestMap
                     }
                     y = KindRow(map, kind, y);
                 }
+                // Below the kinds rather than among them: these are not kinds, nothing records
+                // them, and what they mean is the player's own business. Under the heading all
+                // the same, because the question the heading asks is the one they answer.
+                foreach (var type in vanilla) y = VanillaRow(map, type, y);
             }
             return LooseEnds(y);
         }
@@ -1165,7 +1297,58 @@ namespace TheGreatestMap
                 if (Categories.IsLive(kind) || kind == Category.Player) lit += KindCount(map, kind);
                 else { _shown.TryGetValue(kind, out int some); lit += some; }
             }
+            VanillaPins.Tally(map, group, out int theirs, out int theirsLit);
+            n += theirs;
+            lit += theirsLit;
             return Named(Categories.GroupLabel(group), lit, n);
+        }
+
+        /// <summary>
+        /// Is anything under this heading being drawn -- a kind of ours, or a type of vanilla's?
+        /// Both, because the heading's switch covers both, and a switch that reads only half of
+        /// what it sets says hide when there is nothing left to hide.
+        /// </summary>
+        private static bool GroupShown(Minimap map, Group group, List<Category> kinds)
+        {
+            return AnyKindShown(kinds) || VanillaPins.AnyShown(map, group);
+        }
+
+        /// <summary>The map's own pin types that belong under this heading and have any pins.</summary>
+        private static List<Minimap.PinType> VanillaRows(Minimap map, Group group)
+        {
+            var list = new List<Minimap.PinType>();
+            var types = group == Group.Yours ? VanillaPins.Yours
+                      : group == Group.Places ? VanillaPins.Theirs : null;
+            if (types == null) return list;
+            foreach (var type in types) if (VanillaPins.CountOf(type) > 0) list.Add(type);
+            return list;
+        }
+
+        /// <summary>
+        /// One of the map's own pin types: its picture, what you call it, how many there are, and
+        /// the switch -- which is vanilla's own switch, so its button under the map grays out with
+        /// this row.
+        ///
+        /// <para>No crossed-off count, nothing of these being recorded to cross off, and no
+        /// filter: a focus names a kind or an icon of ours and has nothing to say about a pin this
+        /// mod never wrote. The five placeable ones get the place-by-hand button, which arms
+        /// vanilla's own placing for that icon -- the other half of what its button under the map
+        /// does -- so for those five this row is the button, and that is what makes doing without
+        /// the button strip thinkable.</para>
+        /// </summary>
+        private static float VanillaRow(Minimap map, Minimap.PinType type, float y)
+        {
+            var t = type;
+            Func<string> caption = () => Named(VanillaPins.Label(t),
+                                               VanillaPins.ShownCount(map, t), VanillaPins.CountOf(t));
+            SwitchRow(map, _content, 0f, y, KindIndent, VanillaPins.IconKey(t), caption(),
+                () => VanillaPins.Toggle(map, t),
+                () => AllShown && VanillaPins.Drawn(map, t),
+                onPlace: VanillaPins.Placeable(t) ? (Action)(() => VanillaPins.Place(map, t)) : null,
+                placeLit: () => VanillaPins.Armed(map, t),
+                caption: caption,
+                tip: VanillaPins.Tip(t));
+            return y - RowHeight;
         }
 
         /// <summary>
@@ -1291,6 +1474,7 @@ namespace TheGreatestMap
                                                Action onPlace = null, Action onOnly = null, Action onLocate = null,
                                                Func<string> caption = null, Category? placeKind = null,
                                                Func<bool> onlyLit = null, Func<bool> pingLit = null,
+                                               Func<bool> placeLit = null,
                                                Func<int> doneCount = null, Func<bool> doneShown = null,
                                                Action doneToggle = null, bool gone = false,
                                                bool head = false, bool icon = true, string tip = null)
@@ -1338,8 +1522,11 @@ namespace TheGreatestMap
             {
                 if (onPlace != null)
                 {
-                    Func<bool> armed = () => placeKind.HasValue && ManualPlace.Armed.HasValue
-                                             && ManualPlace.Armed.Value == placeKind.Value;
+                    // A row for one of the map's own pin types has no kind to arm and passes its
+                    // own answer: vanilla's selected icon, which is a different question asked of
+                    // a different place.
+                    Func<bool> armed = placeLit ?? (() => placeKind.HasValue && ManualPlace.Armed.HasValue
+                                             && ManualPlace.Armed.Value == placeKind.Value);
                     group.Add(RowButton(row, "+", 15f, right, RowHeight - 8f, onPlace,
                         lit: armed,
                         tipTopic: "Place Manually",
@@ -1718,6 +1905,10 @@ namespace TheGreatestMap
         /// </summary>
         private static void Recount()
         {
+            // The map's own pins, which are in the same list as ours and have to be told apart
+            // from them. Counted here so every number in the panel is read in one place and at
+            // one moment.
+            VanillaPins.Recount(Minimap.instance);
             _counts.Clear();
             _shown.Clear();
             _shownByIcon.Clear();
@@ -2079,6 +2270,7 @@ namespace TheGreatestMap
             if (_rebuildWanted) { Rebuild(); return; }
             PaintPin();
             PaintGear();
+            PaintFoldAll();
             SettingsMenu.Update();
             float wheel = _wheel;
             _wheel = 0f;

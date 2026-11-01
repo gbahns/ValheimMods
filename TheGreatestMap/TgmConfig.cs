@@ -38,6 +38,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<TypeOrder> TypeRowOrder;
         internal static ConfigEntry<bool> ShowCounts;
         internal static ConfigEntry<bool> SplitPlantsByFarming;
+        internal static ConfigEntry<string> VanillaPinNames;
         internal static ConfigEntry<bool> PauseWhileMapOpen;
         internal static ConfigEntry<bool> ShowPauseButton;
         internal static ConfigEntry<bool> MarkerButton;
@@ -371,6 +372,15 @@ namespace TheGreatestMap
                 "\"what is there\". The count of what you are finished with keeps its button either way, that one " +
                 "being the switch for them as well as the number.");
             ShowCounts.SettingChanged += (_, __) => KindMenu.Relayout();
+
+            VanillaPinNames = mod.BindLocal("Display", "Vanilla Pin Names", VanillaPins.DefaultNames,
+                "What the marker list calls the map's own pins, as PinType=Name pairs. The game gives its five " +
+                "placeable icons no names at all -- they are five pictures, and what each one means is whatever you " +
+                "decided it means -- so they ship named after what they look like and this is where you write down " +
+                "what yours are for: Icon2=Places, Icon3=Resources. Anything you leave out keeps its shipped name. " +
+                "Icon0 is the fire, Icon1 the house, Icon2 the hammer, Icon3 the plain dot and Icon4 the portal; " +
+                "None is every landmark the game draws for the world at once.");
+            VanillaPinNames.SettingChanged += (_, __) => KindMenu.Relayout();
 
             SplitPlantsByFarming = mod.BindLocal("Display", "Split Plants By Farming", true,
                 "In the marker list, stand two rows in place of the five plant kinds -- Farm and Gather, instead " +

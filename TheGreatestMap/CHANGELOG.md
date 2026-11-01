@@ -2,6 +2,43 @@
 
 ## 4.7.0 -- unreleased
 
+- **The map's own pins are in the marker list.** It had a row for everything this mod records and
+  everything the server answers for, and nothing at all for the hundred pins a player had placed
+  themselves -- so a map with both on it could be read from one place for half of it and had to be
+  read from vanilla's buttons for the other half. Worse, the two halves said different things with
+  the same words: pressing Structures hid the structures this mod recorded and left a hand-placed
+  house pin exactly where it was. Under **Your Stuff** there are now rows for the five icons the
+  game lets you drop, your death marker and your bed; under **Places**, one row for the landmarks
+  the game draws for the world.
+
+  They press vanilla's own switch rather than keeping a shadow copy of it. Hiding your hammer pins
+  from this list is the same act as double-clicking the hammer under the map, and vanilla's button
+  grays out to match -- two controls for one state have to move together or the one you are not
+  looking at is lying. Two of these the game gives no button for at all, because `UpdatePins` reads
+  that array for every pin it draws while only eight types have a button: **the bed**, and **the
+  landmarks** -- the boss altars, the traders, Hildir's camps and the center of the world, which are
+  one pin type between them and so one switch. The hide-all box still leaves the landmarks alone on
+  purpose, those being the map rather than notes on it; this row is how you put them away
+  deliberately. Note that the Places heading now covers them, since a heading that does not set
+  what it lists is the same lie in the other direction.
+
+  The five placeable icons also carry the place-by-hand button, which arms the game's own placing
+  for that icon -- the other half of what its button under the map does -- so for those five the
+  row is the button.
+
+  The game gives these pins no names: they are five pictures, and what each one means is whatever
+  you decided it means. They ship named after what they look like -- Fire, House, Hammer, Dot,
+  Portal -- and `Vanilla Pin Names` in the Display section is where you write down what yours are
+  for (`Icon2=Places,Icon3=Resources`). Anything left out keeps its shipped name.
+
+- **One triangle in the corner opens or shuts the whole list.** Beside the gear and the stick pin,
+  and it is the row triangles' own control raised a level, so it says what they say: lying on its
+  side for shut, turned down for open, showing the state the list is in rather than the state the
+  press would put it in. Anything folded anywhere counts as shut, because what a reader wants from
+  that button when part of the list is away is the rest of it back, not half of what is in front of
+  them folded to match. Shut, the whole list is the four words it is made of, and nothing is lost:
+  a heading opens again onto kinds that are themselves shut, which is how the list first looked.
+
 - **The plants are grouped by whether you can farm them.** Under Resources, two rows stand in
   place of the five plant kinds: **Farm** and **Gather**, each listing its types directly. The reason to
   write a plant down is that you will have to come back for it, and planting it is what stops that

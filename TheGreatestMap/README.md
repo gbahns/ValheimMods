@@ -90,6 +90,11 @@ underneath, each with a switch of its own, so the copper can go and the silver s
 as you like; the list scrolls on the wheel while the pointer is on it, and the title strip, the
 find box and the foot stay put while it does.
 
+The triangle in the title strip, beside the gear and the stick pin, opens every heading and every
+kind at once, and shuts them all again. It shows the state the list is in rather than what the
+press would do -- turned down while everything is open, lying on its side while anything anywhere
+is folded away.
+
 Every kind sits under one of four headings, each with a triangle of its own: **Resources** (what
 you harvest, and what runs out), **Places** (what you go to, and what stays put), **Your Stuff**
 (what you noted by hand, about something the catalog will never know) and **Dynamic Markers**
@@ -182,6 +187,19 @@ Structures, portals, camps and boss altars are in that list too, even though the
 own map icons (house, portal, campfire, boss) and vanilla's buttons hide those as well. The two are
 not the same: vanilla's button hides every pin with that icon including ones you placed by hand,
 while ours hides only the markers this mod recorded.
+
+**The map's own pins are in the list as well.** Under Your Stuff there are rows for the five icons
+the game lets you drop, your death marker and your bed; under Places, one row for the landmarks the
+game draws for the world -- boss altars, traders, Hildir's camps and the center of it, which are one
+pin type between them and so one switch. These press vanilla's own switch rather than a copy of it,
+so hiding your hammer pins here is the same act as double-clicking the hammer under the map, and
+that button grays out to match. The bed and the landmarks are switches the game itself does not
+offer. The five placeable icons also carry the place-by-hand button, which arms the game's own
+placing for that icon.
+
+The game gives these pins no names -- they are five pictures, and what each means is whatever you
+decided it means -- so they ship named after what they look like (Fire, House, Hammer, Dot, Portal)
+and "Vanilla Pin Names" is where you write down what yours are for: `Icon2=Places,Icon3=Resources`.
 
 **Things that run out get crossed off, not forgotten.** Mining a deposit to nothing, or picking a
 plant that never grows back, crosses its marker off for everyone instead of erasing it, so you can
