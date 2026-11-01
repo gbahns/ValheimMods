@@ -129,7 +129,16 @@
     stick pin, where a window's power switch belongs. A box rather than a word, because the word
     was a promise it could not keep: with the markers off it read "show all", and pressing it put
     the master switch back without showing anything a kind or a type was hiding. It says "hide
-    all", which is what checking it does, and the box says whether it is on. The other names what it will put back -- "Show
+    all", which is what checking it does, and the box says whether it is on.
+
+    **And it now means all of it.** It used to take off only this mod's markers, which left the
+    words wrong on a map still carrying a hundred hand-placed pins and every death marker. The
+    line falls between what a player put on the map and what the game put there: everything you
+    made goes -- this mod's markers, the five pins vanilla lets you place, your death markers,
+    your bed -- and the game's own landmarks stay, because they are the map rather than notes on
+    it. The boss altars, the traders, Hildir's camps and the center of the world are all pins the
+    game keeps for the locations it knows, so hiding those would be hiding the world. Players,
+    pings and shouts stay too, being live and gone in a moment anyway. The other names what it will put back -- "Show
     everything hidden -- 2 kinds, 5 markers" -- and is drawn only when it would put something
     back, which on most maps means not at all.
 

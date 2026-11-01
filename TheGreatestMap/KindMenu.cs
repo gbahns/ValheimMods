@@ -456,8 +456,10 @@ namespace TheGreatestMap
                 () => !AllShown,
                 () => { MarkerToggle.ToggleAll(); Refresh(); },
                 "All markers",
-                "Hold every one of this mod's markers off the map at once, whatever the switches " +
-                "below say. Unchecking it leaves those exactly as they were.");
+                "Take everything you have put on the map off it at once: this mod's markers, the pins " +
+                "you placed by hand, your death markers and your bed. The game's own landmarks stay -- " +
+                "boss altars, traders, Hildir's camps, the center of the world -- and so do players, " +
+                "pings and shouts. Unchecking it leaves every switch below exactly as it was.");
             y -= HeaderHeight;
 
             FindBox(0f, y);

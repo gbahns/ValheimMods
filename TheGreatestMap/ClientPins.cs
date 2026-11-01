@@ -880,6 +880,72 @@ namespace TheGreatestMap
             if (map != null) ApplyLabelVisibility(map);
         }
 
+        /// <summary>Whether the player's own vanilla pins are currently held off, so the pass that
+        /// puts them back still runs the once after the master switch comes on again.</summary>
+        private static bool _ownPinsHidden;
+
+        /// <summary>
+        /// "Hide all" means all of it: the vanilla pins a player made as well as this mod's.
+        ///
+        /// <para>It used to mean only ours, which made the words wrong on a map that still had a
+        /// hundred hand-placed pins and every death marker on it. What a player wants from that
+        /// switch is the land back -- the terrain, and the few things that are not theirs.</para>
+        ///
+        /// <para>So the line falls between what a player put on the map and what the game put
+        /// there. Everything a player made goes: this mod's markers, the five pins vanilla lets
+        /// them place, their death markers, their bed. The game's own landmarks stay, because
+        /// they are the map rather than notes on it -- the boss altars, the traders, Hildir's
+        /// camps and the world's center are all <c>PinType.None</c> pins the game keeps in
+        /// <c>m_locationPins</c> and rebuilds every five seconds from the locations it knows, so
+        /// hiding them would be hiding the world. Players, pings and shouts stay too: they are
+        /// live and they are gone in a moment anyway.</para>
+        ///
+        /// <para>Done per pin rather than through vanilla's own <c>m_visibleIconTypes</c>, which
+        /// is what its icon buttons set: writing to that would gray out those buttons behind the
+        /// player's back and fight them for the same switch. A marker vanilla rebuilds starts
+        /// visible, so this re-asserts on every layout -- but only touches a pin whose state is
+        /// wrong, because this runs on every move of the map and SetActive on thousands of
+        /// objects a frame is exactly the sort of thing that has stalled this client before.</para>
+        /// </summary>
+        internal static void AfterLayoutMaster(Minimap map)
+        {
+            if (map == null) return;
+            bool hide = TgmConfig.ShowAllMarkers != null && !TgmConfig.ShowAllMarkers.Value;
+            if (!hide && !_ownPinsHidden) return;
+            _ownPinsHidden = hide;
+            foreach (var pin in Access.Pins(map))
+            {
+                if (pin == null || pin.m_uiElement == null) continue;
+                if (IsOurs(pin)) continue;              // the styling pass above has these
+                if (!PlacedByAPlayer(pin.m_type)) continue;
+                SetMarkerActive(pin, !hide);
+            }
+        }
+
+        /// <summary>
+        /// A vanilla pin type that exists because a player made it, as opposed to one the game
+        /// draws for the world or for the moment.
+        /// </summary>
+        private static bool PlacedByAPlayer(Minimap.PinType type)
+        {
+            switch (type)
+            {
+                // The five the game lets a player drop by hand.
+                case Minimap.PinType.Icon0:
+                case Minimap.PinType.Icon1:
+                case Minimap.PinType.Icon2:
+                case Minimap.PinType.Icon3:
+                case Minimap.PinType.Icon4:
+                // Where they died, and where they will wake up. Nobody chose to place these, but
+                // they are about the player rather than about the world.
+                case Minimap.PinType.Death:
+                case Minimap.PinType.Bed:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
         /// <summary>
         /// Show the markers again after the label switch moved. A relayout and nothing else: the
         /// labels exist either way now, and ApplyLabelVisibility turns them on and off.
@@ -963,12 +1029,15 @@ namespace TheGreatestMap
             bool markers = TgmConfig.ShowMarkerLabels == null || TgmConfig.ShowMarkerLabels.Value;
             bool portals = TgmConfig.ShowPortalLabels == null || TgmConfig.ShowPortalLabels.Value;
             bool bosses = TgmConfig.ShowBossLabels == null || TgmConfig.ShowBossLabels.Value;
+            // The master switch is in here because a name is part of the marker: a pin held off
+            // the map must not leave its label floating over the ground where it stood.
+            bool all = TgmConfig.ShowAllMarkers == null || TgmConfig.ShowAllMarkers.Value;
             // Nothing to hide and nothing hidden: the common case, and the only one worth
             // skipping. Returning merely because every switch is on would leave whatever was
             // hidden earlier hidden for good, since this is the only thing that puts a label
             // back.
-            if (markers && portals && bosses && !_labelsHidden) return;
-            _labelsHidden = !(markers && portals && bosses);
+            if (markers && portals && bosses && all && !_labelsHidden) return;
+            _labelsHidden = !(markers && portals && bosses && all);
             foreach (var pin in Access.Pins(map))
             {
                 var data = pin != null ? pin.m_NamePinData : null;
@@ -985,6 +1054,8 @@ namespace TheGreatestMap
                 bool want = Portals.IsPortalPin(pin) ? portals
                     : pin.m_type == Minimap.PinType.Boss ? bosses
                     : markers;
+                // And never a name over a marker that is not being drawn, whatever hid it.
+                if (want && pin.m_uiElement != null && !pin.m_uiElement.gameObject.activeSelf) want = false;
                 if (go.activeSelf != want) go.SetActive(want);
             }
         }
@@ -1555,6 +1626,9 @@ namespace TheGreatestMap
             // Vanilla may have added or reordered elements, which would bury the portals again.
             Portals.BringToFront();
             Erasures.Paint();
+            // Before the labels, which then see a pin this has just put away and leave its name
+            // alone rather than hanging it over empty ground.
+            ClientPins.AfterLayoutMaster(__instance);
             ClientPins.AfterLayoutLabels(__instance);
             // Vanilla has just built markers afresh, and a new one starts visible. Putting the
             // spotlight's out here rather than waiting for our own Update keeps them from showing

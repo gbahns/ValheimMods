@@ -114,9 +114,12 @@ so the burial chambers you are finished with can go while the sunken crypts you 
 One row at the foot does the lot at once.
 
 "Hide all" at the right of the title strip, next to the stick pin, is the master switch: check it
-and none of this mod's markers are drawn, whatever the switches below say; uncheck it and they
-come back exactly as they were. It is a box to check rather than a button because it does not show
-everything -- it only stops holding everything off.
+and everything you have put on the map comes off at once -- this mod's markers, the pins you
+placed by hand, your death markers and your bed -- whatever the switches below say. The game's own
+landmarks stay, since they are the map rather than notes on it: boss altars, traders, Hildir's
+camps and the center of the world. So do other players, their pings and their shouts. Uncheck it
+and everything comes back exactly as it was. It is a box to check rather than a button because it
+does not show everything -- it only stops holding everything off.
 
 Pressing a type row while its whole kind is hidden shows that type: the other types of that kind
 stay hidden, so the map changes by exactly the row you pressed rather than bringing the kind back
