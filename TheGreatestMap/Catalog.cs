@@ -455,8 +455,11 @@ namespace TheGreatestMap
                     // own picture -- and since MineRock_Copper is also called Copper, the marker
                     // list showed Copper twice, once as a pickaxe and once as copper ore. Two
                     // entries of one name have to resolve to one icon or they are two rows.
-                    return "rock4_copper=Copper|CopperOre,MineRock_Tin=Tin,silvervein=Silver|SilverOre,MineRock_Obsidian=Obsidian,MineRock_Meteorite=Meteorite," +
-                           "mudpile_beacon=Scrap Pile|IronScrap,mudpile2=Scrap Pile|IronScrap,mudpile=Scrap Pile|IronScrap,TarPit*=Tar Pit|Tar," +
+                    // In the order a player meets them, which is what the marker list reads for
+                    // its progression order: the swamp's iron before the mountain's silver.
+                    return "rock4_copper=Copper|CopperOre,MineRock_Tin=Tin," +
+                           "mudpile_beacon=Scrap Pile|IronScrap,mudpile2=Scrap Pile|IronScrap,mudpile=Scrap Pile|IronScrap," +
+                           "silvervein=Silver|SilverOre,MineRock_Obsidian=Obsidian,MineRock_Meteorite=Meteorite,TarPit*=Tar Pit|Tar," +
                            "giant_brain=Giant Brain|SoftTissue,giant_helmet1=Giant Helmet|CopperScrap,giant_helmet2=Giant Helmet|CopperScrap,giant_ribs=Giant Ribs|BlackMarble," +
                            "giant_skull=Giant Skull|BlackMarble,giant_sword1=Giant Sword|CopperScrap,giant_sword2=Giant Sword|CopperScrap," +
                            "YggdrasilRoot*=Yggdrasil Root|Sap,GuckSack=Guck|Guck,GuckSack_small=Guck|Guck," +
@@ -672,6 +675,67 @@ namespace TheGreatestMap
             }
             string norm = IconRegistry.Normalize(icon);
             return norm != null && _orderByIcon.TryGetValue(norm, out int at) ? at : int.MaxValue;
+        }
+
+        /// <summary>
+        /// A saved catalog line put back into the order the built-in one is written in, keeping
+        /// every entry it has and every word of each of them.
+        ///
+        /// <para>The order of these lines meant nothing until the marker list learned to read it,
+        /// so a line saved by an older version is in whatever order that version happened to ship
+        /// -- and a player who has never touched the setting still gets that order forever, since
+        /// a saved line always beats a new default. Nobody chose it, so nothing is lost by
+        /// putting it right once.</para>
+        ///
+        /// <para>Only the order moves. An entry the player renamed, gave an icon to, or added
+        /// themselves is carried across exactly as written: the ones the built-in line knows go
+        /// in its order, and anything else keeps its place after them, in the order it was in.
+        /// So the set is the same set, and a player who reorders the line afterwards keeps their
+        /// order -- this is done once, not at every login.</para>
+        /// </summary>
+        internal static string InDefaultOrder(string saved, string builtIn)
+        {
+            if (string.IsNullOrEmpty(saved) || string.IsNullOrEmpty(builtIn)) return saved;
+            var entries = new List<KeyValuePair<string, string>>();   // prefab, as written
+            foreach (var raw in saved.Split(','))
+            {
+                string one = raw.Trim();
+                if (one.Length == 0) continue;
+                entries.Add(new KeyValuePair<string, string>(PrefabOf(one), one));
+            }
+            if (entries.Count == 0) return saved;
+
+            var order = new List<string>();
+            foreach (var raw in builtIn.Split(','))
+            {
+                string one = raw.Trim();
+                if (one.Length > 0) order.Add(PrefabOf(one));
+            }
+
+            var taken = new bool[entries.Count];
+            var result = new List<string>(entries.Count);
+            foreach (var want in order)
+                for (int i = 0; i < entries.Count; i++)
+                    if (!taken[i] && string.Equals(entries[i].Key, want, StringComparison.OrdinalIgnoreCase))
+                    {
+                        taken[i] = true;
+                        result.Add(entries[i].Value);
+                    }
+            // Whatever the built-in line has never heard of: the player's own, and anything the
+            // mod has since dropped. Kept, in the order they were already in.
+            for (int i = 0; i < entries.Count; i++) if (!taken[i]) result.Add(entries[i].Value);
+            return string.Join(",", result.ToArray());
+        }
+
+        /// <summary>The prefab part of one catalog entry: "name=Label|Icon" is "name".</summary>
+        private static string PrefabOf(string entry)
+        {
+            string item = entry;
+            int bar = item.IndexOf('|');
+            if (bar >= 0) item = item.Substring(0, bar);
+            int eq = item.IndexOf('=');
+            if (eq > 0) item = item.Substring(0, eq);
+            return item.Trim();
         }
 
         private static void Parse(Category cat, string list, Dictionary<string, Entry> byPrefab, List<KeyValuePair<string, Entry>> byPrefix)

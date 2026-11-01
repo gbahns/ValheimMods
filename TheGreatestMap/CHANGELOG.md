@@ -111,6 +111,13 @@
   player who disagrees with the order can write their own. **Most first** is what it did before,
   and **A to Z** is by name.
 
+  Your saved Catalog lines are put into this version's order once, because until now that order
+  meant nothing: a line saved by an older version carries whatever order that version happened to
+  ship -- thistles before dandelions, the mountain's silver before the swamp's iron -- and a saved
+  line always beats a new default, so nobody would ever have seen the order come right. Every
+  entry survives exactly as written, renamed or given an icon or added by you; only the order
+  moves, and only this once. After that the order is yours.
+
 - **The boss altars' names have a switch of their own.** The game writes those itself when you
   find a summoning stone, and turning the marker labels off took them with it -- five names on a
   whole world, each one worth reading, lost to a change made about berry bushes. **Show Boss

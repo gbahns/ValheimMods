@@ -34,6 +34,7 @@ namespace TheGreatestMap
         internal static readonly Dictionary<Category, ConfigEntry<bool>> ShowKind = new Dictionary<Category, ConfigEntry<bool>>();
         internal static ConfigEntry<string> HiddenIcons;
         internal static ConfigEntry<string> MapsTidied;
+        internal static ConfigEntry<string> CatalogOrdered;
         internal static ConfigEntry<TypeOrder> TypeRowOrder;
         internal static ConfigEntry<bool> PauseWhileMapOpen;
         internal static ConfigEntry<bool> ShowPauseButton;
@@ -134,6 +135,48 @@ namespace TheGreatestMap
             // say something was hidden, be asked to show everything, and go on hiding it.
             if (ShowClearedDeposits != null && !ShowClearedDeposits.Value) ShowClearedDeposits.Value = true;
             CrossedOff.ShowAll();
+        }
+
+        /// <summary>
+        /// Put each saved Catalog line into the order this version ships it in, once.
+        ///
+        /// <para>The order of those lines meant nothing until the marker list learned to read it
+        /// for its progression order, so a line saved by an older version carries whatever order
+        /// that version happened to ship -- thistles before dandelions, the mountain's silver
+        /// before the swamp's iron -- and a saved line always beats a new default, so nobody
+        /// would ever see the order come right. Nobody chose the old one, so nothing is lost by
+        /// putting it straight.</para>
+        ///
+        /// <para>Once, and stamped with the version that did it: afterwards the order is the
+        /// player's, and reordering a line reorders the list, which is the whole point of reading
+        /// the order from here rather than from a table of our own. Every entry survives exactly
+        /// as written -- renamed, given an icon, or one the player added themselves.</para>
+        /// </summary>
+        private static void OrderTheCatalogOnce()
+        {
+            if (CatalogOrdered == null) return;
+            try
+            {
+                if (!string.IsNullOrEmpty(CatalogOrdered.Value)
+                    && new System.Version(CatalogOrdered.Value) >= new System.Version(TheGreatestMapMod.ModVersion)) return;
+            }
+            catch (Exception) { /* unreadable stamp: do it again, which costs nothing */ }
+
+            var moved = new List<string>();
+            foreach (var kv in CategoryPrefabs)
+            {
+                string was = kv.Value.Value;
+                string now = Catalog.InDefaultOrder(was, Categories.DefaultPrefabs(kv.Key));
+                if (string.Equals(was, now, StringComparison.Ordinal)) continue;
+                kv.Value.Value = now;
+                moved.Add(Categories.Label(kv.Key));
+            }
+            CatalogOrdered.Value = TheGreatestMapMod.ModVersion;
+            if (moved.Count > 0)
+                TheGreatestMapMod.Log.LogInfo(
+                    "[TheGreatestMap] Put these Catalog lines back into the order this version ships them in, so the " +
+                    "marker list can read a progression order off them: " + string.Join(", ", moved.ToArray()) +
+                    ". Every entry is still there, exactly as it was written; only the order moved, and only this once.");
         }
 
         /// <summary>True when anything at all is being hidden, by any of the switches.</summary>
@@ -325,6 +368,12 @@ namespace TheGreatestMap
                 "thistle, copper before silver -- and reordering a Catalog line reorders these to match. Most First " +
                 "puts the commonest at the top, which is what this did before there was a choice. A To Z is by name.");
             TypeRowOrder.SettingChanged += (_, __) => KindMenu.Relayout();
+
+            CatalogOrdered = mod.BindLocal("Internal", "Catalog Ordered", "",
+                "Which version of this mod last put your Catalog lines into the order it ships them in. The order of " +
+                "those lines meant nothing until the marker list learned to read it, so a line saved by an older " +
+                "version is in whatever order that version happened to ship. This is done once, keeping every entry " +
+                "and every word of each: afterwards the order is yours, and reordering a line reorders the list.");
 
             MapsTidied = mod.BindLocal("Internal", "Maps Tidied", "",
                 "Which version of this mod last brought each of your maps up to date, as name=version pairs. Written " +
@@ -574,6 +623,8 @@ namespace TheGreatestMap
                     "an item prefab name (its inventory icon is used), piece:<prefab> (a building piece's build-menu picture) " +
                     "or pin:<VanillaPinType> such as pin:Icon0, pin:Memorial, pin:Boss.");
             }
+            OrderTheCatalogOnce();
+
             StructuresIncludeUnlisted = mod.BindLocal("Catalog", "Structures Include Unlisted", true,
                 "Treat any outdoor location that is not listed under another kind as a structure (the location's prefab name, " +
                 "tidied up, becomes the marker text). Turn off to record only the listed structure prefixes.");
