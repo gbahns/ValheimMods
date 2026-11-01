@@ -135,6 +135,17 @@ namespace TheGreatestMap
         private static readonly Dictionary<Category, int> _counts = new Dictionary<Category, int>();
 
         /// <summary>
+        /// And how many of them are actually drawn. A row saying "Resources (2279)" over a map
+        /// showing a thousand of them is the panel reporting the catalog rather than the map;
+        /// where the two differ the row says both, and where they agree it says the one number.
+        /// </summary>
+        private static readonly Dictionary<Category, int> _shown = new Dictionary<Category, int>();
+        private static readonly Dictionary<string, int> _shownByIcon = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>The same two numbers for the whole map, for the line under the find box.</summary>
+        private static int _all, _allShown;
+
+        /// <summary>
         /// How many of each kind, and of each type, have been crossed off. The count that used to
         /// be the whole right column: it is the same number, read off the same markers, written on
         /// the row the markers already have.
@@ -472,12 +483,12 @@ namespace TheGreatestMap
                 {
                     // Every switch, not only the find box. This line used to count what the find
                     // box matched, so hiding two thousand resources left it saying "showing all
-                    // 2662 markers" while the row at the foot offered to put a kind back.
-                    ClientPins.Tally(out int drawn, out int all);
-                    if (Focus.On) return $"Only {Focus.What()} — {drawn} of {all}, click for all";
-                    return drawn < all
-                        ? $"Showing {drawn} of {all} markers"
-                        : $"Showing all {all} markers";
+                    // 2662 markers" while the row at the foot offered to put a kind back. Counted
+                    // with everything else, in the one pass over the markers.
+                    if (Focus.On) return $"Only {Focus.What()} — {_allShown} of {_all}, click for all";
+                    return _allShown < _all
+                        ? $"Showing {_allShown} of {_all} markers"
+                        : $"Showing all {_all} markers";
                 },
                 () => !Focus.On);
             y -= RowHeight;
@@ -900,10 +911,14 @@ namespace TheGreatestMap
         /// </summary>
         private static string GroupHeading(Minimap map, Group group, List<Category> kinds)
         {
-            int n = 0;
-            foreach (var kind in kinds) n += KindCount(map, kind);
-            string label = Categories.GroupLabel(group);
-            return n > 0 ? $"{label} ({n})" : label;
+            int n = 0, lit = 0;
+            foreach (var kind in kinds)
+            {
+                n += KindCount(map, kind);
+                if (Categories.IsLive(kind) || kind == Category.Player) lit += KindCount(map, kind);
+                else { _shown.TryGetValue(kind, out int some); lit += some; }
+            }
+            return Named(Categories.GroupLabel(group), lit, n);
         }
 
         /// <summary>
@@ -1421,11 +1436,29 @@ namespace TheGreatestMap
         /// </summary>
         private static string KindLabel(Category kind)
         {
-            int n;
             if (Categories.IsLive(kind))
-                n = kind == Category.Portal ? Portals.Count : Transports.CountOf(kind == Category.Cart);
-            else _counts.TryGetValue(kind, out n);
-            return n > 0 ? $"{Categories.Label(kind)} ({n})" : Categories.Label(kind);
+            {
+                int live = kind == Category.Portal ? Portals.Count : Transports.CountOf(kind == Category.Cart);
+                return Named(Categories.Label(kind), live, live);
+            }
+            _counts.TryGetValue(kind, out int n);
+            _shown.TryGetValue(kind, out int lit);
+            return Named(Categories.Label(kind), lit, n);
+        }
+
+        /// <summary>
+        /// A name and its count: "Ore (219)" while all of them are drawn, "Ore (88 of 219)" while
+        /// some are not, and the bare name where there are none at all.
+        ///
+        /// <para>Nothing is said about a row whose own switch is off, which is every marker under
+        /// it hidden for one plain reason: the row is already drawn dim, and "(0 of 219)" is a
+        /// sum nobody needed to see done. The pair is for the case that cannot be read off the
+        /// row -- a heading whose kinds are mostly on, a kind with one of its types put away.</para>
+        /// </summary>
+        private static string Named(string label, int shown, int total)
+        {
+            if (total <= 0) return label;
+            return shown > 0 && shown < total ? $"{label} ({shown} of {total})" : $"{label} ({total})";
         }
 
         /// <summary>
@@ -1437,16 +1470,36 @@ namespace TheGreatestMap
         private static void Recount()
         {
             _counts.Clear();
+            _shown.Clear();
+            _shownByIcon.Clear();
             _done.Clear();
             _doneByIcon.Clear();
             _doneOther.Clear();
+            _all = 0;
+            _allShown = 0;
             foreach (var pin in ClientPins.All)
             {
+                _all++;
+                // Asked once per marker and used by every row above: the line under the find box,
+                // the headings, the kinds and the types all count the same answer.
+                bool drawn = ClientPins.IsShown(pin);
+                if (drawn) _allShown++;
                 var kind = ClientPins.KindOf(pin);
                 if (kind.HasValue)
                 {
                     _counts.TryGetValue(kind.Value, out int have);
                     _counts[kind.Value] = have + 1;
+                    if (drawn)
+                    {
+                        _shown.TryGetValue(kind.Value, out int lit);
+                        _shown[kind.Value] = lit + 1;
+                    }
+                }
+                if (drawn)
+                {
+                    string key = IconRegistry.Normalize(ClientPins.IconOf(pin)) ?? IconRegistry.FallbackKey;
+                    _shownByIcon.TryGetValue(key, out int litIcon);
+                    _shownByIcon[key] = litIcon + 1;
                 }
                 if (!pin.Checked) continue;
                 if (!kind.HasValue)
@@ -1554,9 +1607,10 @@ namespace TheGreatestMap
             var t = type;
             string group = CrossedOff.GroupFor(kind, t.Icon);
             bool gone = Categories.IsResource(kind);
-            SwitchRow(map, _content, 0f, y, TypeIndent, t.Icon, $"{t.Label} ({t.Count})",
+            SwitchRow(map, _content, 0f, y, TypeIndent, t.Icon, TypeLabel(t),
                 () => ToggleType(kind, t.Icon),
                 () => AllShown && IsShown(kind) && !TgmConfig.IsIconHidden(t.Icon),
+                caption: () => TypeLabel(t),
                 onOnly: () => Focus.SetIcon(t.Icon),
                 onLocate: () => Locate.Icon(t.Icon, t.Label),
                 onlyLit: () => Focus.Icon != null && IconRegistry.SameKey(Focus.Icon, t.Icon),
@@ -1625,6 +1679,13 @@ namespace TheGreatestMap
                 if (TgmConfig.ShowKind.TryGetValue(kind, out var entry)) entry.Value = true;
             }
             TgmConfig.RemoveHiddenIcon(icon);
+        }
+
+        /// <summary>A type's name, with how many of it are drawn out of how many there are.</summary>
+        private static string TypeLabel(Focus.TypeCount type)
+        {
+            _shownByIcon.TryGetValue(type.Icon, out int lit);
+            return Named(type.Label, lit, type.Count);
         }
 
         /// <summary>

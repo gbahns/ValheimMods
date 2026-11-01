@@ -126,17 +126,6 @@ namespace TheGreatestMap
             return !CrossedOff.IsHidden(shared);
         }
 
-        /// <summary>How many markers are drawn, and how many there are.</summary>
-        internal static void Tally(out int drawn, out int all)
-        {
-            drawn = 0;
-            all = 0;
-            foreach (var pin in All)
-            {
-                all++;
-                if (IsShown(pin)) drawn++;
-            }
-        }
 
         private static int LocalType(SharedPin shared)
         {

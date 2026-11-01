@@ -107,8 +107,12 @@
     single type, a marker put away by hand, the crossed-off ones, and the find box -- and reads
     "Showing 383 of 2662 markers" when it should.
 
-  - **Every kind says how many it has.** "Ore (3)" and "Ore (219)" are different maps, and the
-    only way to tell them apart before this was to look at the map and count. Counted afresh as
+  - **Every heading, kind and type says how many it has, and how many of those are drawn.**
+    "Ore (3)" and "Ore (219)" are different maps, and the only way to tell them apart before this
+    was to look at the map and count. Where some of them are being held off, the row says both --
+    "Resources (1056 of 2279)" -- so a row you have half quietened says so rather than going on
+    reporting the catalog. A row whose own switch is off says nothing of the sort, since it is
+    already drawn dim and "(0 of 219)" is a sum nobody needed done. All of it counted afresh as
     the list refreshes rather than when it opened, because recording goes on while a pinned list
     stays open.
 
