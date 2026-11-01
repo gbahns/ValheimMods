@@ -78,6 +78,12 @@ namespace TheGreatestMap
                 "where the two differ. The count of what you are finished with keeps its button either way, that " +
                 "one being the switch for them as well as the number.");
 
+            y = Heading("Grouping", y);
+            y = Switch(y, () => TgmConfig.SplitPlantsByFarming, "Split plants by farming",
+                "Stand two rows in place of the five plant kinds -- Farmable and Wild. What you can plant you only " +
+                "have to find once, so those are worth folding away; what you cannot plant you have to go out and " +
+                "gather again, which is what a map is for. Ore is a row of its own either way.");
+
             y = Heading("Marker Order", y);
             y = Order(y, TypeOrder.Progression, "Progression",
                 "The order the catalog lists them in, which is the order you meet them: a dandelion before a " +

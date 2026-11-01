@@ -37,6 +37,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<string> CatalogOrdered;
         internal static ConfigEntry<TypeOrder> TypeRowOrder;
         internal static ConfigEntry<bool> ShowCounts;
+        internal static ConfigEntry<bool> SplitPlantsByFarming;
         internal static ConfigEntry<bool> PauseWhileMapOpen;
         internal static ConfigEntry<bool> ShowPauseButton;
         internal static ConfigEntry<bool> MarkerButton;
@@ -370,6 +371,17 @@ namespace TheGreatestMap
                 "\"what is there\". The count of what you are finished with keeps its button either way, that one " +
                 "being the switch for them as well as the number.");
             ShowCounts.SettingChanged += (_, __) => KindMenu.Relayout();
+
+            SplitPlantsByFarming = mod.BindLocal("Display", "Split Plants By Farming", true,
+                "In the marker list, stand two rows in place of the five plant kinds -- Farmable and Wild, instead " +
+                "of berries, mushrooms, herbs, seeds and wild crops -- each listing its types directly. What you " +
+                "can plant you only have to find once, so those markers are worth folding away and forgetting; what " +
+                "you cannot plant you have to go out and gather again every time you run low, which is what a map " +
+                "is for. The line falls between types rather than between kinds because the game puts it there: " +
+                "magecap and jotun puffs can be planted and the other four mushrooms cannot, flax and barley can " +
+                "and fiddlehead cannot. Off lists the five kinds as before. Ore is a row of its own either way, no " +
+                "vein being farmable.");
+            SplitPlantsByFarming.SettingChanged += (_, __) => KindMenu.Relayout();
 
             TypeRowOrder = mod.BindLocal("Display", "Type Order", TypeOrder.Progression,
                 "How the types under a kind are listed in the marker list. Progression is the order the catalog " +

@@ -127,6 +127,13 @@ namespace TheGreatestMap
         private static readonly HashSet<Category> _unfolded = new HashSet<Category>();
 
         /// <summary>
+        /// Which halves of the plants are unfolded, while the list is split that way. Separate
+        /// from the kinds above because these are not kinds: a half is a handful of types out of
+        /// four of them. Kept for the session, like the kinds.
+        /// </summary>
+        private static readonly HashSet<Harvest> _unfoldedPlants = new HashSet<Harvest>();
+
+        /// <summary>
         /// Which headings are folded away. Empty to begin with, so the list opens saying
         /// everything it used to say: a panel that opens as four words is quiet, but it is quiet
         /// about the markers somebody opened it to look at. Kept for the session, like the kinds.
@@ -135,6 +142,14 @@ namespace TheGreatestMap
 
         /// <summary>The types on the map under each kind, commonest first.</summary>
         private static Dictionary<Category, List<Focus.TypeCount>> _types;
+
+        /// <summary>
+        /// Every type on the map in one list, in the order the rows are to be read in. Kept
+        /// beside the per-kind buckets because the plant halves cut across kinds: a list built by
+        /// walking four buckets would come out in kind order whatever the order setting says,
+        /// while this one is already in it.
+        /// </summary>
+        private static List<Focus.TypeCount> _allTypes;
 
         /// <summary>How many markers each kind has, for the number after its name.</summary>
         private static readonly Dictionary<Category, int> _counts = new Dictionary<Category, int>();
@@ -414,7 +429,8 @@ namespace TheGreatestMap
             // reading the find box turns into rows on Enter, asked of everything instead of a
             // word.
             _types = new Dictionary<Category, List<Focus.TypeCount>>();
-            foreach (var type in Focus.Types(""))
+            _allTypes = Focus.Types("");
+            foreach (var type in _allTypes)
             {
                 if (!type.Kind.HasValue) continue;
                 if (!_types.TryGetValue(type.Kind.Value, out var list))
@@ -634,12 +650,24 @@ namespace TheGreatestMap
                 y -= RowHeight;
                 if (_foldedGroups.Contains(g)) continue;
 
+                bool plantsDone = false;
                 foreach (var kind in kinds)
                 {
                     // The other players are vanilla's markers rather than ours, and the row for
                     // them answers a different question, so it is built in full below rather than
                     // squeezed through the same call.
                     if (kind == Category.Player) { y = PlayersRow(map, y); continue; }
+                    // The plants, split by whether they can be farmed, stand in for the five kinds
+                    // their types come from. A grown kind that has nothing in either half keeps
+                    // its own row, so no kind can lose its switch by being left out of both.
+                    if (SplitPlants && Categories.IsGrown(kind) && HasTypes(kind))
+                    {
+                        if (plantsDone) continue;
+                        plantsDone = true;
+                        y = PlantRow(map, Harvest.Farmable, y);
+                        y = PlantRow(map, Harvest.Wild, y);
+                        continue;
+                    }
                     y = KindRow(map, kind, y);
                 }
             }
@@ -722,6 +750,121 @@ namespace TheGreatestMap
                 y = Unfold(map, row, y, k);
             }
             return y;
+        }
+
+        /// <summary>Is the list standing the two plant halves in place of the five plant kinds?</summary>
+        private static bool SplitPlants =>
+            TgmConfig.SplitPlantsByFarming != null && TgmConfig.SplitPlantsByFarming.Value;
+
+        private static bool HasTypes(Category kind)
+        {
+            return _types != null && _types.TryGetValue(kind, out var types) && types.Count > 0;
+        }
+
+        /// <summary>
+        /// One half of the plants -- what can be farmed, or what cannot -- and its types under it
+        /// when it is unfolded. Drawn where a kind row is drawn and at a kind's indent, because
+        /// that is what it stands in for: the types under it keep the type indent they always had,
+        /// so this adds no level to the list and changes nothing about how it is read down.
+        ///
+        /// <para>No "only" button and no ping, which every kind row has. Both of those point at
+        /// one kind or one icon, and a half is neither -- it is a handful of types out of four
+        /// kinds, and there is nothing in the focus or the pointer to aim at a set. The rows under
+        /// it have both, which is where they are wanted anyway: you ping raspberries, not
+        /// "everything wild".</para>
+        /// </summary>
+        private static float PlantRow(Minimap map, Harvest half, float y)
+        {
+            var types = PlantTypes(half);
+            if (types.Count == 0) return y;
+            var h = half;
+            var row = SwitchRow(map, _content, 0f, y, KindIndent, Categories.HarvestIcon(h), PlantHeading(h),
+                () => SetPlantsShown(h, !AnyPlantShown(h)),
+                () => AllShown && AnyPlantShown(h),
+                caption: () => PlantHeading(h),
+                doneCount: () => DonePlants(h),
+                // Every plant is a supply rather than a place, so crossing one off means it is
+                // gone, and the deposits all share the one switch for that -- the same one the
+                // kinds these stand in for were reading.
+                doneShown: () => TgmConfig.ShowClearedDeposits == null || TgmConfig.ShowClearedDeposits.Value,
+                doneToggle: () =>
+                {
+                    if (TgmConfig.ShowClearedDeposits != null)
+                        TgmConfig.ShowClearedDeposits.Value = !TgmConfig.ShowClearedDeposits.Value;
+                },
+                gone: true,
+                tip: Categories.HarvestTip(h));
+            y -= RowHeight;
+            Twisty(row, KindIndent, _unfoldedPlants.Contains(h),
+                   () => { if (!_unfoldedPlants.Remove(h)) _unfoldedPlants.Add(h); });
+            if (!_unfoldedPlants.Contains(h)) return y;
+            foreach (var type in types)
+            {
+                TypeRow(map, y, type.Kind.Value, type);
+                y -= RowHeight;
+            }
+            return y;
+        }
+
+        /// <summary>
+        /// The types in one half, in the order the list is set to read types in. Taken from the
+        /// one flat list rather than from the per-kind buckets, so A to Z really is A to Z across
+        /// the four kinds the half draws from instead of being alphabetical inside each of them.
+        /// </summary>
+        private static List<Focus.TypeCount> PlantTypes(Harvest half)
+        {
+            var list = new List<Focus.TypeCount>();
+            if (_allTypes == null) return list;
+            bool farmable = half == Harvest.Farmable;
+            foreach (var type in _allTypes)
+            {
+                if (!type.Kind.HasValue || !Categories.IsGrown(type.Kind.Value)) continue;
+                if (Catalog.CanBeFarmed(type.Icon) != farmable) continue;
+                list.Add(type);
+            }
+            return list;
+        }
+
+        /// <summary>"Wild (1893)", or how many of those are drawn where the two differ.</summary>
+        private static string PlantHeading(Harvest half)
+        {
+            int n = 0, lit = 0;
+            foreach (var type in PlantTypes(half))
+            {
+                n += type.Count;
+                _shownByIcon.TryGetValue(type.Icon, out int some);
+                lit += some;
+            }
+            return Named(Categories.HarvestLabel(half), lit, n);
+        }
+
+        private static int DonePlants(Harvest half)
+        {
+            int n = 0;
+            foreach (var type in PlantTypes(half))
+            {
+                _doneByIcon.TryGetValue(type.Icon, out int some);
+                n += some;
+            }
+            return n;
+        }
+
+        private static bool AnyPlantShown(Harvest half)
+        {
+            foreach (var type in PlantTypes(half))
+                if (IsShown(type.Kind.Value) && !TgmConfig.IsIconHidden(type.Icon)) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Show or hide a whole half. Nothing is stored per half: this is each type set one at a
+        /// time, by the same call a type's own row uses -- which matters, because the kinds these
+        /// types belong to have members in the other half, so the kind's switch cannot be the one
+        /// that does it.
+        /// </summary>
+        private static void SetPlantsShown(Harvest half, bool show)
+        {
+            foreach (var type in PlantTypes(half)) SetTypeShown(type.Kind.Value, type.Icon, show);
         }
 
         /// <summary>
@@ -1730,8 +1873,14 @@ namespace TheGreatestMap
                 gone: gone);
         }
 
+        /// <summary>Flip one type, from a row that is dim or bright accordingly.</summary>
+        private static void ToggleType(Category kind, string icon)
+        {
+            SetTypeShown(kind, icon, !(IsShown(kind) && !TgmConfig.IsIconHidden(icon)));
+        }
+
         /// <summary>
-        /// Show or hide one type, from a row that is dim or bright accordingly.
+        /// Show or hide one type.
         ///
         /// <para>A type is hidden by its icon, the only thing on a marker that says which type it
         /// is -- the same list a marker's own right-click menu writes to, so the two places that
@@ -1755,11 +1904,12 @@ namespace TheGreatestMap
         /// as a reason to turn the whole mod's markers back on would be the one switch in here
         /// that reaches outside what it names.</para>
         /// </summary>
-        private static void ToggleType(Category kind, string icon)
+        private static void SetTypeShown(Category kind, string icon, bool show)
         {
             // What this row is about, leaving the master out of it.
             bool drawn = IsShown(kind) && !TgmConfig.IsIconHidden(icon);
-            if (drawn) { TgmConfig.AddHiddenIcon(icon); return; }
+            if (drawn == show) return;
+            if (!show) { TgmConfig.AddHiddenIcon(icon); return; }
             if (!IsShown(kind))
             {
                 if (_types != null && _types.TryGetValue(kind, out var siblings))

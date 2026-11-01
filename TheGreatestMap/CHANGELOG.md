@@ -2,6 +2,34 @@
 
 ## 4.7.0 -- unreleased
 
+- **The plants are grouped by whether you can farm them.** Under Resources, two rows stand in
+  place of the five plant kinds: Farmable and Wild, each listing its types directly. The reason to
+  write a plant down is that you will have to come back for it, and planting it is what stops that
+  being true -- find one patch of magecap and you need never find another, while nothing will ever
+  grow you a raspberry bush, so every bowl of jam is another trip. One of those halves is worth
+  keeping on the map and the other is worth folding away, and the old grouping could not say which
+  was which: it sorted by what sort of plant a thing was, which is a fact about the plant and not
+  about the map.
+
+  The line falls between types rather than between kinds, because the game puts it there. Magecap
+  and jotun puffs have saplings and the other four mushrooms do not; flax and barley have them and
+  fiddlehead does not. So no reordering of the catalog could have expressed this -- two members of
+  one kind land on opposite sides -- which is why the halves are a way of reading the list rather
+  than new kinds. Nothing is stored per half, no marker changes, and every icon, catalog line and
+  saved record is exactly what it was. Farmable holds the three crop seeds (which close their own
+  loop: a carrot grows seeds and the seeds grow carrots), magecap, jotun puffs, wild flax and wild
+  barley; Wild holds the three berries, the three common mushrooms, smoke puffs, dandelion, thistle
+  and fiddlehead. Which is which was read out of the game's own asset names rather than remembered:
+  a thing is plantable exactly when it has a `sapling_` prefab.
+
+  Ore is a row of its own either way, no vein being farmable. The two halves sit where a kind row
+  sits and their types keep the indent they always had, so this adds no level to the list. They
+  have the switch, the triangle, the count and the crossed-off button a kind row has, and not the
+  "only" or the ping, both of which point at one kind or one icon -- a half is neither, being a
+  handful of types out of four kinds. The rows under it have both, which is where they were wanted
+  anyway: you ping raspberries, not everything wild. `Split Plants By Farming` in the Display
+  section, on by default, and a checkbox under Grouping in the marker list's own settings.
+
 - **A kind's own picture is no longer one of its members' pictures.** Berries wore a raspberry,
   ore wore copper ore, herbs wore a dandelion -- so unfolding one of those kinds in the marker
   list showed the same picture on the kind and on one of the rows under it, saying the two were

@@ -79,6 +79,31 @@ namespace TheGreatestMap
         AToZ,
     }
 
+    /// <summary>
+    /// Which half of the plants a type belongs to, when the marker list splits them by whether
+    /// they can be farmed rather than by what sort of plant they are.
+    ///
+    /// <para>The reason to write a plant down is that you will have to come back for it. Once a
+    /// thing can be planted that stops being true: you find one patch, you take it home, and the
+    /// marker is a note about a trip you will never make again. What cannot be planted you have
+    /// to go out and gather every time you run low, which is exactly what a map is for -- so the
+    /// two halves are read completely differently, and the useful one is the smaller one.</para>
+    ///
+    /// <para><b>The line falls between types, not between kinds</b>, because the game puts it
+    /// there: magecap and jotun puffs have saplings and the other four mushrooms do not, flax and
+    /// barley have them and fiddlehead does not. That is why this is not another Category -- no
+    /// re-sorting of the catalog could express it, since two members of one kind land on opposite
+    /// sides. Like <see cref="Group"/> it is a grouping for reading only: nothing is stored per
+    /// half, and hiding one is hiding each of the types in it.</para>
+    /// </summary>
+    internal enum Harvest
+    {
+        /// <summary>Has a sapling: find it once and grow the rest.</summary>
+        Farmable,
+        /// <summary>Has none: every one you want is a trip.</summary>
+        Wild,
+    }
+
     /// <summary>Static facts about each category: defaults, labels.</summary>
     internal static class Categories
     {
@@ -123,6 +148,33 @@ namespace TheGreatestMap
                 case Group.Dynamic:   return "Dynamic Markers";
                 default:              return g.ToString();
             }
+        }
+
+        internal static string HarvestLabel(Harvest h)
+        {
+            return h == Harvest.Farmable ? "Farmable" : "Wild";
+        }
+
+        /// <summary>
+        /// The picture for a half, held to the same rule as a kind's: something that stands for
+        /// the whole of it and is nothing in it. The cultivator is what you plant any of them
+        /// with, and the sprig is wild greens rather than the dandelion or the thistle. Both are
+        /// already a kind's picture -- Plants and Herbs -- and both of those kinds are gone from
+        /// the list while it is split this way, so neither can appear twice.
+        /// </summary>
+        internal static string HarvestIcon(Harvest h)
+        {
+            return h == Harvest.Farmable ? "Cultivator" : "drawn:herbs";
+        }
+
+        internal static string HarvestTip(Harvest h)
+        {
+            return h == Harvest.Farmable
+                ? "What you can plant. Find one patch and you need never find another, which is what makes these " +
+                  "worth folding away: magecap and jotun puffs are planted as they come, carrot, turnip and onion " +
+                  "seeds grow more of themselves, and flax and barley take anywhere in the Plains."
+                : "What you cannot plant, and so have to go out and gather again every time you run low -- which is " +
+                  "what a map is for. Berries, the common mushrooms, smoke puffs, dandelion, thistle and fiddlehead.";
         }
 
         /// <summary>What the heading means, for the row's tooltip.</summary>
@@ -615,6 +667,7 @@ namespace TheGreatestMap
         {
             _orderByPrefab.Clear();
             _orderByIcon = null;
+            _farmableByIcon = null;
             _ordered = 0;
             _iconBySource.Clear();
             _byPrefab.Clear();
@@ -675,6 +728,61 @@ namespace TheGreatestMap
             }
             string norm = IconRegistry.Normalize(icon);
             return norm != null && _orderByIcon.TryGetValue(norm, out int at) ? at : int.MaxValue;
+        }
+
+        /// <summary>
+        /// Everything in the game that can be planted and later picked again, as the prefab names
+        /// the catalog lines use.
+        ///
+        /// <para>Read out of the game's own asset names rather than remembered: a thing is
+        /// plantable exactly when it has a <c>sapling_</c> prefab, and the full list of those is
+        /// <c>sapling_barley</c>, <c>_carrot</c>, <c>_flax</c>, <c>_jotunpuffs</c>,
+        /// <c>_magecap</c>, <c>_onion</c>, <c>_turnip</c> and the three <c>_seed*</c> ones, beside
+        /// the five tree saplings and two vines. So the three crop seeds are farmable and close
+        /// their own loop -- a carrot grows seeds and the seeds grow carrots -- while the berries,
+        /// the three common mushrooms, smoke puffs, dandelion, thistle and fiddlehead have no
+        /// sapling at all and never will have one by accident.</para>
+        ///
+        /// <para>Ore is not here and needs no entry: no vein can be farmed, which is why it stays
+        /// a kind of its own however the plants are grouped.</para>
+        /// </summary>
+        private static readonly HashSet<string> Plantable = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Pickable_SeedCarrot", "Pickable_SeedTurnip", "Pickable_SeedOnion",
+            "Pickable_Mushroom_Magecap", "Pickable_Mushroom_JotunPuffs",
+            "Pickable_Flax_Wild", "Pickable_Barley_Wild",
+        };
+
+        private static Dictionary<string, bool> _farmableByIcon;
+
+        /// <summary>
+        /// Can the type drawn with this icon be planted? Asked of the icon rather than the prefab
+        /// because a type in the marker list <i>is</i> an icon -- that is the only thing a marker
+        /// carries saying which type it is -- so the answer has to be one per picture.
+        ///
+        /// <para>Two prefabs drawn alike are one row, and one row cannot be in both halves, so the
+        /// earlier of them in the catalog answers for the picture. That is the same rule the
+        /// ordering uses, and for the same reason. Nothing in the shipped catalog is in that
+        /// position: every farmable entry has a picture of its own.</para>
+        /// </summary>
+        internal static bool CanBeFarmed(string icon)
+        {
+            if (!_built) Rebuild();
+            if (_farmableByIcon == null)
+            {
+                _farmableByIcon = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+                var rank = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                foreach (var kv in _orderByPrefab)
+                {
+                    string key = IconFor(kv.Key);
+                    if (key == null) continue;
+                    if (rank.TryGetValue(key, out int at) && at <= kv.Value) continue;
+                    rank[key] = kv.Value;
+                    _farmableByIcon[key] = Plantable.Contains(kv.Key);
+                }
+            }
+            string norm = IconRegistry.Normalize(icon);
+            return norm != null && _farmableByIcon.TryGetValue(norm, out bool yes) && yes;
         }
 
         /// <summary>

@@ -96,16 +96,34 @@ you harvest, and what runs out), **Places** (what you go to, and what stays put)
 (ships, carts, portals, other players, and the fires and benches a base is made of -- what is
 standing now rather than what was found). Pressing a heading hides every kind under it.
 
+Under Resources, two rows stand in place of the five plant kinds: **Farmable** and **Wild**, each
+listing its types directly. The reason to write a plant down is that you will have to come back for
+it, and planting it is what stops that being true -- find one patch of magecap and you need never
+find another, while nothing will ever grow you a raspberry bush. So one half is worth keeping on
+the map and the other is worth folding away and forgetting. The line falls between types rather
+than between kinds because the game puts it there: magecap and jotun puffs can be planted and the
+other four mushrooms cannot, flax and barley can and fiddlehead cannot. Farmable holds the three
+crop seeds, magecap, jotun puffs, wild flax and wild barley; Wild holds the berries, the three
+common mushrooms, smoke puffs, dandelion, thistle and fiddlehead. Ore is a row of its own either
+way, no vein being farmable. "Split Plants By Farming" turns it off and lists the five kinds as
+before; nothing about the markers themselves changes either way.
+
 **The gear** in the list's title strip, beside the stick pin, opens the list's settings in front
 of it. They close on a click away, and go with the list.
 
-- **The order the types come in**: **Progression** (the order the catalog lists them in, which is
-  the order you meet them -- a dandelion before a thistle, copper before silver), **Most first**,
-  or **A to Z**. Reorder a Catalog line and the progression order follows it.
-- **What the map writes beside a marker**: marker names, portal names and boss names, each with a
-  switch. Three rather than one because they are not the same complaint -- marker names run to
-  thousands, a base writes six portal names across itself, and the five boss names the game writes
-  itself are each worth reading.
+- **Counts**: whether a heading, kind and type says how many markers it has, and how many of
+  those are drawn where the two differ. Off is quieter to read down and worth having once you know
+  your own map. The count of what you are finished with keeps its button either way, that one
+  being the switch for them as well as the number.
+- **Grouping**: whether the plants are split into Farmable and Wild in place of the five plant
+  kinds.
+- **Marker Order**: **Progression** (the order the catalog lists them in, which is the order you
+  meet them -- a dandelion before a thistle, copper before silver), **Most first**, or **A to Z**.
+  Reorder a Catalog line and the progression order follows it.
+- **Labels**: marker labels, portal names and boss names, each with a switch. Three rather than one
+  because they are not the same complaint -- marker labels run to thousands, a base writes six
+  portal names across itself, and the five boss names the game writes itself are each worth
+  reading.
 
 The small buttons at the end of a row -- place by hand, only, ping, and the count of the ones you
 have crossed off -- are drawn on the row the pointer is resting on, and on any row whose button is
