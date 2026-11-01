@@ -538,8 +538,7 @@ namespace TheGreatestMap
                     gone: resources,
                     head: true, icon: false, tip: Categories.GroupTip(g));
                 Twisty(heading, GroupIndent, !_foldedGroups.Contains(g),
-                       () => { if (!_foldedGroups.Remove(g)) _foldedGroups.Add(g); },
-                       "List the kinds under this heading");
+                       () => { if (!_foldedGroups.Remove(g)) _foldedGroups.Add(g); });
                 y -= RowHeight;
                 if (_foldedGroups.Contains(g)) continue;
 
@@ -1454,8 +1453,7 @@ namespace TheGreatestMap
             if (!_types.TryGetValue(kind, out var types) || types.Count < 2) return y;
             var k = kind;
             Twisty(row, KindIndent, _unfolded.Contains(kind),
-                   () => { if (!_unfolded.Remove(k)) _unfolded.Add(k); },
-                   "List the types of this kind, each with a switch of its own");
+                   () => { if (!_unfolded.Remove(k)) _unfolded.Add(k); });
             if (!_unfolded.Contains(kind)) return y;
 
             foreach (var type in types)
@@ -1471,7 +1469,7 @@ namespace TheGreatestMap
         /// its own rather than another meaning for the row, which already means "show or hide
         /// these".
         /// </summary>
-        private static void Twisty(RectTransform row, float indent, bool open, Action toggle, string shutTip)
+        private static void Twisty(RectTransform row, float indent, bool open, Action toggle)
         {
             var go = new GameObject("Twisty", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
             go.transform.SetParent(row, false);
@@ -1497,7 +1495,6 @@ namespace TheGreatestMap
                 // place -- the same thing pressing Enter in the find box asks for.
                 _rebuildWanted = true;
             });
-            MenuKit.Tip(go, open ? "Fold up" : "Unfold", open ? "Fold this back up" : shutTip);
 
             var glyph = new GameObject("Triangle", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             glyph.transform.SetParent(go.transform, false);
