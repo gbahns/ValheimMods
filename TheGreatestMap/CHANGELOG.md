@@ -360,6 +360,11 @@
   marked and leave no way to tell which number was which. They are now two lines, and the second
   one is worth reading: it is how twenty thousand bushes become a few hundred markers.
 
+- **`tgm_survey` says what the markers are, not only how many.** "Dungeons: 10" is how much work
+  and nothing about whether it is ten burial chambers or the one frost cave you were looking for,
+  which is the part worth reading before writing them. Each kind now lists its types underneath,
+  where it has more than one.
+
 - **`tgm_survey` can be given the kinds to take**: `tgm_survey 5000 apply Berries,Mushrooms,Herbs,Seeds`
   marks the plants in explored land and leaves everything else alone. A word that is not a kind is
   refused and listed, because silently surveying everything because a word was misspelled is how a

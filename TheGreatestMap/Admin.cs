@@ -544,6 +544,10 @@ namespace TheGreatestMap
 
             var sofar = new List<Written>();
             var byKind = new SortedDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            // And what those are, within each kind. "Dungeons: 10" says how much work and
+            // nothing about whether it is ten burial chambers or the frost cave you were
+            // looking for, which is the only part worth reading before writing them.
+            var byType = new SortedDictionary<string, SortedDictionary<string, int>>(StringComparer.OrdinalIgnoreCase);
             var kindsOff = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
             int written = 0, already = 0, deduped = 0, erased = 0, off = 0, unexplored = 0, capped = 0, refused = 0, interior = 0;
             var clock = System.Diagnostics.Stopwatch.StartNew();
@@ -555,7 +559,11 @@ namespace TheGreatestMap
                 {
                     case Verdict.Written:
                         written++;
-                        Count(byKind, Categories.Label(found.Cat));
+                        string kindLabel = Categories.Label(found.Cat);
+                        Count(byKind, kindLabel);
+                        if (!byType.TryGetValue(kindLabel, out var types))
+                            byType[kindLabel] = types = new SortedDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                        Count(types, string.IsNullOrEmpty(found.Name) ? Catalog.Prettify(found.Source) : found.Name);
                         if (apply) journal.Wrote.Add(wrote);
                         break;
                     // One word was covering two different facts: a marker that was on the map
@@ -652,7 +660,14 @@ namespace TheGreatestMap
                   $"{locations} location(s) and {objects} thing(s) standing about ({clock.ElapsedMilliseconds} ms). " +
                   "Nothing written yet.");
             lines.Add($"  {written} marker(s) {(apply ? "written" : "to write")}" + (written > 0 ? ":" : "."));
-            foreach (var kv in byKind) lines.Add($"    {kv.Key}: {kv.Value}");
+            foreach (var kv in byKind)
+            {
+                lines.Add($"    {kv.Key}: {kv.Value}");
+                if (!byType.TryGetValue(kv.Key, out var types) || types.Count < 2) continue;
+                // Only where there is more than one: a kind whose types are all one thing has
+                // already said so on the line above.
+                foreach (var type in types) lines.Add($"      {type.Key}: {type.Value}");
+            }
             if (already > 0) lines.Add($"  {already} stand within the marker spacing of a marker or pin your map already had.");
             if (deduped > 0) lines.Add($"  {deduped} stand close enough to one of the markers above to be the same find, " +
                                        "so one marker speaks for all of them.");
