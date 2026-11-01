@@ -2,34 +2,45 @@
 
 ## 4.7.0 -- unreleased
 
-- **The marker list says less and tells you more.** Players have called it confusing and
-  overwhelming, and the four things in it that earned that are gone:
+- **The marker list is one column instead of two, and it scrolls.** Players called it confusing
+  and overwhelming, and about a hundred things to press in one pop-up earned both. It is now a
+  single list of the kinds on your map, each unfolding into the types under it, with everything
+  that is about the whole map gathered at the foot.
 
-  - **"Show all" and "Show all markers" are no longer two rows four apart.** One was the master
-    switch and the other undid every hide in the mod, and from the words there was no telling
-    which was which. The master switch keeps its row, since that is the only row those words were
-    ever about. The other now names what it will put back -- "Show everything hidden -- 2 kinds,
-    5 markers" -- and is drawn only when it would put something back, which on most maps means
-    not at all.
+  - **The crossed-off column is gone, and nothing it did went with it.** It held a subset of the
+    left column's markers sorted on a different axis, so a searched burial chamber was listed
+    twice and hiding it in one place explained nothing about the other. Being finished with
+    something is a state a marker is in, not a place it lives: every row now carries the count of
+    its own crossed-off markers as a button -- "12 done", or "12 gone" for a deposit that has
+    been used up -- which hides exactly those and lights up to say it is doing so. A type row
+    carries its own, so the burial chambers you are done with can go while the sunken crypts you
+    have cleared stay. One switch at the foot covers the lot.
+
+  - **A kind unfolds into the types under it.** The triangle at the head of a row opens it:
+    copper, tin, silver and obsidian under ore, each with its own switch, its own "only" and its
+    own ping. Until now the only switch for a single type lived in the right-click menu of a
+    marker of that type, which you had to find on the map first -- and hiding ore to be rid of
+    the tin took the silver with it. As many kinds open at once as you like, and a kind with forty
+    types lists all forty: the scroll is what makes that affordable.
 
   - **Every kind says how many it has.** "Ore (3)" and "Ore (219)" are different maps, and the
     only way to tell them apart before this was to look at the map and count. Counted afresh as
     the list refreshes rather than when it opened, because recording goes on while a pinned list
     stays open.
 
-  - **A kind unfolds into the types under it.** The triangle at the head of a row opens it:
-    copper, tin, silver and obsidian under ore, each with its own switch, its own "only" and its
-    own ping. Until now the only switch for a single type lived in the right-click menu of a
-    marker of that type, which you had to find on the map first -- and hiding ore to be rid of
-    the tin took the silver with it. One kind is open at a time, so the list cannot grow off the
-    bottom of the map; "Marker List Tree" turns the triangles off.
+  - **A row's buttons wait for the pointer.** Twenty rows with four buttons each is eighty things
+    to read before the first decision, and what a reader wants from this list is the names. They
+    are drawn on the row the pointer is on, and on any row whose button is already doing
+    something -- an armed kind, a filtered one, or one quietly leaving twelve crossed-off markers
+    off the map. The names have the whole row while the buttons are away, so most of them no
+    longer end in an ellipsis.
 
-  - **A row's three buttons wait for the pointer.** Twenty rows with place, only and ping on each
-    is sixty things to read before the first decision, and what a reader wants from this list is
-    the names. They are drawn on the row the pointer is on, and on any row whose button is
-    already doing something -- an armed or filtered kind has to go on saying so. The names have
-    the whole row while the buttons are away, so most of them no longer end in an ellipsis.
-    "Marker List Buttons On Hover" puts all three back on every row.
+  - **"Show all" and "Show all markers" are no longer two rows four apart.** One was the master
+    switch and the other undid every hide in the mod, and from the words there was no telling
+    which was which. The master is now a word in the list's own title strip, next to the stick
+    pin, where a window's power switch belongs. The other names what it will put back -- "Show
+    everything hidden -- 2 kinds, 5 markers" -- and is drawn only when it would put something
+    back, which on most maps means not at all.
 
   The header above the kinds no longer reads "Marker kinds + place, only, ping". It named three
   buttons at the end of every row, which is the one place a reader does not need them named: each

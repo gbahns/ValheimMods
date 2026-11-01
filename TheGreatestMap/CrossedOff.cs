@@ -131,6 +131,55 @@ namespace TheGreatestMap
             Save(set);
         }
 
+        /// <summary>
+        /// The group a type of a kind belongs to, asked without a marker in hand: the marker list
+        /// needs it for a row that stands for a type rather than for one marker. Null for a kind
+        /// whose crossed-off markers mean the thing is gone rather than done with -- those share
+        /// one switch, having no group of their own.
+        /// </summary>
+        internal static string GroupFor(Category cat, string icon)
+        {
+            if (Categories.IsResource(cat)) return null;
+            if (Splits(cat)) return TypeOf(cat, icon);
+            return Categories.Label(cat);
+        }
+
+        /// <summary>
+        /// Is anything crossed off still being drawn? Asked by the one switch at the foot of the
+        /// marker list, which is the whole of this idea in one press -- the per-kind and per-type
+        /// switches live on the rows they are about.
+        /// </summary>
+        internal static bool AnyShown()
+        {
+            if (TgmConfig.ShowClearedDeposits == null || TgmConfig.ShowClearedDeposits.Value) return true;
+            foreach (var cat in Categories.All)
+            {
+                if (Categories.IsResource(cat)) continue;
+                if (Splits(cat))
+                {
+                    foreach (var group in GroupsOf(cat)) if (!IsGroupHidden(group)) return true;
+                }
+                else if (!IsGroupHidden(Categories.Label(cat))) return true;
+            }
+            return !IsGroupHidden(Placed) || !IsGroupHidden(Unsorted);
+        }
+
+        /// <summary>Stop drawing everything that has been crossed off, of every kind.</summary>
+        internal static void HideAll()
+        {
+            var set = new HashSet<string>(Hidden(), StringComparer.OrdinalIgnoreCase);
+            foreach (var cat in Categories.All)
+            {
+                if (Categories.IsResource(cat)) continue;
+                if (Splits(cat)) foreach (var group in GroupsOf(cat)) set.Add(group);
+                else set.Add(Categories.Label(cat));
+            }
+            set.Add(Placed);
+            set.Add(Unsorted);
+            Save(set);
+            if (TgmConfig.ShowClearedDeposits != null) TgmConfig.ShowClearedDeposits.Value = false;
+        }
+
         internal static void ShowAll()
         {
             if (TgmConfig.ShowClearedDeposits != null && !TgmConfig.ShowClearedDeposits.Value) TgmConfig.ShowClearedDeposits.Value = true;

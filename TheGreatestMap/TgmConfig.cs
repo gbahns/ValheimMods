@@ -217,8 +217,6 @@ namespace TheGreatestMap
         internal static ConfigEntry<int> PlayerMarkerSize;
         internal static ConfigEntry<int> PlayerArrowSize;
         internal static ConfigEntry<bool> PinMarkerMenu;
-        internal static ConfigEntry<bool> MarkerListTree;
-        internal static ConfigEntry<bool> MarkerListHoverButtons;
         internal static ConfigEntry<string> AdoptNameHints;
         internal static ConfigEntry<string> AdoptPinMeanings;
         internal static ConfigEntry<Vector2> PinnedMenuSpot;
@@ -630,17 +628,6 @@ namespace TheGreatestMap
             PinnedMenuSpot = mod.BindLocal("Display", "Pinned Marker List Spot", Vector2.zero,
                 "Where a pinned marker list sits, as a fraction of the screen. Set when you pin it; zero means it has " +
                 "not been pinned anywhere yet.");
-            MarkerListTree = mod.BindLocal("Display", "Marker List Tree", true,
-                "Let a kind in the marker list unfold into the types under it, each with a switch of its own: ore into " +
-                "copper, tin, silver and obsidian. The triangle at the head of the row opens it, and opening one closes " +
-                "the last, so the list cannot grow off the bottom of the map. Off, the list names kinds only, and a " +
-                "single type is hidden from a marker's own right-click menu as before.");
-            MarkerListHoverButtons = mod.BindLocal("Display", "Marker List Buttons On Hover", true,
-                "Show a row's place, only and ping buttons only while the pointer is on that row -- and on any row " +
-                "whose button is already doing something, so an armed or filtered kind goes on saying so. Off, every " +
-                "row shows all three at once, which is three times as many things to read as there are names to read.");
-            MarkerListTree.SettingChanged += (_, __) => KindMenu.Relayout();
-            MarkerListHoverButtons.SettingChanged += (_, __) => KindMenu.Relayout();
 
             AdoptNameHints = mod.BindLocal("Catalog", "Adopt Name Hints", "",
                 "What your own shorthand on a hand-placed marker means, for tgm_adopt, as " +

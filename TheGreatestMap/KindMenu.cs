@@ -10,17 +10,35 @@ using Object = UnityEngine.Object;
 namespace TheGreatestMap
 {
     /// <summary>
-    /// The list behind a left click on the marker button, in two columns. On the left, one row per
-    /// kind that has markers on your map, showing its icon. On the right, the markers that have been
-    /// crossed off: used-up deposits as one switch, and searched places by type, so burial chambers
-    /// you are done with can go while the sunken crypts stay. Clicking a row changes that one thing
-    /// and leaves the list open, so several can be changed at once.
+    /// The list behind a left click on the marker button: one column, one row per kind that has
+    /// markers on your map, and a triangle on any kind that is several things -- ore into copper,
+    /// tin and silver -- so a type can be switched on its own. Clicking a row changes that one
+    /// thing and leaves the list open, so several can be changed at once.
+    ///
+    /// <para><b>Why one column.</b> It was two: kinds on the left, and on the right the markers
+    /// that had been crossed off, listed again by type. Side by side reads as two halves of one
+    /// thing, and they were not -- the right column held a subset of the left column's markers
+    /// sorted on a different axis, so a searched burial chamber appeared twice and hiding it in
+    /// one place explained nothing about the other. Being done with something is a state a marker
+    /// is in, not a place it lives, so it is now a count and a switch on the row the marker
+    /// already has, and the column is gone.</para>
+    ///
+    /// <para>What that costs is height, which is what the scroll is for: the list can be as long
+    /// as the map has kinds, several kinds can be open at once, and a kind with forty types lists
+    /// all forty.</para>
     /// </summary>
     internal static class KindMenu
     {
-        private const float ColumnWidth = 250f;
-        private const float Gap = 8f;
-        private const float Width = ColumnWidth * 2f + Gap;
+        /// <summary>
+        /// One column, wide enough for a kind's name, its count and four buttons at the end --
+        /// which it has to be, since the buttons appear over the tail of the longest names.
+        /// </summary>
+        private const float Width = 350f;
+
+        /// <summary>The strip down the right edge the scroll bar lives in, kept clear on every row.</summary>
+        private const float Bar = 6f;
+
+        private const float RowWidth = Width - Bar;
         private const float RowHeight = 26f;
         private const float HeaderHeight = 26f;
         private const float Pad = 4f;
@@ -36,12 +54,10 @@ namespace TheGreatestMap
         private const float Twist = 14f;
 
         /// <summary>
-        /// How many types one kind lists before it stops and says how many more there are. There
-        /// is no scroll bar here, so the only thing keeping a kind with forty types from running
-        /// off the bottom of the map is a number -- and past a dozen the list has stopped being
-        /// something to read, which is what the find box above it is for.
+        /// The shortest the scrolling part is allowed to be. A map squeezed into a small window
+        /// still gets a list worth reading rather than a slot showing two rows at a time.
         /// </summary>
-        private const int TypeLimit = 12;
+        private const float MinViewport = RowHeight * 6f;
 
         /// <summary>
         /// A switch row is an icon and a name, drawn the way the map draws what it covers: full
@@ -62,8 +78,9 @@ namespace TheGreatestMap
         private static readonly List<Entry> _entries = new List<Entry>();
 
         /// <summary>
-        /// One per small button that can be on: armed for placing, or filtering the map. Run
-        /// whenever the list is refreshed, which is after every press on it.
+        /// One per thing that is repainted from what it means rather than from where it is: a
+        /// small button that can be lit, a count that can change. Run whenever the list is
+        /// refreshed, which is after every press on it.
         /// </summary>
         private static readonly List<Action> _lights = new List<Action>();
         private static GameObject _root;
@@ -78,21 +95,43 @@ namespace TheGreatestMap
         private static bool _rebuilding;
         private static bool _rebuildWanted;
 
+        /// <summary>The part of the list that scrolls, and what scrolls inside it.</summary>
+        private static RectTransform _viewport, _content;
+        private static Image _barTrack, _barHandle;
+        private static float _contentHeight;
+        private static float _viewportHeight;
+        private static float _scroll;
+        private static float _wheel;
+
         /// <summary>
-        /// Which kind is unfolded, showing the types under it. One at a time: a panel with no
-        /// scroll bar cannot afford several open at once, and opening the next closing the last
-        /// keeps its height within a dozen rows of where it started. Kept for the session rather
-        /// than written to the config, because it is where you are in the list rather than a
-        /// preference -- a list that comes back tomorrow still unfolded the way a two-minute
-        /// search left it is a list nobody put away.
+        /// Which kinds are unfolded, showing the types under them. As many at once as you like:
+        /// what used to allow only one was the panel having no scroll, so opening a second ran
+        /// the list off the bottom of the map. Kept for the session rather than written to the
+        /// config, because it is where you are in the list rather than a preference.
         /// </summary>
-        private static Category? _unfolded;
+        private static readonly HashSet<Category> _unfolded = new HashSet<Category>();
 
         /// <summary>The types on the map under each kind, commonest first.</summary>
         private static Dictionary<Category, List<Focus.TypeCount>> _types;
 
         /// <summary>How many markers each kind has, for the number after its name.</summary>
-        private static Dictionary<Category, int> _counts = new Dictionary<Category, int>();
+        private static readonly Dictionary<Category, int> _counts = new Dictionary<Category, int>();
+
+        /// <summary>
+        /// How many of each kind, and of each type, have been crossed off. The count that used to
+        /// be the whole right column: it is the same number, read off the same markers, written on
+        /// the row the markers already have.
+        /// </summary>
+        private static readonly Dictionary<Category, int> _done = new Dictionary<Category, int>();
+        private static readonly Dictionary<string, int> _doneByIcon = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Crossed-off markers that belong to no kind at all -- the ones placed by hand with
+        /// nothing on them, and the ones recorded before a marker remembered what it was. They
+        /// have no row of their own among the kinds, so they get one at the foot of the list
+        /// rather than losing their switch when the column went.
+        /// </summary>
+        private static readonly Dictionary<string, int> _doneOther = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// Whether the row that puts everything back was drawn. Checked on every refresh: that
@@ -118,6 +157,9 @@ namespace TheGreatestMap
         internal static bool Hovered =>
             _root != null && _rect != null
             && RectTransformUtility.RectangleContainsScreenPoint(_rect, ZInput.pointerPosition, _camera);
+
+        /// <summary>Is there more list than there is room to draw it?</summary>
+        internal static bool CanScroll => _root != null && _contentHeight > _viewportHeight + 0.5f;
 
         private static bool Pinned => TgmConfig.PinMarkerMenu != null && TgmConfig.PinMarkerMenu.Value;
 
@@ -207,6 +249,8 @@ namespace TheGreatestMap
                 if (now) RememberSpot();
                 PaintPin();
             });
+            MenuKit.Tip(go, "Pin the list",
+                "Keep this list open: it stops closing when you click the map, and comes back with the map");
             PaintPin();
         }
 
@@ -223,7 +267,6 @@ namespace TheGreatestMap
         /// <summary>Remember where it is now, so pinning it puts it back here next time.</summary>
         private static void RememberSpot()
         {
-            if (_rect == null || _camera != null) { }
             if (_rect == null) return;
             var corners = new Vector3[4];
             _rect.GetWorldCorners(corners);
@@ -241,23 +284,13 @@ namespace TheGreatestMap
 
         private static bool AllShown => TgmConfig.ShowAllMarkers == null || TgmConfig.ShowAllMarkers.Value;
 
-        private static bool Tree => TgmConfig.MarkerListTree == null || TgmConfig.MarkerListTree.Value;
-
-        private static bool HoverButtons =>
-            TgmConfig.MarkerListHoverButtons == null || TgmConfig.MarkerListHoverButtons.Value;
-
-        /// <summary>Redraw an open list, for a setting that changes its rows rather than their colors.</summary>
-        internal static void Relayout()
-        {
-            if (_root != null) _rebuildWanted = true;
-        }
-
         internal static void Open(Vector2 screenPos)
         {
             // A click on the button while the list is open closes it. Whether that click reaches
             // the button or the "clicked away" check first depends on script order, so a list
             // closed this frame cannot be reopened by the same click.
             if (Time.frameCount == _closedFrame) return;
+            float scroll = _rebuilding ? _scroll : 0f;
             Close();
             _screenPos = screenPos;
             if (!_rebuilding) _results = null;
@@ -271,22 +304,6 @@ namespace TheGreatestMap
                 return;
             }
 
-            var seen = new HashSet<Category>();
-            int cleared = 0;
-            var searched = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            var groupIcon = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var pin in ClientPins.All)
-            {
-                var kind = ClientPins.KindOf(pin);
-                if (kind.HasValue) seen.Add(kind.Value);
-                if (!pin.Checked) continue;
-                if (CrossedOff.IsCleared(pin)) { cleared++; continue; }
-                string group = CrossedOff.GroupOf(pin);
-                searched.TryGetValue(group, out int n);
-                searched[group] = n + 1;
-                if (!groupIcon.ContainsKey(group)) groupIcon[group] = ClientPins.IconOf(pin);
-            }
-
             Recount();
 
             // The types under each kind, for the rows that unfold. Read from the markers rather
@@ -294,14 +311,13 @@ namespace TheGreatestMap
             // reading the find box turns into rows on Enter, asked of everything instead of a
             // word.
             _types = new Dictionary<Category, List<Focus.TypeCount>>();
-            if (Tree)
-                foreach (var type in Focus.Types(""))
-                {
-                    if (!type.Kind.HasValue) continue;
-                    if (!_types.TryGetValue(type.Kind.Value, out var list))
-                        _types[type.Kind.Value] = list = new List<Focus.TypeCount>();
-                    list.Add(type);
-                }
+            foreach (var type in Focus.Types(""))
+            {
+                if (!type.Kind.HasValue) continue;
+                if (!_types.TryGetValue(type.Kind.Value, out var list))
+                    _types[type.Kind.Value] = list = new List<Focus.TypeCount>();
+                list.Add(type);
+            }
 
             var panel = MenuKit.Panel(parent, "TGM_KindMenu");
             _root = panel.gameObject;
@@ -310,71 +326,37 @@ namespace TheGreatestMap
             _rect.pivot = new Vector2(0f, 1f);
             _entries.Clear();
 
-            float left = BuildKinds(map, seen);
-            float right = BuildCrossedOff(map, cleared, searched, groupIcon);
-            float y = Mathf.Min(left, right);
-
-            var divider = new GameObject("Divider", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-            divider.transform.SetParent(_root.transform, false);
-            var dimg = divider.GetComponent<Image>();
-            dimg.color = new Color(MenuKit.OutlineColor.r, MenuKit.OutlineColor.g, MenuKit.OutlineColor.b, 0.35f);
-            dimg.raycastTarget = false;
-            Place((RectTransform)divider.transform, ColumnWidth + Gap * 0.5f - 0.5f, -Pad, 1f, -y - Pad);
-
-            // Everything back: the kinds, the master switch, the crossed-off groups, the icons
-            // hidden one picture at a time and the markers hidden one at a time. The same work as
-            // tgm_show, and it has to be, because this is the button people press.
-            //
-            // It used to put back only the kinds, the master switch and the crossed-off groups,
-            // which left "Hide all Cloudberries markers" with no way back on the map at all: the
-            // one control that undid it lived in a marker's own menu, and every marker it applied
-            // to was hidden. A button called "Show all" that shows most of it is worse than no
-            // button, because it answers the question and the answer is wrong.
-            //
-            // It was also called "Show all" and sat four rows under another one called "Show all
-            // markers", and between them they were the most confusing thing in the panel: one was
-            // the master switch and the other undid every hide in the mod, and the words gave no
-            // way to tell which. So this one now names what it will put back, and is drawn only
-            // when it would put something back -- which leaves "all markers" belonging to the one
-            // row it was ever about.
+            // The foot's height has to be known before the scrolling part can be given what is
+            // left over, and whether the put-back row is there is part of that.
             _resetShown = AnythingPutBack();
-            if (_resetShown)
-            {
-                var putBack = MenuKit.Row(_root.transform, "", true, () =>
-                {
-                    ViewPrefs.Clear();
-                    TgmConfig.ShowEverything();
-                    ClientPins.Restyle();
-                    Refresh();
-                });
-                Place(putBack, 0f, y, Width, RowHeight);
-                var putBackLabel = putBack.GetComponentInChildren<TextMeshProUGUI>();
-                if (putBackLabel != null) putBackLabel.alignment = TextAlignmentOptions.MidlineLeft;
-                _entries.Add(new Entry { Text = PutBackText, Quiet = () => false, Label = putBackLabel });
-                y -= RowHeight;
-            }
+            float head = BuildHead(map);
+            float foot = (_resetShown ? 4f : 3f) * RowHeight;
 
-            // Side by side, because they are the same question asked of two things, and a player
-            // deciding to quieten the map wants to see both answers at once rather than hunt for
-            // the second one. Half the panel each, which is a column's width -- the longest
-            // either says is "Hide Marker Labels".
-            ActionRow(0f, y, Erasures.Toggle,
-                () => Erasures.On ? "Hide erased markers" : "Show erased markers", null);
-            y -= RowHeight;
+            // Anything outside the viewport is clipped, which is what allows scrolling without a
+            // full ScrollRect and its scrollbars. The same arrangement the map legend uses.
+            var viewport = new GameObject("Viewport", typeof(RectTransform), typeof(RectMask2D));
+            viewport.transform.SetParent(_root.transform, false);
+            _viewport = (RectTransform)viewport.transform;
 
-            float half = (Width - Gap) * 0.5f;
-            LabelButton(0f, y, half,
-                () => TgmConfig.ShowMarkerLabels,
-                () => TgmConfig.ShowMarkerLabels != null && TgmConfig.ShowMarkerLabels.Value
-                    ? "Hide Marker Labels" : "Show Marker Labels");
-            LabelButton(half + Gap, y, half,
-                () => TgmConfig.ShowPortalLabels,
-                () => TgmConfig.ShowPortalLabels != null && TgmConfig.ShowPortalLabels.Value
-                    ? "Hide Portal Labels" : "Show Portal Labels");
-            y -= RowHeight;
+            var content = new GameObject("Content", typeof(RectTransform));
+            content.transform.SetParent(viewport.transform, false);
+            _content = (RectTransform)content.transform;
+            _content.anchorMin = new Vector2(0f, 1f);
+            _content.anchorMax = new Vector2(1f, 1f);
+            _content.pivot = new Vector2(0f, 1f);
+            _content.sizeDelta = Vector2.zero;
 
-            // Pinning is about this list's own behavior rather than about the markers, so it sits
-            // apart from them at the foot, next to the other row that acts on the whole list.
+            _contentHeight = -BuildList(map);
+            _content.sizeDelta = new Vector2(0f, _contentHeight);
+
+            var pr = parent.rect;
+            float room = Mathf.Max(MinViewport, pr.height - head - foot - Pad * 3f);
+            _viewportHeight = Mathf.Min(_contentHeight, room);
+            Place(_viewport, 0f, -head, RowWidth, _viewportHeight);
+
+            BuildScrollBar(head);
+            float y = -head - _viewportHeight;
+            y = BuildFoot(y);
 
             float height = -y + Pad;
             _rect.sizeDelta = new Vector2(Width, height);
@@ -383,7 +365,6 @@ namespace TheGreatestMap
             var canvas = parent.GetComponentInParent<Canvas>();
             _camera = canvas != null && canvas.rootCanvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.rootCanvas.worldCamera : null;
             RectTransformUtility.ScreenPointToLocalPointInRectangle(parent, screenPos, _camera, out var local);
-            var pr = parent.rect;
             float x = local.x - pr.xMin;
             float top = pr.yMax - local.y;
             if (x + Width > pr.width) x = Mathf.Max(0f, pr.width - Width);
@@ -397,14 +378,16 @@ namespace TheGreatestMap
                 _find.ActivateInputField();
             }
             _pendingText = null;
+            _scroll = scroll;
+            ClampScroll();
             Refresh();
         }
 
         /// <summary>
-        /// Draw the list again in place, keeping what was typed. Used when the rows themselves have
-        /// to change rather than only their colors -- showing the types that matched instead of the
-        /// kinds. The close is ours rather than a click elsewhere, so it must not count as the
-        /// click-away that stops the list reopening in the same frame.
+        /// Draw the list again in place, keeping what was typed, which kinds are open and where
+        /// the list was scrolled to. Used when the rows themselves have to change rather than only
+        /// their colors. The close is ours rather than a click elsewhere, so it must not count as
+        /// the click-away that stops the list reopening in the same frame.
         /// </summary>
         private static void Rebuild()
         {
@@ -419,25 +402,36 @@ namespace TheGreatestMap
             finally { _rebuilding = false; }
         }
 
-        /// <summary>The left column. Returns the y below its last row.</summary>
-        private static float BuildKinds(Minimap map, HashSet<Category> seen)
+        // ── the three parts ─────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// The part that stays put at the top: what this is, the master switch, the find box and
+        /// what the map is showing. None of it scrolls, because all of it is how you get out of
+        /// wherever the list has got you. Returns its height.
+        /// </summary>
+        private static float BuildHead(Minimap map)
         {
-            const float x = 0f;
             float y = -Pad;
-            // No legend after the name any more. It named three buttons sitting at the end of
-            // every row, which is the one place a reader does not need them named: each carries a
-            // tooltip of its own, and with the buttons waiting for the pointer there is nothing to
-            // explain until there is something to look at.
-            Header(_results != null ? "Matches" : "Marker kinds", x, y);
+            // The master lives in the title strip rather than among the kinds: it is this
+            // window's power switch, not a peer of "Berries". It used to be a row four below
+            // another row called "Show all", and between them they were the most confusing thing
+            // in the panel.
+            Header(_results != null ? "Matches" : "Markers", 0f, y);
+            WordButton(_root.transform, RowWidth - 36f - 70f, y + 3f, 70f, 20f,
+                () => AllShown ? "hide all" : "show all",
+                () => { MarkerToggle.ToggleAll(); Refresh(); },
+                () => !AllShown,
+                "All markers",
+                "Stop drawing every one of this mod's markers, and start again");
             y -= HeaderHeight;
 
-            FindBox(x, y);
+            FindBox(0f, y);
             y -= RowHeight;
 
             // What the map is showing, which is also how to stop: the row is the way back to
             // everything. It is built whether or not anything is focused, because focusing happens
             // by typing in the box above it and the row has to be there to say so.
-            ActionRow(x, y, Focus.Clear, () =>
+            ActionRow(_root.transform, 0f, y, Focus.Clear, () =>
                 {
                     Focus.Tally(out int shown, out int all);
                     return Focus.On
@@ -446,16 +440,20 @@ namespace TheGreatestMap
                 },
                 () => !Focus.On);
             y -= RowHeight;
+            return -y;
+        }
 
-            // The master, so it is reachable from this list too, not only from a right click on the button.
-            ActionRow(x, y, () => { MarkerToggle.ToggleAll(); Refresh(); },
-                () => AllShown ? "Hide all markers" : "Show all markers", null);
-            y -= RowHeight;
-
-
+        /// <summary>
+        /// The scrolling middle: every kind that has markers, each unfolding into its types, or
+        /// the matches for what was typed. Returns the y below its last row, measured from the top
+        /// of the scrolling area.
+        /// </summary>
+        private static float BuildList(Minimap map)
+        {
+            float y = 0f;
             if (_results != null)
             {
-                ActionRow(x, y, () =>
+                ActionRow(_content, 0f, y, () =>
                     {
                         // Empty the box as well, or the kinds come back with a search still
                         // written above them and nothing being searched for.
@@ -468,15 +466,15 @@ namespace TheGreatestMap
                 y -= RowHeight;
                 if (_results.Count == 0)
                 {
-                    var none = MenuKit.Text(_root.transform, "None", "Nothing on the map matches.", 13f, MenuKit.Dim);
-                    Place(none.rectTransform, x + 10f, y, ColumnWidth - 20f, RowHeight);
+                    var none = MenuKit.Text(_content, "None", "Nothing on the map matches.", 13f, MenuKit.Dim);
+                    Place(none.rectTransform, 10f, y, RowWidth - 20f, RowHeight);
                     none.alignment = TextAlignmentOptions.MidlineLeft;
                     y -= RowHeight;
                 }
                 foreach (var match in _results)
                 {
                     var m = match;
-                    SwitchRow(map, x, y, 0f, m.Icon, $"{m.Label} ({m.Count})",
+                    SwitchRow(map, _content, 0f, y, 0f, m.Icon, $"{m.Label} ({m.Count})",
                         () => Focus.SetIcon(m.Icon),
                         () => Focus.Icon != null && IconRegistry.SameKey(Focus.Icon, m.Icon),
                         onLocate: () => Locate.Icon(m.Icon, m.Label));
@@ -503,10 +501,10 @@ namespace TheGreatestMap
                 // where a hand-placed player marker is armed and filtered -- so the kind is not
                 // listed twice.
                 if (kind == Category.Player) continue;
-                if (!seen.Contains(kind) && !Categories.IsPlacedOnly(kind) && !live
+                if (!_counts.ContainsKey(kind) && !Categories.IsPlacedOnly(kind) && !live
                     && !Categories.VanillaMarks(kind)) continue;
                 var k = kind;
-                var row = SwitchRow(map, x, y, Twist, IconKeyFor(k), KindLabel(k),
+                var row = SwitchRow(map, _content, 0f, y, Twist, IconKeyFor(k), KindLabel(k),
                     () => { if (TgmConfig.ShowKind.TryGetValue(k, out var e)) e.Value = !e.Value; },
                     () => AllShown && IsShown(k),
                     // The small pin at the row's end arms that kind for placing by hand. It is a
@@ -546,9 +544,15 @@ namespace TheGreatestMap
                     // Read again on every refresh rather than written once: recording goes on
                     // while a pinned list stays open for hours, and a number that was true this
                     // morning reads exactly like one that is true now.
-                    caption: () => KindLabel(k));
+                    caption: () => KindLabel(k),
+                    // And how many of them you have finished with, which used to be a whole
+                    // column of its own on the other side of the panel.
+                    doneCount: () => DoneOf(k),
+                    doneShown: () => DoneShown(k),
+                    doneToggle: () => ToggleDone(k),
+                    gone: Categories.IsResource(k));
                 y -= RowHeight;
-                y = Unfold(map, row, x, y, k);
+                y = Unfold(map, row, y, k);
             }
 
             // The other players, which are vanilla's markers rather than ours: nothing here
@@ -561,7 +565,7 @@ namespace TheGreatestMap
             // every refresh rather than fixed when the list opened: players come and go, and a
             // pinned list stays open for hours.
             Func<int> players = () => PlayerSpotlight.Players(map);
-            SwitchRow(map, x, y, Twist, "pin:Player", "Players",
+            SwitchRow(map, _content, 0f, y, Twist, "pin:Player", "Players",
                 () =>
                 {
                     if (players() > 0) PlayerSpotlight.Toggle(map);
@@ -588,68 +592,154 @@ namespace TheGreatestMap
                 caption: () => players() > 0 ? $"Players ({players()})" : "Players (none sharing)",
                 placeKind: Category.Player);
             y -= RowHeight;
+
+            // And the crossed-off markers belonging to no kind, which would otherwise have lost
+            // their switch along with the column it used to live in.
+            foreach (var bucket in new[] { CrossedOff.Placed, CrossedOff.Unsorted })
+            {
+                if (!_doneOther.TryGetValue(bucket, out int n) || n == 0) continue;
+                var group = bucket;
+                // Read again on every refresh, like every other count here: crossing one off is
+                // a thing you do with the list open.
+                Func<int> live = () => { _doneOther.TryGetValue(group, out int now); return now; };
+                var label = MenuKit.Text(_content, "Other", group, 13f, MenuKit.Dim);
+                Place(label.rectTransform, 10f + Twist, y, RowWidth - 160f, RowHeight);
+                label.alignment = TextAlignmentOptions.MidlineLeft;
+                DoneButton(null, y, live, () => !CrossedOff.IsGroupHidden(group),
+                           () => CrossedOff.SetGroupHidden(group, !CrossedOff.IsGroupHidden(group)), false);
+                y -= RowHeight;
+            }
             return y;
         }
 
         /// <summary>
-        /// The right column. Used-up deposits first, then searched places: structures on their own,
-        /// then dungeons with one switch for all of them and one per type, then anything else that
-        /// has been crossed off. A searched group appears once something in it has been crossed off;
-        /// before that, the marker's own right-click menu is where the choice comes up.
+        /// The part that stays put at the bottom: everything that is about the whole map rather
+        /// than about one kind. Returns the y below its last row.
         /// </summary>
-        private static float BuildCrossedOff(Minimap map, int cleared, Dictionary<string, int> searched, Dictionary<string, string> groupIcon)
+        private static float BuildFoot(float y)
         {
-            float x = ColumnWidth + Gap;
-            float y = -Pad;
-            Header("Crossed off", x, y);
-            y -= HeaderHeight;
-
-            ActionRow(x, y, () =>
+            // One switch for everything you are finished with, which is what the right-hand
+            // column was for before being a column stopped making sense. The per-kind and
+            // per-type switches are still there, on the rows they belong to.
+            ActionRow(_root.transform, 0f, y, () =>
                 {
-                    if (TgmConfig.ShowClearedDeposits != null) TgmConfig.ShowClearedDeposits.Value = !TgmConfig.ShowClearedDeposits.Value;
+                    if (CrossedOff.AnyShown()) CrossedOff.HideAll();
+                    else CrossedOff.ShowAll();
                 },
-                () => $"{(TgmConfig.ShowClearedDeposits == null || TgmConfig.ShowClearedDeposits.Value ? "Hide" : "Show")} cleared deposits ({cleared})",
-                () => cleared == 0);
+                () =>
+                {
+                    int done = DoneTotal();
+                    return (CrossedOff.AnyShown() ? "Hide" : "Show") +
+                           (done > 0 ? $" everything crossed off ({done})" : " everything crossed off");
+                },
+                () => DoneTotal() == 0);
             y -= RowHeight;
 
-            void Group(string group, float indent)
+            ActionRow(_root.transform, 0f, y, Erasures.Toggle,
+                () => Erasures.On ? "Hide erased markers" : "Show erased markers", null);
+            y -= RowHeight;
+
+            // Side by side, because they are the same question asked of two things, and a player
+            // deciding to quieten the map wants to see both answers at once rather than hunt for
+            // the second one.
+            float half = (RowWidth - Pad) * 0.5f;
+            LabelButton(0f, y, half,
+                () => TgmConfig.ShowMarkerLabels,
+                () => TgmConfig.ShowMarkerLabels != null && TgmConfig.ShowMarkerLabels.Value
+                    ? "Hide Marker Labels" : "Show Marker Labels");
+            LabelButton(half + Pad, y, half,
+                () => TgmConfig.ShowPortalLabels,
+                () => TgmConfig.ShowPortalLabels != null && TgmConfig.ShowPortalLabels.Value
+                    ? "Hide Portal Labels" : "Show Portal Labels");
+            y -= RowHeight;
+
+            // Everything back: the kinds, the master switch, the crossed-off groups, the icons
+            // hidden one picture at a time and the markers hidden one at a time. The same work as
+            // tgm_show, and it has to be, because this is the button people press.
+            //
+            // It used to put back only the kinds, the master switch and the crossed-off groups,
+            // which left "Hide all Cloudberries markers" with no way back on the map at all: the
+            // one control that undid it lived in a marker's own menu, and every marker it applied
+            // to was hidden. A button called "Show all" that shows most of it is worse than no
+            // button, because it answers the question and the answer is wrong.
+            //
+            // Drawn only when it would put something back, and naming what that is. It used to be
+            // called "Show all" and sit four rows under another one called "Show all markers",
+            // and between them they were the most confusing thing in the panel.
+            if (_resetShown)
             {
-                if (!searched.TryGetValue(group, out int count)) return;
-                groupIcon.TryGetValue(group, out var icon);
-                var g = group;
-                SwitchRow(map, x, y, indent, icon, $"{g} ({count})",
-                    () => CrossedOff.SetGroupHidden(g, !CrossedOff.IsGroupHidden(g)),
-                    () => AllShown && !CrossedOff.IsGroupHidden(g));
+                var putBack = MenuKit.Row(_root.transform, "", true, () =>
+                {
+                    ViewPrefs.Clear();
+                    TgmConfig.ShowEverything();
+                    ClientPins.Restyle();
+                    Refresh();
+                });
+                Place(putBack, 0f, y, RowWidth, RowHeight);
+                var putBackLabel = putBack.GetComponentInChildren<TextMeshProUGUI>();
+                if (putBackLabel != null) putBackLabel.alignment = TextAlignmentOptions.MidlineLeft;
+                _entries.Add(new Entry { Text = PutBackText, Quiet = () => false, Label = putBackLabel });
                 y -= RowHeight;
             }
-
-            // Dungeons and structures are each several things wearing one kind, so each gets a
-            // switch for the lot and a row per type under it.
-            foreach (var kind in Categories.All)
-            {
-                if (!CrossedOff.Splits(kind)) { Group(Categories.Label(kind), 0f); continue; }
-                var groups = CrossedOff.GroupsOf(kind);
-                int total = 0;
-                foreach (var group in groups)
-                    if (searched.TryGetValue(group, out int n)) total += n;
-                var owner = kind;
-                string label = Categories.Label(kind).ToLowerInvariant();
-                ActionRow(x, y, () => CrossedOff.SetTypesHidden(owner, AnyShown(owner)),
-                    () => $"{(AnyShown(owner) ? "Hide" : "Show")} searched {label} ({total})",
-                    () => total == 0);
-                y -= RowHeight;
-                foreach (var group in groups) Group(group, Indent);
-            }
-
-            foreach (var kind in Categories.All)
-            {
-                if (Categories.IsResource(kind) || CrossedOff.HasTypes(kind)) continue;   // done above
-                Group(Categories.Label(kind), 0f);
-            }
-            Group(CrossedOff.Placed, 0f);
-            Group(CrossedOff.Unsorted, 0f);
             return y;
         }
+
+        /// <summary>
+        /// A hairline down the right edge saying how much list there is and where in it you are.
+        /// Without it a panel that happens to end on a whole row looks like the end of the list.
+        /// </summary>
+        private static void BuildScrollBar(float head)
+        {
+            var track = new GameObject("BarTrack", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            track.transform.SetParent(_root.transform, false);
+            _barTrack = track.GetComponent<Image>();
+            _barTrack.color = new Color(1f, 1f, 1f, 0.05f);
+            _barTrack.raycastTarget = false;
+            Place((RectTransform)track.transform, RowWidth + 1f, -head, 3f, _viewportHeight);
+
+            var handle = new GameObject("BarHandle", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            handle.transform.SetParent(_root.transform, false);
+            _barHandle = handle.GetComponent<Image>();
+            _barHandle.color = new Color(1f, 0.85f, 0.45f, 0.45f);
+            _barHandle.raycastTarget = false;
+            Place((RectTransform)handle.transform, RowWidth + 1f, -head, 3f, _viewportHeight);
+            _barTop = head;
+            PaintScrollBar();
+        }
+
+        /// <summary>Where the scrolling part starts, so the bar can be redrawn without being told again.</summary>
+        private static float _barTop;
+
+        private static void PaintScrollBar()
+        {
+            bool show = CanScroll;
+            if (_barTrack != null) _barTrack.enabled = show;
+            if (_barHandle == null) { return; }
+            _barHandle.enabled = show;
+            if (!show) return;
+            float fraction = _viewportHeight / _contentHeight;
+            float height = Mathf.Max(18f, _viewportHeight * fraction);
+            float travel = _viewportHeight - height;
+            float max = Mathf.Max(1f, _contentHeight - _viewportHeight);
+            Place((RectTransform)_barHandle.transform, RowWidth + 1f,
+                  -(_barTop + travel * Mathf.Clamp01(_scroll / max)), 3f, height);
+        }
+
+        private static void ClampScroll()
+        {
+            float max = Mathf.Max(0f, _contentHeight - _viewportHeight);
+            _scroll = Mathf.Clamp(_scroll, 0f, max);
+            if (_content != null) _content.anchoredPosition = new Vector2(0f, _scroll);
+            PaintScrollBar();
+        }
+
+        /// <summary>The wheel value the camera would have used, captured before it was zeroed.</summary>
+        internal static void NoteWheel(float value)
+        {
+            if (value != 0f) _wheel = value;
+        }
+
+        // ── rows ────────────────────────────────────────────────────────────────────
 
         private static bool AnyShown(Category cat)
         {
@@ -659,11 +749,279 @@ namespace TheGreatestMap
         }
 
         /// <summary>
-        /// A button of its own at the end of a row, so the row keeps meaning what it meant: a small
-        /// pin that arms the kind for placing by hand, and "only", which narrows the map to it.
-        /// Written rather than drawn as a glyph, because the game's font is a display face and what
-        /// it has beyond the Latin alphabet cannot be relied on.
+        /// How many of this kind you have crossed off. Read afresh on every refresh, like the
+        /// counts beside the names, because crossing one off is a thing you do with the list open.
         /// </summary>
+        private static int DoneOf(Category kind)
+        {
+            _done.TryGetValue(kind, out int n);
+            return n;
+        }
+
+        private static int DoneTotal()
+        {
+            int n = 0;
+            foreach (var kv in _done) n += kv.Value;
+            foreach (var kv in _doneOther) n += kv.Value;
+            return n;
+        }
+
+        /// <summary>
+        /// Are this kind's crossed-off markers drawn? A used-up deposit and a searched place are
+        /// different ideas in the model underneath -- one thing is gone, the other is merely done
+        /// with -- and the deposits share a single switch, which the tooltip says.
+        /// </summary>
+        private static bool DoneShown(Category kind)
+        {
+            if (Categories.IsResource(kind))
+                return TgmConfig.ShowClearedDeposits == null || TgmConfig.ShowClearedDeposits.Value;
+            if (CrossedOff.Splits(kind)) return AnyShown(kind);
+            return !CrossedOff.IsGroupHidden(Categories.Label(kind));
+        }
+
+        private static void ToggleDone(Category kind)
+        {
+            bool shown = DoneShown(kind);
+            if (Categories.IsResource(kind))
+            {
+                if (TgmConfig.ShowClearedDeposits != null) TgmConfig.ShowClearedDeposits.Value = !shown;
+                return;
+            }
+            if (CrossedOff.Splits(kind)) { CrossedOff.SetTypesHidden(kind, shown); return; }
+            CrossedOff.SetGroupHidden(Categories.Label(kind), shown);
+        }
+
+        /// <summary>
+        /// A button that turns one label switch off and on, captioned with what pressing it will
+        /// do rather than with the state it is in. "Hide Marker Labels" is an instruction; "Marker
+        /// Labels: on" is a report that leaves the reader to work out what a press does.
+        /// </summary>
+        private static void LabelButton(float x, float y, float width, Func<ConfigEntry<bool>> entry, Func<string> text)
+        {
+            var row = MenuKit.Row(_root.transform, "", true, () =>
+            {
+                var e = entry();
+                if (e != null) e.Value = !e.Value;
+                Refresh();
+            });
+            Place(row, x, y, width, RowHeight);
+            var label = row.GetComponentInChildren<TextMeshProUGUI>();
+            if (label != null) label.alignment = TextAlignmentOptions.Center;
+            _entries.Add(new Entry { Text = text, Quiet = () => false, Label = label });
+        }
+
+        private static void ActionRow(Transform host, float x, float y, Action onClick, Func<string> text, Func<bool> quiet)
+        {
+            var row = MenuKit.Row(host, "", true, () =>
+            {
+                onClick();
+                ClientPins.Restyle();
+                Refresh();
+            });
+            Place(row, x, y, RowWidth, RowHeight);
+            var label = row.GetComponentInChildren<TextMeshProUGUI>();
+            if (label != null) label.alignment = TextAlignmentOptions.MidlineLeft;
+            _entries.Add(new Entry { Text = text, Quiet = quiet ?? (() => false), Label = label });
+        }
+
+        private static RectTransform SwitchRow(Minimap map, Transform host, float x, float y, float indent,
+                                               string iconKey, string text, Action onClick, Func<bool> shown,
+                                               Action onPlace = null, Action onOnly = null, Action onLocate = null,
+                                               Func<string> caption = null, Category? placeKind = null,
+                                               Func<bool> onlyLit = null, Func<bool> pingLit = null,
+                                               Func<int> doneCount = null, Func<bool> doneShown = null,
+                                               Action doneToggle = null, bool gone = false)
+        {
+            var row = MenuKit.Row(host, "", true, () =>
+            {
+                onClick();
+                ClientPins.Restyle();
+                Refresh();
+            });
+            Place(row, x, y, RowWidth, RowHeight);
+            var entry = new Entry { Shown = shown, Caption = caption };
+
+            var sprite = (iconKey != null ? IconRegistry.Resolve(map, iconKey) : null) ?? IconRegistry.Resolve(map, IconRegistry.FallbackKey);
+            var iconGo = new GameObject("Icon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            iconGo.transform.SetParent(row, false);
+            var irt = (RectTransform)iconGo.transform;
+            irt.anchorMin = new Vector2(0f, 0.5f);
+            irt.anchorMax = new Vector2(0f, 0.5f);
+            irt.pivot = new Vector2(0f, 0.5f);
+            irt.anchoredPosition = new Vector2(8f + indent, 0f);
+            irt.sizeDelta = new Vector2(IconSize, IconSize);
+            entry.Icon = iconGo.GetComponent<Image>();
+            entry.Icon.sprite = sprite;
+            entry.Icon.raycastTarget = false;
+            entry.Icon.preserveAspect = true;
+
+            // Each button keeps its own column, so a row missing one leaves a gap rather than
+            // sliding the others along: ships have no "place by hand", and their only and ping
+            // should still sit under everyone else's.
+            bool anyButton = onPlace != null || onOnly != null || onLocate != null || doneToggle != null;
+            float right = 6f;
+            // Kept so the row can hide them again until the pointer arrives, and so it knows
+            // which of them is lit -- a button doing something is shown whether or not anybody
+            // is pointing at it.
+            var group = new List<GameObject>(4);
+            var lit = new List<Func<bool>>(4);
+            if (anyButton)
+            {
+                if (onPlace != null)
+                {
+                    Func<bool> armed = () => placeKind.HasValue && ManualPlace.Armed.HasValue
+                                             && ManualPlace.Armed.Value == placeKind.Value;
+                    group.Add(RowButton(row, "+", 15f, right, RowHeight - 8f, onPlace,
+                        lit: armed,
+                        tipTopic: "Place Manually",
+                        tip: "Double-click on the map to place this marker manually"));
+                    lit.Add(armed);
+                }
+                right += RowHeight - 4f;
+                if (onOnly != null)
+                {
+                    var only = onlyLit ?? (() => placeKind.HasValue && Focus.Kind.HasValue
+                                                 && Focus.Kind.Value == placeKind.Value);
+                    group.Add(RowButton(row, "only", 11f, right, 34f, () => { onOnly(); Refresh(); },
+                        lit: only,
+                        tipTopic: "Only",
+                        tip: "Hide every other kind of marker"));
+                    lit.Add(only);
+                }
+                right += 38f;
+                // Pinging leaves the list open and changes nothing, so unlike the others there
+                // is nothing to redraw afterwards -- the pulse paints itself.
+                if (onLocate != null)
+                {
+                    var ping = pingLit ?? (() => placeKind.HasValue && Locate.Pointing(placeKind.Value));
+                    group.Add(RowIcon(row, MenuKit.Ping(), right, 22f, onLocate,
+                        lit: ping,
+                        tipTopic: "Ping",
+                        tip: "Make every marker of this kind wave"));
+                    lit.Add(ping);
+                }
+                right += 26f;
+                // How many of these you are finished with, and the switch for them. The count is
+                // on the button because the two belong together: a column of counts with the
+                // switches somewhere else is what this panel used to be.
+                if (doneToggle != null && doneCount != null && doneShown != null)
+                {
+                    var button = DoneButton(row, 0f, doneCount, doneShown, doneToggle, gone, right);
+                    if (button != null)
+                    {
+                        group.Add(button);
+                        var drawn = doneShown;
+                        // Lit, and so shown without the pointer, while those markers are hidden:
+                        // a row quietly leaving twelve markers off the map has to say so.
+                        lit.Add(() => doneCount() > 0 && !drawn());
+                    }
+                }
+                right += 52f;
+            }
+            float buttons = right;
+
+            entry.Label = row.GetComponentInChildren<TextMeshProUGUI>();
+            if (entry.Label != null)
+            {
+                entry.Label.text = text;
+                entry.Label.alignment = TextAlignmentOptions.MidlineLeft;
+                entry.Label.rectTransform.offsetMin = new Vector2(indent + IconSize + 14f, 0f);
+                // Keep the name clear of the buttons rather than letting a long kind run under
+                // them, where it reads as part of the word on the button. While the buttons are
+                // waiting for the pointer the name has the whole row and gives it back when they
+                // appear: it is left-aligned, so its beginning never moves and the only thing cut
+                // is a tail long enough to reach them.
+                entry.Label.rectTransform.offsetMax = new Vector2(group.Count > 0 ? -6f : -buttons, 0f);
+                entry.Label.overflowMode = TextOverflowModes.Ellipsis;
+            }
+            _entries.Add(entry);
+
+            // The buttons wait for the pointer.
+            //
+            // Twenty rows with four buttons each is eighty things to read before the first
+            // decision, and what a reader wants from this list is the names. So they are drawn on
+            // the row the pointer is resting on, and on any row whose button is already doing
+            // something: an armed kind, a filtered one, or one whose crossed-off markers are
+            // hidden, has to go on saying so, or the only way to find what you asked for is to go
+            // hunting for it.
+            if (group.Count > 0)
+            {
+                // Glow rather than the row's own Hover, which only paints. Moving onto a button
+                // inside the row does not leave the row -- the pointer's chain holds every
+                // ancestor of what it is over -- so the buttons do not vanish from under the hand
+                // reaching for them.
+                var glow = row.gameObject.GetComponent<MenuKit.Glow>() ?? row.gameObject.AddComponent<MenuKit.Glow>();
+                var label = entry.Label;
+                foreach (var go in group) go.SetActive(false);
+                _hovers.Add(() =>
+                {
+                    bool show = glow.Over;
+                    if (!show)
+                        foreach (var light in lit) if (light()) { show = true; break; }
+                    foreach (var go in group) if (go.activeSelf != show) go.SetActive(show);
+                    if (label != null)
+                        label.rectTransform.offsetMax = new Vector2(show ? -buttons : -6f, 0f);
+                });
+            }
+            return row;
+        }
+
+        /// <summary>
+        /// The crossed-off count, which is also its switch: "12 done" on a row of places, "12
+        /// gone" on a row of deposits, lit while those twelve are being drawn and dark while they
+        /// are not. Nothing is drawn at all when the count is zero -- a switch for nothing is one
+        /// more thing to read.
+        ///
+        /// <para>Given no row to sit in, it places itself in the panel at that y, which is how the
+        /// buckets of crossed-off markers belonging to no kind keep their switch.</para>
+        /// </summary>
+        private static GameObject DoneButton(RectTransform row, float y, Func<int> count, Func<bool> shownNow,
+                                             Action toggle, bool gone, float right = 6f)
+        {
+            if (count() == 0) return null;
+            string Word() => $"{count()} {(gone ? "gone" : "done")}";
+            string tip = gone
+                ? "Stop drawing the deposits and plants that have been used up. One switch covers every kind of them."
+                : "Stop drawing the ones you have crossed off, keeping the record of them";
+            if (row != null)
+            {
+                var button = RowButton(row, Word(), 11f, right, 52f, () => { toggle(); ClientPins.Restyle(); Refresh(); },
+                                       lit: () => count() > 0 && !shownNow(),
+                                       tipTopic: gone ? "Used up" : "Finished with", tip: tip);
+                var text = button.GetComponentInChildren<TextMeshProUGUI>();
+                if (text != null) _lights.Add(() => text.text = Word());
+                return button;
+            }
+
+            var loose = new GameObject("DoneButton", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+            loose.transform.SetParent(_content, false);
+            Place((RectTransform)loose.transform, RowWidth - 58f, y - 4f, 52f, RowHeight - 8f);
+            var img = loose.GetComponent<Image>();
+            img.color = MenuKit.ButtonIdle;
+            img.raycastTarget = true;
+            var btn = loose.GetComponent<Button>();
+            btn.transition = Selectable.Transition.None;
+            btn.targetGraphic = img;
+            btn.onClick.AddListener(() => { toggle(); ClientPins.Restyle(); Refresh(); });
+            MenuKit.Tip(loose, gone ? "Used up" : "Finished with", tip);
+            var word = MenuKit.Text(loose.transform, "Glyph", Word(), 11f, MenuKit.GlyphIdle);
+            word.alignment = TextAlignmentOptions.Center;
+            word.raycastTarget = false;
+            var wrt = word.rectTransform;
+            wrt.anchorMin = Vector2.zero;
+            wrt.anchorMax = Vector2.one;
+            wrt.offsetMin = Vector2.zero;
+            wrt.offsetMax = Vector2.zero;
+            _lights.Add(() =>
+            {
+                bool on = !shownNow();
+                word.text = Word();
+                img.color = on ? MenuKit.ButtonOn : MenuKit.ButtonIdle;
+                word.color = on ? MenuKit.GlyphOn : MenuKit.GlyphIdle;
+            });
+            return loose;
+        }
+
         /// <summary>The same button with a picture in it, for an action a word would only clutter.</summary>
         private static GameObject RowIcon(RectTransform row, Sprite sprite, float right, float width, Action onClick,
                                          Func<bool> lit = null, string tipTopic = null, string tip = null)
@@ -736,6 +1094,43 @@ namespace TheGreatestMap
         }
 
         /// <summary>
+        /// A word to press, placed where it is told rather than at the end of a row: the master
+        /// switch in the title strip. The same look as the buttons on the rows, because it is the
+        /// same kind of thing.
+        /// </summary>
+        private static void WordButton(Transform host, float x, float y, float width, float height, Func<string> text,
+                                       Action onClick, Func<bool> lit, string tipTopic, string tip)
+        {
+            var go = new GameObject("WordButton", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+            go.transform.SetParent(host, false);
+            Place((RectTransform)go.transform, x, y, width, height);
+            var img = go.GetComponent<Image>();
+            img.color = MenuKit.ButtonIdle;
+            img.raycastTarget = true;
+            var button = go.GetComponent<Button>();
+            button.transition = Selectable.Transition.None;
+            button.targetGraphic = img;
+            button.onClick.AddListener(() => onClick());
+            MenuKit.Tip(go, tipTopic, tip);
+
+            var label = MenuKit.Text(go.transform, "Glyph", text(), 11f, MenuKit.GlyphIdle);
+            label.alignment = TextAlignmentOptions.Center;
+            label.raycastTarget = false;
+            var lrt = label.rectTransform;
+            lrt.anchorMin = Vector2.zero;
+            lrt.anchorMax = Vector2.one;
+            lrt.offsetMin = Vector2.zero;
+            lrt.offsetMax = Vector2.zero;
+            _lights.Add(() =>
+            {
+                bool on = lit != null && lit();
+                label.text = text();
+                img.color = on ? MenuKit.ButtonOn : MenuKit.ButtonIdle;
+                label.color = on ? MenuKit.GlyphOn : MenuKit.GlyphIdle;
+            });
+        }
+
+        /// <summary>
         /// The find box. Typing narrows the map as the letters go in, so the map answers before the
         /// word is finished; Enter turns what matched into rows, one per type, to pick exactly one
         /// of them. Emptying the box shows everything again, which is why there is no clear button.
@@ -744,7 +1139,7 @@ namespace TheGreatestMap
         {
             var go = new GameObject("Find", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(TMP_InputField));
             go.transform.SetParent(_root.transform, false);
-            Place((RectTransform)go.transform, x + 8f, y - 2f, ColumnWidth - 16f, RowHeight - 6f);
+            Place((RectTransform)go.transform, x + 8f, y - 2f, RowWidth - 16f, RowHeight - 6f);
             go.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.14f);
 
             var text = MenuKit.Text(go.transform, "Text", "", 13f, MenuKit.Body);
@@ -787,161 +1182,8 @@ namespace TheGreatestMap
         private static void Header(string text, float x, float y)
         {
             var header = MenuKit.Text(_root.transform, "Header", text, 15f, MenuKit.Header);
-            Place(header.rectTransform, x + 10f, y, ColumnWidth - 20f, HeaderHeight);
+            Place(header.rectTransform, x + 10f, y, RowWidth - 130f, HeaderHeight);
             header.alignment = TextAlignmentOptions.MidlineLeft;
-        }
-
-        /// <summary>
-        /// A button that turns one label switch off and on, captioned with what pressing it will
-        /// do rather than with the state it is in. "Hide Marker Labels" is an instruction; "Marker
-        /// Labels: on" is a report that leaves the reader to work out what a press does.
-        /// </summary>
-        private static void LabelButton(float x, float y, float width, Func<ConfigEntry<bool>> entry, Func<string> text)
-        {
-            var row = MenuKit.Row(_root.transform, "", true, () =>
-            {
-                var e = entry();
-                if (e != null) e.Value = !e.Value;
-                Refresh();
-            });
-            Place(row, x, y, width, RowHeight);
-            var label = row.GetComponentInChildren<TextMeshProUGUI>();
-            if (label != null) label.alignment = TextAlignmentOptions.Center;
-            _entries.Add(new Entry { Text = text, Quiet = () => false, Label = label });
-        }
-
-        private static void ActionRow(float x, float y, Action onClick, Func<string> text, Func<bool> quiet)
-        {
-            var row = MenuKit.Row(_root.transform, "", true, () =>
-            {
-                onClick();
-                ClientPins.Restyle();
-                Refresh();
-            });
-            Place(row, x, y, ColumnWidth, RowHeight);
-            var label = row.GetComponentInChildren<TextMeshProUGUI>();
-            if (label != null) label.alignment = TextAlignmentOptions.MidlineLeft;
-            _entries.Add(new Entry { Text = text, Quiet = quiet ?? (() => false), Label = label });
-        }
-
-        private static RectTransform SwitchRow(Minimap map, float x, float y, float indent, string iconKey, string text, Action onClick, Func<bool> shown, Action onPlace = null, Action onOnly = null, Action onLocate = null, Func<string> caption = null, Category? placeKind = null, Func<bool> onlyLit = null, Func<bool> pingLit = null)
-        {
-            var row = MenuKit.Row(_root.transform, "", true, () =>
-            {
-                onClick();
-                ClientPins.Restyle();
-                Refresh();
-            });
-            Place(row, x, y, ColumnWidth, RowHeight);
-            var entry = new Entry { Shown = shown, Caption = caption };
-
-            var sprite = (iconKey != null ? IconRegistry.Resolve(map, iconKey) : null) ?? IconRegistry.Resolve(map, IconRegistry.FallbackKey);
-            var iconGo = new GameObject("Icon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-            iconGo.transform.SetParent(row, false);
-            var irt = (RectTransform)iconGo.transform;
-            irt.anchorMin = new Vector2(0f, 0.5f);
-            irt.anchorMax = new Vector2(0f, 0.5f);
-            irt.pivot = new Vector2(0f, 0.5f);
-            irt.anchoredPosition = new Vector2(8f + indent, 0f);
-            irt.sizeDelta = new Vector2(IconSize, IconSize);
-            entry.Icon = iconGo.GetComponent<Image>();
-            entry.Icon.sprite = sprite;
-            entry.Icon.raycastTarget = false;
-            entry.Icon.preserveAspect = true;
-
-            // Each button keeps its own column, so a row missing one leaves a gap rather than
-            // sliding the others along: ships have no "place by hand", and their only and ping
-            // should still sit under everyone else's.
-            bool anyButton = onPlace != null || onOnly != null || onLocate != null;
-            float right = 6f;
-            // Kept so the row can hide them again until the pointer arrives, and so it knows
-            // which of them is lit -- a button doing something is shown whether or not anybody
-            // is pointing at it.
-            var group = new List<GameObject>(3);
-            var lit = new List<Func<bool>>(3);
-            if (anyButton)
-            {
-                if (onPlace != null)
-                {
-                    Func<bool> armed = () => placeKind.HasValue && ManualPlace.Armed.HasValue
-                                             && ManualPlace.Armed.Value == placeKind.Value;
-                    group.Add(RowButton(row, "+", 15f, right, RowHeight - 8f, onPlace,
-                        lit: armed,
-                        tipTopic: "Place Manually",
-                        tip: "Double-click on the map to place this marker manually"));
-                    lit.Add(armed);
-                }
-                right += RowHeight - 4f;
-                if (onOnly != null)
-                {
-                    var only = onlyLit ?? (() => placeKind.HasValue && Focus.Kind.HasValue
-                                                 && Focus.Kind.Value == placeKind.Value);
-                    group.Add(RowButton(row, "only", 11f, right, 34f, () => { onOnly(); Refresh(); },
-                        lit: only,
-                        tipTopic: "Only",
-                        tip: "Hide every other kind of marker"));
-                    lit.Add(only);
-                }
-                right += 38f;
-                // Pinging leaves the list open and changes nothing, so unlike the others there
-                // is nothing to redraw afterwards -- the pulse paints itself.
-                if (onLocate != null)
-                {
-                    var ping = pingLit ?? (() => placeKind.HasValue && Locate.Pointing(placeKind.Value));
-                    group.Add(RowIcon(row, MenuKit.Ping(), right, 22f, onLocate,
-                        lit: ping,
-                        tipTopic: "Ping",
-                        tip: "Make every marker of this kind wave"));
-                    lit.Add(ping);
-                }
-                right += 26f;
-            }
-            float buttons = right;
-
-            entry.Label = row.GetComponentInChildren<TextMeshProUGUI>();
-            if (entry.Label != null)
-            {
-                entry.Label.text = text;
-                entry.Label.alignment = TextAlignmentOptions.MidlineLeft;
-                entry.Label.rectTransform.offsetMin = new Vector2(indent + IconSize + 14f, 0f);
-                // Keep the name clear of the buttons rather than letting a long kind run under
-                // them, where it reads as part of the word on the button. While the buttons are
-                // waiting for the pointer the name has the whole row and gives it back when they
-                // appear: it is left-aligned, so its beginning never moves and the only thing cut
-                // is a tail long enough to reach them.
-                bool waiting = HoverButtons && group.Count > 0;
-                entry.Label.rectTransform.offsetMax = new Vector2(waiting ? -6f : -buttons, 0f);
-                entry.Label.overflowMode = TextOverflowModes.Ellipsis;
-            }
-            _entries.Add(entry);
-
-            // The buttons wait for the pointer.
-            //
-            // Twenty rows with three buttons each is sixty things to read before the first
-            // decision, and what a reader wants from this list is the names. So they are drawn on
-            // the row the pointer is resting on, and on any row whose button is already doing
-            // something: an armed kind or a filtered one has to go on saying so, or the only way
-            // to find what you asked for is to go hunting for it.
-            if (HoverButtons && group.Count > 0)
-            {
-                // Glow rather than the row's own Hover, which only paints. Moving onto a button
-                // inside the row does not leave the row -- the pointer's chain holds every
-                // ancestor of what it is over -- so the buttons do not vanish from under the hand
-                // reaching for them.
-                var glow = row.gameObject.GetComponent<MenuKit.Glow>() ?? row.gameObject.AddComponent<MenuKit.Glow>();
-                var label = entry.Label;
-                foreach (var go in group) go.SetActive(false);
-                _hovers.Add(() =>
-                {
-                    bool show = glow.Over;
-                    if (!show)
-                        foreach (var light in lit) if (light()) { show = true; break; }
-                    foreach (var go in group) if (go.activeSelf != show) go.SetActive(show);
-                    if (label != null)
-                        label.rectTransform.offsetMax = new Vector2(show ? -buttons : -6f, 0f);
-                });
-            }
-            return row;
         }
 
         /// <summary>
@@ -960,19 +1202,41 @@ namespace TheGreatestMap
         }
 
         /// <summary>
-        /// Count the markers of each kind. Done afresh on every refresh rather than once when the
-        /// list opened, for the reason the captions give: a pinned list stays open while the
-        /// recording goes on around it.
+        /// Count the markers of each kind, and how many of each kind and each type have been
+        /// crossed off. Done afresh on every refresh rather than once when the list opened, for
+        /// the reason the captions give: a pinned list stays open while the recording goes on
+        /// around it, and crossing something off is a thing you do with the list open.
         /// </summary>
         private static void Recount()
         {
             _counts.Clear();
+            _done.Clear();
+            _doneByIcon.Clear();
+            _doneOther.Clear();
             foreach (var pin in ClientPins.All)
             {
                 var kind = ClientPins.KindOf(pin);
-                if (!kind.HasValue) continue;
-                _counts.TryGetValue(kind.Value, out int have);
-                _counts[kind.Value] = have + 1;
+                if (kind.HasValue)
+                {
+                    _counts.TryGetValue(kind.Value, out int have);
+                    _counts[kind.Value] = have + 1;
+                }
+                if (!pin.Checked) continue;
+                if (!kind.HasValue)
+                {
+                    string bucket = CrossedOff.GroupOf(pin);
+                    if (bucket == null) continue;
+                    _doneOther.TryGetValue(bucket, out int other);
+                    _doneOther[bucket] = other + 1;
+                    continue;
+                }
+                _done.TryGetValue(kind.Value, out int done);
+                _done[kind.Value] = done + 1;
+                // Keyed exactly as the type rows are, which is how a type's count finds its row:
+                // the normalized icon, falling back to the same key the type list falls back to.
+                string icon = IconRegistry.Normalize(ClientPins.IconOf(pin)) ?? IconRegistry.FallbackKey;
+                _doneByIcon.TryGetValue(icon, out int byIcon);
+                _doneByIcon[icon] = byIcon + 1;
             }
         }
 
@@ -985,41 +1249,31 @@ namespace TheGreatestMap
         /// for, and until now the only switch for a single type lived in the right-click menu of a
         /// marker of that type -- which you had to find on the map first.
         /// </summary>
-        private static float Unfold(Minimap map, RectTransform row, float x, float y, Category kind)
+        private static float Unfold(Minimap map, RectTransform row, float y, Category kind)
         {
             if (row == null || _types == null) return y;
             // One type needs no triangle: the row under it would say the same thing as the row
             // above it, and a control that reveals a copy of itself is a control that lies.
             if (!_types.TryGetValue(kind, out var types) || types.Count < 2) return y;
             Twisty(row, kind);
-            if (!_unfolded.HasValue || _unfolded.Value != kind) return y;
+            if (!_unfolded.Contains(kind)) return y;
 
-            int n = Mathf.Min(types.Count, TypeLimit);
-            for (int i = 0; i < n; i++)
+            foreach (var type in types)
             {
-                TypeRow(map, x, y, kind, types[i]);
-                y -= RowHeight;
-            }
-            if (types.Count > n)
-            {
-                var more = MenuKit.Text(_root.transform, "More",
-                    $"and {types.Count - n} more — find one by name above", 12f, MenuKit.Dim);
-                float indent = 10f + Twist + Indent;
-                Place(more.rectTransform, x + indent, y, ColumnWidth - indent - 10f, RowHeight);
-                more.alignment = TextAlignmentOptions.MidlineLeft;
+                TypeRow(map, y, kind, type);
                 y -= RowHeight;
             }
             return y;
         }
 
         /// <summary>
-        /// The triangle itself: pressed, the types under that kind are listed under it, and the
-        /// kind that was open closes. A button of its own rather than another meaning for the row,
-        /// which already means "show or hide these".
+        /// The triangle itself: pressed, the types under that kind are listed under it. A button of
+        /// its own rather than another meaning for the row, which already means "show or hide
+        /// these".
         /// </summary>
         private static void Twisty(RectTransform row, Category kind)
         {
-            bool open = _unfolded.HasValue && _unfolded.Value == kind;
+            bool open = _unfolded.Contains(kind);
             var go = new GameObject("Twisty", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
             go.transform.SetParent(row, false);
             var rt = (RectTransform)go.transform;
@@ -1038,7 +1292,7 @@ namespace TheGreatestMap
             var k = kind;
             button.onClick.AddListener(() =>
             {
-                _unfolded = open ? (Category?)null : k;
+                if (open) _unfolded.Remove(k); else _unfolded.Add(k);
                 // The rows themselves change rather than their colors, so this is a redraw in
                 // place -- the same thing pressing Enter in the find box asks for.
                 _rebuildWanted = true;
@@ -1064,15 +1318,17 @@ namespace TheGreatestMap
         }
 
         /// <summary>
-        /// One type under an unfolded kind: its icon, its name, how many there are, and the same
-        /// questions the kind row answers, asked of the type. No "place by hand": arming is by
-        /// kind, and a marker placed by hand wears the kind's own icon, so a type would have
-        /// nothing to arm.
+        /// One type under an unfolded kind: its icon, its name, how many there are, how many of
+        /// those you are finished with, and the same questions the kind row answers, asked of the
+        /// type. No "place by hand": arming is by kind, and a marker placed by hand wears the
+        /// kind's own icon, so a type would have nothing to arm.
         /// </summary>
-        private static void TypeRow(Minimap map, float x, float y, Category kind, Focus.TypeCount type)
+        private static void TypeRow(Minimap map, float y, Category kind, Focus.TypeCount type)
         {
             var t = type;
-            SwitchRow(map, x, y, Twist + Indent, t.Icon, $"{t.Label} ({t.Count})",
+            string group = CrossedOff.GroupFor(kind, t.Icon);
+            bool gone = Categories.IsResource(kind);
+            SwitchRow(map, _content, 0f, y, Twist + Indent, t.Icon, $"{t.Label} ({t.Count})",
                 // A single type is hidden by its icon, the only thing on a marker that says which
                 // type it is -- the same list a marker's own right-click menu writes to, so the
                 // two places that can hide a type agree with each other.
@@ -1085,14 +1341,38 @@ namespace TheGreatestMap
                 onOnly: () => Focus.SetIcon(t.Icon),
                 onLocate: () => Locate.Icon(t.Icon, t.Label),
                 onlyLit: () => Focus.Icon != null && IconRegistry.SameKey(Focus.Icon, t.Icon),
-                pingLit: () => Locate.PointingAt(t.Icon));
+                pingLit: () => Locate.PointingAt(t.Icon),
+                // The crossed-off ones of this type alone -- a player done with their burial
+                // chambers who still wants the sunken crypts they have cleared. That was the one
+                // thing the right-hand column could do that the kind rows could not, and this is
+                // where it lands now it is gone: on the type it is about. A deposit has no type
+                // of its own in that model, so those share the one switch, which the tip says.
+                doneCount: () =>
+                {
+                    _doneByIcon.TryGetValue(t.Icon, out int n);
+                    return n;
+                },
+                doneShown: () => gone
+                    ? TgmConfig.ShowClearedDeposits == null || TgmConfig.ShowClearedDeposits.Value
+                    : !CrossedOff.IsGroupHidden(group),
+                doneToggle: () =>
+                {
+                    if (gone)
+                    {
+                        if (TgmConfig.ShowClearedDeposits != null)
+                            TgmConfig.ShowClearedDeposits.Value = !TgmConfig.ShowClearedDeposits.Value;
+                        return;
+                    }
+                    CrossedOff.SetGroupHidden(group, !CrossedOff.IsGroupHidden(group));
+                },
+                gone: gone);
         }
 
         /// <summary>
         /// Is there anything for the put-back row to put back? The master switch is left out of
-        /// this on purpose: it has a row of its own saying exactly what it does, and a second row
+        /// this on purpose: it has a button of its own saying exactly what it does, and a row
         /// offering to undo it is the duplication that made this panel confusing. A focus is left
-        /// out for the same reason -- the row above the kinds is about nothing else.
+        /// out for the same reason -- the row under the find box is about nothing else.
         /// </summary>
         private static bool AnythingPutBack()
         {
@@ -1134,7 +1414,7 @@ namespace TheGreatestMap
             return !TgmConfig.ShowKind.TryGetValue(kind, out var entry) || entry.Value;
         }
 
-        /// <summary>Top-left anchored, so both columns can share one panel.</summary>
+        /// <summary>Top-left anchored, so a row can be placed in the panel or in what scrolls.</summary>
         private static void Place(RectTransform rt, float x, float y, float width, float height)
         {
             rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
@@ -1177,6 +1457,13 @@ namespace TheGreatestMap
             if (_root != null) Object.Destroy(_root);
             _root = null;
             _rect = null;
+            _viewport = null;
+            _content = null;
+            _barTrack = null;
+            _barHandle = null;
+            _contentHeight = 0f;
+            _viewportHeight = 0f;
+            _wheel = 0f;
             _entries.Clear();
             _lights.Clear();
             _hovers.Clear();
@@ -1195,6 +1482,13 @@ namespace TheGreatestMap
             // destroy the box while it was still handling the Enter that asked for this.
             if (_rebuildWanted) { Rebuild(); return; }
             PaintPin();
+            float wheel = _wheel;
+            _wheel = 0f;
+            if (Mathf.Abs(wheel) > 0.001f)
+            {
+                _scroll -= wheel * RowHeight * 3f;
+                ClampScroll();
+            }
             // Hovering is not a press, so the rows that hide their buttons are asked every frame
             // rather than after a click.
             foreach (var hover in _hovers) hover();
@@ -1225,6 +1519,22 @@ namespace TheGreatestMap
         private static void Postfix(ref bool __result)
         {
             if (KindMenu.Typing) __result = true;
+        }
+    }
+
+    /// <summary>
+    /// The wheel belongs to the list only while the pointer is on it and there is more list than
+    /// fits: the map reads the wheel straight from ZInput to zoom, and a list that can be pinned
+    /// open all session must not take the zoom away from the map behind it.
+    /// </summary>
+    [HarmonyPatch(typeof(ZInput), nameof(ZInput.GetMouseScrollWheel))]
+    internal static class ZInput_GetMouseScrollWheel_KindMenu_Patch
+    {
+        private static void Postfix(ref float __result)
+        {
+            if (__result == 0f || !KindMenu.CanScroll || !KindMenu.Hovered) return;
+            KindMenu.NoteWheel(__result);
+            __result = 0f;
         }
     }
 }

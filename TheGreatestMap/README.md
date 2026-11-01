@@ -82,18 +82,27 @@ pin in the same pale gold as recorded markers. **Right-click** it to hide or sho
 this mod at once, the pin turning gray while they are hidden. That is the same gesture vanilla uses
 on its own icon buttons, so right-click means the same thing everywhere in that column. Unlike the
 per-kind switches, it also covers markers that have no kind, such as ones you placed yourself.
-**Left-click** it for a list in two columns. On the left are the kinds that have markers on your
-map, each with its icon and how many of it there are; click any of them to hide or show that kind
-without leaving the map, and the list stays open so you can change several. A kind that covers
-several types -- ore, dungeons, plants -- has a triangle at the head of its row: open it and the
-types are listed underneath, each with a switch of its own, so the copper can go and the silver
-stay. One kind is open at a time, and "Marker List Tree" turns the triangles off. On the right are
-the markers that have been crossed off, described below: cleared deposits as one switch, then
-searched places by type, with a count on each.
+**Left-click** it for the list: one column of the kinds that have markers on your map, each with
+its icon and how many of it there are. Click any of them to hide or show that kind without leaving
+the map, and the list stays open so you can change several. A kind that covers several types --
+ore, dungeons, plants -- has a triangle at the head of its row: open it and the types are listed
+underneath, each with a switch of its own, so the copper can go and the silver stay. Open as many
+as you like; the list scrolls on the wheel while the pointer is on it, and the title strip, the
+find box and the foot stay put while it does.
 
-The three small buttons at the end of a row -- place by hand, only, ping -- are drawn on the row
-the pointer is resting on, and on any row whose button is already doing something, so an armed or
-filtered kind goes on saying so. "Marker List Buttons On Hover" shows all of them at once instead.
+The small buttons at the end of a row -- place by hand, only, ping, and the count of the ones you
+have crossed off -- are drawn on the row the pointer is resting on, and on any row whose button is
+already doing something, so an armed kind, a filtered one, or one hiding its crossed-off markers
+goes on saying so.
+
+"12 done" at the end of a row hides the twelve markers of that kind you have crossed off, and
+lights up while they are hidden; on a deposit or a plant it reads "12 gone", since the thing
+itself is used up, and those share one switch across every kind. A type row carries its own count,
+so the burial chambers you are finished with can go while the sunken crypts you have cleared stay.
+One row at the foot does the lot at once.
+
+The master switch is the word at the right of the title strip, next to the stick pin: "hide all"
+while the markers are drawn, "show all" while they are not.
 
 At the foot of the list is the row that puts back everything these switches hide -- the kinds, the
 crossed-off groups, icons hidden one picture at a time and markers hidden one at a time, the same
@@ -138,15 +147,18 @@ player cannot always tell whether they have got all of it, and a map that crosse
 would be telling them something they could not know. Tin and plants are different: there is no
 doubt when those are done. You can always cross one off by hand.
 
-**Hiding what you are done with.** Crossed-off markers stay on the map, and the right-hand column of
-the marker button's list decides which of them are drawn:
+**Hiding what you are done with.** Crossed-off markers stay on the map, and which of them are
+drawn is decided on the rows they already have in the marker button's list -- the "12 done" button
+at the end of a kind's row, or of one of its type rows, plus the one row at the foot that covers
+every kind at once. Underneath, two different ideas:
 
 - **Cleared deposits**: every used-up deposit and plant, as one switch ("Show Cleared Deposits").
-- **Searched places**, by type: Structures on their own, then dungeons with one switch for all of
-  them ("Hide searched dungeons") and one per type (Burial Chambers, Sunken Crypts, Frost Caves,
-  Troll Caves, Infested Mines, Bear Caves, Other Dungeons), then any other kind you have crossed
-  off, and your own placed markers. A type appears once something of that type has been crossed
-  off. The dungeon switch leaves Structures alone.
+  Their rows read "12 gone" rather than "12 done", because the thing itself is no longer there,
+  and pressing any of them works the one switch they all share.
+- **Searched places**, by type: Structures on their own, then dungeons by type (Burial Chambers,
+  Sunken Crypts, Frost Caves, Troll Caves, Infested Mines, Bear Caves, Other Dungeons), then any
+  other kind you have crossed off, and your own placed markers. The button on the Dungeons row
+  covers every dungeon type and leaves Structures alone.
 
 A dungeon marker does not store which dungeon it is, so its type is read from its icon, the same way
 you tell them apart on the map. Structures all share the vanilla house icon, so abandoned houses,
