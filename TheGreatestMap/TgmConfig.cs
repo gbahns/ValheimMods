@@ -373,7 +373,7 @@ namespace TheGreatestMap
             ShowCounts.SettingChanged += (_, __) => KindMenu.Relayout();
 
             SplitPlantsByFarming = mod.BindLocal("Display", "Split Plants By Farming", true,
-                "In the marker list, stand two rows in place of the five plant kinds -- Farmable and Wild, instead " +
+                "In the marker list, stand two rows in place of the five plant kinds -- Farm and Gather, instead " +
                 "of berries, mushrooms, herbs, seeds and wild crops -- each listing its types directly. What you " +
                 "can plant you only have to find once, so those markers are worth folding away and forgetting; what " +
                 "you cannot plant you have to go out and gather again every time you run low, which is what a map " +

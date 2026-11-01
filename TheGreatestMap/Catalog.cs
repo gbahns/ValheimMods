@@ -99,9 +99,9 @@ namespace TheGreatestMap
     internal enum Harvest
     {
         /// <summary>Has a sapling: find it once and grow the rest.</summary>
-        Farmable,
-        /// <summary>Has none: every one you want is a trip.</summary>
-        Wild,
+        Farm,
+        /// <summary>Has none: every one you want is another trip.</summary>
+        Gather,
     }
 
     /// <summary>Static facts about each category: defaults, labels.</summary>
@@ -150,9 +150,15 @@ namespace TheGreatestMap
             }
         }
 
+        /// <summary>
+        /// What the row says, which is what you do about it rather than what it is: a thing you
+        /// farm, or a thing you go and gather. Both are a word long, and either way the row is
+        /// an instruction rather than a classification -- the point of splitting them was to say
+        /// which of the two a marker is for.
+        /// </summary>
         internal static string HarvestLabel(Harvest h)
         {
-            return h == Harvest.Farmable ? "Farmable" : "Wild";
+            return h == Harvest.Farm ? "Farm" : "Gather";
         }
 
         /// <summary>
@@ -164,12 +170,12 @@ namespace TheGreatestMap
         /// </summary>
         internal static string HarvestIcon(Harvest h)
         {
-            return h == Harvest.Farmable ? "Cultivator" : "drawn:herbs";
+            return h == Harvest.Farm ? "Cultivator" : "drawn:herbs";
         }
 
         internal static string HarvestTip(Harvest h)
         {
-            return h == Harvest.Farmable
+            return h == Harvest.Farm
                 ? "What you can plant. Find one patch and you need never find another, which is what makes these " +
                   "worth folding away: magecap and jotun puffs are planted as they come, carrot, turnip and onion " +
                   "seeds grow more of themselves, and flax and barley take anywhere in the Plains."
@@ -488,7 +494,14 @@ namespace TheGreatestMap
             switch (c)
             {
                 case Category.Berries:
-                    return "RaspberryBush=Raspberries,BlueberryBush=Blueberries,CloudberryBush=Cloudberries";
+                    // VineAsh is the Ashlands vine that bears vineberry clusters, growing up the
+                    // walls of the ruins out there. It is a berry you can farm -- picking a
+                    // cluster can give seeds, and the seeds plant a vine anywhere -- so it is the
+                    // one berry that lands in the farmable half, and the only reason to mark one
+                    // is to find your first. It carries its icon because the vine and the berry
+                    // are not called the same thing.
+                    return "RaspberryBush=Raspberries,BlueberryBush=Blueberries,CloudberryBush=Cloudberries," +
+                           "VineAsh=Vineberries|Vineberry";
                 case Category.Mushrooms:
                     return "Pickable_Mushroom=Mushrooms,Pickable_Mushroom_yellow=Yellow Mushrooms,Pickable_Mushroom_blue=Blue Mushrooms," +
                            "Pickable_Mushroom_Magecap=Magecap,Pickable_Mushroom_JotunPuffs=Jotun Puffs,Pickable_SmokePuff=Smoke Puffs";
@@ -668,6 +681,7 @@ namespace TheGreatestMap
             _orderByPrefab.Clear();
             _orderByIcon = null;
             _farmableByIcon = null;
+            _plantRankByIcon = null;
             _ordered = 0;
             _iconBySource.Clear();
             _byPrefab.Clear();
@@ -751,7 +765,68 @@ namespace TheGreatestMap
             "Pickable_SeedCarrot", "Pickable_SeedTurnip", "Pickable_SeedOnion",
             "Pickable_Mushroom_Magecap", "Pickable_Mushroom_JotunPuffs",
             "Pickable_Flax_Wild", "Pickable_Barley_Wild",
+            "VineAsh",
         };
+
+        /// <summary>
+        /// The order the plants are met in, across every kind they are spread over, for the two
+        /// halves to list their types in.
+        ///
+        /// <para>Everything else in this mod reads its progression order out of the catalog lines,
+        /// which are written in the order a player meets the things in them -- and a player who
+        /// disagrees reorders the line and the lists follow. That cannot order a half: a line puts
+        /// its own entries in order and says nothing about where they stand against another kind's,
+        /// and a half is a handful of types out of four kinds. Taken from the lines alone, magecap
+        /// came out above carrot seeds -- a Mistlands mushroom before a Black Forest seed -- for no
+        /// reason but Mushrooms standing above Seeds in the enum. Biome is a fact about the type,
+        /// not about its kind, so for these it is written down.</para>
+        ///
+        /// <para>Farmable first, in the order you can first plant one: the Black Forest's carrots,
+        /// the swamp's turnips, the mountain's onions, the Plains' barley and flax, the Mistlands'
+        /// jotun puffs and magecap, the Ashlands' vineberries. Then wild, in the order you first
+        /// walk past one: the meadows' raspberries, mushrooms and dandelions, the Black Forest's
+        /// blueberries and yellow mushrooms, thistle, the Plains' cloudberries, the Mistlands'
+        /// blue mushrooms and fiddlehead, the Ashlands' smoke puffs. Anything not named here -- a
+        /// player's own catalog entry -- sorts after
+        /// all of it by the catalog's order, the same way the ordinary type rows treat a type the
+        /// catalog has never heard of.</para>
+        /// </summary>
+        private static readonly string[] PlantProgression =
+        {
+            "Pickable_SeedCarrot", "Pickable_SeedTurnip", "Pickable_SeedOnion",
+            "Pickable_Barley_Wild", "Pickable_Flax_Wild",
+            "Pickable_Mushroom_JotunPuffs", "Pickable_Mushroom_Magecap",
+            "VineAsh",
+
+            "RaspberryBush", "Pickable_Mushroom", "Pickable_Dandelion",
+            "BlueberryBush", "Pickable_Mushroom_yellow", "Pickable_Thistle",
+            "CloudberryBush", "Pickable_Mushroom_blue", "Pickable_Fiddlehead",
+            "Pickable_SmokePuff",
+        };
+
+        private static Dictionary<string, int> _plantRankByIcon;
+
+        /// <summary>
+        /// Where the type drawn with this icon stands among the plants, or a number past the end
+        /// for one this does not name. Asked of the icon rather than the prefab for the same
+        /// reason <see cref="CanBeFarmed"/> is: a row in the list is a picture.
+        /// </summary>
+        internal static int PlantOrderOf(string icon)
+        {
+            if (!_built) Rebuild();
+            if (_plantRankByIcon == null)
+            {
+                _plantRankByIcon = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                for (int i = 0; i < PlantProgression.Length; i++)
+                {
+                    string key = IconFor(PlantProgression[i]);
+                    if (key == null || _plantRankByIcon.ContainsKey(key)) continue;
+                    _plantRankByIcon[key] = i;
+                }
+            }
+            string norm = IconRegistry.Normalize(icon);
+            return norm != null && _plantRankByIcon.TryGetValue(norm, out int at) ? at : int.MaxValue;
+        }
 
         private static Dictionary<string, bool> _farmableByIcon;
 

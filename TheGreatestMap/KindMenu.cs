@@ -151,6 +151,14 @@ namespace TheGreatestMap
         /// </summary>
         private static List<Focus.TypeCount> _allTypes;
 
+        /// <summary>
+        /// The types in each plant half, in the order their rows are to be read in. Worked out
+        /// when the list is built rather than on every refresh: the rows under a kind are fixed
+        /// at that moment too, and a refresh happens whenever the pointer moves.
+        /// </summary>
+        private static readonly Dictionary<Harvest, List<Focus.TypeCount>> _plantTypes =
+            new Dictionary<Harvest, List<Focus.TypeCount>>();
+
         /// <summary>How many markers each kind has, for the number after its name.</summary>
         private static readonly Dictionary<Category, int> _counts = new Dictionary<Category, int>();
 
@@ -430,6 +438,7 @@ namespace TheGreatestMap
             // word.
             _types = new Dictionary<Category, List<Focus.TypeCount>>();
             _allTypes = Focus.Types("");
+            SortPlants();
             foreach (var type in _allTypes)
             {
                 if (!type.Kind.HasValue) continue;
@@ -664,8 +673,8 @@ namespace TheGreatestMap
                     {
                         if (plantsDone) continue;
                         plantsDone = true;
-                        y = PlantRow(map, Harvest.Farmable, y);
-                        y = PlantRow(map, Harvest.Wild, y);
+                        y = PlantRow(map, Harvest.Farm, y);
+                        y = PlantRow(map, Harvest.Gather, y);
                         continue;
                     }
                     y = KindRow(map, kind, y);
@@ -806,23 +815,46 @@ namespace TheGreatestMap
             return y;
         }
 
-        /// <summary>
-        /// The types in one half, in the order the list is set to read types in. Taken from the
-        /// one flat list rather than from the per-kind buckets, so A to Z really is A to Z across
-        /// the four kinds the half draws from instead of being alphabetical inside each of them.
-        /// </summary>
+        /// <summary>The types in one half, in the order their rows are read in.</summary>
         private static List<Focus.TypeCount> PlantTypes(Harvest half)
         {
-            var list = new List<Focus.TypeCount>();
-            if (_allTypes == null) return list;
-            bool farmable = half == Harvest.Farmable;
+            return _plantTypes.TryGetValue(half, out var list) ? list : Empty;
+        }
+
+        private static readonly List<Focus.TypeCount> Empty = new List<Focus.TypeCount>();
+
+        /// <summary>
+        /// Split the plant types into the two halves and put each half in order.
+        ///
+        /// <para>Most first and A to Z are already right, the flat list being in that order
+        /// across every kind at once. Progression is not, and cannot be: the catalog's order runs
+        /// down one kind at a time and says nothing about where one kind's entries stand against
+        /// another's, so a half took its rows in kind order whatever the biomes -- magecap, a
+        /// Mistlands mushroom, above the Black Forest's carrot seeds. The catalog is still what
+        /// orders everything else, including both halves' fallback for a type it has never heard
+        /// of; what the halves add is the one thing a per-kind list cannot hold.</para>
+        /// </summary>
+        private static void SortPlants()
+        {
+            _plantTypes.Clear();
+            if (_allTypes == null) return;
             foreach (var type in _allTypes)
             {
                 if (!type.Kind.HasValue || !Categories.IsGrown(type.Kind.Value)) continue;
-                if (Catalog.CanBeFarmed(type.Icon) != farmable) continue;
+                var half = Catalog.CanBeFarmed(type.Icon) ? Harvest.Farm : Harvest.Gather;
+                if (!_plantTypes.TryGetValue(half, out var list)) _plantTypes[half] = list = new List<Focus.TypeCount>();
                 list.Add(type);
             }
-            return list;
+            if (TgmConfig.TypeRowOrder != null && TgmConfig.TypeRowOrder.Value != TypeOrder.Progression) return;
+            foreach (var kv in _plantTypes)
+                kv.Value.Sort((a, b) =>
+                {
+                    int ra = Catalog.PlantOrderOf(a.Icon), rb = Catalog.PlantOrderOf(b.Icon);
+                    if (ra != rb) return ra.CompareTo(rb);
+                    int ca = Catalog.OrderOf(a.Icon), cb = Catalog.OrderOf(b.Icon);
+                    if (ca != cb) return ca.CompareTo(cb);
+                    return string.Compare(a.Label, b.Label, StringComparison.OrdinalIgnoreCase);
+                });
         }
 
         /// <summary>"Wild (1893)", or how many of those are drawn where the two differ.</summary>

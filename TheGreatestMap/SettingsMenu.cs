@@ -80,7 +80,7 @@ namespace TheGreatestMap
 
             y = Heading("Grouping", y);
             y = Switch(y, () => TgmConfig.SplitPlantsByFarming, "Split plants by farming",
-                "Stand two rows in place of the five plant kinds -- Farmable and Wild. What you can plant you only " +
+                "Stand two rows in place of the five plant kinds -- Farm and Gather. What you can plant you only " +
                 "have to find once, so those are worth folding away; what you cannot plant you have to go out and " +
                 "gather again, which is what a map is for. Ore is a row of its own either way.");
 

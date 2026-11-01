@@ -96,16 +96,19 @@ you harvest, and what runs out), **Places** (what you go to, and what stays put)
 (ships, carts, portals, other players, and the fires and benches a base is made of -- what is
 standing now rather than what was found). Pressing a heading hides every kind under it.
 
-Under Resources, two rows stand in place of the five plant kinds: **Farmable** and **Wild**, each
-listing its types directly. The reason to write a plant down is that you will have to come back for
+Under Resources, two rows stand in place of the five plant kinds: **Farm** and **Gather**, each
+listing its types directly. They are named for what you do about them rather than for what they
+are, which is the point of splitting them at all. The reason to write a plant down is that you will have to come back for
 it, and planting it is what stops that being true -- find one patch of magecap and you need never
 find another, while nothing will ever grow you a raspberry bush. So one half is worth keeping on
 the map and the other is worth folding away and forgetting. The line falls between types rather
 than between kinds because the game puts it there: magecap and jotun puffs can be planted and the
-other four mushrooms cannot, flax and barley can and fiddlehead cannot. Farmable holds the three
-crop seeds, magecap, jotun puffs, wild flax and wild barley; Wild holds the berries, the three
-common mushrooms, smoke puffs, dandelion, thistle and fiddlehead. Ore is a row of its own either
-way, no vein being farmable. "Split Plants By Farming" turns it off and lists the five kinds as
+other four mushrooms cannot, flax and barley can and fiddlehead cannot. Farm holds the three crop
+seeds, barley, flax, jotun puffs, magecap and vineberries; Gather holds raspberries, the three
+common mushrooms, dandelion, blueberries, thistle, cloudberries, fiddlehead and smoke puffs. Ore is
+a row of its own either way, no vein being farmable. Progression order lists each half by biome --
+the order you can first plant one, and the order you first walk past one -- since a Catalog line
+orders its own kind and cannot say where one kind's entries stand against another's. "Split Plants By Farming" turns it off and lists the five kinds as
 before; nothing about the markers themselves changes either way.
 
 **The gear** in the list's title strip, beside the stick pin, opens the list's settings in front
@@ -115,7 +118,7 @@ of it. They close on a click away, and go with the list.
   those are drawn where the two differ. Off is quieter to read down and worth having once you know
   your own map. The count of what you are finished with keeps its button either way, that one
   being the switch for them as well as the number.
-- **Grouping**: whether the plants are split into Farmable and Wild in place of the five plant
+- **Grouping**: whether the plants are split into Farm and Gather in place of the five plant
   kinds.
 - **Marker Order**: **Progression** (the order the catalog lists them in, which is the order you
   meet them -- a dandelion before a thistle, copper before silver), **Most first**, or **A to Z**.

@@ -3,7 +3,7 @@
 ## 4.7.0 -- unreleased
 
 - **The plants are grouped by whether you can farm them.** Under Resources, two rows stand in
-  place of the five plant kinds: Farmable and Wild, each listing its types directly. The reason to
+  place of the five plant kinds: **Farm** and **Gather**, each listing its types directly. The reason to
   write a plant down is that you will have to come back for it, and planting it is what stops that
   being true -- find one patch of magecap and you need never find another, while nothing will ever
   grow you a raspberry bush, so every bowl of jam is another trip. One of those halves is worth
@@ -18,8 +18,10 @@
   than new kinds. Nothing is stored per half, no marker changes, and every icon, catalog line and
   saved record is exactly what it was. Farmable holds the three crop seeds (which close their own
   loop: a carrot grows seeds and the seeds grow carrots), magecap, jotun puffs, wild flax and wild
-  barley; Wild holds the three berries, the three common mushrooms, smoke puffs, dandelion, thistle
-  and fiddlehead. Which is which was read out of the game's own asset names rather than remembered:
+  barley; Gather holds the three berries, the three common mushrooms, smoke puffs, dandelion,
+  thistle and fiddlehead. They are named for what you do about them rather than for what they are,
+  which is the whole point of splitting them: a row that says Gather is telling you why that marker
+  is worth keeping. Which is which was read out of the game's own asset names rather than remembered:
   a thing is plantable exactly when it has a `sapling_` prefab.
 
   Ore is a row of its own either way, no vein being farmable. The two halves sit where a kind row
@@ -29,6 +31,25 @@
   handful of types out of four kinds. The rows under it have both, which is where they were wanted
   anyway: you ping raspberries, not everything wild. `Split Plants By Farming` in the Display
   section, on by default, and a checkbox under Grouping in the marker list's own settings.
+
+  The halves carry their own progression order, which is the one list in the mod whose order is
+  not read out of a Catalog line. It cannot be: a line puts its own entries in order and says
+  nothing about where they stand against another kind's, so a half took its rows in kind order
+  whatever the biomes -- magecap, a Mistlands mushroom, above the Black Forest's carrot seeds, for
+  no reason but Mushrooms standing above Seeds in the enum. Biome is a fact about a type and not
+  about its kind. Farm now runs carrot, turnip and onion seeds, barley, flax, jotun puffs, magecap,
+  vineberries; Gather runs raspberries, mushrooms, dandelion, blueberries, yellow mushrooms,
+  thistle, cloudberries, blue mushrooms, fiddlehead, smoke puffs. Most First and A to Z were
+  already right and are untouched, and a type the list does not name -- a catalog entry of your
+  own -- sorts after all of it by the catalog's order, as the ordinary type rows treat one.
+
+- **Vineberries are in the catalog.** The Ashlands vine that bears them (`VineAsh`) grows up the
+  walls of the ruins out there and was the one plant in the game this mod could not record at all,
+  so it never appeared on a map or in the list. It is a berry you can farm -- picking a cluster can
+  give seeds, and the seeds plant a vine anywhere -- so it lands under Farm, where the only reason
+  to mark one is to find your first. Vines on your own walls are not recorded and are forgotten if
+  an older version wrote one: that was already the rule for anything growing on tilled ground or
+  inside a player's base, and a vine you planted is both.
 
 - **A kind's own picture is no longer one of its members' pictures.** Berries wore a raspberry,
   ore wore copper ore, herbs wore a dandelion -- so unfolding one of those kinds in the marker
