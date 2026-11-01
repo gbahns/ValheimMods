@@ -263,6 +263,12 @@ namespace TheGreatestMap
                 case Category.Camp:
                 case Category.BossAltar:
                 case Category.Campfire:
+                // A greydwarf trophy means a greydwarf spawner: the icon has always been the
+                // whole answer here, and each kind of spawner wears its own trophy. This kind
+                // was added to the enum after this switch was written and fell through to the
+                // catch-all, which labels, so every nest and bone pile came out with its own
+                // name drawn beside it.
+                case Category.Spawner:
                 case Category.Structure: return -1f; // the house icon says it all
                 default:                 return 0f;  // traders (three share the coin icon), portals (the tag)
             }

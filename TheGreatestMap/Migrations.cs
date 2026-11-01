@@ -59,6 +59,7 @@ namespace TheGreatestMap
             int kinded = NameTheKindOnly();
             int rekinded = KindTheHandPlaced();
             int traders = RetireTraders();
+            int unnamed = UnnameWhatTheIconSays();
             int blanks = ForgetBlanks();
             // Whatever the catalog could not settle, the world is asked about -- and answers only
             // count where they agree with the icon the marker already wears, except for the
@@ -67,7 +68,8 @@ namespace TheGreatestMap
             // beside it is gone rather than made into a second marker of the same thing. The
             // answer comes back later, over the network, and says what it did in the log itself.
             Repair.Run();
-            if (named == 0 && identified == 0 && kinded == 0 && rekinded == 0 && traders == 0 && blanks == 0) return;
+            if (named == 0 && identified == 0 && kinded == 0 && rekinded == 0 && traders == 0
+                && unnamed == 0 && blanks == 0) return;
             ClientPins.Restyle();
             var parts = new System.Collections.Generic.List<string>();
             if (identified > 0) parts.Add($"worked out what {identified} marker(s) stand for");
@@ -75,11 +77,49 @@ namespace TheGreatestMap
             if (named > 0) parts.Add($"marked {named} as placed by hand");
             if (rekinded > 0) parts.Add($"gave {rekinded} placed by hand their kind back");
             if (traders > 0) parts.Add($"retired {traders} trader marker(s) the game marks by itself");
+            if (unnamed > 0) parts.Add($"took the name off {unnamed} marker(s) of a kind whose icon says it");
             if (blanks > 0) parts.Add($"erased {blanks} marker(s) that stood for nothing beside one that stands for something");
             TheGreatestMapMod.Log.LogInfo(
                 "[TheGreatestMap] Brought the map up to date: " + string.Join(", ", parts.ToArray()) +
                 ". Markers written before the mod recorded what a thing is are filled in once, " +
                 "here, so nobody has to run anything.");
+        }
+
+        /// <summary>
+        /// Take the written name off a recorded marker of a kind that never labels.
+        ///
+        /// The design is that the icon speaks for itself: a greydwarf trophy means a greydwarf
+        /// spawner, and every kind whose picture settles it is set never to write a label --
+        /// dungeons, camps, structures, boss altars, ore, every berry and mushroom. A kind that
+        /// falls through that switch inherits the catch-all, which labels, and that catch-all
+        /// exists for traders, where three different ones share one coin icon. Spawners were
+        /// added to the kinds after the switch was written and inherited it, so every nest and
+        /// bone pile ever recorded came out with its own name drawn beside it.
+        ///
+        /// <para>Changing the rule only fixes what is written next. This fixes what is already
+        /// written, which is the whole point of this file: the player who read the changelog is
+        /// not the only one whose map should come right.</para>
+        ///
+        /// <para>Only a name this mod would have written itself is taken off -- the catalog's own
+        /// text for what the marker stands for. A name that differs by a character is someone's
+        /// own words and is left alone, which is the one thing that makes this safe to apply to
+        /// every kind rather than to spawners alone. The rule is read from the setting rather
+        /// than from the default, so a player who turns labels on for a kind keeps them.</para>
+        /// </summary>
+        private static int UnnameWhatTheIconSays()
+        {
+            int n = 0;
+            foreach (var pin in new System.Collections.Generic.List<SharedPin>(ClientPins.All))
+            {
+                if (pin == null || !pin.Auto || string.IsNullOrEmpty(pin.Name)) continue;
+                var kind = ClientPins.KindOf(pin);
+                if (!kind.HasValue) continue;
+                if (!TgmConfig.LabelSpacing.TryGetValue(kind.Value, out var spacing) || spacing.Value >= 0f) continue;
+                if (!string.Equals(pin.Name, Catalog.NameForSource(pin.Source), System.StringComparison.Ordinal)) continue;
+                ClientPins.RenameMarker(pin.Key, "");
+                n++;
+            }
+            return n;
         }
 
         /// <summary>

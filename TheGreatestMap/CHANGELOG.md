@@ -133,6 +133,17 @@
   process: the Ashlands is made of cliffs that yield Grausten, and a marker on each of those is a
   marker on the ground itself.
 
+- **A spawner's marker stops naming itself.** The icon speaks for itself here -- a greydwarf
+  trophy means a greydwarf spawner -- and every kind whose picture settles it is set never to
+  write a label: dungeons, camps, structures, boss altars, ore, every berry and mushroom. Spawners
+  were added to the kinds after that list was written and fell through to the catch-all, which
+  labels, and which is there for traders, where three different ones share one coin icon. So every
+  nest and bone pile came out with "Greydwarf Nest" drawn beside a greydwarf trophy. The nests
+  already on your map lose the text too, on the next login, without anybody running anything --
+  and only where the text is the catalog's own words, so a name you typed or edited yourself
+  stays. If you want spawners named after all, **Spawners Label Spacing** is the setting, and 0
+  means always.
+
 - **`tgm_survey` no longer counts its own markers as ones your map already had.** One line
   reported both "something was already here" and "the marker written a moment ago, four meters
   away, is the same bush", so a survey of a 667-marker map could report 1,158 things already
