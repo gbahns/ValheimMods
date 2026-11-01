@@ -301,8 +301,8 @@ namespace TheGreatestMap
                 // fruit. Drawn in the mod, which is also why it is the only key in this switch
                 // that is not something of Valheim's own.
                 case Category.Berries:   return "drawn:berries";
-                case Category.Mushrooms: return "MushroomOmelette";   // the dish, not one of the six mushrooms
-                case Category.Herbs:     return "Salad";              // a bowl of greens, rather than the thistle or the dandelion
+                case Category.Mushrooms: return "drawn:mushrooms";    // two of them, not one of the six
+                case Category.Herbs:     return "drawn:herbs";        // a sprig, rather than the thistle or the dandelion
                 case Category.Seeds:     return "BeechSeeds";         // seeds, and not any of the three crops' seeds
                 case Category.Plants:    return "Cultivator";         // what you plant a wild crop with
                 case Category.Ore:       return "PickaxeIron";        // mining, rather than one metal

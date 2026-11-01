@@ -7,16 +7,20 @@
   list showed the same picture on the kind and on one of the rows under it, saying the two were
   the same thing. It read worse on the map: a hand-placed "there is ore here" marker drew as
   copper, claiming to know a metal nobody had looked at. Each of these now wears something that
-  stands for the whole kind and is nothing in it -- a cluster of berries, an omelette
-  of any mushrooms, the pickaxe you mine any vein with, a bowl of greens for the herbs, tree seeds
-  for the seeds, the cultivator for the wild crops, and a pile of bones rather than the skeleton
-  trophy the evil bone pile itself wears. They are all settings in the Icons section, and
-  `tgm_items <word>` lists what else the game has to choose from. The berries are the one picture
-  here the mod draws itself, under the icon key `drawn:berries`: the game has no item that means
-  "berries, any of them", and the jam that stood in for it read as a jar rather than as fruit. It
-  arrives on the map as a silhouette, since every recorded marker is painted one pale gold there,
-  so the three are drawn with a seam carved between them rather than told apart by their colors --
-  the colors show in the marker list, which draws an icon as it is. Structures are the exception and
+  stands for the whole kind and is nothing in it -- a cluster of berries, two mushrooms, a sprig
+  for the herbs, the pickaxe you mine any vein with, tree seeds for the seeds, the cultivator for
+  the wild crops, and a pile of bones rather than the skeleton trophy the evil bone pile itself
+  wears. They are all settings in the Icons section, and
+  `tgm_items <word>` lists what else the game has to choose from. The berries, the mushrooms and the herbs
+  are drawn in the mod rather than borrowed, under the icon keys `drawn:berries`, `drawn:mushrooms`
+  and `drawn:herbs`. Those three are the kinds the game has no single item for -- there is nothing
+  in Valheim that means "berries, any of them" -- and what stood in for them read as a jar of jam,
+  a plate of omelette and a bowl of salad: food, rather than the thing you went looking for. Each
+  is drawn plural, since one of anything is a picture of that one thing, which is the mistake this
+  whole set of icons exists to undo. They arrive on the map as silhouettes, every recorded marker
+  being painted one pale gold there, so the berries carry a seam carved between them and the two
+  mushrooms stand apart rather than being told apart by their colors; the colors show in the marker
+  list, which draws an icon as it is. Structures are the exception and
   cannot be helped: the game draws no picture of an abandoned farm, so every structure wears
   vanilla's house pin for want of anything else to wear.
 

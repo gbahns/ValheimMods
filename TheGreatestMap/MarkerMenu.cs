@@ -326,7 +326,9 @@ namespace TheGreatestMap
             Sprite made = null;
             switch (name.ToLowerInvariant())
             {
-                case "berries": made = Berries(); break;
+                case "berries":   made = Berries(); break;
+                case "mushrooms": made = Mushrooms(); break;
+                case "herbs":     made = Herbs(); break;
             }
             _drawn[name] = made;
             return made;
@@ -451,6 +453,105 @@ namespace TheGreatestMap
                 }
             _check = Bake(tex, px, n);
             return _check;
+        }
+
+        /// <summary>
+        /// Two mushrooms, a big one and a small one: a cap and a stalk each, far enough apart to
+        /// stay two things when the map paints the whole picture one color.
+        ///
+        /// <para>Two rather than one because this stands for the kind, and the kind holds six
+        /// mushrooms -- one of anything is a picture of that one thing, which is the mistake this
+        /// whole set of icons exists to undo.</para>
+        /// </summary>
+        private static Sprite Mushrooms()
+        {
+            const int n = 64;
+            var cap = new Color(0.74f, 0.31f, 0.27f);
+            var stalk = new Color(0.90f, 0.86f, 0.74f);
+
+            // centre of the cap, its half width and height, the stalk's half width and its foot
+            var big = new Vector4(n * 0.34f, n * 0.52f, n * 0.21f, n * 0.17f);
+            var small = new Vector4(n * 0.73f, n * 0.40f, n * 0.145f, n * 0.115f);
+            float bigStalk = n * 0.055f, smallStalk = n * 0.040f, foot = n * 0.16f;
+
+            bool InCap(Vector2 p, Vector4 m)
+            {
+                if (p.y < m.y) return false;                        // the dome only
+                float dx = (p.x - m.x) / m.z, dy = (p.y - m.y) / m.w;
+                return dx * dx + dy * dy <= 1f;
+            }
+            bool InStalk(Vector2 p, Vector4 m, float half)
+                => p.y >= foot && p.y <= m.y && Mathf.Abs(p.x - m.x) <= half;
+
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    int caps = 0, stalks = 0;
+                    for (int sy = 0; sy < 3; sy++)
+                        for (int sx = 0; sx < 3; sx++)
+                        {
+                            var p = new Vector2(x + (sx + 0.5f) / 3f, y + (sy + 0.5f) / 3f);
+                            if (InCap(p, big) || InCap(p, small)) caps++;
+                            else if (InStalk(p, big, bigStalk) || InStalk(p, small, smallStalk)) stalks++;
+                        }
+                    if (caps > 0) px[y * n + x] = new Color(cap.r, cap.g, cap.b, caps / 9f);
+                    else if (stalks > 0) px[y * n + x] = new Color(stalk.r, stalk.g, stalk.b, stalks / 9f);
+                }
+            return Bake(tex, px, n);
+        }
+
+        /// <summary>
+        /// A sprig: a stem with four leaves off it, which is what "herbs" looks like in any
+        /// kitchen and is neither the thistle nor the dandelion the kind holds.
+        /// </summary>
+        private static Sprite Herbs()
+        {
+            const int n = 64;
+            var green = new Color(0.40f, 0.62f, 0.29f);
+            var stemColor = new Color(0.30f, 0.47f, 0.22f);
+            var stemFrom = new Vector2(n * 0.50f, n * 0.10f);
+            var stemTo = new Vector2(n * 0.50f, n * 0.84f);
+            float stemHalf = n * 0.030f;
+
+            // centre, the way it grows, half its length, half its width
+            var leaves = new[]
+            {
+                new[] { n * 0.36f, n * 0.34f, -0.58f, 0.81f, n * 0.185f, n * 0.078f },
+                new[] { n * 0.64f, n * 0.47f,  0.58f, 0.81f, n * 0.185f, n * 0.078f },
+                new[] { n * 0.37f, n * 0.62f, -0.52f, 0.85f, n * 0.160f, n * 0.068f },
+                new[] { n * 0.50f, n * 0.88f,  0.00f, 1.00f, n * 0.120f, n * 0.060f },
+            };
+
+            bool InLeaf(Vector2 p, float[] l)
+            {
+                var d = new Vector2(l[2], l[3]).normalized;
+                var off = p - new Vector2(l[0], l[1]);
+                float along = Vector2.Dot(off, d) / l[4];
+                float across = (off.x * d.y - off.y * d.x) / l[5];
+                return along * along + across * across <= 1f;
+            }
+
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    int leaf = 0, stem = 0;
+                    for (int sy = 0; sy < 3; sy++)
+                        for (int sx = 0; sx < 3; sx++)
+                        {
+                            var p = new Vector2(x + (sx + 0.5f) / 3f, y + (sy + 0.5f) / 3f);
+                            bool onLeaf = false;
+                            foreach (var l in leaves) if (InLeaf(p, l)) { onLeaf = true; break; }
+                            if (onLeaf) leaf++;
+                            else if (ToSegment(p, stemFrom, stemTo) <= stemHalf) stem++;
+                        }
+                    if (leaf > 0) px[y * n + x] = new Color(green.r, green.g, green.b, leaf / 9f);
+                    else if (stem > 0) px[y * n + x] = new Color(stemColor.r, stemColor.g, stemColor.b, stem / 9f);
+                }
+            return Bake(tex, px, n);
         }
 
         /// <summary>How far a point lies from a line segment, for drawing a stroke of some width.</summary>
