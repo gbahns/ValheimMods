@@ -33,6 +33,7 @@ namespace TheGreatestMap
         // ── what to draw ────────────────────────────────────────────────────────────
         internal static readonly Dictionary<Category, ConfigEntry<bool>> ShowKind = new Dictionary<Category, ConfigEntry<bool>>();
         internal static ConfigEntry<string> HiddenIcons;
+        internal static ConfigEntry<string> MapsTidied;
         internal static ConfigEntry<bool> PauseWhileMapOpen;
         internal static ConfigEntry<bool> ShowPauseButton;
         internal static ConfigEntry<bool> MarkerButton;
@@ -316,6 +317,12 @@ namespace TheGreatestMap
                 "said \"copper here\" with the same confidence either way. A deposit mined to nothing is not covered, " +
                 "because the game destroys that one outright and there is nothing left to mark. 0 switches it off and " +
                 "every deposit is written the same.");
+
+            MapsTidied = mod.BindLocal("Internal", "Maps Tidied", "",
+                "Which version of this mod last brought each of your maps up to date, as name=version pairs. Written " +
+                "by the mod, not meant to be edited: the passes that fill in markers written by older versions read " +
+                "it to know they have already run on a map, so each of them runs once rather than at every login " +
+                "forever. Clearing a map's entry makes them all run on it again.");
 
             HiddenIcons = mod.BindLocal("Display", "Hidden Icons", "",
                 "Comma-separated marker icons never drawn on your map, as item prefab names or icon keys, e.g. Dandelion,Thistle,pin:Icon1. " +

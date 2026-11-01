@@ -31,6 +31,65 @@ namespace TheGreatestMap
         private static bool _done;
         private static float _at;
 
+        /// <summary>
+        /// The release each pass below was last needed for. A map already tidied by this version
+        /// or a later one skips every pass, which is what makes it safe to delete them later: a
+        /// pass that has gone a year without finding anything can be cut, with the log to say so,
+        /// rather than carried forever on the chance that somebody's map still needs it.
+        ///
+        /// <para>Every pass here is dated to the same release because that is the honest answer:
+        /// they were written over months and nothing recorded when, so the first version that can
+        /// prove a map was tidied is this one. After this each new pass carries its own date and
+        /// an old map still gets the lot.</para>
+        /// </summary>
+        private const string NeededUpTo = "4.7.0";
+
+        /// <summary>
+        /// Has this map been brought up to date by this version of the mod or a newer one? The
+        /// answer is kept per map, because a player's second world has never been touched.
+        /// </summary>
+        private static bool AlreadyTidied()
+        {
+            var done = Stamp(PersonalMap.Label);
+            if (done == null) return false;
+            try { return done >= new System.Version(NeededUpTo); }
+            catch (System.Exception) { return false; }
+        }
+
+        private static System.Version Stamp(string map)
+        {
+            string all = TgmConfig.MapsTidied != null ? TgmConfig.MapsTidied.Value : "";
+            if (string.IsNullOrEmpty(all) || string.IsNullOrEmpty(map)) return null;
+            foreach (var entry in all.Split(';'))
+            {
+                int eq = entry.LastIndexOf('=');
+                if (eq <= 0) continue;
+                if (!string.Equals(entry.Substring(0, eq).Trim(), map, System.StringComparison.Ordinal)) continue;
+                try { return new System.Version(entry.Substring(eq + 1).Trim()); }
+                catch (System.Exception) { return null; }
+            }
+            return null;
+        }
+
+        /// <summary>Write down that this map has been tidied, replacing any older entry for it.</summary>
+        private static void MarkTidied()
+        {
+            if (TgmConfig.MapsTidied == null) return;
+            string map = PersonalMap.Label;
+            if (string.IsNullOrEmpty(map) || map.IndexOf('=') >= 0 || map.IndexOf(';') >= 0) return;
+            var kept = new System.Collections.Generic.List<string>();
+            foreach (var entry in (TgmConfig.MapsTidied.Value ?? "").Split(';'))
+            {
+                string one = entry.Trim();
+                if (one.Length == 0) continue;
+                int eq = one.LastIndexOf('=');
+                if (eq > 0 && string.Equals(one.Substring(0, eq).Trim(), map, System.StringComparison.Ordinal)) continue;
+                kept.Add(one);
+            }
+            kept.Add(map + "=" + TheGreatestMapMod.ModVersion);
+            TgmConfig.MapsTidied.Value = string.Join(";", kept.ToArray());
+        }
+
         internal static void Reset()
         {
             _done = false;
@@ -54,8 +113,28 @@ namespace TheGreatestMap
 
         private static void Run()
         {
+            // Already done, by this version or a later one. The world is still asked about the
+            // markers that do not know what they are -- that one is not a fix for an old map but
+            // a standing offer, and it costs a message to a server that answers at its leisure.
+            if (AlreadyTidied())
+            {
+                Repair.Run();
+                TheGreatestMapMod.Log.LogInfo(
+                    $"[TheGreatestMap] This map was already brought up to date by {Stamp(PersonalMap.Label)} " +
+                    "or later, so the passes that fill in markers written by older versions are skipped.");
+                return;
+            }
             int named = NameTheHandPlaced();
-            int identified = Identify.Run(apply: true).Matched;
+            // Writes answers, never takes one away: see Identify.Run on why stripping a source
+            // is something a person has to ask for.
+            var identify = Identify.Run(apply: true, strip: false);
+            int identified = identify.Matched;
+            if (identify.Corrected > 0)
+                TheGreatestMapMod.Log.LogInfo(
+                    $"[TheGreatestMap] {identify.Corrected} marker(s) name something the catalog no longer calls " +
+                    "what they are. Nothing is done about that by itself, because a catalog is a setting and " +
+                    "trimming a line from one would otherwise cost every marker written from it: " +
+                    "tgm_identify apply clears them when you want it.");
             int kinded = NameTheKindOnly();
             int rekinded = KindTheHandPlaced();
             int traders = RetireTraders();
@@ -66,8 +145,15 @@ namespace TheGreatestMap
             // nothing has no icon to agree, so it is left out of this entirely: see Repair.
             // The answer comes back later, over the network, and says what it did in the log.
             Repair.Run();
+            MarkTidied();
             if (named == 0 && identified == 0 && kinded == 0 && rekinded == 0 && traders == 0
-                && unnamed == 0 && unguessed == 0) return;
+                && unnamed == 0 && unguessed == 0)
+            {
+                TheGreatestMapMod.Log.LogInfo(
+                    "[TheGreatestMap] Nothing on this map needed bringing up to date; it is marked as tidied by " +
+                    TheGreatestMapMod.ModVersion + " and those passes will not run on it again.");
+                return;
+            }
             ClientPins.Restyle();
             var parts = new System.Collections.Generic.List<string>();
             if (identified > 0) parts.Add($"worked out what {identified} marker(s) stand for");
@@ -80,7 +166,8 @@ namespace TheGreatestMap
             TheGreatestMapMod.Log.LogInfo(
                 "[TheGreatestMap] Brought the map up to date: " + string.Join(", ", parts.ToArray()) +
                 ". Markers written before the mod recorded what a thing is are filled in once, " +
-                "here, so nobody has to run anything.");
+                "here, so nobody has to run anything -- and once, is once: this map is marked as " +
+                "tidied by " + TheGreatestMapMod.ModVersion + " and these passes will not run on it again.");
         }
 
         /// <summary>

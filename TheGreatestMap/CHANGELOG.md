@@ -39,6 +39,31 @@
   to settle on one icon or they are two rows, and the pickaxe is what made that audible. The
   legend (`tgm_legend`) counts what is still on a kind's fallback.
 
+- **The passes that bring an old map up to date run once per map, and stop.** Every one of them
+  re-ran at every login, re-answering a question settled months ago and waiting for the day a
+  change somewhere else turned a fix into a hazard. Each map now carries the version that last
+  tidied it (**Maps Tidied**, written by the mod), and a map tidied by this version or a later one
+  skips the lot. That is also what makes them safe to delete later: a pass that has gone a year
+  without finding anything can be cut with the log to say so, rather than carried forever on the
+  chance that somebody's map still needs it.
+
+- **Erasing a wild plant marker on purpose now sticks.** Erasures of seeds and plants were dropped
+  on every load, on the grounds that a marker for a planted turnip is not worth keeping an erasure
+  for -- but wild flax, wild barley and fiddlehead are the Plants kind too, and they grow in the
+  open where a player may well rub one out deliberately. That erasure was forgotten by the next
+  login and the marker came back at the next merge, which is the one thing this mod was built to
+  prevent. What tells the two apart was already being written down: erasing a marker yourself
+  suppresses its spot, and the crop sweep does not, so an erasure with a suppression behind it is
+  one somebody meant and it stays.
+
+- **Nothing forgets what a marker is unless you ask it to.** Working out that a marker's source
+  names something the catalog no longer calls a resource is an automatic pass, and clearing that
+  source was part of it -- but the catalog is a setting you edit, so trimming one line from it
+  would cost every marker recorded from that prefab, at the next login, silently. (That is how
+  twenty-five markers on the live map lost their identities.) The automatic pass still fills in
+  what it can work out and now says how many it would clear; `tgm_identify apply` is what clears
+  them.
+
 - **A marker that knows nothing about itself stops being filed as a dungeon.** A kind can be
   worked out from a marker's picture, and the plain dot was both the dungeons' own fallback
   picture and the one every unidentified marker falls back to -- so "I have no idea what this is"

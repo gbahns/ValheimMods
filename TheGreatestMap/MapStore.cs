@@ -272,6 +272,18 @@ namespace TheGreatestMap
         /// Only the two categories you can actually plant. A mushroom or a berry inside
         /// somebody's walls could equally have been rubbed out on purpose, and an erasure that
         /// might have been meant is one to keep.
+        ///
+        /// <para><b>And never one somebody meant.</b> Seeds and plants are not only the farmed
+        /// ones: wild flax, wild barley and fiddlehead are the Plants kind and grow in the open,
+        /// where a player may well erase one on purpose -- and this was forgetting that erasure
+        /// by the next login, so the marker came back at the next merge. An erased marker coming
+        /// back is the one thing this mod was built to prevent.</para>
+        ///
+        /// <para>What tells them apart was already being written down. Erasing a marker on
+        /// purpose suppresses its spot as well -- that is what "do not record this again" means
+        /// -- while the crop sweep erases without suppressing, because a crop on tilled ground is
+        /// refused by the recorder anyway and needs nothing held back. So a tombstone whose spot
+        /// is suppressed was meant, and stays.</para>
         /// </summary>
         public int ForgetCropErasures()
         {
@@ -280,10 +292,25 @@ namespace TheGreatestMap
             foreach (var kv in Tombstones)
             {
                 var cat = Catalog.CategoryOf(kv.Key.Source);
-                if (cat == Category.Seeds || cat == Category.Plants) crops.Add(kv.Key);
+                if (cat != Category.Seeds && cat != Category.Plants) continue;
+                if (Meant(kv.Key.Pos)) continue;
+                crops.Add(kv.Key);
             }
             foreach (var key in crops) Tombstones.Remove(key);
             return crops.Count;
+        }
+
+        /// <summary>
+        /// Was this spot erased on purpose? A suppression is only ever written by somebody
+        /// erasing a marker themselves, so one standing here says this erasure was a decision
+        /// rather than tidying. Within a meter, which is the distance a suppression already uses
+        /// to decide it is about the same place.
+        /// </summary>
+        private bool Meant(Vector3 pos)
+        {
+            foreach (var s in Suppressions)
+                if (Geo.FlatDistance(s.Pos, pos) < 1f) return true;
+            return false;
         }
 
         /// <summary>A position as one number, for gathering what stands in the same spot.</summary>

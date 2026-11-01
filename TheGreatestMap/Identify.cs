@@ -177,7 +177,19 @@ namespace TheGreatestMap
             return true;
         }
 
-        internal static Result Run(bool apply)
+        /// <summary>
+        /// Work out what markers stand for. <paramref name="apply"/> writes the answers down;
+        /// <paramref name="strip"/> allows the one answer that takes something away.
+        ///
+        /// <para><b>Why stripping is asked for separately.</b> Mistaken below decides that a
+        /// marker's source is wrong by asking the catalog -- and the catalog is a setting a
+        /// player edits. Trim a prefab out of a Catalog line and every marker recorded from it
+        /// becomes "mistaken" at the next login, losing the one thing that said what it was. The
+        /// twenty-five blank markers this file's own notes describe were made exactly that way.
+        /// Working out what something is can run by itself; forgetting what something was needs
+        /// somebody to ask for it, which is what tgm_identify is.</para>
+        /// </summary>
+        internal static Result Run(bool apply, bool strip = true)
         {
             var result = new Result();
             var rows = Rows();
@@ -211,7 +223,7 @@ namespace TheGreatestMap
                     {
                         result.Corrected++;
                         var known = ClientPins.KindOf(pin);
-                        if (apply)
+                        if (apply && strip)
                             ClientPins.Reidentify(pin, known.HasValue ? SharedPin.KindOnly(known.Value) : "");
                         continue;
                     }
