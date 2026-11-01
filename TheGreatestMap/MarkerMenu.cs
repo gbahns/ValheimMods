@@ -269,20 +269,17 @@ namespace TheGreatestMap
             void IPointerExitHandler.OnPointerExit(PointerEventData e) { if (ReferenceEquals(Over, this)) Over = null; }
             private void OnDisable() { if (ReferenceEquals(Over, this)) Over = null; }
 
-            /// <summary>The body broken into lines the panel can hold, at word boundaries.</summary>
-            internal List<string> Lines()
-            {
-                var lines = new List<string>();
-                var word = Body.Split(' ');
-                string line = "";
-                foreach (var w in word)
-                {
-                    if (line.Length > 0 && line.Length + 1 + w.Length > 38) { lines.Add(line); line = w; }
-                    else line = line.Length == 0 ? w : line + " " + w;
-                }
-                if (line.Length > 0) lines.Add(line);
-                return lines;
-            }
+            /// <summary>
+            /// The body, as the one block of text it is.
+            ///
+            /// <para>It used to be broken into lines here, at thirty-eight characters. A character
+            /// count is not a width: the game's font is proportional, so thirty-eight narrow
+            /// letters fit the panel and thirty-eight wide ones run off the end of it, where they
+            /// were cut with an ellipsis. And a tooltip longer than four of those lines simply
+            /// lost the rest, silently. The panel wraps and measures its own text now, so this
+            /// hands over the whole thing.</para>
+            /// </summary>
+            internal List<string> Lines() => new List<string> { Body };
         }
 
         /// <summary>Give something a tooltip of our own, shown while the pointer rests on it.</summary>

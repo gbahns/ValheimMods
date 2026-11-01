@@ -196,14 +196,29 @@ namespace TheGreatestMap
         /// <summary>Put a title and some lines in the panel, switching off the ones left over.</summary>
         private static void Write(string title, List<string> lines)
         {
+            // No strip of empty panel above the text when there is no title to put in it. Most of
+            // the tooltips on the marker list carry only a body.
+            bool titled = !string.IsNullOrEmpty(title);
+            if (_title.gameObject.activeSelf != titled) _title.gameObject.SetActive(titled);
             _title.text = title ?? "";
+
+            while (_lines.Count < lines.Count) AddLine();
+            float inner = Width - 20f;          // what Stretch leaves between the panel's sides
+            float y = Pad + (titled ? TitleHeight : 0f);
             for (int i = 0; i < _lines.Count; i++)
             {
                 bool used = i < lines.Count;
                 if (_lines[i].gameObject.activeSelf != used) _lines[i].gameObject.SetActive(used);
-                if (used) _lines[i].text = lines[i];
+                if (!used) continue;
+                var line = _lines[i];
+                line.text = lines[i];
+                // Asked of the text itself at the width it has to fit: a line of one word and a
+                // line of forty take the room each of them needs.
+                float height = Mathf.Max(LineHeight, line.GetPreferredValues(lines[i], inner, 0f).y);
+                Stretch(line.rectTransform, -y, height);
+                y += height;
             }
-            _rect.sizeDelta = new Vector2(Width, Pad + TitleHeight + Mathf.Min(lines.Count, _lines.Count) * LineHeight + Pad);
+            _rect.sizeDelta = new Vector2(Width, y + Pad);
         }
 
         private static string When(long ticks)
@@ -236,13 +251,22 @@ namespace TheGreatestMap
             Stretch(_title.rectTransform, -Pad, TitleHeight);
             _title.alignment = TextAlignmentOptions.MidlineLeft;
 
-            for (int i = 0; i < 4; i++)
-            {
-                var line = MenuKit.Text(_root.transform, "Line" + i, "", 13f, MenuKit.Dim);
-                Stretch(line.rectTransform, -(Pad + TitleHeight + i * LineHeight), LineHeight);
-                line.alignment = TextAlignmentOptions.MidlineLeft;
-                _lines.Add(line);
-            }
+            for (int i = 0; i < 4; i++) AddLine();
+        }
+
+        /// <summary>
+        /// One line of the tooltip, which may take several lines of its own: these wrap and are
+        /// measured, rather than being cut off at the panel's edge. Where a caller hands over a
+        /// whole paragraph -- which is what a tooltip's text is -- that is one of these.
+        /// </summary>
+        private static TextMeshProUGUI AddLine()
+        {
+            var line = MenuKit.Text(_root.transform, "Line" + _lines.Count, "", 13f, MenuKit.Dim);
+            line.alignment = TextAlignmentOptions.TopLeft;
+            line.textWrappingMode = TextWrappingModes.Normal;
+            line.overflowMode = TextOverflowModes.Overflow;
+            _lines.Add(line);
+            return line;
         }
 
         private static void Stretch(RectTransform rt, float y, float height)
