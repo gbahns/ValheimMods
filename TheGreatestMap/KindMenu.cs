@@ -264,13 +264,22 @@ namespace TheGreatestMap
             ((RectTransform)_pinImage.transform).localRotation = Quaternion.Euler(0f, 0f, Pinned ? 0f : -90f);
         }
 
-        /// <summary>Remember where it is now, so pinning it puts it back here next time.</summary>
+        /// <summary>
+        /// Remember where it is now, so pinning it -- or letting go of it after a drag -- puts it
+        /// back here next time.
+        ///
+        /// <para>This also moves the spot the list draws itself at, which is the same number read
+        /// a different way. Without that, every redraw in place went back to where the list was
+        /// first opened: unfolding a kind after dragging the list across the map would have
+        /// snatched it back under the button it came from.</para>
+        /// </summary>
         private static void RememberSpot()
         {
             if (_rect == null) return;
             var corners = new Vector3[4];
             _rect.GetWorldCorners(corners);
             var top = RectTransformUtility.WorldToScreenPoint(_camera, corners[1]);
+            _screenPos = top;
             if (Screen.width > 0 && Screen.height > 0)
                 PinnedSpot = new Vector2(top.x / Screen.width, top.y / Screen.height);
         }
@@ -416,6 +425,10 @@ namespace TheGreatestMap
             // window's power switch, not a peer of "Berries". It used to be a row four below
             // another row called "Show all", and between them they were the most confusing thing
             // in the panel.
+            // Pinned, the title strip is what you drag the list about by. Built before the
+            // things that sit in it, so the master switch and the stick pin stay on top of it and
+            // keep taking their own clicks: in a Unity canvas the later child is the nearer one.
+            if (Pinned) BuildMover();
             Header(_results != null ? "Matches" : "Markers", 0f, y);
             WordButton(_root.transform, RowWidth - 36f - 70f, y + 3f, 70f, 20f,
                 () => AllShown ? "hide all" : "show all",
@@ -682,6 +695,62 @@ namespace TheGreatestMap
                 y -= RowHeight;
             }
             return y;
+        }
+
+        /// <summary>
+        /// The strip across the title that moves the list, for a list that is staying open.
+        ///
+        /// <para>Only while pinned, because only then is there anywhere for it to stay: an
+        /// unpinned list is put up by a click and goes away at the next one, and opens where the
+        /// button is every time, so moving it would be a gesture with nothing to remember it.
+        /// Pinned, it is furniture, and furniture that cannot be moved off the part of the map
+        /// you are reading is furniture in the way.</para>
+        ///
+        /// <para>Where it ends up is remembered the way pinning already remembered it -- as a
+        /// fraction of the screen, so it lands in the same place on any monitor.</para>
+        /// </summary>
+        private static void BuildMover()
+        {
+            var go = new GameObject("Mover", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image),
+                                    typeof(MenuKit.DragHandle));
+            go.transform.SetParent(_root.transform, false);
+            // Invisible, and still the thing the pointer finds: a transparent image is a hit
+            // target, which is the whole trick. The title above it is text with its raycast off.
+            var img = go.GetComponent<Image>();
+            img.color = new Color(1f, 1f, 1f, 0f);
+            img.raycastTarget = true;
+            // Up to the master switch and no further, so the one word in the strip is still a
+            // button rather than a place the panel can be grabbed by.
+            Place((RectTransform)go.transform, 0f, 0f, RowWidth - 110f, HeaderHeight + Pad);
+            var handle = go.GetComponent<MenuKit.DragHandle>();
+            handle.OnDrag = OnMoveDrag;
+            handle.OnEnd = RememberSpot;
+            MenuKit.Tip(go, "Move the list", "Drag the title to move this list about the map");
+        }
+
+        private static void OnMoveDrag(Vector2 screenDelta)
+        {
+            if (_rect == null) return;
+            var canvas = _root != null ? _root.GetComponentInParent<Canvas>() : null;
+            float scale = canvas != null ? canvas.rootCanvas.scaleFactor : 1f;
+            _rect.anchoredPosition += screenDelta / (scale > 0f ? scale : 1f);
+            ClampToMap();
+        }
+
+        /// <summary>
+        /// Keep the whole list on the map. The map is a rect rather than the screen, so there is
+        /// no reason to settle for keeping part of it reachable: it can simply be held inside.
+        /// </summary>
+        private static void ClampToMap()
+        {
+            var parent = _rect.parent as RectTransform;
+            if (parent == null) return;
+            var pr = parent.rect;
+            var size = _rect.sizeDelta;
+            var p = _rect.anchoredPosition;
+            _rect.anchoredPosition = new Vector2(
+                Mathf.Clamp(p.x, 0f, Mathf.Max(0f, pr.width - size.x)),
+                Mathf.Clamp(p.y, Mathf.Min(0f, -(pr.height - size.y)), 0f));
         }
 
         /// <summary>
@@ -1329,14 +1398,7 @@ namespace TheGreatestMap
             string group = CrossedOff.GroupFor(kind, t.Icon);
             bool gone = Categories.IsResource(kind);
             SwitchRow(map, _content, 0f, y, Twist + Indent, t.Icon, $"{t.Label} ({t.Count})",
-                // A single type is hidden by its icon, the only thing on a marker that says which
-                // type it is -- the same list a marker's own right-click menu writes to, so the
-                // two places that can hide a type agree with each other.
-                () =>
-                {
-                    if (TgmConfig.IsIconHidden(t.Icon)) TgmConfig.RemoveHiddenIcon(t.Icon);
-                    else TgmConfig.AddHiddenIcon(t.Icon);
-                },
+                () => ToggleType(kind, t.Icon),
                 () => AllShown && IsShown(kind) && !TgmConfig.IsIconHidden(t.Icon),
                 onOnly: () => Focus.SetIcon(t.Icon),
                 onLocate: () => Locate.Icon(t.Icon, t.Label),
@@ -1366,6 +1428,46 @@ namespace TheGreatestMap
                     CrossedOff.SetGroupHidden(group, !CrossedOff.IsGroupHidden(group));
                 },
                 gone: gone);
+        }
+
+        /// <summary>
+        /// Show or hide one type, from a row that is dim or bright accordingly.
+        ///
+        /// <para>A type is hidden by its icon, the only thing on a marker that says which type it
+        /// is -- the same list a marker's own right-click menu writes to, so the two places that
+        /// can hide a type agree with each other.</para>
+        ///
+        /// <para><b>A type can also be hidden by its kind</b>, and that is what this has to be
+        /// careful about. Hide Berries and then press Raspberries, and the obvious reading of the
+        /// press -- add raspberries to the hidden icons -- hid what was already hidden: a dim row
+        /// pressed, and nothing changed. A switch has to switch.</para>
+        ///
+        /// <para>So showing a type whose kind is hiding it hands that hiding over to the icons
+        /// before turning the kind back on: every other type of that kind goes on the hidden list,
+        /// where the kind's own switch had been keeping it. The map then changes by exactly the
+        /// one row that was pressed -- raspberries appear, blueberries and cloudberries stay away
+        /// -- which is what the row promises and what pressing the kind's own row would not do.
+        /// The way back out is the kind's row, or the put-back row at the foot, which counts those
+        /// types and says so.</para>
+        ///
+        /// <para>The master switch is deliberately not part of this. While it is off nothing is
+        /// drawn at all and every row in the list says so by being dim; taking a press on a type
+        /// as a reason to turn the whole mod's markers back on would be the one switch in here
+        /// that reaches outside what it names.</para>
+        /// </summary>
+        private static void ToggleType(Category kind, string icon)
+        {
+            // What this row is about, leaving the master out of it.
+            bool drawn = IsShown(kind) && !TgmConfig.IsIconHidden(icon);
+            if (drawn) { TgmConfig.AddHiddenIcon(icon); return; }
+            if (!IsShown(kind))
+            {
+                if (_types != null && _types.TryGetValue(kind, out var siblings))
+                    foreach (var other in siblings)
+                        if (!IconRegistry.SameKey(other.Icon, icon)) TgmConfig.AddHiddenIcon(other.Icon);
+                if (TgmConfig.ShowKind.TryGetValue(kind, out var entry)) entry.Value = true;
+            }
+            TgmConfig.RemoveHiddenIcon(icon);
         }
 
         /// <summary>

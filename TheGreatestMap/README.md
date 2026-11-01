@@ -104,6 +104,10 @@ One row at the foot does the lot at once.
 The master switch is the word at the right of the title strip, next to the stick pin: "hide all"
 while the markers are drawn, "show all" while they are not.
 
+Pressing a type row while its whole kind is hidden shows that type: the other types of that kind
+stay hidden, so the map changes by exactly the row you pressed rather than bringing the kind back
+wholesale.
+
 At the foot of the list is the row that puts back everything these switches hide -- the kinds, the
 crossed-off groups, icons hidden one picture at a time and markers hidden one at a time, the same
 as `tgm_show`. It names what it will put back ("Show everything hidden -- 2 kinds, 5 markers") and

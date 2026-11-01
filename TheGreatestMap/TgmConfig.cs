@@ -622,9 +622,9 @@ namespace TheGreatestMap
                 entry.SettingChanged += (_, __) => { Catalog.Invalidate(); ClientPins.Restyle(); };
 
             PinMarkerMenu = mod.BindLocal("Display", "Pin Marker List Open", false,
-                "Keep the marker button's list open: it stops closing when you click elsewhere on the map, and comes " +
-                "back by itself each time you open the map. Escape still closes it. The pin is the row at the foot of " +
-                "the list, so it can be set without leaving the map.");
+                "Keep the marker button's list open: it stops closing when you click elsewhere on the map, comes back " +
+                "by itself each time you open the map, and can be dragged about the map by its title. Escape still " +
+                "closes it. The stick pin in the list's top corner sets this, so it can be set without leaving the map.");
             PinnedMenuSpot = mod.BindLocal("Display", "Pinned Marker List Spot", Vector2.zero,
                 "Where a pinned marker list sits, as a fraction of the screen. Set when you pin it; zero means it has " +
                 "not been pinned anywhere yet.");

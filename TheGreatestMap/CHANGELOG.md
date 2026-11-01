@@ -35,6 +35,19 @@
     off the map. The names have the whole row while the buttons are away, so most of them no
     longer end in an ellipsis.
 
+  - **A pinned list can be dragged about the map.** Drag it by its title. Where it ends up is
+    remembered as a fraction of the screen, the way pinning already remembered where it sat, so it
+    comes back there on any monitor. Only while pinned: an unpinned list opens where the button is
+    and goes away at the next click, so moving one would be a gesture with nothing to remember it.
+
+  - **Pressing a type under a hidden kind shows it, rather than hiding what is already hidden.**
+    Hide Berries and then press Raspberries, and the obvious reading of that press -- add
+    raspberries to the hidden types -- changed nothing on the map: a dim row pressed, and nothing
+    happened. Showing a type whose kind is hiding it now hands that hiding over to the types
+    themselves, so the map changes by exactly the row that was pressed: raspberries appear and the
+    blueberries stay away. The way back is the kind's own row, or the put-back row at the foot,
+    which counts those types and says so.
+
   - **"Show all" and "Show all markers" are no longer two rows four apart.** One was the master
     switch and the other undid every hide in the mod, and from the words there was no telling
     which was which. The master is now a word in the list's own title strip, next to the stick
