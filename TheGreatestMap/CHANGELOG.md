@@ -125,8 +125,11 @@
 
   - **"Show all" and "Show all markers" are no longer two rows four apart.** One was the master
     switch and the other undid every hide in the mod, and from the words there was no telling
-    which was which. The master is now a word in the list's own title strip, next to the stick
-    pin, where a window's power switch belongs. The other names what it will put back -- "Show
+    which was which. The master is now a box to check in the list's own title strip, next to the
+    stick pin, where a window's power switch belongs. A box rather than a word, because the word
+    was a promise it could not keep: with the markers off it read "show all", and pressing it put
+    the master switch back without showing anything a kind or a type was hiding. It says "hide
+    all", which is what checking it does, and the box says whether it is on. The other names what it will put back -- "Show
     everything hidden -- 2 kinds, 5 markers" -- and is drawn only when it would put something
     back, which on most maps means not at all.
 

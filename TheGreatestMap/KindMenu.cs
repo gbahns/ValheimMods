@@ -447,12 +447,17 @@ namespace TheGreatestMap
             // keep taking their own clicks: in a Unity canvas the later child is the nearer one.
             if (Pinned) BuildMover();
             Header(_results != null ? "Matches" : "Markers", 0f, y);
-            WordButton(_root.transform, RowWidth - 36f - 70f, y + 3f, 70f, 20f,
-                () => AllShown ? "hide all" : "show all",
-                () => { MarkerToggle.ToggleAll(); Refresh(); },
+            // A box to check rather than a word that changes, because the word was a promise it
+            // could not keep: with the markers off it read "show all", and pressing it put the
+            // master switch back without showing anything a kind or a type was hiding. What it
+            // does is hold every marker off at once, so it says that and shows whether it is on.
+            CheckBox(RowWidth - 36f - 76f, y + 3f, 76f,
+                "hide all",
                 () => !AllShown,
+                () => { MarkerToggle.ToggleAll(); Refresh(); },
                 "All markers",
-                "Stop drawing every one of this mod's markers, and start again");
+                "Hold every one of this mod's markers off the map at once, whatever the switches " +
+                "below say. Unchecking it leaves those exactly as they were.");
             y -= HeaderHeight;
 
             FindBox(0f, y);
@@ -1294,40 +1299,60 @@ namespace TheGreatestMap
         }
 
         /// <summary>
-        /// A word to press, placed where it is told rather than at the end of a row: the master
-        /// switch in the title strip. The same look as the buttons on the rows, because it is the
-        /// same kind of thing.
+        /// A box to check, with its words beside it: a setting that is either applied or not,
+        /// rather than an action. Named for what checking it does, so the words never have to
+        /// change under the pointer -- the box is what says whether it is on.
         /// </summary>
-        private static void WordButton(Transform host, float x, float y, float width, float height, Func<string> text,
-                                       Action onClick, Func<bool> lit, string tipTopic, string tip)
+        private static void CheckBox(float x, float y, float width, string text, Func<bool> on,
+                                     Action toggle, string tipTopic, string tip)
         {
-            var go = new GameObject("WordButton", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
-            go.transform.SetParent(host, false);
-            Place((RectTransform)go.transform, x, y, width, height);
-            var img = go.GetComponent<Image>();
-            img.color = MenuKit.ButtonIdle;
-            img.raycastTarget = true;
+            var go = new GameObject("CheckBox", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+            go.transform.SetParent(_root.transform, false);
+            Place((RectTransform)go.transform, x, y, width, 20f);
+            var back = go.GetComponent<Image>();
+            back.color = MenuKit.ButtonIdle;
+            back.raycastTarget = true;
             var button = go.GetComponent<Button>();
             button.transition = Selectable.Transition.None;
-            button.targetGraphic = img;
-            button.onClick.AddListener(() => onClick());
+            button.targetGraphic = back;
+            button.onClick.AddListener(() => toggle());
             MenuKit.Tip(go, tipTopic, tip);
 
-            var label = MenuKit.Text(go.transform, "Glyph", text(), 11f, MenuKit.GlyphIdle);
-            label.alignment = TextAlignmentOptions.Center;
+            var box = Mark(go.transform, MenuKit.Box(), 13f, 5f);
+            var tick = Mark(go.transform, MenuKit.Check(), 10f, 6.5f);
+
+            var label = MenuKit.Text(go.transform, "Glyph", text, 11f, MenuKit.GlyphIdle);
+            label.alignment = TextAlignmentOptions.MidlineLeft;
             label.raycastTarget = false;
             var lrt = label.rectTransform;
             lrt.anchorMin = Vector2.zero;
             lrt.anchorMax = Vector2.one;
-            lrt.offsetMin = Vector2.zero;
+            lrt.offsetMin = new Vector2(22f, 0f);
             lrt.offsetMax = Vector2.zero;
             _lights.Add(() =>
             {
-                bool on = lit != null && lit();
-                label.text = text();
-                img.color = on ? MenuKit.ButtonOn : MenuKit.ButtonIdle;
-                label.color = on ? MenuKit.GlyphOn : MenuKit.GlyphIdle;
+                bool lit = on();
+                tick.enabled = lit;
+                back.color = lit ? MenuKit.ButtonOn : MenuKit.ButtonIdle;
+                box.color = lit ? MenuKit.GlyphOn : MenuKit.GlyphIdle;
+                label.color = lit ? MenuKit.GlyphOn : MenuKit.GlyphIdle;
             });
+        }
+
+        /// <summary>One of the drawn marks inside a checkbox, at its left.</summary>
+        private static Image Mark(Transform host, Sprite sprite, float size, float left)
+        {
+            var go = new GameObject("Mark", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            go.transform.SetParent(host, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0f, 0.5f);
+            rt.anchoredPosition = new Vector2(left, 0f);
+            rt.sizeDelta = new Vector2(size, size);
+            var img = go.GetComponent<Image>();
+            img.sprite = sprite;
+            img.preserveAspect = true;
+            img.raycastTarget = false;
+            return img;
         }
 
         /// <summary>

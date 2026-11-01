@@ -91,10 +91,10 @@ as you like; the list scrolls on the wheel while the pointer is on it, and the t
 find box and the foot stay put while it does.
 
 Every kind sits under one of four headings, each with a triangle of its own: **Resources** (what
-you harvest, and what runs out), **Places** (what you go to, and what stays put), **Your
-Stuff** (the fires you lit and what you noted by hand) and **Dynamic Markers** (ships, carts,
-portals and other players, none of which is recorded -- those are where a thing is right now).
-Pressing a heading hides every kind under it.
+you harvest, and what runs out), **Places** (what you go to, and what stays put), **Your Stuff**
+(what you noted by hand, about something the catalog will never know) and **Dynamic Markers**
+(ships, carts, portals, other players, and the fires and benches a base is made of -- what is
+standing now rather than what was found). Pressing a heading hides every kind under it.
 
 **The gear** beside the marker button holds the settings about how the map is drawn rather than
 about which markers are on it. Three checkboxes for now: **Show Marker Labels**, **Show Portal
@@ -113,8 +113,10 @@ itself is used up, and those share one switch across every kind. A type row carr
 so the burial chambers you are finished with can go while the sunken crypts you have cleared stay.
 One row at the foot does the lot at once.
 
-The master switch is the word at the right of the title strip, next to the stick pin: "hide all"
-while the markers are drawn, "show all" while they are not.
+"Hide all" at the right of the title strip, next to the stick pin, is the master switch: check it
+and none of this mod's markers are drawn, whatever the switches below say; uncheck it and they
+come back exactly as they were. It is a box to check rather than a button because it does not show
+everything -- it only stops holding everything off.
 
 Pressing a type row while its whole kind is hidden shows that type: the other types of that kind
 stay hidden, so the map changes by exactly the row you pressed rather than bringing the kind back
@@ -232,6 +234,12 @@ where a group stopped, and worth finding again. The marker is the campfire's own
 build menu, in its fire colors, with no text label. Taking a campfire down removes its marker for
 everyone. Fires that belong to camps and villages the world generated are not counted. "Record
 Campfires" turns it off.
+
+**Workbenches** work exactly the same way, and are there for the players who hold the spawning off
+around a base with benches rather than with fires. Only one somebody built counts, the marker is
+the bench's own build-menu picture, and taking the bench down takes the marker with it. Any
+crafting station can be listed under "Workbenches" in the Catalog section -- a forge, a
+stonecutter -- and the workbench is the one listed because it is the one that holds spawning off.
 
 **Structures** (abandoned houses, log cabins, stone tower ruins, swamp huts, stonehenges, dvergr
 towers and so on) are recorded too if you turn on "Record Structures", which is off by default.
