@@ -106,14 +106,6 @@ namespace TheGreatestMap
         private static Vector2 _screenPos;
         private static List<Focus.TypeCount> _results;
 
-        /// <summary>
-        /// Showing the settings instead of the markers. A view of this list rather than a window
-        /// of its own: the settings behind the old gear were about how the map draws what this
-        /// list decides to show, which is the same subject looked at from the other end, and
-        /// having them in a second panel on the map's edge made them a peer of the markers when
-        /// they are a part of them.
-        /// </summary>
-        private static bool _settings;
         private static string _pendingText;
         private static bool _rebuilding;
         private static bool _rebuildWanted;
@@ -280,11 +272,9 @@ namespace TheGreatestMap
             var button = go.GetComponent<Button>();
             button.transition = Selectable.Transition.None;
             button.targetGraphic = hit;
-            button.onClick.AddListener(() =>
-            {
-                _settings = !_settings;
-                _rebuildWanted = true;
-            });
+            // In front of the list rather than in the place of it: a player changing the order
+            // of the types wants to watch the order change.
+            button.onClick.AddListener(() => SettingsMenu.Toggle(ZInput.pointerPosition));
             MenuKit.Tip(go, "Settings", "What this list shows, and how the map draws it");
             PaintGear();
         }
@@ -297,7 +287,7 @@ namespace TheGreatestMap
             if (_gearImage == null) return;
             bool over = _gearGlow != null && _gearGlow.Over;
             _gearImage.color = over ? MenuKit.HoverColor
-                : _settings ? new Color(1f, 0.85f, 0.45f, 1f)
+                : SettingsMenu.IsOpen ? new Color(1f, 0.85f, 0.45f, 1f)
                 : new Color(0.75f, 0.73f, 0.7f, 0.55f);
         }
 
@@ -441,9 +431,9 @@ namespace TheGreatestMap
 
             // The foot's height has to be known before the scrolling part can be given what is
             // left over, and whether the put-back row is there is part of that.
-            _resetShown = !_settings && AnythingPutBack();
+            _resetShown = AnythingPutBack();
             float head = BuildHead(map);
-            float foot = _settings ? 0f : (_resetShown ? 3f : 2f) * RowHeight;
+            float foot = (_resetShown ? 3f : 2f) * RowHeight;
 
             // Anything outside the viewport is clipped, which is what allows scrolling without a
             // full ScrollRect and its scrollbars. The same arrangement the map legend uses.
@@ -534,7 +524,7 @@ namespace TheGreatestMap
             // things that sit in it, so the master switch and the stick pin stay on top of it and
             // keep taking their own clicks: in a Unity canvas the later child is the nearer one.
             if (Pinned) BuildMover();
-            Header(_settings ? "Settings" : _results != null ? "Matches" : "Markers", 0f, y);
+            Header(_results != null ? "Matches" : "Markers", 0f, y);
             // A box to check rather than a word that changes, because the word was a promise it
             // could not keep: with the markers off it read "show all", and pressing it put the
             // master switch back without showing anything a kind or a type was hiding. What it
@@ -552,7 +542,6 @@ namespace TheGreatestMap
                 "boss altars, traders, Hildir's camps, the center of the world -- and so do players, " +
                 "pings and shouts. Unchecking it leaves every switch below exactly as it was.");
             y -= HeaderHeight;
-            if (_settings) return -y;
 
             FindBox(0f, y);
             y -= RowHeight;
@@ -584,7 +573,6 @@ namespace TheGreatestMap
         private static float BuildList(Minimap map)
         {
             float y = 0f;
-            if (_settings) return BuildSettings(y);
             if (_results != null)
             {
                 ActionRow(_content, 0f, y, () =>
@@ -656,84 +644,6 @@ namespace TheGreatestMap
                 }
             }
             return LooseEnds(y);
-        }
-
-        /// <summary>
-        /// What this list shows and how the map draws it, in the place of the markers while the
-        /// gear is lit. Scrolls with everything else, so it has room to grow.
-        /// </summary>
-        private static float BuildSettings(float y)
-        {
-            SettingHeader("The order the types come in", y);
-            y -= RowHeight;
-            y = OrderRow(y, TypeOrder.Progression, "Progression",
-                "The order the catalog lists them in, which is the order you meet them: a dandelion before a " +
-                "thistle, copper before silver. Reorder a Catalog line and these follow.");
-            y = OrderRow(y, TypeOrder.MostFirst, "Most first",
-                "The commonest at the top, which is what this list did before there was a choice");
-            y = OrderRow(y, TypeOrder.AToZ, "A to Z", "By name");
-
-            SettingHeader("What the map writes beside a marker", y);
-            y -= RowHeight;
-            y = CheckRow(y, () => TgmConfig.ShowMarkerLabels, "Marker names",
-                "Write a marker's name beside it, where it has one");
-            y = CheckRow(y, () => TgmConfig.ShowPortalLabels, "Portal names",
-                "Write a portal's tag beside it on the map");
-            y = CheckRow(y, () => TgmConfig.ShowBossLabels, "Boss names",
-                "Write a boss altar's name beside it, as the game does when you find one");
-            return y;
-        }
-
-        private static void SettingHeader(string text, float y)
-        {
-            var header = MenuKit.Text(_content, "SettingHeader", text, 13f, MenuKit.Header);
-            Place(header.rectTransform, 10f, y, RowWidth - 20f, RowHeight);
-            header.alignment = TextAlignmentOptions.MidlineLeft;
-        }
-
-        /// <summary>One of the orders the types can come in, checked when it is the one in use.</summary>
-        private static float OrderRow(float y, TypeOrder order, string text, string tip)
-        {
-            Setting(y, text, tip,
-                () => TgmConfig.TypeRowOrder != null && TgmConfig.TypeRowOrder.Value == order,
-                () => { if (TgmConfig.TypeRowOrder != null) TgmConfig.TypeRowOrder.Value = order; _rebuildWanted = true; });
-            return y - RowHeight;
-        }
-
-        /// <summary>One switch that is on or off.</summary>
-        private static float CheckRow(float y, Func<ConfigEntry<bool>> entry, string text, string tip)
-        {
-            Setting(y, text, tip,
-                () => { var e = entry(); return e == null || e.Value; },
-                () => { var e = entry(); if (e != null) e.Value = !e.Value; });
-            return y - RowHeight;
-        }
-
-        /// <summary>
-        /// A box to check and the name of what it does. The whole row is the target, box
-        /// included, so there is no small square to hit.
-        /// </summary>
-        private static void Setting(float y, string text, string tip, Func<bool> on, Action press)
-        {
-            var row = MenuKit.Row(_content, "", true, () => { press(); ClientPins.Restyle(); Refresh(); });
-            Place(row, 0f, y, RowWidth, RowHeight);
-            MenuKit.Tip(row.gameObject, null, tip);
-            var box = Mark(row, MenuKit.Box(), 14f, 14f);
-            var tick = Mark(row, MenuKit.Check(), 11f, 15.5f);
-            var label = row.GetComponentInChildren<TextMeshProUGUI>();
-            if (label != null)
-            {
-                label.text = text;
-                label.alignment = TextAlignmentOptions.MidlineLeft;
-                label.rectTransform.offsetMin = new Vector2(38f, 0f);
-            }
-            _lights.Add(() =>
-            {
-                bool lit = on();
-                tick.enabled = lit;
-                box.color = lit ? MenuKit.Header : new Color(1f, 0.85f, 0.45f, 0.4f);
-                if (label != null) label.color = lit ? MenuKit.Body : MenuKit.Dim;
-            });
         }
 
         /// <summary>
@@ -888,9 +798,6 @@ namespace TheGreatestMap
         /// </summary>
         private static float BuildFoot(float y)
         {
-            // Every row here acts on the markers, and none of them means anything while the
-            // settings are up.
-            if (_settings) return y;
             // One switch for everything you are finished with, which is what the right-hand
             // column was for before being a column stopped making sense. The per-kind and
             // per-type switches are still there, on the rows they belong to.
@@ -1956,6 +1863,9 @@ namespace TheGreatestMap
             _pinGlow = null;
             _gearImage = null;
             _gearGlow = null;
+            // The settings belong to this list and have nothing to sit in front of once it is
+            // gone.
+            SettingsMenu.Close();
             _closedFrame = Time.frameCount;
         }
 
@@ -1969,6 +1879,7 @@ namespace TheGreatestMap
             if (_rebuildWanted) { Rebuild(); return; }
             PaintPin();
             PaintGear();
+            SettingsMenu.Update();
             float wheel = _wheel;
             _wheel = 0f;
             if (Mathf.Abs(wheel) > 0.001f)
@@ -1990,7 +1901,13 @@ namespace TheGreatestMap
             // Pinned, a click elsewhere on the map is just a click on the map -- placing a
             // marker, dragging, reading something -- and the list stays where it was put.
             if (!Pinned && (ZInput.GetMouseButtonDown(0) || ZInput.GetMouseButtonDown(1)))
+            {
+                // A click in the settings is a click in this list: they are its own, standing in
+                // front of it, and an unpinned list that closed under them would take them with
+                // it the first time anybody pressed one.
+                if (SettingsMenu.Hovered) return;
                 if (!RectTransformUtility.RectangleContainsScreenPoint(_rect, ZInput.pointerPosition, _camera)) Close();
+            }
         }
     }
 

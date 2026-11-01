@@ -96,8 +96,8 @@ you harvest, and what runs out), **Places** (what you go to, and what stays put)
 (ships, carts, portals, other players, and the fires and benches a base is made of -- what is
 standing now rather than what was found). Pressing a heading hides every kind under it.
 
-**The gear** in the list's title strip, beside the stick pin, shows the list's settings in the
-place of the markers; press it again for the markers back.
+**The gear** in the list's title strip, beside the stick pin, opens the list's settings in front
+of it. They close on a click away, and go with the list.
 
 - **The order the types come in**: **Progression** (the order the catalog lists them in, which is
   the order you meet them -- a dandelion before a thistle, copper before silver), **Most first**,

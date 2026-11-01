@@ -98,9 +98,11 @@
   for one that holds a setting, and words that change under the pointer are what make a settings
   panel hard to read at a glance.
 
-  A view of the list rather than a window of its own, which is what it was for an afternoon. How
-  the map draws what this list decides to show is the same subject looked at from the other end,
-  and a second panel on the map's edge made it a peer of the markers when it is a part of them.
+  In front of the list rather than in the place of it. How the map draws what this list decides to
+  show is the same subject looked at from the other end, so the settings belong to the list rather
+  than to the map's edge where they started -- but replacing the markers with them reads as having
+  gone somewhere else, and a player changing the order of the types wants to watch the order
+  change. They close on a click away, like any other small menu, and they go when the list goes.
 
 - **The types under a kind can be ordered three ways.** They were listed commonest first, which
   answers "what is there a lot of" and nothing else. **Progression** is now the default: the
