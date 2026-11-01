@@ -1450,10 +1450,11 @@ namespace TheGreatestMap
         /// A name and its count: "Ore (219)" while all of them are drawn, "Ore (88 of 219)" while
         /// some are not, and the bare name where there are none at all.
         ///
-        /// <para>Nothing is said about a row whose own switch is off, which is every marker under
-        /// it hidden for one plain reason: the row is already drawn dim, and "(0 of 219)" is a
-        /// sum nobody needed to see done. The pair is for the case that cannot be read off the
-        /// row -- a heading whose kinds are mostly on, a kind with one of its types put away.</para>
+        /// <para>None and all are both the plain total. "(0 of 219)" and "(219 of 219)" are sums
+        /// nobody needed done: a row with none of it drawn is already dim, and a row with all of
+        /// it drawn is the ordinary case. The pair is for the state that cannot be read off the
+        /// row at all -- a heading whose kinds are mostly on, a kind with one of its types put
+        /// away.</para>
         /// </summary>
         private static string Named(string label, int shown, int total)
         {
