@@ -34,6 +34,7 @@ namespace TheGreatestMap
         Ship,
         Cart,
         Spawner,
+        Workbench,
     }
 
     /// <summary>
@@ -55,9 +56,15 @@ namespace TheGreatestMap
         Resources,
         /// <summary>Things you go to, which stay where they are: dungeons, camps, altars, ruins, runestones, traders, spawners.</summary>
         Places,
-        /// <summary>Marks about your own doings: the fires you lit, and the things you noted by hand.</summary>
+        /// <summary>What you noted by hand, about nothing the catalog will ever know.</summary>
         Yours,
-        /// <summary>Not recorded at all -- where a thing is right now, as the server answers it.</summary>
+        /// <summary>
+        /// What is standing now rather than what was found: a ship under way, a cart somewhere, a
+        /// portal, another player, and the fires and benches a base is made of. Some of these are
+        /// never recorded at all -- the server simply says where they are -- and the rest are
+        /// recorded and taken off again when the piece comes down. Either way none of them is a
+        /// discovery, and none can be trusted a week from now.
+        /// </summary>
         Dynamic,
     }
 
@@ -80,12 +87,16 @@ namespace TheGreatestMap
                 case Category.Seeds:
                 case Category.Plants:
                 case Category.Ore:       return Group.Resources;
-                case Category.Campfire:
                 case Category.Sighting:  return Group.Yours;
                 case Category.Ship:
                 case Category.Cart:
                 case Category.Portal:
-                case Category.Player:    return Group.Dynamic;
+                case Category.Player:
+                // A fire and a bench do not move the way a cart does, but neither does a portal:
+                // all four are put up, torn down and put up elsewhere as a base changes shape,
+                // which is the thing this heading is about. None of them is a discovery.
+                case Category.Campfire:
+                case Category.Workbench: return Group.Dynamic;
                 // Dungeons, camps, boss altars, structures, runestones, traders, spawners.
                 default:                 return Group.Places;
             }
@@ -113,10 +124,13 @@ namespace TheGreatestMap
                 case Group.Places:
                     return "What you go to, and what stays where it is. Crossing one of these off means you are done with it.";
                 case Group.Yours:
-                    return "The fires you lit and the things you noted by hand, rather than anything the world put there.";
+                    return "What you noted by hand, about something the catalog will never know: a serpent surfacing, " +
+                           "a bay that fishes well, where the trolls walk.";
                 case Group.Dynamic:
-                    return "Nothing here is recorded: it is where a thing is right now, as the server answers it. " +
-                           "A ship moves and a portal is rebuilt, so a marker written once would be wrong by tomorrow.";
+                    return "What is standing now rather than what was found. A ship moves, a cart is somewhere else, " +
+                           "a portal is rebuilt and renamed, a fire or a bench goes up and comes down as a base " +
+                           "changes shape -- so none of these can be trusted a week from now, and the mod either " +
+                           "asks the server where they are or takes the marker off when the piece goes.";
                 default:
                     return null;
             }
@@ -141,6 +155,18 @@ namespace TheGreatestMap
         /// authoritative list of every portal and the server already sends it, so the correction
         /// was keeping a copy in step with something we were being told anyway.
         /// </summary>
+        /// <summary>
+        /// A kind that exists because a player built one. The world is full of fires and benches
+        /// standing in camps and villages and those belong to the place, so only the ones with a
+        /// creator on them are recorded -- and when the piece comes down, its marker goes.
+        ///
+        /// <para>A workbench is here for the same reason the campfire is: both hold the spawning
+        /// off around them, so where they stand is worth remembering, and both are torn down and
+        /// moved as a base changes shape.</para>
+        /// </summary>
+        internal static bool IsBuilt(Category c) =>
+            c == Category.Campfire || c == Category.Workbench;
+
         internal static bool IsLive(Category c) =>
             c == Category.Ship || c == Category.Cart || c == Category.Portal;
 
@@ -174,6 +200,7 @@ namespace TheGreatestMap
                 case Category.Portal:    return "Portals";
                 case Category.Structure: return "Structures";
                 case Category.Campfire:  return "Campfires";
+                case Category.Workbench: return "Workbenches";
                 case Category.Sighting:  return "Sightings";
                 case Category.Player:    return "Players";
                 case Category.Ship:      return "Ships";
@@ -269,7 +296,11 @@ namespace TheGreatestMap
         {
             switch (c)
             {
-                case Category.Berries:   return "QueensJam";          // jam of raspberries and blueberries both
+                // The one picture here the game does not have: there is no item meaning "berries,
+                // any of them", and the jam that stood in for it read as a jar rather than as
+                // fruit. Drawn in the mod, which is also why it is the only key in this switch
+                // that is not something of Valheim's own.
+                case Category.Berries:   return "drawn:berries";
                 case Category.Mushrooms: return "MushroomOmelette";   // the dish, not one of the six mushrooms
                 case Category.Herbs:     return "Salad";              // a bowl of greens, rather than the thistle or the dandelion
                 case Category.Seeds:     return "BeechSeeds";         // seeds, and not any of the three crops' seeds
@@ -283,6 +314,7 @@ namespace TheGreatestMap
                 case Category.Portal:    return "pin:Icon4";
                 case Category.Structure: return "pin:Icon1";
                 case Category.Campfire:  return "piece:fire_pit"; // the campfire's own build-menu picture
+                case Category.Workbench: return "piece:piece_workbench";
                 case Category.Sighting:  return "TrophySerpent";
                 // Not "pin:Player": that is the vanilla type the game draws other players with,
                 // and the game refuses to let a player place one by hand, so a marker armed with
@@ -313,6 +345,7 @@ namespace TheGreatestMap
                 case Category.Ore:       return 5f;
                 case Category.Portal:    return 5f;
                 case Category.Campfire:  return 3f;
+                case Category.Workbench: return 3f;
                 case Category.Structure: return 6f;  // buildings in a farm can stand close together
                 default:                 return 20f;
             }
@@ -332,6 +365,7 @@ namespace TheGreatestMap
                 case Category.Runestone: return 30f;
                 case Category.Portal:    return 40f;
                 case Category.Campfire:  return 40f;
+                case Category.Workbench: return 40f;
                 default:                 return 80f; // dungeons, structures, camps, altars, traders: big things
             }
         }
@@ -347,7 +381,8 @@ namespace TheGreatestMap
                 case Category.Plants:
                 case Category.Herbs:     return 60;
                 case Category.Ore:
-                case Category.Campfire:  return 80;
+                case Category.Campfire:
+                case Category.Workbench: return 80;
                 default:                 return 100;
             }
         }
@@ -368,6 +403,7 @@ namespace TheGreatestMap
                 case Category.Camp:
                 case Category.BossAltar:
                 case Category.Campfire:
+                case Category.Workbench:
                 // A greydwarf trophy means a greydwarf spawner: the icon has always been the
                 // whole answer here, and each kind of spawner wears its own trophy. This kind
                 // was added to the enum after this switch was written and fell through to the
@@ -444,6 +480,8 @@ namespace TheGreatestMap
                            "FortressRuins*=Fortress Ruins|TrophyCharredMage,PlaceofMystery*=Place of Mystery";
                 case Category.Campfire:
                     return "fire_pit=Campfire|piece:fire_pit";
+                case Category.Workbench:
+                    return "piece_workbench=Workbench|piece:piece_workbench";
                 default:
                     return "";
             }
@@ -457,6 +495,7 @@ namespace TheGreatestMap
                 case Category.Ore:       return "Matches MineRock5, MineRock, Destructible and Pickable objects by prefab name, and a plain networked object such as a Yggdrasil root.";
                 case Category.Structure: return "Entries ending in * match by prefix. Unlisted outdoor locations also count when 'Structures Include Unlisted' is on.";
                 case Category.Campfire:  return "Only fires a player built count, not the ones the world puts in camps and villages. The icon can be piece:<prefab>, a building piece's build-menu picture.";
+                case Category.Workbench: return "Only benches a player built count, not the ones the world puts in camps and villages. Any crafting station can be listed here -- a forge, a stonecutter -- and the workbench is listed because it holds the spawning off around it.";
                 case Category.Spawner:   return "The nests and piles that creatures come out of, which you can walk up to and break. Valheim also has thousands of invisible spawn points named Spawner_<creature> inside dungeons and camps; do not add those.";
                 default:                 return "";
             }
@@ -1154,16 +1193,23 @@ namespace TheGreatestMap
                 return true;
             }
 
-            // A campfire someone built: where a group stopped. The world puts fires in camps and
+            // A campfire or a workbench someone built: where a group stopped for the night, or
+            // where the spawning is being held off. The world puts fires and benches in camps and
             // villages too, and those belong to the place, so only a player's own count.
-            var fire = go.GetComponentInParent<Fireplace>();
-            if (fire != null)
+            //
+            // Found by the component that makes the thing what it is rather than by asking every
+            // piece: a base holds hundreds of walls and floors, and none of them is a marker.
+            var station = go.GetComponentInParent<Fireplace>() != null
+                ? (Component)go.GetComponentInParent<Fireplace>()
+                : go.GetComponentInParent<CraftingStation>();
+            if (station != null)
             {
-                var piece = fire.GetComponent<Piece>();
-                string prefab = PrefabName(fire.gameObject);
-                if (piece != null && piece.IsPlacedByPlayer() && Lookup(prefab, out var e) && e.Cat == Category.Campfire)
+                var piece = station.GetComponent<Piece>();
+                string prefab = PrefabName(station.gameObject);
+                if (piece != null && piece.IsPlacedByPlayer() && Lookup(prefab, out var e) && Categories.IsBuilt(e.Cat))
                 {
-                    found = Make(Category.Campfire, e.Name ?? Loc(piece.m_name, "Campfire"), e.Icon, fire.transform.position, KeyOf(fire.gameObject, prefab), prefab);
+                    found = Make(e.Cat, e.Name ?? Loc(piece.m_name, Categories.Label(e.Cat)), e.Icon,
+                                 station.transform.position, KeyOf(station.gameObject, prefab), prefab);
                     return true;
                 }
             }
@@ -1395,7 +1441,7 @@ namespace TheGreatestMap
             found = null;
             if (!_built) Rebuild();
             if (string.IsNullOrEmpty(name)) return false;
-            if (!Lookup(name, out var e) || e.Cat != Category.Campfire) return false;
+            if (!Lookup(name, out var e) || !Categories.IsBuilt(e.Cat)) return false;
             found = Make(e.Cat, e.Name ?? Prettify(name), e.Icon, pos, "prefab:" + name, name);
             return true;
         }

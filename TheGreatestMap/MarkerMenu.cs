@@ -307,6 +307,100 @@ namespace TheGreatestMap
 
         private static Sprite _box, _check;
 
+        private static readonly Dictionary<string, Sprite> _drawn = new Dictionary<string, Sprite>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// One of this mod's own pictures, by name, for the icon key "drawn:&lt;name&gt;".
+        ///
+        /// <para>Every other icon in the mod is something the game already has a picture of, which
+        /// is almost always the right answer -- a copper vein should look like copper ore, and
+        /// nothing hand-drawn competes with Valheim's own art. The exception is a kind that stands
+        /// for several things at once: there is no item in the game that means "berries, any of
+        /// them", and borrowing one of the three means the kind and one of its own types wear the
+        /// same picture.</para>
+        /// </summary>
+        internal static Sprite Drawn(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return null;
+            if (_drawn.TryGetValue(name, out var had)) return had;
+            Sprite made = null;
+            switch (name.ToLowerInvariant())
+            {
+                case "berries": made = Berries(); break;
+            }
+            _drawn[name] = made;
+            return made;
+        }
+
+        /// <summary>
+        /// Three berries in a cluster on a stem, in their own colors rather than white.
+        ///
+        /// <para>Drawn with a gap carved along the line where two of them meet, instead of relying
+        /// on their colors to tell them apart. The map paints every recorded marker one pale gold,
+        /// so whatever this is colored it arrives there as a single-color silhouette: without the
+        /// gaps the cluster would land on the map as one gold blob. In the marker list, which
+        /// draws an icon as it is, the colors show.</para>
+        /// </summary>
+        private static Sprite Berries()
+        {
+            const int n = 64;
+            const float r = n * 0.215f;      // each berry
+            const float gap = 2.2f;          // the seam carved where two of them meet
+            var at = new[]
+            {
+                new Vector2(n * 0.33f, n * 0.56f),
+                new Vector2(n * 0.67f, n * 0.56f),
+                new Vector2(n * 0.50f, n * 0.25f),
+            };
+            var skin = new Color(0.58f, 0.34f, 0.72f);
+            var leaf = new Color(0.36f, 0.56f, 0.26f);
+            var stemFrom = new Vector2(n * 0.50f, n * 0.70f);
+            var stemTo = new Vector2(n * 0.50f, n * 0.88f);
+            var leafAt = new Vector2(n * 0.63f, n * 0.84f);
+
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    int berry = 0, green = 0;
+                    Vector2 nearest = Vector2.zero;
+                    for (int sy = 0; sy < 3; sy++)
+                        for (int sx = 0; sx < 3; sx++)
+                        {
+                            var p = new Vector2(x + (sx + 0.5f) / 3f, y + (sy + 0.5f) / 3f);
+                            // The two closest berries: inside one of them, and far enough from the
+                            // next for the seam between them to show.
+                            float first = float.MaxValue, second = float.MaxValue;
+                            Vector2 mine = Vector2.zero;
+                            foreach (var c in at)
+                            {
+                                float d = Vector2.Distance(p, c);
+                                if (d < first) { second = first; first = d; mine = c; }
+                                else if (d < second) second = d;
+                            }
+                            if (first <= r && second - first >= gap) { berry++; nearest = mine; continue; }
+                            if (ToSegment(p, stemFrom, stemTo) <= n * 0.028f
+                                || Vector2.Distance(p, leafAt) <= n * 0.075f) green++;
+                        }
+                    if (berry > 0)
+                    {
+                        // A little lighter towards the top left of each berry, which is all it
+                        // takes to stop three flat discs reading as three holes.
+                        var off = (new Vector2(x + 0.5f, y + 0.5f) - nearest) / r;
+                        float lift = Mathf.Clamp01(0.5f - (off.x - off.y) * 0.45f);
+                        var c = Color.Lerp(skin * 0.78f, Color.Lerp(skin, Color.white, 0.35f), lift);
+                        px[y * n + x] = new Color(c.r, c.g, c.b, berry / 9f);
+                    }
+                    else if (green > 0)
+                    {
+                        px[y * n + x] = new Color(leaf.r, leaf.g, leaf.b, green / 9f);
+                    }
+                }
+            return Bake(tex, px, n);
+        }
+
+
         /// <summary>
         /// An empty square: the box half of a checkbox, drawn once at runtime like the rest of the
         /// marks here. A ring rather than a filled square, so the row behind it shows through.

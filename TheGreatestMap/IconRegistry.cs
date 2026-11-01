@@ -43,6 +43,7 @@ namespace TheGreatestMap
             if (key.StartsWith("pin:", StringComparison.OrdinalIgnoreCase)) return "pin:" + key.Substring(4).Trim();
             if (key.StartsWith("like:", StringComparison.OrdinalIgnoreCase)) return "like:" + key.Substring(5).Trim();
             if (key.StartsWith("piece:", StringComparison.OrdinalIgnoreCase)) return "piece:" + key.Substring(6).Trim();
+            if (key.StartsWith("drawn:", StringComparison.OrdinalIgnoreCase)) return "drawn:" + key.Substring(6).Trim();
             return "item:" + key;
         }
 
@@ -369,6 +370,8 @@ namespace TheGreatestMap
                 var piece = PieceOf(key.Substring(6));
                 return piece != null ? piece.m_icon : null;
             }
+            // One of this mod's own pictures, for a kind the game has no single picture of.
+            if (key.StartsWith("drawn:")) return MenuKit.Drawn(key.Substring(6));
             try
             {
                 if (ObjectDB.instance == null) return null;
