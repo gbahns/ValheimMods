@@ -77,14 +77,20 @@
 - **`tgm_list` says what each marker is**, not only what it is called: its kind and the thing it
   was written for, which is the question somebody reading that list is usually asking.
 
-- **A marker can be given a name by hand.** "Add a name" in a marker's right-click menu, or
-  "Change the name" if it has one, opens a box to type into: Enter keeps it, Escape leaves it be,
-  and an empty box takes the name off again. Most markers carry no name on purpose -- the picture
-  says what a berry bush is, and a thousand names written across a map is a wall of words over the
-  terrain -- but the names worth having are the ones nothing can work out: "good fishing",
-  "Marco's base", "the tin we never finished". The name travels like any other change to a marker,
-  so it is on everybody's map at the next sync, which is the point: those are the names you would
-  otherwise have to say out loud.
+- **A marker can be given a label by hand.** "Add label" in a marker's right-click menu, or
+  "Change label" if it has one, opens the game's own pin-name box with the label in it; "Remove
+  label" takes one off. Most markers carry none on purpose -- the picture says what a berry bush
+  is, and a thousand names written across a map is a wall of words over the terrain -- but the
+  ones worth having are what nothing can work out: "good fishing", "Marco's base", "the tin we
+  never finished". The label travels like any other change to a marker, so it is on everybody's
+  map at the next sync, which is the point: those are the names you would otherwise have to say
+  out loud.
+
+  The game's box rather than one of our own, which is what it was first: a second box would have
+  looked like this mod rather than like Valheim, and would have had to learn the gamepad and the
+  on-screen keyboard all over again. Removing a label is its own menu item because the game reads
+  an empty box as a cancel -- Escape empties it and submits it -- so emptying it cannot also mean
+  "take the label off".
 
 - **A gear in the marker list's title strip, for its settings.** The switches that say whether a
   marker's name is written beside it were at the foot of the list, which is a list of markers:
@@ -176,7 +182,11 @@
     reporting the catalog. A row whose own switch is off says nothing of the sort, since it is
     already drawn dim and "(0 of 219)" is a sum nobody needed done. All of it counted afresh as
     the list refreshes rather than when it opened, because recording goes on while a pinned list
-    stays open.
+    stays open. **Show counts** behind the gear turns the numbers off for anybody who would
+    rather read the names alone: they answer "how much is there" rather than "what is there", and
+    on a map you know well that is a question you have stopped asking. The count of what you are
+    finished with keeps its button either way, that one being the switch for them as well as the
+    number.
 
   - **A row's buttons wait for the pointer.** Twenty rows with four buttons each is eighty things
     to read before the first decision, and what a reader wants from this list is the names. They

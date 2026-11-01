@@ -859,12 +859,25 @@ namespace TheGreatestMap
             var kind = ClientPins.KindOf(pin);
             bool canEdit = !TgmConfig.RequireMapOutToEdit.Value || PocketMap.IsOut;
 
-            // Naming it first, because it is the one thing in here that adds something rather
+            // Labelling it first, because it is the one thing in here that adds something rather
             // than taking something away, and because a marker worth right-clicking is often one
             // you want to say something about.
-            items.Add(Item(string.IsNullOrEmpty(pin.Name) ? "Add a name" : "Change the name",
-                canEdit ? (Action)(() => LabelEditor.Open(pin, ZInput.pointerPosition)) : null,
+            items.Add(Item(string.IsNullOrEmpty(pin.Name) ? "Add label" : "Change label",
+                canEdit ? (Action)(() => LabelEditor.Begin(pin)) : null,
                 "take the map out first"));
+            // Its own item rather than emptying the box, because the game reads an empty box as
+            // a cancel: Escape clears it and submits it, and a submitted empty box changes
+            // nothing. Clearing a label has to be asked for some other way, so it is asked for
+            // here.
+            if (!string.IsNullOrEmpty(pin.Name))
+                items.Add(Item("Remove label",
+                    canEdit ? (Action)(() =>
+                    {
+                        ClientPins.RenameMarker(id, "");
+                        ClientPins.Restyle();
+                        Note("Label removed.");
+                    }) : null,
+                    "take the map out first"));
 
             items.Add(Item("Hide this marker", () =>
             {

@@ -42,7 +42,7 @@ namespace TheGreatestMap
                 return false;
             if (Chat.instance != null && Chat.instance.HasFocus()) return false;
             if (Minimap.instance != null && Minimap.InTextInput()) return false;
-            if (LegendPanel.Typing || KindMenu.Typing || LabelEditor.Typing) return false;
+            if (LegendPanel.Typing || KindMenu.Typing) return false;
             return true;
         }
     }

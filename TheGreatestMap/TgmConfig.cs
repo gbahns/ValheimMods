@@ -36,6 +36,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<string> MapsTidied;
         internal static ConfigEntry<string> CatalogOrdered;
         internal static ConfigEntry<TypeOrder> TypeRowOrder;
+        internal static ConfigEntry<bool> ShowCounts;
         internal static ConfigEntry<bool> PauseWhileMapOpen;
         internal static ConfigEntry<bool> ShowPauseButton;
         internal static ConfigEntry<bool> MarkerButton;
@@ -361,6 +362,14 @@ namespace TheGreatestMap
                 "said \"copper here\" with the same confidence either way. A deposit mined to nothing is not covered, " +
                 "because the game destroys that one outright and there is nothing left to mark. 0 switches it off and " +
                 "every deposit is written the same.");
+
+            ShowCounts = mod.BindLocal("Display", "Show Counts", true,
+                "Write how many markers each heading, kind and type has after its name, and how many of those are " +
+                "being drawn where the two differ. Off leaves the names alone, which is quieter to read down and is " +
+                "worth having once you know your own map: the numbers answer \"how much is there\" rather than " +
+                "\"what is there\". The count of what you are finished with keeps its button either way, that one " +
+                "being the switch for them as well as the number.");
+            ShowCounts.SettingChanged += (_, __) => KindMenu.Relayout();
 
             TypeRowOrder = mod.BindLocal("Display", "Type Order", TypeOrder.Progression,
                 "How the types under a kind are listed in the marker list. Progression is the order the catalog " +

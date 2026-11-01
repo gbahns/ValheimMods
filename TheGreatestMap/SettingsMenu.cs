@@ -72,7 +72,13 @@ namespace TheGreatestMap
             _entries.Clear();
 
             float y = -Pad;
-            y = Heading("The order the types come in", y);
+            y = Heading("Counts", y);
+            y = Switch(y, () => TgmConfig.ShowCounts, "Show counts",
+                "Write how many each heading, kind and type has after its name, and how many of those are drawn " +
+                "where the two differ. The count of what you are finished with keeps its button either way, that " +
+                "one being the switch for them as well as the number.");
+
+            y = Heading("Marker Order", y);
             y = Order(y, TypeOrder.Progression, "Progression",
                 "The order the catalog lists them in, which is the order you meet them: a dandelion before a " +
                 "thistle, copper before silver. Reorder a Catalog line and these follow it.");
@@ -80,7 +86,7 @@ namespace TheGreatestMap
                 "The commonest at the top, which is what this list did before there was a choice");
             y = Order(y, TypeOrder.AToZ, "A to Z", "By name");
 
-            y = Heading("What the map writes beside a marker", y);
+            y = Heading("Labels", y);
             y = Switch(y, () => TgmConfig.ShowMarkerLabels, "Marker names",
                 "Write a marker's name beside it, where it has one");
             y = Switch(y, () => TgmConfig.ShowPortalLabels, "Portal names",

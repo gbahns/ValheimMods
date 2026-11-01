@@ -596,7 +596,7 @@ namespace TheGreatestMap
                 foreach (var match in _results)
                 {
                     var m = match;
-                    SwitchRow(map, _content, 0f, y, 0f, m.Icon, $"{m.Label} ({m.Count})",
+                    SwitchRow(map, _content, 0f, y, 0f, m.Icon, Named(m.Label, m.Count, m.Count),
                         () => Focus.SetIcon(m.Icon),
                         () => Focus.Icon != null && IconRegistry.SameKey(Focus.Icon, m.Icon),
                         onLocate: () => Locate.Icon(m.Icon, m.Label));
@@ -763,7 +763,9 @@ namespace TheGreatestMap
                 },
                 onOnly: () => Focus.SetKind(Category.Player),
                 onLocate: () => Locate.Players(map),
-                caption: () => players() > 0 ? $"Players ({players()})" : "Players (none sharing)",
+                // "(none sharing)" is not a count and stays whatever the counts are doing: it
+                // says why the row is dim, which is the one thing a reader needs from it.
+                caption: () => players() > 0 ? Named("Players", players(), players()) : "Players (none sharing)",
                 placeKind: Category.Player);
             return y - RowHeight;
         }
@@ -1528,6 +1530,7 @@ namespace TheGreatestMap
         /// </summary>
         private static string Named(string label, int shown, int total)
         {
+            if (TgmConfig.ShowCounts != null && !TgmConfig.ShowCounts.Value) return label;
             if (total <= 0) return label;
             return shown > 0 && shown < total ? $"{label} ({shown} of {total})" : $"{label} ({total})";
         }

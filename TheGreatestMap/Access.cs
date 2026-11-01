@@ -53,6 +53,44 @@ namespace TheGreatestMap
             return r;
         }
 
+        private static readonly FieldInfo _nameInput = AccessTools.Field(typeof(Minimap), "m_nameInput");
+
+        /// <summary>
+        /// Show the game's own pin-name box with this text in it, for naming something that is
+        /// already on the map rather than something just placed.
+        ///
+        /// <para>Through reflection although the field is public: its type, GuiInputField, lives
+        /// in an assembly this mod does not reference, so naming it here would mean taking on
+        /// that dependency for one box. Everything wanted of it -- the text, the object to switch
+        /// on, the focus -- it has in common with any input field, so it is asked for those by
+        /// name and nothing is claimed about what it is.</para>
+        /// </summary>
+        internal static bool ShowNameInput(Minimap map, string text)
+        {
+            if (map == null || _nameInput == null) return false;
+            var box = _nameInput.GetValue(map) as Component;
+            if (box == null) return false;
+            try
+            {
+                var type = box.GetType();
+                var property = type.GetProperty("text", BindingFlags.Public | BindingFlags.Instance);
+                if (property == null || !property.CanWrite) return false;
+                property.SetValue(box, text ?? "", null);
+                // Vanilla leaves the box alone on a touch screen and opens the system keyboard
+                // instead; that road is its own and this one does not take it.
+                if (ZInput.IsTouchActive()) return false;
+                box.gameObject.SetActive(true);
+                var activate = type.GetMethod("ActivateInputField", BindingFlags.Public | BindingFlags.Instance);
+                if (activate != null) activate.Invoke(box, new object[0]);
+                return true;
+            }
+            catch (System.Exception e)
+            {
+                TheGreatestMapMod.Log.LogWarning("[TheGreatestMap] Could not open the game's name box: " + e.Message);
+                return false;
+            }
+        }
+
         private static readonly MethodInfo _hidePinTextInput = AccessTools.Method(typeof(Minimap), "HidePinTextInput");
 
         /// <summary>Close the pin-name box, as vanilla does on a right-click.</summary>

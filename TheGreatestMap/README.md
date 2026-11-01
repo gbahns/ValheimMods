@@ -173,9 +173,11 @@ player cannot always tell whether they have got all of it, and a map that crosse
 would be telling them something they could not know. Tin and plants are different: there is no
 doubt when those are done. You can always cross one off by hand.
 
-**Naming a marker.** A marker's right-click menu offers "Add a name", or "Change the name" if it
-already has one: a box opens, Enter keeps what you typed, Escape leaves it be, and an empty box
-takes the name off. The name travels with the marker, so everybody sees it at the next sync. Most
+**Labelling a marker.** A marker's right-click menu offers "Add label", or "Change label" if it
+already has one, and opens the game's own pin-name box with the label in it: Enter keeps what you
+typed and Escape leaves it be, exactly as when you name a pin you have just placed. "Remove label"
+takes one off, which is its own item because the game reads an empty box as a cancel. The label
+travels with the marker, so everybody sees it at the next sync. Most
 markers are written without one deliberately -- the icon says what a berry bush is, and a map with
 a thousand names on it is a wall of words -- so this is for the things nothing can work out:
 "good fishing", "Marco's base", "the tin we never finished". "Show Marker Labels" behind the gear

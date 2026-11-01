@@ -46,7 +46,7 @@ namespace TheGreatestMap
             InTableRead = false;
             MarkerToggle.Reset();
             MarkerMenu.Close();
-            LabelEditor.Close();
+            LabelEditor.Forget();
             MarkerTooltip.Reset();
             IconRegistry.ForgetPicks();
             Reveals.Reset();
@@ -708,6 +708,12 @@ namespace TheGreatestMap
 
         /// <summary>Every marker drawn on the map, with the record behind it.</summary>
         internal static IEnumerable<KeyValuePair<Minimap.PinData, PinKey>> Drawn => _idByPin;
+
+        /// <summary>The vanilla pin drawn for a marker, or null if it is not on the map now.</summary>
+        internal static Minimap.PinData PinDataFor(PinKey id)
+        {
+            return !id.IsNone && _pinById.TryGetValue(id, out var pin) ? pin : null;
+        }
 
         internal static bool TryGet(PinKey id, out SharedPin shared)
         {
@@ -1521,6 +1527,9 @@ namespace TheGreatestMap
 
         private static void Postfix(Minimap.PinData __state)
         {
+            // Naming one of ours rather than taking on a new one: the marker is written and
+            // there is nothing to adopt.
+            if (LabelEditor.Took(__state)) return;
             ClientPins.OnPinPlaced(__state);
         }
     }
