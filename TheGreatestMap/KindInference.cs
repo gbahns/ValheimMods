@@ -28,7 +28,14 @@ namespace TheGreatestMap
         private static void Add(string icon, Category cat)
         {
             string key = IconRegistry.Normalize(icon);
-            if (key != null && !_byIcon.ContainsKey(key)) _byIcon[key] = cat;
+            if (key == null || _byIcon.ContainsKey(key)) return;
+            // Never the fallback. That picture is what a marker wears when nothing is known about
+            // it, so reading a kind off it turns "I have no idea" into an answer -- and for as
+            // long as the plain dot was also what the dungeons fell back to, every marker on the
+            // map that knew nothing about itself was filed as a dungeon. Two of them were sitting
+            // on somebody's base.
+            if (IconRegistry.SameKey(key, IconRegistry.FallbackKey)) return;
+            _byIcon[key] = cat;
         }
 
         private static void Build()

@@ -39,6 +39,19 @@
   to settle on one icon or they are two rows, and the pickaxe is what made that audible. The
   legend (`tgm_legend`) counts what is still on a kind's fallback.
 
+- **A marker that knows nothing about itself stops being filed as a dungeon.** A kind can be
+  worked out from a marker's picture, and the plain dot was both the dungeons' own fallback
+  picture and the one every unidentified marker falls back to -- so "I have no idea what this is"
+  came out of that as "this is a dungeon". The kind was then written onto the marker, which made
+  the guess permanent and hid it from the passes that look for markers knowing nothing, since
+  those test for an empty kind. Nothing is inferred from the fallback picture any more, and the
+  kinds already guessed that way are forgotten on the next login. A marker naming a prefab the
+  catalog has no line for is left alone: that one knows what it is, and the catalog is what is
+  missing.
+
+- **`tgm_list` says what each marker is**, not only what it is called: its kind and the thing it
+  was written for, which is the question somebody reading that list is usually asking.
+
 - **A marker can be given a name by hand.** "Add a name" in a marker's right-click menu, or
   "Change the name" if it has one, opens a box to type into: Enter keeps it, Escape leaves it be,
   and an empty box takes the name off again. Most markers carry no name on purpose -- the picture

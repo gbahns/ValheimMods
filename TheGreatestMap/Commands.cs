@@ -605,7 +605,12 @@ namespace TheGreatestMap
                     {
                         if (shown++ >= limit) break;
                         string dist = player != null ? $"{Geo.FlatDistance(pin.Pos, player.transform.position):0}m" : "";
+                        var kind = ClientPins.KindOf(pin);
                         args.Context.AddString($"{dist,6} {(pin.Auto ? "[rec]" : "[pin]")} {pin.Name} ({pin.Icon}) by {pin.Author}");
+                        // What it is and what it was written for, which is the question somebody
+                        // reading this list is usually asking.
+                        args.Context.AddString($"       kind {(kind.HasValue ? Categories.Label(kind.Value) : "none")}" +
+                                               $", source {(string.IsNullOrEmpty(pin.Source) ? "none" : pin.Source)}");
                         args.Context.AddString($"       {ClientPins.DrawnState(pin)}");
                         TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] tgm_list: {dist} {(pin.Auto ? "[rec]" : "[pin]")} {pin.Name} ({pin.Icon}) - {ClientPins.DrawnState(pin)}");
                     }

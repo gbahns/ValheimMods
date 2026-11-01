@@ -60,6 +60,7 @@ namespace TheGreatestMap
             int rekinded = KindTheHandPlaced();
             int traders = RetireTraders();
             int unnamed = UnnameWhatTheIconSays();
+            int unguessed = ForgetKindsGuessedFromADot();
             int blanks = ForgetBlanks();
             // Whatever the catalog could not settle, the world is asked about -- and answers only
             // count where they agree with the icon the marker already wears, except for the
@@ -69,7 +70,7 @@ namespace TheGreatestMap
             // answer comes back later, over the network, and says what it did in the log itself.
             Repair.Run();
             if (named == 0 && identified == 0 && kinded == 0 && rekinded == 0 && traders == 0
-                && unnamed == 0 && blanks == 0) return;
+                && unnamed == 0 && unguessed == 0 && blanks == 0) return;
             ClientPins.Restyle();
             var parts = new System.Collections.Generic.List<string>();
             if (identified > 0) parts.Add($"worked out what {identified} marker(s) stand for");
@@ -78,11 +79,43 @@ namespace TheGreatestMap
             if (rekinded > 0) parts.Add($"gave {rekinded} placed by hand their kind back");
             if (traders > 0) parts.Add($"retired {traders} trader marker(s) the game marks by itself");
             if (unnamed > 0) parts.Add($"took the name off {unnamed} spawner marker(s), whose icon says it");
+            if (unguessed > 0) parts.Add($"stopped calling {unguessed} marker(s) that know nothing about themselves a dungeon");
             if (blanks > 0) parts.Add($"erased {blanks} marker(s) that stood for nothing beside one that stands for something");
             TheGreatestMapMod.Log.LogInfo(
                 "[TheGreatestMap] Brought the map up to date: " + string.Join(", ", parts.ToArray()) +
                 ". Markers written before the mod recorded what a thing is are filled in once, " +
                 "here, so nobody has to run anything.");
+        }
+
+        /// <summary>
+        /// Forget a kind that was read off the plain dot, which is the picture a marker wears
+        /// when nothing is known about it.
+        ///
+        /// <para>Inference turns an icon into a kind, and the plain dot was the dungeons' own
+        /// fallback picture as well as the one every unidentified marker falls back to. So a
+        /// marker carrying nothing -- no source, no icon, no name -- came out of that as a
+        /// dungeon, and the kind was then written onto it, which made the guess permanent and
+        /// hid it from the passes that look for markers knowing nothing: those test for an empty
+        /// kind, and this one now had "Dungeon" in it.</para>
+        ///
+        /// <para>Only markers with no source at all. A marker naming a prefab the catalog has no
+        /// line for also draws as a dot, and its kind came from the recorder rather than from
+        /// the picture -- that one knows what it is and the catalog is what is missing.</para>
+        /// </summary>
+        private static int ForgetKindsGuessedFromADot()
+        {
+            int n = 0;
+            foreach (var pin in new System.Collections.Generic.List<SharedPin>(ClientPins.All))
+            {
+                if (pin == null || !pin.Auto) continue;
+                if (!string.IsNullOrEmpty(pin.Source) || string.IsNullOrEmpty(pin.Kind)) continue;
+                if (!string.IsNullOrEmpty(pin.Icon)
+                    && !IconRegistry.SameKey(pin.Icon, IconRegistry.FallbackKey)) continue;
+                pin.SetKind("");
+                PersonalMap.MarkDirty();
+                n++;
+            }
+            return n;
         }
 
         /// <summary>
