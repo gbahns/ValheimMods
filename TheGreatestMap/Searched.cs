@@ -8,6 +8,16 @@ namespace TheGreatestMap
     /// beehive inside a building crosses that building's marker off for everyone. If the
     /// building has no marker yet, it is remembered as searched and its marker is created
     /// crossed off when it is recorded.
+    ///
+    /// <para>Buildings and nothing else, which is a decision rather than an omission. A dungeon
+    /// is the case to argue about -- knowing you have already been down a burial chamber is the
+    /// same useful fact -- and it is left to the hand for two reasons. A crypt holds several
+    /// chests in several rooms, so one chest opened is not the statement one hut searched is;
+    /// and the marker stands on the hill above while the chest is thirty meters under it, so
+    /// matching by distance the way this does would cross off whatever happened to be overhead.
+    /// Camps are out with them. A click on the map crosses any marker off, which is enough for
+    /// the places where "cleared" is a judgment only the player can make (asked, and settled,
+    /// 2026-11-02).</para>
     /// </summary>
     internal static class Searched
     {
