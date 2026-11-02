@@ -2,6 +2,18 @@
 
 ## 4.7.0 -- unreleased
 
+- **No more type rows named after the kind's own picture.** A kind row unfolds into the types
+  under it, and a type with no name of its own was named after the icon it wears -- right where
+  each type has a picture of its own ("Copper Ore" under Ore), wrong where the picture *is* the
+  kind's. Traders unfolded into a single row called **Coins**, Boss Altars into one called
+  **Boss**: a triangle to press, and under it one row claiming a type that does not exist, named
+  after the money and the map pin that stand for the whole heading.
+
+  A marker wearing its kind's own picture now says the kind -- so the row reads what the row above
+  it reads, which is what already takes a one-type triangle away. The pictures themselves were
+  always meant: coins for a trader, vanilla's own boss pin for an altar, and a recorded one still
+  wears the trader's name or the boss's trophy whenever the catalog knows which it is.
+
 - **`tgm_survey` draws what it would write, before it writes it.** A dry run already said what it
   would do, in numbers: "1,432 markers to write, Berries: 611, Dungeons: 23". That answers how
   much and not the question worth asking before writing fourteen hundred markers onto a map, which

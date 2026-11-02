@@ -40,6 +40,11 @@ namespace TheGreatestMap
         /// the house pin is one of a crowd the catalog cannot yet tell apart, so it is named after
         /// its kind. A marker whose kind has no types at all is already as narrow as it gets, and
         /// there the icon's own name is the useful one -- "Copper Ore" rather than "Ore".
+        ///
+        /// <para>Except where the icon is the kind's own picture, which is a picture of the kind
+        /// and not of any one type in it. Named after that, a row claims a type nobody has: the
+        /// marker list grew a "Coins" under Traders and a "Boss" under Boss Altars, each the one
+        /// row under a heading it was already named by.</para>
         /// </summary>
         internal static string TypeLabel(SharedPin pin)
         {
@@ -52,7 +57,17 @@ namespace TheGreatestMap
                 string type = Catalog.TypeNameFor(kind.Value, ClientPins.IconOf(pin));
                 if (!string.IsNullOrEmpty(type)) return type;
                 if (CrossedOff.HasTypes(kind.Value)) return Categories.Label(kind.Value);
+                // Wearing its kind's own picture, which is the picture chosen to stand for the
+                // whole kind: that says nothing narrower than the kind, so naming it after the
+                // picture invents a type that does not exist -- "Coins" under Traders, "Boss"
+                // under Boss Altars, "Fire" under Camps. The kind's own name is the honest answer,
+                // and because it then says what the row above says, the triangle and the single
+                // pointless row under it both go away.
+                if (IconRegistry.SameKey(ClientPins.IconOf(pin), Categories.DefaultIcon(kind.Value)))
+                    return Categories.Label(kind.Value);
             }
+            // Down to the icon, which is the useful name where a kind's types each have a picture
+            // of their own: "Copper Ore" rather than "Ore".
             return IconRegistry.DisplayName(ClientPins.IconOf(pin));
         }
 
