@@ -631,7 +631,12 @@ namespace TheGreatestMap
                            // That leaves the huts, the wells, the ruins, the graveyards
                            // themselves and the wrecks -- about 900 places in a world, all of
                            // them a building you look at once -- and a swamp painted gold.
-                           "Ruin*=Ruins,StoneHenge*=Stonehenge|pin:Memorial,StoneTower*=Stone Tower," +
+                           // No Ruin. "Ruins" was this mod's own word for Ruin1, Ruin2 and
+                           // Ruin3 -- 450 heaps of Black Forest and Plains stonework in a world
+                           // with nothing in them to search and nothing to come back for. A name
+                           // the catalog had to invent, for a thing nobody can identify on
+                           // sight, is its own argument that the map has nothing to say about it.
+                           "StoneHenge*=Stonehenge|pin:Memorial,StoneTower*=Stone Tower," +
                            "StoneCircle*=Stone Circle|pin:Memorial,Dolmen*=Dolmen|pin:Memorial,DrakeNest*=Drake Nest|DragonEgg," +
                            "Greydwarf_camp*=Greydwarf Nest|TrophyGreydwarfBrute,Waymarker*=Waymarker|pin:Memorial," +
                            // No InfestedTree. It is a swamp tree with guck sacks on it, 700 of

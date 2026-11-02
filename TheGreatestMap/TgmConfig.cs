@@ -256,6 +256,11 @@ namespace TheGreatestMap
             new[] { "FortressRuins", "Structures" },
             // Volture nests. Nothing was ever listed for them; the sweep recorded 350 a world.
             new[] { "VoltureNest", "Structures" },
+            // Ruin1, Ruin2 and Ruin3: 450 heaps of stonework a world, with nothing to search.
+            // The prefix is "Ruin" exactly, which is what the catalog line matched; the other
+            // ruins in the game are named for what they are the ruins of (SwampRuin, CharredRuins,
+            // FortressRuins, StoneTowerRuins, AshlandRuins) and none of them starts with it.
+            new[] { "Ruin", "Structures" },
         };
 
         /// <summary>
@@ -918,7 +923,7 @@ namespace TheGreatestMap
                 "tidied up, becomes the marker text). Turn off to record only the listed structure prefixes.");
             StructuresExcludePrefixes = mod.BindLocal("Catalog", "Structures Exclude Prefixes", "Vegvisir_,Runestone_,Meteorite,TarPit,Rock,Hugin,StartTemple,Pickable,Vegetation,Tree,Bush,MountainGrave,MountainWell," +
                 "InfestedTree,SwampHut,SwampRuin,SwampWell,Grave1,FireHole,ShipWreck,ShipSetting,CharredRuins," +
-                "FortressRuins,VoltureNest",
+                "FortressRuins,VoltureNest,Ruin",
                 "Comma-separated prefab name prefixes never swept in as structures. This is about the places the " +
                 "catalog does not name: a location listed under Structures above is recorded because it is listed, " +
                 "whatever this says, so leaving one out means taking its line out as well.");

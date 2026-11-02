@@ -18,6 +18,18 @@
   left out, since it comes with a fortress and the fortress is marked. The elite is not in yet:
   `tgm_spawners` reads the spawner prefabs off your own game and says which it does not know.
 
+- **A marker's tooltip says what the thing is called inside the game.** The id and the icon key
+  share one quiet line -- `Ruin1 - pin:Icon1` -- because those are the two fields an argument about
+  the catalog is actually about: what the game calls the thing, and what picture the marker is
+  wearing. The words above them are this mod's own choice, so when they are wrong the id is the
+  only thing on screen that says which entry to go and change. A marker written before markers
+  remembered what they were has no id, and shows the icon alone as before.
+
+- **Black Forest ruins are not recorded.** "Ruins" was this mod's own word for Ruin1, Ruin2 and
+  Ruin3 -- 450 heaps of stonework in a world, with nothing in them to search and nothing to come
+  back for. Having to invent a name for a thing nobody can identify on sight is its own argument
+  that the map has nothing to say about it.
+
 - **Charred fortresses are recorded, as one marker each, and the fortress ruins are not.** The two
   are different places and the catalog only ever named the wrong one: `FortressRuins` is the
   rubble, a hundred of it in a world, and it held the entry and the charred mage's trophy;

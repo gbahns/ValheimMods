@@ -177,11 +177,17 @@ namespace TheGreatestMap
             if (shared.Checked)
                 lines.Add(kind.HasValue && Categories.IsResource(kind.Value) ? "Cleared" : "Searched");
 
-            // The raw icon key, which is the field that goes wrong: a marker showing a plain dot
-            // is usually one whose key names an item this game does not have, and nothing else on
-            // screen says so. The prefab it came from is not stored on a marker, so that level of
-            // detail lives in the legend rather than here.
-            lines.Add(ClientPins.IconOf(shared));
+            // The machinery, on one line: what the thing is called inside the game, and the icon
+            // key the marker is wearing. Both are the fields that go wrong -- a marker showing a
+            // plain dot is usually one whose key names an item this game does not have, and
+            // nothing else on screen would say so -- and the pair is what an argument about the
+            // catalog is actually about. "Ruins" is a word this mod chose; Ruin1 is the thing.
+            //
+            // A marker written before markers remembered what they were has no source, and then
+            // this is the icon alone, as it always was.
+            string id = ClientPins.IconOf(shared);
+            if (!string.IsNullOrEmpty(shared.Source)) id = shared.Source + " - " + id;
+            lines.Add(id);
 
             string who = !string.IsNullOrEmpty(shared.Author) ? shared.Author : null;
             string when = When(shared.Created);
