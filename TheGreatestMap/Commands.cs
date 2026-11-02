@@ -367,6 +367,16 @@ namespace TheGreatestMap
                     }
                 }));
 
+            new Terminal.ConsoleCommand("tgm_spawners", "List every spawner prefab in the game, what it sends out, whether it can be broken, and whether the catalog knows it (also written to the log)",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    foreach (var line in Catalog.Spawners())
+                    {
+                        args.Context.AddString(line);
+                        TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_spawners: " + line);
+                    }
+                }));
+
             new Terminal.ConsoleCommand("tgm_items", "List the game's items whose name contains a word, for choosing a marker icon: tgm_items bear",
                 (Terminal.ConsoleEvent)(args =>
                 {

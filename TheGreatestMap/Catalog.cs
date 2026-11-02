@@ -1377,6 +1377,70 @@ namespace TheGreatestMap
             return lines;
         }
 
+        /// <summary>
+        /// Every spawner prefab the game has, what it sends out, whether it can be broken, and
+        /// whether the catalog knows it.
+        ///
+        /// <para>"Am I missing one?" cannot be answered from a list somebody wrote down, which is
+        /// the thing being checked. It is answered by the game: a spawner that stands in the
+        /// world carries a <c>SpawnArea</c>, which is the component that sends creatures out at
+        /// whoever walks near, so asking every prefab whether it has one is asking the question
+        /// itself. The web disagrees with itself about this -- one dump of the vanilla spawners
+        /// lists EvilHeart_Forest and EvilHeart_Swamp as well, with nothing said about whether
+        /// either is placed in a world -- and a game update can add one at any time.</para>
+        ///
+        /// <para>Told apart from the thousands of invisible spawn points inside dungeons and
+        /// camps, which carry <c>CreatureSpawner</c> instead: those are a trigger in the ground
+        /// with no object to break and nothing to walk up to, and nothing on the map should mark
+        /// one. They are counted rather than listed, so the distinction is on the screen.</para>
+        /// </summary>
+        internal static List<string> Spawners()
+        {
+            var lines = new List<string>();
+            var scene = ZNetScene.instance;
+            if (scene == null) { lines.Add("No world loaded."); return lines; }
+            if (!_built) Rebuild();
+            var seen = new List<string>();
+            int points = 0, unknown = 0;
+            foreach (var prefab in scene.m_prefabs)
+            {
+                if (prefab == null) continue;
+                // On the prefab or on anything under it: a nest keeps its spawner on the root
+                // and nothing says the next one has to.
+                if (prefab.GetComponentInChildren<CreatureSpawner>(true) != null) { points++; continue; }
+                var area = prefab.GetComponentInChildren<SpawnArea>(true);
+                if (area == null) continue;
+                string name = Utils.GetPrefabName(prefab);
+                var what = new List<string>();
+                if (area.m_prefabs != null)
+                    foreach (var one in area.m_prefabs)
+                    {
+                        if (one == null || one.m_prefab == null) continue;
+                        string sent = Utils.GetPrefabName(one.m_prefab);
+                        if (!what.Contains(sent)) what.Add(sent);
+                    }
+                // Whether there is anything to break, which is what makes a spawner a place a
+                // player goes rather than a fact about the ground.
+                bool breakable = prefab.GetComponentInChildren<Destructible>(true) != null
+                                 || prefab.GetComponentInChildren<MineRock5>(true) != null
+                                 || prefab.GetComponentInChildren<MineRock>(true) != null;
+                bool known = Lookup(name, out var e);
+                if (!known) unknown++;
+                seen.Add($"  {name}: sends out {(what.Count > 0 ? string.Join(", ", what.ToArray()) : "nothing")}; " +
+                         $"{(breakable ? "can be broken" : "nothing to break")}; " +
+                         $"catalog says {(known ? e.Cat.ToString() : "unknown")}" +
+                         (!known && breakable ? "  <- NOT in the catalog" : ""));
+            }
+            seen.Sort(StringComparer.OrdinalIgnoreCase);
+            lines.Add($"{seen.Count} spawner prefab(s) that stand in the world; " +
+                      $"{points} invisible spawn point prefab(s), which nothing should mark.");
+            lines.AddRange(seen);
+            if (unknown > 0)
+                lines.Add("A spawner the catalog does not know is not recorded. Add it to [Catalog] Spawners as " +
+                          "Prefab=Display Name|Icon if it is something you would go to.");
+            return lines;
+        }
+
         private static readonly HashSet<string> _unlistedDeposits = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>

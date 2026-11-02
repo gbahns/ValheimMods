@@ -18,6 +18,17 @@
   stalls the client is worse than no preview, and the candidates arrive nearest-first anyway, so
   what is drawn is what you can go and look at.
 
+- **`tgm_spawners`, which answers "is the catalog missing one?" from the game rather than from a
+  list somebody wrote.** A spawner that stands in the world carries a `SpawnArea` -- the component
+  that sends creatures out at whoever walks near -- so asking every prefab whether it has one is
+  asking the question itself. It prints what each sends out, whether there is anything to break,
+  and what the catalog calls it, flagging a breakable one the catalog has never heard of.
+
+  The invisible spawn points inside dungeons and camps carry `CreatureSpawner` instead and are
+  counted rather than listed: a trigger in the ground with nothing to walk up to and nothing to
+  break is not a place, and nothing on the map should mark one. There are thousands of them, which
+  is why the catalog lists its four spawners by name instead of matching `Spawner_*`.
+
 - **A sunken crypt wears iron scrap, and the draugr trophy is the draugr piles' alone.** One
   picture was standing for a dungeon in the swamp and for a nest in it, which is the map answering
   a question wrong rather than not answering it -- the same thing the bone piles were doing to the
