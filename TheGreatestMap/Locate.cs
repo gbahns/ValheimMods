@@ -60,6 +60,17 @@ namespace TheGreatestMap
         internal static bool Pointing(Minimap.PinType type) =>
             On && _vanilla.HasValue && _vanilla.Value == type;
 
+        /// <summary>
+        /// True while the ping is pointing at this very list of pins, asked by whoever drew them.
+        /// It is the list itself and not its contents, so a later ping over something else reads
+        /// as false even where the pins are still up.
+        ///
+        /// <para>What it is for: pins that exist only to be pointed at can come down when the
+        /// pointing ends. The survey preview is the one, and this is how it knows.</para>
+        /// </summary>
+        internal static bool Pointing(List<Minimap.PinData> pins) =>
+            On && pins != null && ReferenceEquals(_theirs, pins);
+
         private static float Seconds =>
             TgmConfig.LocateSeconds != null ? Mathf.Max(1f, TgmConfig.LocateSeconds.Value) : 6f;
 

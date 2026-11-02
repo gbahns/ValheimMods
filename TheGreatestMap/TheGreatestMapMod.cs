@@ -187,6 +187,9 @@ namespace TheGreatestMap
             ClientPins.AdoptStrays();
             PlayerSpotlight.Update();
             Locate.Paint();
+            // After the ping, which is what the survey preview lives inside: when the wave ends,
+            // the would-be markers come off the map.
+            SurveyPreview.Update();
             PlayerArrow.Update();
             MarkerTooltip.Update();
             Reveals.Update();

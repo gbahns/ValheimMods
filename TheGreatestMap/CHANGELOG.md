@@ -9,14 +9,21 @@
   crust over the Meadows, whether the spawners land anywhere near what you wanted to test against.
   A count cannot be looked at. The map can.
 
-  So a run without `apply` puts them up with the map open: a pin at each spot, wearing the icon
-  that marker would wear, pale and pulsing once like a ping so they can be told at a glance from
-  the markers that are really there. Nothing is written, nothing is saved and nothing is shared --
-  these are the same kind of not-really-there pin the erasure ghosts are -- and they come off at
-  the next run, when `apply` writes the real ones, at **`tgm_survey off`**, or when the world
-  unloads. The nearest 2,000 are drawn and the report says how many were left out: a preview that
-  stalls the client is worse than no preview, and the candidates arrive nearest-first anyway, so
-  what is drawn is what you can go and look at.
+  So a run without `apply` waves them with the map open: a pin at each spot, wearing the icon that
+  marker would wear, pale and pulsing like a ping so they can be told at a glance from the markers
+  that are really there. Nothing is written, nothing is saved and nothing is shared -- these are
+  the same kind of not-really-there pin the erasure ghosts are.
+
+  **The wave is the whole of it: they come off the map when it ends**, after `Locate Seconds`, and
+  running the dry run again waves them afresh. `tgm_survey off` ends one early. A pale icon left
+  sitting there after the wave would be a marker as far as anyone reading the map is concerned --
+  and one that cannot be hovered, named or erased, and is gone after a relog, which reads as this
+  mod having written something broken rather than as a question it was asked. A preview that
+  outlives its ping cannot be told from a bad `apply`.
+
+  The nearest 2,000 are drawn and the report says how many were left out: a preview that stalls
+  the client is worse than no preview, and the candidates arrive nearest-first anyway, so what is
+  drawn is what you can go and look at.
 
 - **`tgm_items` searches every picture the game has, not only its items.** It was built for
   "what does this thing give me", which is not the question you ask when choosing an icon: a

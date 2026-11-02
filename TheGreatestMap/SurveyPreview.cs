@@ -14,10 +14,10 @@ namespace TheGreatestMap
     /// looked at. The map can.
     ///
     /// So the dry run puts them up: a pin at each spot, wearing the icon that marker would wear,
-    /// washed out and pulsing once like a ping so they can be told from the markers that are
-    /// really there. Nothing is written, nothing is shared and nothing is saved -- these are the
-    /// same kind of not-really-there pin the erasure ghosts are, and they come off at the next
-    /// run, at <c>tgm_survey off</c>, or when the world does.
+    /// washed out and pulsing like a ping so they can be told from the markers that are really
+    /// there. Nothing is written, nothing is shared and nothing is saved -- these are the same
+    /// kind of not-really-there pin the erasure ghosts are, and the wave is the whole of their
+    /// life: they come off the map when it ends. See <see cref="Update"/> for why.
     ///
     /// <para>There is a cap, because a preview that stalls the client is worse than no preview:
     /// a run naming fifty thousand would otherwise put fifty thousand elements in the one parent
@@ -50,6 +50,28 @@ namespace TheGreatestMap
 
         /// <summary>Forget them without touching the map, for a world that is going away.</summary>
         internal static void Reset() => _drawn.Clear();
+
+        /// <summary>
+        /// Take the preview down once the ping over it has finished, which is what keeps it a
+        /// preview rather than a write.
+        ///
+        /// <para>These first stayed up until the next run or <c>tgm_survey off</c>, reasoning that
+        /// a thousand would-be markers take longer to read than one wave lasts. That was the wrong
+        /// side of the line. A pale icon still sitting on the map after the wave is a marker as far
+        /// as anyone reading the map is concerned -- and one that cannot be hovered, named or
+        /// erased, and is gone after a relog, which reads as this mod having written something
+        /// broken rather than as a question it was asked. A preview that outlives its ping cannot
+        /// be told from a bad apply. So the wave is all of it, and the way to look again is to ask
+        /// again: the dry run is free and waves them afresh.</para>
+        ///
+        /// <para>Checked every frame rather than from the layout pass, which runs only when the
+        /// map moves: a player who ran this and then sat still would otherwise have kept them for
+        /// as long as they sat.</para>
+        /// </summary>
+        internal static void Update()
+        {
+            if (_drawn.Count > 0 && !Locate.Pointing(_drawn)) Clear();
+        }
 
         /// <summary>Take the preview off the map.</summary>
         internal static void Clear()

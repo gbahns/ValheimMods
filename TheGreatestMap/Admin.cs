@@ -699,9 +699,10 @@ namespace TheGreatestMap
                     lines.Add("  There is no map up to draw them on, so this is numbers only. " +
                               "Open the map and run it again to see where they would go.");
                 else
-                    lines.Add($"  {shown} of them are on the map now, pale and pulsing, wearing the icon each " +
-                              "marker would wear. Nothing is written: they are not saved, not shared, and they " +
-                              "come off at the next run or at tgm_survey off." +
+                    lines.Add($"  {shown} of them are waving on the map now, pale, wearing the icon each marker " +
+                              "would wear. Nothing is written: they are not saved, not shared, and they come off " +
+                              "the map when the wave ends. Run this again to see them again (Locate Seconds is how " +
+                              "long a wave lasts), or tgm_survey apply to write them for real." +
                               (shown < preview.Count
                                   ? $" Those are the nearest {shown}; the other {preview.Count - shown} are not drawn."
                                   : ""));

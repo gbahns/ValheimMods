@@ -229,7 +229,7 @@ namespace TheGreatestMap
                                                       "and tgm_undo takes the whole run back.");
                 }));
 
-            new Terminal.ConsoleCommand("tgm_survey", "Admin, test worlds: mark every location and resource the world holds where you have already explored, as if you had recorded them. tgm_survey [count, default 1000] lists them and draws them on the map, pale and pulsing, without writing anything; add apply to write it, all to take the whole world rather than what you have explored, off to take the preview off the map, and a comma-separated list of kinds to take only those (tgm_survey 5000 apply Berries,Mushrooms,Herbs,Seeds)",
+            new Terminal.ConsoleCommand("tgm_survey", "Admin, test worlds: mark every location and resource the world holds where you have already explored, as if you had recorded them. tgm_survey [count, default 1000] lists them and waves them on the map, pale, for as long as a ping lasts, without writing anything; add apply to write it, all to take the whole world rather than what you have explored, off to end the wave early, and a comma-separated list of kinds to take only those (tgm_survey 5000 apply Berries,Mushrooms,Herbs,Seeds)",
                 (Terminal.ConsoleEvent)(args =>
                 {
                     if (Player.m_localPlayer == null) { args.Context.AddString("No player."); return; }
@@ -241,7 +241,7 @@ namespace TheGreatestMap
                         SurveyPreview.Clear();
                         args.Context.AddString(had > 0
                             ? $"Took {had} previewed marker(s) off the map. Nothing was ever written."
-                            : "There was no survey preview on the map.");
+                            : "There is no survey preview on the map. They come off by themselves when the wave ends.");
                         return;
                     }
                     bool apply = HasWord(args, "apply");
@@ -274,8 +274,8 @@ namespace TheGreatestMap
                         TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_survey: " + line);
                     }
                     if (!apply) args.Context.AddString("Run tgm_survey apply to write it. The markers travel like any others, " +
-                                                      "and tgm_undo takes the whole run back. tgm_survey off takes the preview " +
-                                                      "off the map without writing anything.");
+                                                      "and tgm_undo takes the whole run back. The preview comes off the map on " +
+                                                      "its own when the wave ends; tgm_survey off ends it early.");
                 }));
 
             new Terminal.ConsoleCommand("tgm_undo", "Take back a tgm_adopt or tgm_survey run: the markers it wrote go, and the hand-placed pins it removed come back. tgm_undo lists the most recent run; add confirm to do it, or name one of the files it lists",
