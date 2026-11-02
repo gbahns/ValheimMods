@@ -570,7 +570,7 @@ namespace TheGreatestMap
             // left over, and whether the put-back row is there is part of that.
             _resetShown = AnythingPutBack();
             float head = BuildHead(map);
-            float foot = (_resetShown ? 3f : 2f) * RowHeight;
+            float foot = FootHeight();
 
             // Anything outside the viewport is clipped, which is what allows scrolling without a
             // full ScrollRect and its scrollbars. The same arrangement the map legend uses.
@@ -1263,6 +1263,29 @@ namespace TheGreatestMap
         /// The part that stays put at the bottom: everything that is about the whole map rather
         /// than about one kind. Returns the y below its last row.
         /// </summary>
+        /// <summary>
+        /// How tall the foot is, counted from the same answers that draw it: the two rows that
+        /// are always there, the ping while the game's own buttons are hidden, and the put-back
+        /// row when there is something to put back.
+        ///
+        /// <para>Asked before the scrolling part is sized, because what the foot does not take is
+        /// what the viewport gets. It has to be counted here rather than written down, which is
+        /// what it used to be: the ping row was added to <see cref="BuildFoot"/> and not to the
+        /// number, so with the game's buttons hidden the list took a row's worth of room that was
+        /// not there. The panel came out a row taller than the map, which put its last rows under
+        /// the bottom of the screen, and because the viewport had been handed that row the
+        /// content fitted inside it -- so there was no scroll bar either, and no way to reach
+        /// what had fallen off. Two places counting the same rows is the bug; this is the one
+        /// place.</para>
+        /// </summary>
+        private static float FootHeight()
+        {
+            int rows = 2;
+            if (VanillaPins.HidingControls) rows++;
+            if (_resetShown) rows++;
+            return rows * RowHeight;
+        }
+
         private static float BuildFoot(float y)
         {
             // One switch for everything you are finished with, which is what the right-hand
