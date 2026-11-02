@@ -148,6 +148,11 @@ its crossed-off markers goes on saying so. Each button answers for itself: a lit
 bring its neighbors out with it, or hiding everything crossed off would fill the list with
 buttons.
 
+The ping makes every marker of that kind swell and wave for a few seconds, and brings them in
+front of the rest of the map while they do -- a marker pulsing behind its neighbors on a crowded
+map is a button that did nothing as far as you can tell. They stay in front afterwards, so what
+you last asked about is what you can see.
+
 "12 done" at the end of a row hides the twelve markers of that kind you have crossed off, and
 lights up while they are hidden. A type row carries its own count, so the burial chambers you are
 finished with can go while the sunken crypts you have cleared stay, and the copper you have worked

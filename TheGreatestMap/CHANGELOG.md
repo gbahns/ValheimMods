@@ -106,6 +106,22 @@
   a view nobody wants, and one no second press can undo, since it cannot know which kinds had
   been open before. Four words can be refolded by eye; two hundred rows cannot.
 
+- **A pinged marker is drawn in front of the others.** The pulse is a swell in size, and on a
+  crowded map five hundred markers are drawn over each other -- one of them behind its neighbors
+  can grow and shrink underneath them without ever being seen doing it, which is a button that did
+  nothing as far as the player can tell. Z-order on the map is sibling order under one parent, so
+  each marker being pointed at is moved to the end of it, once.
+
+  Once, and with a budget of twenty a frame, because moving a child to the end shifts every
+  sibling after it and a well-used map keeps thousands of pins in that parent: three hundred of
+  those in a single frame is the shape of problem that once stalled this client into dropped
+  connections. Twenty a frame clears any kind anybody owns well inside the pulse.
+
+  Nothing is put back afterwards. The index a marker had means something only among the pins that
+  were there when it was raised, and the game recreates them as it draws the map, so putting it
+  back would be guessing at an order that no longer exists -- and leaving it has the better side
+  effect anyway: what you last asked about stays on top.
+
 - **The box for labelling a marker opens under the marker, not in the middle of the screen.**
   Vanilla moves that box to the pointer every time it opens one, which is right where the pin is
   when you have just placed it -- and this mod was opening the same box without moving it at all,

@@ -24,6 +24,9 @@ namespace TheGreatestMap
     /// Painted every frame, like the portal pulse and the player spotlight, because the game
     /// repaints every marker's color and size as it lays the map out and would undo a one-off
     /// change at the next redraw.
+    ///
+    /// The markers being pointed at are also drawn in front of the rest, once each, and left
+    /// there when the pulse ends -- see <see cref="Raise"/>.
     /// </summary>
     internal static class Locate
     {
@@ -58,6 +61,7 @@ namespace TheGreatestMap
             _icon = null;
             _players = false;
             Unhide();
+            _raised.Clear();
             _until = 0f;
         }
 
@@ -114,6 +118,7 @@ namespace TheGreatestMap
             _players = false;
             Unhide();
             _spots.Clear();
+            _raised.Clear();
         }
 
         /// <summary>
@@ -145,6 +150,54 @@ namespace TheGreatestMap
         }
 
         private static readonly List<Vector3> _spots = new List<Vector3>();
+
+        /// <summary>
+        /// The markers already brought to the front for this pulse, by the object that was moved.
+        /// The game destroys and rebuilds a marker's element as the map is laid out, so a rebuilt
+        /// one is a different object and comes up again by itself.
+        /// </summary>
+        private static readonly HashSet<RectTransform> _raised = new HashSet<RectTransform>();
+
+        /// <summary>
+        /// How many markers are brought forward in one frame.
+        ///
+        /// <para>There is a budget because moving a child to the end of its parent shifts every
+        /// sibling after it, and a well-used map keeps thousands of pins in that one parent:
+        /// doing that three hundred times in a frame, for a kind with three hundred markers, is
+        /// the shape of problem that once stalled this client into dropped connections. Twenty a
+        /// frame clears any kind anybody has in a fraction of a second, which is inside the pulse
+        /// and under what a player would call "when I pressed it".</para>
+        /// </summary>
+        private const int RaisePerFrame = 20;
+
+        private static int _raiseFrame = -1;
+        private static int _raiseLeft;
+
+        /// <summary>
+        /// Draw a pulsing marker in front of the others, once.
+        ///
+        /// <para>Because the pulse is a swell in size and a crowded map draws five hundred
+        /// markers over each other: one behind its neighbors can grow and shrink underneath them
+        /// and never be seen doing it, which is a button that did nothing as far as the player can
+        /// tell.</para>
+        ///
+        /// <para>Nothing is put back when the pulse ends. The index a marker had means something
+        /// only among the pins that were there when it was raised, and the game recreates them as
+        /// the map is drawn, so "putting it back" would be guessing at an order that no longer
+        /// exists -- and the side effect of leaving it is the one a reader would want anyway: what
+        /// you last asked about stays on top.</para>
+        /// </summary>
+        private static void Raise(RectTransform ui)
+        {
+            if (ui == null || ui.parent == null || _raised.Contains(ui)) return;
+            // Already on top: nothing to move, and nothing spent out of the budget either.
+            if (ui.GetSiblingIndex() == ui.parent.childCount - 1) { _raised.Add(ui); return; }
+            if (_raiseFrame != Time.frameCount) { _raiseFrame = Time.frameCount; _raiseLeft = RaisePerFrame; }
+            if (_raiseLeft <= 0) return;   // the rest come up on the next frame
+            _raiseLeft--;
+            _raised.Add(ui);
+            ui.SetAsLastSibling();
+        }
 
         /// <summary>
         /// Where the game has put its own markers for this kind. Traders are the case: the game
@@ -341,6 +394,7 @@ namespace TheGreatestMap
         {
             if (pin == null || pin.m_uiElement == null) return;
             if (!pin.m_uiElement.gameObject.activeSelf) return;
+            Raise(pin.m_uiElement);
             pin.m_uiElement.localScale = new Vector3(size, size, 1f);
             if (pin.m_iconElement != null)
                 pin.m_iconElement.color = Color.Lerp(pin.m_iconElement.color, Color.white, toWhite);
