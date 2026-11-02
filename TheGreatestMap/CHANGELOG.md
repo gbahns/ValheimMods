@@ -106,6 +106,14 @@
   a view nobody wants, and one no second press can undo, since it cannot know which kinds had
   been open before. Four words can be refolded by eye; two hundred rows cannot.
 
+- **The box for labelling a marker opens under the marker, not in the middle of the screen.**
+  Vanilla moves that box to the pointer every time it opens one, which is right where the pin is
+  when you have just placed it -- and this mod was opening the same box without moving it at all,
+  so it appeared wherever the game had last left it, which is the bottom middle. A label is asked
+  for from a menu beside the marker, so the pointer is a few rows away by then and the marker
+  itself is the thing to sit under: thirty pixels below it, the same gap vanilla leaves. A marker
+  hidden by a filter has nothing drawn to sit under, and there the box falls back to the pointer.
+
 - **Each heading has a triangle button that opens or shuts everything under it.** At the end of
   the heading's own row: the corner button is about the four headings, a row's triangle is about
   that row, and this is the fold that was missing between them -- open the seven kinds under

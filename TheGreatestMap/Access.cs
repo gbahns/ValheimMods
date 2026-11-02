@@ -82,15 +82,22 @@ namespace TheGreatestMap
 
         /// <summary>
         /// Show the game's own pin-name box with this text in it, for naming something that is
-        /// already on the map rather than something just placed.
+        /// already on the map rather than something just placed, and put it where the thing being
+        /// named is.
         ///
         /// <para>Through reflection although the field is public: its type, GuiInputField, lives
         /// in an assembly this mod does not reference, so naming it here would mean taking on
         /// that dependency for one box. Everything wanted of it -- the text, the object to switch
         /// on, the focus -- it has in common with any input field, so it is asked for those by
         /// name and nothing is claimed about what it is.</para>
+        ///
+        /// <para><paramref name="at"/> is a screen point to open the box under. Vanilla moves the
+        /// box to the pointer every time it opens one, so a box opened without being moved sits
+        /// wherever the last one was left -- which is the middle of the screen the first time, and
+        /// nowhere near the marker being renamed any time after. Null falls back to the pointer,
+        /// which is what vanilla uses.</para>
         /// </summary>
-        internal static bool ShowNameInput(Minimap map, string text)
+        internal static bool ShowNameInput(Minimap map, string text, Vector2? at = null)
         {
             if (map == null || _nameInput == null) return false;
             var box = _nameInput.GetValue(map) as Component;
@@ -105,6 +112,7 @@ namespace TheGreatestMap
                 // instead; that road is its own and this one does not take it.
                 if (ZInput.IsTouchActive()) return false;
                 box.gameObject.SetActive(true);
+                PlaceNameInput(box, at);
                 var activate = type.GetMethod("ActivateInputField", BindingFlags.Public | BindingFlags.Instance);
                 if (activate != null) activate.Invoke(box, new object[0]);
                 return true;
@@ -126,6 +134,38 @@ namespace TheGreatestMap
             if (map == null || _nameInput == null) return null;
             var box = _nameInput.GetValue(map) as Component;
             return box != null ? box.transform : null;
+        }
+
+        /// <summary>
+        /// Put the name box under a point on the screen, the way vanilla puts it under the
+        /// pointer when a pin is placed: the same thirty pixels below, and the same stand-in
+        /// position on a gamepad, where there is no pointer to be under.
+        /// </summary>
+        private static void PlaceNameInput(Component box, Vector2? at)
+        {
+            var parent = box.transform.parent as RectTransform;
+            if (parent == null) return;
+            if (ZInput.IsExclusiveGamepadActive())
+            {
+                box.transform.localPosition = new Vector3(0f, -30f, 0f);
+                return;
+            }
+            var canvas = parent.GetComponentInParent<Canvas>();
+            var cam = canvas != null && canvas.rootCanvas.renderMode != RenderMode.ScreenSpaceOverlay
+                ? canvas.rootCanvas.worldCamera : null;
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                parent, at ?? (Vector2)ZInput.pointerPosition, cam, out var local);
+            box.transform.localPosition = new Vector3(local.x, local.y - 30f, 0f);
+        }
+
+        /// <summary>Where something drawn on the map is on the screen, for putting a box beside it.</summary>
+        internal static Vector2 ScreenSpotOf(RectTransform drawn)
+        {
+            if (drawn == null) return ZInput.pointerPosition;
+            var canvas = drawn.GetComponentInParent<Canvas>();
+            var cam = canvas != null && canvas.rootCanvas.renderMode != RenderMode.ScreenSpaceOverlay
+                ? canvas.rootCanvas.worldCamera : null;
+            return RectTransformUtility.WorldToScreenPoint(cam, drawn.position);
         }
 
         private static readonly MethodInfo _hidePinTextInput = AccessTools.Method(typeof(Minimap), "HidePinTextInput");

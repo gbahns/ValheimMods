@@ -31,7 +31,12 @@ namespace TheGreatestMap
             if (map == null || shared == null) return false;
             var pin = ClientPins.PinDataFor(shared.Key);
             if (pin == null) return false;
-            if (!Access.ShowNameInput(map, shared.Name ?? "")) return false;
+            // Under the marker, which is where vanilla's box appears when you place a pin -- it
+            // opens under the pointer, and the pointer is on the pin you have just put down. A
+            // rename is asked for from a menu beside the marker instead, so the pointer is a few
+            // rows away and the marker itself is the thing to be under. Without this the box did
+            // not move at all and sat in the middle of the screen, where the game had left it.
+            if (!Access.ShowNameInput(map, shared.Name ?? "", Spot(pin))) return false;
             // The box writes to whatever pin this names when it is accepted, which is how vanilla
             // drives it: it sets this to the pin it has just placed.
             Access.NamePin(map) = pin;
@@ -58,6 +63,16 @@ namespace TheGreatestMap
             ClientPins.Restyle();
             TheGreatestMapMod.Message($"Marker labelled \"{name}\".");
             return true;
+        }
+
+        /// <summary>
+        /// Where this marker is drawn, or the pointer if it is not drawn at all -- a marker hidden
+        /// by a filter has no element on the map to be under, and the pointer is at least
+        /// somewhere the player is looking.
+        /// </summary>
+        private static Vector2 Spot(Minimap.PinData pin)
+        {
+            return pin.m_uiElement != null ? Access.ScreenSpotOf(pin.m_uiElement) : (Vector2)ZInput.pointerPosition;
         }
 
         /// <summary>Nothing is being named; used when the map or the marker goes away.</summary>
