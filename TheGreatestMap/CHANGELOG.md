@@ -18,11 +18,16 @@
   stalls the client is worse than no preview, and the candidates arrive nearest-first anyway, so
   what is drawn is what you can go and look at.
 
-- **A sunken crypt wears iron, and the draugr trophy is the draugr piles' alone.** One picture
-  was standing for a dungeon in the swamp and for a nest in it, which is the map answering a
-  question wrong rather than not answering it -- the same thing the bone piles were doing to the
-  burial chambers. Iron is what a sunken crypt is for, and nothing else on the map is wearing it:
-  the swamp's scrap piles wear `IronScrap`, which is a different picture of the same metal.
+- **A sunken crypt wears iron scrap, and the draugr trophy is the draugr piles' alone.** One
+  picture was standing for a dungeon in the swamp and for a nest in it, which is the map answering
+  a question wrong rather than not answering it -- the same thing the bone piles were doing to the
+  burial chambers. Iron scrap is what a sunken crypt is full of.
+
+  The swamp's muddy scrap piles wear `IronScrap` as well, so those two do share a picture now: the
+  same metal in the same biome, which is a likeness rather than a mix-up. They are told apart by
+  everything else about them -- a crypt is a place under Points of Interest and a scrap pile is a
+  deposit under Resources, each with its own row, its own switch and its own ping. `[Catalog]
+  Dungeons` is one line if you would rather they did not.
 
 - **`Icon Size Tweaks` in the Display section, shipping as `TrophyDraugr=80`.** Every marker is
   drawn into a box of one size, so how big an icon looks is how much of its own frame the drawing

@@ -208,10 +208,12 @@ namespace TheGreatestMap
             // question wrong rather than not answering it.
             new[] { "Spawners", "BonePileSpawner", "TrophySkeleton", "BoneFragments" },
             // The draugr trophy was on the sunken crypts and on the draugr piles, which made one
-            // picture mean a dungeon in the swamp or a nest in it. Iron is what a sunken crypt is
-            // for, and nothing else on the map is wearing it: the swamp's scrap piles wear
-            // IronScrap, which is a different picture of the same metal.
-            new[] { "Dungeons", "SunkenCrypt4", "TrophyDraugr", "Iron" },
+            // picture mean a dungeon in the swamp or a nest in it. Iron scrap is what a sunken
+            // crypt is full of.
+            new[] { "Dungeons", "SunkenCrypt4", "TrophyDraugr", "IronScrap" },
+            // The iron bar, which one unreleased build put there on the way to the scrap. Only a
+            // test profile can be carrying it, so this line goes when 4.7.0 ships.
+            new[] { "Dungeons", "SunkenCrypt4", "Iron", "IronScrap" },
         };
 
         private static void FixShippedIconsOnce()
