@@ -106,9 +106,9 @@ namespace TheGreatestMap
         /// <para>The markers are the easy half and were the whole of it for a while, which was
         /// wrong by one: the live portals are drawn with vanilla's portal icon, which means
         /// vanilla's portal pin type, so every portal the server answered for was being counted
-        /// as a pin the player had dropped by hand. There was a Portal row under Your Stuff with
-        /// a dozen in it and a Portals row under Dynamic Markers with the same dozen, and the one
-        /// under Your Stuff could hide them. The ships, the carts and the erased-marker ghosts
+        /// as a pin the player had dropped by hand. There was a Portal row under Placed Markers
+        /// with a dozen in it and a Portals row under Dynamic Markers with the same dozen, and the
+        /// one under Placed Markers could hide them. The ships, the carts and the erased-marker ghosts
         /// are drawn with pin types of this mod's own, so they could never have landed here --
         /// they are asked about anyway, because that is a fact about today's icons and not a rule
         /// anybody promised to keep.</para>

@@ -102,10 +102,10 @@ It turns down while everything under it is open, and it opens the heading too if
 it.
 
 Every kind sits under one of five headings, each with a triangle of its own: **Resources** (what
-you harvest, and what runs out), **Places** (the landmarks the game marks for you as you find
-them: the boss altars, the traders, the center of the world -- a handful in a whole world),
-**Points of Interest** (the places you found: dungeons, camps, ruins, runestones, spawners),
-**Your Stuff** (what you noted by hand, about something the catalog will never know) and
+you harvest, and what runs out), **Points of Interest** (the places you found: dungeons, camps,
+ruins, runestones, spawners), **Places** (the landmarks the game marks for you as you find them:
+the boss altars, the traders, the center of the world -- a handful in a whole world),
+**Placed Markers** (what you put on the map by hand, about something the catalog will never know) and
 **Dynamic Markers** (ships, carts, portals, other players, and the fires and benches a base is
 made of -- what is standing now rather than what was found). Pressing a heading hides every kind
 under it.
@@ -224,7 +224,7 @@ Nothing records a trader -- the game has already marked him, and a second pin sa
 is worse than none. Boss altars can be recorded, off by default, because this mod's marker wears the
 trophy of the boss whose altar it is.
 
-**The pins you placed yourself are in the list as well.** Under Your Stuff there are rows for the
+**The pins you placed yourself are in the list as well.** Under Placed Markers there are rows for the
 five icons the game lets you drop, your death marker and your bed. These press vanilla's own switch
 rather than a copy of it, so hiding your hammer pins here is the same act as double-clicking the
 hammer under the map, and that button grays out to match. The bed is a switch the game itself does

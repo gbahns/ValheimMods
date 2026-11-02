@@ -109,6 +109,16 @@
   a view nobody wants, and one no second press can undo, since it cannot know which kinds had
   been open before. Four words can be refolded by eye; two hundred rows cannot.
 
+- **"Your Stuff" is called Placed Markers.** The list is read down a column of headings that each
+  say what a kind of marker is -- a resource, a point of interest, a landmark, a dynamic marker --
+  and then one that said whose it was, which is a different question and not the one being asked.
+  What the heading actually holds is every marker that got onto the map because somebody put it
+  there, so that is what it is called now. Nothing is stored per heading, so nothing moves with it.
+
+- **Points of Interest sits above Places.** There are hundreds of the things you found and four
+  landmarks the world is hung on, so the heading you open to read the map is the one you reach
+  first, and the handful that never changes sits below it rather than in front of it.
+
 - **One row per thing under Places: World Center, Boss Altars, Traders, Hildir's Quests.** A
   trader was named by two rows and hidden by neither of them properly. "Traders" was about the
   markers this mod recorded -- of which there are none, the game having marked him already -- so
@@ -147,9 +157,10 @@
   camps, ruins, runestones, spawners. A kind nobody has sorted is a point of interest now, which
   is the honest default: something you came across rather than something the world is hung on.
 
-  The row for the game's own boss pins is called **Bosses** rather than "Boss Pins". A
-  `Vanilla Pin Names` line saved from the one build that shipped the old name is read as the
-  default it was rather than as a name somebody chose.
+  The game's own boss pins no longer have a row of their own at all -- they are altars, and they
+  are on the Boss Altars row with every other altar. A `Vanilla Pin Names` line saved from the one
+  unreleased build that named that row is read as the default it was rather than as a name
+  somebody chose, so nothing is carried forward from a row that is gone.
 
 - **The live portals were being counted twice, and the Portal row under Your Stuff could hide
   them.** A portal marker is drawn with vanilla's portal icon, which means vanilla's portal pin

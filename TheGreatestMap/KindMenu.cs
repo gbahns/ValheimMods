@@ -754,7 +754,7 @@ namespace TheGreatestMap
                 var kinds = new List<Category>();
                 foreach (var kind in Categories.All) if (Categories.GroupOf(kind) == g && Listed(kind)) kinds.Add(kind);
                 // A heading stands for its vanilla pins as well, and for nothing else if that is
-                // all it has: Your Stuff with no sightings on the map still has the hundred pins
+                // all it has: Placed Markers with no sightings on the map still has the hundred pins
                 // the player dropped by hand under it.
                 var vanilla = VanillaRows(map, g);
                 if (kinds.Count == 0 && vanilla.Count == 0) continue;
