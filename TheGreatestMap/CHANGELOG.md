@@ -14,9 +14,12 @@
   screen away, which is a thing to ask for rather than a thing to find has happened; either way
   the rows and the buttons are the same switch, so nothing can disagree.
 
-  What goes is the whole strip: the buttons, the plate they are drawn on, and the little mouse
-  pictures beside them saying which button places a pin and which erases one. The plate is found
-  by climbing from the buttons to the largest thing holding them and nothing the map needs.
+  What goes is the whole strip: the buttons, the plates they are drawn on -- both of them, the
+  game keeping the five you place in one box and the death and boss filters in another -- and the
+  little mouse pictures beside them saying which button places a pin and which erases one. The
+  plates are found by climbing: every button goes up from where it stands to the largest thing
+  holding it and nothing the map needs, and where two of them arrive at the same place that is
+  one object rather than two.
   **Nothing else of the map's is touched** -- the public-position box, the biome name, the
   pin-name box and the shared-map hint are each asked for by the field the game keeps it in, so
   the climb stops below them rather than guessing from names, and `tgm_mapui` reports what it

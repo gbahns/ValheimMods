@@ -308,31 +308,23 @@ namespace TheGreatestMap
         /// nothing is left hidden by a mod that has been switched off, and the key hints stay
         /// down -- the game sets those active again every time the map is opened.
         ///
-        /// <para>The whole strip rather than the buttons one at a time, which is what this did
-        /// first and was wrong: it left the plate they were drawn on and the mouse pictures
-        /// standing in an empty corner, which is worse to look at than the buttons were. What is
-        /// hidden is the largest thing holding the buttons and nothing else of the map's -- see
-        /// <see cref="Strip"/>.</para>
+        /// <para>The boxes rather than the buttons one at a time, which is what this did first
+        /// and was wrong: it left the plates they were drawn on and the mouse pictures standing in
+        /// an empty corner, which is worse to look at than the buttons were. Boxes plural, which
+        /// is what it got wrong next: the game keeps the five you place in one box and the death
+        /// and boss filters in another, so a search that started from the first icon and climbed
+        /// found the one box and left the other sitting there. Every one of the buttons is a
+        /// starting point now -- see <see cref="Boxes"/>.</para>
         /// </summary>
         internal static void Controls(Minimap map, bool hide)
         {
             // Nothing of the map's has been touched and nothing is being asked for: no reason to
-            // go looking for the strip at all, which is most of the time, this being off unless
+            // go looking for the boxes at all, which is most of the time, this being off unless
             // somebody turned it on.
             if (map == null || (!hide && !_hidden)) return;
             _hidden = hide;
 
-            var strip = Strip(map);
-            if (strip != null) { Show(map, strip, !hide); }
-            else
-            {
-                // No one object holds them: then the buttons themselves, each reached the way
-                // vanilla's own filter reaches it, by the selection image inside it.
-                var icons = Access.SelectedIcons(map);
-                if (icons != null)
-                    foreach (var kv in icons) Show(map, Button(kv.Value), !hide);
-                Show(map, Button(map.m_selectedIconPing), !hide);
-            }
+            foreach (var box in Boxes(map)) Show(map, box, !hide);
 
             // The mouse pictures, which are the game's key hints for the map and belong to these
             // controls -- they say which button places a pin and which erases one. A list of its
@@ -344,14 +336,32 @@ namespace TheGreatestMap
         }
 
         private static bool _hidden;
-        private static GameObject _strip;
-        private static Minimap _stripFor;
+        private static readonly List<GameObject> _boxes = new List<GameObject>();
+        private static Minimap _boxesFor;
         private static bool _looked;
 
         private static GameObject Button(UnityEngine.UI.Image selected)
         {
             return selected != null && selected.transform.parent != null
                 ? selected.transform.parent.gameObject : null;
+        }
+
+        /// <summary>
+        /// Every one of the game's pin buttons: the five you can place, the death and boss
+        /// filters, and the ping. The dictionary the game filters by and the ping image beside
+        /// it, which is the whole of that strip and the only part of it this mod can name.
+        /// </summary>
+        private static IEnumerable<GameObject> Seats(Minimap map)
+        {
+            var icons = Access.SelectedIcons(map);
+            if (icons != null)
+                foreach (var kv in icons)
+                {
+                    var seat = Button(kv.Value);
+                    if (seat != null) yield return seat;
+                }
+            var ping = Button(map.m_selectedIconPing);
+            if (ping != null) yield return ping;
         }
 
         private static void Show(Minimap map, GameObject go, bool show)
@@ -365,40 +375,66 @@ namespace TheGreatestMap
         }
 
         /// <summary>
-        /// The one object that holds the game's pin buttons and nothing else of the map's.
+        /// The objects that hold the game's pin buttons and nothing else of the map's: as few as
+        /// one, and as many as there are buttons.
         ///
-        /// <para>Found by climbing: start at the thing holding the buttons and go up while the
-        /// next one up still contains nothing the map needs. The plate behind the buttons and the
-        /// mouse pictures beside them are a level or two above them, which is why this climbs at
-        /// all -- and it stops the moment a level holds something that has to stay, which is what
-        /// keeps the public-position box, the biome name, the pin-name box and the shared-map hint
-        /// on the screen. Those are checked for by the fields the game exposes them through, so a
-        /// level is judged by what the game says is in it rather than by its name.</para>
+        /// <para>Found by climbing. Each button starts where it stands and goes up while the next
+        /// one up still contains nothing the map needs -- the plate behind a box of buttons and
+        /// the mouse pictures beside them are a level or two above them, which is why this climbs
+        /// at all. It stops the moment a level holds something that has to stay, which is what
+        /// keeps the public-position box, the biome name, the pin-name box and the shared-map
+        /// hint on the screen; those are checked for by the fields the game exposes them through,
+        /// so a level is judged by what the game says is in it rather than by its name. A button
+        /// whose own box holds something that has to stay is hidden by itself, and the plate
+        /// behind it stays.</para>
         ///
-        /// <para>Null when even the buttons' own parent holds something that has to stay, in
-        /// which case the buttons are hidden one at a time and the plate behind them stays.
-        /// <c>tgm_mapui</c> says which of the two happened.</para>
+        /// <para>Every button rather than one of them because the game keeps them in more than
+        /// one box -- the five you place in one, the death and boss filters in another -- and
+        /// climbing from the first icon alone found the first box and left the second where it
+        /// was. Where two of them climb to the same place the answer is one object, since an
+        /// ancestor already covers everything under it. <c>tgm_mapui</c> prints what was found.
+        /// </para>
         /// </summary>
-        private static GameObject Strip(Minimap map)
+        private static List<GameObject> Boxes(Minimap map)
         {
-            if (_stripFor != map || (_strip == null && !_looked))
+            if (_boxesFor != map || !_looked)
             {
-                _stripFor = map;
+                _boxesFor = map;
                 _looked = true;
-                _strip = Search(map);
+                _boxes.Clear();
+                Search(map, _boxes);
             }
-            return _strip;
+            return _boxes;
         }
 
-        private static GameObject Search(Minimap map)
+        private static void Search(Minimap map, List<GameObject> into)
         {
-            var seat = Button(map.m_selectedIcon0);
-            if (seat == null || seat.transform.parent == null) return null;
             var root = map.m_largeRoot != null ? map.m_largeRoot.transform : null;
-            var found = seat.transform.parent;
-            if (!OnlyControls(map, found, root)) return null;
-            for (var up = found.parent; OnlyControls(map, up, root); up = up.parent) found = up;
-            return found.gameObject;
+            foreach (var seat in Seats(map))
+            {
+                var found = seat.transform;
+                for (var up = found.parent; OnlyControls(map, up, root); up = up.parent) found = up;
+                Keep(into, found.gameObject);
+            }
+        }
+
+        /// <summary>
+        /// Remember one thing to hide, in place of anything of it we were already going to hide:
+        /// hiding an object hides everything under it, so a list holding both an object and its
+        /// parent would be doing the same work twice and saying it twice in the report.
+        /// </summary>
+        private static void Keep(List<GameObject> into, GameObject go)
+        {
+            for (int i = into.Count - 1; i >= 0; i--)
+            {
+                var have = into[i];
+                if (have == null) { into.RemoveAt(i); continue; }
+                // IsChildOf counts a transform as its own child, so this covers "the same one"
+                // as well.
+                if (go.transform.IsChildOf(have.transform)) return;
+                if (have.transform.IsChildOf(go.transform)) into.RemoveAt(i);
+            }
+            into.Add(go);
         }
 
         /// <summary>
@@ -448,15 +484,19 @@ namespace TheGreatestMap
         internal static string StripReport(Minimap map)
         {
             if (map == null) return "no map";
-            var strip = Strip(map);
-            if (strip == null)
-                return "no single object holds them, so they are hidden one button at a time and the plate behind " +
-                       "them stays";
-            int n = strip.GetComponentsInChildren<Transform>(true).Length;
-            string where = strip.transform.parent != null ? strip.transform.parent.name : "none";
+            var boxes = Boxes(map);
+            if (boxes.Count == 0) return "none found";
+            var said = new List<string>(boxes.Count);
+            foreach (var box in boxes)
+            {
+                if (box == null) continue;
+                int n = box.GetComponentsInChildren<Transform>(true).Length;
+                string where = box.transform.parent != null ? box.transform.parent.name : "none";
+                said.Add($"{box.name} ({n} objects, parent {where}){(box.activeSelf ? "" : " -- hidden")}");
+            }
             int hints = map.m_hints != null ? map.m_hints.Count : 0;
-            return $"{strip.name} ({n} objects, parent {where}){(strip.activeSelf ? "" : " -- hidden")}, " +
-                   $"plus {hints} key hint{(hints == 1 ? "" : "s")}";
+            return string.Join("; ", said.ToArray()) +
+                   $", plus {hints} key hint{(hints == 1 ? "" : "s")}";
         }
 
         // ── a whole heading's worth ──────────────────────────────────────────────

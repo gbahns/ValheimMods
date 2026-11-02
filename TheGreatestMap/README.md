@@ -220,7 +220,8 @@ and "Vanilla Pin Names" is where you write down what yours are for: `Icon2=Place
 -- the same switch, the same placing -- and two sets of controls for one map, in a corner of it,
 saying the same things in different words, is one set too many. "Hide Vanilla Controls" does it,
 off to begin with, since it takes part of the game's own screen away. The whole strip goes: the
-buttons, the plate behind them, and the little mouse pictures beside them. Nothing else of the
+buttons, both of the plates behind them -- the game keeps the five you place in one box and the
+death and boss filters in another -- and the little mouse pictures beside them. Nothing else of the
 map's is touched -- the public-position box, the biome name, the pin-name box and the shared-map
 hint are each asked for by name and left where they are -- and nothing is hidden while the marker
 button is off, that being the way into the list.
