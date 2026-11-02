@@ -49,11 +49,21 @@ namespace TheGreatestMap
             }
             if (TgmConfig.MarkerButton == null || !TgmConfig.MarkerButton.Value)
             {
+                // Their buttons back, whatever the setting says: with this one off the list
+                // cannot be opened at all, and hiding both would leave a map with no pin
+                // controls whatever.
+                VanillaPins.Controls(map, false);
                 if (_button != null) Destroy();
                 KindMenu.Close();
                 return;
             }
             if (_button == null) Build(map);
+            // The game's own pin buttons, taken off the map or put back. Here because this runs
+            // every frame the large map is open and nowhere else does -- and after ours is built,
+            // because ours is a clone of one of theirs and is measured against it: a template
+            // switched off before it has ever been laid out can have no height to measure, and
+            // the clone would come out the size of the map.
+            VanillaPins.Controls(map, VanillaPins.HidingControls);
             Position();
             Recolor();
             // A pinned list is put back as soon as the map is up, so the player never reopens it.

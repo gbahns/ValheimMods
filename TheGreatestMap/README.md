@@ -125,6 +125,8 @@ of it. They close on a click away, and go with the list.
   being the switch for them as well as the number.
 - **Grouping**: whether the plants are split into Farm and Gather in place of the five plant
   kinds.
+- **The Map's Own Buttons**: whether the game's row of pin buttons is off the large map, this list
+  having grown to cover every one of them.
 - **Marker Order**: **Progression** (the order the catalog lists them in, which is the order you
   meet them -- a dandelion before a thistle, copper before silver), **Most first**, or **A to Z**.
   Reorder a Catalog line and the progression order follows it.
@@ -200,6 +202,17 @@ placing for that icon.
 The game gives these pins no names -- they are five pictures, and what each means is whatever you
 decided it means -- so they ship named after what they look like (Fire, House, Hammer, Dot, Portal)
 and "Vanilla Pin Names" is where you write down what yours are for: `Icon2=Places,Icon3=Resources`.
+
+**So the game's own row of pin buttons is off the map.** Every one of them has a row here now --
+the same switch, the same placing -- and two sets of controls for one map, in a corner of it,
+saying the same things in different words, is one set too many. "Hide Vanilla Controls" turns it
+off and puts them back; both work. Nothing else of the map's is touched, the public-position box
+included, and nothing is hidden while the marker button is off, that being the way into the list.
+
+The ping is the exception, and it has a line at the foot of the list: a ping is a gesture rather
+than a kind of marker, so there is no row for it to be. "Ping a spot out loud", then double-click
+the map, as its button did. While it is armed the line says so, and a double-click pings instead
+of placing a marker until you stop it -- which is also what the game's button did, more quietly.
 
 **Things that run out get crossed off, not forgotten.** Mining a deposit to nothing, or picking a
 plant that never grows back, crosses its marker off for everyone instead of erasing it, so you can

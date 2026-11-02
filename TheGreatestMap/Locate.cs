@@ -30,9 +30,11 @@ namespace TheGreatestMap
         private static Category? _kind;
         private static string _icon;
         private static bool _players;
+        private static Minimap.PinType? _vanilla;
+        private static bool _vanillaWasOff;
         private static float _until;
 
-        private static bool Armed => _kind.HasValue || _icon != null || _players;
+        private static bool Armed => _kind.HasValue || _icon != null || _players || _vanilla.HasValue;
 
         internal static bool On => Time.unscaledTime < _until && Armed;
 
@@ -43,6 +45,10 @@ namespace TheGreatestMap
         internal static bool PointingAt(string icon) =>
             On && _icon != null && IconRegistry.SameKey(_icon, icon);
 
+        /// <summary>True while the ping is pointing at one of the map's own pin types.</summary>
+        internal static bool Pointing(Minimap.PinType type) =>
+            On && _vanilla.HasValue && _vanilla.Value == type;
+
         private static float Seconds =>
             TgmConfig.LocateSeconds != null ? Mathf.Max(1f, TgmConfig.LocateSeconds.Value) : 6f;
 
@@ -51,6 +57,7 @@ namespace TheGreatestMap
             _kind = null;
             _icon = null;
             _players = false;
+            Unhide();
             _until = 0f;
         }
 
@@ -71,6 +78,27 @@ namespace TheGreatestMap
             Begin(label, Count());
         }
 
+        /// <summary>
+        /// Light up the map's own pins of one type -- every house pin a player dropped by hand,
+        /// every landmark the game drew. Theirs rather than ours, so there is nothing of this
+        /// mod's to match against: the game's pins themselves are what the pulse points at.
+        /// </summary>
+        internal static void Vanilla(Minimap map, Minimap.PinType type, string label)
+        {
+            Clear();
+            _vanilla = type;
+            // Switched off, these are not dimmed but gone -- the game destroys the marker rather
+            // than hiding it -- so being asked where they are has to turn them back on, and the
+            // end of the pulse puts them away again. That is the rule the rest of this class
+            // already keeps; it just takes a different lever here.
+            if (!VanillaPins.Drawn(map, type))
+            {
+                _vanillaWasOff = true;
+                VanillaPins.SetDrawn(map, type, true);
+            }
+            Begin(label, Count());
+        }
+
         /// <summary>Light up the other players, which are vanilla's own markers rather than ours.</summary>
         internal static void Players(Minimap map)
         {
@@ -84,7 +112,36 @@ namespace TheGreatestMap
             _kind = null;
             _icon = null;
             _players = false;
+            Unhide();
             _spots.Clear();
+        }
+
+        /// <summary>
+        /// Put back a vanilla pin type that was switched off and turned on for the pulse. Every
+        /// way out of a ping comes through here, so a type cannot be left switched on by a pulse
+        /// that the next one interrupted.
+        /// </summary>
+        private static void Unhide()
+        {
+            if (_vanilla.HasValue && _vanillaWasOff) VanillaPins.SetDrawn(Minimap.instance, _vanilla.Value, false);
+            _vanilla = null;
+            _vanillaWasOff = false;
+        }
+
+        /// <summary>One of the map's own pins of the type being pointed at, rather than one of ours.</summary>
+        private static bool IsVanilla(Minimap.PinData pin)
+        {
+            return pin != null && _vanilla.HasValue && pin.m_type == _vanilla.Value && !ClientPins.IsOurs(pin);
+        }
+
+        private static IEnumerable<Minimap.PinData> VanillaFound()
+        {
+            if (!_vanilla.HasValue) yield break;
+            var map = Minimap.instance;
+            if (map == null) yield break;
+            // From the pin list rather than from the marker list's tally, which was counted the
+            // last time that list was refreshed: pinging refreshes nothing, by design.
+            foreach (var pin in Access.Pins(map)) if (IsVanilla(pin)) yield return pin;
         }
 
         private static readonly List<Vector3> _spots = new List<Vector3>();
@@ -130,6 +187,7 @@ namespace TheGreatestMap
             int n = _spots.Count;
             foreach (var pin in ClientPins.All) if (Matches(pin)) n++;
             foreach (var pin in LivePins()) { if (pin != null) n++; }
+            foreach (var pin in VanillaFound()) { if (pin != null) n++; }
             return n;
         }
 
@@ -177,6 +235,11 @@ namespace TheGreatestMap
             {
                 float d = Geo.FlatDistance(from, spot);
                 if (d < best) { best = d; at = spot; }
+            }
+            foreach (var pin in VanillaFound())
+            {
+                float d = Geo.FlatDistance(from, pin.m_pos);
+                if (d < best) { best = d; at = pin.m_pos; }
             }
             if (best == float.MaxValue) return null;
             return (best >= 1000f ? $"{best / 1000f:0.#} km" : $"{Mathf.RoundToInt(best)} m") + " " + Compass(at - from);
@@ -256,13 +319,18 @@ namespace TheGreatestMap
 
             foreach (var pin in LivePins()) Pulse(pin, grow, toWhite);
 
-            if (_players || _spots.Count > 0)
+            if (_players || _spots.Count > 0 || _vanilla.HasValue)
             {
                 var map = Minimap.instance;
                 if (map != null)
                     foreach (var pin in Access.Pins(map))
                     {
                         if (pin == null) continue;
+                        if (_vanilla.HasValue)
+                        {
+                            if (IsVanilla(pin)) Pulse(pin, grow, toWhite);
+                            continue;
+                        }
                         if (_players ? pin.m_type == Minimap.PinType.Player : IsSpot(pin))
                             Pulse(pin, grow * (_players ? ClientPins.PlayerScale : 1f), toWhite);
                     }

@@ -2,6 +2,31 @@
 
 ## 4.7.0 -- unreleased
 
+- **The game's row of pin buttons is off the map, the list having grown to cover it.** Every one
+  of those buttons now has a row: a switch pressing the same `m_visibleIconTypes` entry the button
+  does, a place-by-hand button on the five icons you can drop which arms the game's own placing,
+  and a ping on each row that makes that type's pins wave. So the buttons had become a second set
+  of controls for the same map, in a corner of it, saying the same things in different words --
+  and the thing to do with a control you have replaced is take it away, not leave both.
+
+  **`Hide Vanilla Controls` in the Display section, on by default, and a checkbox under The Map's
+  Own Buttons in the list's own settings.** Turn it off and the buttons are where the game put
+  them; both work, and either way the rows and the buttons are the same switch, so nothing can
+  disagree.
+
+  Three things make it safe to do at all. **Nothing else of the map's is touched** -- the buttons
+  are hidden one at a time, found through the selection image inside each, so the public-position
+  box and whatever the game puts in that corner next are left alone. **Nothing is hidden while
+  the marker button is off**, that being the only way into the list: a setting that takes
+  something away has to leave what it was traded for reachable. And **the ping has a line at the
+  foot of the list**, because it is the one thing on that strip no row can stand for -- a ping is
+  a gesture, not a kind of marker, so there is nothing to list and nothing to switch. The line
+  says "Ping a spot out loud", and while it is armed it says so and how to stop.
+
+  Arming anything now cancels whatever else was armed, which it always should have: both the
+  place-by-hand buttons and the ping work by writing a pin type into the one field the map reads
+  when a pin is placed, so two rows claiming the next pin is theirs was a lie waiting to be told.
+
 - **The map's own pins are in the marker list.** It had a row for everything this mod records and
   everything the server answers for, and nothing at all for the hundred pins a player had placed
   themselves -- so a map with both on it could be read from one place for half of it and had to be

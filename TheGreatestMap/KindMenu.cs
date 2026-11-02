@@ -1128,6 +1128,23 @@ namespace TheGreatestMap
                 () => Erasures.On ? "Hide erased markers" : "Show erased markers", null);
             y -= RowHeight;
 
+            // The game's ping, which had a button of its own on the strip this mod now takes off
+            // the map. It is the one thing on that strip no row above stands for: a ping is a
+            // gesture rather than a kind of marker, so there is nothing to list and nothing to
+            // switch -- which puts it here, with the rest of what is about the whole map.
+            //
+            // Only while the game's buttons are hidden. With them on the map its own button is a
+            // few pixels away, and a second way to the same thing is a second thing to read.
+            if (VanillaPins.HidingControls)
+            {
+                ActionRow(_root.transform, 0f, y, () => VanillaPins.TogglePing(Minimap.instance),
+                    () => VanillaPins.PingArmed(Minimap.instance)
+                        ? "Pinging - double-click the map, or click here to stop"
+                        : "Ping a spot out loud",
+                    null);
+                y -= RowHeight;
+            }
+
             // The two label switches used to sit here. They are about how the whole map is
             // drawn rather than about which markers are on it, which is a different question from
             // the one every other row in this list answers -- so they live behind the gear beside
@@ -1346,6 +1363,8 @@ namespace TheGreatestMap
                 () => AllShown && VanillaPins.Drawn(map, t),
                 onPlace: VanillaPins.Placeable(t) ? (Action)(() => VanillaPins.Place(map, t)) : null,
                 placeLit: () => VanillaPins.Armed(map, t),
+                onLocate: () => Locate.Vanilla(map, t, VanillaPins.Label(t)),
+                pingLit: () => Locate.Pointing(t),
                 caption: caption,
                 tip: VanillaPins.Tip(t));
             return y - RowHeight;

@@ -84,6 +84,13 @@ namespace TheGreatestMap
                 "have to find once, so those are worth folding away; what you cannot plant you have to go out and " +
                 "gather again, which is what a map is for. Ore is a row of its own either way.");
 
+            y = Heading("The Map's Own Buttons", y);
+            y = Switch(y, () => TgmConfig.HideVanillaControls, "Hide vanilla controls",
+                "Take the game's row of pin buttons off the large map. This list covers every one of them now: a " +
+                "row for each icon pressing the same switch its button does, a place-by-hand button on the five " +
+                "you can drop, and a line at the foot of this list for pinging out loud. Nothing else of the map's " +
+                "is touched, and nothing is hidden while the marker button is off, that being the way in here.");
+
             y = Heading("Marker Order", y);
             y = Order(y, TypeOrder.Progression, "Progression",
                 "The order the catalog lists them in, which is the order you meet them: a dandelion before a " +

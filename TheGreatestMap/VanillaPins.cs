@@ -166,7 +166,37 @@ namespace TheGreatestMap
         /// </summary>
         internal static void Place(Minimap map, Minimap.PinType type)
         {
-            if (map != null) Access.SelectIcon(map, type);
+            if (map == null) return;
+            // Whatever kind of ours was armed is not armed any more, and has to stop saying it
+            // is: arming works by writing a pin type into the one field the map reads when a pin
+            // is placed, and this is about to write another one into it. Two rows both claiming
+            // the next pin is theirs, when only the last press can be right, is the kind of lie
+            // this list is built not to tell.
+            ManualPlace.Cancel();
+            Access.SelectIcon(map, type);
+        }
+
+        /// <summary>
+        /// Ready the game's ping, which is sent by double-clicking the map and heard by everybody
+        /// in range. A press while it is already ready puts it away again, because something has
+        /// to: while the ping is ready a double-click on the map pings rather than placing a pin,
+        /// and a player who had forgotten arming it would find the map had stopped taking
+        /// markers.
+        ///
+        /// <para>This exists because hiding the game's buttons hides its ping button with them,
+        /// and the ping is the one thing on that strip no row in this list stands for -- there is
+        /// no such thing as a ping marker to list.</para>
+        /// </summary>
+        internal static void TogglePing(Minimap map)
+        {
+            if (map == null) return;
+            ManualPlace.Cancel();
+            Access.SelectIcon(map, PingArmed(map) ? Minimap.PinType.Icon0 : Minimap.PinType.Ping);
+        }
+
+        internal static bool PingArmed(Minimap map)
+        {
+            return map != null && Access.SelectedType(map) == Minimap.PinType.Ping;
         }
 
         /// <summary>Is the game set to place this icon next?</summary>
@@ -257,6 +287,51 @@ namespace TheGreatestMap
                            "under the map, and the picture means whatever you decided it means -- the name is yours " +
                            "to set in Vanilla Pin Names.";
             }
+        }
+
+        // ── the game's own buttons ───────────────────────────────────────────────
+
+        /// <summary>
+        /// Should the game's row of pin buttons be off the map? Only while there is a way to the
+        /// list that replaced it: with the marker button off, the list cannot be opened at all,
+        /// and hiding both would leave a map with no pin controls whatever -- a setting that
+        /// takes something away has to leave the thing it was traded for reachable.
+        /// </summary>
+        internal static bool HidingControls =>
+            TgmConfig.HideVanillaControls != null && TgmConfig.HideVanillaControls.Value
+            && TgmConfig.MarkerButton != null && TgmConfig.MarkerButton.Value;
+
+        /// <summary>
+        /// Take the game's icon buttons off the large map, or put them back. Read every frame the
+        /// map is open, so a changed setting shows at once and nothing is left hidden by a mod
+        /// that has been switched off.
+        ///
+        /// <para>The buttons one at a time rather than the panel holding them. The panel is the
+        /// game's and there is no promise about what else is in it -- the public-position box sits
+        /// in that corner of the map too -- so hiding it would be hiding whatever the game puts
+        /// there next as well. Each button is reached the way vanilla's own filter reaches it, by
+        /// the selection image inside it, which is the one part of it this mod can name.</para>
+        /// </summary>
+        internal static void Controls(Minimap map, bool hide)
+        {
+            if (map == null) return;
+            var icons = Access.SelectedIcons(map);
+            if (icons != null)
+                foreach (var kv in icons) Show(map, kv.Value, !hide);
+            // The ping button, which belongs to the strip and stands for no pin type: the list
+            // has a line at its foot for it instead.
+            Show(map, map.m_selectedIconPing, !hide);
+        }
+
+        private static void Show(Minimap map, UnityEngine.UI.Image selected, bool show)
+        {
+            if (selected == null || selected.transform.parent == null) return;
+            var button = selected.transform.parent.gameObject;
+            // The touch-screen ping panel is the game's to switch: it sets that panel active or
+            // inactive every frame from whether a touch device is in use, so anything written
+            // there by this mod is overwritten and all that is left of it is the fight.
+            if (map.m_touchPingPanel != null && button.transform.IsChildOf(map.m_touchPingPanel)) return;
+            if (button.activeSelf != show) button.SetActive(show);
         }
 
         // ── a whole heading's worth ──────────────────────────────────────────────
