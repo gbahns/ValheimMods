@@ -18,6 +18,29 @@
   left out, since it comes with a fortress and the fortress is marked. The elite is not in yet:
   `tgm_spawners` reads the spawner prefabs off your own game and says which it does not know.
 
+- **Charred fortresses are recorded, as one marker each, and the fortress ruins are not.** The two
+  are different places and the catalog only ever named the wrong one: `FortressRuins` is the
+  rubble, a hundred of it in a world, and it held the entry and the charred mage's trophy;
+  `CharredFortress` is the thing still standing, twenty in a world, and it had no entry at all --
+  so the fortresses were recorded only by the unlisted sweep, under a tidied-up prefab name and the
+  plain house pin. They have swapped places: the fortress takes the entry and the trophy, which is
+  free now, and the ruins are not recorded.
+
+  **One marker per fortress, not one per building.** The per-building split is right for a compound
+  that is several finds -- a farm is a house, a barn and a shed, each searched and crossed off on
+  its own -- and wrong for a fortress, which is one place with one wall around it: splitting it
+  heaped gold pins inside a 32 m circle to say what one marker says. A short list in the catalog
+  marks a place as a whole, and the fortress is its first member.
+
+- **Anything dvergr wears the dvergr trophy, whatever it is called.** Their buildings are named a
+  dozen ways across two biomes -- guard towers, excavations, harbours, lighthouses, and the ruined
+  tower in the Ashlands that nothing had listed -- and a place whose prefab name says "dvergr" now
+  wears their trophy even where no catalog line names it. A name is a better handle on that than a
+  list somebody has to remember to add to.
+
+- **Volture nests are not recorded.** Nothing ever listed them, so the sweep was writing 350 a
+  world as structures.
+
 - **Charred ruins are not recorded either, and abandoned houses stay.** Two halves of one rule: a
   structure earns a marker if it is somewhere you would travel to **or** somewhere you would
   otherwise walk back into for nothing. The second half is why the common buildings are in the list

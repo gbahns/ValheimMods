@@ -251,6 +251,11 @@ namespace TheGreatestMap
             // walk a marker invites. The fortresses are still marked, and the charred spawners
             // in them are their own kind.
             new[] { "CharredRuins", "Structures" },
+            // The rubble, of which there are a hundred in a world -- not the fortress, which is
+            // recorded under CharredFortress and wears the trophy these used to.
+            new[] { "FortressRuins", "Structures" },
+            // Volture nests. Nothing was ever listed for them; the sweep recorded 350 a world.
+            new[] { "VoltureNest", "Structures" },
         };
 
         /// <summary>
@@ -912,7 +917,8 @@ namespace TheGreatestMap
                 "Treat any outdoor location that is not listed under another kind as a structure (the location's prefab name, " +
                 "tidied up, becomes the marker text). Turn off to record only the listed structure prefixes.");
             StructuresExcludePrefixes = mod.BindLocal("Catalog", "Structures Exclude Prefixes", "Vegvisir_,Runestone_,Meteorite,TarPit,Rock,Hugin,StartTemple,Pickable,Vegetation,Tree,Bush,MountainGrave,MountainWell," +
-                "InfestedTree,SwampHut,SwampRuin,SwampWell,Grave1,FireHole,ShipWreck,ShipSetting,CharredRuins",
+                "InfestedTree,SwampHut,SwampRuin,SwampWell,Grave1,FireHole,ShipWreck,ShipSetting,CharredRuins," +
+                "FortressRuins,VoltureNest",
                 "Comma-separated prefab name prefixes never swept in as structures. This is about the places the " +
                 "catalog does not name: a location listed under Structures above is recorded because it is listed, " +
                 "whatever this says, so leaving one out means taking its line out as well.");

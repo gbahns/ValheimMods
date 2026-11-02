@@ -648,7 +648,13 @@ namespace TheGreatestMap
                            // No CharredRuins. The Ashlands are laid out of them, and what is in
                            // one is not worth the second walk that a marker invites.
                            "Mistlands_Statue*=Dvergr Statue|TrophyDvergr,Mistlands_Viaduct*=Viaduct|TrophyDvergr,AshlandRuins*=Ashlands Ruins," +
-                           "FortressRuins*=Fortress Ruins|TrophyCharredMage,PlaceofMystery*=Place of Mystery";
+                           // The fortress itself, 20 in a world: the one Ashlands place you both
+                           // travel to and want to know you have already cleared. It wears the
+                           // charred mage's trophy, which is free because the hundred
+                           // FortressRuins that used to wear it are not recorded any more -- those
+                           // are the rubble, this is the thing standing. No picture of a fortress
+                           // exists in the game to wear instead; tgm_items fortress says so.
+                           "CharredFortress*=Charred Fortress|TrophyCharredMage,PlaceofMystery*=Place of Mystery";
                 case Category.Campfire:
                     return "fire_pit=Campfire|piece:fire_pit";
                 case Category.Workbench:
@@ -1829,7 +1835,7 @@ namespace TheGreatestMap
                 // A compound (farm, village) holds several buildings, each worth its own marker:
                 // identify the building this piece belongs to and mark that instead. A piece
                 // that is not part of a building (a fence segment, a lone pole) is no find.
-                if (found.Cat == Category.Structure)
+                if (found.Cat == Category.Structure && !IsWholePlace(near.Prefab))
                 {
                     var building = Buildings.Resolve(go, near.Pos, near.Radius);
                     if (building == null) { found = null; return false; }
@@ -1846,6 +1852,41 @@ namespace TheGreatestMap
 
         /// <summary>De-duplication radius around a building's center.</summary>
         internal const float BuildingRadius = 5f;
+
+        /// <summary>
+        /// Locations that are one marker for the whole place, rather than one per building inside
+        /// their walls.
+        ///
+        /// <para>The split exists because a compound is usually several separate finds: an
+        /// abandoned farm is a house, a barn and a shed, each searched on its own and each worth
+        /// its own cross. A fortress is not like that. It is one place you went to, with one wall
+        /// around it, and twenty of them in a world -- splitting it would put a heap of gold pins
+        /// inside a 32 m circle and say nothing the single marker does not.</para>
+        /// </summary>
+        private static readonly string[] WholePlaces = { "CharredFortress" };
+
+        /// <summary>Is this location marked once for the whole place?</summary>
+        private static bool IsWholePlace(string prefab)
+        {
+            if (string.IsNullOrEmpty(prefab)) return false;
+            foreach (var one in WholePlaces)
+                if (prefab.StartsWith(one, StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// The picture a place's own name asks for, where the catalog has not said. Only the
+        /// dvergr for now, and on purpose: their buildings are named a dozen ways across two
+        /// biomes -- guard towers, excavations, harbours, lighthouses, and whatever the next
+        /// update calls the one in the Ashlands -- and every one of them is a dvergr building
+        /// whoever named the prefab. A name is a better handle on that than a list nobody will
+        /// remember to add to.
+        /// </summary>
+        private static string GuessPlaceIcon(string prefab)
+        {
+            return (prefab ?? "").IndexOf("dvergr", StringComparison.OrdinalIgnoreCase) >= 0
+                ? "TrophyDvergr" : null;
+        }
 
         /// <summary>What marker a spawned location would produce, if any.</summary>
         internal static bool TryClassifyLocation(LocationIndex.Entry entry, out Found found)
@@ -1996,6 +2037,7 @@ namespace TheGreatestMap
                 // Listed, but with no icon of its own: guess from the name rather than let it fall
                 // through to the kind's icon, which for dungeons is the swamp crypt key.
                 if (icon == null && e.Cat == Category.Dungeon) icon = IconFromDungeonName(prefab);
+                if (icon == null && e.Cat == Category.Structure) icon = GuessPlaceIcon(prefab);
             }
             else if (hasInterior)
             {
@@ -2007,12 +2049,18 @@ namespace TheGreatestMap
             {
                 cat = Category.Structure;
                 name = Prettify(prefab);
+                // Nothing names this place, but its prefab may still say what built it.
+                icon = GuessPlaceIcon(prefab);
             }
             else
             {
                 return false;
             }
-            found = Make(cat, name, icon, cat == Category.Structure ? hitPos : center, key, prefab);
+            // A structure's marker stands on the piece the player saw rather than in the middle
+            // of the yard, which is what makes a farm's three buildings three markers. A place
+            // marked as a whole stands at its own center, like every other kind of location.
+            found = Make(cat, name, icon,
+                         cat == Category.Structure && !IsWholePlace(prefab) ? hitPos : center, key, prefab);
             found.Center = center;
             found.Radius = Mathf.Max(radius, 4f);
             return true;
