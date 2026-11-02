@@ -367,6 +367,16 @@ namespace TheGreatestMap
                     }
                 }));
 
+            new Terminal.ConsoleCommand("tgm_locations", "Count every place the generator put in this world, by type, biggest first, and say what the catalog does with each: which kind it lands in, the name it would wear, and whether it was swept in unlisted. tgm_locations [word] narrows it to one kind, name or prefab (also written to the log)",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    foreach (var line in Admin.Locations(args.Args.Length > 1 ? args.Args[1] : null))
+                    {
+                        args.Context.AddString(line);
+                        TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_locations: " + line);
+                    }
+                }));
+
             new Terminal.ConsoleCommand("tgm_spawners", "List every spawner prefab in the game, what it sends out, whether it can be broken, and whether the catalog knows it (also written to the log)",
                 (Terminal.ConsoleEvent)(args =>
                 {

@@ -906,6 +906,134 @@ namespace TheGreatestMap
             return true;
         }
 
+        /// <summary>One type of place, and what this world holds of it.</summary>
+        private sealed class Tally
+        {
+            public string Prefab;
+            public int Count;
+            public int Explored;
+            public Category? Listed;   // the catalog has a line naming this prefab
+            public Category? Cat;      // the kind a marker for it would land in
+            public string Name;        // what that marker would be called
+        }
+
+        /// <summary>
+        /// Every place the generator put in this world, counted by type, with what the catalog
+        /// does with each.
+        ///
+        /// <para>Why this exists: "Structures records far too much" is a judgment about numbers
+        /// nobody had. A survey report answers how long the run is -- it counts what it would
+        /// write, nearest-first and stopped at a cap -- and not which types are carpeting the
+        /// map, which is the only thing a cut can be argued from. This is the whole world at
+        /// once, biggest first, and it says of each type whether the catalog named it or whether
+        /// it was swept in for being unlisted. Those are two different problems with two
+        /// different fixes.</para>
+        ///
+        /// <para>The generator's table rather than a walk of the world: it is the list the world
+        /// was built from, so nothing is missed for standing where nobody has been. It lives on
+        /// the server, like everything else here.</para>
+        /// </summary>
+        internal static List<string> Locations(string word)
+        {
+            var lines = new List<string>();
+            if (!LocationNames.HaveWorld)
+            {
+                lines.Add("This client is not where the world is, so the generator's list of places is not here. " +
+                          "Run it in single player, on a world you are hosting, or from the server's own console.");
+                return lines;
+            }
+            string needle = (word ?? "").Trim();
+            var map = Minimap.instance;
+            var tallies = new Dictionary<string, Tally>(StringComparer.OrdinalIgnoreCase);
+            int all = 0;
+            foreach (var placed in LocationNames.Snapshot())
+            {
+                all++;
+                if (!tallies.TryGetValue(placed.Prefab, out var tally))
+                {
+                    tallies[placed.Prefab] = tally = new Tally { Prefab = placed.Prefab };
+                    tally.Listed = Catalog.CategoryOf(placed.Prefab);
+                    // Asked of the catalog itself rather than worked out here, so this says what
+                    // recording would really do and cannot drift away from it.
+                    if (Catalog.TryClassifyLocation(Entry(placed.Prefab, placed.Pos, placed.Radius), out var found))
+                    {
+                        tally.Cat = found.Cat;
+                        tally.Name = found.Name;
+                    }
+                }
+                tally.Count++;
+                // Where the player's own map says they have been, which is what an ordinary
+                // survey is bounded by. No map -- a dedicated server's console -- and the column
+                // is left off rather than claimed to be zero.
+                if (map != null && Explored(map, placed.Pos)) tally.Explored++;
+            }
+            if (all == 0)
+            {
+                lines.Add("The generator's table is empty, which should not happen in a world that is loaded.");
+                return lines;
+            }
+
+            var byKind = new SortedDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var typesPerKind = new SortedDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var unlistedPerKind = new SortedDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            int ignored = 0, ignoredTypes = 0;
+            foreach (var tally in tallies.Values)
+            {
+                if (!tally.Cat.HasValue) { ignored += tally.Count; ignoredTypes++; continue; }
+                string kind = Categories.Label(tally.Cat.Value);
+                Count(byKind, kind, tally.Count);
+                Count(typesPerKind, kind, 1);
+                if (!tally.Listed.HasValue) Count(unlistedPerKind, kind, tally.Count);
+            }
+
+            lines.Add($"{all} place(s) in this world, of {tallies.Count} type(s)" +
+                      (map != null ? ", with what your own map has uncovered in brackets." : "."));
+            foreach (var kv in byKind)
+            {
+                typesPerKind.TryGetValue(kv.Key, out int types);
+                unlistedPerKind.TryGetValue(kv.Key, out int unlisted);
+                lines.Add($"  {kv.Key}: {kv.Value} place(s) in {types} type(s)" +
+                          (unlisted > 0 ? $", of which {unlisted} are unlisted and swept in" : "") + ".");
+            }
+            if (ignored > 0) lines.Add($"  Recorded by nothing: {ignored} place(s) in {ignoredTypes} type(s).");
+
+            var sorted = new List<Tally>(tallies.Values);
+            sorted.Sort((a, b) => a.Count != b.Count
+                ? b.Count.CompareTo(a.Count)
+                : string.Compare(a.Prefab, b.Prefab, StringComparison.OrdinalIgnoreCase));
+            int shown = 0;
+            foreach (var tally in sorted)
+            {
+                if (needle.Length > 0 && !Mentions(tally, needle)) continue;
+                shown++;
+                string what = tally.Cat.HasValue
+                    ? Categories.Label(tally.Cat.Value) + " as \"" + tally.Name + "\""
+                    : "not recorded";
+                if (tally.Cat.HasValue && !tally.Listed.HasValue) what += "   <- UNLISTED, swept in";
+                if (tally.Cat.HasValue && TgmConfig.CategoryEnabled.TryGetValue(tally.Cat.Value, out var on)
+                    && !on.Value) what += "   (that kind is not being recorded)";
+                lines.Add($"  {tally.Prefab.PadRight(34)} {tally.Count,5}" +
+                          (map != null ? $" ({tally.Explored} seen)" : "") + " -> " + what);
+            }
+            if (needle.Length > 0) lines.Add($"{shown} type(s) matching \"{needle}\".");
+            if (unlistedPerKind.Count > 0)
+                lines.Add("An unlisted place becomes a structure named after its prefab, because [Catalog] " +
+                          "Structures Include Unlisted is on. Off, only the types the catalog names are recorded; " +
+                          "[Catalog] Structures Exclude Prefixes drops them by name prefix instead.");
+            lines.Add("A compound -- a farm, a village -- is one place here and one marker per building on the map, " +
+                      "so a type can write more markers than it has places.");
+            return lines;
+        }
+
+        /// <summary>Does this type answer to the word typed: its prefab, its name or its kind.</summary>
+        private static bool Mentions(Tally tally, string needle)
+        {
+            if (tally.Prefab.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0) return true;
+            if (tally.Name != null && tally.Name.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0) return true;
+            return tally.Cat.HasValue && Categories.Label(tally.Cat.Value)
+                       .IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
         private static LocationIndex.Entry Entry(string prefab, Vector3 pos, float radius) =>
             new LocationIndex.Entry
             {
@@ -941,6 +1069,13 @@ namespace TheGreatestMap
         {
             tally.TryGetValue(key, out int n);
             tally[key] = n + 1;
+        }
+
+        /// <summary>The same, by more than one at a time.</summary>
+        private static void Count(SortedDictionary<string, int> tally, string key, int by)
+        {
+            tally.TryGetValue(key, out int n);
+            tally[key] = n + by;
         }
 
         /// <summary>The kinds asked for, named the way the rest of the mod names them.</summary>

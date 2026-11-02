@@ -2,6 +2,16 @@
 
 ## 4.7.0 -- unreleased
 
+- **`tgm_locations` counts what this world is actually made of.** "Structures records far too much"
+  is a judgment about numbers nobody had: a survey report says how many markers a run would write,
+  nearest-first and stopped at its cap, which answers how long the run is and not which types are
+  carpeting the map. This reads the generator's own table -- the list the world was built from, so
+  nothing is missed for standing where nobody has been -- and counts every place by type, biggest
+  first, saying of each which kind it lands in, what the marker would be called, how many of them
+  stand in ground you have uncovered, and **whether the catalog named it or whether it was swept in
+  for being unlisted**. Those last two are different problems with different fixes, and no report
+  until now told them apart. `tgm_locations <word>` narrows it to a kind, a name or a prefab.
+
 - **No more type rows named after the kind's own picture.** A kind row unfolds into the types
   under it, and a type with no name of its own was named after the icon it wears -- right where
   each type has a picture of its own ("Copper Ore" under Ore), wrong where the picture *is* the

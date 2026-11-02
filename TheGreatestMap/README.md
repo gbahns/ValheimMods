@@ -388,6 +388,7 @@ counts as well unless "Structures Include Unlisted" is off or its prefab name is
 | `tgm_show` | Show every hidden marker again (single markers, hidden icons, hidden kinds and hidden crossed-off markers) |
 | `tgm_mapui` | What the large map's layout measures: how much screen it uses and how its parts are anchored |
 | `tgm_spawners` | Every spawner prefab in the game, what it sends out, whether it can be broken, and whether the catalog knows it |
+| `tgm_locations [word]` | Every place the generator put in **this world**, counted by type, biggest first: which kind each lands in, the name it would wear, how many stand in ground you have uncovered, and whether it was swept in unlisted. The list a decision about what to stop recording is argued from |
 | `tgm_items <word>` | Every picture the game has whose name contains that word: items, build pieces, the map's location pictures and its own pin sprites |
 | `tgm_adopt [reach] [apply] [plants]` | Test worlds: ask the world what your hand-placed markers were pointing at, write the recorded marker for it, and remove the hand-placed pin |
 | `tgm_survey [count] [all] [apply] [kinds]` | Test worlds: mark every location and resource the world holds where you have explored, as if you had recorded them; name kinds to take only those. Without `apply` it waves them on the map instead of writing them, for as long as a ping lasts; `tgm_survey off` ends that wave early |
