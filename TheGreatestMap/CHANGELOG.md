@@ -2,6 +2,34 @@
 
 ## 4.7.0 -- unreleased
 
+- **The spawners go by the names the game gives them.** A body pile was a "Draugr Pile" and a
+  Monument of Torment a "Charred Spawner" -- both this mod's own inventions, and a map should call
+  a thing what the game calls it. The greydwarf nest and the evil bone pile keep their names in the
+  game's own sentence case.
+
+  **Evil bone piles in the swamp were not being recorded at all.** The swamp's is a prefab of its
+  own, `BonePileSpawner_swamp`, and the catalog named the other one exactly -- so the bone piles
+  standing in the swamp graveyards, which is where anybody meets one, were invisible to recording.
+  The entry is a prefix now and catches both.
+
+  The charred spawner's entry is the exact name instead, for the opposite reason: there are three
+  of them -- this monument, the elite one, and the Effigy of Malice inside the fortresses -- and a
+  prefix would have named whichever it caught "Monument of Torment". The effigy is deliberately
+  left out, since it comes with a fortress and the fortress is marked. The elite is not in yet:
+  `tgm_spawners` reads the spawner prefabs off your own game and says which it does not know.
+
+- **Nothing in the swamp is recorded as a structure.** What is worth going to there is marked by
+  something else already: the crypts are dungeons, the bone piles and body piles in the graveyards
+  are spawners, the bog witch is a trader. That left the huts, the wells, the ruins, the graveyards
+  themselves and the shipwrecks -- about **900 places in a world**, each a building you look at once
+  -- and a swamp painted gold. **Ship settings** go the same way: stones laid out in the shape of a
+  boat, with nothing in them and nothing to do with them.
+
+  The graveyards, the surtling geysers and the wrecks were never in the catalog at all; they were
+  recorded by the unlisted sweep under a tidied-up prefab name, which is why the exclusion list is
+  what stops them. Any of the seven goes back by taking its prefix out of `Structures Exclude
+  Prefixes` -- and for the four that had catalog lines, putting the line back too.
+
 - **Infested trees are not recorded at all any more.** An infested tree is a swamp tree with guck
   sacks on it, and the guck sacks are already recorded as guck -- which is the thing anybody walks
   over there for. So the marker said a second thing about a place the map already had something to

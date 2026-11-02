@@ -586,26 +586,47 @@ namespace TheGreatestMap
                 case Category.Camp:
                     return "GoblinCamp2=Fuling Village|TrophyGoblin,WoodVillage1=Draugr Village|TrophyDraugr";
                 case Category.Spawner:
-                    // Vanilla names these three inconsistently -- two Spawner_ and one not -- so
-                    // they are listed rather than matched by name. Listing is also the only safe
-                    // way: the world is full of invisible Spawner_<creature> points, thousands of
-                    // them inside dungeons and camps, and nothing on the map should mark those.
-                    return "Spawner_GreydwarfNest=Greydwarf Nest|TrophyGreydwarfBrute," +
-                           "Spawner_DraugrPile=Draugr Pile|TrophyDraugr," +
+                    // Vanilla names these inconsistently -- two Spawner_ and two not -- so they
+                    // are listed rather than matched by name. Listing is also the only safe way:
+                    // the world is full of invisible Spawner_<creature> points, thousands of them
+                    // inside dungeons and camps, and nothing on the map should mark those.
+                    //
+                    // The names are the game's own, which is what a player reading the map would
+                    // call them. Two of them used to be this mod's inventions: a body pile was a
+                    // "Draugr Pile" and a Monument of Torment a "Charred Spawner".
+                    return "Spawner_GreydwarfNest=Greydwarf nest|TrophyGreydwarfBrute," +
+                           "Spawner_DraugrPile=Body pile|TrophyDraugr," +
                            // Bones rather than a skeleton trophy: the trophy is what a burial
                            // chamber wears, and two different things wearing one picture is the
                            // map lying about one of them. A pile of bones is what this is.
-                           "BonePileSpawner=Evil Bone Pile|BoneFragments," +
-                           "CharredStone_Spawner*=Charred Spawner|TrophyCharredMelee";
+                           //
+                           // A prefix, because the swamp's is a prefab of its own
+                           // (BonePileSpawner_swamp) and an exact name never matched it: the bone
+                           // piles standing in the swamp graveyards, which is where anybody meets
+                           // one, were not recorded at all.
+                           "BonePileSpawner*=Evil bone pile|BoneFragments," +
+                           // The exact name rather than a prefix. There are three charred
+                           // spawners -- this one, the elite monument, and the Effigy of Malice
+                           // that stands inside the fortresses -- and a prefix would have named
+                           // whichever it caught after this one. The effigy is deliberately not
+                           // recorded: it comes with a fortress, which is marked already. The
+                           // elite needs its prefab name, which tgm_spawners reads off the game.
+                           "CharredStone_Spawner=Monument of Torment|TrophyCharredMelee";
                 case Category.BossAltar:
                     return "Eikthyrnir=Eikthyr|TrophyEikthyr,GDKing=The Elder|TrophyTheElder,Bonemass=Bonemass|TrophyBonemass," +
                            "Dragonqueen=Moder|TrophyDragonQueen,GoblinKing=Yagluth|TrophyGoblinKing," +
                            "Mistlands_DvergrBossEntrance1=The Queen|TrophySeekerQueen,FaderLocation=Fader|TrophyFader";
                 case Category.Structure:
                     return "WoodFarm1=Abandoned Farm,WoodHouse*=Abandoned House,AbandonedLogCabin*=Log Cabin,StoneTowerRuins*=Stone Tower Ruins,StoneHouse*=Stone House," +
-                           "Ruin*=Ruins,SwampHut*=Swamp Hut,SwampRuin*=Swamp Ruins,SwampWell*=Swamp Well,StoneHenge*=Stonehenge|pin:Memorial,StoneTower*=Stone Tower," +
+                           // Nothing in the swamp. What is worth going to there is marked by
+                           // something else: the crypts are dungeons, the bone piles and body
+                           // piles in the graveyards are spawners, the bog witch is a trader.
+                           // That leaves the huts, the wells, the ruins, the graveyards
+                           // themselves and the wrecks -- about 900 places in a world, all of
+                           // them a building you look at once -- and a swamp painted gold.
+                           "Ruin*=Ruins,StoneHenge*=Stonehenge|pin:Memorial,StoneTower*=Stone Tower," +
                            "StoneCircle*=Stone Circle|pin:Memorial,Dolmen*=Dolmen|pin:Memorial,DrakeNest*=Drake Nest|DragonEgg," +
-                           "Greydwarf_camp*=Greydwarf Nest|TrophyGreydwarfBrute,ShipSetting*=Ship Setting|pin:Memorial,Waymarker*=Waymarker|pin:Memorial," +
+                           "Greydwarf_camp*=Greydwarf Nest|TrophyGreydwarfBrute,Waymarker*=Waymarker|pin:Memorial," +
                            // No InfestedTree. It is a swamp tree with guck sacks on it, 700 of
                            // them in a world, and the guck sacks are already recorded as what they
                            // are: a marker for the tree says a second time what the sacks say, and
@@ -965,6 +986,31 @@ namespace TheGreatestMap
             // mod has since dropped. Kept, in the order they were already in.
             for (int i = 0; i < entries.Count; i++) if (!taken[i]) result.Add(entries[i].Value);
             return string.Join(",", result.ToArray());
+        }
+
+        /// <summary>
+        /// Replace one entry of a saved catalog line with another, and only where the line still
+        /// says word for word what this mod shipped. Everything else about the line is left as
+        /// written, including where the entry stands in it.
+        ///
+        /// <para>What it is for: a saved <c>[Catalog]</c> line always beats a new default, which
+        /// is what makes the catalog the player's own and also means a name this mod ships and
+        /// then corrects never reaches anybody who has played before. Matching the whole entry
+        /// verbatim is the test for "nobody has touched this": a player who has renamed it keeps
+        /// their name.</para>
+        /// </summary>
+        internal static string Swap(string saved, string was, string now)
+        {
+            if (string.IsNullOrEmpty(saved) || string.IsNullOrEmpty(was)) return saved;
+            var parts = saved.Split(',');
+            bool changed = false;
+            for (int i = 0; i < parts.Length; i++)
+            {
+                if (!string.Equals(parts[i].Trim(), was.Trim(), StringComparison.OrdinalIgnoreCase)) continue;
+                parts[i] = now;
+                changed = true;
+            }
+            return changed ? string.Join(",", parts) : saved;
         }
 
         /// <summary>

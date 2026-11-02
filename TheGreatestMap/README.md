@@ -350,8 +350,10 @@ the bench's own build-menu picture, and taking the bench down takes the marker w
 crafting station can be listed under "Workbenches" in the Catalog section -- a forge, a
 stonecutter -- and the workbench is the one listed because it is the one that holds spawning off.
 
-**Structures** (abandoned houses, log cabins, stone tower ruins, swamp huts, stonehenges, dvergr
-towers and so on) are recorded too if you turn on "Record Structures", which is off by default.
+**Structures** (abandoned houses, log cabins, stone tower ruins, stonehenges, dvergr towers and so
+on) are recorded too if you turn on "Record Structures", which is off by default. Nothing in the
+swamp is: what is worth going to there is already marked by something else, so the huts, wells,
+ruins, graveyards and wrecks are left alone rather than painting the biome gold.
 They use the vanilla house icon, without a text label. It is meant for people who like to track
 which ruins they have already searched: opening a chest inside one crosses its marker off for
 everyone (config "Cross Off Structures When Searched"), and you can always cross one off by hand

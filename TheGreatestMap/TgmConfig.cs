@@ -37,6 +37,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<string> CatalogOrdered;
         internal static ConfigEntry<string> CatalogIconsFixed;
         internal static ConfigEntry<string> CatalogCutsMade;
+        internal static ConfigEntry<string> CatalogEntriesFixed;
         internal static ConfigEntry<string> IconSizes;
         internal static ConfigEntry<TypeOrder> TypeRowOrder;
         internal static ConfigEntry<bool> ShowCounts;
@@ -232,7 +233,73 @@ namespace TheGreatestMap
             // A swamp tree with guck sacks on it. The sacks are recorded as guck, which is what
             // anybody goes there for, and there are 700 of these trees in a world.
             new[] { "InfestedTree", "Structures" },
+            // The swamp, which is marked by what is worth going to rather than by its buildings:
+            // crypts are dungeons, the bone and body piles in the graveyards are spawners, the
+            // bog witch is a trader. Grave1 is the graveyard, FireHole the surtling geyser and
+            // ShipWreck the wrecks; none of the three was ever listed, so they were recorded by
+            // the unlisted sweep and only the exclusion stops them.
+            new[] { "SwampHut", "Structures" },
+            new[] { "SwampRuin", "Structures" },
+            new[] { "SwampWell", "Structures" },
+            new[] { "Grave1", "Structures" },
+            new[] { "FireHole", "Structures" },
+            new[] { "ShipWreck", "Structures" },
+            // Stones laid out in the shape of a ship. There is nothing in it and nothing to do
+            // with it.
+            new[] { "ShipSetting", "Structures" },
         };
+
+        /// <summary>
+        /// Entries this mod shipped and then corrected: the kind's line, what it used to say word
+        /// for word, and what it says now. Only a line that still says the old thing exactly is
+        /// changed, so a name you have written yourself is yours.
+        /// </summary>
+        private static readonly string[][] ShippedEntries =
+        {
+            // The names the game itself uses, which are what a player reading the map would call
+            // them. "Draugr Pile" and "Charred Spawner" were this mod's own inventions.
+            new[] { "Spawners", "Spawner_GreydwarfNest=Greydwarf Nest|TrophyGreydwarfBrute",
+                                "Spawner_GreydwarfNest=Greydwarf nest|TrophyGreydwarfBrute" },
+            new[] { "Spawners", "Spawner_DraugrPile=Draugr Pile|TrophyDraugr",
+                                "Spawner_DraugrPile=Body pile|TrophyDraugr" },
+            // And a prefix with it, so the swamp's own bone pile prefab is caught at last.
+            new[] { "Spawners", "BonePileSpawner=Evil Bone Pile|BoneFragments",
+                                "BonePileSpawner*=Evil bone pile|BoneFragments" },
+            new[] { "Spawners", "CharredStone_Spawner*=Charred Spawner|TrophyCharredMelee",
+                                "CharredStone_Spawner=Monument of Torment|TrophyCharredMelee" },
+        };
+
+        private static void FixShippedEntriesOnce()
+        {
+            if (CatalogEntriesFixed == null) return;
+            string done = CatalogEntriesFixed.Value ?? "";
+            var made = new List<string>();
+            foreach (var fix in ShippedEntries)
+            {
+                string id = fix[2];
+                if (Listed(done, id)) continue;
+                made.Add(id);
+                foreach (var kv in CategoryPrefabs)
+                {
+                    if (!string.Equals(Categories.Label(kv.Key), fix[0], StringComparison.Ordinal)) continue;
+                    string now = Catalog.Swap(kv.Value.Value, fix[1], fix[2]);
+                    if (!string.Equals(kv.Value.Value, now, StringComparison.Ordinal))
+                    {
+                        kv.Value.Value = now;
+                        TheGreatestMapMod.Log.LogInfo(
+                            $"[TheGreatestMap] Your {fix[0]} catalog said \"{fix[1]}\", which is what this mod used " +
+                            $"to ship; it is \"{fix[2]}\" now. Change it to anything you like and it stays changed.");
+                    }
+                    break;
+                }
+            }
+            if (made.Count == 0) return;
+            // Separated by commas, which a catalog entry can never contain -- commas are what
+            // separates the entries themselves. A bar would have been wrong: every entry with an
+            // icon has one.
+            foreach (var id in made) done = done.Length == 0 ? id : done + "," + id;
+            CatalogEntriesFixed.Value = done;
+        }
 
         private static void CutShippedLinesOnce()
         {
@@ -556,6 +623,11 @@ namespace TheGreatestMap
                 "somebody has judged by eye; nothing measures it. Empty the line to draw them all as the game does.");
             IconSizes.SettingChanged += (_, __) => ClientPins.Restyle();
 
+            CatalogEntriesFixed = mod.BindLocal("Internal", "Catalog Entries Fixed", "",
+                "Which of the catalog entries this mod has changed its mind about have already been corrected in your " +
+                "own lines, so each is corrected once. An entry is only changed where your line still says word for " +
+                "word what the mod shipped; rename one yourself and it stays renamed.");
+
             CatalogCutsMade = mod.BindLocal("Internal", "Catalog Cuts Made", "",
                 "Which of the types this mod has decided should never be recorded have already been taken out of your " +
                 "Catalog lines, so each is taken out once. A type the mod shipped and then thought better of is only " +
@@ -835,11 +907,15 @@ namespace TheGreatestMap
             StructuresIncludeUnlisted = mod.BindLocal("Catalog", "Structures Include Unlisted", true,
                 "Treat any outdoor location that is not listed under another kind as a structure (the location's prefab name, " +
                 "tidied up, becomes the marker text). Turn off to record only the listed structure prefixes.");
-            StructuresExcludePrefixes = mod.BindLocal("Catalog", "Structures Exclude Prefixes", "Vegvisir_,Runestone_,Meteorite,TarPit,Rock,Hugin,StartTemple,Pickable,Vegetation,Tree,Bush,MountainGrave,MountainWell,InfestedTree",
+            StructuresExcludePrefixes = mod.BindLocal("Catalog", "Structures Exclude Prefixes", "Vegvisir_,Runestone_,Meteorite,TarPit,Rock,Hugin,StartTemple,Pickable,Vegetation,Tree,Bush,MountainGrave,MountainWell," +
+                "InfestedTree,SwampHut,SwampRuin,SwampWell,Grave1,FireHole,ShipWreck,ShipSetting",
                 "Comma-separated prefab name prefixes never swept in as structures. This is about the places the " +
                 "catalog does not name: a location listed under Structures above is recorded because it is listed, " +
                 "whatever this says, so leaving one out means taking its line out as well.");
             CutShippedLinesOnce();
+            // After the icon corrections above, not before: an entry correction matches the whole
+            // entry, icon and all, so it has to see the icon the correction leaves behind.
+            FixShippedEntriesOnce();
             FoldDuplicates = mod.BindSynced("Recording", "Fold Markers Standing On One Another", true,
                 "After markers arrive from somebody else, fold any that stand on one another into one. Recording " +
                 "already refuses to write a marker where one of the same icon is in the way, but it can only check " +
