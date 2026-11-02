@@ -61,6 +61,30 @@
   Portal -- and `Vanilla Pin Names` in the Display section is where you write down what yours are
   for (`Icon2=Places,Icon3=Resources`). Anything left out keeps its shipped name.
 
+- **The "done" button on a row of deposits or plants is that row's own.** It was one switch for
+  every used-up deposit and plant in the game, behind a button on each of a dozen rows -- so
+  pressing "1 gone" on the copper row put back the raspberry bushes you had picked, the mushrooms
+  you had gathered and the tin you had mined along with the copper. The button looked like the
+  copper row's and was the map's. Each row now covers the types it lists and nothing else: a type
+  row is that one type, a kind row is its types, a plant half is the types under it, a heading is
+  its kinds, and the row at the foot is still the lot.
+
+  `Show Cleared Deposits` stays the blanket switch -- off hides every one of them whatever else is
+  set -- and the per-type list lives beside it as `Hidden Cleared Types`, written the way
+  `Hidden Icons` is. Turning one type back on while the blanket is off brings the blanket off and
+  puts everything else on that list, which is the hand-over this mod already makes when a type is
+  turned on inside a kind that is switched off: the alternative is a button that is lit, pressed,
+  and does nothing.
+
+  A marker's own right-click menu offers the same thing the same way round: **Hide used-up copper
+  ore** first, then **Hide all cleared deposits**, as a searched place has offered its type and
+  then its kind all along.
+
+- **The button says "12 done" on every row, where a deposit used to say "12 gone".** The thing
+  being used up rather than finished with is a real distinction and it is not the button's
+  business: going down a column of them, one word for one action reads, and the tooltip still says
+  which of the two this row is.
+
 - **A lit button no longer brings the rest of its row out with it.** The small buttons at the end
   of a row wait for the pointer, and a button that is doing something shows anyway -- an armed
   kind, a filtered one, a row keeping its crossed-off markers off the map -- because a row quietly

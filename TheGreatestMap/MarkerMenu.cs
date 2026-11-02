@@ -923,6 +923,17 @@ namespace TheGreatestMap
             // so the switch that covers it is offered right here.
             if (isChecked && CrossedOff.IsCleared(pin))
             {
+                // This type first and the lot of them after, the way a searched place offers its
+                // own type and then its kind: a player who has worked out the copper here is
+                // usually done with copper, not with every berry bush on the map.
+                string cleared = ClientPins.IconOf(pin);
+                string what = Focus.TypeLabel(pin).ToLowerInvariant();
+                items.Add(Item($"Hide used-up {what}", () =>
+                {
+                    CrossedOff.SetClearedDrawn(new[] { cleared }, false);
+                    ClientPins.Restyle();
+                    Note($"Hiding used-up {what} (Display > Hidden Cleared Types).");
+                }));
                 items.Add(Item("Hide all cleared deposits", () =>
                 {
                     TgmConfig.ShowClearedDeposits.Value = false;

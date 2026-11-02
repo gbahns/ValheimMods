@@ -61,6 +61,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> ShowAllMarkers;
         internal static ConfigEntry<int> CrossedOffFade;
         internal static ConfigEntry<bool> ShowClearedDeposits;
+        internal static ConfigEntry<string> HiddenCleared;
         internal static ConfigEntry<string> HiddenSearched;
         internal static ConfigEntry<float> RevealNewMarkers;
         internal static ConfigEntry<string> PortalColor;
@@ -190,6 +191,7 @@ namespace TheGreatestMap
             if (ShowClearedDeposits != null && !ShowClearedDeposits.Value) return true;
             if (Focus.On) return true;
             if (CrossedOff.HiddenGroupCount() > 0) return true;
+            if (CrossedOff.HiddenClearedCount() > 0) return true;
             // Markers hidden one at a time count too. They did not, and the question this answers
             // is asked to decide whether to offer a way back -- so a player who had hidden five
             // markers by hand and nothing else was told nothing was hidden and offered nothing.
@@ -514,9 +516,18 @@ namespace TheGreatestMap
 
             ShowClearedDeposits = mod.BindLocal("Display", "Show Cleared Deposits", true,
                 "Keep drawing berry bushes, mushrooms, herbs and ore deposits after they have been used up, crossed " +
-                "off, so you can see which ground has already been worked. Off hides them once cleared. The record is " +
-                "kept either way, and this does not touch places you have searched, which Hidden Searched Places covers.");
+                "off, so you can see which ground has already been worked. Off hides every one of them whatever " +
+                "Hidden Cleared Types says, that being the blanket switch for the lot; on, each type is drawn unless " +
+                "that setting names it. The record is kept either way, and this does not touch places you have " +
+                "searched, which Hidden Searched Places covers.");
             ShowClearedDeposits.SettingChanged += (_, __) => ClientPins.Restyle();
+            HiddenCleared = mod.BindLocal("Display", "Hidden Cleared Types", "",
+                "Comma-separated types of deposit and plant whose markers are not drawn once used up, as item prefab " +
+                "names or icon keys, e.g. Copper,Dandelion -- the same spelling the Catalog lines use. One type at a " +
+                "time, which is what the \"done\" button on a row in the marker list writes: crossing off your copper " +
+                "has nothing to do with whether you still want to see which raspberry bushes you have picked. Show " +
+                "Cleared Deposits above is the blanket switch, and while it is off this one has nothing left to say.");
+            HiddenCleared.SettingChanged += (_, __) => { CrossedOff.ForgetCleared(); ClientPins.Restyle(); };
             HiddenSearched = mod.BindLocal("Display", "Hidden Searched Places", "",
                 "Comma-separated kinds of place whose markers are not drawn once crossed off. Dungeons go by type " +
                 "(Burial Chambers, Sunken Crypts, Frost Caves, Troll Caves, Infested Mines, Bear Caves, Other Dungeons, " +

@@ -49,6 +49,7 @@ namespace TheGreatestMap
 
         private static readonly Dictionary<Category, Types> _types = new Dictionary<Category, Types>();
         private static HashSet<string> _hidden;
+        private static HashSet<string> _cleared;
 
         /// <summary>Forget everything derived from the catalog, after it changes.</summary>
         internal static void Forget()
@@ -58,6 +59,9 @@ namespace TheGreatestMap
 
         /// <summary>Forget the parsed hidden list, after the setting changes.</summary>
         internal static void ForgetHidden() => _hidden = null;
+
+        /// <summary>Forget the parsed list of used-up types, after the setting changes.</summary>
+        internal static void ForgetCleared() => _cleared = null;
 
         /// <summary>A crossed-off marker that means the thing is gone: a used-up deposit or plant.</summary>
         internal static bool IsCleared(SharedPin pin)
@@ -99,8 +103,124 @@ namespace TheGreatestMap
         internal static bool IsHidden(SharedPin pin)
         {
             if (!pin.Checked) return false;
-            if (IsCleared(pin)) return TgmConfig.ShowClearedDeposits != null && !TgmConfig.ShowClearedDeposits.Value;
+            if (IsCleared(pin)) return !ClearedDrawn(ClientPins.IconOf(pin));
             return IsGroupHidden(GroupOf(pin));
+        }
+
+        // ── used up, one type at a time ──────────────────────────────────────────
+        //
+        // A used-up deposit has no group: the thing is gone, and what is left to say about it is
+        // which type it was. So these are hidden by their icon, the same way a type is hidden
+        // anywhere else in this mod, with Show Cleared Deposits over the top of them as the
+        // blanket switch it has always been.
+        //
+        // One switch for every one of them was the whole of it until 4.7.0, and the button on
+        // each row was a lie: pressing "1 done" on the copper row put the picked raspberries back
+        // on the map along with the worked copper, because there was only ever one switch behind
+        // all of those buttons.
+
+        /// <summary>Is a used-up marker of this type still drawn?</summary>
+        internal static bool ClearedDrawn(string icon)
+        {
+            if (TgmConfig.ShowClearedDeposits != null && !TgmConfig.ShowClearedDeposits.Value) return false;
+            string key = IconRegistry.Normalize(icon);
+            return key == null || !Cleared().Contains(key);
+        }
+
+        /// <summary>Is anything used up of any of these types still drawn?</summary>
+        internal static bool AnyClearedDrawn(IEnumerable<string> icons)
+        {
+            if (icons == null) return false;
+            foreach (var icon in icons) if (ClearedDrawn(icon)) return true;
+            return false;
+        }
+
+        internal static int HiddenClearedCount() => Cleared().Count;
+
+        /// <summary>
+        /// Show or hide the used-up markers of these types.
+        ///
+        /// <para>Turning one on while the blanket switch is off is the player asking for that type
+        /// and not for the rest, so the blanket comes off and everything else goes on this list --
+        /// the same hand-over the marker list makes when a type is turned on inside a kind that is
+        /// switched off. Without it the button would do nothing at all, which is how it was found:
+        /// every "done" button on the list was lit, one was pressed, and the only thing that
+        /// happened was that all the others went out.</para>
+        /// </summary>
+        internal static void SetClearedDrawn(IEnumerable<string> icons, bool draw)
+        {
+            if (icons == null) return;
+            var set = new HashSet<string>(Cleared(), StringComparer.OrdinalIgnoreCase);
+            bool blanket = TgmConfig.ShowClearedDeposits != null && !TgmConfig.ShowClearedDeposits.Value;
+            if (!draw)
+            {
+                foreach (var icon in icons)
+                {
+                    string key = IconRegistry.Normalize(icon);
+                    if (key != null) set.Add(key);
+                }
+                SaveCleared(set);
+                return;
+            }
+            if (blanket) set = new HashSet<string>(ClearedIcons(), StringComparer.OrdinalIgnoreCase);
+            foreach (var icon in icons)
+            {
+                string key = IconRegistry.Normalize(icon);
+                if (key != null) set.Remove(key);
+            }
+            // The list before the blanket: both of these redraw the map as they are written, and
+            // lifting the blanket first would put every used-up marker in the world back for a
+            // frame.
+            SaveCleared(set);
+            if (blanket) TgmConfig.ShowClearedDeposits.Value = true;
+        }
+
+        /// <summary>Every type the catalog knows whose crossed-off markers mean the thing is gone.</summary>
+        internal static List<string> ClearedIcons()
+        {
+            var list = new List<string>();
+            foreach (var cat in Categories.All) if (Categories.IsResource(cat)) Icons(cat, list);
+            return list;
+        }
+
+        /// <summary>The same, for one kind of them.</summary>
+        internal static List<string> ClearedIconsOf(Category cat)
+        {
+            var list = new List<string>();
+            if (Categories.IsResource(cat)) Icons(cat, list);
+            return list;
+        }
+
+        private static void Icons(Category cat, List<string> into)
+        {
+            foreach (var kv in Catalog.TypesOf(cat))
+            {
+                string key = IconRegistry.Normalize(kv.Key);
+                if (key != null) into.Add(key);
+            }
+        }
+
+        private static HashSet<string> Cleared()
+        {
+            if (_cleared != null) return _cleared;
+            var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var raw in ((TgmConfig.HiddenCleared != null ? TgmConfig.HiddenCleared.Value : null) ?? "").Split(','))
+            {
+                string key = IconRegistry.Normalize(raw);
+                if (key != null) set.Add(key);
+            }
+            _cleared = set;
+            return set;
+        }
+
+        private static void SaveCleared(HashSet<string> set)
+        {
+            if (TgmConfig.HiddenCleared == null) return;
+            var list = new List<string>(set);
+            list.Sort(StringComparer.OrdinalIgnoreCase);
+            string line = string.Join(",", list.ToArray());
+            if (!string.Equals(line, TgmConfig.HiddenCleared.Value, StringComparison.Ordinal))
+                TgmConfig.HiddenCleared.Value = line;
         }
 
         internal static bool IsGroupHidden(string group)
@@ -151,7 +271,7 @@ namespace TheGreatestMap
         /// </summary>
         internal static bool AnyShown()
         {
-            if (TgmConfig.ShowClearedDeposits == null || TgmConfig.ShowClearedDeposits.Value) return true;
+            if (AnyClearedDrawn(ClearedIcons())) return true;
             foreach (var cat in Categories.All)
             {
                 if (Categories.IsResource(cat)) continue;
@@ -177,12 +297,18 @@ namespace TheGreatestMap
             set.Add(Placed);
             set.Add(Unsorted);
             Save(set);
+            // The blanket covers every type at once, so the per-type list has nothing left to say
+            // and is cleared rather than left to disagree with it later.
+            if (TgmConfig.HiddenCleared != null && !string.IsNullOrEmpty(TgmConfig.HiddenCleared.Value))
+                TgmConfig.HiddenCleared.Value = "";
             if (TgmConfig.ShowClearedDeposits != null) TgmConfig.ShowClearedDeposits.Value = false;
         }
 
         internal static void ShowAll()
         {
             if (TgmConfig.ShowClearedDeposits != null && !TgmConfig.ShowClearedDeposits.Value) TgmConfig.ShowClearedDeposits.Value = true;
+            if (TgmConfig.HiddenCleared != null && !string.IsNullOrEmpty(TgmConfig.HiddenCleared.Value))
+                TgmConfig.HiddenCleared.Value = "";
             if (TgmConfig.HiddenSearched != null && !string.IsNullOrEmpty(TgmConfig.HiddenSearched.Value)) TgmConfig.HiddenSearched.Value = "";
         }
 

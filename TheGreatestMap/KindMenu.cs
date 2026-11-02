@@ -915,14 +915,11 @@ namespace TheGreatestMap
                 caption: () => PlantHeading(h),
                 doneCount: () => DonePlants(h),
                 // Every plant is a supply rather than a place, so crossing one off means it is
-                // gone, and the deposits all share the one switch for that -- the same one the
-                // kinds these stand in for were reading.
-                doneShown: () => TgmConfig.ShowClearedDeposits == null || TgmConfig.ShowClearedDeposits.Value,
-                doneToggle: () =>
-                {
-                    if (TgmConfig.ShowClearedDeposits != null)
-                        TgmConfig.ShowClearedDeposits.Value = !TgmConfig.ShowClearedDeposits.Value;
-                },
+                // gone -- and a half is the types it lists, so its switch is theirs and nobody
+                // else's. It used to be the one switch every deposit in the game shared, which
+                // made picking the raspberries put the worked copper back on the map.
+                doneShown: () => ClearedShown(PlantTypes(h)),
+                doneToggle: () => CrossedOff.SetClearedDrawn(PlantIcons(h), !CrossedOff.AnyClearedDrawn(PlantIcons(h))),
                 gone: true,
                 tip: Categories.HarvestTip(h));
             y -= RowHeight;
@@ -935,6 +932,14 @@ namespace TheGreatestMap
                 y -= RowHeight;
             }
             return y;
+        }
+
+        /// <summary>The icons of the types in one half: what its own switches are about.</summary>
+        private static List<string> PlantIcons(Harvest half)
+        {
+            var icons = new List<string>();
+            foreach (var type in PlantTypes(half)) icons.Add(type.Icon);
+            return icons;
         }
 
         /// <summary>The types in one half, in the order their rows are read in.</summary>
@@ -1441,14 +1446,52 @@ namespace TheGreatestMap
         /// <summary>
         /// Are this kind's crossed-off markers drawn? A used-up deposit and a searched place are
         /// different ideas in the model underneath -- one thing is gone, the other is merely done
-        /// with -- and the deposits share a single switch, which the tooltip says.
+        /// with -- but each is this kind's own either way, which it was not until 4.7.0: every
+        /// deposit and plant in the game shared one switch, so the button on the copper row put
+        /// the picked raspberries back with the worked copper.
         /// </summary>
         private static bool DoneShown(Category kind)
         {
-            if (Categories.IsResource(kind))
-                return TgmConfig.ShowClearedDeposits == null || TgmConfig.ShowClearedDeposits.Value;
+            if (Categories.IsResource(kind)) return ClearedShown(TypesOf(kind));
             if (CrossedOff.Splits(kind)) return AnyShown(kind);
             return !CrossedOff.IsGroupHidden(Categories.Label(kind));
+        }
+
+        private static List<Focus.TypeCount> TypesOf(Category kind)
+        {
+            return _types != null && _types.TryGetValue(kind, out var types) ? types : Empty;
+        }
+
+        /// <summary>
+        /// Are any of these types' used-up markers still drawn?
+        ///
+        /// <para>Only the types that have one crossed off are asked. A type the catalog knows and
+        /// this map has none of counts as drawn, there being nothing of it to hide, and asking
+        /// about it would leave a button dark over markers it had hidden -- the same reason the
+        /// heading's switch asks only the kinds that have something crossed off.</para>
+        /// </summary>
+        private static bool ClearedShown(IEnumerable<Focus.TypeCount> types)
+        {
+            if (types == null) return false;
+            foreach (var type in types)
+            {
+                _doneByIcon.TryGetValue(type.Icon, out int n);
+                if (n > 0 && CrossedOff.ClearedDrawn(type.Icon)) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// The types a kind's used-up markers can be, as icons: what the catalog lists for it, and
+        /// whatever its markers are actually wearing on this map. Both, because a marker can carry
+        /// an icon of somebody's own choosing and a type can be in the catalog without one of it
+        /// having been found yet -- and a switch for "all of these" has to mean all of them.
+        /// </summary>
+        private static List<string> ClearedIcons(Category kind)
+        {
+            var icons = CrossedOff.ClearedIconsOf(kind);
+            foreach (var type in TypesOf(kind)) icons.Add(type.Icon);
+            return icons;
         }
 
         private static void ToggleDone(Category kind) => SetKindDone(kind, !DoneShown(kind));
@@ -1457,7 +1500,7 @@ namespace TheGreatestMap
         {
             if (Categories.IsResource(kind))
             {
-                if (TgmConfig.ShowClearedDeposits != null) TgmConfig.ShowClearedDeposits.Value = show;
+                CrossedOff.SetClearedDrawn(ClearedIcons(kind), show);
                 return;
             }
             if (CrossedOff.Splits(kind)) { CrossedOff.SetTypesHidden(kind, !show); return; }
@@ -1657,9 +1700,13 @@ namespace TheGreatestMap
                                              Action toggle, bool gone, float right = 6f)
         {
             if (count() == 0) return null;
-            string Word() => $"{count()} {(gone ? "gone" : "done")}";
+            // "Done" on every one of them. It said "gone" on a deposit, the thing being used up
+            // rather than finished with, and the distinction is real but it is not the button's
+            // business: a reader going down a column wants one word for one action, and the tip
+            // and the topic still say which of the two it is.
+            string Word() => $"{count()} done";
             string tip = gone
-                ? "Stop drawing the deposits and plants that have been used up. One switch covers every kind of them."
+                ? "Stop drawing the ones of these that have been used up, keeping the record of them"
                 : "Stop drawing the ones you have crossed off, keeping the record of them";
             if (row != null)
             {
@@ -2112,22 +2159,20 @@ namespace TheGreatestMap
                 // The crossed-off ones of this type alone -- a player done with their burial
                 // chambers who still wants the sunken crypts they have cleared. That was the one
                 // thing the right-hand column could do that the kind rows could not, and this is
-                // where it lands now it is gone: on the type it is about. A deposit has no type
-                // of its own in that model, so those share the one switch, which the tip says.
+                // where it lands now it is gone: on the type it is about. Used-up deposits and
+                // plants are hidden by icon rather than by group, having no group of their own,
+                // and that is the same thing asked a different way.
                 doneCount: () =>
                 {
                     _doneByIcon.TryGetValue(t.Icon, out int n);
                     return n;
                 },
-                doneShown: () => gone
-                    ? TgmConfig.ShowClearedDeposits == null || TgmConfig.ShowClearedDeposits.Value
-                    : !CrossedOff.IsGroupHidden(group),
+                doneShown: () => gone ? CrossedOff.ClearedDrawn(t.Icon) : !CrossedOff.IsGroupHidden(group),
                 doneToggle: () =>
                 {
                     if (gone)
                     {
-                        if (TgmConfig.ShowClearedDeposits != null)
-                            TgmConfig.ShowClearedDeposits.Value = !TgmConfig.ShowClearedDeposits.Value;
+                        CrossedOff.SetClearedDrawn(new[] { t.Icon }, !CrossedOff.ClearedDrawn(t.Icon));
                         return;
                     }
                     CrossedOff.SetGroupHidden(group, !CrossedOff.IsGroupHidden(group));
@@ -2199,6 +2244,7 @@ namespace TheGreatestMap
         {
             if (TgmConfig.HiddenKindCount() > 0 || TgmConfig.HiddenIconCount() > 0) return true;
             if (ViewPrefs.Count > 0 || CrossedOff.HiddenGroupCount() > 0) return true;
+            if (CrossedOff.HiddenClearedCount() > 0) return true;
             return TgmConfig.ShowClearedDeposits != null && !TgmConfig.ShowClearedDeposits.Value;
         }
 
@@ -2213,7 +2259,7 @@ namespace TheGreatestMap
             int kinds = TgmConfig.HiddenKindCount();
             int icons = TgmConfig.HiddenIconCount();
             int single = ViewPrefs.Count;
-            int groups = CrossedOff.HiddenGroupCount();
+            int groups = CrossedOff.HiddenGroupCount() + CrossedOff.HiddenClearedCount();
             if (kinds > 0) parts.Add(kinds == 1 ? "1 kind" : kinds + " kinds");
             if (icons > 0) parts.Add(icons == 1 ? "1 type" : icons + " types");
             if (single > 0) parts.Add(single == 1 ? "1 marker" : single + " markers");

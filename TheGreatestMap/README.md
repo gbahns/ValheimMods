@@ -144,10 +144,10 @@ bring its neighbors out with it, or hiding everything crossed off would fill the
 buttons.
 
 "12 done" at the end of a row hides the twelve markers of that kind you have crossed off, and
-lights up while they are hidden; on a deposit or a plant it reads "12 gone", since the thing
-itself is used up, and those share one switch across every kind. A type row carries its own count,
-so the burial chambers you are finished with can go while the sunken crypts you have cleared stay.
-One row at the foot does the lot at once.
+lights up while they are hidden. A type row carries its own count, so the burial chambers you are
+finished with can go while the sunken crypts you have cleared stay, and the copper you have worked
+out can go while the raspberry bushes you have picked stay. One row at the foot does the lot at
+once.
 
 "Hide all" at the right of the title strip, next to the stick pin, is the master switch: check it
 and everything you have put on the map comes off at once -- this mod's markers, the pins you
@@ -246,9 +246,11 @@ drawn is decided on the rows they already have in the marker button's list -- th
 at the end of a kind's row, or of one of its type rows, plus the one row at the foot that covers
 every kind at once. Underneath, two different ideas:
 
-- **Cleared deposits**: every used-up deposit and plant, as one switch ("Show Cleared Deposits").
-  Their rows read "12 gone" rather than "12 done", because the thing itself is no longer there,
-  and pressing any of them works the one switch they all share.
+- **Cleared deposits**, by type: the copper you have worked out, the raspberry bushes you have
+  picked. The thing itself is gone rather than merely done with, so there is no group for one of
+  these to belong to and they are hidden by their icon, in "Hidden Cleared Types". "Show Cleared
+  Deposits" is the blanket switch over all of them; turning one type back on while it is off lifts
+  the blanket and leaves the rest hidden.
 - **Searched places**, by type: Structures on their own, then dungeons by type (Burial Chambers,
   Sunken Crypts, Frost Caves, Troll Caves, Infested Mines, Bear Caves, Other Dungeons), then any
   other kind you have crossed off, and your own placed markers. The button on the Dungeons row
