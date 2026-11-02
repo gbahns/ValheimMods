@@ -18,6 +18,15 @@
   stalls the client is worse than no preview, and the candidates arrive nearest-first anyway, so
   what is drawn is what you can go and look at.
 
+- **`tgm_items` searches every picture the game has, not only its items.** It was built for
+  "what does this thing give me", which is not the question you ask when choosing an icon: a
+  sunken crypt gives iron scrap, a muddy scrap pile gives iron scrap, and neither of them is iron
+  scrap. So it now looks in all four places a picture can come from -- items, build pieces (whose
+  build-menu picture is a render of the piece itself), the map's pictures for the locations it
+  marks, and the map's own pin sprites -- and prints each as the icon key that would use it. A
+  word that matches nothing says so plainly, because "the game has never drawn this" is the answer
+  that sends you to a `drawn:` icon instead of to a borrowed one.
+
 - **`tgm_spawners`, which answers "is the catalog missing one?" from the game rather than from a
   list somebody wrote.** A spawner that stands in the world carries a `SpawnArea` -- the component
   that sends creatures out at whoever walks near -- so asking every prefab whether it has one is

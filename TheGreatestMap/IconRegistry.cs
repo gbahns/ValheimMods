@@ -353,6 +353,84 @@ namespace TheGreatestMap
             return found;
         }
 
+        /// <summary>
+        /// Every picture the game has whose name contains a word, in all four places a picture
+        /// can come from, each written as the icon key that would use it.
+        ///
+        /// <para>Items were the whole of this, which answered the question "what does this thing
+        /// give me" and not the question actually being asked, which is "has the game drawn this
+        /// thing". A sunken crypt gives iron scrap and a muddy scrap pile gives iron scrap, and
+        /// neither of them is iron scrap -- so the other three places are worth asking: a build
+        /// piece carries a rendered picture of itself, the map carries a picture for each of the
+        /// locations it marks, and it carries its own pin sprites. A search over all four is how
+        /// you find out that the game has no picture of a thing, which is the answer that sends
+        /// you to drawn: instead.</para>
+        /// </summary>
+        internal static List<string> PicturesLike(string contains)
+        {
+            var found = ItemsLike(contains);
+            if (string.IsNullOrEmpty(contains)) return found;
+
+            // Build pieces: the build menu's own picture of the piece, which is a render of the
+            // thing itself rather than of what it gives.
+            try
+            {
+                var scene = ZNetScene.instance;
+                if (scene != null && scene.m_prefabs != null)
+                {
+                    var pieces = new List<string>();
+                    foreach (var prefab in scene.m_prefabs)
+                    {
+                        if (prefab == null) continue;
+                        string name = Utils.GetPrefabName(prefab);
+                        if (name == null || name.IndexOf(contains, StringComparison.OrdinalIgnoreCase) < 0) continue;
+                        var piece = prefab.GetComponent<Piece>();
+                        if (piece == null || piece.m_icon == null) continue;
+                        pieces.Add("piece:" + name);
+                    }
+                    pieces.Sort(StringComparer.OrdinalIgnoreCase);
+                    found.AddRange(pieces);
+                }
+            }
+            catch (Exception) { }
+
+            var map = Minimap.instance;
+            if (map == null) return found;
+
+            // The pictures the map keeps for the world's own landmarks, by location name.
+            try
+            {
+                var spots = new List<string>();
+                foreach (var data in map.m_locationIcons)
+                {
+                    if (data.m_icon == null || data.m_name == null) continue;
+                    if (data.m_name.IndexOf(contains, StringComparison.OrdinalIgnoreCase) < 0) continue;
+                    spots.Add("loc:" + data.m_name);
+                }
+                spots.Sort(StringComparer.OrdinalIgnoreCase);
+                found.AddRange(spots);
+            }
+            catch (Exception) { }
+
+            // And the map's own pin sprites, which are named for what they are rather than for
+            // what they show: Icon3 is the plain dot.
+            try
+            {
+                var pins = new List<string>();
+                foreach (var data in map.m_icons)
+                {
+                    if (data.m_icon == null) continue;
+                    string name = data.m_name.ToString();
+                    if (name.IndexOf(contains, StringComparison.OrdinalIgnoreCase) < 0) continue;
+                    pins.Add("pin:" + name);
+                }
+                pins.Sort(StringComparer.OrdinalIgnoreCase);
+                found.AddRange(pins);
+            }
+            catch (Exception) { }
+            return found;
+        }
+
         internal static void ForgetPicks() => _likeCache.Clear();
 
         internal static string ItemKey(GameObject itemPrefab)

@@ -377,13 +377,19 @@ namespace TheGreatestMap
                     }
                 }));
 
-            new Terminal.ConsoleCommand("tgm_items", "List the game's items whose name contains a word, for choosing a marker icon: tgm_items bear",
+            new Terminal.ConsoleCommand("tgm_items", "List every picture the game has whose name contains a word, for choosing a marker icon -- items, build pieces, the map's location pictures and its own pin sprites: tgm_items bear",
                 (Terminal.ConsoleEvent)(args =>
                 {
                     if (args.Args.Length < 2) { args.Context.AddString("Usage: tgm_items <word>"); return; }
-                    var found = IconRegistry.ItemsLike(args.Args[1]);
-                    if (found.Count == 0) { args.Context.AddString($"No item name contains '{args.Args[1]}'."); return; }
-                    args.Context.AddString($"{found.Count} item(s) matching '{args.Args[1]}':");
+                    var found = IconRegistry.PicturesLike(args.Args[1]);
+                    if (found.Count == 0)
+                    {
+                        args.Context.AddString($"The game has no picture named anything with '{args.Args[1]}' in it: " +
+                                               "no item, no build piece, no location picture and no pin sprite. A kind " +
+                                               "the game has not drawn is what drawn: icons are for.");
+                        return;
+                    }
+                    args.Context.AddString($"{found.Count} picture(s) matching '{args.Args[1]}' (a bare name is an item):");
                     foreach (var name in found) args.Context.AddString("  " + name);
                 }));
 
