@@ -354,6 +354,23 @@ namespace TheGreatestMap
 
         internal static Color ParseColor(string text, Color fallback) => Parse(text, fallback);
 
+        /// <summary>
+        /// The color portal markers are drawn in, for something that wants to match them -- the
+        /// row in the marker list, whose picture is the one thing in that list that is not gold.
+        /// The steady color rather than the pulse: a row that breathed would pull the eye away
+        /// from the names, which is the opposite of what the list is for.
+        /// </summary>
+        internal static Color MarkerColor()
+        {
+            string text = TgmConfig.PortalColor != null ? TgmConfig.PortalColor.Value : null;
+            if (text != _colorText)
+            {
+                _colorText = text;
+                _parsedColor = Parse(text, new Color(1f, 0.4f, 0f, 1f));
+            }
+            return _parsedColor;
+        }
+
         private static Color Parse(string text, Color fallback)
         {
             if (string.IsNullOrEmpty(text)) return fallback;

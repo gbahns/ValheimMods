@@ -54,8 +54,20 @@ namespace TheGreatestMap
     {
         /// <summary>Things you go and harvest, which run out: berries, mushrooms, herbs, seeds, plants, ore.</summary>
         Resources,
-        /// <summary>Things you go to, which stay where they are: dungeons, camps, altars, ruins, runestones, traders, spawners.</summary>
+        /// <summary>
+        /// The world's own landmarks, which the game marks for you as you find them: the boss
+        /// altars, the traders, Hildir's quests, the center of the world. A handful of them in a
+        /// whole world, each one somewhere you will go back to for a reason, and every one of them
+        /// drawn whether this mod is here or not.
+        /// </summary>
         Places,
+        /// <summary>
+        /// What you found: dungeons, camps, ruins, runestones, spawners. Places too, and they stay
+        /// where they are, but there are hundreds of them and nothing marks one until you walk
+        /// past it -- which is a different thing to read than the four landmarks the world is hung
+        /// on, and was the reason one heading held both and answered neither.
+        /// </summary>
+        Points,
         /// <summary>What you noted by hand, about nothing the catalog will ever know.</summary>
         Yours,
         /// <summary>
@@ -133,8 +145,15 @@ namespace TheGreatestMap
                 // which is the thing this heading is about. None of them is a discovery.
                 case Category.Campfire:
                 case Category.Workbench: return Group.Dynamic;
-                // Dungeons, camps, boss altars, structures, runestones, traders, spawners.
-                default:                 return Group.Places;
+                // The two the game marks by itself the moment you find one, which is what makes
+                // them landmarks rather than discoveries: this mod records neither by default,
+                // because there is already a pin there.
+                case Category.Trader:
+                case Category.BossAltar: return Group.Places;
+                // Dungeons, camps, structures, runestones, spawners -- and anything nobody has
+                // sorted yet, which is the honest default: a kind this switch has not heard of is
+                // something you came across rather than something the world is hung on.
+                default:                 return Group.Points;
             }
         }
 
@@ -144,6 +163,7 @@ namespace TheGreatestMap
             {
                 case Group.Resources: return "Resources";
                 case Group.Places:    return "Places";
+                case Group.Points:    return "Points of Interest";
                 case Group.Yours:     return "Your Stuff";
                 case Group.Dynamic:   return "Dynamic Markers";
                 default:              return g.ToString();
@@ -191,7 +211,13 @@ namespace TheGreatestMap
                 case Group.Resources:
                     return "What you go and harvest, and what runs out. Crossing one of these off means it is gone.";
                 case Group.Places:
-                    return "What you go to, and what stays where it is. Crossing one of these off means you are done with it.";
+                    return "The landmarks the world is hung on, which the game marks for you as you find them: the " +
+                           "boss altars, the traders, Hildir's quests, the center of the world. A handful in a whole " +
+                           "world, and each one somewhere you go back to for a reason.";
+                case Group.Points:
+                    return "The places you found: dungeons, camps, ruins, runestones, spawners. They stay where they " +
+                           "are, like the landmarks above, but there are hundreds of them and nothing marks one until " +
+                           "you walk past it. Crossing one off means you are done with it.";
                 case Group.Yours:
                     return "What you noted by hand, about something the catalog will never know: a serpent surfacing, " +
                            "a bay that fishes well, where the trolls walk.";

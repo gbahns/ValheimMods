@@ -101,11 +101,14 @@ every kind under that heading -- the fold between the corner button and a single
 It turns down while everything under it is open, and it opens the heading too if you had folded
 it.
 
-Every kind sits under one of four headings, each with a triangle of its own: **Resources** (what
-you harvest, and what runs out), **Places** (what you go to, and what stays put), **Your Stuff**
-(what you noted by hand, about something the catalog will never know) and **Dynamic Markers**
-(ships, carts, portals, other players, and the fires and benches a base is made of -- what is
-standing now rather than what was found). Pressing a heading hides every kind under it.
+Every kind sits under one of five headings, each with a triangle of its own: **Resources** (what
+you harvest, and what runs out), **Places** (the landmarks the game marks for you as you find
+them: the boss altars, the traders, the center of the world -- a handful in a whole world),
+**Points of Interest** (the places you found: dungeons, camps, ruins, runestones, spawners),
+**Your Stuff** (what you noted by hand, about something the catalog will never know) and
+**Dynamic Markers** (ships, carts, portals, other players, and the fires and benches a base is
+made of -- what is standing now rather than what was found). Pressing a heading hides every kind
+under it.
 
 Under Resources, two rows stand in place of the five plant kinds: **Farm** and **Gather**, each
 listing its types directly. They are named for what you do about them rather than for what they

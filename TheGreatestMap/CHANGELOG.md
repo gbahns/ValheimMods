@@ -109,6 +109,34 @@
   a view nobody wants, and one no second press can undo, since it cannot know which kinds had
   been open before. Four words can be refolded by eye; two hundred rows cannot.
 
+- **Places is two headings now: Places and Points of Interest.** One heading held the four
+  landmarks a world is hung on and the four hundred things you walk past, and answered neither
+  question. **Places** keeps the landmarks the game marks for you as you find them -- the boss
+  altars, the traders, the center of the world -- which is a handful in a whole world, each one
+  somewhere you go back to for a reason. **Points of Interest** takes what you found: dungeons,
+  camps, ruins, runestones, spawners. A kind nobody has sorted is a point of interest now, which
+  is the honest default: something you came across rather than something the world is hung on.
+
+  The row for the game's own boss pins is called **Bosses** rather than "Boss Pins". A
+  `Vanilla Pin Names` line saved from the one build that shipped the old name is read as the
+  default it was rather than as a name somebody chose.
+
+- **The live portals were being counted twice, and the Portal row under Your Stuff could hide
+  them.** A portal marker is drawn with vanilla's portal icon, which means vanilla's portal pin
+  type -- so every portal the server answered for was also counted as a pin the player had dropped
+  by hand, and the switch for those hand-placed pins took the live portals with it. The row for
+  what you placed yourself now counts only what you placed yourself, so it appears when you have
+  actually dropped a portal pin by hand and not before. The ships, the carts and the erased-marker
+  ghosts are drawn with pin types of this mod's own and were never caught by this; they are asked
+  about anyway, since that is a fact about today's icons rather than a rule anybody promised to
+  keep.
+
+- **The Portals row wears the portal color.** Portals are the one thing on the map not drawn in
+  gold, having a color of their own -- `Portal Marker Color`, orange as it ships -- and the row's
+  picture is drawn in it, read on every refresh so changing the color shows in both places at
+  once. A list whose pictures are the map's pictures can be read against the map without
+  translating.
+
 - **A pinged marker is drawn in front of the others.** The pulse is a swell in size, and on a
   crowded map five hundred markers are drawn over each other -- one of them behind its neighbors
   can grow and shrink underneath them without ever being seen doing it, which is a button that did

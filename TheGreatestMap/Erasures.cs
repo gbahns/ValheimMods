@@ -20,6 +20,9 @@ namespace TheGreatestMap
     internal static class Erasures
     {
         private static readonly List<Minimap.PinData> _drawn = new List<Minimap.PinData>();
+
+        /// <summary>The ghosts on the map now, so nothing else counts them as the player's own pins.</summary>
+        internal static IEnumerable<Minimap.PinData> DrawnPins => _drawn;
         private static bool _on;
 
         internal static bool On => _on;

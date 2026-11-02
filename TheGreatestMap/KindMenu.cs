@@ -87,6 +87,12 @@ namespace TheGreatestMap
             public bool Head;
             public TextMeshProUGUI Label;
             public Image Icon;
+            /// <summary>
+            /// What color this row's picture is drawn in, where that is not plain white. Read on
+            /// every refresh rather than written once, so changing the color in the settings
+            /// shows here as it does on the map.
+            /// </summary>
+            public Func<Color> Tint;
         }
 
         private static readonly List<Entry> _entries = new List<Entry>();
@@ -892,7 +898,13 @@ namespace TheGreatestMap
                     doneCount: () => DoneOf(k),
                     doneShown: () => DoneShown(k),
                     doneToggle: () => ToggleDone(k),
-                    gone: Categories.IsResource(k));
+                    gone: Categories.IsResource(k),
+                    // Portals are the one thing on the map not drawn in gold -- they are the
+                    // points you travel between and have a color of their own for it -- so the
+                    // row wears that color too. A list whose pictures are the map's pictures can
+                    // be read against the map without translating; one picture quietly in the
+                    // wrong color is a question nobody should have to ask.
+                    tint: k == Category.Portal ? (Func<Color>)Portals.MarkerColor : null);
                 y -= RowHeight;
                 y = Unfold(map, row, y, k);
             }
@@ -1604,6 +1616,7 @@ namespace TheGreatestMap
                                                Func<bool> onlyLit = null, Func<bool> pingLit = null,
                                                Func<bool> placeLit = null,
                                                Action onFold = null, Func<bool> foldOpen = null,
+                                               Func<Color> tint = null,
                                                Func<int> doneCount = null, Func<bool> doneShown = null,
                                                Action doneToggle = null, bool gone = false,
                                                bool head = false, bool icon = true, string tip = null)
@@ -1615,7 +1628,7 @@ namespace TheGreatestMap
                 Refresh();
             });
             Place(row, x, y, RowWidth, RowHeight);
-            var entry = new Entry { Shown = shown, Caption = caption, Head = head };
+            var entry = new Entry { Shown = shown, Caption = caption, Head = head, Tint = tint };
             MenuKit.Tip(row.gameObject, null, tip);
 
             // A heading has no picture, there being no one picture for "Places". Its name starts
@@ -2407,7 +2420,13 @@ namespace TheGreatestMap
                 if (entry.Caption != null) entry.Label.text = entry.Caption();
                 bool shown = entry.Shown == null || entry.Shown();
                 entry.Label.color = shown ? (entry.Head ? MenuKit.Header : MenuKit.Body) : MenuKit.Dim;
-                if (entry.Icon != null) entry.Icon.color = shown ? Color.white : new Color(1f, 1f, 1f, 0.3f);
+                if (entry.Icon != null)
+                {
+                    // The same dimming either way: a hidden row's picture goes faint, in whatever
+                    // color that picture is.
+                    var tint = entry.Tint != null ? entry.Tint() : Color.white;
+                    entry.Icon.color = shown ? tint : new Color(tint.r, tint.g, tint.b, 0.3f);
+                }
             }
             // The put-back row is drawn only while there is something to put back, and the press
             // that just happened may have been the one that changed that. A row coming or going is

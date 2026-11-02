@@ -59,6 +59,17 @@ namespace TheGreatestMap
         /// <summary>The names as the mod ships them, for the setting to start from.</summary>
         internal const string DefaultNames =
             "Icon0=Fire,Icon1=House,Icon2=Hammer,Icon3=Dot,Icon4=Portal," +
+            "Death=Death Marker,Bed=Bed,None=Landmarks,Boss=Bosses";
+
+        /// <summary>
+        /// The names as 4.7.0 first shipped them, which lived in one unreleased build. A setting
+        /// saved from that build holds the old string, and a saved string wins over the default --
+        /// so somebody who had the map open before this would go on reading "Boss Pins" forever
+        /// over a default that says Bosses. A line still exactly as it shipped was nobody's
+        /// choice, so it is read as the default it was rather than as a preference.
+        /// </summary>
+        private const string ShippedOnce =
+            "Icon0=Fire,Icon1=House,Icon2=Hammer,Icon3=Dot,Icon4=Portal," +
             "Death=Death Marker,Bed=Bed,None=Landmarks,Boss=Boss Pins";
 
         private static readonly Dictionary<Minimap.PinType, int> _counts =
@@ -81,10 +92,34 @@ namespace TheGreatestMap
             if (map == null) return;
             foreach (var pin in Access.Pins(map))
             {
-                if (pin == null || ClientPins.IsOurs(pin)) continue;
+                if (pin == null || Drew(pin)) continue;
                 _counts.TryGetValue(pin.m_type, out int n);
                 _counts[pin.m_type] = n + 1;
             }
+        }
+
+        /// <summary>
+        /// Did this mod draw this pin? Everything of ours is a vanilla pin underneath -- that is
+        /// how a marker is drawn at all -- so the only way to count the player's own pins is to
+        /// know ours when we see them.
+        ///
+        /// <para>The markers are the easy half and were the whole of it for a while, which was
+        /// wrong by one: the live portals are drawn with vanilla's portal icon, which means
+        /// vanilla's portal pin type, so every portal the server answered for was being counted
+        /// as a pin the player had dropped by hand. There was a Portal row under Your Stuff with
+        /// a dozen in it and a Portals row under Dynamic Markers with the same dozen, and the one
+        /// under Your Stuff could hide them. The ships, the carts and the erased-marker ghosts
+        /// are drawn with pin types of this mod's own, so they could never have landed here --
+        /// they are asked about anyway, because that is a fact about today's icons and not a rule
+        /// anybody promised to keep.</para>
+        /// </summary>
+        private static bool Drew(Minimap.PinData pin)
+        {
+            if (ClientPins.IsOurs(pin)) return true;
+            foreach (var portal in Portals.DrawnPins) if (portal == pin) return true;
+            foreach (var shown in Transports.DrawnPins) if (shown != null && shown.Pin == pin) return true;
+            foreach (var ghost in Erasures.DrawnPins) if (ghost == pin) return true;
+            return false;
         }
 
         internal static int CountOf(Minimap.PinType type)
@@ -238,6 +273,7 @@ namespace TheGreatestMap
         internal static string Label(Minimap.PinType type)
         {
             string line = TgmConfig.VanillaPinNames != null ? TgmConfig.VanillaPinNames.Value : DefaultNames;
+            if (string.Equals(line, ShippedOnce, StringComparison.Ordinal)) line = DefaultNames;
             if (_names == null || !string.Equals(_namesFrom, line, StringComparison.Ordinal))
             {
                 _namesFrom = line;
