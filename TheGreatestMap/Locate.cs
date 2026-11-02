@@ -71,7 +71,24 @@ namespace TheGreatestMap
             Clear();
             _kind = kind;
             FindSpots(kind);
+            // And the game's own pins for this kind where it has a type of its own for them: a
+            // vegvisir pin is a boss altar somebody read a stone for, and a row that says Boss
+            // Altars means those as much as the markers this mod wrote.
+            if (kind == Category.BossAltar) _vanilla = Minimap.PinType.Boss;
             Begin(Categories.Label(kind), Count());
+        }
+
+        /// <summary>
+        /// Light up a set of places the game marked, for a row that stands for those and nothing
+        /// else -- the world's center, Hildir's quests. Positions rather than pins, which is how
+        /// the game's landmarks are recognized everywhere in this mod: they are all one pin type
+        /// and where they stand is the only thing that says which is which.
+        /// </summary>
+        internal static void Spots(string label, List<Vector3> where)
+        {
+            Clear();
+            if (where != null) _spots.AddRange(where);
+            Begin(label, Count());
         }
 
         /// <summary>Light up every marker wearing one icon -- one type rather than a whole kind.</summary>
@@ -209,7 +226,7 @@ namespace TheGreatestMap
         private static void FindSpots(Category kind)
         {
             _spots.Clear();
-            if (!Categories.VanillaMarks(kind)) return;
+            if (!Categories.MarkedByGame(kind)) return;
             var zone = ZoneSystem.instance;
             if (zone == null) return;
             var icons = new Dictionary<Vector3, string>();
@@ -379,13 +396,16 @@ namespace TheGreatestMap
                     foreach (var pin in Access.Pins(map))
                     {
                         if (pin == null) continue;
-                        if (_vanilla.HasValue)
+                        // Each asked on its own account rather than one instead of another: a
+                        // kind can point at both at once -- the boss altars are the places the
+                        // world marks and the pins a vegvisir drew, and the row means both.
+                        if (_players && pin.m_type == Minimap.PinType.Player)
                         {
-                            if (IsVanilla(pin)) Pulse(pin, grow, toWhite);
+                            Pulse(pin, grow * ClientPins.PlayerScale, toWhite);
                             continue;
                         }
-                        if (_players ? pin.m_type == Minimap.PinType.Player : IsSpot(pin))
-                            Pulse(pin, grow * (_players ? ClientPins.PlayerScale : 1f), toWhite);
+                        if (_vanilla.HasValue && IsVanilla(pin)) { Pulse(pin, grow, toWhite); continue; }
+                        if (_spots.Count > 0 && IsSpot(pin)) Pulse(pin, grow, toWhite);
                     }
             }
         }

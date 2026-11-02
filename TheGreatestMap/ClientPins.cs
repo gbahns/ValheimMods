@@ -1385,6 +1385,15 @@ namespace TheGreatestMap
         /// minimap that the game had deliberately turned off a moment earlier. Only portals showed
         /// it, because portals are nearly the only markers that carry a label at all.
         /// </summary>
+        /// <summary>
+        /// Show or hide one pin on the map, label and all, for the passes that hide pins this mod
+        /// did not draw: the master switch above, and the world's own landmarks.
+        /// </summary>
+        internal static void ShowMarker(Minimap.PinData pin, bool active)
+        {
+            if (pin != null && pin.m_uiElement != null) SetMarkerActive(pin, active);
+        }
+
         private static void SetMarkerActive(Minimap.PinData pin, bool active)
         {
             var icon = pin.m_uiElement.gameObject;
@@ -1628,6 +1637,9 @@ namespace TheGreatestMap
             // Before the labels, which then see a pin this has just put away and leave its name
             // alone rather than hanging it over empty ground.
             ClientPins.AfterLayoutMaster(__instance);
+            // The world's own landmarks, hidden one pin at a time because the game draws them all
+            // as one kind of pin and the list tells them apart.
+            WorldPins.AfterLayout(__instance);
             ClientPins.AfterLayoutLabels(__instance);
             // Vanilla has just built markers afresh, and a new one starts visible. Putting the
             // spotlight's out here rather than waiting for our own Update keeps them from showing

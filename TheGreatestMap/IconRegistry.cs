@@ -44,6 +44,9 @@ namespace TheGreatestMap
             if (key.StartsWith("like:", StringComparison.OrdinalIgnoreCase)) return "like:" + key.Substring(5).Trim();
             if (key.StartsWith("piece:", StringComparison.OrdinalIgnoreCase)) return "piece:" + key.Substring(6).Trim();
             if (key.StartsWith("drawn:", StringComparison.OrdinalIgnoreCase)) return "drawn:" + key.Substring(6).Trim();
+            // A location's own map picture, which is what the game draws for the landmarks it
+            // marks: the one place a row can borrow a picture the player is already reading.
+            if (key.StartsWith("loc:", StringComparison.OrdinalIgnoreCase)) return "loc:" + key.Substring(4).Trim();
             return "item:" + key;
         }
 
@@ -372,6 +375,16 @@ namespace TheGreatestMap
             }
             // One of this mod's own pictures, for a kind the game has no single picture of.
             if (key.StartsWith("drawn:")) return MenuKit.Drawn(key.Substring(6));
+            // The picture the game draws for one of the world's locations. Not every location has
+            // one -- only the ones it marks -- and a name it does not know gives null, which the
+            // caller takes as "use the default pin".
+            if (key.StartsWith("loc:"))
+            {
+                string where = key.Substring(4);
+                foreach (var data in map.m_locationIcons)
+                    if (string.Equals(data.m_name, where, StringComparison.OrdinalIgnoreCase)) return data.m_icon;
+                return null;
+            }
             try
             {
                 if (ObjectDB.instance == null) return null;

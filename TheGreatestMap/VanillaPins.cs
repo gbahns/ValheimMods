@@ -45,16 +45,16 @@ namespace TheGreatestMap
         };
 
         /// <summary>
-        /// What the game put there. The boss altars, the traders, Hildir's camps and the center of
-        /// the world are every one of them a <c>PinType.None</c> pin, rebuilt every five seconds
-        /// from the locations the world knows, so one row is the switch for all of them and there
-        /// is no finer grain to offer. <c>Boss</c> is listed beside it because vanilla has a
-        /// filter button for it, and anything wearing it was not placed by a player.
+        /// What the game put there, as rows of this list's own. There are none left: the
+        /// landmarks were one row called Landmarks standing for the center of the world, the
+        /// altars, the traders and Hildir's quests all at once, and the boss pins were another
+        /// row for the altars somebody had read a vegvisir for. Both are told apart by
+        /// <see cref="WorldPins"/> now and drawn on the rows that are already about those things,
+        /// which is one row per thing. The array stays because the heading's switch asks it what
+        /// it holds, and the day the game draws something new that belongs to nobody, this is
+        /// where it goes.
         /// </summary>
-        internal static readonly Minimap.PinType[] Theirs =
-        {
-            Minimap.PinType.None, Minimap.PinType.Boss,
-        };
+        internal static readonly Minimap.PinType[] Theirs = new Minimap.PinType[0];
 
         /// <summary>The names as the mod ships them, for the setting to start from.</summary>
         internal const string DefaultNames =

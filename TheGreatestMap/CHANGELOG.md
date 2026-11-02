@@ -109,6 +109,36 @@
   a view nobody wants, and one no second press can undo, since it cannot know which kinds had
   been open before. Four words can be refolded by eye; two hundred rows cannot.
 
+- **One row per thing under Places: World Center, Boss Altars, Traders, Hildir's Quests.** A
+  trader was named by two rows and hidden by neither of them properly. "Traders" was about the
+  markers this mod recorded -- of which there are none, the game having marked him already -- so
+  pressing it did nothing at all; "Landmarks" could hide the pin but called it a landmark, along
+  with the boss altars, Hildir's quests and the center of the world, which were all one row
+  because the game draws every one of them as the same kind of pin.
+
+  So the landmarks are told apart by the location each one stands on, which is read out of the
+  catalog: the Boss Altars and Traders lines are what say which of the world's locations are
+  altars and which are traders, so editing one of those lines moves these rows with it. The
+  center of the world and Hildir's three quest sites are named in code, there being exactly one
+  of the first and nothing to record about either. Anything else the world marks -- another mod's
+  location, or one Valheim adds next -- lands in a row called Landmarks, so it still has a switch
+  and is still named for what it is: not known.
+
+  Each row then takes over everything that is that thing. **Boss Altars** covers the altars the
+  world marks, the ones a vegvisir pointed you to (those being vanilla's own boss pins, which had
+  a row of their own) and any this mod recorded. **Traders** covers the game's trader pins and any
+  marker this mod recorded. Pressing either hides the lot, and the count says how many there are
+  however they got onto the map.
+
+  They are hidden one pin at a time, because vanilla's filter is one switch for every landmark it
+  draws and these are four separate answers -- the same call this mod already makes for the pins a
+  player placed by hand. `Hidden Landmarks` holds which of them are off, and the put-back row
+  counts them with everything else.
+
+  Nothing records a trader and nothing has for a while: the game marks him the moment you meet
+  him. Boss altars still can be recorded, off by default, because this mod's marker wears the
+  trophy of the boss whose altar it is and the game's pin does not say which.
+
 - **Places is two headings now: Places and Points of Interest.** One heading held the four
   landmarks a world is hung on and the four hundred things you walk past, and answered neither
   question. **Places** keeps the landmarks the game marks for you as you find them -- the boss

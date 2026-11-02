@@ -770,6 +770,13 @@ namespace TheGreatestMap
                         bool show = !GroupShown(map, g, kinds);
                         SetKinds(kinds, show);
                         VanillaPins.SetAll(map, g, show);
+                        if (g == Group.Places)
+                        {
+                            WorldPins.SetAll(show);
+                            // The altars wear one of vanilla's own pin types, which is a switch of
+                            // its own and part of what this heading covers.
+                            VanillaPins.SetDrawn(map, Minimap.PinType.Boss, show);
+                        }
                     },
                     () => AllShown && GroupShown(map, g, kinds),
                     caption: () => GroupHeading(map, g, kinds),
@@ -798,6 +805,8 @@ namespace TheGreatestMap
                        () => { if (!_foldedGroups.Remove(g)) _foldedGroups.Add(g); });
                 y -= RowHeight;
                 if (_foldedGroups.Contains(g)) continue;
+
+                if (g == Group.Places) { y = PlacesRows(map, kinds, y); continue; }
 
                 bool plantsDone = false;
                 foreach (var kind in kinds)
@@ -844,7 +853,7 @@ namespace TheGreatestMap
             if (Categories.IsPlacedOnly(kind)) return true;
             if (Categories.IsLive(kind))
                 return kind == Category.Portal ? Portals.HaveList : Transports.HaveList;
-            return _counts.ContainsKey(kind) || Categories.VanillaMarks(kind);
+            return _counts.ContainsKey(kind) || Categories.MarkedByGame(kind);
         }
 
         /// <summary>One kind, and its types under it when it is unfolded. Returns the y below them.</summary>
@@ -1101,6 +1110,132 @@ namespace TheGreatestMap
         }
 
         /// <summary>
+        /// Everything under Places, in a written order rather than the catalog's.
+        ///
+        /// <para>This is the one heading whose rows are a hand-made set rather than a slice of
+        /// the kinds: four landmarks a world is hung on, and they read in the order you meet them
+        /// -- where you woke up, the altars you are working towards, whoever will trade with you,
+        /// and the errands Hildir sends you on. Anything the mod cannot name comes last, where a
+        /// catch-all belongs.</para>
+        /// </summary>
+        private static float PlacesRows(Minimap map, List<Category> kinds, float y)
+        {
+            y = LandmarkRow(map, WorldPins.Kind.Center, y);
+            if (kinds.Contains(Category.BossAltar)) y = PlaceRow(map, Category.BossAltar, y);
+            if (kinds.Contains(Category.Trader)) y = PlaceRow(map, Category.Trader, y);
+            y = LandmarkRow(map, WorldPins.Kind.Hildir, y);
+            y = LandmarkRow(map, WorldPins.Kind.Other, y);
+            // A kind sorted into Places that is neither of those two: drawn as any other kind, so
+            // adding one never leaves it out of its own heading.
+            foreach (var kind in kinds)
+                if (kind != Category.BossAltar && kind != Category.Trader) y = KindRow(map, kind, y);
+            return y;
+        }
+
+        /// <summary>
+        /// One of the world's landmarks that has a row to itself: the center of the world,
+        /// Hildir's quests, and whatever the mod cannot name. Nothing records these and nothing
+        /// ever will -- the game draws them, and all this adds is a name, a count and a switch --
+        /// so there is no placing by hand and nothing to cross off.
+        /// </summary>
+        private static float LandmarkRow(Minimap map, WorldPins.Kind landmark, float y)
+        {
+            if (WorldPins.CountOf(landmark) == 0) return y;
+            var k = landmark;
+            Func<string> caption = () => Named(WorldPins.Label(k), WorldPins.ShownCount(k), WorldPins.CountOf(k));
+            SwitchRow(map, _content, 0f, y, KindIndent, WorldPins.IconKey(k), caption(),
+                () => WorldPins.Toggle(k),
+                () => AllShown && WorldPins.Drawn(k),
+                onLocate: () => Locate.Spots(WorldPins.Label(k), WorldPins.Spots(k)),
+                pingLit: () => false,
+                caption: caption,
+                tip: WorldPins.Tip(k));
+            return y - RowHeight;
+        }
+
+        /// <summary>
+        /// A kind the game marks by itself: the boss altars and the traders.
+        ///
+        /// <para>One row for the thing, however it reached the map. The game pins a trader the
+        /// moment you meet one, this mod can record its own marker for the same trader, and both
+        /// were in this list under different names -- a Traders row that could not hide the
+        /// trader pin, and a Landmarks row that hid it without saying what it was. So this row
+        /// counts all of them and its switch sets all of them: the markers this mod recorded, the
+        /// landmark the world drew, and for the altars the vegvisir pins as well.</para>
+        /// </summary>
+        private static float PlaceRow(Minimap map, Category kind, float y)
+        {
+            var k = kind;
+            var landmark = kind == Category.BossAltar ? WorldPins.Kind.Boss : WorldPins.Kind.Trader;
+            var type = kind == Category.BossAltar ? (Minimap.PinType?)Minimap.PinType.Boss : null;
+            Func<string> caption = () => PlaceLabel(map, k, landmark, type);
+            var row = SwitchRow(map, _content, 0f, y, KindIndent, IconKeyFor(k), caption(),
+                () => SetPlaceShown(map, k, landmark, type, !PlaceShown(map, k, landmark, type)),
+                () => AllShown && PlaceShown(map, k, landmark, type),
+                // Placing one by hand stays: nothing records a trader, but "the trader is over
+                // there" is a good thing to write down for somebody who has not met him.
+                onPlace: () =>
+                {
+                    if (ManualPlace.Armed.HasValue && ManualPlace.Armed.Value == k)
+                    {
+                        ManualPlace.Cancel();
+                        Refresh();
+                        return;
+                    }
+                    if (!ManualPlace.Arm(map, k)) return;
+                    if (Pinned) Refresh(); else Close();
+                },
+                onOnly: () => Focus.SetKind(k),
+                onLocate: () => Locate.Kind(k),
+                placeKind: k,
+                caption: caption,
+                doneCount: () => DoneOf(k),
+                doneShown: () => DoneShown(k),
+                doneToggle: () => ToggleDone(k),
+                tip: kind == Category.BossAltar
+                    ? "Every boss altar on your map: the ones the world marks as you find them, the ones a vegvisir " +
+                      "pointed you to, and any this mod recorded. One row, because they are one thing."
+                    : "Everyone who will trade with you: the pins the game puts down when you meet one, and any " +
+                      "marker this mod recorded. Nothing records a trader by default -- the game has already marked " +
+                      "him -- but the button still places one by hand, for telling somebody who has not met him.");
+            y -= RowHeight;
+            return Unfold(map, row, y, k);
+        }
+
+        /// <summary>How many of these are on the map, counting every way one gets there.</summary>
+        private static string PlaceLabel(Minimap map, Category kind, WorldPins.Kind landmark, Minimap.PinType? type)
+        {
+            _counts.TryGetValue(kind, out int ours);
+            _shown.TryGetValue(kind, out int oursLit);
+            // Our own markers wear the kind's icon, and for the altars that icon is one of
+            // vanilla's own pin types -- so the game's filter hides those along with everything
+            // else wearing it, and a count that said otherwise would be wrong on the screen.
+            if (type.HasValue && !VanillaPins.Drawn(map, type.Value)) oursLit = 0;
+            int n = ours + WorldPins.CountOf(landmark);
+            int lit = oursLit + WorldPins.ShownCount(landmark);
+            if (type.HasValue)
+            {
+                n += VanillaPins.CountOf(type.Value);
+                lit += VanillaPins.ShownCount(map, type.Value);
+            }
+            return Named(Categories.Label(kind), lit, n);
+        }
+
+        private static bool PlaceShown(Minimap map, Category kind, WorldPins.Kind landmark, Minimap.PinType? type)
+        {
+            if (IsShown(kind) && (!type.HasValue || VanillaPins.Drawn(map, type.Value))) return true;
+            if (WorldPins.CountOf(landmark) > 0 && WorldPins.Drawn(landmark)) return true;
+            return type.HasValue && VanillaPins.CountOf(type.Value) > 0 && VanillaPins.Drawn(map, type.Value);
+        }
+
+        private static void SetPlaceShown(Minimap map, Category kind, WorldPins.Kind landmark, Minimap.PinType? type, bool show)
+        {
+            if (TgmConfig.ShowKind.TryGetValue(kind, out var entry)) entry.Value = show;
+            WorldPins.SetDrawn(landmark, show);
+            if (type.HasValue) VanillaPins.SetDrawn(map, type.Value, show);
+        }
+
+        /// <summary>
         /// The crossed-off markers belonging to no kind, which would otherwise have lost their
         /// switch along with the column it used to live in. Below every heading, because they
         /// belong under none of them: that is what is wrong with them.
@@ -1340,6 +1475,14 @@ namespace TheGreatestMap
             VanillaPins.Tally(map, group, out int theirs, out int theirsLit);
             n += theirs;
             lit += theirsLit;
+            if (group == Group.Places)
+            {
+                // The world's landmarks, every kind of them: the two that are drawn on the kinds'
+                // own rows are counted there as well, and this is the heading over both.
+                WorldPins.Tally(out int world, out int worldLit);
+                n += world;
+                lit += worldLit;
+            }
             return Named(Categories.GroupLabel(group), lit, n);
         }
 
@@ -1410,7 +1553,8 @@ namespace TheGreatestMap
         /// </summary>
         private static bool GroupShown(Minimap map, Group group, List<Category> kinds)
         {
-            return AnyKindShown(kinds) || VanillaPins.AnyShown(map, group);
+            if (AnyKindShown(kinds) || VanillaPins.AnyShown(map, group)) return true;
+            return group == Group.Places && WorldPins.AnyShown();
         }
 
         /// <summary>The map's own pin types that belong under this heading and have any pins.</summary>
@@ -2087,6 +2231,8 @@ namespace TheGreatestMap
             // from them. Counted here so every number in the panel is read in one place and at
             // one moment.
             VanillaPins.Recount(Minimap.instance);
+            // And the world's own landmarks, which are told apart by where they stand.
+            WorldPins.Recount(Minimap.instance);
             _counts.Clear();
             _shown.Clear();
             _shownByIcon.Clear();
@@ -2353,7 +2499,7 @@ namespace TheGreatestMap
         {
             if (TgmConfig.HiddenKindCount() > 0 || TgmConfig.HiddenIconCount() > 0) return true;
             if (ViewPrefs.Count > 0 || CrossedOff.HiddenGroupCount() > 0) return true;
-            if (CrossedOff.HiddenClearedCount() > 0) return true;
+            if (CrossedOff.HiddenClearedCount() > 0 || WorldPins.HiddenCount() > 0) return true;
             return TgmConfig.ShowClearedDeposits != null && !TgmConfig.ShowClearedDeposits.Value;
         }
 
@@ -2373,6 +2519,8 @@ namespace TheGreatestMap
             if (icons > 0) parts.Add(icons == 1 ? "1 type" : icons + " types");
             if (single > 0) parts.Add(single == 1 ? "1 marker" : single + " markers");
             if (groups > 0) parts.Add(groups == 1 ? "1 crossed off" : groups + " crossed off");
+            int world = WorldPins.HiddenCount();
+            if (world > 0) parts.Add(world == 1 ? "1 landmark" : world + " landmarks");
             if (TgmConfig.ShowClearedDeposits != null && !TgmConfig.ShowClearedDeposits.Value)
                 parts.Add("cleared deposits");
             return parts.Count == 0

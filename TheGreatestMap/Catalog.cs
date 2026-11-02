@@ -275,6 +275,18 @@ namespace TheGreatestMap
         internal static bool VanillaMarks(Category c) => c == Category.Trader;
 
         /// <summary>
+        /// A kind the game draws its own pins for, whether or not this mod records one as well.
+        /// The altars and the traders: both are marked the moment you find one.
+        ///
+        /// <para>Kept apart from <see cref="VanillaMarks"/>, which is the stronger statement --
+        /// nothing records these at all, so they have no recording settings. Boss altars do
+        /// record, off by default, because this mod's marker says which boss it is in the trophy
+        /// it wears and the game's pin does not. So they are listed and pinged like a trader, and
+        /// still recordable like anything else.</para>
+        /// </summary>
+        internal static bool MarkedByGame(Category c) => c == Category.Trader || c == Category.BossAltar;
+
+        /// <summary>
         /// A kind nothing in the world can be classified as: it exists so a player can mark
         /// something the catalog will never know about -- a serpent surfacing, a bay that fishes
         /// well, where the trolls walk. Nothing records one, so the settings about recording would
@@ -663,6 +675,9 @@ namespace TheGreatestMap
             _built = false;
             _iconBySource.Clear();
             CrossedOff.Forget();
+            // Which of the world's locations are altars and which are traders comes out of the
+            // catalog, so the landmarks have to be classified again when it changes.
+            WorldPins.Forget();
         }
 
         private static readonly Dictionary<string, string> _iconBySource =

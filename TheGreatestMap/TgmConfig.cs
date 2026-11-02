@@ -40,6 +40,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> SplitPlantsByFarming;
         internal static ConfigEntry<string> VanillaPinNames;
         internal static ConfigEntry<bool> HideVanillaControls;
+        internal static ConfigEntry<string> HiddenLandmarks;
         internal static ConfigEntry<bool> PauseWhileMapOpen;
         internal static ConfigEntry<bool> ShowPauseButton;
         internal static ConfigEntry<bool> MarkerButton;
@@ -139,6 +140,8 @@ namespace TheGreatestMap
             // back here, although AnythingHidden below has always counted it -- so the mod would
             // say something was hidden, be asked to show everything, and go on hiding it.
             if (ShowClearedDeposits != null && !ShowClearedDeposits.Value) ShowClearedDeposits.Value = true;
+            // And the world's landmarks, which are hidden by a list of their own.
+            WorldPins.ShowAll();
             CrossedOff.ShowAll();
         }
 
@@ -192,6 +195,7 @@ namespace TheGreatestMap
             if (Focus.On) return true;
             if (CrossedOff.HiddenGroupCount() > 0) return true;
             if (CrossedOff.HiddenClearedCount() > 0) return true;
+            if (WorldPins.HiddenCount() > 0) return true;
             // Markers hidden one at a time count too. They did not, and the question this answers
             // is asked to decide whether to offer a way back -- so a player who had hidden five
             // markers by hand and nothing else was told nothing was hidden and offered nothing.
@@ -381,9 +385,18 @@ namespace TheGreatestMap
                 "placeable icons no names at all -- they are five pictures, and what each one means is whatever you " +
                 "decided it means -- so they ship named after what they look like and this is where you write down " +
                 "what yours are for: Icon2=Places, Icon3=Resources. Anything you leave out keeps its shipped name. " +
-                "Icon0 is the fire, Icon1 the house, Icon2 the hammer, Icon3 the plain dot and Icon4 the portal; " +
-                "None is every landmark the game draws for the world at once.");
+                "Icon0 is the fire, Icon1 the house, Icon2 the hammer, Icon3 the plain dot and Icon4 the portal. " +
+                "The game's landmarks are not here: they are told apart by what they stand on and named on their own " +
+                "rows under Places, with Hidden Landmarks for the switches.");
             VanillaPinNames.SettingChanged += (_, __) => KindMenu.Relayout();
+
+            HiddenLandmarks = mod.BindLocal("Display", "Hidden Landmarks", "",
+                "Comma-separated kinds of the game's own landmark pins not drawn on your map: Center (the middle of " +
+                "the world), Boss (the altars), Trader (Haldor, Hildir, the Bog Witch), Hildir (the three places she " +
+                "sends you), Other (any landmark this mod cannot name). The game draws all of these as one kind of " +
+                "pin and gives no button for any of them, so these are hidden one pin at a time; the marker list's " +
+                "rows under Places are what write this.");
+            HiddenLandmarks.SettingChanged += (_, __) => { WorldPins.ForgetHidden(); WorldPins.Redraw(); };
 
             HideVanillaControls = mod.BindLocal("Display", "Hide Vanilla Controls", false,
                 "Take the game's own row of pin buttons off the large map, the marker list having grown to cover " +

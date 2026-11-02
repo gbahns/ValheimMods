@@ -206,14 +206,31 @@ own map icons (house, portal, campfire, boss) and vanilla's buttons hide those a
 not the same: vanilla's button hides every pin with that icon including ones you placed by hand,
 while ours hides only the markers this mod recorded.
 
-**The map's own pins are in the list as well.** Under Your Stuff there are rows for the five icons
-the game lets you drop, your death marker and your bed; under Places, one row for the landmarks the
-game draws for the world -- boss altars, traders, Hildir's camps and the center of it, which are one
-pin type between them and so one switch. These press vanilla's own switch rather than a copy of it,
-so hiding your hammer pins here is the same act as double-clicking the hammer under the map, and
-that button grays out to match. The bed and the landmarks are switches the game itself does not
-offer. The five placeable icons also carry the place-by-hand button, which arms the game's own
-placing for that icon.
+**Under Places there is one row per thing, however it got onto the map.** The game marks a
+handful of places by itself as you find them -- the boss altars, the traders, Hildir's three quest
+sites, the center of the world -- and draws every one of them as the same kind of pin, which is why
+they were a single row called Landmarks. They are told apart here by the location each one stands
+on, and the row that is already about that thing takes it over: **Boss Altars** means the altars the
+world marks, the ones a vegvisir pointed you to and any this mod recorded; **Traders** means the
+game's trader pins and any marker of ours. **World Center** and **Hildir's Quests** are rows of
+their own, and anything the mod cannot name keeps a row called **Landmarks**.
+
+Which of the world's locations are altars and which are traders comes out of the Boss Altars and
+Traders catalog lines, so editing a line moves these rows with it. These pins are hidden one at a
+time rather than through vanilla's filter, which is one switch for all of them; "Hidden Landmarks"
+is where that is written down.
+
+Nothing records a trader -- the game has already marked him, and a second pin saying the same thing
+is worse than none. Boss altars can be recorded, off by default, because this mod's marker wears the
+trophy of the boss whose altar it is.
+
+**The pins you placed yourself are in the list as well.** Under Your Stuff there are rows for the
+five icons the game lets you drop, your death marker and your bed. These press vanilla's own switch
+rather than a copy of it, so hiding your hammer pins here is the same act as double-clicking the
+hammer under the map, and that button grays out to match. The bed is a switch the game itself does
+not offer. The five placeable icons also carry the place-by-hand button, which arms the game's own
+placing for that icon -- so a row of the game's portal pins appears only when you have actually
+dropped one by hand, the live portal markers being this mod's own and counted on their own row.
 
 The game gives these pins no names -- they are five pictures, and what each means is whatever you
 decided it means -- so they ship named after what they look like (Fire, House, Hammer, Dot, Portal)
