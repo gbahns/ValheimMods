@@ -624,7 +624,11 @@ namespace TheGreatestMap
                     // for onion seeds, and the useful thing a map can say about either is "you
                     // have been in that one". Opening a chest inside one crosses its marker off,
                     // which is the whole point of marking them.
-                    return "WoodFarm1=Abandoned Farm,WoodHouse*=Abandoned House,AbandonedLogCabin*=Log Cabin,StoneTowerRuins*=Stone Tower Ruins,StoneHouse*=Stone House," +
+                    // No StoneHouse and no StoneTowerRuins: 850 heaps of Black Forest and
+                    // Mountain stonework in a world with nothing in them to search, which is the
+                    // same thing the swamp's huts and ruins were and has to be answered the same
+                    // way wherever it stands.
+                    return "WoodFarm1=Abandoned Farm,WoodHouse*=Abandoned House,AbandonedLogCabin*=Log Cabin," +
                            // Nothing in the swamp. What is worth going to there is marked by
                            // something else: the crypts are dungeons, the bone piles and body
                            // piles in the graveyards are spawners, the bog witch is a trader.
@@ -636,7 +640,12 @@ namespace TheGreatestMap
                            // with nothing in them to search and nothing to come back for. A name
                            // the catalog had to invent, for a thing nobody can identify on
                            // sight, is its own argument that the map has nothing to say about it.
-                           "StoneHenge*=Stonehenge|pin:Memorial,StoneTower*=Stone Tower," +
+                           // The two Plains towers by name, not StoneTower*. The prefix also
+                           // caught StoneTowerRuins03 and the rest, so dropping their own line
+                           // would have filed every ruined tower under "Stone Tower" instead of
+                           // leaving it unrecorded -- a longer prefix wins a lookup, and this was
+                           // the longer one once theirs was gone.
+                           "StoneHenge*=Stonehenge|pin:Memorial,StoneTower1=Stone Tower,StoneTower3=Stone Tower," +
                            "StoneCircle*=Stone Circle|pin:Memorial,Dolmen*=Dolmen|pin:Memorial,DrakeNest*=Drake Nest|DragonEgg," +
                            "Greydwarf_camp*=Greydwarf Nest|TrophyGreydwarfBrute,Waymarker*=Waymarker|pin:Memorial," +
                            // No InfestedTree. It is a swamp tree with guck sacks on it, 700 of

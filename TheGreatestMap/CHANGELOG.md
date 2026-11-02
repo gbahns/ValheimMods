@@ -25,6 +25,14 @@
   only thing on screen that says which entry to go and change. A marker written before markers
   remembered what they were has no id, and shows the icon alone as before.
 
+- **Stone houses and stone tower ruins are not recorded either.** Four hundred and four hundred
+  and fifty of them in a world, Black Forest and Mountain, with nothing in them to search: the same
+  thing the swamp's huts and ruins were, and a biome is no reason to answer it differently. The two
+  Plains stone towers keep their marker, and are now named exactly rather than by the `StoneTower*`
+  prefix -- that prefix also caught the ruined ones, so dropping their line would have filed every
+  ruined tower under "Stone Tower" instead of leaving it alone. A longer prefix wins a lookup, and
+  that one was the longer once theirs was gone.
+
 - **Black Forest ruins are not recorded.** "Ruins" was this mod's own word for Ruin1, Ruin2 and
   Ruin3 -- 450 heaps of stonework in a world, with nothing in them to search and nothing to come
   back for. Having to invent a name for a thing nobody can identify on sight is its own argument
