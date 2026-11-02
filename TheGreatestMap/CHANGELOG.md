@@ -2,6 +2,24 @@
 
 ## 4.7.0 -- unreleased
 
+- **Infested trees are not recorded at all any more.** An infested tree is a swamp tree with guck
+  sacks on it, and the guck sacks are already recorded as guck -- which is the thing anybody walks
+  over there for. So the marker said a second thing about a place the map already had something to
+  say about, and it said it **700 times in a world**: by the generator's own numbers this was the
+  largest type under Structures by a distance, carpeting every swamp.
+
+  It wore a seeker trophy besides, which was a guess made from the word "infested" by somebody with
+  the Mistlands mines in mind. There is no seeker within a biome of a swamp.
+
+  Dropping the catalog line is not enough on its own -- an unlisted location is swept in as a
+  structure named after its prefab -- so the prefix is in `Structures Exclude Prefixes` as well.
+  That setting is about the places the catalog does not name: a location listed under Structures is
+  recorded *because* it is listed, whatever the exclusions say. Its description now says so.
+
+  Your own catalog line keeps what it says, so a type the mod stops shipping stays on every config
+  file that already had it. This one is taken out once, recorded in `[Internal] Catalog Cuts Made`,
+  and put back by hand if you want it. Markers already written for them: `tgm_scrub InfestedTree01`.
+
 - **`tgm_locations` counts what this world is actually made of.** "Structures records far too much"
   is a judgment about numbers nobody had: a survey report says how many markers a run would write,
   nearest-first and stopped at its cap, which answers how long the run is and not which types are

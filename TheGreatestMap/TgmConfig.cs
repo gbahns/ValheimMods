@@ -36,6 +36,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<string> MapsTidied;
         internal static ConfigEntry<string> CatalogOrdered;
         internal static ConfigEntry<string> CatalogIconsFixed;
+        internal static ConfigEntry<string> CatalogCutsMade;
         internal static ConfigEntry<string> IconSizes;
         internal static ConfigEntry<TypeOrder> TypeRowOrder;
         internal static ConfigEntry<bool> ShowCounts;
@@ -215,6 +216,58 @@ namespace TheGreatestMap
             // test profile can be carrying it, so this line goes when 4.7.0 ships.
             new[] { "Dungeons", "SunkenCrypt4", "Iron", "IronScrap" },
         };
+
+        /// <summary>
+        /// Types this mod recorded and should not have: the prefab, and the kind whose line it was
+        /// on. Each is dropped from that line and added to the structure exclusions, so it cannot
+        /// come back through the unlisted sweep.
+        ///
+        /// <para>A shipped list is corrected rather than simply changed because a saved
+        /// <c>[Catalog]</c> line always beats a new default -- that is what makes the catalog the
+        /// player's own -- so a type dropped from what the mod ships stays on every config file
+        /// that already had it, which is every config file.</para>
+        /// </summary>
+        private static readonly string[][] ShippedCuts =
+        {
+            // A swamp tree with guck sacks on it. The sacks are recorded as guck, which is what
+            // anybody goes there for, and there are 700 of these trees in a world.
+            new[] { "InfestedTree", "Structures" },
+        };
+
+        private static void CutShippedLinesOnce()
+        {
+            if (CatalogCutsMade == null) return;
+            string done = CatalogCutsMade.Value ?? "";
+            var made = new List<string>();
+            foreach (var cut in ShippedCuts)
+            {
+                if (Listed(done, cut[0])) continue;
+                // Written down whether or not there was anything to drop, like the icon
+                // corrections: a fresh config never had it, and that is the same job finished.
+                made.Add(cut[0]);
+                foreach (var kv in CategoryPrefabs)
+                {
+                    if (!string.Equals(Categories.Label(kv.Key), cut[1], StringComparison.Ordinal)) continue;
+                    string now = Catalog.Without(kv.Value.Value, cut[0]);
+                    if (!string.Equals(kv.Value.Value, now, StringComparison.Ordinal))
+                    {
+                        kv.Value.Value = now;
+                        TheGreatestMapMod.Log.LogInfo(
+                            $"[TheGreatestMap] {cut[0]} is no longer recorded at all, so its line has been taken out " +
+                            $"of your {cut[1]} catalog once. Put it back by hand if you want it.");
+                    }
+                    break;
+                }
+                // And the prefix, so the unlisted sweep cannot record it under a tidied-up prefab
+                // name now that nothing names it.
+                if (StructuresExcludePrefixes != null && !Listed(StructuresExcludePrefixes.Value, cut[0]))
+                    StructuresExcludePrefixes.Value = string.IsNullOrEmpty(StructuresExcludePrefixes.Value)
+                        ? cut[0] : StructuresExcludePrefixes.Value + "," + cut[0];
+            }
+            if (made.Count == 0) return;
+            foreach (var id in made) done = done.Length == 0 ? id : done + "," + id;
+            CatalogCutsMade.Value = done;
+        }
 
         private static void FixShippedIconsOnce()
         {
@@ -503,6 +556,11 @@ namespace TheGreatestMap
                 "somebody has judged by eye; nothing measures it. Empty the line to draw them all as the game does.");
             IconSizes.SettingChanged += (_, __) => ClientPins.Restyle();
 
+            CatalogCutsMade = mod.BindLocal("Internal", "Catalog Cuts Made", "",
+                "Which of the types this mod has decided should never be recorded have already been taken out of your " +
+                "Catalog lines, so each is taken out once. A type the mod shipped and then thought better of is only " +
+                "dropped where your line still has it; add it back by hand and it stays back.");
+
             CatalogIconsFixed = mod.BindLocal("Internal", "Catalog Icons Fixed", "",
                 "Which of the icon corrections below this mod has already made to your Catalog lines, so each is made " +
                 "once and never again. An icon the mod shipped and then changed its mind about is corrected on a line " +
@@ -777,8 +835,11 @@ namespace TheGreatestMap
             StructuresIncludeUnlisted = mod.BindLocal("Catalog", "Structures Include Unlisted", true,
                 "Treat any outdoor location that is not listed under another kind as a structure (the location's prefab name, " +
                 "tidied up, becomes the marker text). Turn off to record only the listed structure prefixes.");
-            StructuresExcludePrefixes = mod.BindLocal("Catalog", "Structures Exclude Prefixes", "Vegvisir_,Runestone_,Meteorite,TarPit,Rock,Hugin,StartTemple,Pickable,Vegetation,Tree,Bush,MountainGrave,MountainWell",
-                "Comma-separated prefab name prefixes never recorded as structures.");
+            StructuresExcludePrefixes = mod.BindLocal("Catalog", "Structures Exclude Prefixes", "Vegvisir_,Runestone_,Meteorite,TarPit,Rock,Hugin,StartTemple,Pickable,Vegetation,Tree,Bush,MountainGrave,MountainWell,InfestedTree",
+                "Comma-separated prefab name prefixes never swept in as structures. This is about the places the " +
+                "catalog does not name: a location listed under Structures above is recorded because it is listed, " +
+                "whatever this says, so leaving one out means taking its line out as well.");
+            CutShippedLinesOnce();
             FoldDuplicates = mod.BindSynced("Recording", "Fold Markers Standing On One Another", true,
                 "After markers arrive from somebody else, fold any that stand on one another into one. Recording " +
                 "already refuses to write a marker where one of the same icon is in the way, but it can only check " +

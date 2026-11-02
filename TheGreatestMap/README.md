@@ -358,6 +358,11 @@ everyone (config "Cross Off Structures When Searched"), and you can always cross
 with a click on the map. Common structures are matched by name prefix; any other outdoor location
 counts as well unless "Structures Include Unlisted" is off or its prefab name is in the exclusion list.
 
+The exclusion list is about places the catalog does not name: a location **listed** under Structures
+is recorded because it is listed, whatever the exclusions say, so leaving one out for good means
+taking its catalog line out too. The mod does both for a type it has decided should never be
+recorded, once, to catalog lines you already had.
+
 ## Console commands
 
 | Command | What it does |

@@ -605,7 +605,16 @@ namespace TheGreatestMap
                     return "WoodFarm1=Abandoned Farm,WoodHouse*=Abandoned House,AbandonedLogCabin*=Log Cabin,StoneTowerRuins*=Stone Tower Ruins,StoneHouse*=Stone House," +
                            "Ruin*=Ruins,SwampHut*=Swamp Hut,SwampRuin*=Swamp Ruins,SwampWell*=Swamp Well,StoneHenge*=Stonehenge|pin:Memorial,StoneTower*=Stone Tower," +
                            "StoneCircle*=Stone Circle|pin:Memorial,Dolmen*=Dolmen|pin:Memorial,DrakeNest*=Drake Nest|DragonEgg," +
-                           "Greydwarf_camp*=Greydwarf Nest|TrophyGreydwarfBrute,ShipSetting*=Ship Setting|pin:Memorial,Waymarker*=Waymarker|pin:Memorial,InfestedTree*=Infested Tree|TrophySeeker," +
+                           "Greydwarf_camp*=Greydwarf Nest|TrophyGreydwarfBrute,ShipSetting*=Ship Setting|pin:Memorial,Waymarker*=Waymarker|pin:Memorial," +
+                           // No InfestedTree. It is a swamp tree with guck sacks on it, 700 of
+                           // them in a world, and the guck sacks are already recorded as what they
+                           // are: a marker for the tree says a second time what the sacks say, and
+                           // says it about the biggest type in this list. It wore a seeker trophy
+                           // besides, picked off the word "infested" by somebody who had the
+                           // Mistlands mines in mind -- there is no seeker within a biome of it.
+                           // Dropping the line is not enough on its own, so the prefix is in
+                           // Structures Exclude Prefixes as well; an unlisted location is swept in
+                           // as a structure otherwise.
                            "Mistlands_GuardTower*=Dvergr Guard Tower|TrophyDvergr,Mistlands_Excavation*=Dvergr Excavation|TrophyDvergr,Mistlands_Harbour*=Dvergr Harbour|TrophyDvergr," +
                            "Mistlands_Lighthouse*=Dvergr Lighthouse|TrophyDvergr," +
                            "Mistlands_Statue*=Dvergr Statue|TrophyDvergr,Mistlands_Viaduct*=Viaduct|TrophyDvergr,CharredRuins*=Charred Ruins,AshlandRuins*=Ashlands Ruins," +
@@ -956,6 +965,35 @@ namespace TheGreatestMap
             // mod has since dropped. Kept, in the order they were already in.
             for (int i = 0; i < entries.Count; i++) if (!taken[i]) result.Add(entries[i].Value);
             return string.Join(",", result.ToArray());
+        }
+
+        /// <summary>
+        /// Take one prefab's entry out of a saved catalog line, for a type this mod has decided
+        /// should never be recorded. The name and icon on the entry are not read: the decision is
+        /// about the thing, so an entry a player has renamed goes too.
+        ///
+        /// <para>Returns the line unchanged when it has no such entry, which is how the caller
+        /// knows whether anything was done.</para>
+        /// </summary>
+        internal static string Without(string saved, string prefab)
+        {
+            if (string.IsNullOrEmpty(saved) || string.IsNullOrEmpty(prefab)) return saved;
+            var kept = new List<string>();
+            bool dropped = false;
+            foreach (var one in saved.Split(','))
+            {
+                string entry = one.Trim();
+                if (entry.Length == 0) continue;
+                // The shipped line writes it as a prefix (InfestedTree*), and a player's own may
+                // name the prefab exactly: both are this thing.
+                if (string.Equals((PrefabOf(entry) ?? "").TrimEnd('*'), prefab, StringComparison.OrdinalIgnoreCase))
+                {
+                    dropped = true;
+                    continue;
+                }
+                kept.Add(entry);
+            }
+            return dropped ? string.Join(",", kept.ToArray()) : saved;
         }
 
         /// <summary>
