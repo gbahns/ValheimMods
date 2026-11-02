@@ -735,9 +735,14 @@ namespace TheGreatestMap
         internal static float ScaleOf(SharedPin shared)
         {
             var kind = KindOf(shared);
-            if (kind.HasValue && TgmConfig.MarkerSize.TryGetValue(kind.Value, out var size))
-                return Mathf.Clamp(size.Value, 20, 100) / 100f;
-            return 1f;
+            float scale = kind.HasValue && TgmConfig.MarkerSize.TryGetValue(kind.Value, out var size)
+                ? Mathf.Clamp(size.Value, 20, 100) / 100f
+                : 1f;
+            // And the one correction that is about the picture rather than the kind: an icon whose
+            // artwork fills more of its frame than the others looks a size bigger at the same
+            // size. Here rather than at the styling pass, so everything that reads a marker's
+            // size -- the ping's swell included -- reads the same number.
+            return scale * IconRegistry.SizeOf(IconOf(shared));
         }
 
         /// <summary>The marker behind one of our vanilla pins, or null for a pin that is not ours.</summary>

@@ -18,6 +18,24 @@
   stalls the client is worse than no preview, and the candidates arrive nearest-first anyway, so
   what is drawn is what you can go and look at.
 
+- **A sunken crypt wears iron, and the draugr trophy is the draugr piles' alone.** One picture
+  was standing for a dungeon in the swamp and for a nest in it, which is the map answering a
+  question wrong rather than not answering it -- the same thing the bone piles were doing to the
+  burial chambers. Iron is what a sunken crypt is for, and nothing else on the map is wearing it:
+  the swamp's scrap piles wear `IronScrap`, which is a different picture of the same metal.
+
+- **`Icon Size Tweaks` in the Display section, shipping as `TrophyDraugr=80`.** Every marker is
+  drawn into a box of one size, so how big an icon looks is how much of its own frame the drawing
+  fills -- and that is the artist's business, not the map's. The draugr trophy fills its frame to
+  the edges where the skeleton trophy sits inside a margin, so two markers of the same size looked
+  like two sizes. Nothing can measure this: a sprite's alpha cannot be read at runtime, so the
+  line is the list of icons somebody has looked at and judged by eye, and 80 is a judgement you
+  can disagree with by editing one number. Empty the line to draw them all as the game does.
+
+  The correction belongs to the picture rather than to the kind, which is why it is not another
+  `<Kind> Marker Size`: the draugr trophy is as big on a draugr pile as it was on a crypt, and a
+  kind's size setting would have had to be wrong twice to make one picture right.
+
 - **An evil bone pile wears bones rather than a skeleton trophy.** The trophy is what a burial
   chamber wears, and two different things wearing one picture is the map answering the question
   wrong rather than not answering it.

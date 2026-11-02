@@ -36,6 +36,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<string> MapsTidied;
         internal static ConfigEntry<string> CatalogOrdered;
         internal static ConfigEntry<string> CatalogIconsFixed;
+        internal static ConfigEntry<string> IconSizes;
         internal static ConfigEntry<TypeOrder> TypeRowOrder;
         internal static ConfigEntry<bool> ShowCounts;
         internal static ConfigEntry<bool> SplitPlantsByFarming;
@@ -206,6 +207,11 @@ namespace TheGreatestMap
             // too meant one picture for two different things, which is the map answering the
             // question wrong rather than not answering it.
             new[] { "Spawners", "BonePileSpawner", "TrophySkeleton", "BoneFragments" },
+            // The draugr trophy was on the sunken crypts and on the draugr piles, which made one
+            // picture mean a dungeon in the swamp or a nest in it. Iron is what a sunken crypt is
+            // for, and nothing else on the map is wearing it: the swamp's scrap piles wear
+            // IronScrap, which is a different picture of the same metal.
+            new[] { "Dungeons", "SunkenCrypt4", "TrophyDraugr", "Iron" },
         };
 
         private static void FixShippedIconsOnce()
@@ -486,6 +492,14 @@ namespace TheGreatestMap
                 "thistle, copper before silver -- and reordering a Catalog line reorders these to match. Most First " +
                 "puts the commonest at the top, which is what this did before there was a choice. A To Z is by name.");
             TypeRowOrder.SettingChanged += (_, __) => KindMenu.Relayout();
+
+            IconSizes = mod.BindLocal("Display", "Icon Size Tweaks", IconRegistry.DefaultSizes,
+                "Icons drawn at a percentage of normal, as Icon=percent pairs: TrophyDraugr=80. Every marker is " +
+                "drawn into a box of one size, so how big an icon looks is how much of its own frame the drawing " +
+                "fills -- the draugr trophy fills its frame to the edges where the skeleton trophy sits inside a " +
+                "margin, and two markers of the same size then look like two sizes. This is the list of the ones " +
+                "somebody has judged by eye; nothing measures it. Empty the line to draw them all as the game does.");
+            IconSizes.SettingChanged += (_, __) => ClientPins.Restyle();
 
             CatalogIconsFixed = mod.BindLocal("Internal", "Catalog Icons Fixed", "",
                 "Which of the icon corrections below this mod has already made to your Catalog lines, so each is made " +

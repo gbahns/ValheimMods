@@ -51,6 +51,55 @@ namespace TheGreatestMap
         }
 
         /// <summary>
+        /// The sizes as the mod ships them: an icon drawn against the others at a percentage of
+        /// normal, where the game's own artwork is out of step with the rest.
+        ///
+        /// <para>Every marker is drawn into a box of one size, so how big an icon looks is how
+        /// much of its own frame the drawing fills -- which is the artist's business and varies.
+        /// The draugr trophy fills its frame to the edges where the skeleton trophy sits inside a
+        /// margin, so two markers at the same size look like two sizes. Nothing can be measured
+        /// here: a sprite's alpha is not readable at runtime, so this is a list of the ones
+        /// somebody has looked at and judged.</para>
+        /// </summary>
+        internal const string DefaultSizes = "TrophyDraugr=80";
+
+        private static Dictionary<string, float> _sizes;
+        private static string _sizesFrom;
+
+        /// <summary>
+        /// How big this icon is drawn against the others, as a fraction of what its kind's size
+        /// setting says. One for everything that has not been singled out.
+        /// </summary>
+        internal static float SizeOf(string iconKey)
+        {
+            string line = TgmConfig.IconSizes != null ? TgmConfig.IconSizes.Value : DefaultSizes;
+            if (_sizes == null || !string.Equals(line, _sizesFrom, StringComparison.Ordinal)) ParseSizes(line);
+            // The usual case, and this is asked per marker on every map move: nothing singled
+            // out means nothing to work out.
+            if (_sizes.Count == 0) return 1f;
+            string key = Normalize(iconKey);
+            return key != null && _sizes.TryGetValue(key, out float size) ? size : 1f;
+        }
+
+        private static void ParseSizes(string line)
+        {
+            _sizes = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
+            _sizesFrom = line;
+            if (string.IsNullOrEmpty(line)) return;
+            foreach (var raw in line.Split(','))
+            {
+                string one = raw.Trim();
+                int eq = one.IndexOf('=');
+                if (eq <= 0) continue;
+                string key = Normalize(one.Substring(0, eq));
+                if (key == null) continue;
+                if (!float.TryParse(one.Substring(eq + 1).Trim(), System.Globalization.NumberStyles.Float,
+                                    System.Globalization.CultureInfo.InvariantCulture, out float percent)) continue;
+                _sizes[key] = Mathf.Clamp(percent, 20f, 200f) / 100f;
+            }
+        }
+
+        /// <summary>
         /// The same picture on a pin of our own, for an icon that has to be placeable.
         ///
         /// The game lets a player place only its five numbered pins, so arming any other vanilla

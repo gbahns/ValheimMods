@@ -353,7 +353,7 @@ namespace TheGreatestMap
         private static readonly Dictionary<string, string> KnownIcons = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             { "Crypt2", "TrophySkeleton" }, { "Crypt3", "TrophySkeleton" }, { "Crypt4", "TrophySkeleton" },
-            { "SunkenCrypt4", "TrophyDraugr" }, { "MountainCave02", "TrophyCultist" }, { "TrollCave02", "TrophyFrostTroll" },
+            { "SunkenCrypt4", "Iron" }, { "MountainCave02", "TrophyCultist" }, { "TrollCave02", "TrophyFrostTroll" },
             { "BearCave", "TrophyBjorn" }, { "Mistlands_DvergrTownEntrance1", "TrophySeeker" }, { "Mistlands_DvergrTownEntrance2", "TrophySeeker" },
             { "Vendor_BlackForest", "Coins" }, { "Hildir_camp", "Coins" }, { "BogWitch_Camp", "Coins" },
             // Deposits whose own entry may predate its |Icon: without one the icon falls back to
@@ -574,7 +574,9 @@ namespace TheGreatestMap
                            "goldvein=Gold|GoldOre,TrollFrost*=Frozen Troll|GoldOre";
                 case Category.Dungeon:
                     return "Crypt2=Burial Chambers|TrophySkeleton,Crypt3=Burial Chambers|TrophySkeleton,Crypt4=Burial Chambers|TrophySkeleton," +
-                           "SunkenCrypt4=Sunken Crypt|TrophyDraugr,MountainCave02=Frost Cave|TrophyCultist,TrollCave02=Troll Cave|TrophyFrostTroll," +
+                           // Iron rather than the draugr's trophy, which was also on the draugr
+                           // piles: what a sunken crypt is for, and nobody else wearing it.
+                           "SunkenCrypt4=Sunken Crypt|Iron,MountainCave02=Frost Cave|TrophyCultist,TrollCave02=Troll Cave|TrophyFrostTroll," +
                            "Mistlands_DvergrTownEntrance1=Infested Mine|TrophySeeker,Mistlands_DvergrTownEntrance2=Infested Mine|TrophySeeker," +
                            "BearCave=Bear Cave|TrophyBjorn,MorgenHole*=Putrid Hole|TrophyMorgen";
                 case Category.Trader:
