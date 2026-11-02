@@ -617,6 +617,13 @@ namespace TheGreatestMap
                            "Dragonqueen=Moder|TrophyDragonQueen,GoblinKing=Yagluth|TrophyGoblinKing," +
                            "Mistlands_DvergrBossEntrance1=The Queen|TrophySeekerQueen,FaderLocation=Fader|TrophyFader";
                 case Category.Structure:
+                    // What earns a marker here: somewhere you would travel to, or somewhere you
+                    // would otherwise walk back into for nothing. The second reason is the one
+                    // that keeps the common buildings in this list -- an abandoned house is a
+                    // place you search once for an early axe, a log cabin a place you search once
+                    // for onion seeds, and the useful thing a map can say about either is "you
+                    // have been in that one". Opening a chest inside one crosses its marker off,
+                    // which is the whole point of marking them.
                     return "WoodFarm1=Abandoned Farm,WoodHouse*=Abandoned House,AbandonedLogCabin*=Log Cabin,StoneTowerRuins*=Stone Tower Ruins,StoneHouse*=Stone House," +
                            // Nothing in the swamp. What is worth going to there is marked by
                            // something else: the crypts are dungeons, the bone piles and body
@@ -638,7 +645,9 @@ namespace TheGreatestMap
                            // as a structure otherwise.
                            "Mistlands_GuardTower*=Dvergr Guard Tower|TrophyDvergr,Mistlands_Excavation*=Dvergr Excavation|TrophyDvergr,Mistlands_Harbour*=Dvergr Harbour|TrophyDvergr," +
                            "Mistlands_Lighthouse*=Dvergr Lighthouse|TrophyDvergr," +
-                           "Mistlands_Statue*=Dvergr Statue|TrophyDvergr,Mistlands_Viaduct*=Viaduct|TrophyDvergr,CharredRuins*=Charred Ruins,AshlandRuins*=Ashlands Ruins," +
+                           // No CharredRuins. The Ashlands are laid out of them, and what is in
+                           // one is not worth the second walk that a marker invites.
+                           "Mistlands_Statue*=Dvergr Statue|TrophyDvergr,Mistlands_Viaduct*=Viaduct|TrophyDvergr,AshlandRuins*=Ashlands Ruins," +
                            "FortressRuins*=Fortress Ruins|TrophyCharredMage,PlaceofMystery*=Place of Mystery";
                 case Category.Campfire:
                     return "fire_pit=Campfire|piece:fire_pit";

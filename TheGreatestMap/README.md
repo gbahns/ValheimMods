@@ -357,7 +357,14 @@ ruins, graveyards and wrecks are left alone rather than painting the biome gold.
 They use the vanilla house icon, without a text label. It is meant for people who like to track
 which ruins they have already searched: opening a chest inside one crosses its marker off for
 everyone (config "Cross Off Structures When Searched"), and you can always cross one off by hand
-with a click on the map. Common structures are matched by name prefix; any other outdoor location
+with a click on the map.
+
+That is the reason the common buildings are in the list at all. A structure earns a marker here if
+it is somewhere you would travel to **or** somewhere you would otherwise walk back into for
+nothing: an abandoned house is a place you search once for an early axe, a log cabin a place you
+search once for onion seeds, and what a map can usefully say about either is "you have been in that
+one". Scenery earns nothing -- dolmens, ship settings, waymarkers and statues hold nothing to
+search -- and neither does a building so common that marking it paints the biome. Common structures are matched by name prefix; any other outdoor location
 counts as well unless "Structures Include Unlisted" is off or its prefab name is in the exclusion list.
 
 The exclusion list is about places the catalog does not name: a location **listed** under Structures

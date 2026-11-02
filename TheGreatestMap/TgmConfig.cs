@@ -247,6 +247,10 @@ namespace TheGreatestMap
             // Stones laid out in the shape of a ship. There is nothing in it and nothing to do
             // with it.
             new[] { "ShipSetting", "Structures" },
+            // The Ashlands are laid out of these, and what is in one does not pay for the second
+            // walk a marker invites. The fortresses are still marked, and the charred spawners
+            // in them are their own kind.
+            new[] { "CharredRuins", "Structures" },
         };
 
         /// <summary>
@@ -908,7 +912,7 @@ namespace TheGreatestMap
                 "Treat any outdoor location that is not listed under another kind as a structure (the location's prefab name, " +
                 "tidied up, becomes the marker text). Turn off to record only the listed structure prefixes.");
             StructuresExcludePrefixes = mod.BindLocal("Catalog", "Structures Exclude Prefixes", "Vegvisir_,Runestone_,Meteorite,TarPit,Rock,Hugin,StartTemple,Pickable,Vegetation,Tree,Bush,MountainGrave,MountainWell," +
-                "InfestedTree,SwampHut,SwampRuin,SwampWell,Grave1,FireHole,ShipWreck,ShipSetting",
+                "InfestedTree,SwampHut,SwampRuin,SwampWell,Grave1,FireHole,ShipWreck,ShipSetting,CharredRuins",
                 "Comma-separated prefab name prefixes never swept in as structures. This is about the places the " +
                 "catalog does not name: a location listed under Structures above is recorded because it is listed, " +
                 "whatever this says, so leaving one out means taking its line out as well.");

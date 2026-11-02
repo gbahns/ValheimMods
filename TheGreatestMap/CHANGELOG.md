@@ -18,6 +18,15 @@
   left out, since it comes with a fortress and the fortress is marked. The elite is not in yet:
   `tgm_spawners` reads the spawner prefabs off your own game and says which it does not know.
 
+- **Charred ruins are not recorded either, and abandoned houses stay.** Two halves of one rule: a
+  structure earns a marker if it is somewhere you would travel to **or** somewhere you would
+  otherwise walk back into for nothing. The second half is why the common buildings are in the list
+  at all -- an abandoned house is a place you search once for an early axe, a log cabin a place you
+  search once for onion seeds, and what a map can usefully say about either is "you have been in
+  that one", which is what crossing a marker off on a chest already does. The Ashlands are laid out
+  of charred ruins, and what is in one does not pay for the walk a marker invites; the fortresses
+  are still marked, and the spawners inside them are their own kind.
+
 - **Nothing in the swamp is recorded as a structure.** What is worth going to there is marked by
   something else already: the crypts are dungeons, the bone piles and body piles in the graveyards
   are spawners, the bog witch is a trader. That left the huts, the wells, the ruins, the graveyards
