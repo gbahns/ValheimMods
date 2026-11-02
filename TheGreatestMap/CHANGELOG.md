@@ -2,26 +2,31 @@
 
 ## 4.7.0 -- unreleased
 
-- **The game's row of pin buttons is off the map, the list having grown to cover it.** Every one
+- **The game's row of pin buttons can come off the map, the list having grown to cover it.** Every one
   of those buttons now has a row: a switch pressing the same `m_visibleIconTypes` entry the button
   does, a place-by-hand button on the five icons you can drop which arms the game's own placing,
   and a ping on each row that makes that type's pins wave. So the buttons had become a second set
   of controls for the same map, in a corner of it, saying the same things in different words --
   and the thing to do with a control you have replaced is take it away, not leave both.
 
-  **`Hide Vanilla Controls` in the Display section, on by default, and a checkbox under The Map's
-  Own Buttons in the list's own settings.** Turn it off and the buttons are where the game put
-  them; both work, and either way the rows and the buttons are the same switch, so nothing can
-  disagree.
+  **`Hide Vanilla Controls` in the Display section, off to begin with, and a checkbox under The
+  Map's Own Buttons in the list's own settings.** Off because it takes part of the game's own
+  screen away, which is a thing to ask for rather than a thing to find has happened; either way
+  the rows and the buttons are the same switch, so nothing can disagree.
 
-  Three things make it safe to do at all. **Nothing else of the map's is touched** -- the buttons
-  are hidden one at a time, found through the selection image inside each, so the public-position
-  box and whatever the game puts in that corner next are left alone. **Nothing is hidden while
-  the marker button is off**, that being the only way into the list: a setting that takes
-  something away has to leave what it was traded for reachable. And **the ping has a line at the
-  foot of the list**, because it is the one thing on that strip no row can stand for -- a ping is
-  a gesture, not a kind of marker, so there is nothing to list and nothing to switch. The line
-  says "Ping a spot out loud", and while it is armed it says so and how to stop.
+  What goes is the whole strip: the buttons, the plate they are drawn on, and the little mouse
+  pictures beside them saying which button places a pin and which erases one. The plate is found
+  by climbing from the buttons to the largest thing holding them and nothing the map needs.
+  **Nothing else of the map's is touched** -- the public-position box, the biome name, the
+  pin-name box and the shared-map hint are each asked for by the field the game keeps it in, so
+  the climb stops below them rather than guessing from names, and `tgm_mapui` reports what it
+  found for the day a game update moves it. **Nothing is hidden while the marker button is off**,
+  that being the only way into the list: a setting that takes something away has to leave what it
+  was traded for reachable. And **the ping has a line at the foot of the list**, because it is the
+  one thing on that strip no row can stand for -- a ping is a gesture, not a kind of marker, so
+  there is nothing to list and nothing to switch. The line says "Ping a spot out loud", and while
+  it is armed it says so and how to stop. The mouse pictures are the game's key hints, which it
+  sets active again every time the map opens, so they are put back down rather than hidden once.
 
   Arming anything now cancels whatever else was armed, which it always should have: both the
   place-by-hand buttons and the ping work by writing a pin type into the one field the map reads
@@ -56,13 +61,32 @@
   Portal -- and `Vanilla Pin Names` in the Display section is where you write down what yours are
   for (`Icon2=Places,Icon3=Resources`). Anything left out keeps its shipped name.
 
-- **One triangle in the corner opens or shuts the whole list.** Beside the gear and the stick pin,
+- **A lit button no longer brings the rest of its row out with it.** The small buttons at the end
+  of a row wait for the pointer, and a button that is doing something shows anyway -- an armed
+  kind, a filtered one, a row keeping its crossed-off markers off the map -- because a row quietly
+  doing something has to go on saying so. But it was the row that came out, all four buttons of
+  it, so pressing "hide everything crossed off" lit one button on twenty rows and brought sixty
+  others along: exactly the eighty things to read before the first decision that the waiting rule
+  exists to prevent, put there by one press. Each button answers for itself now.
+
+- **One triangle in the corner opens or shuts every heading.** Beside the gear and the stick pin,
   and it is the row triangles' own control raised a level, so it says what they say: lying on its
   side for shut, turned down for open, showing the state the list is in rather than the state the
-  press would put it in. Anything folded anywhere counts as shut, because what a reader wants from
-  that button when part of the list is away is the rest of it back, not half of what is in front of
-  them folded to match. Shut, the whole list is the four words it is made of, and nothing is lost:
-  a heading opens again onto kinds that are themselves shut, which is how the list first looked.
+  press would put it in. Any heading folded counts as shut, because what a reader wants from that
+  button when part of the list is away is the rest of it back, not half of what is in front of them
+  folded to match. Shut, the list is the handful of words it is made of, and nothing is lost: a
+  heading opens again onto its kinds in whatever state they were left in.
+
+  The headings and nothing else. The kinds under them keep their own triangles, because opening
+  every one of those as well would put a couple of hundred type rows on the screen at a press --
+  a view nobody wants, and one no second press can undo, since it cannot know which kinds had
+  been open before. Four words can be refolded by eye; two hundred rows cannot.
+
+- **A kind with one type no longer keeps a triangle over it when the two are the same word in the
+  plural.** The test that spotted "Campfire" under Campfires took the s off both names, which left
+  "Workbench" against "Workbenche" -- so Workbenches, and anything else whose plural is not a bare
+  s, had a triangle that opened onto a single row repeating the name above it. It builds the plural
+  now instead of taking it off, which cannot guess wrong.
 
 - **The plants are grouped by whether you can farm them.** Under Resources, two rows stand in
   place of the five plant kinds: **Farm** and **Gather**, each listing its types directly. The reason to

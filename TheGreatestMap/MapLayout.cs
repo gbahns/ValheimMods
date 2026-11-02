@@ -59,6 +59,8 @@ namespace TheGreatestMap
                     lines.Add("  vanilla icon button (the template) " + Describe(vanilla, Screen.width, Screen.height) + " parent: " + Name(vanilla.parent));
             }
 
+            lines.Add("  the game's pin controls: " + VanillaPins.StripReport(map));
+
             lines.Add("children of the root:");
             foreach (Transform child in root)
             {

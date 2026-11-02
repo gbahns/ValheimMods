@@ -140,6 +140,15 @@ namespace TheGreatestMap
         /// </summary>
         private static readonly HashSet<Group> _foldedGroups = new HashSet<Group>();
 
+        /// <summary>
+        /// The headings the list drew this time round, which is not every heading there is: one
+        /// with no kinds listed under it and none of the map's own pins is left out altogether.
+        /// Written where they are drawn rather than worked out again, so the corner button cannot
+        /// come to a different answer than the list it stands over -- and read every frame, which
+        /// is reason enough not to work it out twice.
+        /// </summary>
+        private static readonly HashSet<Group> _headed = new HashSet<Group>();
+
         /// <summary>The types on the map under each kind, commonest first.</summary>
         private static Dictionary<Category, List<Focus.TypeCount>> _types;
 
@@ -315,15 +324,20 @@ namespace TheGreatestMap
         }
 
         /// <summary>
-        /// The triangle in the corner: one press opens every heading and every kind under them,
-        /// and the next shuts the lot.
+        /// The triangle in the corner: one press opens every heading, and the next shuts them
+        /// all. The headings and nothing else -- the kinds under them keep their own triangles
+        /// and whatever state the reader left them in.
+        ///
+        /// <para>Which is the level the whole list reads at. Opening every kind as well would put
+        /// two hundred type rows on the screen at one press, a view nobody wants and one no
+        /// second press can get back to, since it cannot know which kinds had been open. The
+        /// headings are four words, so this is the one fold a reader can undo by eye.</para>
         ///
         /// <para>It is the twisties' own control, raised a level, so it says what they say: a
         /// triangle lying on its side for shut and turned down for open, showing the state the
-        /// list is in rather than the state the press would put it in. Anything folded anywhere
-        /// counts as shut, because what a reader wants from this button when part of the list is
-        /// away is the rest of it back -- not half of what is in front of them folded to match.
-        /// </para>
+        /// list is in rather than the state the press would put it in. Any heading folded counts
+        /// as shut, because what a reader wants from this button when part of the list is away is
+        /// the rest of it back -- not half of what is in front of them folded to match.</para>
         /// </summary>
         private static void BuildFoldAll()
         {
@@ -361,7 +375,8 @@ namespace TheGreatestMap
                 // place, asked for between frames like every other one here.
                 _rebuildWanted = true;
             });
-            MenuKit.Tip(go, "Open or shut", "Open every heading and kind at once, or shut them all");
+            MenuKit.Tip(go, "Open or shut", "Open every heading at once, or shut them all. The kinds under them " +
+                                            "keep their own triangles.");
             PaintFoldAll();
         }
 
@@ -383,53 +398,26 @@ namespace TheGreatestMap
         }
 
         /// <summary>
-        /// Is any triangle in the list shut -- a heading, a kind with types under it, or a plant
-        /// half? Only rows that are really drawn are asked: a kind with nothing on the map has no
-        /// triangle, and counting it would leave the corner saying shut forever.
+        /// Is any heading shut? Only the headings the list actually drew are asked -- a heading
+        /// with nothing under it is not on the screen, and one of those left in the folded set
+        /// would have the corner saying shut over a list with nothing folded in it.
         /// </summary>
         private static bool AnythingFolded()
         {
-            if (_foldedGroups.Count > 0) return true;
-            if (SplitPlants)
-                foreach (var half in new[] { Harvest.Farm, Harvest.Gather })
-                    if (PlantTypes(half).Count > 0 && !_unfoldedPlants.Contains(half)) return true;
-            foreach (var kind in Categories.All)
-                if (Foldable(kind) && !_unfolded.Contains(kind)) return true;
+            foreach (var group in _headed) if (_foldedGroups.Contains(group)) return true;
             return false;
-        }
-
-        /// <summary>
-        /// Does this kind have a triangle? The same three questions <see cref="Unfold"/> asks
-        /// before it draws one, in the same order, so the corner button and the rows cannot
-        /// disagree about what there is to open.
-        /// </summary>
-        private static bool Foldable(Category kind)
-        {
-            if (_types == null || !_types.TryGetValue(kind, out var types) || types.Count == 0) return false;
-            // Drawn in the plant halves instead, which have triangles of their own.
-            if (SplitPlants && Categories.IsGrown(kind)) return false;
-            return types.Count > 1 || !SaysTheSame(types[0].Label, Categories.Label(kind));
         }
 
         private static void OpenEverything()
         {
             _foldedGroups.Clear();
-            _unfolded.Clear();
-            foreach (var kind in Categories.All) if (Foldable(kind)) _unfolded.Add(kind);
-            _unfoldedPlants.Clear();
-            if (SplitPlants)
-                foreach (var half in new[] { Harvest.Farm, Harvest.Gather })
-                    if (PlantTypes(half).Count > 0) _unfoldedPlants.Add(half);
         }
 
         private static void ShutEverything()
         {
-            _unfolded.Clear();
-            _unfoldedPlants.Clear();
-            // The headings as well, which is what makes this worth a button: shut, the whole list
-            // is the four words it is made of, and nothing is lost -- a heading opens again onto
-            // kinds that are themselves shut, which is how the list first looked.
-            foreach (var group in Categories.AllGroups) _foldedGroups.Add(group);
+            // Shut, the list is the handful of words it is made of, and nothing is lost: a
+            // heading opens again onto kinds in whatever state they were left in.
+            foreach (var group in _headed) _foldedGroups.Add(group);
         }
 
         private static void BuildPin()
@@ -717,6 +705,7 @@ namespace TheGreatestMap
         private static float BuildList(Minimap map)
         {
             float y = 0f;
+            _headed.Clear();
             if (_results != null)
             {
                 ActionRow(_content, 0f, y, () =>
@@ -763,6 +752,7 @@ namespace TheGreatestMap
                 // the player dropped by hand under it.
                 var vanilla = VanillaRows(map, g);
                 if (kinds.Count == 0 && vanilla.Count == 0) continue;
+                _headed.Add(g);
                 bool resources = AllResources(kinds);
 
                 // The heading is a switch like every other row here: pressed, it hides the kinds
@@ -1532,9 +1522,10 @@ namespace TheGreatestMap
             // should still sit under everyone else's.
             bool anyButton = onPlace != null || onOnly != null || onLocate != null || doneToggle != null;
             float right = 6f;
-            // Kept so the row can hide them again until the pointer arrives, and so it knows
-            // which of them is lit -- a button doing something is shown whether or not anybody
-            // is pointing at it.
+            // Kept so the row can hide them again until the pointer arrives, and so each knows
+            // whether it is lit -- a button doing something is shown whether or not anybody is
+            // pointing at it. One list against the other, button by button: it is each button's
+            // own business whether it has something to say.
             var group = new List<GameObject>(4);
             var lit = new List<Func<bool>>(4);
             if (anyButton)
@@ -1630,12 +1621,24 @@ namespace TheGreatestMap
                 foreach (var go in group) go.SetActive(false);
                 _hovers.Add(() =>
                 {
-                    bool show = glow.Over;
-                    if (!show)
-                        foreach (var light in lit) if (light()) { show = true; break; }
-                    foreach (var go in group) if (go.activeSelf != show) go.SetActive(show);
+                    bool over = glow.Over;
+                    // Each button on its own account, not the row's. One lit button used to bring
+                    // the other three out with it, which meant pressing "hide everything crossed
+                    // off" filled the list with four buttons a row -- the eighty things to read
+                    // this rule exists to keep off the screen, put there by one press. A lit
+                    // button is saying something about itself; its neighbors have nothing to add.
+                    bool any = over;
+                    for (int i = 0; i < group.Count; i++)
+                    {
+                        bool show = over || lit[i]();
+                        if (group[i].activeSelf != show) group[i].SetActive(show);
+                        if (show) any = true;
+                    }
+                    // The whole run of buttons is cleared whenever any of them is out, rather
+                    // than measuring to the leftmost one that happens to be showing: the name
+                    // would step in and out by the width of a button as the lit ones changed.
                     if (label != null)
-                        label.rectTransform.offsetMax = new Vector2(show ? -buttons : -6f, 0f);
+                        label.rectTransform.offsetMax = new Vector2(any ? -buttons : -6f, 0f);
                 });
             }
             return row;
@@ -2014,12 +2017,29 @@ namespace TheGreatestMap
         /// <summary>
         /// Two names that say the same thing, give or take the plural: "Campfire" is what the
         /// Campfires row already says, while "Carrot Seeds" is not what the Seeds row says.
+        ///
+        /// <para>The plural is made rather than taken off, which it was until 4.7.0: trimming the
+        /// s off both left "Workbench" against "Workbenche", so the Workbenches row kept a
+        /// triangle that opened onto one row saying Workbench. Anything whose plural is not a
+        /// bare s was in the same boat -- benches, bushes, berries -- and guessing which letters
+        /// to put back is how that goes wrong. Building the plural cannot: a word is the same word
+        /// as another if adding s, es or ies to one of them gets you the other.</para>
         /// </summary>
         private static bool SaysTheSame(string type, string kind)
         {
             if (string.IsNullOrEmpty(type) || string.IsNullOrEmpty(kind)) return false;
-            return string.Equals(type.TrimEnd('s', 'S'), kind.TrimEnd('s', 'S'),
-                                 StringComparison.OrdinalIgnoreCase);
+            return Plural(type, kind) || Plural(kind, type);
+        }
+
+        /// <summary>Is <paramref name="many"/> the plural of <paramref name="one"/>, or the same word?</summary>
+        private static bool Plural(string one, string many)
+        {
+            if (string.Equals(one, many, StringComparison.OrdinalIgnoreCase)) return true;
+            if (string.Equals(one + "s", many, StringComparison.OrdinalIgnoreCase)) return true;
+            if (string.Equals(one + "es", many, StringComparison.OrdinalIgnoreCase)) return true;
+            return one.EndsWith("y", StringComparison.OrdinalIgnoreCase)
+                   && string.Equals(one.Substring(0, one.Length - 1) + "ies", many,
+                                    StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>

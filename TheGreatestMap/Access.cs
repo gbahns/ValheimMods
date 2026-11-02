@@ -116,6 +116,18 @@ namespace TheGreatestMap
             }
         }
 
+        /// <summary>
+        /// The game's pin-name box, as a plain Transform. Its own type lives in an assembly this
+        /// mod does not reference, so it is never named here -- but knowing where it sits on the
+        /// map is enough to keep from hiding it.
+        /// </summary>
+        internal static Transform NameInput(Minimap map)
+        {
+            if (map == null || _nameInput == null) return null;
+            var box = _nameInput.GetValue(map) as Component;
+            return box != null ? box.transform : null;
+        }
+
         private static readonly MethodInfo _hidePinTextInput = AccessTools.Method(typeof(Minimap), "HidePinTextInput");
 
         /// <summary>Close the pin-name box, as vanilla does on a right-click.</summary>

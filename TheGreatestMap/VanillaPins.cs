@@ -302,36 +302,161 @@ namespace TheGreatestMap
             && TgmConfig.MarkerButton != null && TgmConfig.MarkerButton.Value;
 
         /// <summary>
-        /// Take the game's icon buttons off the large map, or put them back. Read every frame the
-        /// map is open, so a changed setting shows at once and nothing is left hidden by a mod
-        /// that has been switched off.
+        /// Take the game's pin controls off the large map, or put them back: the buttons, the
+        /// plate they sit on and the little mouse pictures beside them telling you which button
+        /// does what. Read every frame the map is open, so a changed setting shows at once,
+        /// nothing is left hidden by a mod that has been switched off, and the key hints stay
+        /// down -- the game sets those active again every time the map is opened.
         ///
-        /// <para>The buttons one at a time rather than the panel holding them. The panel is the
-        /// game's and there is no promise about what else is in it -- the public-position box sits
-        /// in that corner of the map too -- so hiding it would be hiding whatever the game puts
-        /// there next as well. Each button is reached the way vanilla's own filter reaches it, by
-        /// the selection image inside it, which is the one part of it this mod can name.</para>
+        /// <para>The whole strip rather than the buttons one at a time, which is what this did
+        /// first and was wrong: it left the plate they were drawn on and the mouse pictures
+        /// standing in an empty corner, which is worse to look at than the buttons were. What is
+        /// hidden is the largest thing holding the buttons and nothing else of the map's -- see
+        /// <see cref="Strip"/>.</para>
         /// </summary>
         internal static void Controls(Minimap map, bool hide)
         {
-            if (map == null) return;
-            var icons = Access.SelectedIcons(map);
-            if (icons != null)
-                foreach (var kv in icons) Show(map, kv.Value, !hide);
-            // The ping button, which belongs to the strip and stands for no pin type: the list
-            // has a line at its foot for it instead.
-            Show(map, map.m_selectedIconPing, !hide);
+            // Nothing of the map's has been touched and nothing is being asked for: no reason to
+            // go looking for the strip at all, which is most of the time, this being off unless
+            // somebody turned it on.
+            if (map == null || (!hide && !_hidden)) return;
+            _hidden = hide;
+
+            var strip = Strip(map);
+            if (strip != null) { Show(map, strip, !hide); }
+            else
+            {
+                // No one object holds them: then the buttons themselves, each reached the way
+                // vanilla's own filter reaches it, by the selection image inside it.
+                var icons = Access.SelectedIcons(map);
+                if (icons != null)
+                    foreach (var kv in icons) Show(map, Button(kv.Value), !hide);
+                Show(map, Button(map.m_selectedIconPing), !hide);
+            }
+
+            // The mouse pictures, which are the game's key hints for the map and belong to these
+            // controls -- they say which button places a pin and which erases one. A list of its
+            // own rather than part of the strip because the game sets every one of them active
+            // whenever the large map opens, from the Key Hints setting, so they have to be put
+            // back down afterwards rather than once.
+            if (map.m_hints != null)
+                foreach (var hint in map.m_hints) Show(map, hint, !hide);
         }
 
-        private static void Show(Minimap map, UnityEngine.UI.Image selected, bool show)
+        private static bool _hidden;
+        private static GameObject _strip;
+        private static Minimap _stripFor;
+        private static bool _looked;
+
+        private static GameObject Button(UnityEngine.UI.Image selected)
         {
-            if (selected == null || selected.transform.parent == null) return;
-            var button = selected.transform.parent.gameObject;
+            return selected != null && selected.transform.parent != null
+                ? selected.transform.parent.gameObject : null;
+        }
+
+        private static void Show(Minimap map, GameObject go, bool show)
+        {
+            if (go == null) return;
             // The touch-screen ping panel is the game's to switch: it sets that panel active or
             // inactive every frame from whether a touch device is in use, so anything written
             // there by this mod is overwritten and all that is left of it is the fight.
-            if (map.m_touchPingPanel != null && button.transform.IsChildOf(map.m_touchPingPanel)) return;
-            if (button.activeSelf != show) button.SetActive(show);
+            if (map.m_touchPingPanel != null && go.transform.IsChildOf(map.m_touchPingPanel)) return;
+            if (go.activeSelf != show) go.SetActive(show);
+        }
+
+        /// <summary>
+        /// The one object that holds the game's pin buttons and nothing else of the map's.
+        ///
+        /// <para>Found by climbing: start at the thing holding the buttons and go up while the
+        /// next one up still contains nothing the map needs. The plate behind the buttons and the
+        /// mouse pictures beside them are a level or two above them, which is why this climbs at
+        /// all -- and it stops the moment a level holds something that has to stay, which is what
+        /// keeps the public-position box, the biome name, the pin-name box and the shared-map hint
+        /// on the screen. Those are checked for by the fields the game exposes them through, so a
+        /// level is judged by what the game says is in it rather than by its name.</para>
+        ///
+        /// <para>Null when even the buttons' own parent holds something that has to stay, in
+        /// which case the buttons are hidden one at a time and the plate behind them stays.
+        /// <c>tgm_mapui</c> says which of the two happened.</para>
+        /// </summary>
+        private static GameObject Strip(Minimap map)
+        {
+            if (_stripFor != map || (_strip == null && !_looked))
+            {
+                _stripFor = map;
+                _looked = true;
+                _strip = Search(map);
+            }
+            return _strip;
+        }
+
+        private static GameObject Search(Minimap map)
+        {
+            var seat = Button(map.m_selectedIcon0);
+            if (seat == null || seat.transform.parent == null) return null;
+            var root = map.m_largeRoot != null ? map.m_largeRoot.transform : null;
+            var found = seat.transform.parent;
+            if (!OnlyControls(map, found, root)) return null;
+            for (var up = found.parent; OnlyControls(map, up, root); up = up.parent) found = up;
+            return found.gameObject;
+        }
+
+        /// <summary>
+        /// Is this level of the map nothing but the pin controls? Everything the map needs is
+        /// asked for by name; anything else in there is the plate, the hints and the spacing,
+        /// which is what we came for.
+        /// </summary>
+        private static bool OnlyControls(Minimap map, Transform at, Transform root)
+        {
+            // The large map's own root holds everything there is, so the climb stops below it.
+            if (at == null || at == root) return false;
+            foreach (var keep in Keepers(map))
+                if (keep != null && keep.IsChildOf(at)) return false;
+            return !Modded(at);
+        }
+
+        private static IEnumerable<Transform> Keepers(Minimap map)
+        {
+            yield return map.m_publicPosition != null ? map.m_publicPosition.transform : null;
+            yield return map.m_mapImageLarge != null ? map.m_mapImageLarge.transform : null;
+            yield return map.m_pinRootLarge;
+            yield return map.m_pinNameRootLarge;
+            yield return map.m_biomeNameLarge != null ? map.m_biomeNameLarge.transform : null;
+            yield return map.m_largeMarker;
+            yield return map.m_largeShipMarker;
+            yield return map.m_windMarker;
+            yield return map.m_gamepadCrosshair;
+            yield return map.m_sharedMapHint != null ? map.m_sharedMapHint.transform : null;
+            yield return map.m_touchPingPanel;
+            yield return Access.NameInput(map);
+        }
+
+        /// <summary>
+        /// Anything another mod -- or this one -- has put in here. This mod's own map-pin button
+        /// is a clone of one of these and moves out to the map root as it is built, so it should
+        /// never be found; a button hiding itself would be a hard thing to work out from the
+        /// outside, which is reason enough to look.
+        /// </summary>
+        private static bool Modded(Transform at)
+        {
+            if (at.name.StartsWith("TGM_", StringComparison.Ordinal)) return true;
+            foreach (Transform child in at) if (Modded(child)) return true;
+            return false;
+        }
+
+        /// <summary>What <c>tgm_mapui</c> says about all this, for working out what was hidden and what was not.</summary>
+        internal static string StripReport(Minimap map)
+        {
+            if (map == null) return "no map";
+            var strip = Strip(map);
+            if (strip == null)
+                return "no single object holds them, so they are hidden one button at a time and the plate behind " +
+                       "them stays";
+            int n = strip.GetComponentsInChildren<Transform>(true).Length;
+            string where = strip.transform.parent != null ? strip.transform.parent.name : "none";
+            int hints = map.m_hints != null ? map.m_hints.Count : 0;
+            return $"{strip.name} ({n} objects, parent {where}){(strip.activeSelf ? "" : " -- hidden")}, " +
+                   $"plus {hints} key hint{(hints == 1 ? "" : "s")}";
         }
 
         // ── a whole heading's worth ──────────────────────────────────────────────

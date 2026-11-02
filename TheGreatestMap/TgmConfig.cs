@@ -383,14 +383,15 @@ namespace TheGreatestMap
                 "None is every landmark the game draws for the world at once.");
             VanillaPinNames.SettingChanged += (_, __) => KindMenu.Relayout();
 
-            HideVanillaControls = mod.BindLocal("Display", "Hide Vanilla Controls", true,
+            HideVanillaControls = mod.BindLocal("Display", "Hide Vanilla Controls", false,
                 "Take the game's own row of pin buttons off the large map, the marker list having grown to cover " +
                 "every one of them: a row for each icon, which presses the same switch that double-clicking its " +
                 "button does, a place-by-hand button on the five you can drop, and a line at the foot of the list " +
                 "for pinging out loud. Nothing else of the map's is touched -- the public-position box stays where " +
                 "it is -- and nothing is hidden while the marker button is off, since that is the way to the list. " +
                 "Off leaves the buttons where the game put them; both work, and the only reason to take them away " +
-                "is that two sets of controls for one map is one set too many.");
+                "is that two sets of controls for one map is one set too many. Off to begin with: it takes part of " +
+                "the game's own screen away, which is a thing to be asked for rather than arrive with an update.");
             HideVanillaControls.SettingChanged += (_, __) => KindMenu.Relayout();
 
             SplitPlantsByFarming = mod.BindLocal("Display", "Split Plants By Farming", true,

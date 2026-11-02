@@ -90,10 +90,11 @@ underneath, each with a switch of its own, so the copper can go and the silver s
 as you like; the list scrolls on the wheel while the pointer is on it, and the title strip, the
 find box and the foot stay put while it does.
 
-The triangle in the title strip, beside the gear and the stick pin, opens every heading and every
-kind at once, and shuts them all again. It shows the state the list is in rather than what the
-press would do -- turned down while everything is open, lying on its side while anything anywhere
-is folded away.
+The triangle in the title strip, beside the gear and the stick pin, opens every heading at once and
+shuts them all again. The headings and nothing else: the kinds under them keep their own triangles
+and whatever state you left them in, since opening those as well would put a couple of hundred type
+rows on the screen at one press. It shows the state the list is in rather than what the press would
+do -- turned down while every heading is open, lying on its side while any of them is folded away.
 
 Every kind sits under one of four headings, each with a triangle of its own: **Resources** (what
 you harvest, and what runs out), **Places** (what you go to, and what stays put), **Your Stuff**
@@ -136,9 +137,11 @@ of it. They close on a click away, and go with the list.
   reading.
 
 The small buttons at the end of a row -- place by hand, only, ping, and the count of the ones you
-have crossed off -- are drawn on the row the pointer is resting on, and on any row whose button is
-already doing something, so an armed kind, a filtered one, or one hiding its crossed-off markers
-goes on saying so.
+have crossed off -- are drawn on the row the pointer is resting on, and any one of them that is
+already doing something is drawn wherever it is, so an armed kind, a filtered one, or one hiding
+its crossed-off markers goes on saying so. Each button answers for itself: a lit one does not
+bring its neighbors out with it, or hiding everything crossed off would fill the list with
+buttons.
 
 "12 done" at the end of a row hides the twelve markers of that kind you have crossed off, and
 lights up while they are hidden; on a deposit or a plant it reads "12 gone", since the thing
@@ -203,11 +206,14 @@ The game gives these pins no names -- they are five pictures, and what each mean
 decided it means -- so they ship named after what they look like (Fire, House, Hammer, Dot, Portal)
 and "Vanilla Pin Names" is where you write down what yours are for: `Icon2=Places,Icon3=Resources`.
 
-**So the game's own row of pin buttons is off the map.** Every one of them has a row here now --
-the same switch, the same placing -- and two sets of controls for one map, in a corner of it,
-saying the same things in different words, is one set too many. "Hide Vanilla Controls" turns it
-off and puts them back; both work. Nothing else of the map's is touched, the public-position box
-included, and nothing is hidden while the marker button is off, that being the way into the list.
+**So the game's own row of pin buttons can come off the map.** Every one of them has a row here now
+-- the same switch, the same placing -- and two sets of controls for one map, in a corner of it,
+saying the same things in different words, is one set too many. "Hide Vanilla Controls" does it,
+off to begin with, since it takes part of the game's own screen away. The whole strip goes: the
+buttons, the plate behind them, and the little mouse pictures beside them. Nothing else of the
+map's is touched -- the public-position box, the biome name, the pin-name box and the shared-map
+hint are each asked for by name and left where they are -- and nothing is hidden while the marker
+button is off, that being the way into the list.
 
 The ping is the exception, and it has a line at the foot of the list: a ping is a gesture rather
 than a kind of marker, so there is no row for it to be. "Ping a spot out loud", then double-click
