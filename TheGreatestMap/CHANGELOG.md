@@ -2,6 +2,33 @@
 
 ## 4.7.0 -- unreleased
 
+- **`tgm_survey` draws what it would write, before it writes it.** A dry run already said what it
+  would do, in numbers: "1,432 markers to write, Berries: 611, Dungeons: 23". That answers how
+  much and not the question worth asking before writing fourteen hundred markers onto a map, which
+  is what it will look like -- whether the berries come out as a readable scatter or as a green
+  crust over the Meadows, whether the spawners land anywhere near what you wanted to test against.
+  A count cannot be looked at. The map can.
+
+  So a run without `apply` puts them up with the map open: a pin at each spot, wearing the icon
+  that marker would wear, pale and pulsing once like a ping so they can be told at a glance from
+  the markers that are really there. Nothing is written, nothing is saved and nothing is shared --
+  these are the same kind of not-really-there pin the erasure ghosts are -- and they come off at
+  the next run, when `apply` writes the real ones, at **`tgm_survey off`**, or when the world
+  unloads. The nearest 2,000 are drawn and the report says how many were left out: a preview that
+  stalls the client is worse than no preview, and the candidates arrive nearest-first anyway, so
+  what is drawn is what you can go and look at.
+
+- **An evil bone pile wears bones rather than a skeleton trophy.** The trophy is what a burial
+  chamber wears, and two different things wearing one picture is the map answering the question
+  wrong rather than not answering it.
+
+  A saved Catalog line beats a new default, which is right -- the line is where you say what you
+  want -- so a correction to an icon this mod shipped would otherwise reach nobody who had already
+  run it. A line that still says character for character what the mod wrote is corrected once, and
+  written down as done in `Catalog Icons Fixed`: set the old picture back and it stays set.
+  Markers already on the map follow, since a recorded marker wears whatever the catalog says its
+  thing wears today.
+
 - **The game's row of pin buttons can come off the map, the list having grown to cover it.** Every one
   of those buttons now has a row: a switch pressing the same `m_visibleIconTypes` entry the button
   does, a place-by-hand button on the five icons you can drop which arms the game's own placing,

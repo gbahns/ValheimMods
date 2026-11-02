@@ -388,13 +388,22 @@ counts as well unless "Structures Include Unlisted" is off or its prefab name is
 | `tgm_show` | Show every hidden marker again (single markers, hidden icons, hidden kinds and hidden crossed-off markers) |
 | `tgm_mapui` | What the large map's layout measures: how much screen it uses and how its parts are anchored |
 | `tgm_adopt [reach] [apply] [plants]` | Test worlds: ask the world what your hand-placed markers were pointing at, write the recorded marker for it, and remove the hand-placed pin |
-| `tgm_survey [count] [all] [apply] [kinds]` | Test worlds: mark every location and resource the world holds where you have explored, as if you had recorded them; name kinds to take only those |
+| `tgm_survey [count] [all] [apply] [kinds]` | Test worlds: mark every location and resource the world holds where you have explored, as if you had recorded them; name kinds to take only those. Without `apply` it draws them on the map instead of writing them; `tgm_survey off` takes that preview down |
 | `tgm_undo [name] [confirm]` | Take back a `tgm_adopt` or `tgm_survey` run: its markers go, the hand-placed pins it removed come back |
 
 `tgm_adopt` and `tgm_survey` are for building a map to test against, not for playing. Both list
 what they would do and write nothing until told to `apply`, both obey the same spacing, label and
 erasure rules as ordinary recording, and both need the world itself -- single player, a world you
 are hosting, or the server's own console.
+
+**A survey without `apply` also draws what it would write**, with the map open: a pin at each
+spot, wearing the icon that marker would wear, pale and pulsing once so they can be told from the
+markers that are really there. A count cannot be looked at -- "611 berries" says how much and
+nothing about whether they come out as a readable scatter or a green crust over the Meadows -- and
+that is the question worth asking before writing a thousand markers. Nothing is written, saved or
+shared: the preview comes off at the next run, when `apply` writes the real markers, at
+`tgm_survey off`, or when the world unloads. The nearest 2,000 are drawn and the report says how
+many were left out, because a preview that stalls the client is worse than no preview.
 
 A marker you had crossed off is written crossed off, and if something already stood for that
 thing, that marker is crossed off instead -- the tick is the one thing on a hand-placed pin that

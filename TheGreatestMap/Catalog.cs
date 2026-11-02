@@ -588,7 +588,10 @@ namespace TheGreatestMap
                     // them inside dungeons and camps, and nothing on the map should mark those.
                     return "Spawner_GreydwarfNest=Greydwarf Nest|TrophyGreydwarfBrute," +
                            "Spawner_DraugrPile=Draugr Pile|TrophyDraugr," +
-                           "BonePileSpawner=Evil Bone Pile|TrophySkeleton," +
+                           // Bones rather than a skeleton trophy: the trophy is what a burial
+                           // chamber wears, and two different things wearing one picture is the
+                           // map lying about one of them. A pile of bones is what this is.
+                           "BonePileSpawner=Evil Bone Pile|BoneFragments," +
                            "CharredStone_Spawner*=Charred Spawner|TrophyCharredMelee";
                 case Category.BossAltar:
                     return "Eikthyrnir=Eikthyr|TrophyEikthyr,GDKing=The Elder|TrophyTheElder,Bonemass=Bonemass|TrophyBonemass," +
@@ -949,6 +952,29 @@ namespace TheGreatestMap
             // mod has since dropped. Kept, in the order they were already in.
             for (int i = 0; i < entries.Count; i++) if (!taken[i]) result.Add(entries[i].Value);
             return string.Join(",", result.ToArray());
+        }
+
+        /// <summary>
+        /// Change one entry's icon in a saved catalog line, and only where it still says exactly
+        /// what it is expected to say. Everything else about the line -- the order, the other
+        /// entries, this entry's own display name -- is left as written.
+        /// </summary>
+        internal static string WithIcon(string saved, string prefab, string was, string now)
+        {
+            if (string.IsNullOrEmpty(saved)) return saved;
+            var parts = saved.Split(',');
+            bool changed = false;
+            for (int i = 0; i < parts.Length; i++)
+            {
+                string one = parts[i].Trim();
+                int bar = one.IndexOf('|');
+                if (bar < 0) continue;
+                if (!string.Equals(PrefabOf(one), prefab, StringComparison.OrdinalIgnoreCase)) continue;
+                if (!string.Equals(one.Substring(bar + 1).Trim(), was, StringComparison.Ordinal)) continue;
+                parts[i] = one.Substring(0, bar + 1) + now;
+                changed = true;
+            }
+            return changed ? string.Join(",", parts) : saved;
         }
 
         /// <summary>The prefab part of one catalog entry: "name=Label|Icon" is "name".</summary>

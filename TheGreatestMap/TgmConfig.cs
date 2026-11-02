@@ -35,6 +35,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<string> HiddenIcons;
         internal static ConfigEntry<string> MapsTidied;
         internal static ConfigEntry<string> CatalogOrdered;
+        internal static ConfigEntry<string> CatalogIconsFixed;
         internal static ConfigEntry<TypeOrder> TypeRowOrder;
         internal static ConfigEntry<bool> ShowCounts;
         internal static ConfigEntry<bool> SplitPlantsByFarming;
@@ -185,6 +186,65 @@ namespace TheGreatestMap
                     "[TheGreatestMap] Put these Catalog lines back into the order this version ships them in, so the " +
                     "marker list can read a progression order off them: " + string.Join(", ", moved.ToArray()) +
                     ". Every entry is still there, exactly as it was written; only the order moved, and only this once.");
+        }
+
+        /// <summary>
+        /// Icons this mod shipped for a thing and then changed its mind about: the prefab, what
+        /// was on it before, and what it should be. A saved Catalog line always beats a new
+        /// default -- which is right, since the line is where a player says what they want -- so
+        /// without this a correction reaches nobody who had already run the mod.
+        ///
+        /// <para>Only a line that still says character for character what this mod wrote is
+        /// touched, which is the one case where nobody has chosen anything, and only once: the
+        /// correction is written down afterwards, so a player who sets the old picture back keeps
+        /// it. An entry can be dropped from here once no map in the wild can still be carrying
+        /// it, like the passes in <see cref="Migrations"/>.</para>
+        /// </summary>
+        private static readonly string[][] ShippedIcons =
+        {
+            // The skeleton trophy is what a burial chamber wears. An evil bone pile wearing it
+            // too meant one picture for two different things, which is the map answering the
+            // question wrong rather than not answering it.
+            new[] { "Spawners", "BonePileSpawner", "TrophySkeleton", "BoneFragments" },
+        };
+
+        private static void FixShippedIconsOnce()
+        {
+            if (CatalogIconsFixed == null) return;
+            string done = CatalogIconsFixed.Value ?? "";
+            var made = new List<string>();
+            foreach (var fix in ShippedIcons)
+            {
+                string id = fix[1] + "=" + fix[3];
+                if (Listed(done, id)) continue;
+                // Written down whether or not there was anything to correct: a fresh config has
+                // the new icon already, and this is a correction that has been dealt with either
+                // way. Otherwise every start would look at it again forever.
+                made.Add(id);
+                foreach (var kv in CategoryPrefabs)
+                {
+                    if (!string.Equals(Categories.Label(kv.Key), fix[0], StringComparison.Ordinal)) continue;
+                    string now = Catalog.WithIcon(kv.Value.Value, fix[1], fix[2], fix[3]);
+                    if (string.Equals(kv.Value.Value, now, StringComparison.Ordinal)) break;
+                    kv.Value.Value = now;
+                    TheGreatestMapMod.Log.LogInfo(
+                        $"[TheGreatestMap] {fix[1]} wore {fix[2]} because that is what this mod used to ship for it; " +
+                        $"it is {fix[3]} now. Your Catalog line said the old one word for word, so it has been " +
+                        "corrected once. Change it to anything you like and it stays changed.");
+                    break;
+                }
+            }
+            if (made.Count == 0) return;
+            foreach (var id in made) done = done.Length == 0 ? id : done + "," + id;
+            CatalogIconsFixed.Value = done;
+        }
+
+        private static bool Listed(string all, string one)
+        {
+            if (string.IsNullOrEmpty(all)) return false;
+            foreach (var word in all.Split(','))
+                if (string.Equals(word.Trim(), one, StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
         }
 
         /// <summary>True when anything at all is being hidden, by any of the switches.</summary>
@@ -426,6 +486,11 @@ namespace TheGreatestMap
                 "thistle, copper before silver -- and reordering a Catalog line reorders these to match. Most First " +
                 "puts the commonest at the top, which is what this did before there was a choice. A To Z is by name.");
             TypeRowOrder.SettingChanged += (_, __) => KindMenu.Relayout();
+
+            CatalogIconsFixed = mod.BindLocal("Internal", "Catalog Icons Fixed", "",
+                "Which of the icon corrections below this mod has already made to your Catalog lines, so each is made " +
+                "once and never again. An icon the mod shipped and then changed its mind about is corrected on a line " +
+                "that still says exactly what the mod put there; change one yourself afterwards and it stays changed.");
 
             CatalogOrdered = mod.BindLocal("Internal", "Catalog Ordered", "",
                 "Which version of this mod last put your Catalog lines into the order it ships them in. The order of " +
@@ -691,6 +756,7 @@ namespace TheGreatestMap
                     "or pin:<VanillaPinType> such as pin:Icon0, pin:Memorial, pin:Boss.");
             }
             OrderTheCatalogOnce();
+            FixShippedIconsOnce();
 
             StructuresIncludeUnlisted = mod.BindLocal("Catalog", "Structures Include Unlisted", true,
                 "Treat any outdoor location that is not listed under another kind as a structure (the location's prefab name, " +

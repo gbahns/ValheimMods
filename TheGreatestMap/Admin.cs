@@ -543,6 +543,10 @@ namespace TheGreatestMap
             string snapshot = apply ? MapBackup.Snapshot(PersonalMap.Label, "tgm_survey", PersonalMap.Store.ToBytes()) : null;
 
             var sofar = new List<Written>();
+            // On a dry run, the same list drawn on the map: where each marker would stand and
+            // what it would wear. Gathered in the order they are judged, which is nearest first,
+            // so a preview that hits its cap keeps the ones you can go and look at.
+            var preview = apply ? null : new List<SurveyPreview.Spot>();
             var byKind = new SortedDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             // And what those are, within each kind. "Dungeons: 10" says how much work and
             // nothing about whether it is ten burial chambers or the frost cave you were
@@ -559,6 +563,7 @@ namespace TheGreatestMap
                 {
                     case Verdict.Written:
                         written++;
+                        preview?.Add(new SurveyPreview.Spot { Pos = found.Pos, Icon = found.Icon });
                         string kindLabel = Categories.Label(found.Cat);
                         Count(byKind, kindLabel);
                         if (!byType.TryGetValue(kindLabel, out var types))
@@ -679,6 +684,28 @@ namespace TheGreatestMap
             if (capped > 0)
                 lines.Add($"  {capped} more were left alone: this stops at {cap}, nearest to you first, " +
                           $"which reached {reached:0} m out. Run it again for the next {cap}, or name a bigger number.");
+
+            // The preview goes up at the end rather than as each one is judged: the run is one
+            // visible pause already, and drawing a thousand pins inside it would make it two.
+            if (apply)
+            {
+                // What it was previewing is about to be really there.
+                SurveyPreview.Clear();
+            }
+            else if (preview.Count > 0)
+            {
+                int shown = SurveyPreview.Show(preview, "the survey preview");
+                if (shown == 0)
+                    lines.Add("  There is no map up to draw them on, so this is numbers only. " +
+                              "Open the map and run it again to see where they would go.");
+                else
+                    lines.Add($"  {shown} of them are on the map now, pale and pulsing, wearing the icon each " +
+                              "marker would wear. Nothing is written: they are not saved, not shared, and they " +
+                              "come off at the next run or at tgm_survey off." +
+                              (shown < preview.Count
+                                  ? $" Those are the nearest {shown}; the other {preview.Count - shown} are not drawn."
+                                  : ""));
+            }
             if (apply && written > 0) ClientPins.Restyle();
             lines.AddRange(Undoable(journal, snapshot, apply));
             return lines;

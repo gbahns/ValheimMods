@@ -62,6 +62,7 @@ namespace TheGreatestMap
             Watchdog.Reset();
             Tilled.Reset();
             Erasures.Reset();
+            SurveyPreview.Reset();
             Migrations.Reset();
         }
 
@@ -1634,6 +1635,8 @@ namespace TheGreatestMap
             // Vanilla may have added or reordered elements, which would bury the portals again.
             Portals.BringToFront();
             Erasures.Paint();
+            // What a survey would write, if one has been asked for and not yet applied.
+            SurveyPreview.Paint();
             // Before the labels, which then see a pin this has just put away and leave its name
             // alone rather than hanging it over empty ground.
             ClientPins.AfterLayoutMaster(__instance);

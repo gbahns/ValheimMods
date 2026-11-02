@@ -229,10 +229,21 @@ namespace TheGreatestMap
                                                       "and tgm_undo takes the whole run back.");
                 }));
 
-            new Terminal.ConsoleCommand("tgm_survey", "Admin, test worlds: mark every location and resource the world holds where you have already explored, as if you had recorded them. tgm_survey [count, default 1000] lists; add apply to write it, all to take the whole world rather than what you have explored, and a comma-separated list of kinds to take only those (tgm_survey 5000 apply Berries,Mushrooms,Herbs,Seeds)",
+            new Terminal.ConsoleCommand("tgm_survey", "Admin, test worlds: mark every location and resource the world holds where you have already explored, as if you had recorded them. tgm_survey [count, default 1000] lists them and draws them on the map, pale and pulsing, without writing anything; add apply to write it, all to take the whole world rather than what you have explored, off to take the preview off the map, and a comma-separated list of kinds to take only those (tgm_survey 5000 apply Berries,Mushrooms,Herbs,Seeds)",
                 (Terminal.ConsoleEvent)(args =>
                 {
                     if (Player.m_localPlayer == null) { args.Context.AddString("No player."); return; }
+                    // Nothing else to do: take the preview down and say so. Before everything
+                    // else, since this asks for no survey at all.
+                    if (HasWord(args, "off") || HasWord(args, "clear"))
+                    {
+                        int had = SurveyPreview.Count;
+                        SurveyPreview.Clear();
+                        args.Context.AddString(had > 0
+                            ? $"Took {had} previewed marker(s) off the map. Nothing was ever written."
+                            : "There was no survey preview on the map.");
+                        return;
+                    }
                     bool apply = HasWord(args, "apply");
                     bool everywhere = HasWord(args, "all");
                     int cap = (int)Number(args, Admin.DefaultCap);
@@ -245,6 +256,8 @@ namespace TheGreatestMap
                         string one = args.Args[i];
                         if (string.Equals(one, "apply", System.StringComparison.OrdinalIgnoreCase)) continue;
                         if (string.Equals(one, "all", System.StringComparison.OrdinalIgnoreCase)) continue;
+                        if (string.Equals(one, "off", System.StringComparison.OrdinalIgnoreCase)) continue;
+                        if (string.Equals(one, "clear", System.StringComparison.OrdinalIgnoreCase)) continue;
                         if (float.TryParse(one, System.Globalization.NumberStyles.Float,
                                            System.Globalization.CultureInfo.InvariantCulture, out _)) continue;
                         wanted = wanted == null ? one : wanted + "," + one;
@@ -261,7 +274,8 @@ namespace TheGreatestMap
                         TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_survey: " + line);
                     }
                     if (!apply) args.Context.AddString("Run tgm_survey apply to write it. The markers travel like any others, " +
-                                                      "and tgm_undo takes the whole run back.");
+                                                      "and tgm_undo takes the whole run back. tgm_survey off takes the preview " +
+                                                      "off the map without writing anything.");
                 }));
 
             new Terminal.ConsoleCommand("tgm_undo", "Take back a tgm_adopt or tgm_survey run: the markers it wrote go, and the hand-placed pins it removed come back. tgm_undo lists the most recent run; add confirm to do it, or name one of the files it lists",

@@ -37,7 +37,15 @@ namespace TheGreatestMap
         private static bool _vanillaWasOff;
         private static float _until;
 
-        private static bool Armed => _kind.HasValue || _icon != null || _players || _vanilla.HasValue;
+        /// <summary>
+        /// Whether there is anything to point at. Every way of asking is in here, including the
+        /// two that are a list rather than a kind -- the places the world marks, and pins drawn
+        /// by something else that asked for a ping. Leaving the places out of this meant a row
+        /// pinging the world's center said how far away it was and then pulsed nothing, because
+        /// the pulse is gated on being armed and that row arms nothing else.
+        /// </summary>
+        private static bool Armed => _kind.HasValue || _icon != null || _players || _vanilla.HasValue
+                                     || _spots.Count > 0 || (_theirs != null && _theirs.Count > 0);
 
         internal static bool On => Time.unscaledTime < _until && Armed;
 
@@ -61,6 +69,8 @@ namespace TheGreatestMap
             _icon = null;
             _players = false;
             Unhide();
+            _spots.Clear();
+            _theirs = null;
             _raised.Clear();
             _until = 0f;
         }
@@ -88,6 +98,20 @@ namespace TheGreatestMap
         {
             Clear();
             if (where != null) _spots.AddRange(where);
+            Begin(label, Count());
+        }
+
+        /// <summary>
+        /// Light up pins something else drew and holds: the survey preview is the case -- markers
+        /// that are not on the map at all yet, put up to be looked at before they are written.
+        ///
+        /// <para>The list is held, not copied, so whoever drew them ends the ping by taking them
+        /// down: a pulse cannot outlive the pins it points at.</para>
+        /// </summary>
+        internal static void Pins(List<Minimap.PinData> pins, string label)
+        {
+            Clear();
+            _theirs = pins;
             Begin(label, Count());
         }
 
@@ -135,6 +159,7 @@ namespace TheGreatestMap
             _players = false;
             Unhide();
             _spots.Clear();
+            _theirs = null;
             _raised.Clear();
         }
 
@@ -167,6 +192,9 @@ namespace TheGreatestMap
         }
 
         private static readonly List<Vector3> _spots = new List<Vector3>();
+
+        /// <summary>Pins drawn by something else that asked for them to be pointed at.</summary>
+        private static List<Minimap.PinData> _theirs;
 
         /// <summary>
         /// The markers already brought to the front for this pulse, by the object that was moved.
@@ -254,7 +282,7 @@ namespace TheGreatestMap
 
         private static int Count()
         {
-            int n = _spots.Count;
+            int n = _spots.Count + (_theirs != null ? _theirs.Count : 0);
             foreach (var pin in ClientPins.All) if (Matches(pin)) n++;
             foreach (var pin in LivePins()) { if (pin != null) n++; }
             foreach (var pin in VanillaFound()) { if (pin != null) n++; }
@@ -311,6 +339,13 @@ namespace TheGreatestMap
                 float d = Geo.FlatDistance(from, pin.m_pos);
                 if (d < best) { best = d; at = pin.m_pos; }
             }
+            if (_theirs != null)
+                foreach (var pin in _theirs)
+                {
+                    if (pin == null) continue;
+                    float d = Geo.FlatDistance(from, pin.m_pos);
+                    if (d < best) { best = d; at = pin.m_pos; }
+                }
             if (best == float.MaxValue) return null;
             return (best >= 1000f ? $"{best / 1000f:0.#} km" : $"{Mathf.RoundToInt(best)} m") + " " + Compass(at - from);
         }
@@ -388,6 +423,8 @@ namespace TheGreatestMap
             }
 
             foreach (var pin in LivePins()) Pulse(pin, grow, toWhite);
+
+            if (_theirs != null) foreach (var pin in _theirs) Pulse(pin, grow, toWhite);
 
             if (_players || _spots.Count > 0 || _vanilla.HasValue)
             {

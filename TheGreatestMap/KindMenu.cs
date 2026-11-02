@@ -211,6 +211,9 @@ namespace TheGreatestMap
         /// </summary>
         private static bool _resetShown;
 
+        /// <summary>Said once a session: a layout that does not fit is a bug, not a preference.</summary>
+        private static bool _warnedTall;
+
         /// <summary>
         /// One per row whose buttons wait for the pointer. Run every frame rather than on a
         /// press, because arriving on a row is not a press.
@@ -599,6 +602,20 @@ namespace TheGreatestMap
             y = BuildFoot(y);
 
             float height = -y + Pad;
+            // What the panel came out as against what there was room for. These agree by
+            // construction -- the scrolling part is given what the head and the foot leave -- so
+            // a panel taller than the map means the foot was measured as one thing and drawn as
+            // another, and the symptom is rows under the bottom edge of the screen with no
+            // scroll bar offering to reach them. That is invisible from the outside and obvious
+            // from here, so it says so once rather than being left to look like a scroll bug.
+            if (height > pr.height + 0.5f && !_warnedTall)
+            {
+                _warnedTall = true;
+                TheGreatestMapMod.Log.LogWarning(
+                    $"[TheGreatestMap] The marker list came out {height:0} tall in a map {pr.height:0} tall " +
+                    $"(head {head:0}, viewport {_viewportHeight:0}, foot {foot:0}): its last rows are off the " +
+                    "bottom of the screen. The foot is being measured as a different height than it is drawn.");
+            }
             _rect.sizeDelta = new Vector2(Width, height);
             BuildFoldAll();
             BuildGear();

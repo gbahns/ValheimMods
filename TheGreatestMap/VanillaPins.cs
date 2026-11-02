@@ -119,6 +119,7 @@ namespace TheGreatestMap
             foreach (var portal in Portals.DrawnPins) if (portal == pin) return true;
             foreach (var shown in Transports.DrawnPins) if (shown != null && shown.Pin == pin) return true;
             foreach (var ghost in Erasures.DrawnPins) if (ghost == pin) return true;
+            foreach (var ghost in SurveyPreview.DrawnPins) if (ghost == pin) return true;
             return false;
         }
 
