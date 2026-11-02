@@ -771,6 +771,22 @@ namespace TheGreatestMap
                     doneShown: () => GroupDoneShown(kinds),
                     doneToggle: () => SetKindsDone(kinds, !GroupDoneShown(kinds)),
                     gone: resources,
+                    // Everything under this heading at once, which is the fold a reader wants
+                    // most: the corner button is about the four headings and a row's own triangle
+                    // is about that row, and between them was the thing nobody had -- open the
+                    // seven kinds under Resources and leave Places alone.
+                    onFold: AnyFoldable(kinds)
+                        ? (Action)(() =>
+                        {
+                            bool open = !ChildrenOpen(kinds);
+                            SetChildrenOpen(kinds, open);
+                            // Opening what is under a shut heading has to show it, or the press
+                            // does its work out of sight and reads as having done nothing.
+                            if (open) _foldedGroups.Remove(g);
+                            _rebuildWanted = true;
+                        })
+                        : null,
+                    foldOpen: () => ChildrenOpen(kinds),
                     head: true, icon: false, tip: Categories.GroupTip(g));
                 Twisty(heading, GroupIndent, !_foldedGroups.Contains(g),
                        () => { if (!_foldedGroups.Remove(g)) _foldedGroups.Add(g); });
@@ -1315,6 +1331,66 @@ namespace TheGreatestMap
             return Named(Categories.GroupLabel(group), lit, n);
         }
 
+        private static readonly Harvest[] Halves = { Harvest.Farm, Harvest.Gather };
+
+        /// <summary>
+        /// Does this kind have a triangle of its own? The same three questions <see cref="Unfold"/>
+        /// asks before it draws one, in the same order, so a heading's fold button and the rows
+        /// under it cannot disagree about what there is to open.
+        /// </summary>
+        private static bool Foldable(Category kind)
+        {
+            if (_types == null || !_types.TryGetValue(kind, out var types) || types.Count == 0) return false;
+            // Drawn in the plant halves instead, which have triangles of their own.
+            if (SplitPlants && Categories.IsGrown(kind)) return false;
+            return types.Count > 1 || !SaysTheSame(types[0].Label, Categories.Label(kind));
+        }
+
+        /// <summary>Are the plant halves drawn under this heading, in place of some of its kinds?</summary>
+        private static bool Halved(List<Category> kinds)
+        {
+            if (!SplitPlants) return false;
+            foreach (var kind in kinds) if (Categories.IsGrown(kind) && HasTypes(kind)) return true;
+            return false;
+        }
+
+        /// <summary>Is there anything under this heading to open or shut?</summary>
+        private static bool AnyFoldable(List<Category> kinds)
+        {
+            foreach (var kind in kinds) if (Foldable(kind)) return true;
+            if (Halved(kinds)) foreach (var half in Halves) if (PlantTypes(half).Count > 0) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Is every row under this heading that can be opened open? All of them rather than any,
+        /// because the button says what the next press will do and the press a reader wants from a
+        /// half-open heading is the rest of it open -- the same rule the corner button keeps.
+        /// </summary>
+        private static bool ChildrenOpen(List<Category> kinds)
+        {
+            foreach (var kind in kinds) if (Foldable(kind) && !_unfolded.Contains(kind)) return false;
+            if (Halved(kinds))
+                foreach (var half in Halves)
+                    if (PlantTypes(half).Count > 0 && !_unfoldedPlants.Contains(half)) return false;
+            return true;
+        }
+
+        private static void SetChildrenOpen(List<Category> kinds, bool open)
+        {
+            foreach (var kind in kinds)
+            {
+                if (!Foldable(kind)) continue;
+                if (open) _unfolded.Add(kind); else _unfolded.Remove(kind);
+            }
+            if (!Halved(kinds)) return;
+            foreach (var half in Halves)
+            {
+                if (PlantTypes(half).Count == 0) continue;
+                if (open) _unfoldedPlants.Add(half); else _unfoldedPlants.Remove(half);
+            }
+        }
+
         /// <summary>
         /// Is anything under this heading being drawn -- a kind of ours, or a type of vanilla's?
         /// Both, because the heading's switch covers both, and a switch that reads only half of
@@ -1527,6 +1603,7 @@ namespace TheGreatestMap
                                                Func<string> caption = null, Category? placeKind = null,
                                                Func<bool> onlyLit = null, Func<bool> pingLit = null,
                                                Func<bool> placeLit = null,
+                                               Action onFold = null, Func<bool> foldOpen = null,
                                                Func<int> doneCount = null, Func<bool> doneShown = null,
                                                Action doneToggle = null, bool gone = false,
                                                bool head = false, bool icon = true, string tip = null)
@@ -1558,6 +1635,24 @@ namespace TheGreatestMap
                 entry.Icon.sprite = sprite;
                 entry.Icon.raycastTarget = false;
                 entry.Icon.preserveAspect = true;
+            }
+
+            // Open or shut everything under this row. Drawn rather than waiting for the pointer,
+            // unlike the four below: those do something to the markers and a reader scanning
+            // names does not want to be asked about them, while this does nothing to the map at
+            // all -- it is the shape of the list, which is what the reader is looking at. It
+            // takes the first column, which a row that has one of these never uses for placing.
+            if (onFold != null && onPlace == null)
+            {
+                var folder = RowIcon(row, MenuKit.Triangle(), 6f, RowHeight - 8f, () => onFold(),
+                    lit: foldOpen,
+                    tipTopic: "Open or shut",
+                    tip: "Open everything under this heading, or shut it all. Each kind keeps its own triangle.");
+                var face = folder.transform.Find("Glyph") as RectTransform;
+                if (face != null && foldOpen != null)
+                    // Turned a quarter turn to point down at what it opened, the way the row
+                    // triangles and the corner button do.
+                    _lights.Add(() => face.localRotation = Quaternion.Euler(0f, 0f, foldOpen() ? -90f : 0f));
             }
 
             // Each button keeps its own column, so a row missing one leaves a gap rather than
@@ -1640,7 +1735,7 @@ namespace TheGreatestMap
                 // waiting for the pointer the name has the whole row and gives it back when they
                 // appear: it is left-aligned, so its beginning never moves and the only thing cut
                 // is a tail long enough to reach them.
-                entry.Label.rectTransform.offsetMax = new Vector2(group.Count > 0 ? -6f : -buttons, 0f);
+                entry.Label.rectTransform.offsetMax = new Vector2(group.Count > 0 && onFold == null ? -6f : -buttons, 0f);
                 entry.Label.overflowMode = TextOverflowModes.Ellipsis;
             }
             _entries.Add(entry);
@@ -1679,9 +1774,10 @@ namespace TheGreatestMap
                     }
                     // The whole run of buttons is cleared whenever any of them is out, rather
                     // than measuring to the leftmost one that happens to be showing: the name
-                    // would step in and out by the width of a button as the lit ones changed.
+                    // would step in and out by the width of a button as the lit ones changed. A
+                    // row with a fold button has one out at all times.
                     if (label != null)
-                        label.rectTransform.offsetMax = new Vector2(any ? -buttons : -6f, 0f);
+                        label.rectTransform.offsetMax = new Vector2(any || onFold != null ? -buttons : -6f, 0f);
                 });
             }
             return row;

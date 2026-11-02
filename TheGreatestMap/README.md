@@ -96,6 +96,11 @@ and whatever state you left them in, since opening those as well would put a cou
 rows on the screen at one press. It shows the state the list is in rather than what the press would
 do -- turned down while every heading is open, lying on its side while any of them is folded away.
 
+Each heading carries a triangle button of its own, at the end of its row, which opens or shuts
+every kind under that heading -- the fold between the corner button and a single row's triangle.
+It turns down while everything under it is open, and it opens the heading too if you had folded
+it.
+
 Every kind sits under one of four headings, each with a triangle of its own: **Resources** (what
 you harvest, and what runs out), **Places** (what you go to, and what stays put), **Your Stuff**
 (what you noted by hand, about something the catalog will never know) and **Dynamic Markers**

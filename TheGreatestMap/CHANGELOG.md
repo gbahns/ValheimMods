@@ -106,6 +106,16 @@
   a view nobody wants, and one no second press can undo, since it cannot know which kinds had
   been open before. Four words can be refolded by eye; two hundred rows cannot.
 
+- **Each heading has a triangle button that opens or shuts everything under it.** At the end of
+  the heading's own row: the corner button is about the four headings, a row's triangle is about
+  that row, and this is the fold that was missing between them -- open the seven kinds under
+  Resources, by name and count, and leave Places as it was. It turns down while everything under
+  it is open and lies on its side otherwise, like every other triangle here, and it opens the
+  heading itself if that was folded, a press whose work happened out of sight being a press that
+  reads as having done nothing. Unlike the other buttons on a row it does not wait for the
+  pointer: those four do something to the markers, while this one only changes the shape of the
+  list, which is the thing the reader is already looking at.
+
 - **A kind with one type no longer keeps a triangle over it when the two are the same word in the
   plural.** The test that spotted "Campfire" under Campfires took the s off both names, which left
   "Workbench" against "Workbenche" -- so Workbenches, and anything else whose plural is not a bare
