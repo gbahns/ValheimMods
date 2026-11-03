@@ -2,6 +2,13 @@
 
 ## 4.7.0 -- unreleased
 
+- **The "137 done" button waits for the pointer like the rest of its row.** It used to stay out
+  whenever that row's crossed-off markers were hidden, so hiding them across a dozen kinds put a
+  dozen lit buttons back on the screen -- which is the clutter the hover rule exists to prevent.
+  The row already says it in its own name: the count reads "(103 of 240)" the moment what is drawn
+  and what is recorded differ. The one exception is a map with "Show counts" switched off, where
+  the name says nothing and this button is the only signal there is.
+
 - **The marker list's title strip holds "show all" instead of "hide all".** The master switch has
   moved behind the gear, and the corner it used to sit in now carries the one button a player with
   a half-empty map is actually looking for -- drawn only when there is something hidden to put

@@ -1902,9 +1902,18 @@ namespace TheGreatestMap
                     {
                         group.Add(button);
                         var drawn = doneShown;
-                        // Lit, and so shown without the pointer, while those markers are hidden:
-                        // a row quietly leaving twelve markers off the map has to say so.
-                        lit.Add(() => doneCount() > 0 && !drawn());
+                        // Waits for the pointer like every other button on the row, even while
+                        // those markers are hidden. It used to stay out, on the grounds that a row
+                        // quietly leaving twelve markers off the map has to say so -- but the row
+                        // already says so in its own name, which reads "Berries (103 of 240)" the
+                        // moment the two numbers differ. One lit button a row, saying what the
+                        // name beside it says, is the clutter this rule exists to keep off.
+                        //
+                        // Unless the counts are switched off, and then the name says nothing and
+                        // this is the only thing that would: the exception is kept exactly where
+                        // it is still the only signal there is.
+                        lit.Add(() => TgmConfig.ShowCounts != null && !TgmConfig.ShowCounts.Value
+                                      && doneCount() > 0 && !drawn());
                     }
                 }
                 right += 52f;
