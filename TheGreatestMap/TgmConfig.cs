@@ -216,9 +216,6 @@ namespace TheGreatestMap
             // picture mean a dungeon in the swamp or a nest in it. Iron scrap is what a sunken
             // crypt is full of.
             new[] { "Dungeons", "SunkenCrypt4", "TrophyDraugr", "IronScrap" },
-            // The iron bar, which one unreleased build put there on the way to the scrap. Only a
-            // test profile can be carrying it, so this line goes when 4.7.0 ships.
-            new[] { "Dungeons", "SunkenCrypt4", "Iron", "IronScrap" },
         };
 
         /// <summary>
