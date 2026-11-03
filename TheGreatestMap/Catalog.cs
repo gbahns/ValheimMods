@@ -584,7 +584,14 @@ namespace TheGreatestMap
                 case Category.Trader:
                     return "Vendor_BlackForest=Haldor|Coins,Hildir_camp=Hildir|Coins,BogWitch_Camp=Bog Witch|Coins";
                 case Category.Camp:
-                    return "GoblinCamp2=Fuling Village|TrophyGoblin,WoodVillage1=Draugr Village|TrophyDraugr";
+                    // Prefixes, because both of these have a numbered sibling the exact names
+                    // missed. The world holds WoodVillage1 and WoodVillage2, fifteen of each, so
+                    // naming only the first left half the draugr villages in the game unmatched --
+                    // and an unmatched location does not go unrecorded, it falls through to the
+                    // unlisted sweep and is written as a structure called "Wood Village 2". The
+                    // same trap had GoblinCamp2_1, five in a world, filed beside the two hundred
+                    // GoblinCamp2 it belongs with.
+                    return "GoblinCamp*=Fuling Village|TrophyGoblin,WoodVillage*=Draugr Village|TrophyDraugr";
                 case Category.Spawner:
                     // Vanilla names these inconsistently -- two Spawner_ and two not -- so they
                     // are listed rather than matched by name. Listing is also the only safe way:

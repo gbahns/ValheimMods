@@ -2,6 +2,16 @@
 
 ## 4.7.0 -- unreleased
 
+- **Half the draugr villages in the world were not being recorded as villages.** There are two
+  prefabs, `WoodVillage1` and `WoodVillage2`, fifteen of each, and the catalog named only the
+  first -- as an exact match, so the other fifteen matched nothing. An unmatched location is not
+  left alone: it falls through to the unlisted sweep and is written as a structure named after its
+  prefab, so those villages were appearing as "Wood Village 2" under Structures rather than as
+  Draugr Villages under Camps. Both entries are prefixes now.
+
+  **`GoblinCamp2_1` had the same trap**, five in a world, filed as a structure instead of beside
+  the two hundred fuling villages it is one of.
+
 - **Markers you are standing next to are drawn even when you have switched them off.** Hiding a
   kind used to cost you more than the clutter: walking over ground with no raspberry marker on it,
   you could not tell "no raspberries here" from "raspberries hidden", and that doubt is what makes
