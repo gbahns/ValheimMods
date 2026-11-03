@@ -77,6 +77,12 @@ drawn. The icon and kind choices are the Display settings "Hidden Icons" and "Sh
 can also be edited by hand, and `tgm_show` in the console brings everything back. Vanilla pins keep
 their vanilla right-click.
 
+**Close up, the map is always honest.** A hidden marker within 50 m of you is drawn anyway (Display,
+"Show Hidden Markers Within"). This is what makes hiding the common plants worth doing: switch off
+every raspberry on the map and you still see the one you are standing next to, so empty ground near
+you means nothing was ever recorded there rather than something recorded and not shown. It does not
+override the master switch, a marker you hid by hand, or a crossed-off group you have put away.
+
 **The marker button.** Above vanilla's icon buttons on the right edge of the large map sits a map
 pin in the same pale gold as recorded markers. **Right-click** it to hide or show every marker from
 this mod at once, the pin turning gray while they are hidden. That is the same gesture vanilla uses

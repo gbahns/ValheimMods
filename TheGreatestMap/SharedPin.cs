@@ -343,5 +343,16 @@ namespace TheGreatestMap
             float dx = a.x - b.x, dz = a.z - b.z;
             return Mathf.Sqrt(dx * dx + dz * dz);
         }
+
+        /// <summary>
+        /// The same distance, squared, for code that only compares it against a radius. The
+        /// marker layout asks this of every marker on the map every time the map moves, which on
+        /// the minimap is every step, so the square root it does not need is worth not taking.
+        /// </summary>
+        internal static float FlatDistanceSquared(Vector3 a, Vector3 b)
+        {
+            float dx = a.x - b.x, dz = a.z - b.z;
+            return dx * dx + dz * dz;
+        }
     }
 }

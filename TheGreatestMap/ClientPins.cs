@@ -1154,6 +1154,14 @@ namespace TheGreatestMap
             // The player spotlight puts the whole map out, including anything a reveal would have
             // forced back on: while it is up, the only thing worth seeing is where people are.
             bool hideEverything = (TgmConfig.ShowAllMarkers != null && !TgmConfig.ShowAllMarkers.Value) || PlayerSpotlight.On;
+            // Where the player is, read once rather than per marker. The distance is flat on
+            // purpose: inside a dungeon the character stands a few thousand meters above the
+            // world, and a marker at that spot on the map is still the marker you are next to.
+            float nearRadius = TgmConfig.ShowHiddenWithin != null ? TgmConfig.ShowHiddenWithin.Value : 0f;
+            float nearRadiusSq = nearRadius > 0f ? nearRadius * nearRadius : 0f;
+            var localPlayer = Player.m_localPlayer;
+            bool havePlayer = localPlayer != null;
+            Vector3 playerPos = havePlayer ? localPlayer.transform.position : Vector3.zero;
             _portalPins.Clear();
             _fadedPins.Clear();
             foreach (var kv in _idByPin)
@@ -1177,6 +1185,14 @@ namespace TheGreatestMap
                 // shows you what you wrote. Not against the master switch or a marker hidden by
                 // hand, which both mean "not this one".
                 if (hidden && !hideEverything && !hiddenByHand && Reveals.IsRevealed(kv.Value)) hidden = false;
+                // Standing next to it: show it anyway, whatever is switched off. Hiding a kind
+                // otherwise costs you the answer to a question the map cannot be asked -- walking
+                // over ground with no raspberry marker on it, you cannot tell "no raspberries
+                // here" from "raspberries hidden", and the doubt is what drives a player to leave
+                // everything switched on and read a map covered in berries. Within this radius
+                // there is no doubt, so the rest of the map can be as quiet as you like.
+                if (hidden && !hideEverything && !hiddenByHand && nearRadiusSq > 0f && havePlayer &&
+                    Geo.FlatDistanceSquared(shared.Pos, playerPos) <= nearRadiusSq) hidden = false;
                 // Crossed off, and the player would rather not see that kind of crossed-off marker
                 // any more: used-up deposits, or searched places by type.
                 if (!hidden && CrossedOff.IsHidden(shared)) hidden = true;

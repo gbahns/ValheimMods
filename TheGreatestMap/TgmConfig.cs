@@ -69,6 +69,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<string> HiddenCleared;
         internal static ConfigEntry<string> HiddenSearched;
         internal static ConfigEntry<float> RevealNewMarkers;
+        internal static ConfigEntry<float> ShowHiddenWithin;
         internal static ConfigEntry<string> PortalColor;
         internal static ConfigEntry<string> PortalPulseColor;
         internal static ConfigEntry<float> PortalPulseSeconds;
@@ -801,6 +802,14 @@ namespace TheGreatestMap
                 "override the map-pin button's master switch or a marker you hid by hand, and it cannot show kinds " +
                 "drawn on a vanilla icon (structures, portals, camps, boss altars) while vanilla's own icon button " +
                 "has that icon switched off.");
+            ShowHiddenWithin = mod.BindLocal("Display", "Show Hidden Markers Within", 50f,
+                "Markers this close to you are drawn even when their kind or their icon is switched off, so the map " +
+                "near you always tells the truth: nothing there means nothing recorded there, rather than something " +
+                "recorded and not shown. It is what makes switching off the common plants bearable -- you can hide " +
+                "every raspberry on the map and still see the one you are standing next to. 0 turns it off. Same " +
+                "limits as the reveal above: not against the master switch, not against a marker you hid by hand, " +
+                "not over a crossed-off kind you have put away, and not for kinds drawn on one of vanilla's own " +
+                "icons while vanilla has that icon switched off.");
             RequireMapOutToEdit = mod.BindSynced("Sharing", "Require Map Out To Edit", false,
                 "You must have the pocket map out to place a marker, erase one (yours, someone else's or a recorded one) " +
                 "or cross one off on the map screen. Pings are always allowed. Off by default: the map screen edits like vanilla.");

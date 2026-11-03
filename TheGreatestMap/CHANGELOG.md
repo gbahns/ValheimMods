@@ -2,6 +2,18 @@
 
 ## 4.7.0 -- unreleased
 
+- **Markers you are standing next to are drawn even when you have switched them off.** Hiding a
+  kind used to cost you more than the clutter: walking over ground with no raspberry marker on it,
+  you could not tell "no raspberries here" from "raspberries hidden", and that doubt is what makes
+  a player leave everything switched on and then read a map buried in berries. Within 50 m of you
+  (Display, "Show Hidden Markers Within", 0 turns it off) the map has no doubt in it, so the rest
+  of it can be as quiet as you like.
+
+  It yields where the existing reveals yield: not against the map-pin button's master switch, not
+  against a marker you hid by hand, not over a crossed-off group you have put away, and not while
+  `tgm_find` is pointing at one thing. Kinds drawn on one of vanilla's own icons (structures,
+  portals, camps, boss altars) still cannot come back while vanilla has that icon switched off.
+
 - **The spawners go by the names the game gives them.** A body pile was a "Draugr Pile" and a
   Monument of Torment a "Charred Spawner" -- both this mod's own inventions, and a map should call
   a thing what the game calls it. The greydwarf nest and the evil bone pile keep their names in the
