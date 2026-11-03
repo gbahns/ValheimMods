@@ -45,6 +45,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> SplitPlantsByFarming;
         internal static ConfigEntry<string> VanillaPinNames;
         internal static ConfigEntry<bool> HideVanillaControls;
+        internal static ConfigEntry<bool> PingRow;
         internal static ConfigEntry<string> HiddenLandmarks;
         internal static ConfigEntry<bool> PauseWhileMapOpen;
         internal static ConfigEntry<bool> ShowPauseButton;
@@ -677,7 +678,15 @@ namespace TheGreatestMap
                 "Off leaves the buttons where the game put them; both work, and the only reason to take them away " +
                 "is that two sets of controls for one map is one set too many. Off to begin with: it takes part of " +
                 "the game's own screen away, which is a thing to be asked for rather than arrive with an update.");
+            PingRow = mod.BindLocal("Display", "Ping Row", true,
+                "Keep the line at the foot of the marker list that arms the game's ping, which stands in for the " +
+                "ping button taken off the map by the setting above. Turn it off if you ping by middle-clicking the " +
+                "map: that gesture is the game's and this mod never touched it, so the row is a second way to a " +
+                "thing you already have. It is only ever drawn while the game's own buttons are hidden anyway.");
             HideVanillaControls.SettingChanged += (_, __) => KindMenu.Relayout();
+            // A row's worth of the foot, so the list is rebuilt rather than repainted:
+            // what the foot does not take is what the scrolling part gets.
+            PingRow.SettingChanged += (_, __) => KindMenu.Relayout();
 
             SplitPlantsByFarming = mod.BindLocal("Display", "Split Plants By Farming", true,
                 "In the marker list, stand two rows in place of the five plant kinds -- Farm and Gather, instead " +

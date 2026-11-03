@@ -2,6 +2,12 @@
 
 ## 4.7.0 -- unreleased
 
+- **The ping line at the foot of the marker list can be switched off** (Display, "Ping Row", or
+  behind the gear). It stands in for the ping button that "Hide Vanilla Controls" takes off the
+  map, and it is only ever drawn while those buttons are hidden -- but middle-clicking the map
+  pings too, that gesture being the game's own and never touched by this mod, so for anybody who
+  knows about it the row is a second way to something they already have.
+
 - **The "137 done" button waits for the pointer like the rest of its row.** It used to stay out
   whenever that row's crossed-off markers were hidden, so hiding them across a dozen kinds put a
   dozen lit buttons back on the screen -- which is the clutter the hover rule exists to prevent.

@@ -90,6 +90,11 @@ namespace TheGreatestMap
                 "row for each icon pressing the same switch its button does, a place-by-hand button on the five " +
                 "you can drop, and a line at the foot of this list for pinging out loud. Nothing else of the map's " +
                 "is touched, and nothing is hidden while the marker button is off, that being the way in here.");
+            y = Switch(y, () => TgmConfig.PingRow, "Ping row",
+                "Keep the line at the foot of the marker list that arms the game's ping, which stands in for the " +
+                "ping button hidden above. Turn it off if you ping by middle-clicking the map: that gesture is the " +
+                "game's own and this mod never touched it, so the row is a second way to something you have. Only " +
+                "ever drawn while the game's buttons are hidden.");
 
             y = Heading("Marker Order", y);
             y = Order(y, TypeOrder.Progression, "Progression",

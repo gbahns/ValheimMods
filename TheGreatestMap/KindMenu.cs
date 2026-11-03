@@ -1311,12 +1311,24 @@ namespace TheGreatestMap
         /// what had fallen off. Two places counting the same rows is the bug; this is the one
         /// place.</para>
         /// </summary>
+        /// <summary>
+        /// Is the ping line at the foot drawn? Only while the game's own ping button is off the
+        /// map, and only if it is wanted: a player who pings by middle-clicking the map has the
+        /// gesture already, this mod never having touched it, and the row is then a second way to
+        /// something they have.
+        ///
+        /// <para>One answer, read by both the measuring and the drawing below. That is not
+        /// tidiness: see <see cref="FootHeight"/> for what two places counting these rows cost.</para>
+        /// </summary>
+        private static bool PingRowShown =>
+            VanillaPins.HidingControls && (TgmConfig.PingRow == null || TgmConfig.PingRow.Value);
+
         private static float FootHeight()
         {
             // One row: everything crossed off. The erased row went behind the gear and the
             // put-back row went up into the title strip, which is counted in the head.
             int rows = 1;
-            if (VanillaPins.HidingControls) rows++;
+            if (PingRowShown) rows++;
             return rows * RowHeight;
         }
 
@@ -1351,7 +1363,7 @@ namespace TheGreatestMap
             //
             // Only while the game's buttons are hidden. With them on the map its own button is a
             // few pixels away, and a second way to the same thing is a second thing to read.
-            if (VanillaPins.HidingControls)
+            if (PingRowShown)
             {
                 ActionRow(_root.transform, 0f, y, () => VanillaPins.TogglePing(Minimap.instance),
                     () => VanillaPins.PingArmed(Minimap.instance)
