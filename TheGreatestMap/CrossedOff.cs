@@ -27,7 +27,8 @@ namespace TheGreatestMap
         /// chambers may still want their sunken crypts, and one done with swamp huts may still want
         /// mountain graves.
         /// </summary>
-        internal static bool HasTypes(Category c) => c == Category.Dungeon || c == Category.Structure;
+        internal static bool HasTypes(Category c) =>
+            c == Category.Dungeon || c == Category.Structure || c == Category.Camp;
 
         /// <summary>
         /// True once this kind's types are actually told apart on the map. A type is read from a

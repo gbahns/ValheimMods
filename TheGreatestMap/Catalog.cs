@@ -35,6 +35,8 @@ namespace TheGreatestMap
         Cart,
         Spawner,
         Workbench,
+        DrakeNest,
+        HildirQuest,
     }
 
     /// <summary>
@@ -149,6 +151,7 @@ namespace TheGreatestMap
                 // them landmarks rather than discoveries: this mod records neither by default,
                 // because there is already a pin there.
                 case Category.Trader:
+                case Category.HildirQuest:
                 case Category.BossAltar: return Group.Places;
                 // Dungeons, camps, structures, runestones, spawners -- and anything nobody has
                 // sorted yet, which is the honest default: a kind this switch has not heard of is
@@ -272,7 +275,8 @@ namespace TheGreatestMap
         /// trader" is the same question the list answers for everything else, and the catalog
         /// line is still what says which of the world's locations are traders.
         /// </summary>
-        internal static bool VanillaMarks(Category c) => c == Category.Trader;
+        internal static bool VanillaMarks(Category c) =>
+            c == Category.Trader || c == Category.HildirQuest;
 
         /// <summary>
         /// A kind the game draws its own pins for, whether or not this mod records one as well.
@@ -284,7 +288,8 @@ namespace TheGreatestMap
         /// it wears and the game's pin does not. So they are listed and pinged like a trader, and
         /// still recordable like anything else.</para>
         /// </summary>
-        internal static bool MarkedByGame(Category c) => c == Category.Trader || c == Category.BossAltar;
+        internal static bool MarkedByGame(Category c) =>
+            c == Category.Trader || c == Category.BossAltar || c == Category.HildirQuest;
 
         /// <summary>
         /// A kind nothing in the world can be classified as: it exists so a player can mark
@@ -303,7 +308,11 @@ namespace TheGreatestMap
                 case Category.Dungeon:   return "Dungeons";
                 case Category.Runestone: return "Runestones";
                 case Category.Trader:    return "Traders";
-                case Category.Camp:      return "Camps";
+                // Enemy Bases, and the enum member is still called Camp. Renaming it would
+                // break the one thing the name is read for: a marker written before format 7
+                // stored its kind as the word "Camp", and those words are parsed straight back
+                // into this enum. The label is what a player sees; this is what the save says.
+                case Category.Camp:      return "Enemy Bases";
                 case Category.Portal:    return "Portals";
                 case Category.Structure: return "Structures";
                 case Category.Campfire:  return "Campfires";
@@ -313,6 +322,11 @@ namespace TheGreatestMap
                 case Category.Ship:      return "Ships";
                 case Category.Cart:      return "Carts";
                 case Category.Spawner:   return "Spawners";
+                case Category.DrakeNest: return "Drake Nests";
+                // No apostrophe, and not for style: a label becomes part of a BepInEx config key
+                // ("Record Hildir Quests"), and an apostrophe in a key throws inside Awake, which
+                // means the mod does not load at all.
+                case Category.HildirQuest: return "Hildir Quests";
                 default:                 return c.ToString();
             }
         }
@@ -345,7 +359,8 @@ namespace TheGreatestMap
             // Structures are a personal habit. Traders and boss altars the game marks by itself the
             // moment you find them, so recording our own on top would be a second pin saying the
             // same thing.
-            return c != Category.Structure && c != Category.Trader && c != Category.BossAltar;
+            return c != Category.Structure && c != Category.Trader && c != Category.BossAltar
+                && c != Category.HildirQuest;
         }
 
         // Icons for well-known locations, kept in code so that a catalog line saved by an older
@@ -440,6 +455,12 @@ namespace TheGreatestMap
                 // the evil bone pile wears -- the kind and one of its members should not be one
                 // picture.
                 case Category.Spawner:   return "drawn:spawners";
+                // One type, so the kind's picture and its member's are the same thing, and the
+                // egg is the reason to walk to one.
+                case Category.DrakeNest: return "DragonEgg";
+                // The game's own picture for Hildir's camp, which is what "Hildir" looks like on
+                // this map already. Her quest locations each borrow their own below.
+                case Category.HildirQuest: return "loc:Hildir_camp";
                 default:                 return "pin:Icon3";
             }
         }
@@ -584,14 +605,45 @@ namespace TheGreatestMap
                 case Category.Trader:
                     return "Vendor_BlackForest=Haldor|Coins,Hildir_camp=Hildir|Coins,BogWitch_Camp=Bog Witch|Coins";
                 case Category.Camp:
-                    // Prefixes, because both of these have a numbered sibling the exact names
-                    // missed. The world holds WoodVillage1 and WoodVillage2, fifteen of each, so
-                    // naming only the first left half the draugr villages in the game unmatched --
-                    // and an unmatched location does not go unrecorded, it falls through to the
-                    // unlisted sweep and is written as a structure called "Wood Village 2". The
-                    // same trap had GoblinCamp2_1, five in a world, filed beside the two hundred
-                    // GoblinCamp2 it belongs with.
-                    return "GoblinCamp*=Fuling Village|TrophyGoblin,WoodVillage*=Draugr Village|TrophyDraugr";
+                    // Somewhere something lives. The old line held two of these and the rest were
+                    // filed as Structures, which drew the boundary through the middle of one idea
+                    // and had a consequence past the untidiness: Record Structures is off by
+                    // default, so a fresh install recorded fuling villages and not the dvergr
+                    // excavation or the charred fortress standing next to them.
+                    //
+                    // Prefixes, because several have a numbered sibling an exact name missed. The
+                    // world holds WoodVillage1 and WoodVillage2, fifteen of each, and naming only
+                    // the first left half the draugr villages unmatched -- and an unmatched
+                    // location is not skipped, it falls to the unlisted sweep and is written as a
+                    // structure called "Wood Village 2". GoblinCamp2_1 had the same trap.
+                    return "GoblinCamp*=Fuling Village|TrophyGoblinBrute," +
+                           // The two Plains towers, named exactly rather than StoneTower*: that
+                           // prefix also catches StoneTowerRuins03 and the rest, which are rubble
+                           // and recorded by nothing. The berserker's trophy for the village and
+                           // the plain fuling's for the tower, because a village is worth the walk
+                           // and a tower is worth knowing you have already been up it.
+                           "StoneTower1=Fuling Tower|TrophyGoblin,StoneTower3=Fuling Tower|TrophyGoblin," +
+                           "WoodVillage*=Draugr Village|TrophyDraugr," +
+                           // The plain greydwarf trophy, not the brute's: the brute's is what the
+                           // greydwarf nest wears under Spawners, and the camp and the nest inside
+                           // it must not be one picture. The old line called this one "Greydwarf
+                           // Nest" with the brute's trophy -- the same name and the same picture as
+                           // the spawner, two different things reading identically on the map.
+                           "Greydwarf_camp*=Greydwarf Camp|TrophyGreydwarf," +
+                           // Everything the dvergr built and still hold. The guard tower prefix
+                           // takes the ruined ones with it (Mistlands_GuardTower1_ruined_new and
+                           // its two siblings, 150 of the 350), which is a question left open
+                           // rather than answered: a ruined tower is the FortressRuins case, but
+                           // nobody has said yet whether these stand empty.
+                           "Mistlands_GuardTower*=Dvergr Guard Tower|TrophyDvergr," +
+                           "Mistlands_Excavation*=Dvergr Excavation|TrophyDvergr," +
+                           "Mistlands_Harbour*=Dvergr Harbour|TrophyDvergr," +
+                           "Mistlands_Lighthouse*=Dvergr Lighthouse|TrophyDvergr," +
+                           // Twenty in a world, and the one Ashlands place you both travel to and
+                           // want to know you have cleared. The charred mage's trophy is free
+                           // because the hundred FortressRuins that used to wear it are not
+                           // recorded any more: those are the rubble, this is the thing standing.
+                           "CharredFortress*=Charred Fortress|TrophyCharredMage";
                 case Category.Spawner:
                     // Vanilla names these inconsistently -- two Spawner_ and two not -- so they
                     // are listed rather than matched by name. Listing is also the only safe way:
@@ -647,14 +699,12 @@ namespace TheGreatestMap
                            // with nothing in them to search and nothing to come back for. A name
                            // the catalog had to invent, for a thing nobody can identify on
                            // sight, is its own argument that the map has nothing to say about it.
-                           // The two Plains towers by name, not StoneTower*. The prefix also
-                           // caught StoneTowerRuins03 and the rest, so dropping their own line
-                           // would have filed every ruined tower under "Stone Tower" instead of
-                           // leaving it unrecorded -- a longer prefix wins a lookup, and this was
-                           // the longer one once theirs was gone.
-                           "StoneHenge*=Stonehenge|pin:Memorial,StoneTower1=Stone Tower,StoneTower3=Stone Tower," +
-                           "StoneCircle*=Stone Circle|pin:Memorial,Dolmen*=Dolmen|pin:Memorial,DrakeNest*=Drake Nest|DragonEgg," +
-                           "Greydwarf_camp*=Greydwarf Nest|TrophyGreydwarfBrute,Waymarker*=Waymarker|pin:Memorial," +
+                           // No StoneTower, no Greydwarf_camp and no DrakeNest: the first two are
+                           // somewhere something lives and are Enemy Bases now, and the nests are
+                           // their own kind, marked for the egg rather than for the building.
+                           "StoneHenge*=Stonehenge|pin:Memorial," +
+                           "StoneCircle*=Stone Circle|pin:Memorial,Dolmen*=Dolmen|pin:Memorial," +
+                           "Waymarker*=Waymarker|pin:Memorial," +
                            // No InfestedTree. It is a swamp tree with guck sacks on it, 700 of
                            // them in a world, and the guck sacks are already recorded as what they
                            // are: a marker for the tree says a second time what the sacks say, and
@@ -664,18 +714,29 @@ namespace TheGreatestMap
                            // Dropping the line is not enough on its own, so the prefix is in
                            // Structures Exclude Prefixes as well; an unlisted location is swept in
                            // as a structure otherwise.
-                           "Mistlands_GuardTower*=Dvergr Guard Tower|TrophyDvergr,Mistlands_Excavation*=Dvergr Excavation|TrophyDvergr,Mistlands_Harbour*=Dvergr Harbour|TrophyDvergr," +
-                           "Mistlands_Lighthouse*=Dvergr Lighthouse|TrophyDvergr," +
+                           // The dvergr's own buildings are Enemy Bases. What stays here is what
+                           // they left behind and nobody lives in: the statues and the viaducts,
+                           // which keep their trophy because a dvergr made them.
+                           //
                            // No CharredRuins. The Ashlands are laid out of them, and what is in
                            // one is not worth the second walk that a marker invites.
                            "Mistlands_Statue*=Dvergr Statue|TrophyDvergr,Mistlands_Viaduct*=Viaduct|TrophyDvergr,AshlandRuins*=Ashlands Ruins," +
-                           // The fortress itself, 20 in a world: the one Ashlands place you both
-                           // travel to and want to know you have already cleared. It wears the
-                           // charred mage's trophy, which is free because the hundred
-                           // FortressRuins that used to wear it are not recorded any more -- those
-                           // are the rubble, this is the thing standing. No picture of a fortress
-                           // exists in the game to wear instead; tgm_items fortress says so.
-                           "CharredFortress*=Charred Fortress|TrophyCharredMage,PlaceofMystery*=Place of Mystery";
+                           "PlaceofMystery*=Place of Mystery";
+                case Category.DrakeNest:
+                    // Two hundred in a world, on the mountain peaks, and the reason to mark one is
+                    // the eggs: three of them to call Moder, and they grow back the way a
+                    // raspberry bush does -- which is an argument for this eventually sitting
+                    // under Resources rather than here.
+                    return "DrakeNest*=Drake Nest|DragonEgg";
+                case Category.HildirQuest:
+                    // Three of each, and the game pins all three the moment you have spoken to
+                    // Hildir, which is why nothing here records one -- the same arrangement the
+                    // traders have. The list exists so the map can name what the game's own pin
+                    // is, and each entry borrows that location's own picture, which is the one
+                    // already on the player's map for it.
+                    return "Hildir_cave=Howling Cavern|loc:Hildir_cave," +
+                           "Hildir_crypt=Smoldering Tomb|loc:Hildir_crypt," +
+                           "Hildir_plainsfortress=Sealed Tower|loc:Hildir_plainsfortress";
                 case Category.Campfire:
                     return "fire_pit=Campfire|piece:fire_pit";
                 case Category.Workbench:
@@ -692,6 +753,8 @@ namespace TheGreatestMap
                 case Category.Dungeon:   return "Any location with an interior also counts as a dungeon even if it is not listed.";
                 case Category.Ore:       return "Matches MineRock5, MineRock, Destructible and Pickable objects by prefab name, and a plain networked object such as a Yggdrasil root.";
                 case Category.Structure: return "Entries ending in * match by prefix. Unlisted outdoor locations also count when 'Structures Include Unlisted' is on.";
+                case Category.Camp:      return "Places something lives: the villages, the camps, the dvergr's own buildings and the charred fortresses. Entries ending in * match by prefix.";
+                case Category.HildirQuest: return "The three locations Hildir sends you to. The game pins all three itself once you have spoken to her, so nothing records these; the list is what names them.";
                 case Category.Campfire:  return "Only fires a player built count, not the ones the world puts in camps and villages. The icon can be piece:<prefab>, a building piece's build-menu picture.";
                 case Category.Workbench: return "Only benches a player built count, not the ones the world puts in camps and villages. Any crafting station can be listed here -- a forge, a stonecutter -- and the workbench is listed because it holds the spawning off around it.";
                 case Category.Spawner:   return "The nests and piles that creatures come out of, which you can walk up to and break. Valheim also has thousands of invisible spawn points named Spawner_<creature> inside dungeons and camps; do not add those.";
@@ -2058,7 +2121,8 @@ namespace TheGreatestMap
                 // Listed, but with no icon of its own: guess from the name rather than let it fall
                 // through to the kind's icon, which for dungeons is the swamp crypt key.
                 if (icon == null && e.Cat == Category.Dungeon) icon = IconFromDungeonName(prefab);
-                if (icon == null && e.Cat == Category.Structure) icon = GuessPlaceIcon(prefab);
+                if (icon == null && (e.Cat == Category.Structure || e.Cat == Category.Camp))
+                    icon = GuessPlaceIcon(prefab);
             }
             else if (hasInterior)
             {

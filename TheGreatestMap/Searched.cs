@@ -35,7 +35,12 @@ namespace TheGreatestMap
             if (go == null || !TgmConfig.CrossOffStructuresOnChest.Value) return;
             var player = Player.m_localPlayer;
             if (player == null || player.InInterior()) return;
-            if (!Catalog.TryClassify(go, out var found) || found.Cat != Category.Structure) return;
+            // Enemy bases as well as structures. The dvergr excavations and the charred
+            // fortresses were structures until the kinds were sorted out, so they had this
+            // already; losing it in the move would have been a change nobody asked for, and a
+            // fuling village is the clearest case there is of a place worth knowing you cleared.
+            if (!Catalog.TryClassify(go, out var found)
+                || (found.Cat != Category.Structure && found.Cat != Category.Camp)) return;
             _keys.Add(found.Key);
             // The marker may sit anywhere in the building, so search its whole radius.
             if (ClientPins.TryCheckOff(found.Icon, found.DedupeCenter, Mathf.Max(MatchRadius, found.Radius)))

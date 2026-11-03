@@ -19,8 +19,8 @@ is. "Highlight Players Hides Others" keeps the rest of the map if you would rath
 are settings too.
 
 - **A map you carry in your pocket.** No inventory slot. Press the map key and your character unfolds a map in the left hand and takes a pencil in the right. Recording happens only while it is out, and a folded-map icon sits among your status effects to say so ("Map Out Status Icon"). Attacking, drawing a weapon, getting hit or swimming puts it away. Two server-synced settings control how strict the map is: "Require Map Out To Record" (on by default) and "Require Map Out To Edit" (off by default; when on, placing, erasing and crossing off markers on the map screen also need the map out).
-- **Honest auto-recording.** While the map is out, your character writes down the important things nearby that *you actually found*: berries, mushrooms, herbs, seeds, wild plants, ore deposits, Yggdrasil roots, dungeon entrances, runestones, camps, portals and campfires. Something counts as found only if you looked straight at it, had it under your crosshair, or interacted with it. There is no radar and nothing is ever revealed for you. Traders, boss altars and structures are off by default, the first two because the game already marks them itself.
-- **Markers that look like the thing.** A recorded marker uses the icon of the item it gives you: dandelion, thistle, raspberries, each mushroom, copper, tin, silver. Dungeons and camps use the trophy of what lives there, boss altars the boss trophy. With icons this clear, plant and ore markers carry no text label by default, which is what keeps the map readable. A deposit is recognized by what mining it yields rather than by a list of names, so an ore added by a later update or another mod is marked without anything being configured.
+- **Honest auto-recording.** While the map is out, your character writes down the important things nearby that *you actually found*: berries, mushrooms, herbs, seeds, wild plants, ore deposits, Yggdrasil roots, dungeon entrances, runestones, enemy bases, drake nests, portals and campfires. Something counts as found only if you looked straight at it, had it under your crosshair, or interacted with it. There is no radar and nothing is ever revealed for you. Traders, boss altars and structures are off by default, the first two because the game already marks them itself.
+- **Markers that look like the thing.** A recorded marker uses the icon of the item it gives you: dandelion, thistle, raspberries, each mushroom, copper, tin, silver. Dungeons and enemy bases use the trophy of what lives there, boss altars the boss trophy. With icons this clear, plant and ore markers carry no text label by default, which is what keeps the map readable. A deposit is recognized by what mining it yields rather than by a list of names, so an ore added by a later update or another mod is marked without anything being configured.
 
 ## Install
 
@@ -108,7 +108,7 @@ It turns down while everything under it is open, and it opens the heading too if
 it.
 
 Every kind sits under one of five headings, each with a triangle of its own: **Resources** (what
-you harvest, and what runs out), **Points of Interest** (the places you found: dungeons, camps,
+you harvest, and what runs out), **Points of Interest** (the places you found: dungeons, enemy bases,
 ruins, runestones, spawners), **Places** (the landmarks the game marks for you as you find them:
 the boss altars, the traders, the center of the world -- a handful in a whole world),
 **Placed Markers** (what you put on the map by hand, about something the catalog will never know) and

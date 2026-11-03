@@ -37,6 +37,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<string> CatalogOrdered;
         internal static ConfigEntry<string> CatalogIconsFixed;
         internal static ConfigEntry<string> CatalogCutsMade;
+        internal static ConfigEntry<string> CatalogMovesMade;
         internal static ConfigEntry<string> CatalogEntriesFixed;
         internal static ConfigEntry<string> IconSizes;
         internal static ConfigEntry<TypeOrder> TypeRowOrder;
@@ -268,6 +269,67 @@ namespace TheGreatestMap
             // FortressRuins, StoneTowerRuins, AshlandRuins) and none of them starts with it.
             new[] { "Ruin", "Structures" },
         };
+
+        /// <summary>
+        /// Types that have changed kind: the prefab, and the label of the kind whose line it used
+        /// to be written in. Moving one in the shipped catalog is not enough on its own -- a
+        /// player's own saved line is read before the one this version ships, so an entry still
+        /// sitting in their Structures line goes on classifying as a structure however the
+        /// defaults are rearranged. Dropping it there lets the lookup fall through to the kind
+        /// that claims it now.
+        ///
+        /// <para>Deliberately not a cut: nothing is added to Structures Exclude Prefixes, because
+        /// the type is still recorded. Its new kind's line names it, and a listed location is
+        /// recorded because it is listed whatever the exclusion list says.</para>
+        ///
+        /// <para>Both shapes of a prefix are listed where a line could hold either: a config
+        /// written before the Plains towers were named exactly says StoneTower*, and one written
+        /// after says StoneTower1 and StoneTower3. Each is matched on its own, and an id that
+        /// matches nothing is written down as done all the same.</para>
+        /// </summary>
+        private static readonly string[][] ShippedMoves =
+        {
+            // Somewhere something lives, which is one idea and is now one kind.
+            new[] { "StoneTower", "Structures" },
+            new[] { "StoneTower1", "Structures" },
+            new[] { "StoneTower3", "Structures" },
+            new[] { "Greydwarf_camp", "Structures" },
+            new[] { "Mistlands_GuardTower", "Structures" },
+            new[] { "Mistlands_Excavation", "Structures" },
+            new[] { "Mistlands_Harbour", "Structures" },
+            new[] { "Mistlands_Lighthouse", "Structures" },
+            new[] { "CharredFortress", "Structures" },
+            // Its own kind, under Points of Interest: marked for the eggs, not the stonework.
+            new[] { "DrakeNest", "Structures" },
+        };
+
+        private static void MoveShippedLinesOnce()
+        {
+            if (CatalogMovesMade == null) return;
+            string done = CatalogMovesMade.Value ?? "";
+            var made = new List<string>();
+            foreach (var move in ShippedMoves)
+            {
+                if (Listed(done, move[0])) continue;
+                made.Add(move[0]);
+                foreach (var kv in CategoryPrefabs)
+                {
+                    if (!string.Equals(Categories.Label(kv.Key), move[1], StringComparison.Ordinal)) continue;
+                    string now = Catalog.Without(kv.Value.Value, move[0]);
+                    if (!string.Equals(kv.Value.Value, now, StringComparison.Ordinal))
+                    {
+                        kv.Value.Value = now;
+                        TheGreatestMapMod.Log.LogInfo(
+                            $"[TheGreatestMap] {move[0]} belongs to another kind now, so its line has been taken out " +
+                            $"of your {move[1]} catalog once. It is still recorded, under its new kind.");
+                    }
+                    break;
+                }
+            }
+            if (made.Count == 0) return;
+            foreach (var id in made) done = done.Length == 0 ? id : done + "," + id;
+            CatalogMovesMade.Value = done;
+        }
 
         /// <summary>
         /// Entries this mod shipped and then corrected: the kind's line, what it used to say word
@@ -648,6 +710,11 @@ namespace TheGreatestMap
                 "own lines, so each is corrected once. An entry is only changed where your line still says word for " +
                 "word what the mod shipped; rename one yourself and it stays renamed.");
 
+            CatalogMovesMade = mod.BindLocal("Internal", "Catalog Moves Made", "",
+                "Which of the types this mod has moved from one kind to another have already been taken out of the " +
+                "line they used to sit in, so each is moved once. Unlike a cut this adds nothing to the exclusion " +
+                "list: the type is still recorded, under its new kind, whose own line names it.");
+
             CatalogCutsMade = mod.BindLocal("Internal", "Catalog Cuts Made", "",
                 "Which of the types this mod has decided should never be recorded have already been taken out of your " +
                 "Catalog lines, so each is taken out once. A type the mod shipped and then thought better of is only " +
@@ -942,6 +1009,10 @@ namespace TheGreatestMap
                 "catalog does not name: a location listed under Structures above is recorded because it is listed, " +
                 "whatever this says, so leaving one out means taking its line out as well.");
             CutShippedLinesOnce();
+            // And the ones that changed kind rather than went away. After the cuts, so a type
+            // that was cut and then moved is not written to the exclusion list by one pass and
+            // recorded by the other.
+            MoveShippedLinesOnce();
             // After the icon corrections above, not before: an entry correction matches the whole
             // entry, icon and all, so it has to see the icon the correction leaves behind.
             FixShippedEntriesOnce();
@@ -984,8 +1055,10 @@ namespace TheGreatestMap
                 "deposits are not covered: one standing in your yard is still worth knowing about.");
 
             CrossOffStructuresOnChest = mod.BindSynced("Recording", "Cross Off Structures When Searched", true,
-                "Opening a chest inside a structure crosses its marker off for everyone. If the structure has no marker yet, " +
-                "it is remembered as searched and its marker starts crossed off when it is recorded.");
+                "Opening a chest inside a structure or an enemy base crosses its marker off for everyone. If it has no " +
+                "marker yet, the place is remembered as searched and its marker starts crossed off when it is recorded. " +
+                "The key says structures because that is all it covered when it was written; the dvergr excavations and " +
+                "the charred fortresses it has always applied to are enemy bases now, and the fuling villages joined them.");
             CrossOffMinedCopper = mod.BindSynced("Recording", "Cross Off Mined Copper", false,
                 "Cross a copper deposit's marker off for everyone once it has been mined to nothing. Off by default, because " +
                 "a copper deposit runs on underground and a player cannot always tell whether they have got all of it, so " +

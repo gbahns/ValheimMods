@@ -2,6 +2,43 @@
 
 ## 4.7.0 -- unreleased
 
+- **Camps are now Enemy Bases, and everywhere something lives is one.** The fuling villages and
+  draugr villages were Camps while the dvergr guard towers, excavations, harbours and lighthouses,
+  the charred fortresses and the greydwarf camps were Structures -- one idea with a line drawn
+  through the middle of it. That had a consequence past the untidiness: **Record Structures is off
+  by default**, so a default install recorded a fuling village and not the charred fortress beside
+  it. All of them are one kind now, recorded by default.
+
+  **The Plains stone towers joined them as Fuling Towers**, named `StoneTower1` and `StoneTower3`
+  exactly rather than by prefix, since `StoneTower*` also catches the 540 ruined towers that
+  nothing records. The village wears the berserker's trophy and the tower the plain fuling's: a
+  village is worth the walk, a tower is worth knowing you have already been up it.
+
+  **A greydwarf camp no longer reads as a greydwarf nest.** Its old entry was named "Greydwarf
+  Nest" and wore the brute's trophy -- the same name and the same picture as the `Greydwarf nest`
+  spawner under Spawners, two different things indistinguishable on the map. It is a Greydwarf Camp
+  with the plain greydwarf trophy, and the nest inside it keeps the brute's.
+
+  Opening a chest still crosses one off, which it did for the dvergr and the fortresses when they
+  were structures and now does for the villages too.
+
+  Nothing needs re-surveying: a marker does not store its kind, it works it out from the prefab it
+  was recorded for, so every marker already on the map re-files itself. A line still sitting in
+  your own `Structures` catalog would have outvoted the move, so each moved type is taken out of it
+  once -- and, unlike a cut, nothing is added to the exclusion list, because these are still
+  recorded.
+
+- **Drake Nests are their own kind, under Points of Interest.** They were Structures, which is
+  about the stonework, and the reason to mark one is the eggs -- three to call Moder, and they grow
+  back the way a berry bush does.
+
+- **Hildir's three quest locations have names.** Howling Cavern, Smoldering Tomb and Sealed Tower
+  were in no catalog line at all, so the cave and the tomb were classified as unnamed dungeons and
+  the tower was swept in as a structure called "Hildir Plainsfortress". They are a kind of their
+  own under Places now, each wearing the game's own picture for it, and nothing records them --
+  the game pins all three itself once you have spoken to Hildir, the same arrangement the traders
+  have.
+
 - **Half the draugr villages in the world were not being recorded as villages.** There are two
   prefabs, `WoodVillage1` and `WoodVillage2`, fifteen of each, and the catalog named only the
   first -- as an exact match, so the other fifteen matched nothing. An unmatched location is not
