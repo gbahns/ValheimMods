@@ -99,6 +99,21 @@ namespace TheGreatestMap
                 "The commonest at the top, which is what this list did before there was a choice");
             y = Order(y, TypeOrder.AToZ, "A to Z", "By name");
 
+            y = Heading("The Whole Map", y);
+            y = Row(y, "Hide your markers",
+                "Take every marker that is there because of you off the map at once: this mod's recorded markers, " +
+                "the pins you placed by hand, your death markers and your bed. What the game pins for the world " +
+                "stays -- boss altars, traders, Hildir's quests, the center of the world -- and so do players, " +
+                "pings and shouts. It is not one of the switches in the marker list but an override of all of " +
+                "them, which is why it lives here: turning it back off leaves every switch in that list exactly " +
+                "as it was.",
+                () => TgmConfig.ShowAllMarkers != null && !TgmConfig.ShowAllMarkers.Value,
+                () => { MarkerToggle.ToggleAll(); KindMenu.Relayout(); });
+            y = Row(y, "Show erased markers",
+                "Draw the markers somebody has erased, so you can see what went and put it back. For finding out " +
+                "why a marker is not where you left it rather than for reading the map.",
+                () => Erasures.On, Erasures.Toggle);
+
             y = Heading("Labels", y);
             y = Switch(y, () => TgmConfig.ShowMarkerLabels, "Marker labels",
                 "Write a marker's label beside it, where it has one");
@@ -137,7 +152,7 @@ namespace TheGreatestMap
         /// <summary>One of the orders the types can come in, ticked while it is the one in use.</summary>
         private static float Order(float y, TypeOrder order, string text, string tip)
         {
-            Row(y, text, tip,
+            RowAt(y, text, tip,
                 () => TgmConfig.TypeRowOrder != null && TgmConfig.TypeRowOrder.Value == order,
                 () =>
                 {
@@ -160,7 +175,13 @@ namespace TheGreatestMap
         /// A box to check and the name of what it does. The whole row is the target, box
         /// included, so there is no small square to hit.
         /// </summary>
-        private static void Row(float y, string text, string tip, Func<bool> on, Action press)
+        private static float Row(float y, string text, string tip, Func<bool> on, Action press)
+        {
+            RowAt(y, text, tip, on, press);
+            return y - RowHeight;
+        }
+
+        private static void RowAt(float y, string text, string tip, Func<bool> on, Action press)
         {
             var row = MenuKit.Row(_root.transform, "", true, () => { press(); ClientPins.Restyle(); Refresh(); });
             Place(row, 0f, y, Width, RowHeight);

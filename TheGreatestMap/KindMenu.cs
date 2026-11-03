@@ -680,22 +680,33 @@ namespace TheGreatestMap
             // keep taking their own clicks: in a Unity canvas the later child is the nearer one.
             if (Pinned) BuildMover();
             Header(_results != null ? "Matches" : "Markers", 0f, y);
-            // A box to check rather than a word that changes, because the word was a promise it
-            // could not keep: with the markers off it read "show all", and pressing it put the
-            // master switch back without showing anything a kind or a type was hiding. What it
-            // does is hold every marker off at once, so it says that and shows whether it is on.
+            // The master switch used to be this box, and it is behind the gear now: it is not a
+            // peer of the switches in this list and it is not a peer of this list either. It beats
+            // every one of them rather than being one of them, and it takes vanilla's own
+            // hand-placed pins, death markers and bed off with ours -- which is a bigger thing
+            // than anything the list can do, done from a corner of the list's own title.
+            //
+            // What the corner is worth is the opposite button: a player looking at a map with
+            // something missing wants it back, and that is the one gesture worth reaching without
+            // reading. It used to be a row at the very foot of the list, below everything, which
+            // is the last place anybody looks.
+            //
+            // Only drawn when there is something to put back, so the corner is empty while the
+            // map is showing everything and the button cannot promise what it would not do.
             // Clear of the two round buttons in the corner and level with them: the stick pin
             // sits 6 from the right edge and the gear 30, both 22 across, so the strip they
             // occupy is 52 wide and its middle is 17 below the top.
-            CheckBox(Width - CornerButtons - 6f - 76f, -(17f - 20f * 0.5f), 76f,
-                "hide all",
-                () => !AllShown,
-                () => { MarkerToggle.ToggleAll(); Refresh(); },
-                "All markers",
-                "Take everything you have put on the map off it at once: this mod's markers, the pins " +
-                "you placed by hand, your death markers and your bed. The game's own landmarks stay -- " +
-                "boss altars, traders, Hildir's camps, the center of the world -- and so do players, " +
-                "pings and shouts. Unchecking it leaves every switch below exactly as it was.");
+            if (_resetShown)
+                HeadButton(Width - CornerButtons - 6f - 76f, -(17f - 20f * 0.5f), 76f, "show all",
+                    () =>
+                    {
+                        ViewPrefs.Clear();
+                        TgmConfig.ShowEverything();
+                        ClientPins.Restyle();
+                        Refresh();
+                    },
+                    "Show all", PutBackText() + ". \"Hide your markers\", behind the gear, is left alone " +
+                    "by this, being an override of these switches rather than one of them.");
             y -= HeaderHeight;
 
             FindBox(0f, y);
@@ -1302,9 +1313,10 @@ namespace TheGreatestMap
         /// </summary>
         private static float FootHeight()
         {
-            int rows = 2;
+            // One row: everything crossed off. The erased row went behind the gear and the
+            // put-back row went up into the title strip, which is counted in the head.
+            int rows = 1;
             if (VanillaPins.HidingControls) rows++;
-            if (_resetShown) rows++;
             return rows * RowHeight;
         }
 
@@ -1327,9 +1339,10 @@ namespace TheGreatestMap
                 () => DoneTotal() == 0);
             y -= RowHeight;
 
-            ActionRow(_root.transform, 0f, y, Erasures.Toggle,
-                () => Erasures.On ? "Hide erased markers" : "Show erased markers", null);
-            y -= RowHeight;
+            // Showing the erased markers used to be a row here. It is a thing you do to find out
+            // why a marker is not where you left it, not a thing you do while reading the map, so
+            // it is behind the gear with the rest of what is about looking rather than about what
+            // is on the map.
 
             // The game's ping, which had a button of its own on the strip this mod now takes off
             // the map. It is the one thing on that strip no row above stands for: a ping is a
@@ -1348,39 +1361,11 @@ namespace TheGreatestMap
                 y -= RowHeight;
             }
 
-            // The two label switches used to sit here. They are about how the whole map is
-            // drawn rather than about which markers are on it, which is a different question from
-            // the one every other row in this list answers -- so they live behind the gear beside
-            // the marker button now, with the rest of the drawing settings.
-
-            // Everything back: the kinds, the master switch, the crossed-off groups, the icons
-            // hidden one picture at a time and the markers hidden one at a time. The same work as
-            // tgm_show, and it has to be, because this is the button people press.
-            //
-            // It used to put back only the kinds, the master switch and the crossed-off groups,
-            // which left "Hide all Cloudberries markers" with no way back on the map at all: the
-            // one control that undid it lived in a marker's own menu, and every marker it applied
-            // to was hidden. A button called "Show all" that shows most of it is worse than no
-            // button, because it answers the question and the answer is wrong.
-            //
-            // Drawn only when it would put something back, and naming what that is. It used to be
-            // called "Show all" and sit four rows under another one called "Show all markers",
-            // and between them they were the most confusing thing in the panel.
-            if (_resetShown)
-            {
-                var putBack = MenuKit.Row(_root.transform, "", true, () =>
-                {
-                    ViewPrefs.Clear();
-                    TgmConfig.ShowEverything();
-                    ClientPins.Restyle();
-                    Refresh();
-                });
-                Place(putBack, 0f, y, RowWidth, RowHeight);
-                var putBackLabel = putBack.GetComponentInChildren<TextMeshProUGUI>();
-                if (putBackLabel != null) putBackLabel.alignment = TextAlignmentOptions.MidlineLeft;
-                _entries.Add(new Entry { Text = PutBackText, Quiet = () => false, Label = putBackLabel });
-                y -= RowHeight;
-            }
+            // The two label switches used to sit here, and so did the put-back row. The switches
+            // are about how the whole map is drawn rather than about which markers are on it, so
+            // they live behind the gear. The put-back row is in the title strip, where the master
+            // switch used to be: it is the button a player with a half-empty map goes looking for,
+            // and the foot of a scrolling list is the last place anybody looks.
             return y;
         }
 
@@ -2121,6 +2106,35 @@ namespace TheGreatestMap
         /// rather than an action. Named for what checking it does, so the words never have to
         /// change under the pointer -- the box is what says whether it is on.
         /// </summary>
+        /// <summary>
+        /// A plain button in the title strip: the check box without the box, and lit rather than
+        /// idle, because the only one of these is drawn when there is work for it to do.
+        /// </summary>
+        private static void HeadButton(float x, float y, float width, string text, Action press,
+                                       string tipTopic, string tip)
+        {
+            var go = new GameObject("HeadButton", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+            go.transform.SetParent(_root.transform, false);
+            Place((RectTransform)go.transform, x, y, width, 20f);
+            var back = go.GetComponent<Image>();
+            back.color = MenuKit.ButtonOn;
+            back.raycastTarget = true;
+            var button = go.GetComponent<Button>();
+            button.transition = Selectable.Transition.None;
+            button.targetGraphic = back;
+            button.onClick.AddListener(() => press());
+            MenuKit.Tip(go, tipTopic, tip);
+
+            var label = MenuKit.Text(go.transform, "Glyph", text, 11f, MenuKit.GlyphOn);
+            label.alignment = TextAlignmentOptions.Center;
+            label.raycastTarget = false;
+            var lrt = label.rectTransform;
+            lrt.anchorMin = Vector2.zero;
+            lrt.anchorMax = Vector2.one;
+            lrt.offsetMin = Vector2.zero;
+            lrt.offsetMax = Vector2.zero;
+        }
+
         private static void CheckBox(float x, float y, float width, string text, Func<bool> on,
                                      Action toggle, string tipTopic, string tip)
         {

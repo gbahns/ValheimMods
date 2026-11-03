@@ -2,6 +2,28 @@
 
 ## 4.7.0 -- unreleased
 
+- **The marker list's title strip holds "show all" instead of "hide all".** The master switch has
+  moved behind the gear, and the corner it used to sit in now carries the one button a player with
+  a half-empty map is actually looking for -- drawn only when there is something hidden to put
+  back, so the corner is empty while the map is showing everything.
+
+  The two were never peers. The master switch is an override of every switch in the list rather
+  than one of them, and it takes vanilla's own hand-placed pins, death markers and bed off with
+  this mod's, which is a bigger thing than anything in the list can do. Putting everything back
+  was a row at the very foot of a scrolling list, which is the last place anybody looks.
+
+  **And it is called "Hide your markers" now, not "hide all",** because it never hid all of them:
+  the boss altars, the traders, Hildir's quests and the center of the world stayed, and so did
+  players, pings and shouts. That was deliberate -- those are the world's, pinned by the game
+  whether this mod is installed or not -- but a switch called "all" that leaves markers on the map
+  is a switch that has to be tried to be understood. What it takes off is everything on the map
+  that is there because of you.
+
+- **"Show erased markers" is behind the gear too.** It is for finding out why a marker is not where
+  you left it, not for reading the map.
+
+  Between them the foot of the list is two rows shorter.
+
 - **Farm sits at the bottom of Resources, below the ore, rather than above Gather.** What can be
   planted is a note about a trip you will not make again: you find one patch, you take it home, and
   the row is finished with. Everything else under that heading is something you will go out for

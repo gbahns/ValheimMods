@@ -168,7 +168,17 @@ finished with can go while the sunken crypts you have cleared stay, and the copp
 out can go while the raspberry bushes you have picked stay. One row at the foot does the lot at
 once.
 
-"Hide all" at the right of the title strip, next to the stick pin, is the master switch: check it
+"Show all" at the right of the title strip, next to the stick pin, appears whenever something is
+hidden and puts all of it back -- the kinds, the types, the crossed-off groups, icons hidden one
+picture at a time and markers hidden one at a time, the same work as `tgm_show`. It is not drawn
+when there is nothing to put back.
+
+The master switch lives behind the gear, as **"Hide your markers"**. It is named for what it does:
+everything on the map that is there because of you goes off at once -- this mod's recorded markers,
+the pins you placed by hand, your death marker and your bed -- while what the game pins for the
+world stays, which is the boss altars, the traders, Hildir's quests and the center of the world.
+Players, pings and shouts stay too. Turning it back off leaves every switch in the list exactly as
+it was: check it
 and everything you have put on the map comes off at once -- this mod's markers, the pins you
 placed by hand, your death markers and your bed -- whatever the switches below say. The game's own
 landmarks stay, since they are the map rather than notes on it: boss altars, traders, Hildir's
