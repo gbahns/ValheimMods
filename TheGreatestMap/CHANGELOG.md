@@ -2,6 +2,32 @@
 
 ## 4.7.0 -- unreleased
 
+- **`tgm_identify orphans` finds the markers a cut type left behind, and the "Other Markers" row is
+  gone.** A marker does not store its kind: it stores the prefab it was recorded for and works the
+  kind out by looking that prefab up, which is what let every marker already written follow the
+  catalog when Enemy Bases was sorted out. The same derivation runs the other way when a line is
+  deleted -- cut `SwampHut` and nothing can say what a swamp hut marker is any more, so it keeps
+  its picture, keeps its place, and belongs to no kind. No row in the marker list, no switch, no
+  ping, and still drawn on the map.
+
+  The cuts could not have caught these. Cutting a type edits the catalog and the exclusion list,
+  and both are about what gets recorded from now on; neither looks at a marker already written.
+  This is the part that was missing, and it matters on any map where structures were recorded
+  before this version -- every swamp hut, swamp ruin, swamp well, graveyard, ship setting,
+  shipwreck, fire hole, charred ruin, fortress ruin, volture nest, stone house, stone tower ruin,
+  infested tree and Ruin1-3 marker is one of these.
+
+  The command groups them by prefab with a count and the nearest one's distance and bearing, so a
+  hundred swamp huts reads as one decision. `confirm` erases all of them after writing a backup;
+  `tgm_scrub <prefab> confirm` still does one kind at a time, which is the safer way through a long
+  list. Keeping one instead means putting its catalog line back and taking its prefix out of
+  "Structures Exclude Prefixes", and the report says so.
+
+  **The "Other Markers" row at the foot of the marker list is gone with it.** It was these markers,
+  and it was not something anybody could act on: no ping, no prefab name, and only the crossed-off
+  ones were counted, so it showed a fraction of the problem and named none of it. The row for the
+  markers you placed by hand stays -- those have no kind by design.
+
 - **The "hide everything crossed off" row is gone.** It is from when the counts sat in a column of
   their own and the switches did not: every row carries its own switch now -- each kind, each type,
   each of the leftover groups -- so the one at the foot was a blunt way to do what the list already

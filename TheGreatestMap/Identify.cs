@@ -189,6 +189,101 @@ namespace TheGreatestMap
         /// Working out what something is can run by itself; forgetting what something was needs
         /// somebody to ask for it, which is what tgm_identify is.</para>
         /// </summary>
+        /// <summary>
+        /// Markers whose source the catalog no longer names, grouped by that source: what a cut
+        /// leaves behind.
+        ///
+        /// <para>A marker does not store its kind. It stores the prefab it was recorded for and
+        /// works the kind out by looking that prefab up, which is what lets a catalog line move
+        /// from one kind to another and take every marker already written with it. The same
+        /// derivation runs the other way when a line is deleted: cut SwampHut and nothing can
+        /// answer what a SwampHut marker is any more, so it keeps its picture, keeps its place,
+        /// and belongs to no kind -- no row in the marker list, no switch, no ping, and still
+        /// drawn on the map.</para>
+        ///
+        /// <para>Which is why the cuts could not have caught these. Cutting a type edits the
+        /// catalog and the exclusion list, and both of those are about what gets recorded from
+        /// now on; neither looks at a marker already written. This is the part that was missing.
+        /// </para>
+        ///
+        /// <para>Reported rather than erased unless asked, and grouped by source rather than
+        /// listed one by one, because the decision is per type: a hundred swamp huts is one
+        /// choice about swamp huts, and the count is what makes it.</para>
+        /// </summary>
+        internal static List<string> Orphans(bool erase)
+        {
+            var lines = new List<string>();
+            var bySource = new SortedDictionary<string, List<SharedPin>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var pin in ClientPins.All)
+            {
+                if (pin == null || !pin.Auto) continue;
+                string source = pin.Source ?? "";
+                // Nothing to look up. A blank source is a marker written before markers
+                // remembered anything, which is what tgm_identify itself is for; "Manual" is a
+                // complete answer, and a kind-only source answers for itself.
+                if (source.Length == 0 || source == SharedPin.Manual) continue;
+                if (source.StartsWith("kind:", StringComparison.OrdinalIgnoreCase)) continue;
+                if (Catalog.CategoryOf(source).HasValue) continue;
+                if (!bySource.TryGetValue(source, out var list)) bySource[source] = list = new List<SharedPin>();
+                list.Add(pin);
+            }
+            if (bySource.Count == 0)
+            {
+                lines.Add("Every recorded marker on this map stands for something the catalog still names.");
+                return lines;
+            }
+
+            var player = Player.m_localPlayer;
+            Vector3 from = player != null ? player.transform.position : Vector3.zero;
+            int total = 0;
+            foreach (var kv in bySource) total += kv.Value.Count;
+
+            lines.Add($"{total} marker(s) stand for {bySource.Count} thing(s) the catalog no longer names. " +
+                      "They keep their picture and belong to no kind, so the marker list has no row for them.");
+            foreach (var kv in bySource)
+            {
+                // The nearest of them, so a count can be gone and looked at rather than taken on
+                // trust. Flat, like every other distance here: a marker inside a dungeon is a few
+                // thousand meters up and still at that spot on the map.
+                float nearest = float.MaxValue;
+                var at = Vector3.zero;
+                foreach (var pin in kv.Value)
+                {
+                    float d = Geo.FlatDistance(pin.Pos, from);
+                    if (d >= nearest) continue;
+                    nearest = d;
+                    at = pin.Pos;
+                }
+                lines.Add($"  {kv.Key} x{kv.Value.Count} -- nearest {Mathf.RoundToInt(nearest)} m away " +
+                          $"at {Mathf.RoundToInt(at.x)}, {Mathf.RoundToInt(at.z)}");
+            }
+
+            if (!erase)
+            {
+                lines.Add("Erase all of them with: tgm_identify orphans confirm");
+                lines.Add("Or one kind at a time, which is the safer way through a long list: " +
+                          "tgm_scrub <source> confirm");
+                lines.Add("Keeping one instead means putting its line back in the Catalog section it came from, " +
+                          "and taking its prefix out of Structures Exclude Prefixes.");
+                return lines;
+            }
+
+            // A snapshot first. This erases markers across the whole map in one press, and the
+            // thing it is cleaning up is the result of a decision that has been changed several
+            // times already this version.
+            string snapshot = MapBackup.Snapshot(PersonalMap.Label, "tgm_identify orphans", PersonalMap.Store.ToBytes());
+            foreach (var kv in bySource)
+                foreach (var pin in kv.Value)
+                    ClientPins.RemoveStale(pin.Key);
+            ClientPins.Restyle();
+            lines.Add($"Erased all {total}. It carries to everyone at the next merge and does not come back.");
+            if (!string.IsNullOrEmpty(snapshot))
+                lines.Add("The map as it was is in " + snapshot + " -- tgm_backups lists them, tgm_restore puts one back.");
+            TheGreatestMapMod.Log.LogWarning(
+                $"[TheGreatestMap] tgm_identify orphans: erased {total} marker(s) over {bySource.Count} unnamed source(s).");
+            return lines;
+        }
+
         internal static Result Run(bool apply, bool strip = true)
         {
             var result = new Result();

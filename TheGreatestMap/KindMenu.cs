@@ -1275,7 +1275,14 @@ namespace TheGreatestMap
         /// </summary>
         private static float LooseEnds(float y)
         {
-            foreach (var bucket in new[] { CrossedOff.Placed, CrossedOff.Unsorted })
+            // Placed only. The other bucket held crossed-off markers that belong to no kind,
+            // which is what a deleted catalog line leaves behind -- and a row saying "Other
+            // Markers x3" is not a thing anybody can act on: no ping, no name, and only the
+            // crossed-off ones counted, so it showed a fraction of the problem and named none of
+            // it. "tgm_identify orphans" is the answer now: it finds all of them, crossed off or
+            // not, says what prefab each stands for and offers to erase them. A marker you placed
+            // by hand has no kind by design, which is why that bucket keeps its row.
+            foreach (var bucket in new[] { CrossedOff.Placed })
             {
                 if (!_doneOther.TryGetValue(bucket, out int n) || n == 0) continue;
                 var group = bucket;

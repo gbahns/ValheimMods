@@ -496,13 +496,26 @@ namespace TheGreatestMap
                     }
                 }));
 
-            new Terminal.ConsoleCommand("tgm_identify", "Tell markers written by older versions what they are, so their icons follow the catalog; lists first, tgm_identify apply writes it. tgm_identify blanks also reads the markers carrying nothing at all, by what stands where they stand -- which nothing does by itself, since one of those may be a vanilla pin you placed and meant something by",
+            new Terminal.ConsoleCommand("tgm_identify", "Tell markers written by older versions what they are, so their icons follow the catalog; lists first, tgm_identify apply writes it. tgm_identify blanks also reads the markers carrying nothing at all, by what stands where they stand -- which nothing does by itself, since one of those may be a vanilla pin you placed and meant something by. tgm_identify orphans lists the markers whose prefab the catalog no longer names, which is what a cut type leaves on the map; add confirm to erase them",
                 (Terminal.ConsoleEvent)(args =>
                 {
                     if (args.Args.Length >= 2 && args.Args[1].ToLowerInvariant() == "blanks")
                     {
                         args.Context.AddString("Asking the world about the markers that carry nothing at all...");
                         Repair.Run(force: true, asked: true);
+                        return;
+                    }
+                    // The opposite question to the one this command is named for: not a marker
+                    // that never said what it was, but one that said so and is no longer believed,
+                    // because the catalog line that answered for it has been taken out.
+                    if (args.Args.Length >= 2 && args.Args[1].ToLowerInvariant() == "orphans")
+                    {
+                        bool erase = HasWord(args, "confirm");
+                        foreach (var line in Identify.Orphans(erase))
+                        {
+                            args.Context.AddString(line);
+                            TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_identify orphans: " + line);
+                        }
                         return;
                     }
                     bool apply = args.Args.Length >= 2 && args.Args[1].ToLowerInvariant() == "apply";
