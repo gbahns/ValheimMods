@@ -514,10 +514,39 @@ Schema 4 on the snapshot, and the first release to prove 0.10.0's append-only co
 reads it and ignores the tail, so nothing is partitioned. See
 [[wire-version-checks-partition-players]].
 
+#### Kill difficulty (unreleased)
+
+The stamp, built. Every kill `KillWatch` sees is filed under the world's progress at the time:
+`Progression.Tier()` reads ZoneSystem's seven `defeated_*` global keys and returns the biome tier
+they open up, 1 to 8, the same scale the creature catalog uses for where a species lives. Highest
+gate passed wins, not the longest unbroken run, because somebody who skips Bonemass and kills Moder
+has the Plains gear and portals either way.
+
+Three things made it cheaper than expected:
+
+- **Progress is world state, not player state.** Global keys are shared by everyone in the world, so
+  the recording client can read its own `ZoneSystem` and get the same answer the owner would. That
+  means no change to the `DWAMS_Kill` RPC at all -- the stamp is applied where the kill is filed,
+  which is also where the player is. See [[valheim-global-keys-arrive-via-rpc]].
+- **Store the observation, not the score.** `KillTally.ByProgress` is a per-species bucket array of
+  non-pet kills by stage. The difficulty rule (gap = creature tier - progress tier; at-level is
+  gap >= 0, punched up is gap >= 1) lives in `KillSplit` and can be rewritten later without losing a
+  kill. The one exception is the single best kill, kept whole in `KillLog` because the star level
+  that made one troll harder than another is not recoverable from counts.
+- **Append after the table, not inside it.** The kill log went to file version 2 by adding a block
+  *below* the species rows. A build that only knows version 1 reads every row correctly and stops,
+  which adding fields to each row would have broken. Snapshot schema 5 does the same thing on the
+  wire. Same lesson as [[tgm-map-format-versions]], applied before it cost anything.
+
+Bosses fall out of the ranking on their own: nothing spawns them, so the catalog cannot place them
+and they have no gap to measure. That is the right answer -- you fight a boss when you are ready --
+and it needed no special case.
+
+Pets are left out entirely rather than counted and discounted. Killing your own pig says nothing
+about how hard the game is.
+
 ### Possible follow-ups
 
-- Stamp each kill with the player's boss progress at the time, which is the only thing that makes
-  "relative difficulty" mean anything. Cheap now that `KillWatch` exists.
 - A panel view for the death reports. 0.10.0 prints them with `dwams_deaths`; the tallies are in the
   Details tab but the full story is console-only.
 - Damage dealt *to* a creature over a fight, the mirror of this, which would answer "how much did we

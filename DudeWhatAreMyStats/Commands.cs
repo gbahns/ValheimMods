@@ -57,6 +57,10 @@ namespace DudeWhatAreMyStats
                     sb.AppendLine(KillLog.Loaded
                         ? $"kill log: {KillLog.Species} species watched, {CreatureCatalog.Count} creature(s) catalogued"
                         : "kill log: not open yet");
+                    int progress = Progression.Tier();
+                    sb.AppendLine(progress > 0
+                        ? $"progress: tier {progress}, {CreatureCatalog.TierName(progress)} ({Progression.Describe(progress)})"
+                        : "progress: no world loaded, so kills cannot be ranked");
                     if (DwamsConfig.RecordDeaths.Value)
                         sb.AppendLine(DeathLog.Loaded
                             ? $"death log: {DeathLog.Recorded} recorded, {DeathLog.ReportCount} kept in full" +

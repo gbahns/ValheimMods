@@ -23,8 +23,8 @@ online, each marked with how long ago they were last seen. Players without the m
 |---|---|
 | Player | Your own row is gold and marked *(you)*. Anyone not online is marked with how long ago they were last seen, such as *(2d ago)*. |
 | Kills | Creatures that were hostile. Pets, deer, fish and chickens are counted in their own columns, not here. *Kills Column Hostile Only* off puts this back to the game's own total of everything that ever died by your hand. |
-| Tame | Somebody's pets. See below: part of this is an assumption for old kills. |
-| Critters | Things that could not fight back at all: deer, hare, fish, gulls. |
+| Tame | Somebody's pets. Off by default; *Show Tame And Critter Columns* adds it. See below: part of this is an assumption for old kills. |
+| Critters | Things that could not fight back at all: deer, hare, fish, gulls. Off by default, same setting. |
 | Deaths | Every death. |
 | K/D | Kills per death. With no deaths yet this is simply your kill count, the way scoreboards usually show it. |
 | Bosses | Boss kills. |
@@ -76,9 +76,19 @@ kill falls into the unwatched pile with your old ones.
 - **Toughness killed**, the health of everything you fought added up, and the toughest single thing
   you have killed. Pets are left out of both.
 
-What is not possible, rather than quietly approximated: how hard a kill was *at the time*. The old
-records carry no dates, so there is no telling whether that troll fell to a bronze axe or a
-blackmetal one. Star levels for old kills are gone for the same reason.
+**Kill difficulty** is the one part that cannot be backdated, so it starts empty and fills up as you
+play. Every kill from now on is stamped with how far the world had got at the time -- which boss had
+fallen, which is world state everyone on a server shares -- and compared against the biome the
+creature lives in. That gives *at your level or above*, *a biome ahead or more*, an average gap, and
+your best kill: a two-star troll killed before the Elder is a different thing from the same troll
+killed after Yagluth, and this is the only way to tell them apart. The section stays hidden until
+there is something in it.
+
+Old kills are not ranked and never will be. They carry no dates, so the only comparison available
+would be a whole history against today's progress, which flatters a four-year character and a fresh
+one by exactly the same amount. The *Ranked kills* row says how many count, right next to the
+numbers, so the figures are never mistaken for your whole record. Star levels for old kills are gone
+for the same reason.
 
 ## What killed you
 
@@ -254,7 +264,8 @@ the keep window runs out.
 `BepInEx/config/DeathMonger.DudeWhatAreMyStats.cfg`, or press F1 in game if you have a
 configuration manager. Notable settings: the open key, *Pause While Open*, *Ask Other Players*,
 *Refresh Seconds*, *Show Offline Players*, *Push Minutes*, *Show Zero Stats*, *Top Creature Count*
-and *Fix Treasure Discovery Count*, the `[Kills]` section for the kill breakdown, the `[Deaths]`
+and *Fix Treasure Discovery Count*, the `[Kills]` section for the kill breakdown and
+*Show Tame And Critter Columns*, the `[Deaths]`
 section for the death record, the `[Player List]`
 section for the always-on list, plus *Server Store Enabled* and *Server Keep Days* on a server.
 

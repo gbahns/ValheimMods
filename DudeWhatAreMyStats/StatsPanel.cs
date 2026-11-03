@@ -47,6 +47,7 @@ namespace DudeWhatAreMyStats
         private static bool _dirty;
         private static bool _openedThisFrame;
         private static bool _buildFailed;
+        private static string _builtWith = "";
         private static int _closedFrame = -10;
         private static readonly HashSet<string> _collapsed = new HashSet<string>(StringComparer.Ordinal);
         private static bool _collapsedLoaded;
@@ -63,7 +64,19 @@ namespace DudeWhatAreMyStats
         {
             internal string Key;
             internal string Header;
-            internal float Start, End;                    // fractions of the row width
+
+            /// <summary>
+            /// Its share of the row, relative to the other columns on show. Shares rather than
+            /// fixed edges because which columns are on show is a setting, and the ones that stay
+            /// should spread out to fill the gap rather than leaving a hole.
+            /// </summary>
+            internal float Weight;
+
+            /// <summary>Worked out from the weights by <see cref="Visible"/>; not set by hand.</summary>
+            internal float Start, End;
+
+            /// <summary>Hidden unless this returns true. Null for a column that is always on.</summary>
+            internal Func<bool> Shown;
             internal Func<Snapshot, float> Sort;
             internal Func<Snapshot, string> Text;
             internal bool RightAlign = true;
@@ -71,30 +84,67 @@ namespace DudeWhatAreMyStats
 
         private static readonly Column[] Columns =
         {
-            new Column { Key = "Player",  Header = "Player", Start = 0.00f, End = 0.20f, RightAlign = false,
+            new Column { Key = "Player",  Header = "Player", Weight = 20f, RightAlign = false,
                          Sort = null, Text = s => s.Name },
             // Hostile kills by default, the game's own total with Kills Column Hostile Only off.
-            new Column { Key = "Kills",   Header = "Kills",  Start = 0.20f, End = 0.28f,
+            new Column { Key = "Kills",   Header = "Kills",  Weight = 8f,
                          Sort = s => s.KillsShown, Text = s => StatGroups.Count(s.KillsShown) },
-            new Column { Key = "Tame",    Header = "Tame",   Start = 0.28f, End = 0.35f,
+            new Column { Key = "Tame",    Header = "Tame",   Weight = 7f, Shown = ShowKillKinds,
                          Sort = s => s.TameKills, Text = s => s.KillTypes == null ? "-" : StatGroups.Count(s.TameKills) },
-            new Column { Key = "Critters", Header = "Critters", Start = 0.35f, End = 0.43f,
+            new Column { Key = "Critters", Header = "Critters", Weight = 8f, Shown = ShowKillKinds,
                          Sort = s => s.CritterKills, Text = s => s.KillTypes == null ? "-" : StatGroups.Count(s.CritterKills) },
-            new Column { Key = "Deaths",  Header = "Deaths", Start = 0.43f, End = 0.51f,
+            new Column { Key = "Deaths",  Header = "Deaths", Weight = 8f,
                          Sort = s => s.Deaths, Text = s => StatGroups.Count(s.Deaths) },
-            new Column { Key = "K/D",     Header = "K/D",    Start = 0.51f, End = 0.58f,
+            new Column { Key = "K/D",     Header = "K/D",    Weight = 7f,
                          Sort = s => s.KillDeath, Text = s => s.KillDeath.ToString("0.0") },
-            new Column { Key = "Bosses",  Header = "Bosses", Start = 0.58f, End = 0.65f,
+            new Column { Key = "Bosses",  Header = "Bosses", Weight = 7f,
                          Sort = s => s.Bosses, Text = s => StatGroups.Count(s.Bosses) },
-            new Column { Key = "Played",  Header = "Played", Start = 0.65f, End = 0.75f,
+            new Column { Key = "Played",  Header = "Played", Weight = 10f,
                          Sort = s => s.Played, Text = s => StatGroups.Duration(s.Played) },
-            // Empty until this mod has watched somebody die, which is the whole reason the column
-            // reads "-" rather than zero: the game keeps no record of what killed you.
-            new Column { Key = "Nemesis", Header = "Nemesis", Start = 0.75f, End = 0.89f,
+            new Column { Key = "Nemesis", Header = "Nemesis", Weight = 14f,
                          Sort = s => s.NemesisCount, Text = s => s.NemesisText },
-            new Column { Key = "Skill",   Header = "Best skill", Start = 0.89f, End = 1.00f,
+            new Column { Key = "Skill",   Header = "Best skill", Weight = 11f,
                          Sort = s => s.BestSkillLevel, Text = s => s.BestSkillText },
         };
+
+        private static bool ShowKillKinds()
+        {
+            return DwamsConfig.ShowKillKindColumns != null && DwamsConfig.ShowKillKindColumns.Value;
+        }
+
+        /// <summary>
+        /// The columns on show, with their edges worked out from their weights so the ones that stay
+        /// fill the width. Cheap, and called wherever a column is drawn, so a setting changed with
+        /// the panel open takes effect the next time it opens.
+        /// </summary>
+        private static Column[] Visible()
+        {
+            var shown = new List<Column>(Columns.Length);
+            float total = 0f;
+            foreach (var col in Columns)
+            {
+                if (col.Shown != null && !col.Shown()) continue;
+                shown.Add(col);
+                total += col.Weight;
+            }
+            if (total <= 0f) total = 1f;
+            float at = 0f;
+            foreach (var col in shown)
+            {
+                col.Start = at / total;
+                at += col.Weight;
+                col.End = at / total;
+            }
+            return shown.ToArray();
+        }
+
+        /// <summary>Which columns the headers were built for, so a change can force a rebuild.</summary>
+        private static string Signature()
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (var col in Visible()) sb.Append(col.Key).Append('|');
+            return sb.ToString();
+        }
 
         // ── open / close ────────────────────────────────────────────────────────────
 
@@ -107,6 +157,9 @@ namespace DudeWhatAreMyStats
         internal static void Open()
         {
             if (Player.m_localPlayer == null) return;
+            // Headers are built once; if the set of columns has changed since, rebuild rather than
+            // leaving labels over the wrong cells.
+            if (_root != null && _builtWith != Signature()) UnityEngine.Object.Destroy(_root);
             if (_root == null && !Build())
             {
                 DudeWhatAreMyStatsMod.Message("Stats panel unavailable; try dwams_status in the console.");
@@ -281,9 +334,10 @@ namespace DudeWhatAreMyStats
             var hover = go.GetComponent<UiKit.Hover>();
             hover.OnHoverChanged = on => { if (img != null) img.color = on ? UiKit.RowHover : UiKit.RowColor; };
 
-            for (int i = 0; i < Columns.Length; i++)
+            var columns = Visible();
+            for (int i = 0; i < columns.Length; i++)
             {
-                var col = Columns[i];
+                var col = columns[i];
                 string text = i == 0 ? nameText : col.Text(snap);
                 var label = UiKit.Text(go.transform, col.Key, text, 17f,
                     col.RightAlign ? TextAlignmentOptions.Right : TextAlignmentOptions.Left, color);
@@ -389,6 +443,26 @@ namespace DudeWhatAreMyStats
                         UiKit.Row(_listContent, "Toughest kill",
                                   DeathReport.CauseName(k.HardestKey) + " (" + StatGroups.Count(k.Hardest) + " hp)", null, null);
                 });
+
+                // Only kills stamped with how far the world had got can be ranked, so this section
+                // is empty for everyone the day it ships and fills up from there. It stays hidden
+                // until there is something in it rather than showing a column of zeroes.
+                if (k.Ranked > 0f)
+                    Section("Kill difficulty", () =>
+                    {
+                        UiKit.Row(_listContent, "At your level or above", StatGroups.Count(k.AtLevel), null, null);
+                        UiKit.Row(_listContent, "A biome ahead or more", StatGroups.Count(k.PunchedUp), null, null);
+                        UiKit.Row(_listContent, "Average biome gap", k.AverageGap.ToString("+0.0;-0.0;0.0"), null, null);
+                        if (k.HasBest)
+                            UiKit.Row(_listContent, "Best kill",
+                                      (k.BestStar > 1 ? k.BestStar + "-star " : "") + DeathReport.CauseName(k.BestKey) +
+                                      ", " + Progression.GapText(k.BestGap) +
+                                      " (" + Progression.Describe(k.BestProgress) + ")", null, null);
+                        // The count everything above is out of. Without it the numbers look like
+                        // they are meant to add up to the kill count four rows up, and they never
+                        // will: the history was not recorded this way.
+                        UiKit.Row(_listContent, "Ranked kills", StatGroups.Count(k.Ranked), null, null);
+                    });
             }
 
             if (snap.ByWeapon.Count > 0)
@@ -450,9 +524,12 @@ namespace DudeWhatAreMyStats
         private static Column SortColumn()
         {
             string key = DwamsConfig.SortColumn != null ? DwamsConfig.SortColumn.Value : "Kills";
-            foreach (var c in Columns)
+            var columns = Visible();
+            foreach (var c in columns)
                 if (string.Equals(c.Key, key, StringComparison.OrdinalIgnoreCase)) return c;
-            return Columns[1];
+            // The remembered column may be one that is currently hidden; fall back to Kills rather
+            // than sorting by something nobody can see.
+            return columns.Length > 1 ? columns[1] : columns[0];
         }
 
         private static void SortRoster()
@@ -563,10 +640,11 @@ namespace DudeWhatAreMyStats
             {
                 var sorted = SortColumn();
                 bool desc = DwamsConfig.SortDescending == null || DwamsConfig.SortDescending.Value;
-                for (int i = 0; i < _headerLabels.Count && i < Columns.Length; i++)
+                var columns = Visible();
+                for (int i = 0; i < _headerLabels.Count && i < columns.Length; i++)
                 {
-                    bool active = Columns[i] == sorted;
-                    _headerLabels[i].text = Columns[i].Header + (active ? (desc ? "  ▼" : "  ▲") : "");
+                    bool active = columns[i] == sorted;
+                    _headerLabels[i].text = columns[i].Header + (active ? (desc ? "  ▼" : "  ▲") : "");
                     _headerLabels[i].color = active ? UiKit.Gold : UiKit.Header;
                 }
             }
@@ -670,6 +748,7 @@ namespace DudeWhatAreMyStats
                 _collapsed.Add("Killed by");
                 _collapsed.Add("In the fight");
                 _collapsed.Add("Kills by type");
+                _collapsed.Add("Kill difficulty");
                 _collapsed.Add("Kills by weapon");
                 foreach (var s in StatGroups.Order) _collapsed.Add(s);
                 SaveCollapsed();
@@ -681,7 +760,8 @@ namespace DudeWhatAreMyStats
             headerGo.transform.SetParent(content.transform, false);
             _headerRow = headerGo.GetComponent<RectTransform>();
             _headerLabels.Clear();
-            foreach (var col in Columns)
+            _builtWith = Signature();
+            foreach (var col in Visible())
             {
                 var captured = col;
                 var cell = new GameObject("H_" + col.Key, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));

@@ -33,6 +33,31 @@ namespace DudeWhatAreMyStats
         internal float Total;
 
         internal float Unaccounted => Mathf.Max(0f, Total - Seen);
+
+        // ── kill difficulty ─────────────────────────────────────────────────────────
+        //
+        // All of this is forward-only and says so: it covers the kills that were recorded with a
+        // reading of how far the world had got, which is none of the history and everything from
+        // here. The alternative was to compare a whole history against today's progress, which
+        // flatters a four-year character and a fresh one by exactly the same amount.
+
+        /// <summary>Non-pet watched kills carrying a reading of the world's progress at the time.</summary>
+        internal float Ranked;
+        /// <summary>Of those, the ones from your own frontier biome or beyond it.</summary>
+        internal float AtLevel;
+        /// <summary>Of those, the ones a whole biome or more ahead of where you were.</summary>
+        internal float PunchedUp;
+        /// <summary>Biome gaps added up, so the average is this over <see cref="Ranked"/>.</summary>
+        internal float GapSum;
+
+        internal float AverageGap => Ranked > 0f ? GapSum / Ranked : 0f;
+
+        /// <summary>The kill that was furthest above the world's progress, and what it was.</summary>
+        internal bool HasBest;
+        internal string BestKey = "";
+        internal int BestStar;
+        internal int BestProgress;
+        internal int BestGap;
     }
 
     /// <summary>
@@ -156,6 +181,25 @@ namespace DudeWhatAreMyStats
                     default:                   result.Unknown += rest;  break;
                 }
 
+                // Kill difficulty. What a species is worth depends on where it lives, and that
+                // only means anything next to how far the world had got when you killed it, which
+                // is why this reads the stamped buckets rather than the tally. A species the
+                // catalog cannot place has no gap to measure and drops out here.
+                if (info != null && info.Tier > 0 && tally != null && tally.ByProgress != null)
+                {
+                    var buckets = tally.ByProgress;
+                    for (int progress = 1; progress < buckets.Length; progress++)
+                    {
+                        int n = buckets[progress];
+                        if (n <= 0) continue;
+                        int gap = info.Tier - progress;
+                        result.Ranked += n;
+                        result.GapSum += gap * n;
+                        if (gap >= 0) result.AtLevel += n;
+                        if (gap >= 1) result.PunchedUp += n;
+                    }
+                }
+
                 // Toughness counts what you actually fought. Killing your own pig is not an
                 // achievement however much the pig weighed.
                 if (info == null || rest <= 0f) continue;
@@ -165,6 +209,17 @@ namespace DudeWhatAreMyStats
                     result.Hardest = info.Health;
                     result.HardestKey = key;
                 }
+            }
+
+            // The best kill is the log's own, not something recovered from the buckets: they hold
+            // counts, so the star level that made one troll harder than another is not in them.
+            if (KillLog.HasBest)
+            {
+                result.HasBest = true;
+                result.BestKey = KillLog.BestKey;
+                result.BestStar = KillLog.BestStar;
+                result.BestProgress = KillLog.BestProgress;
+                result.BestGap = KillLog.BestGap;
             }
             return result;
         }

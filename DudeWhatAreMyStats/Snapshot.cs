@@ -20,7 +20,7 @@ namespace DudeWhatAreMyStats
         /// later one takes what it understands and ignores the rest. That is a contract: a future
         /// version appends, and never reorders or removes.
         /// </summary>
-        internal const int Schema = 4;
+        internal const int Schema = 5;
 
         /// <summary>
         /// The oldest layout this build can read: every version this mod has ever shipped.
@@ -318,6 +318,26 @@ namespace DudeWhatAreMyStats
                 pkg.Write(KillTypes.Hardest);
                 pkg.Write(KillTypes.HardestKey ?? "");
             }
+
+            // Schema 5: kill difficulty. A section of its own rather than more fields on the one
+            // above, so a reader that stops at the end of schema 4 stops somewhere clean.
+            bool ranked = KillTypes != null && KillTypes.Ranked > 0f;
+            pkg.Write(ranked);
+            if (ranked)
+            {
+                pkg.Write(KillTypes.Ranked);
+                pkg.Write(KillTypes.AtLevel);
+                pkg.Write(KillTypes.PunchedUp);
+                pkg.Write(KillTypes.GapSum);
+                pkg.Write(KillTypes.HasBest);
+                if (KillTypes.HasBest)
+                {
+                    pkg.Write(KillTypes.BestKey ?? "");
+                    pkg.Write(KillTypes.BestStar);
+                    pkg.Write(KillTypes.BestProgress);
+                    pkg.Write(KillTypes.BestGap);
+                }
+            }
             return pkg;
         }
 
@@ -433,6 +453,38 @@ namespace DudeWhatAreMyStats
                         Hardest = pkg.ReadSingle(),
                         HardestKey = pkg.ReadString(),
                     };
+                }
+
+                if (pkg.GetPos() < pkg.Size() && pkg.ReadBool())
+                {
+                    // Read the whole section whatever happens to it afterwards: dropping out early
+                    // would leave the position wrong for anything appended after this.
+                    float rankedCount = pkg.ReadSingle();
+                    float atLevel = pkg.ReadSingle();
+                    float punchedUp = pkg.ReadSingle();
+                    float gapSum = pkg.ReadSingle();
+                    bool hasBest = pkg.ReadBool();
+                    string bestKey = "";
+                    int bestStar = 0, bestProgress = 0, bestGap = 0;
+                    if (hasBest)
+                    {
+                        bestKey = pkg.ReadString();
+                        bestStar = pkg.ReadInt();
+                        bestProgress = pkg.ReadInt();
+                        bestGap = pkg.ReadInt();
+                    }
+                    if (snap.KillTypes != null)
+                    {
+                        snap.KillTypes.Ranked = rankedCount;
+                        snap.KillTypes.AtLevel = atLevel;
+                        snap.KillTypes.PunchedUp = punchedUp;
+                        snap.KillTypes.GapSum = gapSum;
+                        snap.KillTypes.HasBest = hasBest;
+                        snap.KillTypes.BestKey = bestKey;
+                        snap.KillTypes.BestStar = bestStar;
+                        snap.KillTypes.BestProgress = bestProgress;
+                        snap.KillTypes.BestGap = bestGap;
+                    }
                 }
                 return snap;
             }

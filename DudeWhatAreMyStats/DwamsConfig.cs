@@ -55,6 +55,7 @@ namespace DudeWhatAreMyStats
         internal static ConfigEntry<string> AssumeTameShare;
         internal static ConfigEntry<bool> KillsColumnHostileOnly;
         internal static ConfigEntry<string> TreatCreaturesAs;
+        internal static ConfigEntry<bool> ShowKillKindColumns;
 
         // ── fixes ───────────────────────────────────────────────────────────────────
         internal static ConfigEntry<bool> FixTreasureDiscoveryCount;
@@ -176,6 +177,10 @@ namespace DudeWhatAreMyStats
                 "harmless. The dwams_creatures console command names the rows where this mod overruled the game's " +
                 "own grouping, which is where a mistake would be; anything there that can actually hurt you belongs " +
                 "in this list. Empty means trust what the prefabs say.");
+            ShowKillKindColumns = mod.BindLocal("Kills", "Show Tame And Critter Columns", false,
+                "Add Tame and Critters columns to the scoreboard beside Kills. Off by default: ten columns is a lot " +
+                "to read, and the same numbers are in the Details tab under Kills by type. The columns that stay " +
+                "spread out to fill the width either way. Takes effect the next time the panel opens.");
             KillsColumnHostileOnly = mod.BindLocal("Kills", "Kills Column Hostile Only", true,
                 "Show only hostile kills in the scoreboard's Kills column, which is what people mean by a kill " +
                 "count: pets, deer, fish and chickens come out of it and get their own columns. Off puts the " +

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.12.0
+
+Plays with 0.11.0 and 0.10.1 either way: the stats message only gained a section on the end, which
+is the contract 0.10.0 set up, so nobody is hidden from anybody.
+
+- **Kill difficulty.** Every kill from now on is stamped with how far the world had got -- which
+  boss had fallen -- and ranked against the biome the creature lives in. Details shows how many were
+  at your level or above, how many a biome ahead, the average gap and your best kill. Forward only:
+  old kills carry no dates, and the *Ranked kills* row says how many count.
+- `dwams_status` prints the world's progress tier.
+- **Tame and Critters columns are off by default**, behind *Show Tame And Critter Columns*. The
+  numbers are still in Details under *Kills by type*, and the remaining columns spread out to fill
+  the width.
+
 ## 0.11.0
 
 A kill count that knows what it killed: your own pets, the deer and the fish, and the things that

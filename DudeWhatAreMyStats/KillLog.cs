@@ -18,6 +18,24 @@ namespace DudeWhatAreMyStats
         internal float Starred;
         /// <summary>The highest star level of this species this character has killed.</summary>
         internal int BestLevel = 1;
+
+        /// <summary>
+        /// Non-pet watched kills, bucketed by how far the world had got when each one happened, on
+        /// the 1-to-8 scale in <see cref="Progression"/>. Null until the first one, which is most
+        /// species, since no kill recorded before this existed carries a reading.
+        ///
+        /// What is stored is the observation, not a score. The difficulty arithmetic lives in
+        /// <see cref="KillSplit"/> and can be changed later without the old kills being lost.
+        /// </summary>
+        internal int[] ByProgress;
+
+        /// <summary>Files one kill under the stage the world was at. Ignores a stage it cannot read.</summary>
+        internal void Rank(int progress)
+        {
+            if (progress < 1 || progress > Progression.Highest) return;
+            if (ByProgress == null) ByProgress = new int[Progression.Highest + 1];
+            ByProgress[progress]++;
+        }
     }
 
     /// <summary>
@@ -38,9 +56,10 @@ namespace DudeWhatAreMyStats
     {
         /// <summary>
         /// Bumped when the file's shape changes. A newer file is readable as long as it only ever
-        /// appended, the same contract the stats message keeps.
+        /// appended, the same contract the stats message keeps. Version 2 added the progression
+        /// buckets, as a block after the species table rather than fields inside it.
         /// </summary>
-        private const int FileSchema = 1;
+        private const int FileSchema = 2;
 
         private const float SaveDebounce = 5f;
         private const float SaveRetry = 30f;
@@ -52,6 +71,21 @@ namespace DudeWhatAreMyStats
         private static float _saveAt;
         private static float _nextLoadTry;
         private static long _profileId;
+
+        // The single most-above-your-station kill this character has made. Kept here rather than
+        // worked out from the buckets because the star level cannot be recovered from them, and a
+        // two-star troll is not the same kill as a plain one.
+        private static bool _hasBest;
+        private static string _bestKey = "";
+        private static int _bestStar;
+        private static int _bestProgress;
+        private static int _bestGap;
+
+        internal static bool HasBest => _hasBest;
+        internal static string BestKey => _bestKey;
+        internal static int BestStar => _bestStar;
+        internal static int BestProgress => _bestProgress;
+        internal static int BestGap => _bestGap;
 
         internal static bool Loaded => _loaded;
         internal static string Path => _path;
@@ -109,6 +143,11 @@ namespace DudeWhatAreMyStats
             _loaded = false;
             _dirty = false;
             _profileId = 0L;
+            _hasBest = false;
+            _bestKey = "";
+            _bestStar = 0;
+            _bestProgress = 0;
+            _bestGap = 0;
         }
 
         internal static void Update()
@@ -147,7 +186,35 @@ namespace DudeWhatAreMyStats
             if (tame) tally.Tame += 1f;
             if (level > 1) tally.Starred += 1f;
             if (level > tally.BestLevel) tally.BestLevel = level;
+
+            // Killing your own pig says nothing about how hard the game is, so pets stay out of the
+            // difficulty record altogether rather than being counted and then discounted.
+            if (!tame)
+            {
+                int progress = Progression.Tier();
+                tally.Rank(progress);
+                NoteBest(key, level, progress);
+            }
             MarkDirty();
+        }
+
+        /// <summary>
+        /// Keeps the kill that was furthest above the world's progress at the time. A star breaks a
+        /// tie, because two creatures out of the same biome are not the same fight.
+        /// </summary>
+        private static void NoteBest(string key, int level, int progress)
+        {
+            if (progress < 1) return;
+            var info = CreatureCatalog.Find(key);
+            // A species the catalog cannot place has no gap to measure, so it cannot win this.
+            if (info == null || info.Tier <= 0) return;
+            int gap = info.Tier - progress;
+            if (_hasBest && (gap < _bestGap || (gap == _bestGap && level <= _bestStar))) return;
+            _hasBest = true;
+            _bestGap = gap;
+            _bestKey = key;
+            _bestStar = level;
+            _bestProgress = progress;
         }
 
         // ── the file ────────────────────────────────────────────────────────────────
@@ -192,12 +259,46 @@ namespace DudeWhatAreMyStats
                 pkg.Write(kv.Value.Starred);
                 pkg.Write(kv.Value.BestLevel);
             }
+
+            // File version 2 appends below the table rather than adding fields inside it, so a
+            // build that only knows version 1 reads every species row correctly and then simply
+            // stops. Same append-only contract the stats message keeps.
+            int ranked = 0;
+            foreach (var kv in _tallies)
+                if (kv.Value.ByProgress != null) ranked++;
+            pkg.Write(ranked);
+            foreach (var kv in _tallies)
+            {
+                var buckets = kv.Value.ByProgress;
+                if (buckets == null) continue;
+                pkg.Write(kv.Key);
+                int stages = 0;
+                for (int i = 1; i < buckets.Length; i++)
+                    if (buckets[i] > 0) stages++;
+                pkg.Write(stages);
+                for (int i = 1; i < buckets.Length; i++)
+                {
+                    if (buckets[i] <= 0) continue;
+                    pkg.Write(i);
+                    pkg.Write(buckets[i]);
+                }
+            }
+
+            pkg.Write(_hasBest);
+            if (_hasBest)
+            {
+                pkg.Write(_bestKey ?? "");
+                pkg.Write(_bestStar);
+                pkg.Write(_bestProgress);
+                pkg.Write(_bestGap);
+            }
             return pkg.GetArray();
         }
 
         private static void FromBytes(byte[] bytes)
         {
             _tallies.Clear();
+            _hasBest = false;
             if (bytes == null || bytes.Length == 0) return;
             var pkg = new ZPackage(bytes);
             int schema = pkg.ReadInt();
@@ -220,6 +321,38 @@ namespace DudeWhatAreMyStats
                     Starred = pkg.ReadSingle(),
                     BestLevel = pkg.ReadInt(),
                 };
+            }
+
+            // Everything below is optional: a file written by version 1 ends here, and one written
+            // by a later build may hold sections this one does not know, left unread on purpose.
+            if (pkg.GetPos() >= pkg.Size()) return;
+            int ranked = pkg.ReadInt();
+            for (int i = 0; i < ranked; i++)
+            {
+                string key = pkg.ReadString();
+                int stages = pkg.ReadInt();
+                _tallies.TryGetValue(key, out var tally);
+                for (int s = 0; s < stages; s++)
+                {
+                    int progress = pkg.ReadInt();
+                    int kills = pkg.ReadInt();
+                    // Read the pair either way, so a species with no row of its own cannot throw
+                    // the rest of the block out of step.
+                    if (tally == null || kills <= 0) continue;
+                    if (progress < 1 || progress > Progression.Highest) continue;
+                    if (tally.ByProgress == null) tally.ByProgress = new int[Progression.Highest + 1];
+                    tally.ByProgress[progress] += kills;
+                }
+            }
+
+            if (pkg.GetPos() >= pkg.Size()) return;
+            if (pkg.ReadBool())
+            {
+                _hasBest = true;
+                _bestKey = pkg.ReadString();
+                _bestStar = pkg.ReadInt();
+                _bestProgress = pkg.ReadInt();
+                _bestGap = pkg.ReadInt();
             }
         }
 
