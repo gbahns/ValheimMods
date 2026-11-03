@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.12 — unreleased
+## 0.9.12 — 2026-11-02
 
 - The crew fits the ship again on scaled hulls. Holding the mast on a wider ship (Knarr,
   Busse, Big Busse, Byrding, Greater Byrding) left a gap between the hand and the pole, and on
