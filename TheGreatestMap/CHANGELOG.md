@@ -2,6 +2,11 @@
 
 ## 4.7.0 -- unreleased
 
+- **Farm sits at the bottom of Resources, below the ore, rather than above Gather.** What can be
+  planted is a note about a trip you will not make again: you find one patch, you take it home, and
+  the row is finished with. Everything else under that heading is something you will go out for
+  again, which is what the heading is read for, so the half that is done with is out of their way.
+
 - **Camps are now Enemy Bases, and everywhere something lives is one.** The fuling villages and
   draugr villages were Camps while the dvergr guard towers, excavations, harbours and lighthouses,
   the charred fortresses and the greydwarf camps were Structures -- one idea with a line drawn

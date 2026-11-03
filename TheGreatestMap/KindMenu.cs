@@ -839,12 +839,17 @@ namespace TheGreatestMap
                     {
                         if (plantsDone) continue;
                         plantsDone = true;
-                        y = PlantRow(map, Harvest.Farm, y);
                         y = PlantRow(map, Harvest.Gather, y);
                         continue;
                     }
                     y = KindRow(map, kind, y);
                 }
+                // Farm last, below the ore, rather than beside the half it was split from. What
+                // can be planted is a note about a trip you will not make again: you find one
+                // patch, you take it home, and the row is finished with for the rest of the game.
+                // The rows above it are all things you will go out for again, which is what the
+                // heading is read for, so the dead half sits at the bottom out of their way.
+                if (plantsDone) y = PlantRow(map, Harvest.Farm, y);
                 // Below the kinds rather than among them: these are not kinds, nothing records
                 // them, and what they mean is the player's own business. Under the heading all
                 // the same, because the question the heading asks is the one they answer.
