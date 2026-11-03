@@ -1325,31 +1325,24 @@ namespace TheGreatestMap
 
         private static float FootHeight()
         {
-            // One row: everything crossed off. The erased row went behind the gear and the
-            // put-back row went up into the title strip, which is counted in the head.
-            int rows = 1;
+            // Nothing is left that is always there: the crossed-off switch went to the rows that
+            // each own a piece of it, the erased row went behind the gear, and the put-back button
+            // went up into the title strip, which the head counts. So the foot is the ping line or
+            // it is nothing at all, and nothing at all is a foot of no height, which is fine --
+            // what the foot does not take is what the scrolling part gets.
+            int rows = 0;
             if (PingRowShown) rows++;
             return rows * RowHeight;
         }
 
         private static float BuildFoot(float y)
         {
-            // One switch for everything you are finished with, which is what the right-hand
-            // column was for before being a column stopped making sense. The per-kind and
-            // per-type switches are still there, on the rows they belong to.
-            ActionRow(_root.transform, 0f, y, () =>
-                {
-                    if (CrossedOff.AnyShown()) CrossedOff.HideAll();
-                    else CrossedOff.ShowAll();
-                },
-                () =>
-                {
-                    int done = DoneTotal();
-                    return (CrossedOff.AnyShown() ? "Hide" : "Show") +
-                           (done > 0 ? $" everything crossed off ({done})" : " everything crossed off");
-                },
-                () => DoneTotal() == 0);
-            y -= RowHeight;
+            // One switch for everything crossed off used to be here, from when the counts lived
+            // in a column of their own and the switches did not. Every row carries its own now --
+            // each kind, each type, and each of the leftover groups -- so this was a blunter way
+            // to do what the list does precisely, and its one remaining claim was reaching the
+            // leftover groups in a single press, which is not worth a row at the foot of the
+            // panel. tgm_show still puts back everything at once, and so does the corner button.
 
             // Showing the erased markers used to be a row here. It is a thing you do to find out
             // why a marker is not where you left it, not a thing you do while reading the map, so
@@ -1706,14 +1699,6 @@ namespace TheGreatestMap
         private static int DoneOf(Category kind)
         {
             _done.TryGetValue(kind, out int n);
-            return n;
-        }
-
-        private static int DoneTotal()
-        {
-            int n = 0;
-            foreach (var kv in _done) n += kv.Value;
-            foreach (var kv in _doneOther) n += kv.Value;
             return n;
         }
 

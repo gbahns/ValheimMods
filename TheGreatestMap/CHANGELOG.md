@@ -2,6 +2,14 @@
 
 ## 4.7.0 -- unreleased
 
+- **The "hide everything crossed off" row is gone.** It is from when the counts sat in a column of
+  their own and the switches did not: every row carries its own switch now -- each kind, each type,
+  each of the leftover groups -- so the one at the foot was a blunt way to do what the list already
+  does precisely. `tgm_show` and the new corner button both still put everything back at once.
+
+  With it and the two rows before it gone, the foot of the marker list is empty unless the ping
+  line is there, and the whole of the panel below the title is the list itself.
+
 - **The ping line at the foot of the marker list can be switched off** (Display, "Ping Row", or
   behind the gear). It stands in for the ping button that "Hide Vanilla Controls" takes off the
   map, and it is only ever drawn while those buttons are hidden -- but middle-clicking the map
