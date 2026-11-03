@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.7.1 — unreleased
+
+- "You cannot write on your map while under attack" stays on the HUD and off the console.
+
 ## 4.7.0 — 2026-11-02
 
 ### The marker list

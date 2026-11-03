@@ -30,7 +30,7 @@ namespace TheGreatestMap
     {
         public const string ModGuid    = "DeathMonger.TheGreatestMap";
         public const string ModName    = "The Greatest Map";
-        public const string ModVersion = "4.7.0";
+        public const string ModVersion = "4.7.1";
 
         // Oldest version whose shared-marker wire format this build still speaks. ServerSync
         // refuses peers below this, so bump it only when the format or an RPC changes, not on
@@ -323,8 +323,15 @@ namespace TheGreatestMap
             return Config.Bind(section, key, defaultValue, new ConfigDescription(description, new AcceptableValueRange<int>(min, max)));
         }
 
-        /// <summary>Small top-left HUD message, respecting the ShowMessages toggle.</summary>
-        internal static void Message(string text)
+        /// <summary>
+        /// Small top-left HUD message, respecting the ShowMessages toggle.
+        ///
+        /// <para><paramref name="console"/> is for the notes that could not be answering anything
+        /// a player typed -- the ones the mod says to itself while you play. Those belong on the
+        /// HUD and nowhere else: a nag that repeats while you fight pushes the answer you were
+        /// reading off the top of a console that holds a limited scrollback.</para>
+        /// </summary>
+        internal static void Message(string text, bool console = true)
         {
             // The console first, and not only when messages are switched on. Anything worth
             // telling a player is worth finishing a command they typed: a console command whose
@@ -332,7 +339,7 @@ namespace TheGreatestMap
             // and if the answer then goes to the HUD alone the command appears to hang. Worse,
             // the HUD does not draw while the game is paused -- which is exactly when somebody
             // has the console open.
-            Say(text);
+            if (console) Say(text);
             if (TgmConfig.ShowMessages == null || !TgmConfig.ShowMessages.Value) return;
             if (MessageHud.instance == null) return;
             MessageHud.instance.ShowMessage(MessageHud.MessageType.TopLeft, text);

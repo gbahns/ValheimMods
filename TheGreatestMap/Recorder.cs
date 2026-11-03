@@ -141,14 +141,19 @@ namespace TheGreatestMap
             return true;
         }
 
-        /// <summary>Say why nothing is being written, but only when the reason changes, and not more than every few seconds.</summary>
+        /// <summary>
+        /// Say why nothing is being written, but only when the reason changes, and not more than
+        /// every few seconds. The HUD only: this is the mod talking to itself while you play,
+        /// never the answer to anything you typed, and being under attack is exactly the stretch
+        /// where it would repeat and bury whatever is in the console behind you.
+        /// </summary>
         private static void Blocked(string why)
         {
             if (why == null) return;
             if (why == _blockedNote && Time.time < _nextBlockedNote) return;
             _blockedNote = why;
             _nextBlockedNote = Time.time + 5f;
-            TheGreatestMapMod.Message(why);
+            TheGreatestMapMod.Message(why, console: false);
         }
     }
 }
