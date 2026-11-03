@@ -3,6 +3,8 @@
 ## 4.7.1 — unreleased
 
 - "You cannot write on your map while under attack" stays on the HUD and off the console.
+- A leviathan is spotted at 150 m rather than 40 m, so its barnacles can be marked from the ship.
+- Leviathans are in the catalog, so their markers have a row in the list instead of counting as orphans.
 
 ## 4.7.0 — 2026-11-02
 

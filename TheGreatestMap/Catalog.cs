@@ -503,6 +503,38 @@ namespace TheGreatestMap
             }
         }
 
+        /// <summary>
+        /// The few things seen from further off than their kind allows, by prefab name.
+        ///
+        /// <para>Ore is a rock you walk up to, and forty meters is the whole of it. The barnacles
+        /// worth having grow on the back of a leviathan, which is an island that swims: you see it
+        /// from the deck a long way out, you turn the ship towards it on purpose, and standing on
+        /// it is what makes it dive and take the barnacles down. Forty meters asks you to be
+        /// aboard the thing you came to write down. Raising ore itself would mark every copper
+        /// rock in the Black Forest from twice as far, so this says it about the one thing.</para>
+        ///
+        /// <para>Not a setting. A number nobody would think to go looking for is not a choice,
+        /// and the distance here is about how big the thing is rather than how much of the map
+        /// you want covered.</para>
+        /// </summary>
+        private static readonly Dictionary<string, float> FarSighted =
+            new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "Leviathan", 150f },
+            };
+
+        /// <summary>How far this one thing can be seen from, or zero to use its kind's distance.</summary>
+        internal static float FarSight(string prefab) =>
+            prefab != null && FarSighted.TryGetValue(prefab, out float d) ? d : 0f;
+
+        /// <summary>The longest of those, so the look ray is cast far enough to reach one.</summary>
+        internal static float FarthestSight()
+        {
+            float max = 0f;
+            foreach (float d in FarSighted.Values) if (d > max) max = d;
+            return max;
+        }
+
         /// <summary>Marker size on the map as a percentage; small for the kinds that come in clumps.</summary>
         internal static int DefaultSize(Category c)
         {
@@ -592,7 +624,14 @@ namespace TheGreatestMap
                            // somebody would go to: the fractured twins come with them, since a
                            // name ending _frac falls back to the whole one.
                            "rock3_silver=Silver|SilverOre,MineRock_Copper=Copper|CopperOre," +
-                           "goldvein=Gold|GoldOre,TrollFrost*=Frozen Troll|GoldOre";
+                           "goldvein=Gold|GoldOre,TrollFrost*=Frozen Troll|GoldOre," +
+                           // The barnacles, which the fallback for an unlisted deposit was already
+                           // marking off the chitin they drop -- and that is the trouble: a marker
+                           // whose prefab the catalog does not name belongs to no kind, so it had
+                           // no row in the marker list, no switch, and tgm_identify called it an
+                           // orphan and offered to erase it. It is the leviathan that carries the
+                           // barnacles, dives with them and is the thing the marker stands on.
+                           "Leviathan=Leviathan|Chitin";
                 case Category.Dungeon:
                     return "Crypt2=Burial Chambers|TrophySkeleton,Crypt3=Burial Chambers|TrophySkeleton,Crypt4=Burial Chambers|TrophySkeleton," +
                            // Iron scrap rather than the draugr's trophy, which was also on the

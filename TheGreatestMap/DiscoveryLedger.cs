@@ -70,7 +70,7 @@ namespace TheGreatestMap
             }
             // What the crosshair is on, if the catalog knows it and it is near enough.
             if (any && Catalog.TryClassify(best.collider.gameObject, out var looked)
-                && bestDistance <= TgmConfig.LookDistanceFor(looked.Cat))
+                && bestDistance <= TgmConfig.LookDistanceFor(looked))
             {
                 if (looked.Key != _lookKey) { _lookKey = looked.Key; _lookSince = Time.time; }
                 if (Time.time - _lookSince >= TgmConfig.LookDwell.Value) MarkFound(looked);

@@ -492,12 +492,23 @@ namespace TheGreatestMap
             return LookDistance.TryGetValue(cat, out var entry) ? Mathf.Max(0f, entry.Value) : 30f;
         }
 
+        /// <summary>
+        /// The same, for a thing that has been identified: its kind's distance, unless it is one
+        /// of the handful the catalog says is seen from further off. The larger of the two, so
+        /// raising the kind's setting is never undone by the exception.
+        /// </summary>
+        internal static float LookDistanceFor(Found found)
+        {
+            if (found == null) return 30f;
+            return Mathf.Max(LookDistanceFor(found.Cat), Categories.FarSight(found.Source));
+        }
+
         /// <summary>The longest sighting distance of any kind: how far the look ray is cast.</summary>
         internal static float MaxLookDistance()
         {
             float max = 5f;
             foreach (var entry in LookDistance.Values) if (entry.Value > max) max = entry.Value;
-            return max;
+            return Mathf.Max(max, Categories.FarthestSight());
         }
         internal static readonly Dictionary<Category, ConfigEntry<bool>> CategoryEnabled = new Dictionary<Category, ConfigEntry<bool>>();
         internal static readonly Dictionary<Category, ConfigEntry<float>> MarkerSpacing = new Dictionary<Category, ConfigEntry<float>>();
