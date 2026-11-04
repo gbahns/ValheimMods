@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1 — 2026-11-04
+
+- The per-app level meters are now read on a thread of their own instead of from the game's frame. The poll was costing about 5 ms a second on the main thread, the most of any installed mod; the game now pays nothing for it. No change in behavior.
+
 ## 1.2.0 — 2026-10-15
 
 - **The game stops asking for music it does not have.** A music volume names the track it wants and

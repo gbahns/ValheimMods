@@ -1,13 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
-using UnityEngine;
+using System.Threading;
 
 namespace SmartSilencer
 {
-    /// <summary>One process that is putting sound through the default playback device right now.</summary>
+    /// <summary>One process that has a sound stream open on the default playback device right now.</summary>
     internal struct AudibleApp
     {
         public uint Pid;
@@ -25,8 +26,17 @@ namespace SmartSilencer
     /// Nothing is kept across polls except the session manager, which is re-fetched every so often
     /// so a change of default device (headphones plugged in) is picked up.
     ///
+    /// All of it runs on one background thread of its own. A poll is about eight cross-process COM
+    /// calls per audio session, a millisecond and more with a browser, Discord and a music player
+    /// open, and measured at 5 ms/s on the main thread when it was polled from Update (the most
+    /// expensive plugin on the machine, for a mod that mutes audio). The thread owns the COM
+    /// objects, the name cache and the timers outright, so nothing needs a lock: each poll is
+    /// published as a fresh array through <see cref="Latest"/>, and the main thread does nothing
+    /// but read that reference. Nothing from UnityEngine is touched here, since none of it is safe
+    /// off the main thread; the timers run on a Stopwatch instead.
+    ///
     /// On anything that is not Windows the first call fails, and after a few failures the class
-    /// declares itself unavailable and stays quiet; the focus trigger does not depend on it.
+    /// declares itself unavailable and the thread ends; the focus trigger does not depend on it.
     /// </summary>
     internal static class AudioSessions
     {
@@ -106,7 +116,71 @@ namespace SmartSilencer
             p = IntPtr.Zero;
         }
 
-        // ── state ────────────────────────────────────────────────────────────────────
+        // ── the thread ───────────────────────────────────────────────────────────────
+
+        private static Thread _thread;
+        private static volatile bool  _stop;
+        private static volatile float _interval = 0.25f;
+        private static volatile AudibleApp[] _latest;
+        private static volatile int   _polls;
+        private static volatile bool   _available = true;
+        private static volatile string _failure;
+
+        /// <summary>
+        /// The result of the most recent poll: every other process with an open sound stream and
+        /// its level at that moment, whether or not it is above the threshold. Null until the
+        /// first poll has succeeded. Not a new object per poll: an empty result is the runtime's
+        /// shared empty array every time, so tell polls apart by <see cref="Polls"/>, never by
+        /// reference. (1.2.1's first build did, and stayed silent after the last other program
+        /// closed its stream, because every poll from then on looked like the one already judged.)
+        /// </summary>
+        internal static AudibleApp[] Latest => _latest;
+
+        /// <summary>How many polls have succeeded; goes up once per poll, after Latest is set, so a reader
+        /// that sees a new count sees at least that poll's result.</summary>
+        internal static int Polls => _polls;
+
+        /// <summary>Seconds between polls. Read by the thread before each sleep, so a change takes effect at once.</summary>
+        internal static float Interval { get => _interval; set => _interval = value; }
+
+        /// <summary>False once Windows audio could not be reached several times in a row (or this is not Windows).</summary>
+        internal static bool Available => _available;
+
+        /// <summary>Why it gave up, for the log and the status command.</summary>
+        internal static string Failure => _failure;
+
+        /// <summary>Starts the polling thread. Call once, from the main thread; a second call does nothing.</summary>
+        internal static void Start()
+        {
+            if (_thread != null) return;
+            _stop = false;
+            _thread = new Thread(Loop) { IsBackground = true, Name = "SmartSilencer audio poll" };
+            _thread.Start();
+        }
+
+        /// <summary>Asks the thread to end after its current poll. Background, so quitting never waits on it.</summary>
+        internal static void Stop()
+        {
+            _stop = true;
+            _thread = null;
+        }
+
+        private static void Loop()
+        {
+            var apps = new List<AudibleApp>();
+            while (!_stop && _available)
+            {
+                if (TryPoll(apps)) { _latest = apps.ToArray(); _polls = _polls + 1; }
+                // a failed poll leaves the last result standing; the caller's grace period sorts it out
+                int ms = (int)(_interval * 1000f);
+                Thread.Sleep(ms < 20 ? 20 : ms);
+            }
+        }
+
+        // ── state, all of it this thread's ───────────────────────────────────────────
+
+        private static readonly Stopwatch _clock = Stopwatch.StartNew();
+        private static float Now => (float)_clock.Elapsed.TotalSeconds;
 
         private static bool   _initialized;
         private static IntPtr _enumerator;      // IMMDeviceEnumerator, kept for the process lifetime
@@ -120,22 +194,17 @@ namespace SmartSilencer
         private static float _namesCleared;
         private const  float NamesLifetime = 60f;     // seconds; pids get reused, so forget names now and then
 
-        /// <summary>False once Windows audio could not be reached several times in a row (or this is not Windows).</summary>
-        internal static bool Available { get; private set; } = true;
-
-        /// <summary>Why it gave up, for the log and the status command.</summary>
-        internal static string Failure { get; private set; }
-
         private static void Initialize()
         {
             if (_initialized) return;
-            _initialized = true;
             _ourPid = GetCurrentProcessId();
-            // The game's main thread most likely has COM already; RPC_E_CHANGED_MODE says exactly
-            // that and is fine, since everything used here is free-threaded.
+            // This thread is ours, so it has no apartment yet; it joins the multithreaded one,
+            // which is where every interface used here lives. RPC_E_CHANGED_MODE would mean someone
+            // else got to this thread first with a different mode, and is fine for the same reason.
             int hr = CoInitializeEx(IntPtr.Zero, 0 /* COINIT_MULTITHREADED */);
             if (hr < 0 && hr != RPC_E_CHANGED_MODE) Check(hr, "CoInitializeEx");
             Check(CoCreateInstance(ref CLSID_MMDeviceEnumerator, IntPtr.Zero, CLSCTX_ALL, ref IID_IMMDeviceEnumerator, out _enumerator), "CoCreateInstance(MMDeviceEnumerator)");
+            _initialized = true;
         }
 
         private static void RefreshManager()
@@ -146,7 +215,7 @@ namespace SmartSilencer
             {
                 Check(Method<GetDefaultAudioEndpointFn>(_enumerator, IMMDeviceEnumerator_GetDefaultAudioEndpoint)(_enumerator, eRender, eConsole, out device), "GetDefaultAudioEndpoint");
                 Check(Method<ActivateFn>(device, IMMDevice_Activate)(device, ref IID_IAudioSessionManager2, CLSCTX_ALL, IntPtr.Zero, out _manager), "IMMDevice.Activate(IAudioSessionManager2)");
-                _managerTime = Time.unscaledTime;
+                _managerTime = Now;
             }
             finally
             {
@@ -155,20 +224,18 @@ namespace SmartSilencer
         }
 
         /// <summary>
-        /// Fills <paramref name="result"/> with every other process whose audio session is active
-        /// and whose level meter is at or above <paramref name="threshold"/>. Returns false when the
-        /// poll could not be made, in which case the list is empty and the caller should treat the
-        /// world as unknown rather than silent.
+        /// Fills <paramref name="result"/> with every other process whose audio session is active,
+        /// with its level meter. Returns false when the poll could not be made, in which case the
+        /// list is empty and the world is unknown rather than silent.
         /// </summary>
-        internal static bool TryPoll(float threshold, List<AudibleApp> result)
+        private static bool TryPoll(List<AudibleApp> result)
         {
             result.Clear();
-            if (!Available) return false;
             try
             {
                 Initialize();
-                if (_manager == IntPtr.Zero || Time.unscaledTime - _managerTime > ManagerRefresh) RefreshManager();
-                if (Time.unscaledTime - _namesCleared > NamesLifetime) { _names.Clear(); _namesCleared = Time.unscaledTime; }
+                if (_manager == IntPtr.Zero || Now - _managerTime > ManagerRefresh) RefreshManager();
+                if (Now - _namesCleared > NamesLifetime) { _names.Clear(); _namesCleared = Now; }
 
                 IntPtr sessions = IntPtr.Zero;
                 try
@@ -181,7 +248,7 @@ namespace SmartSilencer
                         try
                         {
                             if (Method<GetSessionFn>(sessions, IAudioSessionEnumerator_GetSession)(sessions, i, out session) < 0) continue;
-                            Inspect(session, threshold, result);
+                            Inspect(session, result);
                         }
                         finally
                         {
@@ -202,15 +269,15 @@ namespace SmartSilencer
                 Release(ref _manager);
                 if (++_failures >= 5)
                 {
-                    Available = false;
-                    Failure = e.GetType().Name + ": " + e.Message;
-                    SmartSilencerMod.Log.LogWarning($"Cannot read Windows audio sessions ({Failure}). The music and video triggers are off for this run; tabbing out still works.");
+                    // Set the reason before the flag: the main thread reads them in the other order.
+                    _failure = e.GetType().Name + ": " + e.Message;
+                    _available = false;
                 }
                 return false;
             }
         }
 
-        private static void Inspect(IntPtr session, float threshold, List<AudibleApp> result)
+        private static void Inspect(IntPtr session, List<AudibleApp> result)
         {
             // Only sessions with a stream currently open. A paused player's session is Inactive,
             // a closed program's lingers as Expired; neither can make a sound.
@@ -242,7 +309,6 @@ namespace SmartSilencer
             {
                 Release(ref meter);
             }
-            if (peak < threshold) return;
 
             result.Add(new AudibleApp { Pid = pid, Name = NameOf(pid), Peak = peak });
         }

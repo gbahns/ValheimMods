@@ -29,7 +29,7 @@ namespace SmartSilencer
     {
         public const string ModGuid    = "DeathMonger.SmartSilencer";
         public const string ModName    = "Smart Silencer";
-        public const string ModVersion = "1.2.0";
+        public const string ModVersion = "1.2.1";
 
         internal static ManualLogSource Log { get; private set; }
         internal static SmartSilencerMod Instance { get; private set; }
@@ -79,12 +79,12 @@ namespace SmartSilencer
             "Mumble, steam, steamwebhelper, explorer, ShellExperienceHost, SearchHost, " +
             "StartMenuExperienceHost, nvcontainer, RtkAudUService64, audiodg";
 
-        private readonly List<AudibleApp> _apps = new List<AudibleApp>();
         private readonly HashSet<string> _music   = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> _video   = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> _ignored = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        private float  _lastPoll = -1000f;
+        private int    _judgedPoll;              // AudioSessions.Polls as of the poll last judged
+        private bool   _warnedUnavailable;
         private float  _audibleSince = -1f;      // when the current run of sound started, -1 when silent
         private float  _lastAudible = -1000f;    // when sound was last heard
         private bool   _audioWants;              // the debounced verdict of the audio triggers
@@ -158,7 +158,11 @@ namespace SmartSilencer
                 "also in one of the other lists, in which case ignoring wins.");
 
             PollInterval = Config.Bind("Detection", "Poll Interval Seconds", 0.25f,
-                new ConfigDescription("How often the per-app level meters are read.", new AcceptableValueRange<float>(0.05f, 2f)));
+                new ConfigDescription(
+                    "How often the per-app level meters are read. The reading happens on a thread of " +
+                    "its own, so this costs the game nothing either way; it only sets how promptly a " +
+                    "change is noticed.",
+                    new AcceptableValueRange<float>(0.05f, 2f)));
             SoundThreshold = Config.Bind("Detection", "Sound Threshold", 0.005f,
                 new ConfigDescription(
                     "The level meter reading (0 to 1) a program must reach to count as making sound. " +
@@ -191,9 +195,16 @@ namespace SmartSilencer
             IgnoredApps.SettingChanged += (_, __) => RebuildLists();
             RebuildLists();
 
+            // The level meters are read on a thread of their own, from here until the game quits,
+            // whatever the switches say: the result is what 'silencer apps' shows, and the cost is
+            // not the game's. The switches decide what is done with it, in Update.
+            AudioSessions.Interval = PollInterval.Value;
+            PollInterval.SettingChanged += (_, __) => AudioSessions.Interval = PollInterval.Value;
+            AudioSessions.Start();
+
             Commands.Register();
             // The one patch this mod has: see LocationMusic. Everything else it does, it does from
-            // its own Update.
+            // its own Update and the polling thread.
             _harmony = new Harmony(ModGuid);
             _harmony.PatchAll(typeof(SmartSilencerMod).Assembly);
             Log.LogInfo($"{ModName} {ModVersion} loaded.");
@@ -202,6 +213,7 @@ namespace SmartSilencer
         private void OnDestroy()
         {
             if (_touched) AudioListener.volume = 1f;
+            AudioSessions.Stop();
             _harmony?.UnpatchSelf();
             if (Instance == this) Instance = null;
         }
@@ -254,13 +266,21 @@ namespace SmartSilencer
             float now = Time.unscaledTime;
             bool enabled = ModEnabled.Value;
 
+            if (!AudioSessions.Available && !_warnedUnavailable)
+            {
+                _warnedUnavailable = true;
+                Log.LogWarning($"Cannot read Windows audio sessions ({AudioSessions.Failure}). The music and video triggers are off for this run; tabbing out still works.");
+            }
+
             if (enabled && (OnMusic.Value || OnVideo.Value || OnOther.Value) && AudioSessions.Available)
             {
-                if (now - _lastPoll >= PollInterval.Value)
+                // Judge each poll once, as it arrives; the count says whether there is a new one.
+                // Nothing here waits on anything.
+                int polls = AudioSessions.Polls;
+                if (polls != _judgedPoll)
                 {
-                    _lastPoll = now;
-                    if (AudioSessions.TryPoll(SoundThreshold.Value, _apps)) Judge(now);
-                    // a failed poll leaves the last verdict standing; the grace period sorts it out
+                    _judgedPoll = polls;
+                    Judge(now, AudioSessions.Latest);
                 }
             }
             else
@@ -287,13 +307,14 @@ namespace SmartSilencer
         }
 
         /// <summary>Turns one poll's list of audible programs into the debounced audio verdict.</summary>
-        private void Judge(float now)
+        private void Judge(float now, AudibleApp[] apps)
         {
             string reason = null;
             int others = 0;
-            foreach (var app in _apps)
+            float threshold = SoundThreshold.Value;
+            foreach (var app in apps)
             {
-                if (!Wanted(Classify(app.Name))) continue;
+                if (app.Peak < threshold || !Wanted(Classify(app.Name))) continue;
                 if (reason == null) reason = app.Name; else others++;
             }
 
@@ -369,9 +390,10 @@ namespace SmartSilencer
         internal string DescribeAudible()
         {
             if (!AudioSessions.Available) return "Windows audio sessions are unavailable: " + AudioSessions.Failure;
-            var apps = new List<AudibleApp>();
-            if (!AudioSessions.TryPoll(0f, apps)) return "Could not read the audio sessions this time.";
-            if (apps.Count == 0) return "No other program has an active audio session.";
+            var polled = AudioSessions.Latest;
+            if (polled == null) return "The audio sessions have not been read yet.";
+            if (polled.Length == 0) return "No other program has an active audio session.";
+            var apps = new List<AudibleApp>(polled);
             apps.Sort((a, b) => b.Peak.CompareTo(a.Peak));
             var sb = new StringBuilder();
             foreach (var app in apps)

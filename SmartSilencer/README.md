@@ -51,7 +51,7 @@ Music and video are detected the same way the Windows volume mixer shows a movin
 | Game Paused | false | Trigger while the game is paused. |
 | Main Menu | false | Trigger on the main menu. |
 | Music Apps, Video Apps, Ignored Apps | see above | Program names without `.exe`, comma separated, case does not matter. Ignored wins over the other two. |
-| Poll Interval Seconds | 0.25 | How often the level meters are read. |
+| Poll Interval Seconds | 0.25 | How often the level meters are read, on a thread of their own; only sets how promptly a change is noticed. |
 | Sound Threshold | 0.005 | The meter reading (0 to 1) that counts as sound. Music at any listenable volume is far above it. |
 | Sound Delay Seconds | 0.3 | How long a program must have been making sound before the game goes quiet. |
 | Silence Grace Seconds | 2 | How long everything must have been silent before the sound comes back. Covers the gap between songs and a video buffering. |
