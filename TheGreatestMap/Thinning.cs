@@ -31,13 +31,24 @@ namespace TheGreatestMap
     /// <para><b>Why.</b> Measured solo in GeniusWorld with 2,939 markers and the large map open:
     /// 13.9 fps with everything shown, 27.1 fps with every marker of ours hidden. 85% of the 35 ms
     /// recovered is in Unity's canvas pass -- layout, batching and draw over the active marker
-    /// objects -- which no patch can see or time, and which costs about 10 microseconds per drawn
-    /// marker per frame against 1.66 for this mod's styling and 0.54 for its decision chain, both
-    /// of which run only when the map is laid out again. So the canvas is twelve times everything
-    /// the mod does, and the only input it responds to is how many markers are active. There is no
-    /// culling bug behind this and nothing being wasted: vanilla destroys the marker of any pin
-    /// outside the visible window, and every marker drawn was genuinely on screen. The map is slow
-    /// because it is asked to draw three thousand markers and it draws them.</para>
+    /// objects -- which no patch can see or time. There is no culling bug behind it and nothing
+    /// being wasted: vanilla destroys the marker of any pin outside the visible window, and every
+    /// marker drawn was genuinely on screen. The map is slow because it is asked to draw three
+    /// thousand markers and it draws them.</para>
+    ///
+    /// <para><b>And there is no cost per marker to reason with -- there is a knee.</b> Three
+    /// measurements by the same method: 713 markers added to a scrolled-out minimap cost nothing
+    /// anyone could measure; 2,939 on the large map came to 10.1 microseconds each; 6,785 came to
+    /// 15.6. Hundreds are nearly free and thousands are dear, so every "microseconds per marker"
+    /// figure is an average at one count and says nothing about another -- which is why this
+    /// paragraph no longer quotes one as a rate, and why the arithmetic that used to live here,
+    /// weighing the canvas against this mod's own 1.66 and 0.54 microseconds a marker, was
+    /// comparing an average against two constants and reading the answer as a ratio.</para>
+    ///
+    /// <para>What survives is the shape, and it is the whole case for thinning: keep the drawn
+    /// count in the hundreds and the canvas is not a problem, let it reach thousands and it is
+    /// the only problem. That argues for the limit being the lever that matters rather than the
+    /// cell size, and against raising it far on the strength of any per-marker figure.</para>
     ///
     /// <para><b>Why thinning rather than hiding more.</b> Zoomed out, berries and mushrooms and
     /// tin overlap into mush -- the same marker forty times over one meadow. Hiding a kind loses
