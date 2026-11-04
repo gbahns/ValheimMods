@@ -83,6 +83,14 @@ every raspberry on the map and you still see the one you are standing next to, s
 you means nothing was ever recorded there rather than something recorded and not shown. It does not
 override the master switch, a marker you hid by hand, or a crossed-off group you have put away.
 
+**Zoomed out, markers stop piling up.** The same berry bush forty times over one meadow tells you
+nothing the first one did not, and drawing them all is what makes the full map slow. So one marker
+of each kind is drawn per patch of ground: you still see that there are berries *and* tin here, and
+zooming in brings the rest back. Markers near you, markers you have just recorded and markers
+answering `tgm_locate` are never thinned. Display, "Thin Overlapping Markers", with "Marker Spacing
+On Screen" for how close two of a kind may be drawn and "Most Markers Drawn" as a hard limit.
+`tgm_status` says what it is doing right now.
+
 **The marker button.** Above vanilla's icon buttons on the right edge of the large map sits a map
 pin in the same pale gold as recorded markers. **Right-click** it to hide or show every marker from
 this mod at once, the pin turning gray while they are hidden. That is the same gesture vanilla uses

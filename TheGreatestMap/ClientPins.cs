@@ -26,6 +26,10 @@ namespace TheGreatestMap
         // Crossed-off markers, so the portal painter can fade its own the same way. Portals are
         // painted every frame rather than here, because their color moves.
         private static readonly HashSet<Minimap.PinData> _fadedPins = new HashSet<Minimap.PinData>();
+        // What the styling pass has decided to draw, before thinning has had a word. Kept between
+        // passes rather than made each time: this runs on every layout of the map, which on the
+        // minimap is every step the player takes.
+        private static readonly List<Drawn> _shown = new List<Drawn>();
         private static bool _applyingRemote;
 
         internal static bool InTableRead;
@@ -1187,12 +1191,23 @@ namespace TheGreatestMap
             Vector3 playerPos = havePlayer ? localPlayer.transform.position : Vector3.zero;
             _portalPins.Clear();
             _fadedPins.Clear();
+            // Two passes now, because thinning cannot be decided one marker at a time: whether
+            // this berry bush is drawn depends on the other bushes that are going to be drawn.
+            // So the first pass settles every switch and collects what would be shown, Thinning
+            // takes out the repetition, and the second pass styles what is left. The styling is
+            // what costs -- scale, fade, label, sprite, about 1.7 us a marker -- so doing it only
+            // for survivors is worth something on its own, quite apart from the canvas.
+            _shown.Clear();
             foreach (var kv in _idByPin)
             {
                 var pin = kv.Key;
                 if (pin.m_uiElement == null) continue;
                 if (!Store.Pins.TryGetValue(kv.Value, out var shared)) continue;
                 var kind = KindOf(shared);
+                // Something asked for this marker by name, so thinning leaves it alone: it is
+                // close enough to the player to be part of the honest near map, it was just
+                // recorded, or it is answering tgm_locate. See Drawn.Always.
+                bool asked = false;
                 bool hiddenByHand = ViewPrefs.IsHidden(kv.Value);
                 bool hidden = hideEverything || hiddenByHand || TgmConfig.IsIconHidden(IconOf(shared));
                 if (!hidden && kind.HasValue)
@@ -1207,15 +1222,22 @@ namespace TheGreatestMap
                 // Just recorded: show it for a while anyway, so writing something down always
                 // shows you what you wrote. Not against the master switch or a marker hidden by
                 // hand, which both mean "not this one".
-                if (hidden && !hideEverything && !hiddenByHand && Reveals.IsRevealed(kv.Value)) hidden = false;
+                if (hidden && !hideEverything && !hiddenByHand && Reveals.IsRevealed(kv.Value))
+                { hidden = false; asked = true; }
+                else if (!hidden && Reveals.IsRevealed(kv.Value)) asked = true;
                 // Standing next to it: show it anyway, whatever is switched off. Hiding a kind
                 // otherwise costs you the answer to a question the map cannot be asked -- walking
                 // over ground with no raspberry marker on it, you cannot tell "no raspberries
                 // here" from "raspberries hidden", and the doubt is what drives a player to leave
                 // everything switched on and read a map covered in berries. Within this radius
                 // there is no doubt, so the rest of the map can be as quiet as you like.
-                if (hidden && !hideEverything && !hiddenByHand && nearRadiusSq > 0f && havePlayer &&
-                    Geo.FlatDistanceSquared(shared.Pos, playerPos) <= nearRadiusSq) hidden = false;
+                // Measured whether or not the marker is hidden, because this is also what
+                // exempts a marker from thinning: the near map has to be complete to be honest,
+                // and "nothing there means nothing recorded there" is exactly as true for a
+                // marker thinned away as for one switched off.
+                bool near = nearRadiusSq > 0f && havePlayer
+                            && Geo.FlatDistanceSquared(shared.Pos, playerPos) <= nearRadiusSq;
+                if (near && !hideEverything && !hiddenByHand) { hidden = false; asked = true; }
                 // Crossed off, and the player would rather not see that kind of crossed-off marker
                 // any more: used-up deposits, or searched places by type.
                 if (!hidden && CrossedOff.IsHidden(shared)) hidden = true;
@@ -1228,9 +1250,19 @@ namespace TheGreatestMap
                 // come back for the few seconds the pulse lasts and hide themselves again after.
                 // Still not past the master switch or a marker put away by hand, which mean "not
                 // this one" rather than "not just now".
-                if (hidden && !hideEverything && !hiddenByHand && Locate.On && Locate.Matches(shared)) hidden = false;
-                SetMarkerActive(pin, !hidden);
-                if (hidden) continue;
+                if (hidden && !hideEverything && !hiddenByHand && Locate.On && Locate.Matches(shared))
+                { hidden = false; asked = true; }
+                if (hidden) { SetMarkerActive(pin, false); continue; }
+                _shown.Add(new Drawn { Pin = pin, Shared = shared, Kind = kind, Always = asked });
+            }
+            Thinning.Hold(map, _shown);
+            for (int i = 0; i < _shown.Count; i++)
+            {
+                var pin = _shown[i].Pin;
+                var shared = _shown[i].Shared;
+                var kind = _shown[i].Kind;
+                if (_shown[i].Held) { SetMarkerActive(pin, false); continue; }
+                SetMarkerActive(pin, true);
                 float scale = ScaleOf(shared);
                 pin.m_uiElement.localScale = new Vector3(scale, scale, 1f);
                 // Crossed off: the marker itself goes pale, not only the little mark over it.

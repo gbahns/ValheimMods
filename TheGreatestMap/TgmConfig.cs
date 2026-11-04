@@ -72,6 +72,9 @@ namespace TheGreatestMap
         internal static ConfigEntry<string> HiddenSearched;
         internal static ConfigEntry<float> RevealNewMarkers;
         internal static ConfigEntry<float> ShowHiddenWithin;
+        internal static ConfigEntry<bool> ThinMarkers;
+        internal static ConfigEntry<float> ThinSpacing;
+        internal static ConfigEntry<int> MostMarkersDrawn;
         internal static ConfigEntry<string> PortalColor;
         internal static ConfigEntry<string> PortalPulseColor;
         internal static ConfigEntry<float> PortalPulseSeconds;
@@ -886,6 +889,26 @@ namespace TheGreatestMap
                 "override the map-pin button's master switch or a marker you hid by hand, and it cannot show kinds " +
                 "drawn on a vanilla icon (structures, portals, camps, boss altars) while vanilla's own icon button " +
                 "has that icon switched off.");
+            // Three settings and not one for each kind, because the whole point of thinning by
+            // cell is that it needs no per-kind tuning: the cell follows the zoom and the counts
+            // follow the ground. The mod has 121 settings already.
+            ThinMarkers = mod.BindLocal("Display", "Thin Overlapping Markers", true,
+                "Zoomed out, markers of the same kind pile on top of each other -- the same berry bush forty times " +
+                "over one meadow -- and drawing them all is what makes the full map slow. With this on, one marker " +
+                "of each kind is drawn per patch of ground, so you still see that there are berries and tin here, " +
+                "without forty of each. Zoom in and the rest come back. Markers near you are never thinned.");
+            ThinSpacing = mod.BindLocal("Display", "Marker Spacing On Screen", 2f,
+                "How far apart two markers of the same kind must be on screen before one of them is held back, " +
+                "measured in marker widths. 2 leaves a clear gap between them; 1 packs them against each other and " +
+                "draws about four times as many; 4 is very sparse. Only matters with Thin Overlapping Markers on.");
+            MostMarkersDrawn = mod.BindLocal("Display", "Most Markers Drawn", 800,
+                "A limit on how many markers are drawn at once, whatever the spacing allows. Each patch of ground " +
+                "keeps one marker of every kind, which is the point of it, so enough different kinds standing " +
+                "together can still add up; this is the backstop. Markers are given up from whichever kind has the " +
+                "most of them drawn. 0 turns the limit off.");
+            ThinMarkers.SettingChanged += (_, __) => ClientPins.Restyle();
+            ThinSpacing.SettingChanged += (_, __) => ClientPins.Restyle();
+            MostMarkersDrawn.SettingChanged += (_, __) => ClientPins.Restyle();
             ShowHiddenWithin = mod.BindLocal("Display", "Show Hidden Markers Within", 50f,
                 "Markers this close to you are drawn even when their kind or their icon is switched off, so the map " +
                 "near you always tells the truth: nothing there means nothing recorded there, rather than something " +

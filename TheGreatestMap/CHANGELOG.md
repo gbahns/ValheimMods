@@ -10,6 +10,12 @@
 - A map too big for one message is sent in several, so the shared map can keep growing: it used to
   have a ceiling of roughly 38,000 markers, past which players were disconnected.
 - Explored ground travels in a message of its own rather than behind the markers.
+- **Zoomed out, one marker of each kind is drawn per patch of ground instead of all of them.** The
+  full map was costing 13.9 fps with 2,939 markers on it and 27.1 with them hidden, nearly all of
+  it Unity drawing marker after marker; thinning them keeps what the map was telling you and
+  bounds the cost by the size of the screen rather than the size of the world. Markers near you,
+  just-recorded ones and ones you asked for are never thinned. Display, "Thin Overlapping
+  Markers".
 
 ## 4.7.0 — 2026-11-02
 
