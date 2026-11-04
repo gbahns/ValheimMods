@@ -39,6 +39,18 @@ namespace SpreadTheLoad
         /// </summary>
         internal static long Candidate;
 
+        /// <summary>
+        /// Whether this rule - and not the yield rule, and not vanilla - is what let the transfer
+        /// about to happen through.
+        ///
+        /// <see cref="SetOwnerPatch"/> needs to know, because it vetoes inert building pieces and
+        /// must only ever take back a decision this rule made. Cleared at the top of every
+        /// <see cref="Ownership.ShouldYield"/> so it can never carry from one object to the next:
+        /// the yield rule returns before ShouldTake is reached, and a flag left standing from the
+        /// object before would make the veto fire on a transfer it has no business touching.
+        /// </summary>
+        internal static bool Approved;
+
         private static readonly Dictionary<long, Vector3> _where = new Dictionary<long, Vector3>();
         private static float _nextRefresh;
 
@@ -47,7 +59,7 @@ namespace SpreadTheLoad
 
         internal static void Reset()
         {
-            Candidate = 0L; _where.Clear(); _nextRefresh = 0f;
+            Candidate = 0L; Approved = false; _where.Clear(); _nextRefresh = 0f;
         }
 
         /// <summary>
@@ -76,7 +88,20 @@ namespace SpreadTheLoad
 
             _taken++;
             Report();
+            Approved = true;
             return true;
+        }
+
+        /// <summary>
+        /// Un-counts a transfer <see cref="SetOwnerPatch"/> took back, so the two log lines add up.
+        ///
+        /// Without this the hourly summary would report objects as handed over that were left
+        /// exactly where they were - and those two numbers are the evidence for whether skipping
+        /// inert pieces changed anything, so they have to mean what they say.
+        /// </summary>
+        internal static void Unhand()
+        {
+            if (_taken > 0) _taken--;
         }
 
         private static float Flat(Vector3 a, Vector3 b)
@@ -130,6 +155,6 @@ namespace SpreadTheLoad
     internal static class ReleaseNearbyZDOSPatch
     {
         private static void Prefix(long uid) => Proximity.Candidate = uid;
-        private static void Postfix() => Proximity.Candidate = 0L;
+        private static void Postfix() { Proximity.Candidate = 0L; Proximity.Approved = false; }
     }
 }

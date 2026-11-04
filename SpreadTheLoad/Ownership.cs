@@ -105,6 +105,10 @@ namespace SpreadTheLoad
                 // Counted first, unconditionally: the point of the number is to prove vanilla still
                 // reaches us, which is true even when the answer is no.
                 Conflicts.Consultations++;
+
+                // Cleared here rather than inside the proximity rule, because the yield rule below
+                // returns without ever reaching it. See Proximity.Approved.
+                Proximity.Approved = false;
                 if (SpreadTheLoadMod.Enabled == null || !SpreadTheLoadMod.Enabled.Value) return false;
 
                 Refresh();

@@ -35,7 +35,7 @@ namespace SpreadTheLoad
     {
         public const string ModGuid = "DeathMonger.SpreadTheLoad";
         public const string ModName = "Spread The Load";
-        public const string ModVersion = "0.3.0";
+        public const string ModVersion = "0.4.0";
 
         internal static ManualLogSource Log;
         internal static ConfigEntry<bool> Enabled;
@@ -51,6 +51,7 @@ namespace SpreadTheLoad
         internal static ConfigEntry<bool> ProximityTransfer;
         internal static ConfigEntry<float> ProximityNearMeters;
         internal static ConfigEntry<float> ProximityFarMeters;
+        internal static ConfigEntry<bool> KeepInertPieces;
         internal static ConfigEntry<bool> SendToEveryPeer;
         internal static ConfigEntry<int> UpdatesPerSecond;
         internal static ConfigEntry<bool> AssignShipToCaptain;
@@ -141,6 +142,19 @@ namespace SpreadTheLoad
                 "this and Near is what stops an object flitting between two people: once the near " +
                 "player owns it they are at zero distance, so the rule cannot fire again until " +
                 "somebody else is nearer than Near while they are further than Far.");
+
+            KeepInertPieces = Config.Bind("Interacting", "Proximity Skips Inert Pieces", true,
+                "Leave walls, floors, beams and fences with whoever owns them, instead of handing " +
+                "them to a player standing on them. Only the rule above is affected. Ownership of " +
+                "a piece that does nothing is invisible - there is no lurch to feel, and hitting " +
+                "one is already covered by Ownership Follows Attacker - while the cost of holding " +
+                "it is real: a base is thousands of objects packed within a couple of metres, so " +
+                "walking around one collects them by the hundred. Measured in a five-player " +
+                "session, the admin's frame time in his own base was 130 ms while he held 5,176 " +
+                "objects and 38 ms while he held 1,185, with the same pieces loaded either way. " +
+                "Anything that interacts, ticks or moves is still handed over: chests, doors, " +
+                "fires, smelters, crafting stations, carts and ships, as well as every creature " +
+                "and dropped item. Turn this off to get the rule's previous behavior back.");
 
             SendToEveryPeer = Config.Bind("Pacing", "Send To Every Peer Each Cycle", true,
                 "Send every player their world update on each cycle, instead of one player per " +
