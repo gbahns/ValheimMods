@@ -5,6 +5,21 @@ namespace TheGreatestMap
     /// <summary>Console commands (F5). All are prefixed tgm_.</summary>
     internal static class Commands
     {
+        /// <summary>
+        /// Answer in the console and in the log, both.
+        ///
+        /// The console is where a player reads it, and the log is the only copy anyone can read
+        /// afterwards -- a session going through tgm_status between measured windows has nothing
+        /// to compare later if the answer lived and died on screen. Asked for by the lag
+        /// investigation on 2026-11-04, after two map-thinning windows could not be told apart
+        /// because the state they ran under was only ever printed.
+        /// </summary>
+        private static void Say(Terminal.ConsoleEventArgs args, string text)
+        {
+            args.Context.AddString(text);
+            TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] " + text);
+        }
+
         internal static void Register()
         {
             new Terminal.ConsoleCommand("tgm_status", "The Greatest Map: shared marker counts and local state",
@@ -12,13 +27,13 @@ namespace TheGreatestMap
                 {
                     int auto = 0, manual = 0;
                     foreach (var pin in ClientPins.All) { if (pin.Auto) auto++; else manual++; }
-                    args.Context.AddString($"Personal map: {ClientPins.Count} markers ({auto} recorded, {manual} placed), {ClientPins.TombstoneCount} erased, {ClientPins.SuppressionCount} erased spots; sharing mode: {TgmConfig.SharingMode.Value}");
-                    args.Context.AddString($"Found but not yet recorded: {DiscoveryLedger.PendingCount}, recorded this session: {DiscoveryLedger.RecordedCount}, map out: {PocketMap.IsOut}");
-                    args.Context.AddString(Thinning.Describe());
+                    Say(args, $"Personal map: {ClientPins.Count} markers ({auto} recorded, {manual} placed), {ClientPins.TombstoneCount} erased, {ClientPins.SuppressionCount} erased spots; sharing mode: {TgmConfig.SharingMode.Value}");
+                    Say(args, $"Found but not yet recorded: {DiscoveryLedger.PendingCount}, recorded this session: {DiscoveryLedger.RecordedCount}, map out: {PocketMap.IsOut}");
+                    Say(args, Thinning.Describe());
                     if (PinStore.IsServer)
                     {
-                        args.Context.AddString($"Shared map (this is the server): {PinStore.Count} markers, {PinStore.TombstoneCount} erased, {PinStore.SuppressionCount} erased spots");
-                        args.Context.AddString($"Erasures are kept until everyone has them: {Acks.Describe()}");
+                        Say(args, $"Shared map (this is the server): {PinStore.Count} markers, {PinStore.TombstoneCount} erased, {PinStore.SuppressionCount} erased spots");
+                        Say(args, $"Erasures are kept until everyone has them: {Acks.Describe()}");
                     }
                 }));
 
