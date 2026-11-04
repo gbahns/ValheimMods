@@ -148,6 +148,28 @@ namespace TheGreatestMap
 
         public static long Now => DateTime.UtcNow.Ticks;
 
+        /// <summary>
+        /// Told which key each edit touched, so the map that has to say what to send can say it
+        /// rather than offering everything it holds.
+        ///
+        /// <para>Set on the personal map and nowhere else. The shared map on the server, the
+        /// deltas and the stores read off the wire have nobody to report to.</para>
+        ///
+        /// <para>Here rather than at the callers because here is the only place that cannot be
+        /// forgotten. Nineteen places change the personal map, most of them by setting a field
+        /// on a marker and writing it back, and a change nobody reported is a marker that never
+        /// reaches anyone -- a silence, with nothing to see at either end. Every one of them
+        /// goes through <see cref="Upsert"/>, <see cref="Delete"/> or <see cref="Lift"/>.</para>
+        ///
+        /// <para><see cref="Merge"/> is the exception and writes the dictionaries directly, so
+        /// it reports nothing. That is deliberate: what a merge brought in is news only when it
+        /// came from another player, and only the caller knows which side it came from.</para>
+        /// </summary>
+        public Action<PinKey> OnChanged;
+
+        /// <summary>The erased spots changed. There are a handful, so they travel together.</summary>
+        public Action OnSuppressed;
+
         // ── local edits ─────────────────────────────────────────────────────────────
 
         public void Upsert(SharedPin pin)
@@ -155,6 +177,7 @@ namespace TheGreatestMap
             pin.Modified = Now;
             Pins[pin.Key] = pin;
             Tombstones.Remove(pin.Key);
+            OnChanged?.Invoke(pin.Key);
         }
 
         /// <summary>
@@ -170,6 +193,7 @@ namespace TheGreatestMap
             Pins.Remove(key);
             Tombstones[key] = Now;
             if (suppress && removed.Auto) AddSuppression(new Suppression { Type = removed.Type, Icon = removed.Icon, Pos = removed.Pos, Name = removed.Name });
+            OnChanged?.Invoke(key);
             return true;
         }
 
@@ -195,6 +219,11 @@ namespace TheGreatestMap
             if (key.IsNone || !Pins.TryGetValue(key, out removed)) return false;
             Pins.Remove(key);
             Tombstones.Remove(key);
+            // Reported, though nothing of it travels. The key has to come off the list of what
+            // the server has not been told, or it sits there forever naming a marker that is
+            // not in the map and not in the erasures, and every sync looks for it and finds
+            // nothing.
+            OnChanged?.Invoke(key);
             return true;
         }
 
@@ -322,6 +351,7 @@ namespace TheGreatestMap
             foreach (var existing in Suppressions)
                 if (IconRegistry.SameKey(existing.Icon, s.Icon) && Geo.FlatDistance(existing.Pos, s.Pos) < 1f) return false;
             Suppressions.Add(s);
+            OnSuppressed?.Invoke();
             return true;
         }
 

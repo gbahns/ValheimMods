@@ -42,6 +42,15 @@ namespace TheGreatestMap
         {
             if (session == 0L || seq < 0L) return;
             if (session == HeardSession && seq < HeardSeq) return;   // never walk the mark backwards
+            // A different run of the server. It may be holding a shared map restored from
+            // before our markers reached it, and a question that carries only what changed here
+            // since would never put them back -- so the whole map goes up once more.
+            if (HeardSession != 0L && session != HeardSession)
+            {
+                TheGreatestMapMod.Log.LogInfo(
+                    "[TheGreatestMap] The server has been restarted since we last synced; sending our whole map up once.");
+                PersonalMap.SendEverything();
+            }
             HeardSession = session;
             HeardSeq = seq;
         }
@@ -50,18 +59,7 @@ namespace TheGreatestMap
         {
             HeardSession = 0L;
             HeardSeq = -1L;
-            _serverHasOurs = false;
         }
-
-        /// <summary>
-        /// Whether the server has everything this map holds -- true only once a reply has come
-        /// back for an upload, which is the only proof the server actually took it.
-        ///
-        /// PersonalMap.Dirty cannot answer this on its own: it is cleared when a map is handed
-        /// to the network, not when the far end accepts it, so a send that never arrives leaves
-        /// a clean flag over an unsent change. An answered sync is the proof.
-        /// </summary>
-        private static bool _serverHasOurs;
 
         internal static void Reset()
         {
@@ -72,6 +70,7 @@ namespace TheGreatestMap
             Underway.Reset();
             _quietOnce.Clear();
             ForgetWatermark();
+            PersonalMap.Accepted();
         }
 
         /// <summary>Called after every local edit. In Instant mode, syncs with the shared map shortly after.</summary>
@@ -98,17 +97,26 @@ namespace TheGreatestMap
         private static float _lastFullSync = -999f;
 
         /// <summary>
-        /// Send the personal map to the server; the merged shared map comes back and is merged here.
+        /// Offer the personal map to the server; what the shared map has that we do not comes
+        /// back and is merged here.
         ///
-        /// The whole map goes up every time, and a map carrying four and a half thousand markers
-        /// is half a megabyte. Steam sends that as one ordered message, so until it has gone,
-        /// everything behind it waits -- including the answer the server is waiting to hear. Do
-        /// that repeatedly, as standing at a cartography table did, and the server stops hearing
-        /// from the client at all and closes the connection.
+        /// <para>Both directions carry only what changed. The reply has for a while: the client
+        /// sends the change number it last heard and the server answers from there. The question
+        /// does now too -- the map names the markers it has that the server may not, and sends
+        /// those. Recording one berry bush used to send 7,269 markers up, 96 KB of which 7,268
+        /// markers were ones the server had handed us itself.</para>
         ///
-        /// So a map that has not changed since it last went up is not sent again. Nothing is lost
-        /// by staying quiet: the server already has exactly that map, and anything arriving from
-        /// anyone else still comes down as usual.
+        /// <para>It matters because Steam sends a message as one ordered thing: until it has
+        /// gone, everything behind it waits, including the answer the server is waiting to hear.
+        /// Do that repeatedly, as standing at a cartography table did, and the server stops
+        /// hearing from the client at all and closes the connection. One message carries at most
+        /// 512 KB, and at about thirteen bytes a marker compressed the whole map reaches that at
+        /// roughly forty thousand of them -- which is the ceiling this lifts off, since what goes
+        /// up no longer grows with the map.</para>
+        ///
+        /// <para>A map with nothing to offer still says nothing at all, rather than saying it in
+        /// a few hundred bytes: the server already has it, and anything arriving from anyone else
+        /// comes down as usual.</para>
         /// </summary>
         internal static void SyncWithServer(bool announceNothing, bool asked = false)
         {
@@ -122,8 +130,9 @@ namespace TheGreatestMap
             // would be counting nothing.
             //
             // It exists to avoid a sync, which used to mean the whole map in both directions.
-            // A sync now carries what changed, so the thing being avoided costs a tenth of a
-            // kilobyte -- not worth refusing somebody who typed the command or pressed the key.
+            // A sync now carries what changed in both, so the thing being avoided costs a
+            // tenth of a kilobyte -- not worth refusing somebody who typed the command or
+            // pressed the key.
             if (!asked && !PersonalMap.Dirty && Time.time - _lastFullSync < UnchangedSeconds)
             {
                 TheGreatestMapMod.Log.LogInfo(
@@ -132,29 +141,23 @@ namespace TheGreatestMap
                 return;
             }
             _lastFullSync = Time.time;
-            // Nothing of ours to offer: the server answered our last upload and nothing has
-            // changed here since, so it already holds every marker this map does. Send an empty
-            // one and let the watermark fetch whatever the others have added. This is the
-            // ordinary case at a cartography table and it used to cost 70 KB in each direction.
-            bool nothingToOffer = _serverHasOurs && !PersonalMap.Dirty;
-            if (PersonalMap.Dirty) _serverHasOurs = false;
-            PersonalMap.Sent();
             _announcePending = announceNothing;
-            PinNetwork.SendSync(nothingToOffer ? new MapStore() : PersonalMap.Store);
+            // Empty when the server has everything this map holds, which is the ordinary case
+            // at a cartography table: the watermark written after it still fetches whatever the
+            // others have added.
+            PinNetwork.SendSync(PersonalMap.Outgoing());
         }
 
         internal static void OnSharedMap(MapStore serverStore)
         {
-            // The server answered, so it has taken whatever we sent with that question.
-            _serverHasOurs = true;
-            // Whether anything of ours was still waiting to go up, read before the merge --
-            // because taking the server's own changes in marks the map as having something to
-            // send, and what came from the server plainly does not need sending back to it.
-            // Left alone, every sync that received anything made the next one upload the whole
-            // map again: 71 KB to tell the server what it had just told us.
-            bool oursWaiting = PersonalMap.Dirty;
-            var result = ClientPins.ApplyMerge(serverStore);
-            if (!oursWaiting) PersonalMap.Sent();
+            // The server answered, which is the only proof it took what went up with the
+            // question -- a send is not an arrival. Anything marked here since that send is
+            // untouched and goes up next time.
+            PersonalMap.Accepted();
+            // The merge itself writes nothing down as ours to send: these markers are the
+            // server's own answer. The tidying after it does, and should -- folding two markers
+            // into one erases the loser, and that erasure has to travel.
+            var result = ClientPins.ApplyMerge(serverStore, fromServer: true);
             AfterMerge(result);
             if (result.Any) TheGreatestMapMod.Message("Shared map: " + result);
             else if (_announcePending) TheGreatestMapMod.Message("Shared map: nothing new.");
@@ -165,9 +168,8 @@ namespace TheGreatestMap
         internal static void OnDelta(MapStore delta)
         {
             // Pushed by the server, so the same reasoning as a reply: it already has these.
-            bool oursWaiting = PersonalMap.Dirty;
-            var result = ClientPins.ApplyMerge(delta);
-            if (!oursWaiting) PersonalMap.Sent();
+            // Not an answer to anything we sent, though, so nothing in flight is cleared.
+            var result = ClientPins.ApplyMerge(delta, fromServer: true);
             AfterMerge(result);
             if (result.Deleted > 0 && result.Added == 0 && result.Updated == 0 && delta.Tombstones.Count > 5)
                 TheGreatestMapMod.Message($"Shared map: {result.Deleted} markers erased by an admin.");
@@ -244,7 +246,9 @@ namespace TheGreatestMap
         internal static void OnExchange(long sender, string theirName, bool reply, MapStore theirs, byte[] exploration)
         {
             var clock = Stopwatch.StartNew();
-            var result = ClientPins.ApplyMerge(theirs);
+            // Another player's markers. The server has not seen these, so they are ours to pass
+            // on and the merge writes each one down as such.
+            var result = ClientPins.ApplyMerge(theirs, fromServer: false);
             AfterMerge(result);
             long merged = clock.ElapsedMilliseconds;
 

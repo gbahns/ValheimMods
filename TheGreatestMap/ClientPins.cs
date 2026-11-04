@@ -137,14 +137,24 @@ namespace TheGreatestMap
 
         // ── merging in from the shared map or another player ────────────────────────
 
-        internal static MergeResult ApplyMerge(MapStore incoming)
+        /// <summary>
+        /// Take another map's markers into this one. <paramref name="fromServer"/> says where
+        /// they came from, which decides whether they are ours to pass on: markers the server
+        /// handed us are not news to the server, and writing them down as ours to send would
+        /// hand every one of them straight back at the next sync. That is what the whole-map
+        /// upload did, and why this used to need undoing by hand afterwards.
+        /// </summary>
+        internal static MergeResult ApplyMerge(MapStore incoming, bool fromServer)
         {
             // Timed because this is the other half of a merge and the tidying that follows was
             // the only part with a clock on it. Redrawing a marker takes a pin out of the game's
             // list and puts a new one in, so a merge that changes thousands of them -- which one
             // does, the first time a map catches up with a big edit -- is thousands of those.
             var clock = System.Diagnostics.Stopwatch.StartNew();
-            var result = Store.Merge(incoming);
+            MergeResult result;
+            if (fromServer) PersonalMap.BeginQuiet();
+            try { result = Store.Merge(incoming); }
+            finally { if (fromServer) PersonalMap.EndQuiet(); }
             long mergeMs = clock.ElapsedMilliseconds;
             if (result.Refused)
                 TheGreatestMapMod.Log.LogInfo(
@@ -160,7 +170,17 @@ namespace TheGreatestMap
             // copy and handed it back at the next merge, to be folded and eaten again -- 129,
             // then 118, then 118 forever. The sweep belongs to the one-time conversion that
             // needed it, not to every merge.
-            PersonalMap.MarkDirty();
+            // A merge writes the map directly rather than through the calls that report a
+            // change, so what it brought is named here. Only from another player or a table:
+            // see the note on fromServer.
+            if (!fromServer)
+            {
+                foreach (var pin in result.ChangedPins) PersonalMap.Took(pin.Key);
+                foreach (var t in result.NewTombstones) PersonalMap.Took(t.Key);
+                // Erasures from before the rekey know their marker by an id this map no longer
+                // uses, so there is no key to name and no way to send them but all of it.
+                if (incoming.LegacyTombstones.Count > 0) PersonalMap.SendEverything();
+            }
             long total = clock.ElapsedMilliseconds;
             if (total >= 50L)
                 TheGreatestMapMod.Log.LogWarning(
@@ -172,7 +192,7 @@ namespace TheGreatestMap
         internal static void ClearSuppressions()
         {
             Store.Suppressions.Clear();
-            PersonalMap.MarkDirty();
+            PersonalMap.SendEverything();
         }
 
         // ── local edits ─────────────────────────────────────────────────────────────
@@ -643,8 +663,11 @@ namespace TheGreatestMap
             var inferred = KindInference.FromIcon(pin.Icon);
             if (inferred.HasValue)
             {
-                pin.SetKind(inferred.Value.ToString()); // remembered locally; Modified untouched so it is not a "change" to others
-                PersonalMap.MarkDirty();
+                // Remembered locally, and Modified is untouched on purpose, so this is not a
+                // change to anybody else -- a copy that received it would compare the two and
+                // keep its own. Nothing is marked for sending for that reason. The map is
+                // written to the character whole, so it is kept all the same.
+                pin.SetKind(inferred.Value.ToString());
             }
             return inferred;
         }

@@ -93,9 +93,13 @@ namespace TheGreatestMap
             pkg.Write(SyncEngine.HeardSeq);
             long wrote = clock.ElapsedMilliseconds;
             ZRoutedRpc.instance.InvokeRoutedRPC(Sync, pkg);
+            // What went up out of what we hold, which is the whole point of the message and the
+            // one number that says whether it is working. "7269 markers, 95.7 KB" after one
+            // berry bush was the bug; "1 of 7269 markers, 0.4 KB" is it fixed.
             TheGreatestMapMod.Log.LogInfo(
-                $"[TheGreatestMap] {System.DateTime.Now:HH:mm:ss} sent our map up: {store.Pins.Count} markers, " +
-                $"{pkg.Size() / 1024f:0.#} KB.");
+                $"[TheGreatestMap] {System.DateTime.Now:HH:mm:ss} sent our map up: " +
+                $"{store.Pins.Count} of {PersonalMap.Store.Pins.Count} markers, " +
+                $"{store.Tombstones.Count} erasure(s), {pkg.Size() / 1024f:0.#} KB.");
             WarnIfLarge(pkg.Size(), "the map we sent up");
         }
 

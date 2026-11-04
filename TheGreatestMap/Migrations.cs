@@ -194,8 +194,10 @@ namespace TheGreatestMap
                 if (!string.IsNullOrEmpty(pin.Source) || string.IsNullOrEmpty(pin.Kind)) continue;
                 if (!string.IsNullOrEmpty(pin.Icon)
                     && !IconRegistry.SameKey(pin.Icon, IconRegistry.FallbackKey)) continue;
+                // Nothing is marked for sending. SetKind leaves Modified alone, so this never
+                // could travel -- a copy receiving it compares the two and keeps its own -- and
+                // the map is written to the character whole, so it is kept here regardless.
                 pin.SetKind("");
-                PersonalMap.MarkDirty();
                 n++;
             }
             return n;
