@@ -118,6 +118,12 @@ namespace TheGreatestMap
                 "Draw the markers somebody has erased, so you can see what went and put it back. For finding out " +
                 "why a marker is not where you left it rather than for reading the map.",
                 () => Erasures.On, Erasures.Toggle);
+            y = Switch(y, () => TgmConfig.ThinMarkers, "Thin overlapping markers",
+                "Where markers of one kind are drawn on top of each other -- the same berry bush forty times over " +
+                "one meadow -- draw one of them and hold the rest back until you zoom in. Only ever markers whose " +
+                "pictures are touching, so nothing with a gap around it goes, and never a marker near you, one you " +
+                "have just recorded or one you asked for by name. Drawing a crowded map is the slowest thing it " +
+                "does, so this is also what makes the full map quick. tgm_status says what it is doing.");
 
             y = Heading("Labels", y);
             y = Switch(y, () => TgmConfig.ShowMarkerLabels, "Marker labels",

@@ -43,9 +43,25 @@ namespace TheGreatestMap
     /// tin overlap into mush -- the same marker forty times over one meadow. Hiding a kind loses
     /// "there is tin here"; thinning keeps one of each cluster, so only the repetition goes. And
     /// it bounds the cost by screen area instead of by world size: drawn markers become screen
-    /// area over cell area, so a map with 7,266 markers on it costs what one with 2,939 costs.
-    /// On 5120x1440 with cells two marker widths across that is about 795 markers at the most,
-    /// 8 ms of canvas a frame instead of 30 -- and a smaller screen caps lower by itself.</para>
+    /// area over cell area, so what a crowded map costs stops following how crowded it is.</para>
+    ///
+    /// <para><b>Only markers that are actually under each other.</b> The distance is the drawn
+    /// width of that kind's marker, so "too close" means the pictures are touching and nothing
+    /// looser. Two things this got wrong when it first shipped, both of which thinned markers
+    /// with daylight between them:</para>
+    ///
+    /// <para>The width is the width this kind is <i>drawn</i> at, not the map's nominal pin size.
+    /// Berries, mushrooms, herbs, seeds and plants are drawn at 60% and ore at 80% (see
+    /// <c>Catalog.DefaultSize</c>), so measuring in nominal widths made the cell 1.67x too big
+    /// for exactly the kinds that come in clumps -- and those are the ones anyone notices.</para>
+    ///
+    /// <para>And the cell is the distance over root two, floor-snapped to the ladder and never
+    /// rounded up, because two markers in one cell can be a diagonal apart. A cell equal to the
+    /// distance held markers back at up to 1.41x it; one rounded up the ladder, up to 1.22x again
+    /// on top. The two together reached 5.7 drawn widths at the old default -- markers a clear
+    /// five icons apart, one of them gone. Erring small instead means some touching pairs in
+    /// neighboring cells both draw, which is the harmless direction: the cap bounds the cost, and
+    /// nothing is ever held back that is not genuinely underneath something.</para>
     ///
     /// <para><b>The grid is in world meters, not on the screen.</b> Cell size is worked out from
     /// the zoom, but the cells themselves sit on fixed world lines, so panning does not move them
@@ -66,14 +82,18 @@ namespace TheGreatestMap
             256f, 384f, 512f, 768f, 1024f, 1536f, 2048f, 3072f, 4096f, 6144f, 8192f,
         };
 
+        private const float Sqrt2 = 1.41421356f;
+
         private static readonly Dictionary<Spot, int> _taken = new Dictionary<Spot, int>();
         private static readonly Dictionary<int, List<int>> _byKind = new Dictionary<int, List<int>>();
+        private static readonly Dictionary<int, float> _cellByKind = new Dictionary<int, float>();
 
         /// <summary>What the last pass did, for tgm_status. Nothing reads these but the report.</summary>
         internal static float LastCell { get; private set; }
         internal static int LastConsidered { get; private set; }
         internal static int LastHeld { get; private set; }
         internal static int LastCapped { get; private set; }
+        internal static int LastStep { get; private set; }
 
         private static bool On => TgmConfig.ThinMarkers == null || TgmConfig.ThinMarkers.Value;
 
@@ -89,41 +109,87 @@ namespace TheGreatestMap
             LastCell = 0f;
             if (!On || shown.Count == 0) return 0;
 
-            float cell = CellSize(map);
-            LastCell = cell;
-            int held = 0;
-            if (cell > 0f)
+            float width = MetersPerWidth(map);
+            if (width <= 0f) return 0;
+
+            // Nothing exempt is ever held back, so what is left standing is simple subtraction.
+            int most = TgmConfig.MostMarkersDrawn != null ? TgmConfig.MostMarkersDrawn.Value : 0;
+            int step = 0;
+            int held = Sweep(shown, width, step);
+            // Too many still standing: widen the patch and sweep again, rather than picking off
+            // markers one at a time. Every patch keeps one of each kind in it however wide it
+            // gets, so a lone stand of four mushrooms in a swamp keeps its marker no matter how
+            // hard the limit bites -- where giving up individuals would take all four and leave
+            // the swamp looking as though nobody had ever found a mushroom in it.
+            //
+            // The width is reckoned rather than climbed to. A sweep costs about a microsecond a
+            // marker, and a ladder of twenty-seven steps climbed one at a time is a stall on a
+            // map that can never come under the limit at all -- which is any map carrying more
+            // markers nothing may thin than the limit allows. Each step is half again as wide,
+            // so it thins by about the square of that; guess from how far over we are, then
+            // correct, and give up after a few corrections and leave the rest to the backstop.
+            if (most > 0 && shown.Count - held > most)
             {
-                _taken.Clear();
-                for (int i = 0; i < shown.Count; i++)
+                step = Mathf.Clamp(
+                    Mathf.CeilToInt(Mathf.Log((float)(shown.Count - held) / most) / Mathf.Log(2.25f)),
+                    1, Steps.Length - 1);
+                held = Sweep(shown, width, step);
+                for (int tries = 0; tries < 3 && shown.Count - held > most && step < Steps.Length - 1; tries++)
                 {
-                    var mine = shown[i];
-                    if (mine.Always) continue;
-                    // Floor, so the lines fall on multiples of the cell size in world space and
-                    // stay where they are however the map is panned.
-                    var spot = new Spot(mine.Kind,
-                                        Mathf.FloorToInt(mine.Shared.Pos.x / cell),
-                                        Mathf.FloorToInt(mine.Shared.Pos.z / cell));
-                    int sitting;
-                    if (!_taken.TryGetValue(spot, out sitting)) { _taken[spot] = i; continue; }
-                    // One of the two goes. Not whichever came first: the same marker has to win
-                    // every time the map is laid out again, or the cluster would shimmer between
-                    // its members as the dictionary happened to be walked.
-                    int loser = Compare(mine, shown[sitting]) < 0 ? sitting : i;
-                    if (loser == sitting) _taken[spot] = i;
-                    Keep(shown, loser);
-                    held++;
+                    step++;
+                    held = Sweep(shown, width, step);
                 }
             }
+            LastStep = step;
+            LastCell = CellFor(width, 1f, step);
             LastHeld = held;
-            LastCapped = Cap(shown);
+            // The backstop's backstop: markers nothing may hold back -- near you, just recorded,
+            // asked for by name -- can outnumber the limit on their own, and no width fixes that.
+            LastCapped = Cap(shown, shown.Count - held);
             return held + LastCapped;
         }
 
         /// <summary>
-        /// A cell in world meters: the configured spacing in marker widths, turned into meters at
-        /// the current zoom, then snapped to the ladder. Zero when there is nothing to work from or
-        /// the spacing is off.
+        /// One pass of the patch rule at <paramref name="stepUp"/> steps wider than the markers
+        /// themselves ask for. Returns how many were held back.
+        /// </summary>
+        private static int Sweep(List<Drawn> shown, float width, int stepUp)
+        {
+            _taken.Clear();
+            _cellByKind.Clear();
+            int held = 0;
+            for (int i = 0; i < shown.Count; i++)
+            {
+                var mine = shown[i];
+                // A wider sweep starts from a clean slate, since a marker held back by a narrow
+                // patch may well be the one that wins a wide one.
+                if (mine.Held) { mine.Held = false; shown[i] = mine; }
+                if (mine.Always) continue;
+                // Each kind gets its own cell, sized to the width that kind is drawn at. The
+                // grid is already per kind, so this costs nothing structurally.
+                float cell = CellOf(mine.Kind, width, stepUp);
+                if (cell <= 0f) continue;
+                // Floor, so the lines fall on multiples of the cell size in world space and
+                // stay where they are however the map is panned.
+                var spot = new Spot(mine.Kind,
+                                    Mathf.FloorToInt(mine.Shared.Pos.x / cell),
+                                    Mathf.FloorToInt(mine.Shared.Pos.z / cell));
+                int sitting;
+                if (!_taken.TryGetValue(spot, out sitting)) { _taken[spot] = i; continue; }
+                // One of the two goes. Not whichever came first: the same marker has to win
+                // every time the map is laid out again, or the cluster would shimmer between
+                // its members as the dictionary happened to be walked.
+                int loser = Compare(mine, shown[sitting]) < 0 ? sitting : i;
+                if (loser == sitting) _taken[spot] = i;
+                Keep(shown, loser);
+                held++;
+            }
+            return held;
+        }
+
+        /// <summary>
+        /// How many world meters one full-size marker covers at the current zoom. Zero when there
+        /// is nothing to work from.
         ///
         /// <para>The chain from a marker's position to its place on screen is
         /// <c>WorldToMapPoint</c> (meters to texture coordinates, dividing by
@@ -138,11 +204,9 @@ namespace TheGreatestMap
         /// cells to put markers in, which is the right answer rather than a double helping of
         /// markers in the same space.</para>
         /// </summary>
-        internal static float CellSize(Minimap map)
+        internal static float MetersPerWidth(Minimap map)
         {
             if (map == null) return 0f;
-            float widths = TgmConfig.ThinSpacing != null ? TgmConfig.ThinSpacing.Value : 2f;
-            if (widths <= 0f) return 0f;
             bool large = map.m_mode == Minimap.MapMode.Large;
             var img = large ? map.m_mapImageLarge : map.m_mapImageSmall;
             if (img == null || img.rectTransform == null) return 0f;
@@ -152,21 +216,55 @@ namespace TheGreatestMap
             float metersPerUnit = map.m_pixelSize * map.m_textureSize * uv / across;
             float marker = large ? map.m_pinSizeLarge : map.m_pinSizeSmall;
             if (marker <= 0f) marker = 48f;
-            return Snap(widths * marker * metersPerUnit);
+            return marker * metersPerUnit;
         }
 
-        /// <summary>The nearest step to <paramref name="want"/>, nearest by ratio rather than by
-        /// difference, since the steps grow by a ratio.</summary>
-        private static float Snap(float want)
+        /// <summary>The cell for one kind, worked out once per kind per pass.</summary>
+        private static float CellOf(Category? kind, float width, int stepUp)
         {
-            if (want <= Steps[0]) return Steps[0];
-            for (int i = 1; i < Steps.Length; i++)
-            {
-                if (want >= Steps[i]) continue;
-                // Below the geometric mean of the two steps, the lower one is the nearer.
-                return want * want <= Steps[i - 1] * Steps[i] ? Steps[i - 1] : Steps[i];
-            }
-            return Steps[Steps.Length - 1];
+            int key = kind.HasValue ? (int)kind.Value : -1;
+            if (_cellByKind.TryGetValue(key, out float known)) return known;
+            float cell = CellFor(width, KindScale(kind), stepUp);
+            _cellByKind[key] = cell;
+            return cell;
+        }
+
+        /// <summary>
+        /// The cell in world meters for a marker drawn at <paramref name="scale"/> of full size:
+        /// the spacing in that marker's own widths, over root two so a cell's diagonal -- the
+        /// farthest apart two markers in one cell can be -- is the spacing itself and not more.
+        /// </summary>
+        private static float CellFor(float width, float scale, int stepUp)
+        {
+            float widths = TgmConfig.ThinSpacing != null ? TgmConfig.ThinSpacing.Value : 1f;
+            if (width <= 0f || widths <= 0f || scale <= 0f) return 0f;
+            return Floor(widths * width * scale / Sqrt2, stepUp);
+        }
+
+        /// <summary>
+        /// How large this kind's markers are drawn, as a fraction of full size. The per-kind
+        /// setting only: the per-icon tweak varies within a kind, and a grid whose cell changed
+        /// from one marker to the next would not be a grid.
+        /// </summary>
+        private static float KindScale(Category? kind)
+        {
+            if (!kind.HasValue || TgmConfig.MarkerSize == null) return 1f;
+            return TgmConfig.MarkerSize.TryGetValue(kind.Value, out var size)
+                ? Mathf.Clamp(size.Value, 20, 100) / 100f
+                : 1f;
+        }
+
+        /// <summary>
+        /// The largest step at or below <paramref name="want"/>. Down and never up, so a snapped
+        /// cell can only hold markers back that are closer than the spacing asked for, never
+        /// farther. The ladder is there so zooming changes who survives in jumps rather than
+        /// continuously.
+        /// </summary>
+        private static float Floor(float want, int stepUp)
+        {
+            int at = 0;
+            for (int i = Steps.Length - 1; i >= 0; i--) if (Steps[i] <= want) { at = i; break; }
+            return Steps[Mathf.Min(at + stepUp, Steps.Length - 1)];
         }
 
         /// <summary>
@@ -180,27 +278,24 @@ namespace TheGreatestMap
         /// kind, the less any one of its locations says, and evening the kinds out this way keeps
         /// some of all of them rather than erasing the commonest outright.</para>
         /// </summary>
-        private static int Cap(List<Drawn> shown)
+        private static int Cap(List<Drawn> shown, int drawn)
         {
             int most = TgmConfig.MostMarkersDrawn != null ? TgmConfig.MostMarkersDrawn.Value : 0;
-            if (most <= 0) return 0;
+            if (most <= 0 || drawn <= most) return 0;
 
             // The lists are kept and emptied rather than made again: this runs on every layout of
             // the map, which on the minimap is every step the player takes.
             foreach (var kv in _byKind) kv.Value.Clear();
-            int drawn = 0;
             for (int i = 0; i < shown.Count; i++)
             {
                 var one = shown[i];
                 if (one.Held) continue;
-                drawn++;
                 if (one.Always) continue;        // counts toward the total, cannot be given up
                 int kind = one.Kind.HasValue ? (int)one.Kind.Value : -1;
                 List<int> bucket;
                 if (!_byKind.TryGetValue(kind, out bucket)) _byKind[kind] = bucket = new List<int>();
                 bucket.Add(i);
             }
-            if (drawn <= most) return 0;
 
             _sorting = shown;
             foreach (var kv in _byKind) kv.Value.Sort(_bestFirst);
@@ -231,15 +326,45 @@ namespace TheGreatestMap
 
         /// <summary>
         /// Which of two markers is the one worth drawing: one still to do beats one crossed off,
-        /// and the key decides the rest. The key because it has to be decided the same way every
-        /// time by every machine, and nothing else about two berry bushes distinguishes them.
+        /// and a scatter of the key decides the rest. It has to be decided the same way every time
+        /// the map is laid out, or a cluster would shimmer between its members as the map moved,
+        /// and nothing else about two berry bushes distinguishes them.
+        ///
+        /// <para><b>Not the key itself.</b> <c>PinKey.CompareTo</c> orders by owner and then by
+        /// x, so comparing keys meant the westernmost marker won every cell and the easternmost
+        /// was the first the cap gave up. Every survivor then sat against the west wall of its
+        /// cell, and with a large cell a whole kind could disappear from the part of the map you
+        /// were looking at while the same kind drew normally a cell to the west. Mixing the hash
+        /// keeps the decision fixed per marker and makes it independent of where the marker is,
+        /// so what survives is spread over the ground rather than lined up along it.</para>
         /// </summary>
         private static int Compare(Drawn a, Drawn b)
         {
             bool aDone = a.Shared.Checked || a.Pin.m_checked;
             bool bDone = b.Shared.Checked || b.Pin.m_checked;
             if (aDone != bDone) return aDone ? 1 : -1;
+            int ha = Scatter(a.Shared), hb = Scatter(b.Shared);
+            if (ha != hb) return ha < hb ? -1 : 1;
+            // Two keys that scatter alike still have to be ordered, or neither sort nor cell is
+            // stable. Vanishingly rare, and position is a fine tiebreak once it is not the rule.
             return a.Shared.Key.CompareTo(b.Shared.Key);
+        }
+
+        /// <summary>
+        /// A marker's place in the pecking order: its key's hash, stirred. The key's own hash is
+        /// precomputed and free to read, but neighboring markers can land in neighboring buckets,
+        /// and the stirring is what makes "lowest wins" mean nothing about where a marker is.
+        /// </summary>
+        private static int Scatter(SharedPin pin)
+        {
+            unchecked
+            {
+                int h = pin.Key.GetHashCode();
+                h ^= h >> 16; h *= (int)0x7feb352d;
+                h ^= h >> 15; h *= (int)0x846ca68b;
+                h ^= h >> 16;
+                return h;
+            }
         }
 
         // Held in a field so the comparison can be made once rather than closing over the list on
@@ -283,7 +408,11 @@ namespace TheGreatestMap
             if (LastCell <= 0f)
                 return "Thinning overlapping markers: on, but the map has not been drawn yet.";
             int drawn = LastConsidered - LastHeld - LastCapped;
-            return $"Thinning overlapping markers: {LastCell:0.#} m cells, {drawn} of {LastConsidered} drawn " +
+            return $"Thinning overlapping markers: {LastCell:0.#} m cells at full marker size " +
+                   $"(smaller for the kinds drawn smaller" +
+                   (LastStep > 0 ? $", widened {LastStep} step(s) to fit the limit of " +
+                                   $"{TgmConfig.MostMarkersDrawn.Value}" : "") + "), " +
+                   $"{drawn} of {LastConsidered} drawn " +
                    $"({LastHeld} standing on one of their own kind" +
                    (LastCapped > 0 ? $", {LastCapped} over the limit of {TgmConfig.MostMarkersDrawn.Value}" : "") + ").";
         }

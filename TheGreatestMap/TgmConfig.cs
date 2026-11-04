@@ -897,10 +897,13 @@ namespace TheGreatestMap
                 "over one meadow -- and drawing them all is what makes the full map slow. With this on, one marker " +
                 "of each kind is drawn per patch of ground, so you still see that there are berries and tin here, " +
                 "without forty of each. Zoom in and the rest come back. Markers near you are never thinned.");
-            ThinSpacing = mod.BindLocal("Display", "Marker Spacing On Screen", 2f,
-                "How far apart two markers of the same kind must be on screen before one of them is held back, " +
-                "measured in marker widths. 2 leaves a clear gap between them; 1 packs them against each other and " +
-                "draws about four times as many; 4 is very sparse. Only matters with Thin Overlapping Markers on.");
+            ThinSpacing = mod.BindLocal("Display", "Marker Spacing On Screen", 1f,
+                "How close two markers of the same kind have to be before one of them is held back, measured in " +
+                "that kind's own marker widths on screen. 1 means their pictures are touching, which is what being " +
+                "in the way means; below 1 they have to overlap outright, and above 1 they are thinned while a gap " +
+                "still shows -- 2 holds one back with a clear marker's width between them. Every marker drawn costs " +
+                "frames on a crowded map, so this is the dial between a readable map and a fast one. Only matters " +
+                "with Thin Overlapping Markers on.");
             MostMarkersDrawn = mod.BindLocal("Display", "Most Markers Drawn", 800,
                 "A limit on how many markers are drawn at once, whatever the spacing allows. Each patch of ground " +
                 "keeps one marker of every kind, which is the point of it, so enough different kinds standing " +

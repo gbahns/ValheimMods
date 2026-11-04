@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.8.0 — unreleased
+## 4.8.0 — 2026-11-04
 
 - "You cannot write on your map while under attack" stays on the HUD and off the console.
 - A leviathan is spotted at 150 m rather than 40 m, so its barnacles can be marked from the ship.
@@ -12,10 +12,11 @@
 - Explored ground travels in a message of its own rather than behind the markers.
 - **Zoomed out, one marker of each kind is drawn per patch of ground instead of all of them.** The
   full map was costing 13.9 fps with 2,939 markers on it and 27.1 with them hidden, nearly all of
-  it Unity drawing marker after marker; thinning them keeps what the map was telling you and
-  bounds the cost by the size of the screen rather than the size of the world. Markers near you,
-  just-recorded ones and ones you asked for are never thinned. Display, "Thin Overlapping
-  Markers".
+  it Unity drawing marker after marker. A marker is only ever held back where another of its own
+  kind is drawn close enough to touch it, and a patch always keeps one of each kind in it, so four
+  mushrooms in a swamp still say there are mushrooms in that swamp. Markers near you, just-recorded
+  ones and ones you asked for are never thinned. On the map's settings menu, and in Display as
+  "Thin Overlapping Markers".
 
 ## 4.7.0 — 2026-11-02
 

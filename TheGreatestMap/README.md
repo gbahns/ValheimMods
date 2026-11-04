@@ -84,12 +84,14 @@ you means nothing was ever recorded there rather than something recorded and not
 override the master switch, a marker you hid by hand, or a crossed-off group you have put away.
 
 **Zoomed out, markers stop piling up.** The same berry bush forty times over one meadow tells you
-nothing the first one did not, and drawing them all is what makes the full map slow. So one marker
-of each kind is drawn per patch of ground: you still see that there are berries *and* tin here, and
-zooming in brings the rest back. Markers near you, markers you have just recorded and markers
-answering `tgm_locate` are never thinned. Display, "Thin Overlapping Markers", with "Marker Spacing
-On Screen" for how close two of a kind may be drawn and "Most Markers Drawn" as a hard limit.
-`tgm_status` says what it is doing right now.
+nothing the first one did not, and drawing them all is what makes the full map slow. So where
+markers of one kind are drawn on top of each other, one of them is drawn and the rest wait until
+you zoom in: you still see that there are berries *and* tin here. Only ever markers whose pictures
+are touching, measured in that kind's own marker width on screen -- nothing with a gap around it
+goes. Markers near you, markers you have just recorded and markers answering `tgm_locate` are never
+thinned. The checkbox is on the map's settings menu, and in Display as "Thin Overlapping Markers",
+with "Marker Spacing On Screen" for how close two of a kind may be drawn and "Most Markers Drawn"
+as a hard limit. `tgm_status` says what it is doing right now.
 
 **The marker button.** Above vanilla's icon buttons on the right edge of the large map sits a map
 pin in the same pale gold as recorded markers. **Right-click** it to hide or show every marker from
