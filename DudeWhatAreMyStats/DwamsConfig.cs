@@ -57,6 +57,14 @@ namespace DudeWhatAreMyStats
         internal static ConfigEntry<string> TreatCreaturesAs;
         internal static ConfigEntry<bool> ShowKillKindColumns;
 
+        // ── who did what in a fight ────────────────────────────────────────────────
+        internal static ConfigEntry<bool> RecordFights;
+        internal static ConfigEntry<float> FightSeconds;
+        internal static ConfigEntry<float> FightHealth;
+        internal static ConfigEntry<int> KeepFights;
+        internal static ConfigEntry<bool> AnnounceFights;
+        internal static ConfigEntry<bool> LogFights;
+
         // ── fixes ───────────────────────────────────────────────────────────────────
         internal static ConfigEntry<bool> FixTreasureDiscoveryCount;
 
@@ -181,6 +189,24 @@ namespace DudeWhatAreMyStats
                 "Add Tame and Critters columns to the scoreboard beside Kills. Off by default: ten columns is a lot " +
                 "to read, and the same numbers are in the Details tab under Kills by type. The columns that stay " +
                 "spread out to fill the width either way. Takes effect the next time the panel opens.");
+            RecordFights = mod.BindLocal("Fights", "Record Fights", true,
+                "Record how much damage each player did to a creature over a fight, and report it when the creature " +
+                "dies. Boss fights are always reported and kept; smaller ones have to clear the two thresholds " +
+                "below, or every greydwarf would file a report. The game that owns the creature is the only one " +
+                "that sees every blow, so it does the adding up and tells everyone who took part. On a dedicated " +
+                "server that is the server, which has to be running this mod for the whole fight to be counted.");
+            FightSeconds = mod.BindLocal("Fights", "Fight Seconds", 15f,
+                "How long a fight has to last to be worth a report. Bosses ignore this.");
+            FightHealth = mod.BindLocal("Fights", "Fight Health", 200f,
+                "How much health the creature needs for a fight to be worth a report. Bosses ignore this. The " +
+                "default catches trolls and lox and leaves the greydwarves alone.");
+            KeepFights = mod.BindLocal("Fights", "Keep Fights", 25,
+                "How many non-boss fight reports to keep. Boss fights are kept separately and do not roll over.");
+            AnnounceFights = mod.BindLocal("Fights", "Announce Fights", true,
+                "Show a line when a reported fight ends, saying what your share of it was.");
+            LogFights = mod.BindLocal("Fights", "Log Fights", false,
+                "Also write every fight report to the BepInEx log, in full.");
+
             KillsColumnHostileOnly = mod.BindLocal("Kills", "Kills Column Hostile Only", true,
                 "Show only hostile kills in the scoreboard's Kills column, which is what people mean by a kill " +
                 "count: pets, deer, fish and chickens come out of it and get their own columns. Off puts the " +

@@ -29,7 +29,7 @@ namespace DudeWhatAreMyStats
     {
         public const string ModGuid    = "DeathMonger.DudeWhatAreMyStats";
         public const string ModName    = "Dude What Are My Stats";
-        public const string ModVersion = "0.12.0";
+        public const string ModVersion = "0.13.0";
 
         internal static DudeWhatAreMyStatsMod Instance { get; private set; }
         internal static ManualLogSource Log { get; private set; }
@@ -68,11 +68,16 @@ namespace DudeWhatAreMyStats
             StatsStore.Update();
             DeathLog.Update();
             KillLog.Update();
+            FightLog.Update();
+            // Above the local-player check on purpose: a dedicated server owns most of the world
+            // and has no local player, and it is the game doing most of the counting.
+            FightWatch.Update();
             if (Player.m_localPlayer == null)
             {
                 // Logged out with the panel up: drop the pause and the roster with the world.
                 StatsPanel.Close();
                 PlayerListHud.Hide();
+                FightWatch.Clear();
                 return;
             }
             StatsPanel.Update();

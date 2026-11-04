@@ -20,7 +20,7 @@ namespace DudeWhatAreMyStats
         /// later one takes what it understands and ignores the rest. That is a contract: a future
         /// version appends, and never reorders or removes.
         /// </summary>
-        internal const int Schema = 5;
+        internal const int Schema = 6;
 
         /// <summary>
         /// The oldest layout this build can read: every version this mod has ever shipped.
@@ -91,6 +91,15 @@ namespace DudeWhatAreMyStats
         /// about the rest, combined.
         /// </summary>
         internal KillSplitResult KillTypes;
+
+        // What this character has contributed to boss fights. A summary rather than the reports
+        // themselves: the reports live in each player's own FightLog, and shipping a table of them
+        // to everybody on every refresh is exactly the sort of message that stalls a peer's send
+        // queue. Three floats compare fine.
+        internal float BossFights;
+        internal float BossDamage;
+        /// <summary>Mean share of the boss fights this character took part in, 0 to 1.</summary>
+        internal float BossShare;
 
         /// <summary>
         /// Kills by how they were made: unarmed, magic, ranged, melee. Valheim has kept these all
@@ -338,6 +347,11 @@ namespace DudeWhatAreMyStats
                     pkg.Write(KillTypes.BestGap);
                 }
             }
+
+            // Schema 6: what this character did in boss fights.
+            pkg.Write(BossFights);
+            pkg.Write(BossDamage);
+            pkg.Write(BossShare);
             return pkg;
         }
 
@@ -486,6 +500,10 @@ namespace DudeWhatAreMyStats
                         snap.KillTypes.BestGap = bestGap;
                     }
                 }
+
+                if (pkg.GetPos() < pkg.Size()) snap.BossFights = pkg.ReadSingle();
+                if (pkg.GetPos() < pkg.Size()) snap.BossDamage = pkg.ReadSingle();
+                if (pkg.GetPos() < pkg.Size()) snap.BossShare = pkg.ReadSingle();
                 return snap;
             }
             catch (Exception e)

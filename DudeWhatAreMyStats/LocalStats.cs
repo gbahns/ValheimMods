@@ -82,6 +82,7 @@ namespace DudeWhatAreMyStats
             ReadSkills(snap);
             ReadDeaths(snap);
             ReadKills(snap, raw);
+            FightLog.BossSummary(out snap.BossFights, out snap.BossDamage, out snap.BossShare);
             return snap;
         }
 

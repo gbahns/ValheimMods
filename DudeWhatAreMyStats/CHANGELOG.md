@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.13.0
+
+- **Who did what in a fight.** When a boss dies -- or anything that lasted 15 seconds and had 200
+  health -- you get your share of the damage, and the fight is kept. `dwams_fights` lists them,
+  Details has a *Boss fights* section. The game that owns the creature does the counting, because
+  it is the only one that sees every blow, so the server needs the mod for a dedicated world.
+- Damage is health actually lost, not damage swung, and the report says how much of a fight it
+  cannot account for instead of scaling the percentages to a hundred.
+- Plays with every version back to 0.10.1: the stats message only gained a section on the end.
+
 ## 0.12.0
 
 Plays with 0.11.0 and 0.10.1 either way: the stats message only gained a section on the end, which

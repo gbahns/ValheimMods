@@ -28,6 +28,7 @@ namespace DudeWhatAreMyStats
         private const string RpcAll      = "DWAMS_All";        // server -> client, many snapshots
         private const string RpcForget   = "DWAMS_Forget";     // client -> server, "take me off the board"
         private const string RpcKill     = "DWAMS_Kill";       // creature's owner -> each player it credits
+        private const string RpcFight    = "DWAMS_Fight";      // creature's owner -> each player that hurt it
 
         /// <summary>Bumped when the many-snapshots message changes shape.</summary>
         private const int AllSchema = 1;
@@ -192,6 +193,7 @@ namespace DudeWhatAreMyStats
                 rpc.Register<ZPackage>(RpcAll, RPC_All);
                 rpc.Register<ZPackage>(RpcForget, RPC_Forget);
                 rpc.Register<ZPackage>(RpcKill, RPC_Kill);
+                rpc.Register<ZPackage>(RpcFight, RPC_Fight);
                 DudeWhatAreMyStatsMod.Log.LogInfo("[DudeWhatAreMyStats] Stats RPCs registered.");
             }
             catch (Exception e)
@@ -439,6 +441,41 @@ namespace DudeWhatAreMyStats
             catch (Exception e)
             {
                 DudeWhatAreMyStatsMod.Log.LogWarning($"[DudeWhatAreMyStats] Could not record a reported kill: {e.Message}");
+            }
+        }
+
+        // ── fight reports, from whoever owned the creature ──────────────────────────
+
+        /// <summary>
+        /// Tells a player what their share of a fight was. Sent by the game that owned the creature,
+        /// which is the only one that saw every blow landed on it by anyone.
+        ///
+        /// Sent only to players the report names, and only for a fight that qualified, so this is a
+        /// few hundred bytes at the end of a boss fight rather than anything per hit. Nothing about
+        /// a fight travels while it is still going on.
+        /// </summary>
+        internal static void SendFight(long peer, FightReport report)
+        {
+            var rpc = ZRoutedRpc.instance;
+            if (rpc == null || report == null) return;
+            rpc.InvokeRoutedRPC(peer, RpcFight, report.Pack());
+        }
+
+        /// <summary>
+        /// Somebody else's game describing a fight we were in. Same trust as RPC_Kill: a client
+        /// that wanted to could claim we did all the work. It costs a wrong number on a scoreboard
+        /// among friends, which is what every other figure here already rests on.
+        /// </summary>
+        private static void RPC_Fight(long sender, ZPackage pkg)
+        {
+            try
+            {
+                var report = FightReport.Unpack(pkg);
+                if (report != null) FightLog.Record(report, announce: true);
+            }
+            catch (Exception e)
+            {
+                DudeWhatAreMyStatsMod.Log.LogWarning($"[DudeWhatAreMyStats] Could not read a fight report: {e.Message}");
             }
         }
 

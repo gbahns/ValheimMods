@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
@@ -36,6 +37,12 @@ namespace DudeWhatAreMyStats
                     args.Context?.AddString(Deaths(args.Length > 1 ? args[1] : null));
                 }));
 
+            new Terminal.ConsoleCommand("dwams_fights", "Dude What Are My Stats: who did what in the fights worth remembering",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    args.Context?.AddString(Fights(args.Length > 1 ? args[1] : null));
+                }));
+
             new Terminal.ConsoleCommand("dwams_creatures", "Dude What Are My Stats: how each creature is classified for the kill breakdown",
                 (Terminal.ConsoleEvent)(args =>
                 {
@@ -68,6 +75,13 @@ namespace DudeWhatAreMyStats
                             : "death log: not open yet");
                     else
                         sb.AppendLine("death log: off (Record Deaths)");
+                    if (DwamsConfig.RecordFights.Value)
+                        sb.AppendLine(FightLog.Loaded
+                            ? $"fight log: {FightLog.BossCount} boss fight(s), {FightLog.RecentCount} other(s)" +
+                              (FightWatch.LiveCount > 0 ? $", following {FightWatch.LiveCount} creature(s) right now" : "")
+                            : "fight log: not open yet");
+                    else
+                        sb.AppendLine("fight log: off (Record Fights)");
                     if (StatsStore.IsServer)
                         sb.AppendLine(StatsStore.Loaded
                             ? $"this game is the server: {StatsStore.Count} character(s) in {StatsStore.Path}"
@@ -192,6 +206,44 @@ namespace DudeWhatAreMyStats
         /// The death log as text. With no argument, the totals and a line per recent death; with a
         /// number, that one death in full, counting 1 as the most recent.
         /// </summary>
+        /// <summary>
+        /// Every fight report kept, bosses first. Written to the log as well as the console: a long
+        /// list scrolls off the top of the console and cannot be scrolled back.
+        /// </summary>
+        private static string Fights(string which)
+        {
+            if (DwamsConfig.RecordFights != null && !DwamsConfig.RecordFights.Value)
+                return "Record Fights is off in the config, so nothing is being recorded.";
+            if (!FightLog.Loaded)
+                return "No fight log loaded yet. It opens once a character is in a world.";
+
+            var all = new List<FightReport>();
+            all.AddRange(FightLog.Bosses());
+            all.AddRange(FightLog.Recent());
+            if (all.Count == 0)
+                return "No fights recorded yet. Boss fights always count; others have to clear Fight Seconds and " +
+                       "Fight Health, and only the game that owns the creature can report one.";
+
+            var sb = new StringBuilder();
+            string filter = string.IsNullOrEmpty(which) ? null : which.Trim();
+            sb.AppendLine($"{FightLog.BossCount} boss fight(s) and {FightLog.RecentCount} other(s) recorded." +
+                          (filter == null ? " Add a name to narrow it." : $" Showing those matching \"{filter}\"."));
+            int shown = 0;
+            foreach (var r in all)
+            {
+                if (filter != null && r.Display.IndexOf(filter, StringComparison.OrdinalIgnoreCase) < 0 &&
+                    r.CreatureKey.IndexOf(filter, StringComparison.OrdinalIgnoreCase) < 0) continue;
+                shown++;
+                foreach (string line in r.Lines()) sb.AppendLine(line);
+            }
+            if (shown == 0) sb.AppendLine("Nothing matched.");
+
+            string text = sb.ToString().TrimEnd();
+            foreach (string line in text.Split('\n'))
+                DudeWhatAreMyStatsMod.Log.LogInfo("[DudeWhatAreMyStats] " + line.TrimEnd());
+            return text;
+        }
+
         private static string Deaths(string which)
         {
             var sb = new StringBuilder();

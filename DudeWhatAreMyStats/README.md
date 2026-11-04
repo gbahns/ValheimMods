@@ -140,6 +140,38 @@ report into the BepInEx log. *Record Deaths* turns the whole thing off.
 Nothing goes on the server for this. Only your own game can see what hit you, so only your own game
 could record it.
 
+## Who did what in a fight
+
+When something worth remembering dies, you get a line saying what your share of it was, and the
+fight is kept: who did how much damage, how long it took, and how much of it nobody can be credited
+for. Bosses always count and are kept for good. Anything else has to have lasted *Fight Seconds*
+(15) and have had *Fight Health* (200) to begin with, which catches the trolls and the lox and
+leaves the greydwarves alone. `dwams_fights` lists them all, and Details has a *Boss fights*
+section with your share of each.
+
+**The game that owns the creature does the counting**, because it is the only one that sees every
+blow: `Character.Damage` does nothing but send an RPC that the game drops unless it owns the target.
+So one game adds up everyone's damage and then tells each player what their part was. On a dedicated
+server that game is usually the server, which therefore has to be running this mod for the whole
+fight to be counted. Without it you get only the stretches your own game happened to own the
+creature, and the report says how much it could not account for rather than scaling the percentages
+up to a hundred.
+
+**The numbers are health actually lost, not damage swung.** Resistances, weak spots, armor and the
+world's difficulty scale all come off a hit before it lands, so the swing and the wound are
+different figures; this measures the wound. Overkill on the finishing blow does not inflate anybody.
+
+A few things are honest rather than tidy. Ownership can move mid-fight, which is why the running
+total is kept on the creature itself and survives the handover. Poison and fire ticks carry no
+attacker at all -- the game deals them from the effect -- so they are credited to whoever last
+applied that element, and the handful that land in the first second after a handover go to *The
+world*. Your wolves show up as *Tamed animals* rather than as you, because Valheim does not record
+who owns a tame.
+
+Settings live under `[Fights]`: *Keep Fights* is how many non-boss reports to keep, *Announce
+Fights* turns off the line at the kill, *Log Fights* copies each report into the BepInEx log, and
+*Record Fights* turns the whole thing off.
+
 ## The details tab
 
 Everything Valheim tracks for one character, which is over two hundred numbers, sorted into
@@ -254,6 +286,7 @@ the keep window runs out.
 |---|---|
 | `dwams` | Open or close the panel. |
 | `dwams_hud` | Show or hide the always-on player list. |
+| `dwams_fights` | Every fight report kept, bosses first. Add a name to narrow it. Also written to the log. |
 | `dwams_refresh` | Ask everyone online, and the server, for stats again. |
 | `dwams_creatures` | How every creature in your world is classified. Add a word to filter, or `all` for everything. |
 | `dwams_deaths` | What has killed you, and the last few deaths in full. Add a number for one of them. |
@@ -265,7 +298,7 @@ the keep window runs out.
 configuration manager. Notable settings: the open key, *Pause While Open*, *Ask Other Players*,
 *Refresh Seconds*, *Show Offline Players*, *Push Minutes*, *Show Zero Stats*, *Top Creature Count*
 and *Fix Treasure Discovery Count*, the `[Kills]` section for the kill breakdown and
-*Show Tame And Critter Columns*, the `[Deaths]`
+*Show Tame And Critter Columns*, the `[Fights]` section for the damage reports, the `[Deaths]`
 section for the death record, the `[Player List]`
 section for the always-on list, plus *Server Store Enabled* and *Server Keep Days* on a server.
 

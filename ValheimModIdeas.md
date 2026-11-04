@@ -545,12 +545,52 @@ and it needed no special case.
 Pets are left out entirely rather than counted and discounted. Killing your own pig says nothing
 about how hard the game is.
 
+#### Who did what in a fight (unreleased)
+
+The mirror of the death report: `FightWatch` adds up what every player did to one creature and
+reports it when the creature dies. Bosses always, plus anything that cleared Fight Seconds and
+Fight Health.
+
+What made it tractable:
+
+- **One game sees everything.** `Character.Damage` only invokes `RPC_Damage`, which returns
+  immediately unless `m_nview.IsOwner()`. So the owner sees every blow from every player and
+  nobody else sees more than their own -- no reconciliation, no per-hit traffic. The owner reports
+  once at the end, to the players it names.
+- **Measure the wound, not the swing.** The figure is a health delta across `ApplyDamage`, not
+  anything read off the HitData. By the time a hit gets there, `Damage` has applied resistances,
+  the weak spot and armor, and `ApplyDamage` then applies the difficulty scale and
+  `Game.m_playerDamageRate` on top. The delta also gives overkill clamping, immunity, god mode and
+  the sub-0.1 damage floor for free, with no special case to keep in step with the game.
+- **The ZDO solves ownership migration.** A long fight is exactly where the owner is most likely to
+  change, and a per-client accumulator would lose everything before the handover. The running total
+  is kept on the creature's own ZDO, which migrates with it -- the same trick vanilla uses for its
+  attacker flags. Kept as one packed blob under one key rather than a float per player: the
+  participants are then named *in* the record, so a player who logs out before the kill is still
+  credited, and the ZDO gains one key instead of one per player forever. Flushed about once a
+  second, because every ZDO change replicates to everyone holding the creature.
+- **Only follow what could ever qualify.** ZDOs persist with the world, so a creature that survives
+  keeps whatever was written on it. Health is the half of the qualifying rule knowable in advance,
+  being a property of the species, so anything under Fight Health is never written to at all. Worth
+  remembering as a general rule: anything stored on a ZDO is stored in the save file forever.
+- **DOT authors come from the application, not the tick.** Ticks carry no attacker, and
+  `StatusEffect.SetAttacker` is an empty virtual neither `SE_Poison` nor `SE_Burning` overrides. The
+  hooks are the three private `Character.AddPoisonDamage`/`AddFireDamage`/`AddSpiritDamage`, each
+  called from exactly one place in `RPC_Damage` *after* the early exits -- so a dodged or discarded
+  blow cannot steal credit for somebody else's poison, which patching the hit itself would allow.
+
+Not done, deliberately: a live DPS readout. Your own damage would be cheap, but everyone's live
+means the owner broadcasting on a timer for the whole fight. Worth revisiting only if the
+end-of-fight report turns out not to be enough.
+
+Snapshot schema 6 carries three floats -- boss fights, boss damage, mean share -- so the scoreboard
+can compare without the reports themselves travelling. The reports stay on each player's own
+machine, like the death reports.
+
 ### Possible follow-ups
 
 - A panel view for the death reports. 0.10.0 prints them with `dwams_deaths`; the tallies are in the
   Details tab but the full story is console-only.
-- Damage dealt *to* a creature over a fight, the mirror of this, which would answer "how much did we
-  actually do to that boss". The hooks are the same two, pointed the other way.
 - Explored map percentage by biome, the one ReportCard feature nothing else replaces. Greg does not need it
   ("nice to have, no need to base decisions on it"), so it was left out of 0.1.0. ReportCard's approach:
   walk `Minimap.m_explored` against `WorldGenerator.GetBiome` and tally.

@@ -465,6 +465,26 @@ namespace DudeWhatAreMyStats
                     });
             }
 
+            if (snap.BossFights > 0f || (snap.IsLocal && FightLog.BossCount > 0))
+                Section("Boss fights", () =>
+                {
+                    UiKit.Row(_listContent, "Boss fights fought", StatGroups.Count(snap.BossFights), null, null);
+                    UiKit.Row(_listContent, "Damage dealt to bosses", StatGroups.Count(snap.BossDamage), null, null);
+                    UiKit.Row(_listContent, "Average share", (snap.BossShare * 100f).ToString("0") + "%", null, null);
+                    // The fights themselves are only on the machine that received them, so another
+                    // player's row has the summary and nothing to break down.
+                    if (!snap.IsLocal) return;
+                    foreach (var r in FightLog.Bosses())
+                    {
+                        float mine = r.DamageFor(FightLog.Me);
+                        if (mine <= 0f) continue;
+                        UiKit.Row(_listContent, r.Display,
+                                  (r.ShareFor(FightLog.Me) * 100f).ToString("0") + "% of " +
+                                  StatGroups.Count(r.TotalDamage) + " in " + FightReport.Duration(r.Seconds),
+                                  null, null);
+                    }
+                });
+
             if (snap.ByWeapon.Count > 0)
                 Section("Kills by weapon", () =>
                 {
@@ -749,6 +769,7 @@ namespace DudeWhatAreMyStats
                 _collapsed.Add("In the fight");
                 _collapsed.Add("Kills by type");
                 _collapsed.Add("Kill difficulty");
+                _collapsed.Add("Boss fights");
                 _collapsed.Add("Kills by weapon");
                 foreach (var s in StatGroups.Order) _collapsed.Add(s);
                 SaveCollapsed();
