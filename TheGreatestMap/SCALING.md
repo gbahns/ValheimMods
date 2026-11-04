@@ -25,6 +25,29 @@ Compression (3.2.0) bought room, not a cure: 227 KB against a 512 KB ceiling is 
 thousand more markers** at the present density. Everything below either buys more room or removes
 the ceiling.
 
+### What the socket actually does, read in 1.0.7
+
+Three things worth knowing before sizing anything, from `ZSteamSocket`:
+
+- **A failed send is retried, not dropped.** `SendQueuedPackages` breaks on any non-OK result and
+  leaves the message at the head of its own queue; `Update` calls it again every frame. So a
+  refusal for a full send buffer (Steam's default is 512 KB, and Valheim does not change it)
+  clears by itself, and queuing several large messages back to back is safe. Only an oversized
+  message is fatal, because it is refused every time it is tried and nothing behind it ever moves.
+- **The send rate is pinned to 150 KB a second.** `RegisterGlobalCallbacks` sets both
+  `SendRateMin` and `SendRateMax` to 153,600, globally. So a 96 KB map takes two thirds of a
+  second to cross however good the connection is, and how a map is cut up changes nothing about
+  how long it takes -- only its total size does. This is the strongest argument for deltas and
+  against ever shipping a full map when a delta would do.
+- **`TimeoutConnected` is 30,000 ms**, which is the thirty seconds a stalled queue has to live.
+
+### The other big payload
+
+A cartography table carries **4,100.8 KB** of explored ground (measured on the live map), and a
+field exchange sends that compressed. It is one opaque block that cannot be divided, so from
+4.7.1 it travels in a message of its own rather than behind the markers, which is what kept the
+one message whose size nothing here controls from being added to one of the ones it does.
+
 ---
 
 ## What a marker record is made of
@@ -113,11 +136,36 @@ of who found it, and two people may legitimately place different markers on one 
 
 Ordered by what each one is actually for. The first removes a failure; the rest buy room.
 
+- [x] **1. Chunking.** Done in 4.7.1, and far more cheaply than this item expected, because the
+      ground had moved under it. A parcel is **a whole map with fewer markers in it**, not a slice
+      of a byte stream: `Merge` is additive and never removes a marker for being absent, so the
+      receiver merges each parcel as it lands and the sequence number, the reassembly buffer and
+      the timeout all disappear -- as does any change to the format or the protocol, since each
+      parcel is an ordinary map message that any version reads.
+
+      Two things it does need. Records go in the order a single `Merge` reads them -- markers,
+      erasures, pre-rekey erasures, suppressions -- because a marker changed since an erasure of
+      the same key keeps both, and a merge meeting the erasure first would drop it. And a flag
+      says which message is the last of a set, so the question is asked once rather than per
+      parcel (a reply per parcel, on the login case that needs splitting, is the whole shared map
+      each time) and the receiver holds its watermark and its once-per-map tidying back until the
+      set is complete.
+
+      Sized by record count with a byte check behind it: 10,000 records a parcel, and a parcel
+      that packs to more than 192 KB is cut in half and weighed again. The count alone is not
+      trustworthy -- thirteen bytes a marker is what *our* map compresses to, and ours has almost
+      no labels and five authors -- and the point of the work is other people's maps.
+      `tgm_resync <records>` forces a small parcel size and checks a split map against the same
+      map whole, since ours is a third of the real cap and would otherwise never exercise it.
+
+  <details><summary>what the item originally said</summary>
+
 - [ ] **1. Chunking.** Split a map that exceeds a safe size across several messages and reassemble
       on arrival. **This is the only item that removes the 512 KB ceiling** rather than moving it
       further away; until it exists, every other saving here is a delay on the same failure.
       Needs a sequence number, a reassembly buffer keyed by sender, and a timeout that discards a
       half-arrived map rather than holding it forever.
+  </details>
 
 - [x] **2. Deltas -- send only what changed.** Done in 4.4.0 and measured in TestWorld: a first
       sync full, a sync after one new marker carrying one marker, and a sync with nothing changed
@@ -371,6 +419,10 @@ the wrong order of work.
 So: **deltas, then chunking, and the format last or never.** If the format is ever broken again,
 break it once and take all of the above together -- not 3% here and 5% there across three
 migrations.
+
+Deltas went in both directions by 4.7.1 and chunking with them, so the ordering above is spent
+and the format was never touched. Nothing on this page is a bottleneck now: what a sync costs no
+longer grows with the map, and what a full map costs no longer has a ceiling.
 
 ## When a key carries meaning, every rule that sorts it changes meaning too
 

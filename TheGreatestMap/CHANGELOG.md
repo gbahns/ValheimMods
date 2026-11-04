@@ -1,12 +1,15 @@
 # Changelog
 
-## 4.7.1 — unreleased
+## 4.8.0 — unreleased
 
 - "You cannot write on your map while under attack" stays on the HUD and off the console.
 - A leviathan is spotted at 150 m rather than 40 m, so its barnacles can be marked from the ship.
 - Leviathans are in the catalog, so their markers have a row in the list instead of counting as orphans.
 - A sync now sends only the markers that changed here, not the whole map: 96 KB became under a kilobyte.
 - A marker recorded just before an autosave is no longer left on your map alone.
+- A map too big for one message is sent in several, so the shared map can keep growing: it used to
+  have a ceiling of roughly 38,000 markers, past which players were disconnected.
+- Explored ground travels in a message of its own rather than behind the markers.
 
 ## 4.7.0 — 2026-11-02
 

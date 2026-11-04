@@ -400,7 +400,7 @@ recorded, once, to catalog lines you already had.
 | `tgm_import` | Share your existing local markers (the five standard icons) with everyone |
 | `tgm_clearlocal` | Delete your local, non-shared player markers, including stale ones imported from tables |
 | `tgm_sync` | Sync the nearest cartography table now |
-| `tgm_resync` | Re-download shared markers from the server |
+| `tgm_resync` | Merge with the shared map now, without a cartography table. `tgm_resync <records>` cuts every map this client sends into messages of that many records first and checks the splitting, for trying it on a map too small to need it; `tgm_resync normal` puts the real size back |
 | `tgm_forget` | Forget found-but-unrecorded things |
 | `tgm_wipe [auto\|all]` | Admin: erase recorded markers (default) or every shared marker, for everyone |
 | `tgm_unsuppress` | Admin: allow recording again where recorded markers were erased |

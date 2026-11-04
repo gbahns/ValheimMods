@@ -22,6 +22,50 @@ namespace TheGreatestMap
         private static readonly Dictionary<long, float> _lastExchange = new Dictionary<long, float>();
         private static readonly HashSet<long> _quietOnce = new HashSet<long>();
 
+        /// <summary>
+        /// What a map that arrives in several messages has changed so far.
+        ///
+        /// <para>Each parcel is merged the moment it lands -- that is the whole point of a parcel
+        /// being a map in its own right -- but what follows a merge must not run per parcel. The
+        /// tidying passes walk every marker on the map, and the announcement and the watermark
+        /// are about the map as a whole. So the counts are kept here and the once-per-map work
+        /// happens on the last one.</para>
+        ///
+        /// <para>Nothing times out and nothing needs to. This holds a tally, not markers: if the
+        /// tail never arrives, what landed is already on the map and the only thing lost is a
+        /// line of summary.</para>
+        /// </summary>
+        private sealed class Arriving
+        {
+            private MergeResult _held;
+
+            internal void Add(MergeResult result)
+            {
+                if (_held == null) _held = new MergeResult();
+                _held.Absorb(result);
+            }
+
+            internal MergeResult Take()
+            {
+                var all = _held ?? new MergeResult();
+                _held = null;
+                return all;
+            }
+
+            internal void Forget() => _held = null;
+        }
+
+        private static readonly Arriving _fromServer = new Arriving();
+        private static readonly Arriving _pushed = new Arriving();
+        private static readonly Dictionary<long, Arriving> _fromPeers = new Dictionary<long, Arriving>();
+
+        private static Arriving From(long peer)
+        {
+            Arriving held;
+            if (!_fromPeers.TryGetValue(peer, out held)) _fromPeers[peer] = held = new Arriving();
+            return held;
+        }
+
         internal static bool Instant => TgmConfig.SharingMode.Value == SharingMode.Instant;
 
         // ── what we have already been told ──────────────────────────────────────────
@@ -71,6 +115,9 @@ namespace TheGreatestMap
             _quietOnce.Clear();
             ForgetWatermark();
             PersonalMap.Accepted();
+            _fromServer.Forget();
+            _pushed.Forget();
+            _fromPeers.Clear();
         }
 
         /// <summary>Called after every local edit. In Instant mode, syncs with the shared map shortly after.</summary>
@@ -148,16 +195,25 @@ namespace TheGreatestMap
             PinNetwork.SendSync(PersonalMap.Outgoing());
         }
 
-        internal static void OnSharedMap(MapStore serverStore)
+        /// <summary>
+        /// The shared map, or one parcel of it. <paramref name="more"/> says another message of
+        /// the same answer is still coming, in which case the markers go on the map and nothing
+        /// else happens yet.
+        /// </summary>
+        internal static void OnSharedMap(MapStore serverStore, bool more)
         {
-            // The server answered, which is the only proof it took what went up with the
-            // question -- a send is not an arrival. Anything marked here since that send is
-            // untouched and goes up next time.
-            PersonalMap.Accepted();
             // The merge itself writes nothing down as ours to send: these markers are the
             // server's own answer. The tidying after it does, and should -- folding two markers
             // into one erases the loser, and that erasure has to travel.
-            var result = ClientPins.ApplyMerge(serverStore, fromServer: true);
+            _fromServer.Add(ClientPins.ApplyMerge(serverStore, fromServer: true));
+            if (more) return;
+            // The server has answered in full, which is the only proof it took what went up with
+            // the question -- a send is not an arrival. Held until the last parcel so that an
+            // answer cut short by a dropped connection leaves our markers waiting rather than
+            // believing they were taken. Anything marked here since that send is untouched and
+            // goes up next time either way.
+            PersonalMap.Accepted();
+            var result = _fromServer.Take();
             AfterMerge(result);
             if (result.Any) TheGreatestMapMod.Message("Shared map: " + result);
             else if (_announcePending) TheGreatestMapMod.Message("Shared map: nothing new.");
@@ -165,13 +221,17 @@ namespace TheGreatestMap
         }
 
         /// <summary>A change pushed by the server (Instant mode, or an admin wipe).</summary>
-        internal static void OnDelta(MapStore delta)
+        internal static void OnDelta(MapStore delta, bool more)
         {
             // Pushed by the server, so the same reasoning as a reply: it already has these.
             // Not an answer to anything we sent, though, so nothing in flight is cleared.
-            var result = ClientPins.ApplyMerge(delta, fromServer: true);
+            _pushed.Add(ClientPins.ApplyMerge(delta, fromServer: true));
+            if (more) return;
+            var result = _pushed.Take();
             AfterMerge(result);
-            if (result.Deleted > 0 && result.Added == 0 && result.Updated == 0 && delta.Tombstones.Count > 5)
+            // Counted over the whole push rather than the one parcel it arrived in: a wipe of a
+            // big map is an erasure per marker, which is the one delta large enough to be cut up.
+            if (result.Deleted > 5 && result.Added == 0 && result.Updated == 0)
                 TheGreatestMapMod.Message($"Shared map: {result.Deleted} markers erased by an admin.");
         }
 
@@ -243,12 +303,28 @@ namespace TheGreatestMap
                 $", packed in {clock.ElapsedMilliseconds} ms.");
         }
 
-        internal static void OnExchange(long sender, string theirName, bool reply, MapStore theirs, byte[] exploration)
+        /// <summary>
+        /// Another player's map, or one parcel of it. Their explored ground comes in a message of
+        /// its own, so a map of four parcels and some ground is five of these, and only the last
+        /// carries <paramref name="reply"/>.
+        /// </summary>
+        internal static void OnExchange(long sender, string theirName, bool reply, MapStore theirs,
+                                        byte[] exploration, bool more)
         {
             var clock = Stopwatch.StartNew();
             // Another player's markers. The server has not seen these, so they are ours to pass
             // on and the merge writes each one down as such.
-            var result = ClientPins.ApplyMerge(theirs, fromServer: false);
+            var tally = From(sender);
+            tally.Add(ClientPins.ApplyMerge(theirs, fromServer: false));
+            if (more)
+            {
+                TheGreatestMapMod.Log.LogInfo(
+                    $"[TheGreatestMap] Took in part of {theirName}'s map: {theirs.Pins.Count} markers " +
+                    $"in {clock.ElapsedMilliseconds} ms. More of it still coming.");
+                return;
+            }
+            _fromPeers.Remove(sender);
+            var result = tally.Take();
             AfterMerge(result);
             long merged = clock.ElapsedMilliseconds;
 

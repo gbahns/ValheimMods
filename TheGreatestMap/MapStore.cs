@@ -42,6 +42,25 @@ namespace TheGreatestMap
         /// nothing else changed: it is the only sign that the erasures are still doing work.</summary>
         public bool Refused => RefusedByErasure + RefusedByOldErasure > 0;
 
+        /// <summary>
+        /// Take another merge's tally into this one, for a map that arrived in several messages.
+        /// The lists are added to as well, so whatever is done with the whole merge at the end --
+        /// forwarding it on, naming the markers as ours to pass up -- sees all of it.
+        /// </summary>
+        public void Absorb(MergeResult other)
+        {
+            if (other == null) return;
+            Added += other.Added;
+            Updated += other.Updated;
+            Deleted += other.Deleted;
+            Suppressed += other.Suppressed;
+            RefusedByErasure += other.RefusedByErasure;
+            RefusedByOldErasure += other.RefusedByOldErasure;
+            ChangedPins.AddRange(other.ChangedPins);
+            NewTombstones.AddRange(other.NewTombstones);
+            NewSuppressions.AddRange(other.NewSuppressions);
+        }
+
         /// <summary>The changes as a store of their own, for forwarding to others.</summary>
         public MapStore ToDelta()
         {
@@ -743,6 +762,212 @@ namespace TheGreatestMap
         {
             pkg.Write(CompressedMark);
             pkg.Write(Utils.Compress(ToBytes()));
+        }
+
+        /// <summary>
+        /// Split this map, put the parcels back together into a fresh one, and say whether
+        /// anything was lost or changed on the way.
+        ///
+        /// <para>Checked against the same map written and read whole rather than against this
+        /// one, because a map on its way through the format loses what the format does not keep:
+        /// positions land on the centimeter and times on the second. Comparing with those
+        /// already applied to both sides leaves exactly one difference to look for, which is the
+        /// one splitting could cause.</para>
+        /// </summary>
+        internal string CheckParcels()
+        {
+            var whole = FromBytes(ToBytes());
+            var rebuilt = new MapStore();
+            var parcels = Parcels();
+            int bytes = 0;
+            foreach (var parcel in parcels)
+            {
+                bytes += parcel.Length;
+                rebuilt.Merge(Read(new ZPackage(Utils.Decompress(parcel))));
+            }
+
+            var faults = new List<string>();
+            if (rebuilt.Pins.Count != whole.Pins.Count)
+                faults.Add($"{whole.Pins.Count} markers came back as {rebuilt.Pins.Count}");
+            foreach (var kv in whole.Pins)
+            {
+                SharedPin copy;
+                if (!rebuilt.Pins.TryGetValue(kv.Key, out copy))
+                { faults.Add($"a marker is missing: {kv.Value.Source} at {kv.Value.Pos}"); break; }
+                if (copy.Modified != kv.Value.Modified || copy.Checked != kv.Value.Checked
+                    || copy.Name != kv.Value.Name || copy.Icon != kv.Value.Icon)
+                { faults.Add($"a marker came back changed: {kv.Value.Source} at {kv.Value.Pos}"); break; }
+            }
+            if (rebuilt.Tombstones.Count != whole.Tombstones.Count)
+                faults.Add($"{whole.Tombstones.Count} erasures came back as {rebuilt.Tombstones.Count}");
+            foreach (var kv in whole.Tombstones)
+            {
+                long at;
+                if (!rebuilt.Tombstones.TryGetValue(kv.Key, out at) || at != kv.Value)
+                { faults.Add($"an erasure is missing or redated: {kv.Key}"); break; }
+            }
+            if (rebuilt.LegacyTombstones.Count != whole.LegacyTombstones.Count)
+                faults.Add($"{whole.LegacyTombstones.Count} pre-rekey erasures came back as {rebuilt.LegacyTombstones.Count}");
+            if (rebuilt.Suppressions.Count != whole.Suppressions.Count)
+                faults.Add($"{whole.Suppressions.Count} erased spots came back as {rebuilt.Suppressions.Count}");
+
+            string size = $"{parcels.Count} message(s), {bytes / 1024f:0.#} KB in all";
+            return faults.Count == 0
+                ? $"Split and put back together with nothing changed: {size}."
+                : $"Something went wrong splitting the map ({size}): " + string.Join("; ", faults.ToArray());
+        }
+
+        /// <summary>Write a payload that <see cref="Parcels"/> has already packed.</summary>
+        public static void WriteParcel(ZPackage pkg, byte[] parcel)
+        {
+            pkg.Write(CompressedMark);
+            pkg.Write(parcel);
+        }
+
+        /// <summary>
+        /// How many records go in one parcel before it is cut, counting markers, erasures and
+        /// suppressions alike. 10,000 markers is about 130 KB at the density measured on the live
+        /// map, which is comfortably inside <see cref="MaxParcelBytes"/> and makes the byte check
+        /// below a backstop rather than the thing doing the work.
+        ///
+        /// <para>Low on purpose. A parcel costs one message, one decompress and one merge, and
+        /// the only things that send a whole map are a first login, a restore and a server that
+        /// restarted -- so four comfortable messages beat one that is close to the edge. There is
+        /// nothing to be won by filling a message up: the game pins its own send rate to 150 KB a
+        /// second (<c>SendRateMin</c> and <c>SendRateMax</c>, both 153,600, set in
+        /// <c>ZSteamSocket.RegisterGlobalCallbacks</c>), so the time a map takes to cross is
+        /// decided by how big it is and not by how it is cut up.</para>
+        /// </summary>
+        public const int MaxParcelRecords = 10000;
+
+        /// <summary>
+        /// The size a parcel is held to, against Steam's 512 KB limit for one message.
+        ///
+        /// <para>A record count cannot be trusted on its own, and this is the point of this
+        /// number. Thirteen bytes a marker is what <i>our</i> map compresses to, and ours has
+        /// almost no labels, five authors and a narrow spread of prefabs -- all three of which
+        /// deflate beautifully. Somebody else's map with thousands of typed labels and a dozen
+        /// players costs more per marker and there is no way to bound by how much, so the count
+        /// is a guess and this is the measurement: a parcel is packed, weighed, and cut in half
+        /// again if it came out over.</para>
+        ///
+        /// <para>192 KB leaves two and a half times the headroom rather than a few percent,
+        /// because of what going over costs: <c>SendMessageToConnection</c> refuses an oversized
+        /// message every time it is tried, <c>ZSteamSocket.SendQueuedPackages</c> breaks on a
+        /// refusal and leaves it at the head of the queue, and nothing behind it moves again --
+        /// the server stops hearing from the client and closes the connection after thirty
+        /// seconds. A refusal for a full send buffer recovers by itself, since the queue is
+        /// retried every frame, but a message that is too big never becomes small enough.</para>
+        /// </summary>
+        public const int MaxParcelBytes = 192 * 1024;
+
+        /// <summary>
+        /// The record cap actually in force, so a map far smaller than the real one can be made
+        /// to travel in pieces on demand -- <c>tgm_resync &lt;records&gt;</c>. Our own map is a
+        /// third of <see cref="MaxParcelRecords"/>, so without this the splitting would first run
+        /// on somebody else's map, which is no place to find out it was wrong.
+        /// </summary>
+        internal static int ParcelRecords = MaxParcelRecords;
+
+        /// <summary>
+        /// The map as one or more compressed payloads, each a complete map in its own right and
+        /// each small enough to send.
+        ///
+        /// <para><b>Why each parcel is a whole map rather than a slice of one.</b> A map with
+        /// fewer markers in it is a legal map, and <see cref="Merge"/> is additive: it never
+        /// removes a marker for being absent, and <see cref="AddSuppression"/> turns a repeat
+        /// into nothing. So the receiver merges each parcel as it comes and needs no sequence
+        /// number, no reassembly buffer and no timeout to throw away a map that never finished
+        /// arriving -- the markers that landed are simply on the map, and the next sync carries
+        /// the rest. Cutting the compressed bytes into blocks instead would need all three, and
+        /// a half-arrived map would be worth nothing.</para>
+        ///
+        /// <para><b>The order is not arbitrary, though.</b> Records are taken markers first, then
+        /// erasures, then the erasures from before the rekey, then suppressions -- which is the
+        /// order a single <see cref="Merge"/> reads one map in, so a map in four parcels is
+        /// merged exactly as the same map in one message would be. It matters in one place: a
+        /// marker changed since an erasure of the same key keeps both, the newer marker and the
+        /// erasure that did not beat it, and a merge that met the erasure first would drop it
+        /// instead. The channel delivers in the order it was sent, so this holds;
+        /// <c>tgm_resync &lt;records&gt;</c> checks that it does.</para>
+        ///
+        /// <para>Nothing new goes on the wire either. Each parcel is an ordinary map message, so
+        /// a build on either end that has never heard of any of this reads it as the map it
+        /// is.</para>
+        ///
+        /// <para>Markers are taken in writing order, so the ones in a parcel are neighbours on
+        /// the map and their positions stay cheap to delta-code -- cutting across that order
+        /// would cost most of what the columnar format buys.</para>
+        /// </summary>
+        public List<byte[]> Parcels()
+        {
+            var pins = InWritingOrder();
+            var tombs = new List<PinKey>(Tombstones.Keys);
+            var legacy = new List<string>(LegacyTombstones.Keys);
+            int total = pins.Count + tombs.Count + legacy.Count + Suppressions.Count;
+            int cap = ParcelRecords > 0 ? ParcelRecords : MaxParcelRecords;
+
+            var parcels = new List<byte[]>();
+            int at = 0;
+            // At least one parcel even for an empty map: an empty sync is still a question, and
+            // the watermark that rides behind it is what fetches everyone else's markers.
+            do
+            {
+                int count = Math.Min(cap, total - at);
+                Fit(parcels, pins, tombs, legacy, at, count);
+                at += count;
+            } while (at < total);
+            return parcels;
+        }
+
+        /// <summary>
+        /// Pack one span of records, and if it came out over <see cref="MaxParcelBytes"/>, cut it
+        /// in half and weigh the halves. Only a compressed map knows its own size, so measuring is
+        /// the only way to find out and halving is the only answer that cannot loop.
+        /// </summary>
+        private void Fit(List<byte[]> into, List<SharedPin> pins, List<PinKey> tombs,
+                         List<string> legacy, int at, int count)
+        {
+            byte[] packed = Utils.Compress(Slice(pins, tombs, legacy, at, count).ToBytes());
+            if (packed.Length <= MaxParcelBytes || count <= 1)
+            {
+                if (packed.Length > MaxParcelBytes)
+                    TheGreatestMapMod.Log.LogWarning(
+                        $"[TheGreatestMap] One record of the map is {packed.Length / 1024f:0.#} KB by itself, " +
+                        $"over the {MaxParcelBytes / 1024} KB a message is held to. Sending it as it is, " +
+                        "there being nothing left to divide.");
+                into.Add(packed);
+                return;
+            }
+            int half = count / 2;
+            Fit(into, pins, tombs, legacy, at, half);
+            Fit(into, pins, tombs, legacy, at + half, count - half);
+        }
+
+        /// <summary>
+        /// One span of this map as a map of its own. The four kinds of record are read as a single
+        /// run -- markers, then erasures, then the pre-rekey erasures, then suppressions -- so a
+        /// span is a position and a count, and cutting one in half is one subtraction.
+        ///
+        /// <para>The markers themselves are shared rather than copied: this is only ever written
+        /// out, and the far end clones whatever it keeps.</para>
+        /// </summary>
+        private MapStore Slice(List<SharedPin> pins, List<PinKey> tombs, List<string> legacy, int at, int count)
+        {
+            var slice = new MapStore();
+            int end = at + count;
+            for (int i = at; i < end; i++)
+            {
+                int k = i;
+                if (k < pins.Count) { var pin = pins[k]; slice.Pins[pin.Key] = pin; continue; }
+                k -= pins.Count;
+                if (k < tombs.Count) { var key = tombs[k]; slice.Tombstones[key] = Tombstones[key]; continue; }
+                k -= tombs.Count;
+                if (k < legacy.Count) { string id = legacy[k]; slice.LegacyTombstones[id] = LegacyTombstones[id]; continue; }
+                k -= legacy.Count;
+                if (k < Suppressions.Count) slice.Suppressions.Add(Suppressions[k]);
+            }
+            return slice;
         }
 
         /// <summary>

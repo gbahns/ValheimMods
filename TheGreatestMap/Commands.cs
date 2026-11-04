@@ -38,9 +38,48 @@ namespace TheGreatestMap
                     args.Context.AddString($"Deleted {n} local markers.");
                 }));
 
-            new Terminal.ConsoleCommand("tgm_resync", "Merge your personal map with the shared map now, without a cartography table",
+            new Terminal.ConsoleCommand("tgm_resync", "Merge your personal map with the shared map now, without a cartography table. tgm_resync <records> cuts every map this client sends into messages of that many records first, for trying the splitting on a map too small to need it; tgm_resync normal puts the real size back",
                 (Terminal.ConsoleEvent)(args =>
                 {
+                    // A map only goes in pieces when it is bigger than one message can carry,
+                    // which ours is nowhere near -- so without a way to ask for it, the splitting
+                    // would first run for real on somebody else's map, where nobody can watch it.
+                    // In a solo or hosted game this exercises both directions at once, the client
+                    // and the server being the same process.
+                    if (args.Args.Length > 1)
+                    {
+                        string how = args.Args[1];
+                        int records;
+                        if (how.Equals("normal", System.StringComparison.OrdinalIgnoreCase)
+                            || how.Equals("off", System.StringComparison.OrdinalIgnoreCase))
+                        {
+                            MapStore.ParcelRecords = MapStore.MaxParcelRecords;
+                            args.Context.AddString($"Maps go in messages of up to {MapStore.MaxParcelRecords:n0} records again.");
+                        }
+                        else if (int.TryParse(how, out records) && records > 0)
+                        {
+                            // Floored, because the arithmetic does what it is told: 10 records a
+                            // message on our map is nine hundred messages, which tests nothing
+                            // that a hundred does not and spends a minute doing it.
+                            if (records < 100) records = 100;
+                            if (records > MapStore.MaxParcelRecords) records = MapStore.MaxParcelRecords;
+                            MapStore.ParcelRecords = records;
+                            args.Context.AddString(
+                                $"Every map this client sends now goes in messages of {records:n0} records, " +
+                                "until you leave the world or run tgm_resync normal.");
+                            // Done here rather than on the wire, and said first: this compares
+                            // the map split up against the same map whole, so it answers whether
+                            // the splitting is sound without a server or a second player in it.
+                            string check = PersonalMap.Store.CheckParcels();
+                            args.Context.AddString(check);
+                            TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_resync: " + check);
+                        }
+                        else
+                        {
+                            args.Context.AddString("Usage: tgm_resync [<records>|normal]");
+                            return;
+                        }
+                    }
                     // Said before the work, not after. On a dedicated server the answer comes
                     // back over the network and this reads as "working on it"; in a solo or
                     // hosted game you are the server, the whole sync finishes inside this call,
