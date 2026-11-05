@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.8.1 — unreleased
+
+- Crowded maps work out what to draw faster: where there are too many markers to draw, widening a
+  patch now merges the patches already worked out instead of measuring every marker again.
+
 ## 4.8.0 — 2026-11-04
 
 - "You cannot write on your map while under attack" stays on the HUD and off the console.

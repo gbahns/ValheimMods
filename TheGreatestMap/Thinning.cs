@@ -95,6 +95,26 @@ namespace TheGreatestMap
 
         private const float Sqrt2 = 1.41421356f;
 
+        /// <summary>A marker left standing, and the patch it is standing in at the base width.</summary>
+        private struct Placed
+        {
+            public int At;              // its place in the list handed to Hold
+            public int Kind, X, Z;
+        }
+
+        // What is still standing, and the list the next widening builds into. Swapped rather
+        // than made again: this runs on every layout of the map.
+        private static List<Placed> _living = new List<Placed>();
+        private static List<Placed> _next = new List<Placed>();
+
+        /// <summary>
+        /// How many times the patch may double. Twenty-four doublings is wider than the world,
+        /// so this is a guard against spinning rather than a limit anyone reaches: a map whose
+        /// exempt markers alone outrun the limit can never come under it, and the backstop is
+        /// what answers that case.
+        /// </summary>
+        private const int MostWidening = 24;
+
         private static readonly Dictionary<Spot, int> _taken = new Dictionary<Spot, int>();
         private static readonly Dictionary<int, List<int>> _byKind = new Dictionary<int, List<int>>();
         private static readonly Dictionary<int, float> _cellByKind = new Dictionary<int, float>();
@@ -123,79 +143,119 @@ namespace TheGreatestMap
             float width = MetersPerWidth(map);
             if (width <= 0f) return 0;
 
-            // Nothing exempt is ever held back, so what is left standing is simple subtraction.
             int most = TgmConfig.MostMarkersDrawn != null ? TgmConfig.MostMarkersDrawn.Value : 0;
-            int step = 0;
-            int held = Sweep(shown, width, step);
-            // Too many still standing: widen the patch and sweep again, rather than picking off
-            // markers one at a time. Every patch keeps one of each kind in it however wide it
-            // gets, so a lone stand of four mushrooms in a swamp keeps its marker no matter how
-            // hard the limit bites -- where giving up individuals would take all four and leave
-            // the swamp looking as though nobody had ever found a mushroom in it.
+            int always = Sweep(shown, width);
+            // Too many still standing: widen the patch rather than picking off markers one at a
+            // time. Every patch keeps one of each kind in it however wide it gets, so a lone
+            // stand of four mushrooms in a swamp keeps its marker no matter how hard the limit
+            // bites -- where giving up individuals would take all four and leave the swamp
+            // looking as though nobody had ever found a mushroom in it.
             //
-            // The width is reckoned rather than climbed to. A sweep costs about a microsecond a
-            // marker, and a ladder of twenty-seven steps climbed one at a time is a stall on a
-            // map that can never come under the limit at all -- which is any map carrying more
-            // markers nothing may thin than the limit allows. Each step is half again as wide,
-            // so it thins by about the square of that; guess from how far over we are, then
-            // correct, and give up after a few corrections and leave the rest to the backstop.
-            if (most > 0 && shown.Count - held > most)
+            // Widening is a merge and not another sweep, which is what makes climbing a step at
+            // a time affordable. See Merge: each step reads only what is still standing, so the
+            // whole climb costs less than one more sweep however far it goes.
+            int level = 0;
+            while (most > 0 && always + _living.Count > most && level < MostWidening)
             {
-                step = Mathf.Clamp(
-                    Mathf.CeilToInt(Mathf.Log((float)(shown.Count - held) / most) / Mathf.Log(2.25f)),
-                    1, Steps.Length - 1);
-                held = Sweep(shown, width, step);
-                for (int tries = 0; tries < 3 && shown.Count - held > most && step < Steps.Length - 1; tries++)
-                {
-                    step++;
-                    held = Sweep(shown, width, step);
-                }
+                level++;
+                Merge(shown, level);
             }
-            LastStep = step;
-            LastCell = CellFor(width, 1f, step);
-            LastHeld = held;
+            LastStep = level;
+            LastCell = CellFor(width, 1f) * (1 << level);
+            int drawn = always + _living.Count;
+            // Nothing exempt is ever held back, so what is left standing is simple subtraction.
+            LastHeld = shown.Count - drawn;
             // The backstop's backstop: markers nothing may hold back -- near you, just recorded,
             // asked for by name -- can outnumber the limit on their own, and no width fixes that.
-            LastCapped = Cap(shown, shown.Count - held);
-            return held + LastCapped;
+            LastCapped = Cap(shown, drawn);
+            return LastHeld + LastCapped;
         }
 
         /// <summary>
-        /// One pass of the patch rule at <paramref name="stepUp"/> steps wider than the markers
-        /// themselves ask for. Returns how many were held back.
+        /// The one pass over every candidate: places each marker in its kind's patch and leaves
+        /// one of them standing in each. Fills <see cref="_living"/> with what survived, and
+        /// returns how many markers were exempt from the rule altogether.
         /// </summary>
-        private static int Sweep(List<Drawn> shown, float width, int stepUp)
+        private static int Sweep(List<Drawn> shown, float width)
         {
             _taken.Clear();
             _cellByKind.Clear();
-            int held = 0;
+            _living.Clear();
+            int always = 0;
             for (int i = 0; i < shown.Count; i++)
             {
                 var mine = shown[i];
-                // A wider sweep starts from a clean slate, since a marker held back by a narrow
-                // patch may well be the one that wins a wide one.
+                // Last layout's answer is not this one's: the zoom may have changed under us.
                 if (mine.Held) { mine.Held = false; shown[i] = mine; }
-                if (mine.Always) continue;
-                // Each kind gets its own cell, sized to the width that kind is drawn at. The
+                int kind = mine.Kind.HasValue ? (int)mine.Kind.Value : -1;
+                // Each kind gets its own patch, sized to the width that kind is drawn at. The
                 // grid is already per kind, so this costs nothing structurally.
-                float cell = CellOf(mine.Kind, width, stepUp);
-                if (cell <= 0f) continue;
+                float cell = mine.Always ? 0f : CellOf(kind, width);
+                // Exempt, or nothing to measure with: drawn, and taking no part in the contest.
+                if (cell <= 0f) { always++; continue; }
                 // Floor, so the lines fall on multiples of the cell size in world space and
                 // stay where they are however the map is panned.
-                var spot = new Spot(mine.Kind,
+                var spot = new Spot(kind,
                                     Mathf.FloorToInt(mine.Shared.Pos.x / cell),
                                     Mathf.FloorToInt(mine.Shared.Pos.z / cell));
                 int sitting;
-                if (!_taken.TryGetValue(spot, out sitting)) { _taken[spot] = i; continue; }
+                if (!_taken.TryGetValue(spot, out sitting))
+                {
+                    _taken[spot] = _living.Count;
+                    _living.Add(new Placed { At = i, Kind = kind, X = spot.X, Z = spot.Z });
+                    continue;
+                }
                 // One of the two goes. Not whichever came first: the same marker has to win
                 // every time the map is laid out again, or the cluster would shimmer between
                 // its members as the dictionary happened to be walked.
-                int loser = Compare(mine, shown[sitting]) < 0 ? sitting : i;
-                if (loser == sitting) _taken[spot] = i;
-                Keep(shown, loser);
-                held++;
+                var seated = _living[sitting];
+                bool mineWins = Compare(mine, shown[seated.At]) < 0;
+                Keep(shown, mineWins ? seated.At : i);
+                if (mineWins) { seated.At = i; _living[sitting] = seated; }
             }
-            return held;
+            return always;
+        }
+
+        /// <summary>
+        /// One widening, done as a merge of the patches already worked out rather than as a
+        /// second sweep of every candidate.
+        ///
+        /// <para><b>Why this is the same answer.</b> A patch twice as wide is the old patches
+        /// taken in pairs, and <c>floor(x / 2c)</c> is <c>floor(x / c)</c> shifted down one --
+        /// exactly, negatives included, since shifting a signed integer right rounds towards
+        /// minus infinity the way the floor did. So the wider patch a marker belongs to is its
+        /// old one shifted, and no position needs dividing again.</para>
+        ///
+        /// <para><b>And why only the survivors need reading.</b> A marker already held back lost
+        /// to one that is in the same wider patch it would be in, and loses to it again by the
+        /// same comparison. It cannot win the wider patch, so nothing is missed by leaving it
+        /// out -- which is what turns a second pass over every candidate into a pass over a few
+        /// hundred, and makes the difference between widening once and widening eight times
+        /// something not worth measuring.</para>
+        /// </summary>
+        private static void Merge(List<Drawn> shown, int level)
+        {
+            _taken.Clear();
+            _next.Clear();
+            for (int i = 0; i < _living.Count; i++)
+            {
+                var one = _living[i];
+                var spot = new Spot(one.Kind, one.X >> level, one.Z >> level);
+                int sitting;
+                if (!_taken.TryGetValue(spot, out sitting))
+                {
+                    _taken[spot] = _next.Count;
+                    _next.Add(one);
+                    continue;
+                }
+                var seated = _next[sitting];
+                bool mineWins = Compare(shown[one.At], shown[seated.At]) < 0;
+                Keep(shown, mineWins ? seated.At : one.At);
+                if (mineWins) _next[sitting] = one;
+            }
+            var spent = _living;
+            _living = _next;
+            _next = spent;
         }
 
         /// <summary>
@@ -231,12 +291,11 @@ namespace TheGreatestMap
         }
 
         /// <summary>The cell for one kind, worked out once per kind per pass.</summary>
-        private static float CellOf(Category? kind, float width, int stepUp)
+        private static float CellOf(int kind, float width)
         {
-            int key = kind.HasValue ? (int)kind.Value : -1;
-            if (_cellByKind.TryGetValue(key, out float known)) return known;
-            float cell = CellFor(width, KindScale(kind), stepUp);
-            _cellByKind[key] = cell;
+            if (_cellByKind.TryGetValue(kind, out float known)) return known;
+            float cell = CellFor(width, KindScale(kind));
+            _cellByKind[kind] = cell;
             return cell;
         }
 
@@ -245,11 +304,11 @@ namespace TheGreatestMap
         /// the spacing in that marker's own widths, over root two so a cell's diagonal -- the
         /// farthest apart two markers in one cell can be -- is the spacing itself and not more.
         /// </summary>
-        private static float CellFor(float width, float scale, int stepUp)
+        private static float CellFor(float width, float scale)
         {
             float widths = TgmConfig.ThinSpacing != null ? TgmConfig.ThinSpacing.Value : 1f;
             if (width <= 0f || widths <= 0f || scale <= 0f) return 0f;
-            return Floor(widths * width * scale / Sqrt2, stepUp);
+            return Floor(widths * width * scale / Sqrt2);
         }
 
         /// <summary>
@@ -257,10 +316,10 @@ namespace TheGreatestMap
         /// setting only: the per-icon tweak varies within a kind, and a grid whose cell changed
         /// from one marker to the next would not be a grid.
         /// </summary>
-        private static float KindScale(Category? kind)
+        private static float KindScale(int kind)
         {
-            if (!kind.HasValue || TgmConfig.MarkerSize == null) return 1f;
-            return TgmConfig.MarkerSize.TryGetValue(kind.Value, out var size)
+            if (kind < 0 || TgmConfig.MarkerSize == null) return 1f;
+            return TgmConfig.MarkerSize.TryGetValue((Category)kind, out var size)
                 ? Mathf.Clamp(size.Value, 20, 100) / 100f
                 : 1f;
         }
@@ -271,11 +330,10 @@ namespace TheGreatestMap
         /// farther. The ladder is there so zooming changes who survives in jumps rather than
         /// continuously.
         /// </summary>
-        private static float Floor(float want, int stepUp)
+        private static float Floor(float want)
         {
-            int at = 0;
-            for (int i = Steps.Length - 1; i >= 0; i--) if (Steps[i] <= want) { at = i; break; }
-            return Steps[Mathf.Min(at + stepUp, Steps.Length - 1)];
+            for (int i = Steps.Length - 1; i >= 0; i--) if (Steps[i] <= want) return Steps[i];
+            return Steps[0];
         }
 
         /// <summary>
@@ -389,12 +447,15 @@ namespace TheGreatestMap
         {
             private readonly int _kind, _x, _z;
 
-            internal Spot(Category? kind, int x, int z)
+            internal Spot(int kind, int x, int z)
             {
-                _kind = kind.HasValue ? (int)kind.Value : -1;
+                _kind = kind;
                 _x = x;
                 _z = z;
             }
+
+            internal int X => _x;
+            internal int Z => _z;
 
             public bool Equals(Spot other) => _kind == other._kind && _x == other._x && _z == other._z;
             public override bool Equals(object other) => other is Spot && Equals((Spot)other);
@@ -421,7 +482,7 @@ namespace TheGreatestMap
             int drawn = LastConsidered - LastHeld - LastCapped;
             return $"Thinning overlapping markers: {LastCell:0.#} m cells at full marker size " +
                    $"(smaller for the kinds drawn smaller" +
-                   (LastStep > 0 ? $", widened {LastStep} step(s) to fit the limit of " +
+                   (LastStep > 0 ? $", doubled {LastStep} time(s) to fit the limit of " +
                                    $"{TgmConfig.MostMarkersDrawn.Value}" : "") + "), " +
                    $"{drawn} of {LastConsidered} drawn " +
                    $"({LastHeld} standing on one of their own kind" +
