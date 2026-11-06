@@ -51,11 +51,16 @@ namespace TheGreatestMap
                     args.Context.AddString($"Shared {n} local markers.");
                 }));
 
-            new Terminal.ConsoleCommand("tgm_clearlocal", "Delete your local (non-shared) player-placed markers, including stale ones imported from tables",
+            new Terminal.ConsoleCommand("tgm_clearlocal", "Delete leftover markers of this mod's that lost their record. tgm_clearlocal all also deletes the pins you placed the game's own way -- tgm_import adopts those first",
                 (Terminal.ConsoleEvent)(args =>
                 {
-                    int n = ClientPins.ClearLocalPins();
-                    args.Context.AddString($"Deleted {n} local markers.");
+                    bool all = args.Args.Length >= 2 &&
+                               string.Equals(args.Args[1], "all", System.StringComparison.OrdinalIgnoreCase);
+                    int n = ClientPins.ClearLocalPins(all, out int kept);
+                    args.Context.AddString($"Deleted {n} marker(s) with no record behind them.");
+                    if (kept > 0)
+                        args.Context.AddString($"Left alone {kept} pin(s) you placed the game's own way. " +
+                                               "tgm_import adopts them onto the map; tgm_clearlocal all deletes them.");
                 }));
 
             new Terminal.ConsoleCommand("tgm_resync", "Merge your personal map with the shared map now, without a cartography table. tgm_resync <records> cuts every map this client sends into messages of that many records first, for trying the splitting on a map too small to need it; tgm_resync normal puts the real size back",

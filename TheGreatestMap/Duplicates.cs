@@ -167,6 +167,89 @@ namespace TheGreatestMap
                     groups.Add(group);
                 }
             }
+
+            // A marker that says nothing stands with whatever is under it, whatever picture that
+            // wears.
+            //
+            // The pass above files markers by the picture they are drawn with and only ever
+            // compares a marker with others in its own file, which is what keeps a map of
+            // thousands affordable. It also means the one pair that matters most is never
+            // looked at: a copy that says nothing has no picture to be filed under, so it sits
+            // alone in the blank file while the copy that knows what it is sits under tar or
+            // copper or a crypt, and the two are never put side by side.
+            //
+            // That pair is not hypothetical and it is not rare. It is what is left when one
+            // client works out what a marker stands for and another has not yet: the knowing
+            // copy is written under what it found, the blank one comes back from the client
+            // that is behind, and nothing folds them because they no longer look alike. Both
+            // maps to hand carry it -- thirteen tar pits and a crypt on one, every one of them
+            // a blank copy beside a copy that knew -- and the folding has been running on every
+            // sync the whole time, saying truthfully that nothing was standing on anything.
+            //
+            // Safe because a marker carrying nothing at all is compatible with everything: no
+            // name to disagree with, no picture to be the wrong one, nothing lost by folding it
+            // into a neighbour, since the neighbour is the copy that knows. Kept to two metres
+            // rather than the usual spacing because this crosses kinds; in practice every pair
+            // it finds sits at the same point to the centimetre, because the two are copies of
+            // one marker rather than two markers that happen to be close.
+            var claimed = new HashSet<PinKey>();
+            foreach (var g in groups)
+            {
+                claimed.Add(g.Keep.Key);
+                foreach (var d in g.Drop) claimed.Add(d.Key);
+            }
+
+            var silent = new List<SharedPin>();
+            var spoken = new List<SharedPin>();
+            foreach (var pin in ClientPins.All)
+            {
+                if (claimed.Contains(pin.Key)) continue;
+                // SaysNothing on its own is not the test, and taking it for one would have been
+                // a disaster: it asks only for no name, no picture and no kind, which is the
+                // ordinary state of every auto-recorded berry bush -- 7,180 of the 7,507 markers
+                // on the map this was written against. Folding on that would have swept a bush
+                // into any hand-placed marker within two metres and deleted it. The marker meant
+                // here carries nothing whatever, its source included: a position and no more.
+                if (pin.SaysNothing && string.IsNullOrEmpty(pin.Source)) silent.Add(pin);
+                else spoken.Add(pin);
+            }
+
+            if (silent.Count > 0 && spoken.Count > 0)
+            {
+                var near = new Grid();
+                foreach (var pin in spoken) { float s = spacingOf[pin.Key]; if (s > near.Size) near.Size = s; }
+                foreach (var pin in spoken) near.Add(pin);
+
+                var byKeep = new Dictionary<PinKey, Group>();
+                foreach (var g in groups) byKeep[g.Keep.Key] = g;
+
+                foreach (var pin in silent)
+                {
+                    float reach = Mathf.Min(spacingOf[pin.Key], 2f);
+                    SharedPin best = null;
+                    float bestGap = float.MaxValue;
+                    foreach (var other in near.Near(pin.Pos))
+                    {
+                        float gap = Geo.FlatDistance(pin.Pos, other.Pos);
+                        if (gap > reach) continue;
+                        // The nearest wins, and the lower key breaks a tie, so every copy of the
+                        // map folds the pair the same way round rather than by iteration order.
+                        if (best != null && gap >= bestGap &&
+                            !(gap == bestGap && other.Key.CompareTo(best.Key) < 0)) continue;
+                        bestGap = gap;
+                        best = other;
+                    }
+                    if (best == null) continue;
+                    if (!byKeep.TryGetValue(best.Key, out var group))
+                    {
+                        group = new Group { Keep = best };
+                        byKeep[best.Key] = group;
+                        groups.Add(group);
+                    }
+                    group.Drop.Add(pin);
+                }
+            }
+
             return groups;
         }
 

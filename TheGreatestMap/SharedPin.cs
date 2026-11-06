@@ -103,10 +103,36 @@ namespace TheGreatestMap
         public int Type { get { return IconRegistry.TypeFor(Icon); } }
 
         /// <summary>
-        /// Recorded by the mod rather than put down by a player, which the source says: a marker
-        /// somebody placed says "Manual" and everything else was recorded.
+        /// Put down by a player rather than recorded by the mod. The source says so outright on
+        /// anything written since that became the rule -- "Manual" and nothing else.
+        ///
+        /// <para><b>And a blank source with a picture on it says so too.</b> Maps exist whose
+        /// hand-placed markers carry no source at all: before 4.0.0 a marker said it was placed
+        /// in a flag of its own, the reader turned that flag into the word "Manual", and format 7
+        /// dropped the flag -- so the repair can no longer fire and those markers read as
+        /// recorded forever. A marker found by the mod always carries what it was found as, a
+        /// prefab name or a "kind:" where only the kind is known; blank happens where nothing
+        /// ever filled it in. Blank with a picture stored on it is therefore a marker a person
+        /// placed and chose a picture for, and it is the only shape that can be.</para>
+        ///
+        /// <para>Read rather than repaired on purpose. A pass that wrote "Manual" into these
+        /// would run once per map and never again, so a wrong answer would be permanent; this
+        /// costs a string compare, covers maps nobody will ever look at, covers markers arriving
+        /// from another player mid-session, and can be taken back. Blank with no picture stays
+        /// recorded: that is a marker that genuinely lost what it was, and guessing is worse than
+        /// leaving it to tgm_identify.</para>
         /// </summary>
-        public bool Auto { get { return !string.Equals(_source, Manual, StringComparison.Ordinal); } }
+        public bool HandPlaced
+        {
+            get
+            {
+                if (string.Equals(_source, Manual, StringComparison.Ordinal)) return true;
+                return string.IsNullOrEmpty(_source) && !string.IsNullOrEmpty(Icon);
+            }
+        }
+
+        /// <summary>Recorded by the mod rather than put down by a player.</summary>
+        public bool Auto { get { return !HandPlaced; } }
 
         /// <summary>
         /// Nothing on it that anything can read: no name, no picture it can be drawn with, no

@@ -299,7 +299,7 @@ namespace TheGreatestMap
                 // Placed by a person, which is already the whole answer. Asked about it the
                 // catalog finds no such prefab, and Mistaken below would read that as a wrong
                 // answer and clear it.
-                if (pin.Source == SharedPin.Manual) { result.Placed++; continue; }
+                if (pin.HandPlaced) { result.Placed++; continue; }
                 if (!string.IsNullOrEmpty(pin.Source))
                 {
                     // A supply of something that was told it is a building: that can only have

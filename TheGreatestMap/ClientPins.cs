@@ -83,7 +83,7 @@ namespace TheGreatestMap
             // "Manual" is not a prefab. Asking the catalog about it would find nothing, which is
             // the right answer by luck rather than by meaning; saying so here keeps it right if
             // some mod ever ships a prefab by that name.
-            string fromCatalog = shared.Source == SharedPin.Manual ? null : Catalog.IconFor(shared.Source);
+            string fromCatalog = shared.HandPlaced ? null : Catalog.IconFor(shared.Source);
             if (!string.IsNullOrEmpty(fromCatalog)) return fromCatalog;
             var kind = KindOf(shared);
             // The kind answers for two sorts of marker: one placed by hand, which never claimed
@@ -372,14 +372,32 @@ namespace TheGreatestMap
             }
         }
 
-        /// <summary>Deletes vanilla local player-placed pins that are not on the personal map, including stale ones imported from tables.</summary>
-        internal static int ClearLocalPins()
+        /// <summary>
+        /// Deletes pins with no record of ours behind them. Leftovers of this mod's own -- which
+        /// carry a type number nothing else could have made -- always go.
+        /// <paramref name="includePlaced"/> also takes the ones a player put down the game's own
+        /// way, and <paramref name="kept"/> says how many of those were spared.
+        ///
+        /// <para>Spared by default, because the two are not alike. A leftover of ours is a marker
+        /// that lost its record and can only ever be rubbish; a pin on one of the game's own five
+        /// types may be something a person walked out and placed by hand, and this deleted both
+        /// on one word with one number to show for it. Not hypothetical: it took 124 hand-placed
+        /// pins off the author's own map while the leftovers it was aimed at numbered 18.
+        /// tgm_import adopts those first, and "all" is there for anyone who means it.</para>
+        /// </summary>
+        internal static int ClearLocalPins(bool includePlaced, out int kept)
         {
+            kept = 0;
             if (Map == null) return 0;
             int n = 0;
             foreach (var pin in new List<Minimap.PinData>(Access.Pins(Map)))
             {
-                if (IsOurs(pin) || !PinTypes.IsPlayerPlaceable((int)pin.m_type)) continue;
+                if (IsOurs(pin)) continue;
+                int type = (int)pin.m_type;
+                // Custom asked first: IsPlayerPlaceable counts ours among the placeable ones.
+                bool leftover = PinTypes.IsCustom(type);
+                if (!leftover && !PinTypes.IsPlayerPlaceable(type)) continue;
+                if (!leftover && !includePlaced) { kept++; continue; }
                 Map.RemovePin(pin);
                 n++;
             }

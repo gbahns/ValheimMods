@@ -1,5 +1,15 @@
 # Changelog
 
+## 4.8.2 — 2026-11-06
+
+- tgm_clearlocal no longer deletes the markers you placed the game's own way; it takes only this
+  mod's leftovers and says how many of yours it spared. tgm_clearlocal all takes both.
+- Markers placed by hand on older maps count as placed again rather than as ones the mod found:
+  they keep their own picture, are no longer tinted as recorded, and are counted as placed.
+- A marker that says nothing standing on one that knows what it is now folds into it. That pair
+  is what two players get when one has worked out what something is and the other has not, and
+  because the two no longer look alike nothing had ever folded them.
+
 ## 4.8.1 — 2026-11-06
 
 - Readying the ping now wears off when you shut the map, like every other kind: a forgotten one
