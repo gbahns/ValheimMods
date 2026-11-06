@@ -29,6 +29,10 @@ namespace TheGreatestMap
                     foreach (var pin in ClientPins.All) { if (pin.Auto) auto++; else manual++; }
                     Say(args, $"Personal map: {ClientPins.Count} markers ({auto} recorded, {manual} placed), {ClientPins.TombstoneCount} erased, {ClientPins.SuppressionCount} erased spots; sharing mode: {TgmConfig.SharingMode.Value}");
                     Say(args, $"Found but not yet recorded: {DiscoveryLedger.PendingCount}, recorded this session: {DiscoveryLedger.RecordedCount}, map out: {PocketMap.IsOut}");
+                    ClientPins.StrayPins(out int orphans, out int placed);
+                    Say(args, $"Pins with no record behind them: {orphans} left over from this mod, {placed} placed the game's own way." +
+                              (orphans > 0 ? " The leftovers are safe to delete and drain by themselves now; tgm_clearlocal clears them at once." : "") +
+                              (placed > 0 ? " tgm_import adopts the placed ones before tgm_clearlocal would delete them." : ""));
                     Say(args, Thinning.Describe());
                     if (PinStore.IsServer)
                     {

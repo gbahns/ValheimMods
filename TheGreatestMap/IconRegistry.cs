@@ -117,10 +117,44 @@ namespace TheGreatestMap
             return string.Equals(Normalize(a), Normalize(b), StringComparison.OrdinalIgnoreCase);
         }
 
+        /// <summary>
+        /// The game's own pin type named by a "pin:" key, where the key names one at all.
+        ///
+        /// <para><b>Names only, and only ones that exist.</b> Enum.TryParse takes a bare number as
+        /// readily as a name and never checks the result is a value the enum defines, so on its
+        /// own it made "pin:" an alias for every integer: "pin:12" parsed to Ping and "pin:137"
+        /// to a type that exists nowhere. The game picks a pin's picture from its type number
+        /// alone -- once, in AddPin, never revisited -- so a number arriving in this channel does
+        /// not draw a broken marker, it draws a perfectly good picture of the wrong thing,
+        /// standing exactly where the marker belongs. Ping is 12, in the middle of the range, and
+        /// a ping circle is the one wrong answer a player is certain to notice.</para>
+        ///
+        /// <para>Numbers reach here by being printed out as well as read in: Enum.ToString on an
+        /// undefined value gives back the number, so anything that built a key from a type it had
+        /// not checked -- see <see cref="KeyForVanilla"/> -- sent a number out that this would
+        /// have taken back as a vanilla type.</para>
+        /// </summary>
         private static bool TryVanilla(string normalized, out Minimap.PinType type)
         {
             type = Minimap.PinType.Icon3;
-            return normalized != null && normalized.StartsWith("pin:") && Enum.TryParse(normalized.Substring(4), true, out type);
+            if (normalized == null || !normalized.StartsWith("pin:")) return false;
+            string name = normalized.Substring(4);
+            if (name.Length == 0 || char.IsDigit(name[0]) || name[0] == '-' || name[0] == '+') return false;
+            return Enum.TryParse(name, true, out type) && Enum.IsDefined(typeof(Minimap.PinType), type);
+        }
+
+        private static readonly HashSet<string> _warnedPins = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Say so, once per key, when a "pin:" key names nothing. Silence here is what would let a
+        /// whole map draw as the wrong picture with nothing anywhere saying why.
+        /// </summary>
+        private static void WarnBadPin(string key)
+        {
+            if (!_warnedPins.Add(key)) return;
+            TheGreatestMapMod.Log.LogWarning(
+                $"[TheGreatestMap] Icon key '{key}' names none of the game's pin types; drawing those markers " +
+                "with the default pin. A number here is the likely cause -- pin keys are names, such as pin:Icon3.");
         }
 
         /// <summary>The local pin type for an icon key, allocating and registering it on first use.</summary>
@@ -128,7 +162,12 @@ namespace TheGreatestMap
         {
             string key = Normalize(iconKey);
             if (key == null) return (int)Minimap.PinType.Icon3;
-            if (key.StartsWith("pin:")) return TryVanilla(key, out var vanilla) ? (int)vanilla : (int)Minimap.PinType.Icon3;
+            if (key.StartsWith("pin:"))
+            {
+                if (TryVanilla(key, out var vanilla)) return (int)vanilla;
+                WarnBadPin(key);
+                return (int)Minimap.PinType.Icon3;
+            }
             if (_typeByKey.TryGetValue(key, out int type)) return type;
             type = Base + _keys.Count;
             if (type >= ReservedFloor)
@@ -150,7 +189,17 @@ namespace TheGreatestMap
             return type;
         }
 
-        internal static string KeyForVanilla(int type) => "pin:" + ((Minimap.PinType)type).ToString();
+        /// <summary>
+        /// The "pin:" key for one of the game's own pin types. A type the enum does not define
+        /// gets the fallback rather than a key: ToString would print the bare number, and that
+        /// number reads back as a vanilla type -- which is how a type of ours, or a stale one out
+        /// of old stored data, could come back wearing the game's picture for whatever that
+        /// number happens to mean.
+        /// </summary>
+        internal static string KeyForVanilla(int type) =>
+            Enum.IsDefined(typeof(Minimap.PinType), type)
+                ? "pin:" + ((Minimap.PinType)type).ToString()
+                : FallbackKey;
 
         /// <summary>
         /// True when this icon is one of the pin types vanilla's own icon buttons hide and show
@@ -455,9 +504,43 @@ namespace TheGreatestMap
             }
         }
 
-        /// <summary>A new Minimap instance (world load): re-register every icon met so far.</summary>
+        /// <summary>
+        /// A new Minimap instance (world load): re-register every icon met so far.
+        ///
+        /// <para><b>This is the one moment every picture on the map can be decided wrongly at
+        /// once.</b> The key list is static and outlives a world, so the second world load of a
+        /// session -- a relog, or leaving to the menu and rejoining -- re-registers every icon met
+        /// in the first. An "item:" key resolves to nothing while ObjectDB is not up yet, and
+        /// <see cref="Register"/> caches that miss as the plain dot for the rest of the session,
+        /// because nothing ever resolves a key a second time. Every berry, ore and seed marker
+        /// would then wear one wrong picture until the game was restarted, with the stored markers
+        /// and the settings both perfectly intact -- which is a thing no player could report in a
+        /// way anyone could act on. Hence the line below: whether the list was ready is the fact
+        /// that tells this apart from a map that simply looks wrong.</para>
+        /// </summary>
         internal static void OnMinimapStart(Minimap map)
         {
+            // Only worth saying when there is something to lose. On the first load the list is
+            // empty, every icon is resolved later by TypeFor as its marker arrives, and by then
+            // the game is up -- so the silence here is the healthy case, not a missing check.
+            if (_keys.Count > 0)
+            {
+                int items = 0;
+                for (int i = 0; i < _keys.Count; i++)
+                    if (_keys[i].StartsWith("item:")) items++;
+                bool ready = ObjectDB.instance != null;
+                if (!ready && items > 0)
+                    TheGreatestMapMod.Log.LogWarning(
+                        $"[TheGreatestMap] Drawing a new map: registering {_keys.Count} icon(s) again while the " +
+                        $"game's item list is not loaded yet, and {items} of them name an item. Those will fall " +
+                        "back to the plain dot and keep it for the rest of this session, so every marker of those " +
+                        "kinds will wear the same wrong picture until the game is restarted. Nothing is wrong with " +
+                        "the saved markers or the settings.");
+                else
+                    TheGreatestMapMod.Log.LogInfo(
+                        $"[TheGreatestMap] Drawing a new map: registering {_keys.Count} icon(s) again; the game's " +
+                        (ready ? "item list is loaded." : "item list is not loaded, but no icon needs it."));
+            }
             for (int i = 0; i < _keys.Count; i++) Register(map, _keys[i], Base + i);
             EnsureArrays(map);
         }

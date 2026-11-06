@@ -2,6 +2,18 @@
 
 ## 4.8.1 — unreleased
 
+- Readying the ping now wears off when you shut the map, like every other kind: a forgotten one
+  turned your next double-click into a real ping to everybody in range instead of a marker.
+- A marker whose icon names no real pin is drawn with the default pin and says so in the log,
+  rather than being drawn as whichever of the game's own pictures that number happened to mean.
+- One failing step of drawing the map no longer takes the rest with it, and names itself in the
+  log: a map that came out carpeted, wrongly sized or missing every label now says which step.
+- This mod's markers are never written into your character's own pin list now. One that lost
+  track of itself used to be saved there, come back as a plain pin, and multiply every session
+  until the map was covered in copies wearing the wrong pictures. Any already saved clear
+  themselves the next time you play.
+- tgm_status counts the pins on your map that no marker stands behind.
+
 - Crowded maps work out what to draw faster: where there are too many markers to draw, widening a
   patch now merges the patches already worked out instead of measuring every marker again.
 

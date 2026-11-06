@@ -45,8 +45,18 @@ namespace TheGreatestMap
             if (map == null) return;
             try
             {
-                if (PinTypes.IsCustom((int)Access.SelectedType(map)))
-                    Access.SelectedType(map) = Minimap.PinType.Icon0;
+                var selected = Access.SelectedType(map);
+                // The ping goes with them. It is one of vanilla's types rather than one of ours,
+                // so IsCustom never covered it, and it was the one arming in the mod that
+                // outlived the map being shut: a player who armed it and forgot found their next
+                // double-click sending a real ping to everyone in range instead of placing a
+                // marker, and leaving a circle on every map in earshot. Nothing on screen said
+                // why, because the row that says so is only drawn while the map is open.
+                if (!PinTypes.IsCustom((int)selected) && selected != Minimap.PinType.Ping) return;
+                // Through the game's own method rather than the field, because this one has a
+                // button: SelectIcon also puts out the highlight on it, and writing the field
+                // alone would leave the map lit as though the ping were still ready.
+                Access.SelectIcon(map, Minimap.PinType.Icon0);
             }
             catch (System.Exception) { /* the map is going away; nothing to put back */ }
         }
@@ -63,8 +73,8 @@ namespace TheGreatestMap
         /// </summary>
         internal static void Update()
         {
-            if (_armed == null) return;
-
+            // No early way out on _armed being null: the ping is armed in vanilla's field
+            // without anything of ours to show for it, and returning here is what let it stand.
             var map = Minimap.instance;
             if (map == null) { _armed = null; return; }
             if (map.m_mode != Minimap.MapMode.Large) Disarm(map);

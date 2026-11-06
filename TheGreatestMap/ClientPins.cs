@@ -350,6 +350,28 @@ namespace TheGreatestMap
             return n;
         }
 
+        /// <summary>
+        /// Pins on the game's map with no record of ours behind them, told apart by what they are.
+        /// <paramref name="orphans"/> carry a type number this mod made up, so nothing else could
+        /// have made them: they are markers of ours that lost their record, and deleting them
+        /// costs nothing. <paramref name="placed"/> are the game's own five, which a player may
+        /// well have put there by hand -- those are worth adopting before anything deletes them.
+        /// </summary>
+        internal static void StrayPins(out int orphans, out int placed)
+        {
+            orphans = 0;
+            placed = 0;
+            if (Map == null) return;
+            foreach (var pin in Access.Pins(Map))
+            {
+                if (pin == null || IsOurs(pin)) continue;
+                int type = (int)pin.m_type;
+                // Custom first: IsPlayerPlaceable counts ours among the placeable ones.
+                if (PinTypes.IsCustom(type)) orphans++;
+                else if (PinTypes.IsPlayerPlaceable(type)) placed++;
+            }
+        }
+
         /// <summary>Deletes vanilla local player-placed pins that are not on the personal map, including stale ones imported from tables.</summary>
         internal static int ClearLocalPins()
         {
@@ -1630,7 +1652,31 @@ namespace TheGreatestMap
             __state = new List<Minimap.PinData>();
             foreach (var pin in Access.Pins(__instance))
             {
-                if (!pin.m_save || !ClientPins.IsOurs(pin)) continue;
+                if (!pin.m_save) continue;
+                // Ours by its record, or ours by its number. The second half is what was missing,
+                // and it is the same rule the cartography table has always used a few lines down.
+                //
+                // A type at or above IconRegistry.Base is a number this mod made up, so nothing
+                // else can have created that pin and it has no meaning to anyone else -- the
+                // numbers are handed out in the order icons are first met and so do not even mean
+                // the same thing in the next session. Such a pin has no business in the character
+                // file under any circumstance.
+                //
+                // Being ours was decided only by a dictionary held in memory, and a marker that
+                // fell out of it -- added to the game's list before being written down, so
+                // anything throwing in between stranded it -- kept m_save and was written to the
+                // character. It came back at the next login as an ordinary pin with no record
+                // behind it, was saved again, and the pile grew every session: nothing swept it,
+                // because it carries m_ownerID 0 like all of ours and both sweeps spare those.
+                // Nothing of ours could hide it either, since every switch asks the record it no
+                // longer had, which is how a map could be carpeted while the panel honestly
+                // reported the few markers it knew about. One player reached 24,205 of these
+                // against 5,087 real markers, each wearing whatever picture its stale number
+                // happened to mean this time.
+                //
+                // Holding them back here also clears up the ones already written: they are loaded
+                // once more and then left out of the next save, so the pile drains by itself.
+                if (!ClientPins.IsOurs(pin) && !PinTypes.IsCustom((int)pin.m_type)) continue;
                 pin.m_save = false;
                 __state.Add(pin);
             }
@@ -1705,26 +1751,77 @@ namespace TheGreatestMap
     [HarmonyPatch(typeof(Minimap), "UpdatePins")]
     internal static class Minimap_UpdatePins_Style_Patch
     {
-        private static void Postfix(Minimap __instance)
+        /// <summary>
+        /// What this mod does to the map after vanilla has laid it out, in order, each stage
+        /// named so a failure can say which one it was.
+        ///
+        /// <para>The order is the meaning and must not be shuffled. The styling settles what is
+        /// shown and thins the crowd; the master switch runs before the labels so they see a pin
+        /// already put away and leave its name alone rather than hanging it over empty ground;
+        /// the spotlight runs last because vanilla has just built markers afresh and a new one
+        /// starts visible.</para>
+        ///
+        /// <para>The delegates hold nothing and are built once: a lambda that captures no
+        /// variable is kept in a static by the compiler, so running this list costs no
+        /// allocation. Capturing the map instead would make eight objects on every step the
+        /// player takes, which is how often this runs.</para>
+        /// </summary>
+        private static readonly string[] _stageNames =
         {
-            ClientPins.StylePins(__instance);
+            "styling", "portals to the front", "erasures", "survey preview",
+            "master switch", "world landmarks", "labels", "player spotlight",
+        };
+
+        private static readonly System.Action<Minimap>[] _stages =
+        {
+            m => ClientPins.StylePins(m),
             // Vanilla may have added or reordered elements, which would bury the portals again.
-            Portals.BringToFront();
-            Erasures.Paint();
+            m => Portals.BringToFront(),
+            m => Erasures.Paint(),
             // What a survey would write, if one has been asked for and not yet applied.
-            SurveyPreview.Paint();
-            // Before the labels, which then see a pin this has just put away and leave its name
-            // alone rather than hanging it over empty ground.
-            ClientPins.AfterLayoutMaster(__instance);
+            m => SurveyPreview.Paint(),
+            m => ClientPins.AfterLayoutMaster(m),
             // The world's own landmarks, hidden one pin at a time because the game draws them all
             // as one kind of pin and the list tells them apart.
-            WorldPins.AfterLayout(__instance);
-            ClientPins.AfterLayoutLabels(__instance);
-            // Vanilla has just built markers afresh, and a new one starts visible. Putting the
-            // spotlight's out here rather than waiting for our own Update keeps them from showing
-            // for the frame between: the two Updates have no order between them, so zooming or
-            // panning -- which is what makes vanilla rebuild -- made every label blink.
-            PlayerSpotlight.AfterLayout(__instance);
+            m => WorldPins.AfterLayout(m),
+            m => ClientPins.AfterLayoutLabels(m),
+            m => PlayerSpotlight.AfterLayout(m),
+        };
+
+        /// <summary>Stages that have already been complained about, so each is said once.</summary>
+        private static readonly HashSet<string> _reported = new HashSet<string>();
+
+        private static void Postfix(Minimap __instance)
+        {
+            // Each stage on its own, because they used to share one fate. A throw in the first --
+            // the styling, which is the pass that hides and thins -- skipped the seven after it,
+            // labels included, and left every marker in view drawn at vanilla's size with no
+            // name on it. The panel went on reporting the intended count the whole time, because
+            // that is counted from the switches rather than from the screen, so the map and the
+            // number it was showing could disagree completely with nothing saying why.
+            for (int i = 0; i < _stages.Length; i++)
+            {
+                try
+                {
+                    _stages[i](__instance);
+                }
+                catch (System.Exception e)
+                {
+                    // Said once per stage. This runs every time the map is laid out again, which
+                    // on the minimap is every step the player takes, so a stage that fails every
+                    // frame would otherwise write the log faster than anyone could read it and
+                    // cost more than whatever it was failing to do.
+                    if (!_reported.Add(_stageNames[i])) continue;
+                    TheGreatestMapMod.Log.LogError(
+                        $"[TheGreatestMap] The '{_stageNames[i]}' step of drawing the map failed; the steps after it " +
+                        "still ran, and this is said once rather than every frame. Markers may be drawn that should " +
+                        $"be hidden, at the wrong size, or without their names. {e}");
+                }
+            }
+            // A stage that failed is tried again on the next layout rather than switched off for
+            // the session: one can fail while the HUD is being rebuilt under it and be perfectly
+            // well afterwards, and giving up would turn a single blink into a map that stays
+            // wrong until the game is restarted.
         }
     }
 }

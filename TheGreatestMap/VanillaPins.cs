@@ -226,8 +226,12 @@ namespace TheGreatestMap
         internal static void TogglePing(Minimap map)
         {
             if (map == null) return;
+            // Asked before Cancel, which now puts the ping away itself: reading it afterwards
+            // always said "not armed", and a press on the lit row armed it again instead of
+            // turning it off.
+            bool was = PingArmed(map);
             ManualPlace.Cancel();
-            Access.SelectIcon(map, PingArmed(map) ? Minimap.PinType.Icon0 : Minimap.PinType.Ping);
+            Access.SelectIcon(map, was ? Minimap.PinType.Icon0 : Minimap.PinType.Ping);
         }
 
         internal static bool PingArmed(Minimap map)
@@ -299,7 +303,7 @@ namespace TheGreatestMap
             }
         }
 
-        internal static string IconKey(Minimap.PinType type) => "pin:" + type;
+        internal static string IconKey(Minimap.PinType type) => IconRegistry.KeyForVanilla((int)type);
 
         internal static string Tip(Minimap.PinType type)
         {
