@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.8.1 — unreleased
+## 4.8.1 — 2026-11-06
 
 - Readying the ping now wears off when you shut the map, like every other kind: a forgotten one
   turned your next double-click into a real ping to everybody in range instead of a marker.
