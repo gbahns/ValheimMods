@@ -203,12 +203,6 @@ namespace TheGreatestMap
             {
                 var stored = Utils.Decompress(Convert.FromBase64String(data));
                 Store = Adopt(MapStore.FromBytes(stored));
-                int crops = Store.ForgetCropErasures();
-                if (crops > 0)
-                {
-                    TheGreatestMapMod.Log.LogInfo(
-                        $"[TheGreatestMap] Forgot {crops} crop erasure(s) from your own map.");
-                }
                 // On every load; see PinStore for why it is no longer tied to the conversion.
                 int ghosts = Store.ForgetGhosts();
                 if (ghosts > 0)

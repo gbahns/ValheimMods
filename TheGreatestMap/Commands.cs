@@ -33,6 +33,16 @@ namespace TheGreatestMap
                     Say(args, $"Pins with no record behind them: {orphans} left over from this mod, {placed} placed the game's own way." +
                               (orphans > 0 ? " The leftovers are safe to delete and drain by themselves now; tgm_clearlocal clears them at once." : "") +
                               (placed > 0 ? " tgm_import adopts the placed ones before tgm_clearlocal would delete them." : ""));
+                    if (orphans > 0)
+                        Say(args, "The leftovers are wearing: " + ClientPins.LeftoverSprites() + ".");
+                    string ghosts = ClientPins.SavedGhosts(out int ghostCount);
+                    if (ghostCount > 0)
+                        Say(args, $"Pins the game never saves, saved anyway: {ghostCount} -- {ghosts}. " +
+                                  "Nothing running could have made these; tgm_clearlocal takes them with the leftovers.");
+                    string others = ClientPins.OtherPins(out int otherCount);
+                    if (otherCount > 0)
+                        Say(args, $"Pins of the game's other kinds, which neither count above includes and nothing here " +
+                                  $"deletes: {otherCount} -- {others}.");
                     Say(args, Thinning.Describe());
                     if (PinStore.IsServer)
                     {

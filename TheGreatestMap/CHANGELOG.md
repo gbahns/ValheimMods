@@ -1,5 +1,24 @@
 # Changelog
 
+## 4.8.3 — 2026-11-06
+
+- Markers an older version left in the character file are taken off the map at login instead of
+  waiting for tgm_clearlocal. They wore whatever picture their stale number meant that session,
+  no switch could hide them and the panel could not count them.
+- An erased crop stays erased. The erasure used to be forgotten at the next login, so a crop
+  another player had recorded came straight back at the next sync.
+- The log says so when markers lose the record behind them, and when they are taken off again.
+  Such a marker is drawn but cannot be hidden or counted, so until now nothing said it was there.
+- tgm_status counts the game's other kinds of pin -- memorials, Hildir marks, death markers,
+  pings and the rest. Its two counts covered two of the game's eighteen kinds, so a map covered
+  in the other sixteen was reported as having nothing on it.
+- tgm_status names the picture each leftover is actually wearing. A leftover keeps the number it
+  was saved under and that number means something different every login, so the same markers come
+  back as rings one evening and houses the next.
+- Pings, shouts, other players, the world's landmarks, the bed and the event marks are made
+  afresh by the game every few seconds and never saved. One that was saved anyway came out of a
+  file, cannot be told from the live one, and is now cleared at login and by tgm_clearlocal.
+
 ## 4.8.2 — 2026-11-06
 
 - tgm_clearlocal no longer deletes the markers you placed the game's own way; it takes only this

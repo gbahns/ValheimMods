@@ -64,6 +64,7 @@ namespace TheGreatestMap
             Focus.Clear();
             Locate.Reset();
             Watchdog.Reset();
+            StrayWatch.Reset();
             Tilled.Reset();
             Erasures.Reset();
             SurveyPreview.Reset();
@@ -373,6 +374,125 @@ namespace TheGreatestMap
         }
 
         /// <summary>
+        /// Pins of a kind the game never writes down that are carrying save anyway, counted by
+        /// kind. See <see cref="PinTypes.IsNeverSaved"/>: each one came out of a file or a table
+        /// and the running game cannot have made it.
+        /// </summary>
+        internal static string SavedGhosts(out int total)
+        {
+            total = 0;
+            if (Map == null) return "";
+            var byKind = new Dictionary<Minimap.PinType, int>();
+            foreach (var pin in Access.Pins(Map))
+            {
+                if (!IsSavedGhost(pin)) continue;
+                byKind.TryGetValue(pin.m_type, out int n);
+                byKind[pin.m_type] = n + 1;
+                total++;
+            }
+            return Listed(byKind);
+        }
+
+        /// <summary>
+        /// A pin the game would never have saved, saved. Asked of this mod's own drawings too --
+        /// through the same test the counting panel uses -- because the portals, the ships, the
+        /// carts and the erasure ghosts are ours and wear whatever kind suits them.
+        /// </summary>
+        private static bool IsSavedGhost(Minimap.PinData pin)
+        {
+            return pin != null && pin.m_save && PinTypes.IsNeverSaved(pin.m_type)
+                   && !IsOurs(pin) && !VanillaPins.Drew(pin);
+        }
+
+        /// <summary>
+        /// The leftovers by the picture each is actually wearing, named as the game names it.
+        ///
+        /// <para>A leftover keeps the number it was saved with, and that number means whatever
+        /// this session happened to hand it -- the numbers are given out in the order icons are
+        /// first met, so the same marker comes back as a different thing every login. Reading
+        /// the sprite's own name is the only way to say what a player is looking at, and it is
+        /// the question their screenshots could not answer: a map of rings and a map of houses
+        /// can be the same pins on two evenings.</para>
+        /// </summary>
+        internal static string LeftoverSprites()
+        {
+            if (Map == null) return "";
+            var byName = new Dictionary<string, int>();
+            foreach (var pin in Access.Pins(Map))
+            {
+                if (pin == null || IsOurs(pin) || !PinTypes.IsCustom((int)pin.m_type)) continue;
+                string name = pin.m_icon != null ? pin.m_icon.name : "(no picture at all)";
+                byName.TryGetValue(name, out int n);
+                byName[name] = n + 1;
+            }
+            if (byName.Count == 0) return "";
+            var names = new List<KeyValuePair<string, int>>(byName);
+            names.Sort((a, b) => b.Value.CompareTo(a.Value));
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < names.Count && i < 6; i++)
+            {
+                if (sb.Length > 0) sb.Append(", ");
+                sb.Append(names[i].Key).Append(" ").Append(names[i].Value);
+            }
+            if (names.Count > 6) sb.Append(" and ").Append(names.Count - 6).Append(" more");
+            return sb.ToString();
+        }
+
+        /// <summary>"Ping 4984, None 12", biggest first.</summary>
+        private static string Listed(Dictionary<Minimap.PinType, int> byKind)
+        {
+            if (byKind.Count == 0) return "";
+            var kinds = new List<KeyValuePair<Minimap.PinType, int>>(byKind);
+            kinds.Sort((a, b) => b.Value.CompareTo(a.Value));
+            var sb = new System.Text.StringBuilder();
+            foreach (var kv in kinds)
+            {
+                if (sb.Length > 0) sb.Append(", ");
+                sb.Append(kv.Key).Append(" ").Append(kv.Value);
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Everything else on the map: pins that are neither ours nor one of the five a player
+        /// can place, counted by what kind of pin they are. Returns a readable list and sets
+        /// <paramref name="total"/>.
+        ///
+        /// <para>Written because the two counts above are a report on two of the game's eighteen
+        /// kinds of pin. Ours are the numbers above a hundred and the placed ones are Icon0 to
+        /// Icon4; the other sixteen -- a death marker, a bed, a shout, a world landmark, a boss,
+        /// another player, a random event, a ping, an event area, Hildir's three, a memorial --
+        /// were counted by neither bucket and deleted by nothing, tgm_clearlocal all included.
+        /// So "0 left over from this mod" was a true sentence about two kinds that read like a
+        /// statement about the whole map, and a player whose map was covered in memorials and
+        /// Hildir marks and ping rings could run the command, be told there was nothing to
+        /// delete, and have no way left to ask.</para>
+        ///
+        /// <para>Nothing here is deleted by this mod. Several of these are the game's own and
+        /// belong to it -- the landmarks, the boss altars, the live players and pings -- and some
+        /// are a player's own death marker or bed. This says what is there and leaves it alone;
+        /// knowing the number is the part that was missing.</para>
+        /// </summary>
+        internal static string OtherPins(out int total)
+        {
+            total = 0;
+            if (Map == null) return "";
+            var byKind = new Dictionary<Minimap.PinType, int>();
+            foreach (var pin in Access.Pins(Map))
+            {
+                if (pin == null || IsOurs(pin)) continue;
+                // Counted on their own line, so the two numbers never say the same pin twice.
+                if (IsSavedGhost(pin)) continue;
+                int type = (int)pin.m_type;
+                if (PinTypes.IsCustom(type) || PinTypes.IsPlayerPlaceable(type)) continue;
+                byKind.TryGetValue(pin.m_type, out int n);
+                byKind[pin.m_type] = n + 1;
+                total++;
+            }
+            return Listed(byKind);
+        }
+
+        /// <summary>
         /// Deletes pins with no record of ours behind them. Leftovers of this mod's own -- which
         /// carry a type number nothing else could have made -- always go.
         /// <paramref name="includePlaced"/> also takes the ones a player put down the game's own
@@ -395,7 +515,7 @@ namespace TheGreatestMap
                 if (IsOurs(pin)) continue;
                 int type = (int)pin.m_type;
                 // Custom asked first: IsPlayerPlaceable counts ours among the placeable ones.
-                bool leftover = PinTypes.IsCustom(type);
+                bool leftover = PinTypes.IsCustom(type) || IsSavedGhost(pin);
                 if (!leftover && !PinTypes.IsPlayerPlaceable(type)) continue;
                 if (!leftover && !includePlaced) { kept++; continue; }
                 Map.RemovePin(pin);
@@ -1157,6 +1277,51 @@ namespace TheGreatestMap
             if (Store.Delete(id, out _)) PersonalMap.Touch();
         }
 
+        /// <summary>
+        /// The character file has just been read back. Take out every pin wearing one of this
+        /// mod's own numbers, because not one of them can mean anything.
+        ///
+        /// <para>The numbers are handed out in the order icons are first met and so do not even
+        /// mean the same thing twice: a pin saved as 114 comes back as whatever 114 happens to be
+        /// today, which is how a map filled with tar pits and runestones and the pins somebody
+        /// placed by hand came back wearing the wrong pictures and then the right ones. Nothing
+        /// is behind them -- the markers themselves are saved with the character, separately, and
+        /// are about to be drawn afresh -- so there is nothing to weigh and nothing to lose.</para>
+        ///
+        /// <para>This runs inside the profile load, before any marker of ours is drawn, so every
+        /// pin of our kind in the list at this moment is a leftover by definition. 4.8.1 stopped
+        /// them being written; this stops the ones already written from ever being seen again,
+        /// which matters because the player could not see them for what they were: they carry no
+        /// record, so not one of this mod's switches could hide them and the panel could not
+        /// count them. One player was carpeted with 4,984 of them over a map of 5,148 real
+        /// markers and had to be told a console command to get his map back.</para>
+        /// </summary>
+        internal static void DropProfileLeftovers(Minimap map)
+        {
+            if (map == null) return;
+            int n = 0;
+            int ghosts = 0;
+            foreach (var pin in new List<Minimap.PinData>(Access.Pins(map)))
+            {
+                if (pin == null || IsOurs(pin)) continue;
+                bool ours = PinTypes.IsCustom((int)pin.m_type);
+                if (!ours && !IsSavedGhost(pin)) continue;
+                map.RemovePin(pin);
+                if (ours) n++; else ghosts++;
+            }
+            if (n > 0)
+                TheGreatestMapMod.Log.LogInfo(
+                    $"[TheGreatestMap] Took {n} marker(s) of this mod's off the map that an older version had " +
+                    "left in the character file. They had no record behind them and no settled picture; the " +
+                    "markers themselves are saved with the character and are unaffected.");
+            if (ghosts > 0)
+                TheGreatestMapMod.Log.LogInfo(
+                    $"[TheGreatestMap] Took {ghosts} pin(s) off the map that the game never saves -- pings, " +
+                    "shouts, other players, the world's own landmarks -- and which were saved anyway. The game " +
+                    "makes those afresh from what is happening now, so a saved one is a picture of a moment " +
+                    "long past and nothing can tell it from the moment itself.");
+        }
+
         /// <summary>Vanilla cleared every pin (profile load). Our PinData objects are gone; records stay.</summary>
         internal static void OnPinsCleared()
         {
@@ -1555,11 +1720,20 @@ namespace TheGreatestMap
         private static void Postfix() => ClientPins.OnPinsCleared();
     }
 
+    // Loading the vanilla player profile. Vanilla empties the pin list and fills it from the
+    // file, so at this moment every pin wearing one of our numbers was put there by the file and
+    // not by us -- nothing of ours is drawn until RebuildPins two lines down.
+    //
+    // Clearing up after the load rather than refusing the pins as they arrive: if the load
+    // throws, which it does on a map of the wrong size, nothing has been promised and the next
+    // load tries again. A flag set on the way in could be left standing by that same throw, and
+    // a stuck flag here would refuse every marker this mod ever drew.
     [HarmonyPatch(typeof(Minimap), "SetMapData")]
     internal static class Minimap_SetMapData_Patch
     {
-        private static void Postfix()
+        private static void Postfix(Minimap __instance)
         {
+            ClientPins.DropProfileLeftovers(__instance);
             ClientPins.SweepImportedPlayerPins();
             ClientPins.RebuildPins();
         }

@@ -113,7 +113,7 @@ namespace TheGreatestMap
         /// they are asked about anyway, because that is a fact about today's icons and not a rule
         /// anybody promised to keep.</para>
         /// </summary>
-        private static bool Drew(Minimap.PinData pin)
+        internal static bool Drew(Minimap.PinData pin)
         {
             if (ClientPins.IsOurs(pin)) return true;
             foreach (var portal in Portals.DrawnPins) if (portal == pin) return true;

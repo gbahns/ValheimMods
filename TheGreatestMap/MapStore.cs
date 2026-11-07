@@ -301,65 +301,20 @@ namespace TheGreatestMap
             return ghosts.Count;
         }
 
-        /// <summary>
-        /// Forget the erasures left by clearing crops off a farm. Returns how many went.
-        ///
-        /// A marker written for a planted turnip was never a discovery, and the record of
-        /// rubbing one out is not worth keeping either. There were 141 of these on the live map
-        /// against 281 real ones, and unlike a real erasure they can never be needed again:
-        /// recording refuses to write a crop on tilled ground or inside a base in the first
-        /// place, so there is nothing for an erasure to hold back.
-        ///
-        /// They are forgotten on load rather than never written, because the erasure is also
-        /// how the removal travels. A client that merely dropped the marker would have it
-        /// handed straight back by the server at the next merge and would drop it again three
-        /// seconds later, round and round, while the farm stayed exactly as it was. So the
-        /// erasure does its work during the session and is gone by the next load, which costs
-        /// nothing and leaves nothing behind.
-        ///
-        /// Only the two categories you can actually plant. A mushroom or a berry inside
-        /// somebody's walls could equally have been rubbed out on purpose, and an erasure that
-        /// might have been meant is one to keep.
-        ///
-        /// <para><b>And never one somebody meant.</b> Seeds and plants are not only the farmed
-        /// ones: wild flax, wild barley and fiddlehead are the Plants kind and grow in the open,
-        /// where a player may well erase one on purpose -- and this was forgetting that erasure
-        /// by the next login, so the marker came back at the next merge. An erased marker coming
-        /// back is the one thing this mod was built to prevent.</para>
-        ///
-        /// <para>What tells them apart was already being written down. Erasing a marker on
-        /// purpose suppresses its spot as well -- that is what "do not record this again" means
-        /// -- while the crop sweep erases without suppressing, because a crop on tilled ground is
-        /// refused by the recorder anyway and needs nothing held back. So a tombstone whose spot
-        /// is suppressed was meant, and stays.</para>
-        /// </summary>
-        public int ForgetCropErasures()
-        {
-            if (Tombstones.Count == 0) return 0;
-            var crops = new List<PinKey>();
-            foreach (var kv in Tombstones)
-            {
-                var cat = Catalog.CategoryOf(kv.Key.Source);
-                if (cat != Category.Seeds && cat != Category.Plants) continue;
-                if (Meant(kv.Key.Pos)) continue;
-                crops.Add(kv.Key);
-            }
-            foreach (var key in crops) Tombstones.Remove(key);
-            return crops.Count;
-        }
-
-        /// <summary>
-        /// Was this spot erased on purpose? A suppression is only ever written by somebody
-        /// erasing a marker themselves, so one standing here says this erasure was a decision
-        /// rather than tidying. Within a meter, which is the distance a suppression already uses
-        /// to decide it is about the same place.
-        /// </summary>
-        private bool Meant(Vector3 pos)
-        {
-            foreach (var s in Suppressions)
-                if (Geo.FlatDistance(s.Pos, pos) < 1f) return true;
-            return false;
-        }
+        // An erasure for a crop used to be forgotten at the next load, on the reasoning that a
+        // planted turnip was never a discovery and that recording refuses to write a crop on
+        // tilled ground anyway, so the erasure had nothing left to hold back.
+        //
+        // The second half of that is only true of your own recording. An erasure is also the
+        // only thing that stops a marker somebody else already wrote down from being handed back
+        // at the next merge, and forgetting it reopens that gate every single login: a player
+        // cleared the crops off his base, found them back the next evening, cleared them again,
+        // and the copy that kept returning belonged to another player who had walked past the
+        // same spot a month earlier. There was no way for him to win, and nothing said why.
+        //
+        // So they stay. The cost is one tombstone per crop ever rubbed out -- 141 on the live
+        // map, about 7 KB -- and it is not even permanent: the erasure only outranks a marker
+        // older than itself, so a crop genuinely found there again later still comes through.
 
         /// <summary>A position as one number, for gathering what stands in the same spot.</summary>
         private static long Place(Vector3 pos) =>
