@@ -30,7 +30,7 @@ namespace TheGreatestMap
     {
         public const string ModGuid    = "DeathMonger.TheGreatestMap";
         public const string ModName    = "The Greatest Map";
-        public const string ModVersion = "4.8.3";
+        public const string ModVersion = "4.8.4";
 
         // Oldest version whose shared-marker wire format this build still speaks. ServerSync
         // refuses peers below this, so bump it only when the format or an RPC changes, not on
@@ -112,6 +112,9 @@ namespace TheGreatestMap
                 MinimumRequiredVersion = MinCompatibleVersion,
             };
 
+            // Before the settings, because binding them runs the one-time passes and those ask
+            // this what has already been done.
+            Progress.Load(Config);
             TgmConfig.Bind(this);
             WatchConfigFile();
             Commands.Register();

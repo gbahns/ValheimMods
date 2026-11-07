@@ -123,12 +123,21 @@ namespace TheGreatestMap
                     SyncEngine.SyncWithServer(announceNothing: true, asked: true);
                 }));
 
-            new Terminal.ConsoleCommand("tgm_sync", "Read and write the nearest cartography table now",
+            new Terminal.ConsoleCommand("tgm_sync", "Read and write the nearest cartography table now. tgm_resync merges with the shared map without a table",
                 (Terminal.ConsoleEvent)(args =>
                 {
                     var player = Player.m_localPlayer;
                     if (player == null) { args.Context.AddString("No player."); return; }
-                    args.Context.AddString(TableSync.SyncNow(player, announceMissing: false) ? "Synced." : "No cartography table within reach.");
+                    // Not just "within reach": reach is a setting, it defaults to one meter from
+                    // the table's edge, and a player who is standing at the table and told they
+                    // are not has been told nothing. Said with the number, and with the way out --
+                    // the other command does the same work and needs no table at all, which is a
+                    // thing nobody could have guessed from the two names.
+                    args.Context.AddString(TableSync.SyncNow(player, announceMissing: false)
+                        ? "Synced."
+                        : $"No cartography table within {TgmConfig.TableSyncRadius.Value:0.#} m of you " +
+                          "(the Sync Radius setting, measured to the table's edge). tgm_resync merges with " +
+                          "the shared map without a table.");
                 }));
 
             new Terminal.ConsoleCommand("tgm_forget", "Forget everything found but not yet recorded (nothing is deleted from the map)",

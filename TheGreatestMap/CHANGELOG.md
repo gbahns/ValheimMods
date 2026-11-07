@@ -1,5 +1,16 @@
 # Changelog
 
+## 4.8.4 — 2026-11-06
+
+- The live ships, carts, portals and erased-marker ghosts are no longer counted as markers that
+  have lost their record, and tgm_clearlocal no longer deletes them. They are drawn from what is
+  happening now rather than from a record, and only the counting panel knew that.
+- "No cartography table within reach" now says how near you have to be and that tgm_resync does
+  the same work without a table. The reach is a setting and defaults to a meter.
+- The Internal settings are gone. They were never settings -- they are this mod's note of what it
+  has already done once -- and a mod manager showed six boxes with a blank default that filled
+  themselves in. They move to progress.txt beside your maps, carried over at the next login.
+
 ## 4.8.3 — 2026-11-06
 
 - Markers an older version left in the character file are taken off the map at login instead of

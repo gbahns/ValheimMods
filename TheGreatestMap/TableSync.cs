@@ -61,7 +61,9 @@ namespace TheGreatestMap
             var table = FindNearestTable(player);
             if (table == null)
             {
-                if (announceMissing) TheGreatestMapMod.Message("No cartography table within reach.");
+                if (announceMissing)
+                    TheGreatestMapMod.Message(
+                        $"No cartography table within {TgmConfig.TableSyncRadius.Value:0.#} m. tgm_resync merges without one.");
                 return false;
             }
             _lastSync[table.GetInstanceID()] = Time.time;

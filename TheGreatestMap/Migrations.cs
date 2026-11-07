@@ -58,7 +58,7 @@ namespace TheGreatestMap
 
         private static System.Version Stamp(string map)
         {
-            string all = TgmConfig.MapsTidied != null ? TgmConfig.MapsTidied.Value : "";
+            string all = Progress.MapsTidied;
             if (string.IsNullOrEmpty(all) || string.IsNullOrEmpty(map)) return null;
             foreach (var entry in all.Split(';'))
             {
@@ -74,11 +74,10 @@ namespace TheGreatestMap
         /// <summary>Write down that this map has been tidied, replacing any older entry for it.</summary>
         private static void MarkTidied()
         {
-            if (TgmConfig.MapsTidied == null) return;
             string map = PersonalMap.Label;
             if (string.IsNullOrEmpty(map) || map.IndexOf('=') >= 0 || map.IndexOf(';') >= 0) return;
             var kept = new System.Collections.Generic.List<string>();
-            foreach (var entry in (TgmConfig.MapsTidied.Value ?? "").Split(';'))
+            foreach (var entry in Progress.MapsTidied.Split(';'))
             {
                 string one = entry.Trim();
                 if (one.Length == 0) continue;
@@ -87,7 +86,7 @@ namespace TheGreatestMap
                 kept.Add(one);
             }
             kept.Add(map + "=" + TheGreatestMapMod.ModVersion);
-            TgmConfig.MapsTidied.Value = string.Join(";", kept.ToArray());
+            Progress.MapsTidied = string.Join(";", kept.ToArray());
         }
 
         internal static void Reset()

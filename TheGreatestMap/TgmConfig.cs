@@ -33,12 +33,6 @@ namespace TheGreatestMap
         // ── what to draw ────────────────────────────────────────────────────────────
         internal static readonly Dictionary<Category, ConfigEntry<bool>> ShowKind = new Dictionary<Category, ConfigEntry<bool>>();
         internal static ConfigEntry<string> HiddenIcons;
-        internal static ConfigEntry<string> MapsTidied;
-        internal static ConfigEntry<string> CatalogOrdered;
-        internal static ConfigEntry<string> CatalogIconsFixed;
-        internal static ConfigEntry<string> CatalogCutsMade;
-        internal static ConfigEntry<string> CatalogMovesMade;
-        internal static ConfigEntry<string> CatalogEntriesFixed;
         internal static ConfigEntry<string> IconSizes;
         internal static ConfigEntry<TypeOrder> TypeRowOrder;
         internal static ConfigEntry<bool> ShowCounts;
@@ -172,11 +166,11 @@ namespace TheGreatestMap
         /// </summary>
         private static void OrderTheCatalogOnce()
         {
-            if (CatalogOrdered == null) return;
+            string stamp = Progress.CatalogOrdered;
             try
             {
-                if (!string.IsNullOrEmpty(CatalogOrdered.Value)
-                    && new System.Version(CatalogOrdered.Value) >= new System.Version(TheGreatestMapMod.ModVersion)) return;
+                if (!string.IsNullOrEmpty(stamp)
+                    && new System.Version(stamp) >= new System.Version(TheGreatestMapMod.ModVersion)) return;
             }
             catch (Exception) { /* unreadable stamp: do it again, which costs nothing */ }
 
@@ -189,7 +183,7 @@ namespace TheGreatestMap
                 kv.Value.Value = now;
                 moved.Add(Categories.Label(kv.Key));
             }
-            CatalogOrdered.Value = TheGreatestMapMod.ModVersion;
+            Progress.CatalogOrdered = TheGreatestMapMod.ModVersion;
             if (moved.Count > 0)
                 TheGreatestMapMod.Log.LogInfo(
                     "[TheGreatestMap] Put these Catalog lines back into the order this version ships them in, so the " +
@@ -306,8 +300,7 @@ namespace TheGreatestMap
 
         private static void MoveShippedLinesOnce()
         {
-            if (CatalogMovesMade == null) return;
-            string done = CatalogMovesMade.Value ?? "";
+            string done = Progress.CatalogMovesMade;
             var made = new List<string>();
             foreach (var move in ShippedMoves)
             {
@@ -329,7 +322,7 @@ namespace TheGreatestMap
             }
             if (made.Count == 0) return;
             foreach (var id in made) done = done.Length == 0 ? id : done + "," + id;
-            CatalogMovesMade.Value = done;
+            Progress.CatalogMovesMade = done;
         }
 
         /// <summary>
@@ -354,8 +347,7 @@ namespace TheGreatestMap
 
         private static void FixShippedEntriesOnce()
         {
-            if (CatalogEntriesFixed == null) return;
-            string done = CatalogEntriesFixed.Value ?? "";
+            string done = Progress.CatalogEntriesFixed;
             var made = new List<string>();
             foreach (var fix in ShippedEntries)
             {
@@ -381,13 +373,12 @@ namespace TheGreatestMap
             // separates the entries themselves. A bar would have been wrong: every entry with an
             // icon has one.
             foreach (var id in made) done = done.Length == 0 ? id : done + "," + id;
-            CatalogEntriesFixed.Value = done;
+            Progress.CatalogEntriesFixed = done;
         }
 
         private static void CutShippedLinesOnce()
         {
-            if (CatalogCutsMade == null) return;
-            string done = CatalogCutsMade.Value ?? "";
+            string done = Progress.CatalogCutsMade;
             var made = new List<string>();
             foreach (var cut in ShippedCuts)
             {
@@ -416,13 +407,12 @@ namespace TheGreatestMap
             }
             if (made.Count == 0) return;
             foreach (var id in made) done = done.Length == 0 ? id : done + "," + id;
-            CatalogCutsMade.Value = done;
+            Progress.CatalogCutsMade = done;
         }
 
         private static void FixShippedIconsOnce()
         {
-            if (CatalogIconsFixed == null) return;
-            string done = CatalogIconsFixed.Value ?? "";
+            string done = Progress.CatalogIconsFixed;
             var made = new List<string>();
             foreach (var fix in ShippedIcons)
             {
@@ -447,7 +437,7 @@ namespace TheGreatestMap
             }
             if (made.Count == 0) return;
             foreach (var id in made) done = done.Length == 0 ? id : done + "," + id;
-            CatalogIconsFixed.Value = done;
+            Progress.CatalogIconsFixed = done;
         }
 
         private static bool Listed(string all, string one)
@@ -724,38 +714,6 @@ namespace TheGreatestMap
                 "margin, and two markers of the same size then look like two sizes. This is the list of the ones " +
                 "somebody has judged by eye; nothing measures it. Empty the line to draw them all as the game does.");
             IconSizes.SettingChanged += (_, __) => ClientPins.Restyle();
-
-            CatalogEntriesFixed = mod.BindLocal("Internal", "Catalog Entries Fixed", "",
-                "Which of the catalog entries this mod has changed its mind about have already been corrected in your " +
-                "own lines, so each is corrected once. An entry is only changed where your line still says word for " +
-                "word what the mod shipped; rename one yourself and it stays renamed.");
-
-            CatalogMovesMade = mod.BindLocal("Internal", "Catalog Moves Made", "",
-                "Which of the types this mod has moved from one kind to another have already been taken out of the " +
-                "line they used to sit in, so each is moved once. Unlike a cut this adds nothing to the exclusion " +
-                "list: the type is still recorded, under its new kind, whose own line names it.");
-
-            CatalogCutsMade = mod.BindLocal("Internal", "Catalog Cuts Made", "",
-                "Which of the types this mod has decided should never be recorded have already been taken out of your " +
-                "Catalog lines, so each is taken out once. A type the mod shipped and then thought better of is only " +
-                "dropped where your line still has it; add it back by hand and it stays back.");
-
-            CatalogIconsFixed = mod.BindLocal("Internal", "Catalog Icons Fixed", "",
-                "Which of the icon corrections below this mod has already made to your Catalog lines, so each is made " +
-                "once and never again. An icon the mod shipped and then changed its mind about is corrected on a line " +
-                "that still says exactly what the mod put there; change one yourself afterwards and it stays changed.");
-
-            CatalogOrdered = mod.BindLocal("Internal", "Catalog Ordered", "",
-                "Which version of this mod last put your Catalog lines into the order it ships them in. The order of " +
-                "those lines meant nothing until the marker list learned to read it, so a line saved by an older " +
-                "version is in whatever order that version happened to ship. This is done once, keeping every entry " +
-                "and every word of each: afterwards the order is yours, and reordering a line reorders the list.");
-
-            MapsTidied = mod.BindLocal("Internal", "Maps Tidied", "",
-                "Which version of this mod last brought each of your maps up to date, as name=version pairs. Written " +
-                "by the mod, not meant to be edited: the passes that fill in markers written by older versions read " +
-                "it to know they have already run on a map, so each of them runs once rather than at every login " +
-                "forever. Clearing a map's entry makes them all run on it again.");
 
             HiddenIcons = mod.BindLocal("Display", "Hidden Icons", "",
                 "Comma-separated marker icons never drawn on your map, as item prefab names or icon keys, e.g. Dandelion,Thistle,pin:Icon1. " +

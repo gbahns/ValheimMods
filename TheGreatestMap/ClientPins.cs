@@ -363,14 +363,46 @@ namespace TheGreatestMap
             orphans = 0;
             placed = 0;
             if (Map == null) return;
+            var ours = DrawnByUs();
             foreach (var pin in Access.Pins(Map))
             {
-                if (pin == null || IsOurs(pin)) continue;
+                if (pin == null || ours.Contains(pin)) continue;
                 int type = (int)pin.m_type;
                 // Custom first: IsPlayerPlaceable counts ours among the placeable ones.
                 if (PinTypes.IsCustom(type)) orphans++;
                 else if (PinTypes.IsPlayerPlaceable(type)) placed++;
             }
+        }
+
+        private static readonly HashSet<Minimap.PinData> _drawnByUs = new HashSet<Minimap.PinData>();
+
+        /// <summary>
+        /// Every pin this mod put on the map, gathered once for a sweep over the whole list.
+        ///
+        /// <para>Being ours is not the same as having a record. The markers have records and live
+        /// in the index; the live ships, carts and portals, the ghosts of erased markers and a
+        /// survey's preview do not -- they are drawn from what is happening now and tracked in
+        /// their own lists. Every one of them wears a number of this mod's own making.</para>
+        ///
+        /// <para>Asking only the index called all of those leftovers. The counting panel had the
+        /// right test and the sweeps did not, so the status line reported a player's twelve carts
+        /// and six karves as markers that had lost their records, the watch warned about them
+        /// once a session, and tgm_clearlocal deleted them -- live pins for boats on the water,
+        /// redrawn a moment later, so it looked like nothing had happened and the number was
+        /// wrong every time.</para>
+        ///
+        /// <para>Gathered into a set rather than asked pin by pin: the lists are short but this
+        /// runs over every pin on the map, and the watch runs it every few seconds.</para>
+        /// </summary>
+        private static HashSet<Minimap.PinData> DrawnByUs()
+        {
+            _drawnByUs.Clear();
+            foreach (var kv in _idByPin) _drawnByUs.Add(kv.Key);
+            foreach (var portal in Portals.DrawnPins) if (portal != null) _drawnByUs.Add(portal);
+            foreach (var shown in Transports.DrawnPins) if (shown != null && shown.Pin != null) _drawnByUs.Add(shown.Pin);
+            foreach (var ghost in Erasures.DrawnPins) if (ghost != null) _drawnByUs.Add(ghost);
+            foreach (var ghost in SurveyPreview.DrawnPins) if (ghost != null) _drawnByUs.Add(ghost);
+            return _drawnByUs;
         }
 
         /// <summary>
@@ -382,10 +414,11 @@ namespace TheGreatestMap
         {
             total = 0;
             if (Map == null) return "";
+            var ours = DrawnByUs();
             var byKind = new Dictionary<Minimap.PinType, int>();
             foreach (var pin in Access.Pins(Map))
             {
-                if (!IsSavedGhost(pin)) continue;
+                if (!IsSavedGhost(pin, ours)) continue;
                 byKind.TryGetValue(pin.m_type, out int n);
                 byKind[pin.m_type] = n + 1;
                 total++;
@@ -398,10 +431,9 @@ namespace TheGreatestMap
         /// through the same test the counting panel uses -- because the portals, the ships, the
         /// carts and the erasure ghosts are ours and wear whatever kind suits them.
         /// </summary>
-        private static bool IsSavedGhost(Minimap.PinData pin)
+        private static bool IsSavedGhost(Minimap.PinData pin, HashSet<Minimap.PinData> ours)
         {
-            return pin != null && pin.m_save && PinTypes.IsNeverSaved(pin.m_type)
-                   && !IsOurs(pin) && !VanillaPins.Drew(pin);
+            return pin != null && pin.m_save && PinTypes.IsNeverSaved(pin.m_type) && !ours.Contains(pin);
         }
 
         /// <summary>
@@ -417,10 +449,11 @@ namespace TheGreatestMap
         internal static string LeftoverSprites()
         {
             if (Map == null) return "";
+            var ours = DrawnByUs();
             var byName = new Dictionary<string, int>();
             foreach (var pin in Access.Pins(Map))
             {
-                if (pin == null || IsOurs(pin) || !PinTypes.IsCustom((int)pin.m_type)) continue;
+                if (pin == null || ours.Contains(pin) || !PinTypes.IsCustom((int)pin.m_type)) continue;
                 string name = pin.m_icon != null ? pin.m_icon.name : "(no picture at all)";
                 byName.TryGetValue(name, out int n);
                 byName[name] = n + 1;
@@ -477,12 +510,13 @@ namespace TheGreatestMap
         {
             total = 0;
             if (Map == null) return "";
+            var ours = DrawnByUs();
             var byKind = new Dictionary<Minimap.PinType, int>();
             foreach (var pin in Access.Pins(Map))
             {
-                if (pin == null || IsOurs(pin)) continue;
+                if (pin == null || ours.Contains(pin)) continue;
                 // Counted on their own line, so the two numbers never say the same pin twice.
-                if (IsSavedGhost(pin)) continue;
+                if (IsSavedGhost(pin, ours)) continue;
                 int type = (int)pin.m_type;
                 if (PinTypes.IsCustom(type) || PinTypes.IsPlayerPlaceable(type)) continue;
                 byKind.TryGetValue(pin.m_type, out int n);
@@ -510,12 +544,13 @@ namespace TheGreatestMap
             kept = 0;
             if (Map == null) return 0;
             int n = 0;
+            var ours = DrawnByUs();
             foreach (var pin in new List<Minimap.PinData>(Access.Pins(Map)))
             {
-                if (IsOurs(pin)) continue;
+                if (pin == null || ours.Contains(pin)) continue;
                 int type = (int)pin.m_type;
                 // Custom asked first: IsPlayerPlaceable counts ours among the placeable ones.
-                bool leftover = PinTypes.IsCustom(type) || IsSavedGhost(pin);
+                bool leftover = PinTypes.IsCustom(type) || IsSavedGhost(pin, ours);
                 if (!leftover && !PinTypes.IsPlayerPlaceable(type)) continue;
                 if (!leftover && !includePlaced) { kept++; continue; }
                 Map.RemovePin(pin);
@@ -1301,13 +1336,14 @@ namespace TheGreatestMap
             if (map == null) return;
             int n = 0;
             int ghosts = 0;
+            var ours = DrawnByUs();
             foreach (var pin in new List<Minimap.PinData>(Access.Pins(map)))
             {
-                if (pin == null || IsOurs(pin)) continue;
-                bool ours = PinTypes.IsCustom((int)pin.m_type);
-                if (!ours && !IsSavedGhost(pin)) continue;
+                if (pin == null || ours.Contains(pin)) continue;
+                bool mine = PinTypes.IsCustom((int)pin.m_type);
+                if (!mine && !IsSavedGhost(pin, ours)) continue;
                 map.RemovePin(pin);
-                if (ours) n++; else ghosts++;
+                if (mine) n++; else ghosts++;
             }
             if (n > 0)
                 TheGreatestMapMod.Log.LogInfo(
