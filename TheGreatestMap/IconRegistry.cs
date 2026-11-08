@@ -10,6 +10,9 @@ namespace TheGreatestMap
     /// (a vanilla pin sprite). Each client maps a key to a local
     /// pin type on first use, starting at 100, and registers the sprite with the minimap, so
     /// every client draws the same picture even if it met the keys in a different order.
+    ///
+    /// <para>Every key, "pin:" included: a key borrows the game's picture and never the game's
+    /// pin type. See <see cref="TypeFor"/> for what went wrong while it borrowed both.</para>
     /// </summary>
     internal static class IconRegistry
     {
@@ -99,19 +102,6 @@ namespace TheGreatestMap
             }
         }
 
-        /// <summary>
-        /// The same picture on a pin of our own, for an icon that has to be placeable.
-        ///
-        /// The game lets a player place only its five numbered pins, so arming any other vanilla
-        /// type produces a pin it will not let us adopt: it draws, it keeps its name, and it is
-        /// on no other map. A key of ours wearing the same sprite is placeable and shares.
-        /// </summary>
-        internal static string AsOwnPin(string key)
-        {
-            key = Normalize(key);
-            return key != null && key.StartsWith("pin:") ? "like:" + key.Substring(4) : key;
-        }
-
         internal static bool SameKey(string a, string b)
         {
             return string.Equals(Normalize(a), Normalize(b), StringComparison.OrdinalIgnoreCase);
@@ -143,6 +133,26 @@ namespace TheGreatestMap
             return Enum.TryParse(name, true, out type) && Enum.IsDefined(typeof(Minimap.PinType), type);
         }
 
+        /// <summary>
+        /// The game's own pin type whose picture this key wears, "pin:" and "like:" alike.
+        ///
+        /// <para>What a key borrows, rather than what it is drawn as -- which are the same thing
+        /// for the game's pins and no longer the same thing here. Two callers need it: the sweep
+        /// that recognizes the copies older versions left in the character file wearing the
+        /// borrowed number, and the boss label switch, which used to read the number off the pin
+        /// because an altar of this mod's was a vanilla boss pin.</para>
+        /// </summary>
+        internal static bool BorrowedVanillaType(string iconKey, out int type)
+        {
+            type = (int)Minimap.PinType.Icon3;
+            string key = Normalize(iconKey);
+            if (key == null) return false;
+            if (key.StartsWith("like:")) key = "pin:" + key.Substring(5);
+            if (!key.StartsWith("pin:") || !TryVanilla(key, out var vanilla)) return false;
+            type = (int)vanilla;
+            return true;
+        }
+
         private static readonly HashSet<string> _warnedPins = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
@@ -157,16 +167,43 @@ namespace TheGreatestMap
                 "with the default pin. A number here is the likely cause -- pin keys are names, such as pin:Icon3.");
         }
 
-        /// <summary>The local pin type for an icon key, allocating and registering it on first use.</summary>
+        /// <summary>
+        /// The local pin type for an icon key, allocating and registering it on first use.
+        ///
+        /// <para><b>A "pin:" key borrows the game's picture and not the game's pin type.</b> It
+        /// used to borrow both, and a marker drawn that way was not a marker wearing a vanilla
+        /// picture -- it was a vanilla pin. Six whole kinds went out as one: runestones as
+        /// Memorial, structures as Icon1, camps as Icon0, boss altars as Boss, portals as Icon4,
+        /// and anything with no icon of its own as Icon3.</para>
+        ///
+        /// <para>Nothing could tell such a pin from one the player dropped by hand, and this mod
+        /// least of all. Its own safety nets ask the type: the guard that keeps markers out of
+        /// the character file, the guard that keeps them off a cartography table, the login sweep
+        /// that clears the ones an older version left behind, the status line, the stray watch,
+        /// tgm_clearlocal. Every one of them is blind to a vanilla number, so a copy that reached
+        /// the character file stayed there, was written again at the next save, and came back
+        /// every login wearing this mod's own words -- "Memorial", "House", "Dot" -- as a pin
+        /// with no record behind it that no switch of this mod's could hide and no sweep could
+        /// find. It travelled, too: the table guard let it through to every other player's map.
+        /// One player reached 744 memorials and 312 "placed" pins against under twenty he had
+        /// placed, deleted them by hand, and had them all back at the next login.</para>
+        ///
+        /// <para>A number of this mod's own making costs nothing -- the picture is the same, and
+        /// "like:" has done exactly this for the icons a player has to be able to place -- and it
+        /// makes a leak visible to every one of those nets instead of none of them.</para>
+        /// </summary>
         internal static int TypeFor(string iconKey)
         {
             string key = Normalize(iconKey);
-            if (key == null) return (int)Minimap.PinType.Icon3;
+            if (key == null) return TypeFor(FallbackKey);
             if (key.StartsWith("pin:"))
             {
-                if (TryVanilla(key, out var vanilla)) return (int)vanilla;
-                WarnBadPin(key);
-                return (int)Minimap.PinType.Icon3;
+                if (!TryVanilla(key, out _))
+                {
+                    WarnBadPin(key);
+                    key = "like:" + FallbackKey.Substring(4);
+                }
+                else key = "like:" + key.Substring(4);
             }
             if (_typeByKey.TryGetValue(key, out int type)) return type;
             type = Base + _keys.Count;
@@ -200,30 +237,6 @@ namespace TheGreatestMap
             Enum.IsDefined(typeof(Minimap.PinType), type)
                 ? "pin:" + ((Minimap.PinType)type).ToString()
                 : FallbackKey;
-
-        /// <summary>
-        /// True when this icon is one of the pin types vanilla's own icon buttons hide and show
-        /// (its m_selectedIcons: the five placeable icons, death and boss). Markers drawn with one
-        /// of those are already covered by vanilla's button, so this mod does not offer its own.
-        /// The memorial pin, which runestones use, has no vanilla button and is not one of these.
-        /// </summary>
-        internal static bool VanillaFilters(string iconKey)
-        {
-            if (!TryVanilla(Normalize(iconKey), out var type)) return false;
-            switch (type)
-            {
-                case Minimap.PinType.Icon0:
-                case Minimap.PinType.Icon1:
-                case Minimap.PinType.Icon2:
-                case Minimap.PinType.Icon3:
-                case Minimap.PinType.Icon4:
-                case Minimap.PinType.Death:
-                case Minimap.PinType.Boss:
-                    return true;
-                default:
-                    return false;
-            }
-        }
 
         /// <summary>A readable name for an icon key: the item's translated name, or what the vanilla pin icon shows.</summary>
         internal static string DisplayName(string iconKey)
@@ -667,7 +680,8 @@ namespace TheGreatestMap
         internal static bool IsVanillaPin(string iconKey)
         {
             string key = Normalize(iconKey);
-            return key != null && key.StartsWith("pin:");
+            // "like:" wears the same sprite and is what every "pin:" key resolves to now.
+            return key != null && (key.StartsWith("pin:") || key.StartsWith("like:"));
         }
 
         /// <summary>Grow Minimap's per-type visibility array so vanilla can index our types.</summary>

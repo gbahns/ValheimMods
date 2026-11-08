@@ -885,21 +885,17 @@ namespace TheGreatestMap
                 ClientPins.Restyle();
                 Note("Marker hidden. 'Show all hidden' in any marker's menu brings it back.");
             }));
-            // A marker drawn with one of vanilla's own filterable pin icons is already hidden and
-            // shown by that icon's button on the map, which also covers pins the player placed by
-            // hand with it. Offering our own switch beside it only splits one job in two.
-            // The per-icon switch is skipped for markers drawn on one of vanilla's own icons,
-            // because every structure, portal, camp or boss altar shares that one picture, so it
-            // would say exactly what the kind switch below says.
-            if (!IconRegistry.VanillaFilters(icon))
+            // Offered for every marker. It used to be left out for a marker wearing one of
+            // vanilla's own pin pictures, because that marker was a vanilla pin and vanilla's own
+            // icon button already hid and showed it -- two switches for one job. Those markers
+            // wear numbers of this mod's own making now, which vanilla's buttons do not touch, so
+            // this is the only switch there is.
+            items.Add(Item($"Hide all {iconName} markers", () =>
             {
-                items.Add(Item($"Hide all {iconName} markers", () =>
-                {
-                    TgmConfig.AddHiddenIcon(icon);
-                    ClientPins.Restyle();
-                    Note($"Hiding all {iconName} markers (Display > Hidden Icons).");
-                }));
-            }
+                TgmConfig.AddHiddenIcon(icon);
+                ClientPins.Restyle();
+                Note($"Hiding all {iconName} markers (Display > Hidden Icons).");
+            }));
             // The kind switch is always offered, vanilla-icon kinds included. Vanilla's own icon
             // button covers those too, so it is redundant, but a player looking for the switch
             // expects it here with the rest and should not have to know which mod owns the

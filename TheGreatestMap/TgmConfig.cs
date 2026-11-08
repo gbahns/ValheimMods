@@ -978,11 +978,7 @@ namespace TheGreatestMap
                     ? mod.BindMoved("Display", Dynamic, "Show " + label, true, LiveShowNote(label))
                     : mod.BindLocal("Display", "Show " + label, true,
                       "Draw recorded " + label.ToLowerInvariant() + " markers on your map. Off hides them on both the large map and the " +
-                    "minimap; they stay on your map and keep syncing. To hide single icons instead (say only dandelions) use Hidden Icons." +
-                    (IconRegistry.VanillaFilters(Categories.DefaultIcon(cat))
-                        ? " This kind draws on one of vanilla's own map icons, so vanilla's icon button on the map screen already hides and " +
-                          "shows it, along with any pin you placed by hand with that icon; this switch covers only the markers this mod recorded."
-                        : ""));
+                    "minimap; they stay on your map and keep syncing. To hide single icons instead (say only dandelions) use Hidden Icons.");
                 ShowKind[cat].SettingChanged += (_, __) => ClientPins.Restyle();
                 if (Categories.UsesPrefabList(cat))
                 {

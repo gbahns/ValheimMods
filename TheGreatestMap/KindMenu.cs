@@ -2688,6 +2688,15 @@ namespace TheGreatestMap
             // Asked for between frames rather than from the find box's own callback, which would
             // destroy the box while it was still handling the Enter that asked for this.
             if (_rebuildWanted) { Rebuild(); return; }
+            // Held on the map every frame, not only when it is placed and dragged. Nothing of
+            // this mod's moves it afterwards -- the place is worked out from the click, in the
+            // map's own space, and clamped there -- but this list is a named object that is
+            // destroyed and built again at every open, which is an invitation to anything that
+            // positions HUD objects by name. One player's HUD editor had TGM_KindMenu in its
+            // list with an offset of its own and the list climbed off the top of the screen a
+            // little further at every open. Whatever is moving it, the list is no use where it
+            // cannot be read, and this costs one comparison a frame.
+            ClampToMap();
             PaintPin();
             PaintGear();
             PaintFoldAll();

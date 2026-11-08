@@ -86,17 +86,11 @@ namespace TheGreatestMap
             string icon = TgmConfig.CategoryIcon.TryGetValue(kind, out var cfg) && !string.IsNullOrEmpty(cfg.Value)
                 ? cfg.Value
                 : Categories.DefaultIcon(kind);
+            // Nothing to swap here any more: every icon key resolves to a pin type of this
+            // mod's own, vanilla pictures included. A key that named one of the game's own types
+            // used to produce a pin the game would not let a player place -- drawn, named, and
+            // shared with nobody, because adoption refused it. See IconRegistry.TypeFor.
             int type = IconRegistry.TypeFor(icon);
-            // A vanilla pin type the game will not let a player place is a marker that is drawn,
-            // named, and shared with nobody -- adoption refuses it and it stays a plain local
-            // pin. Runestones, boss altars and players all default to one, and a player who has
-            // set their own icon to a vanilla pin would hit it for any kind at all. So the
-            // picture is kept and the pin underneath is swapped for one of ours.
-            if (!PinTypes.IsPlayerPlaceable(type))
-            {
-                icon = IconRegistry.AsOwnPin(icon);
-                type = IconRegistry.TypeFor(icon);
-            }
             if (type <= 0) return false;
             _armed = new Placing { Kind = kind, Icon = IconRegistry.Normalize(icon), Type = type };
             Access.SelectedType(map) = (Minimap.PinType)type;

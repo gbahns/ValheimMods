@@ -1,5 +1,24 @@
 # Changelog
 
+## 4.8.5 — 2026-11-07
+
+- Markers that borrow one of the game's own pin pictures -- runestones, structures, camps, boss
+  altars, portals -- are no longer drawn as the game's own pins. Nothing could tell one from a pin
+  you placed by hand, so copies leaked into your character file, came back every login as
+  duplicates no switch of this mod's could hide, and travelled to other players through
+  cartography tables.
+- Those copies are taken off the map at login, including the ones that reached you from somebody
+  else's map.
+- Every marker now has its own "Hide all <icon> markers" switch; vanilla's icon buttons no longer
+  hide and show this mod's markers.
+- The log says once a session how many of this mod's pins were kept out of the character file.
+- The marker list is held on the map every frame, not only when it is opened and dragged, so
+  another mod that positions HUD objects by name cannot walk it off the edge of the screen.
+- Pins belonging to other mods are left alone. This mod hands itself pin numbers from 100 and
+  stops at 1000 because the numbers above that are other mods' -- The Greatest Portal draws at
+  exactly 1000 -- but the test for "one of mine" had no upper end, so those pins were counted as
+  wreckage, warned about, and deleted by tgm_clearlocal and at login.
+
 ## 4.8.4 — 2026-11-06
 
 - The live ships, carts, portals and erased-marker ghosts are no longer counted as markers that

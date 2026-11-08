@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using HarmonyLib;
 using UnityEngine;
@@ -65,6 +66,7 @@ namespace TheGreatestMap
             Locate.Reset();
             Watchdog.Reset();
             StrayWatch.Reset();
+            Minimap_GetMapData_Patch.Forget();
             Tilled.Reset();
             Erasures.Reset();
             SurveyPreview.Reset();
@@ -1276,12 +1278,28 @@ namespace TheGreatestMap
                 // what says so, which also covers a boss altar this mod recorded itself: those
                 // wear the same picture, and "the boss labels" means the labels on those.
                 bool want = Portals.IsPortalPin(pin) ? portals
-                    : pin.m_type == Minimap.PinType.Boss ? bosses
+                    : IsBossMarker(pin) ? bosses
                     : markers;
                 // And never a name over a marker that is not being drawn, whatever hid it.
                 if (want && pin.m_uiElement != null && !pin.m_uiElement.gameObject.activeSelf) want = false;
                 if (go.activeSelf != want) go.SetActive(want);
             }
+        }
+
+        /// <summary>
+        /// A boss's marker: one of the game's own vegvisir pins, or an altar this mod recorded.
+        ///
+        /// <para>The number answered for both until 4.8.5, because an altar of this mod's was
+        /// drawn as a vanilla boss pin. It wears a number of this mod's own now, so the record
+        /// behind it is what says this is a boss.</para>
+        /// </summary>
+        private static bool IsBossMarker(Minimap.PinData pin)
+        {
+            if (pin.m_type == Minimap.PinType.Boss) return true;
+            if (!_idByPin.TryGetValue(pin, out var id)) return false;
+            return Store.Pins.TryGetValue(id, out var shared)
+                   && IconRegistry.BorrowedVanillaType(IconOf(shared), out int type)
+                   && type == (int)Minimap.PinType.Boss;
         }
 
         /// <summary>Drop the marker's vanilla pin and add it again from the record (name or icon changes).</summary>
@@ -1356,6 +1374,75 @@ namespace TheGreatestMap
                     "shouts, other players, the world's own landmarks -- and which were saved anyway. The game " +
                     "makes those afresh from what is happening now, so a saved one is a picture of a moment " +
                     "long past and nothing can tell it from the moment itself.");
+        }
+
+        /// <summary>
+        /// Take out the copies of this mod's markers that are sitting in the character file
+        /// wearing one of the game's own pin numbers.
+        ///
+        /// <para>These are the leak the mint change closed, already written. Until 4.8.5 a
+        /// marker whose icon named one of the game's pictures was drawn as that kind of vanilla
+        /// pin -- a runestone as a memorial, a structure as a house, a camp as a fire -- and a
+        /// copy that reached the character file was afterwards indistinguishable from a pin the
+        /// player had dropped by hand. Every sweep and every switch asks the number, so nothing
+        /// found it, nothing hid it, and the save guard wrote it out again at every save. It came
+        /// back at every login, under this mod's own words, standing on top of the marker it was
+        /// a copy of. Deleting one by hand got it back the next day.</para>
+        ///
+        /// <para>What makes a copy recognizable is the marker it was copied from. A pin is taken
+        /// off only where a record of this mod's stands within a meter of it, wearing the vanilla
+        /// number that record's icon borrows, under exactly the name this mod would have written
+        /// for it. The game names its own pins with localization keys -- $enemy_eikthyr,
+        /// $hud_pin_hildir1 -- and this mod writes plain words, so a vanilla pin cannot answer to
+        /// all three. A player's own pin could, by placing it on a marker with the same picture
+        /// and the same name, and then nothing is lost either: the marker is standing in the same
+        /// place wearing the same picture.</para>
+        ///
+        /// <para>Ownership is not asked. A copy that travelled to another player through a
+        /// cartography table came back carrying their id, and it is the same wreckage.</para>
+        /// </summary>
+        internal static void DropVanillaTypedCopies()
+        {
+            if (Map == null || Store.Pins.Count == 0) return;
+            // What this mod would have drawn, by the number the game would have given it and the
+            // name it would have carried. Keyed on both, so only an exact impostor is looked at.
+            var want = new Dictionary<string, List<Vector3>>(StringComparer.Ordinal);
+            foreach (var shared in Store.Pins.Values)
+            {
+                // "pin:" only. A "like:" marker always had a number of this mod's own, so no copy
+                // of one can be wearing a vanilla number -- and looking for one would mean
+                // hunting the game's own pins by position and name.
+                string icon = IconRegistry.Normalize(IconOf(shared));
+                if (icon == null || !icon.StartsWith("pin:")) continue;
+                if (!IconRegistry.BorrowedVanillaType(icon, out int type)) continue;
+                string name = !string.IsNullOrEmpty(shared.Name)
+                    ? shared.Name
+                    : (IconRegistry.DisplayName(shared.Icon) ?? "");
+                string key = type + "|" + name;
+                if (!want.TryGetValue(key, out var spots)) want[key] = spots = new List<Vector3>();
+                spots.Add(shared.Pos);
+            }
+            if (want.Count == 0) return;
+
+            int n = 0;
+            var ours = DrawnByUs();
+            foreach (var pin in new List<Minimap.PinData>(Access.Pins(Map)))
+            {
+                if (pin == null || !pin.m_save || ours.Contains(pin)) continue;
+                if (!want.TryGetValue((int)pin.m_type + "|" + (pin.m_name ?? ""), out var spots)) continue;
+                bool onAMarker = false;
+                foreach (var spot in spots)
+                    if (Utils.DistanceXZ(spot, pin.m_pos) < 1f) { onAMarker = true; break; }
+                if (!onAMarker) continue;
+                Map.RemovePin(pin);
+                n++;
+            }
+            if (n > 0)
+                TheGreatestMapMod.Log.LogInfo(
+                    $"[TheGreatestMap] Took {n} copy(ies) of this mod's markers off the map that an older version " +
+                    "left in the character file wearing one of the game's own pin pictures. Each was standing on " +
+                    "the marker it was a copy of, under the same name, and nothing here could tell it from a pin " +
+                    "you had placed by hand. The markers themselves are untouched.");
         }
 
         /// <summary>Vanilla cleared every pin (profile load). Our PinData objects are gone; records stay.</summary>
@@ -1878,6 +1965,7 @@ namespace TheGreatestMap
         private static void Prefix(Minimap __instance, ref List<Minimap.PinData> __state)
         {
             __state = new List<Minimap.PinData>();
+            int strays = 0;
             foreach (var pin in Access.Pins(__instance))
             {
                 if (!pin.m_save) continue;
@@ -1904,10 +1992,45 @@ namespace TheGreatestMap
                 //
                 // Holding them back here also clears up the ones already written: they are loaded
                 // once more and then left out of the next save, so the pile drains by itself.
-                if (!ClientPins.IsOurs(pin) && !PinTypes.IsCustom((int)pin.m_type)) continue;
+                bool ours = ClientPins.IsOurs(pin);
+                if (!ours && !PinTypes.IsCustom((int)pin.m_type)) continue;
+                if (!ours) strays++;
                 pin.m_save = false;
                 __state.Add(pin);
             }
+            Report(__state.Count, strays);
+        }
+
+        private static bool _said;
+
+        internal static void Forget() => _said = false;
+
+        /// <summary>
+        /// Say once a session how many pins this guard kept out of the character file.
+        ///
+        /// <para>For the sake of the line's absence. This guard is the whole of what stands
+        /// between a map of markers and a character file full of them, and when a player's file
+        /// filled up anyway there was no way to tell a guard that had failed to recognize its own
+        /// pins from a guard that was never reached at all -- another mod writing the profile by
+        /// its own route, a patch that silently did not take. Those want opposite fixes. One line
+        /// at the first save of a session settles it in the log the player already sends.</para>
+        /// </summary>
+        private static void Report(int held, int strays)
+        {
+            if (_said) return;
+            _said = true;
+            if (held == 0)
+            {
+                TheGreatestMapMod.Log.LogInfo(
+                    $"[TheGreatestMap] {DateTime.Now:HH:mm:ss} Nothing of this mod's was on the map at this save, " +
+                    "so nothing needed keeping out of the character file.");
+                return;
+            }
+            TheGreatestMapMod.Log.LogInfo(
+                $"[TheGreatestMap] {DateTime.Now:HH:mm:ss} Kept {held} of this mod's pins out of the character " +
+                "file at this save" + (strays > 0
+                    ? $", {strays} of them with no record behind them."
+                    : ". Every one of them has a record behind it."));
         }
 
         private static void Postfix(List<Minimap.PinData> __state)

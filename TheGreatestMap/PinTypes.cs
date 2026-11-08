@@ -9,7 +9,22 @@ namespace TheGreatestMap
     /// </summary>
     internal static class PinTypes
     {
-        internal static bool IsCustom(int type) => type >= IconRegistry.Base;
+        /// <summary>
+        /// A pin type this mod made up: a number it hands out itself, from 100 up.
+        ///
+        /// <para>Bounded at the top, which it was not. IconRegistry allocates from 100 and stops
+        /// at ReservedFloor because the numbers above that belong to other mods -- the comment
+        /// there names The Greatest Portal, which draws its portal pins at exactly 1000. This
+        /// test claimed everything from 100 upward, so it answered yes for those pins too.</para>
+        ///
+        /// <para>What that answer is used for makes it serious. A pin of "ours" with no record
+        /// behind it is rubbish by definition: the status line counts it as a leftover, the watch
+        /// warns about it, tgm_clearlocal deletes it and the login sweep deletes it. So this mod
+        /// was taking another mod's pins off the map, warning about them, and reporting them as
+        /// its own wreckage -- and they came back the next time that mod drew them, which is how
+        /// something gets deleted every session and is never gone.</para>
+        /// </summary>
+        internal static bool IsCustom(int type) => type >= IconRegistry.Base && type < IconRegistry.ReservedFloor;
 
         /// <summary>
         /// A kind of pin the game makes for the moment and never writes down.

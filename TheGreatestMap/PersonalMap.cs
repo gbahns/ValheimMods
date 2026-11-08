@@ -270,6 +270,10 @@ namespace TheGreatestMap
         {
             PersonalMap.LoadFrom(__instance);
             ClientPins.RebuildPins();
+            // Here rather than with the other login sweep, which runs inside the vanilla map
+            // load: this one recognizes a leftover by the marker it is a copy of, and the
+            // records are not read until the line above.
+            ClientPins.DropVanillaTypedCopies();
             if (TgmConfig.RepairDungeonIcons.Value && PersonalMap.Store.Pins.Count > 0)
             {
                 int fixedUp = ClientPins.RepairDungeonIcons();
