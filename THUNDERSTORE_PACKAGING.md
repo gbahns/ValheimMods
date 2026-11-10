@@ -83,6 +83,79 @@ When releasing a new version, update the version string in **all three places** 
 
 Thunderstore will reject an upload if `version_number` in the manifest matches an already-published version.
 
+## Version Floors — Who Is Allowed to Connect
+
+Every mod that syncs config through ServerSync declares a floor, `MinCompatibleVersion`, handed to
+ServerSync as `MinimumRequiredVersion`. It decides who may join the server and who may not.
+
+**The floor belongs to the release, not to the mod.** Decide it each time:
+
+- **Leave it where it is** when you *know* the release does not need it — a client-only change, a
+  fix that touches nothing shared.
+- **Raise it to the new version** when forcing the update helps, **or whenever there is any
+  doubt.** New network messages, a changed save format, a changed config contract — and also any
+  release that fixes a version which was doing harm.
+
+The tie goes to raising it. Everyone on this server takes each update as it appears, so the
+version they would be turned away on is one they are about to leave anyway; the worst of it is a
+lag in Gale showing the new version. A client left running a bad version can do damage nobody
+sees. TheGreatestMap 4.8.4 and 4.8.5 rewrote marker identities on the shared map just by logging
+in, and a floor is the only thing that keeps a client like that out.
+
+### It refuses in both directions
+
+ServerSync checks each side's version against the other side's floor:
+
+```csharp
+bool myVersionOk    = new Version(CurrentVersion)         >= new Version(ReceivedMinimumRequiredVersion);
+bool otherVersionOk = new Version(ReceivedCurrentVersion) >= new Version(MinimumRequiredVersion);
+```
+
+So a client **ahead** of the server is refused as well as one behind it. Two consequences:
+
+- A server running a build nobody else has keeps the rest of the crew off it, without arranging
+  anything. Sometimes that is exactly what you want while testing.
+- Between publishing a raised floor and deploying the server, **nobody can join, admin included.**
+  Publishing a raised floor is half an operation; the server deploy is the other half.
+
+### Never pin the floor to `ModVersion`
+
+```csharp
+public const string MinCompatibleVersion = "4.9.0";   // yes: a literal, decided per release
+public const string MinCompatibleVersion = ModVersion; // no: declares every release breaking
+```
+
+Pinning removes the judgment above and makes every release force an update, including the ones
+known to be safe. `ForsakenShrines` pins it, and that is what refused a 0.8.4 client against a
+0.8.3 server for a release containing no code at all — an outage for other people caused by a
+version bump. `TheGreatestMap` keeps `MinCompatibleVersion` separate from `ModVersion` and moves
+it deliberately.
+
+An empty version that raises a floor is the worst case of both: nothing to gain, everyone locked
+out. Bump the version when a change needs it, not on a schedule.
+
+### Never let an unpublished build reach the server
+
+Players can only install what is published, so a server on a version Thunderstore does not have
+refuses everyone whose mod enforces a floor, and keeps refusing them until that version is
+published.
+
+This is easier to do by accident than it sounds. `valheim.ps1 deploy` takes `-Dll <path>` or picks
+up whatever is sitting in the staging directory, and a build fresh out of `bin\Release` is the
+obvious thing to hand it. On 2026-11-10 a TheGreatestMap build numbered 4.9.1 — a version that
+existed nowhere but one machine, with the floor pinned to itself — went to the server that way
+minutes after 4.9.0 was published, and refused every client with *"needs to be at least version
+4.9.1."*
+
+So:
+
+- Deploy the **published** DLL, not whatever `bin\Release` last held. `deploy-dathost.ps1
+  -Published` fetches it from Thunderstore for exactly this reason.
+- After building an unreleased version for testing, know that `bin\Release` now holds something
+  that must not reach the server.
+- Test breaking changes in single player or a local host, and update the server as part of
+  publishing.
+
 ---
 
 ## Auto-Deploy to All Local Gale Profiles
