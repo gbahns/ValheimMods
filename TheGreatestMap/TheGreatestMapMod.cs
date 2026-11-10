@@ -30,7 +30,7 @@ namespace TheGreatestMap
     {
         public const string ModGuid    = "DeathMonger.TheGreatestMap";
         public const string ModName    = "The Greatest Map";
-        public const string ModVersion = "4.9.0";
+        public const string ModVersion = "4.9.1";
 
         // Oldest version whose shared-marker wire format this build still speaks. ServerSync
         // refuses peers below this, so bump it only when the format or an RPC changes, not on
@@ -72,13 +72,20 @@ namespace TheGreatestMap
         // together taking a tested one, and nobody is owed the first. The code that tolerates a
         // missing watermark stays exactly as it is: read every shape, enforce none, and let the
         // version check decide who is allowed to speak rather than what we are able to hear.
-        // Raised from 4.4.0 for this release and no other reason: 4.8.5 and 4.8.4 run a pass that
-        // writes "Manual" into every marker with a blank source, which rekeys it and sends the new
-        // identity to everyone. A client doing that to the shared map is worse than a client that
-        // cannot join, and tgm_unmanual can only repair a map that something is not still damaging.
-        // It goes back down at the next release that does not need it: a floor belongs to a change,
-        // not to the mod.
-        public const string MinCompatibleVersion = "4.9.0";
+        // Pinned to this version, so the server and its players always run the same code.
+        //
+        // Held at 4.4.0 for a long time on the reasoning that a floor belongs to a change rather
+        // than to the mod, and that turning players away is a cost to weigh. Here it is not much
+        // of one: everybody on this server takes every update as it appears, so the version they
+        // would be turned away on is one they are about to leave anyway. Set against that, 4.8.4
+        // and 4.8.5 damaged the shared map just by logging in, and a floor is the only thing that
+        // can keep a client like that out.
+        //
+        // It cuts both ways on purpose. A client AHEAD of the server is refused too, which is what
+        // keeps the rest of the crew off a server running an unpublished build -- and equally what
+        // locks everyone out, including the admin, between publishing a version and deploying it.
+        // Publishing without deploying the server is now an outage, not an untidiness.
+        public const string MinCompatibleVersion = ModVersion;
 
         internal static TheGreatestMapMod Instance { get; private set; }
         internal static ManualLogSource Log { get; private set; }

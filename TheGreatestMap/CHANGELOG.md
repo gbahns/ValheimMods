@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.9.1 — unreleased
+
+- Every release now asks everyone to be on it. The server turns away a client on an older version
+  and a client on a newer one alike, so a build nobody else has keeps the rest of the crew off the
+  server while it is being tested.
+
 ## 4.9.0 — 2026-11-10
 
 **Everyone has to update. A server on 4.9.0 turns away clients older than 4.9.0, because 4.8.4 and
