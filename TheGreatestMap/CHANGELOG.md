@@ -2,6 +2,19 @@
 
 ## 4.9.1 — unreleased
 
+- tgm_items draws the pictures it finds, at the size a marker wears them, beside the name each one
+  is typed as. It listed names, which is the one form in which a picture cannot be judged.
+- Dvergr bases wear the dvergr lantern. The trophy is a braid that reads as nothing at pin size,
+  and the fallen towers beside them wore the same one.
+- A fallen dvergr guard tower is no longer recorded as a dvergr guard tower. The Enemy Bases
+  line matched both, so 150 of the 350 towers in a world wore the name and the trophy of one
+  the dvergr still hold. The fallen ones are scenery now, with the statues and viaducts.
+- A marker list row covering several differently-named things is named by what they have in
+  common, or by their kind: "Dvergr" rather than "Dvergr Harbour" over a row holding guard
+  towers, excavations and lighthouses too. Several prefabs under one name keep it.
+- Structures are listed by biome: Meadows, Black Forest, Swamp, Mountains. Each row switches,
+  isolates and points at that biome on its own, so meadows farmsteads can go while mountain ruins
+  stay. They all wear the house pin, so one row per picture was one row for the whole kind.
 - A row in the marker list covering several things is named after the kind rather than after
   whichever of them came first. Every structure wears the house pin, so one row stood for farms,
   ruins and huts alike and called them all "Graveyard".

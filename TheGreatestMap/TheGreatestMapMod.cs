@@ -200,6 +200,7 @@ namespace TheGreatestMap
             if (Player.m_localPlayer == null) return;
             if (Keys.IsDown(TgmConfig.LegendKey.Value) && Keys.CanTakeInput()) LegendPanel.Toggle();
             LegendPanel.Update();
+            PicturePanel.Update();
             MarkerMenu.Update();
             MapFrame.Update();
             MarkerToggle.Update();

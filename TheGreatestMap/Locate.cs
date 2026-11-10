@@ -32,6 +32,8 @@ namespace TheGreatestMap
     {
         private static Category? _kind;
         private static string _icon;
+        private static Category? _biomeKind;
+        private static Heightmap.Biome _biome;
         private static bool _players;
         private static Minimap.PinType? _vanilla;
         private static bool _vanillaWasOff;
@@ -44,7 +46,8 @@ namespace TheGreatestMap
         /// pinging the world's center said how far away it was and then pulsed nothing, because
         /// the pulse is gated on being armed and that row arms nothing else.
         /// </summary>
-        private static bool Armed => _kind.HasValue || _icon != null || _players || _vanilla.HasValue
+        private static bool Armed => _kind.HasValue || _icon != null || _biomeKind.HasValue
+                                     || _players || _vanilla.HasValue
                                      || _spots.Count > 0 || (_theirs != null && _theirs.Count > 0);
 
         internal static bool On => Time.unscaledTime < _until && Armed;
@@ -55,6 +58,10 @@ namespace TheGreatestMap
         /// <summary>True while the ping is pointing at one type -- a frost cave rather than a dungeon.</summary>
         internal static bool PointingAt(string icon) =>
             On && _icon != null && IconRegistry.SameKey(_icon, icon);
+
+        /// <summary>Is the pulse pointing at this kind in this biome?</summary>
+        internal static bool PointingAt(Category kind, Heightmap.Biome biome) =>
+            On && _biomeKind.HasValue && _biomeKind.Value == kind && _biome == biome;
 
         /// <summary>True while the ping is pointing at one of the map's own pin types.</summary>
         internal static bool Pointing(Minimap.PinType type) =>
@@ -78,6 +85,7 @@ namespace TheGreatestMap
         {
             _kind = null;
             _icon = null;
+            _biomeKind = null;
             _players = false;
             Unhide();
             _spots.Clear();
@@ -127,6 +135,15 @@ namespace TheGreatestMap
         }
 
         /// <summary>Light up every marker wearing one icon -- one type rather than a whole kind.</summary>
+        /// <summary>Point at one kind where it stands in one biome -- the marker list's biome rows.</summary>
+        internal static void Biome(Category kind, Heightmap.Biome biome, string label)
+        {
+            Clear();
+            _biomeKind = kind;
+            _biome = biome;
+            Begin(label, Count());
+        }
+
         internal static void Icon(string icon, string label)
         {
             Clear();
@@ -172,6 +189,7 @@ namespace TheGreatestMap
         {
             _kind = null;
             _icon = null;
+            _biomeKind = null;
             _players = false;
             Unhide();
             _spots.Clear();
@@ -396,6 +414,12 @@ namespace TheGreatestMap
         internal static bool Matches(SharedPin pin)
         {
             if (pin == null || _players) return false;
+            if (_biomeKind.HasValue)
+            {
+                var standsIn = ClientPins.KindOf(pin);
+                return standsIn.HasValue && standsIn.Value == _biomeKind.Value
+                       && Biomes.Of(pin.Pos) == _biome;
+            }
             if (_icon != null) return IconRegistry.SameKey(ClientPins.IconOf(pin), _icon);
             if (!_kind.HasValue) return false;
             var kind = ClientPins.KindOf(pin);

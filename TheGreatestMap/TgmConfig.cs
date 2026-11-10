@@ -75,9 +75,11 @@ namespace TheGreatestMap
         internal static ConfigEntry<float> PortalPulseSeconds;
         internal static ConfigEntry<string> HiddenPlaces;
         internal static ConfigEntry<string> HiddenOwnIcons;
+        internal static ConfigEntry<string> HiddenBiomes;
         private static HashSet<string> _hiddenIconKeys;
         private static HashSet<string> _hiddenPlaceKeys;
         private static HashSet<string> _hiddenOwnIconKeys;
+        private static HashSet<string> _hiddenBiomeKeys;
 
         private static HashSet<string> HiddenIconKeys()
         {
@@ -129,6 +131,37 @@ namespace TheGreatestMap
                 keep.Add(k.StartsWith("item:") ? k.Substring(5) : k);   // the documented forms again
             }
             HiddenIcons.Value = string.Join(",", keep.ToArray());
+        }
+
+        private static HashSet<string> HiddenBiomeKeys()
+        {
+            if (_hiddenBiomeKeys == null)
+            {
+                _hiddenBiomeKeys = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+                foreach (var raw in (HiddenBiomes == null ? "" : HiddenBiomes.Value ?? "").Split(','))
+                {
+                    string key = raw.Trim();
+                    if (key.Length > 0) _hiddenBiomeKeys.Add(key);
+                }
+            }
+            return _hiddenBiomeKeys;
+        }
+
+        /// <summary>Is this kind switched off in this biome? Written by the marker list's rows.</summary>
+        internal static bool IsBiomeHidden(Category kind, Heightmap.Biome biome) =>
+            HiddenBiomeKeys().Count > 0 && HiddenBiomeKeys().Contains(Biomes.Key(kind, biome));
+
+        internal static int HiddenBiomeCount() => HiddenBiomeKeys().Count;
+
+        internal static void SetBiomeHidden(Category kind, Heightmap.Biome biome, bool hidden)
+        {
+            if (HiddenBiomes == null || IsBiomeHidden(kind, biome) == hidden) return;
+            string key = Biomes.Key(kind, biome);
+            var keep = new List<string>();
+            foreach (var k in HiddenBiomeKeys())
+                if (!string.Equals(k, key, System.StringComparison.OrdinalIgnoreCase)) keep.Add(k);
+            if (hidden) keep.Add(key);
+            HiddenBiomes.Value = string.Join(",", keep.ToArray());
         }
 
         private static HashSet<string> HiddenOwnIconKeys()
@@ -259,6 +292,7 @@ namespace TheGreatestMap
             if (!string.IsNullOrEmpty(HiddenIcons.Value)) HiddenIcons.Value = "";
             if (HiddenPlaces != null && !string.IsNullOrEmpty(HiddenPlaces.Value)) HiddenPlaces.Value = "";
             if (HiddenOwnIcons != null && !string.IsNullOrEmpty(HiddenOwnIcons.Value)) HiddenOwnIcons.Value = "";
+            if (HiddenBiomes != null && !string.IsNullOrEmpty(HiddenBiomes.Value)) HiddenBiomes.Value = "";
             foreach (var entry in ShowKind.Values) if (!entry.Value) entry.Value = true;
             if (ShowAllMarkers != null && !ShowAllMarkers.Value) ShowAllMarkers.Value = true;
             // Worked-out deposits too. This was the one switch that hid markers and was not put
@@ -600,7 +634,7 @@ namespace TheGreatestMap
             // is asked to decide whether to offer a way back -- so a player who had hidden five
             // markers by hand and nothing else was told nothing was hidden and offered nothing.
             if (ViewPrefs.Count > 0) return true;
-            return HiddenIconCount() > 0 || HiddenOwnIconCount() > 0 || HiddenKindCount() > 0;
+            return HiddenIconCount() > 0 || HiddenOwnIconCount() > 0 || HiddenBiomeCount() > 0 || HiddenKindCount() > 0;
         }
 
         // ── Cartography table ───────────────────────────────────────────────────────
@@ -867,6 +901,11 @@ namespace TheGreatestMap
                 "because a picture is not one thing: a recorded farmstead wears the same house as a house pin you " +
                 "dropped, and switching off one should not take the other with it.");
             HiddenOwnIcons.SettingChanged += (_, __) => { _hiddenOwnIconKeys = null; ClientPins.Restyle(); };
+
+            HiddenBiomes = mod.BindLocal("Display", "Hidden Biomes", "",
+                "The kinds you have switched off in one biome -- Structure/Mountain switches off mountain ruins and " +
+                "leaves the meadows farms alone. The marker list writes this; there is nothing here to edit by hand.");
+            HiddenBiomes.SettingChanged += (_, __) => { _hiddenBiomeKeys = null; ClientPins.Restyle(); };
 
             // Entries written before the two lists were told apart. Anything in Hidden Icons
             // naming one of the five pictures a player can place was put there by the Yours rows,

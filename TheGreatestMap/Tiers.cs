@@ -97,10 +97,24 @@ namespace TheGreatestMap
             new Group
             {
                 Label = "Dvergr Ruins", Tier = Tier.Never, Cat = Category.Structure,
-                Why = "650 statues and viaducts you walk past; what is worth the trip in the Mistlands " +
-                      "is an extractor and a pile of soft tissue, and those are at the towers, harbors " +
-                      "and excavations, which are Enemy Bases and already marked.",
-                Entries = "Mistlands_Statue*=Dvergr Statue|TrophyDvergr,Mistlands_Viaduct*=Viaduct|TrophyDvergr",
+                Why = "650 statues and viaducts you walk past, and 150 fallen guard towers; what is " +
+                      "worth the trip in the Mistlands is an extractor and a pile of soft tissue, and " +
+                      "those are at the towers still standing, the harbors and the excavations, which " +
+                      "are Enemy Bases and already marked.",
+                // The fallen towers by their own prefixes, which are longer than the Enemy Bases
+                // line's "Mistlands_GuardTower*" and so beat it -- that line was taking all three
+                // of them with it, 150 of the 350 towers in a world, and giving each the name and
+                // the trophy of a tower the dvergr still hold. On the map and in the marker list a
+                // ruin and a garrison then read identically, which is the one thing a picture is
+                // there to prevent.
+                // No picture of their own, so they draw as what they are: a structure, the same
+                // as the Black Forest and Swamp ruins above. Wearing the dvergr trophy put them
+                // on the map as the thing you walk to the Mistlands for -- a fallen tower and a
+                // garrison told apart by nothing at all, which was the whole complaint.
+                Entries = "Mistlands_Statue*=Dvergr Statue,Mistlands_Viaduct*=Viaduct," +
+                          "Mistlands_GuardTower1_ruined*=Fallen Guard Tower," +
+                          "Mistlands_GuardTower2_ruined*=Fallen Guard Tower," +
+                          "Mistlands_GuardTower3_ruined*=Fallen Guard Tower",
             },
             new Group
             {
@@ -194,6 +208,17 @@ namespace TheGreatestMap
                       "surtling cores come from -- the same reason the bone and body piles in the " +
                       "graveyards beside them are marked.",
                 Entries = "FireHole*=Surtling Geyser|SurtlingCore",
+            },
+
+            new Group
+            {
+                Label = "Dvergr Bases", Tier = Tier.On, Cat = Category.Camp,
+                Why = "The four kinds of place the dvergr still hold, which are worth the trip for " +
+                      "the extractor and what is stacked around it. Named as one group because that " +
+                      "is how a player thinks of them, and because they share a picture: a row " +
+                      "covering all four cannot be called after whichever one came first.",
+                Entries = "Mistlands_GuardTower*=Dvergr Guard Tower,Mistlands_Excavation*=Dvergr Excavation," +
+                          "Mistlands_Harbour*=Dvergr Harbor,Mistlands_Lighthouse*=Dvergr Lighthouse",
             },
 
             new Group

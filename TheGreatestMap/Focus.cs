@@ -28,8 +28,11 @@ namespace TheGreatestMap
         private static Category? _kind;
         private static string _icon;
         private static string _text;
+        private static Category? _biomeKind;
+        private static Heightmap.Biome _biome;
 
-        internal static bool On => _kind.HasValue || _icon != null || !string.IsNullOrEmpty(_text);
+        internal static bool On => _kind.HasValue || _icon != null || _biomeKind.HasValue
+                                  || !string.IsNullOrEmpty(_text);
         internal static string Text => _text ?? "";
         internal static Category? Kind => _kind;
         internal static string Icon => _icon;
@@ -71,6 +74,51 @@ namespace TheGreatestMap
             return IconRegistry.DisplayName(ClientPins.IconOf(pin));
         }
 
+        /// <summary>
+        /// The one group every one of these belongs to, or null if they are not all in one. A
+        /// group is a name somebody chose for a set of things, which is better than any name a
+        /// machine can work out from the things themselves.
+        /// </summary>
+        private static string SharedGroup(HashSet<string> sources)
+        {
+            string shared = null;
+            foreach (var source in sources)
+            {
+                string group = Catalog.GroupOf(source);
+                if (string.IsNullOrEmpty(group)) return null;
+                if (shared == null) shared = group;
+                else if (!string.Equals(shared, group, StringComparison.OrdinalIgnoreCase)) return null;
+            }
+            return shared;
+        }
+
+        /// <summary>
+        /// The words every one of these names begins with, or null when they share none.
+        ///
+        /// <para>For a row covering several things at once: "Dvergr Guard Tower", "Dvergr
+        /// Excavation" and "Dvergr Harbor" are all dvergr, and "Dvergr" is both true of the row
+        /// and shorter than naming one of them. Whole words only -- the common letters of
+        /// "Stonehenge" and "Stone Circle" are "Stone", which would be a row called after a
+        /// material. Where there is nothing in common the caller falls back to the kind.</para>
+        /// </summary>
+        private static string SharedName(HashSet<string> names)
+        {
+            List<string> first = null;
+            foreach (var name in names)
+            {
+                var words = new List<string>((name ?? "").Split(' '));
+                if (first == null) { first = words; continue; }
+                int keep = 0;
+                while (keep < first.Count && keep < words.Count
+                       && string.Equals(first[keep], words[keep], StringComparison.OrdinalIgnoreCase)) keep++;
+                first.RemoveRange(keep, first.Count - keep);
+                if (first.Count == 0) return null;
+            }
+            if (first == null || first.Count == 0) return null;
+            string shared = string.Join(" ", first.ToArray()).Trim();
+            return shared.Length == 0 ? null : shared;
+        }
+
         /// <summary>What is being looked for, for a row or a message to say.</summary>
         internal static string What()
         {
@@ -90,6 +138,23 @@ namespace TheGreatestMap
         internal static void Clear()
         {
             if (!On) return;
+            _kind = null;
+            _icon = null;
+            _text = null;
+            _biomeKind = null;
+            ClientPins.Restyle();
+        }
+
+        /// <summary>What biome is being looked in, if the focus is one of a kind's biome rows.</summary>
+        internal static Category? BiomeKind => _biomeKind;
+        internal static Heightmap.Biome BiomeShown => _biome;
+
+        /// <summary>Only this kind, and only where it stands in this biome.</summary>
+        internal static void SetBiome(Category kind, Heightmap.Biome biome)
+        {
+            if (_biomeKind.HasValue && _biomeKind.Value == kind && _biome == biome) { Clear(); return; }
+            _biomeKind = kind;
+            _biome = biome;
             _kind = null;
             _icon = null;
             _text = null;
@@ -143,6 +208,7 @@ namespace TheGreatestMap
         internal static bool ShowsKind(Category kind, string icon)
         {
             if (!On) return true;
+            if (_biomeKind.HasValue) return _biomeKind.Value == kind;
             if (_icon != null) return IconRegistry.SameKey(_icon, icon);
             if (_kind.HasValue) return _kind.Value == kind;
             return Has(Categories.Label(kind), _text);
@@ -152,6 +218,12 @@ namespace TheGreatestMap
         internal static bool Shows(SharedPin pin)
         {
             if (!On || pin == null) return true;
+            if (_biomeKind.HasValue)
+            {
+                var standsIn = ClientPins.KindOf(pin);
+                return standsIn.HasValue && standsIn.Value == _biomeKind.Value
+                       && Biomes.Of(pin.Pos) == _biome;
+            }
             if (_icon != null) return IconRegistry.SameKey(ClientPins.IconOf(pin), _icon);
             if (_kind.HasValue)
             {
@@ -207,6 +279,8 @@ namespace TheGreatestMap
             public string Label;
             public Category? Kind;
             public int Count;
+            /// <summary>Set when this row stands for one biome rather than for one picture.</summary>
+            public Heightmap.Biome? Biome;
             /// <summary>One of the places the game marks itself, rather than a type of marker this mod recorded.</summary>
             public bool Place;
         }
@@ -228,32 +302,63 @@ namespace TheGreatestMap
             // it only began once those markers knew what they were, since a nameless marker fell
             // through to the kind's own name and the race never showed.
             var sourcesOf = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+            var namesOf = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
             foreach (var pin in ClientPins.All)
             {
                 if (needle.Length > 0 && !Mentions(pin, needle)) continue;
                 string key = IconRegistry.Normalize(ClientPins.IconOf(pin)) ?? IconRegistry.FallbackKey;
+                // A kind whose types all wear the kind's own picture gets a row per biome instead
+                // of the one row per picture it would otherwise have. See Catalog.GroupsByBiome.
+                var groups = ClientPins.KindOf(pin);
+                if (groups.HasValue && Categories.GroupsByBiome(groups.Value) && Biomes.Known)
+                {
+                    var where = Biomes.Of(pin.Pos);
+                    string bkey = Biomes.Key(groups.Value, where);
+                    if (!byIcon.TryGetValue(bkey, out var row))
+                        byIcon[bkey] = row = new TypeCount
+                        {
+                            Icon = key, Label = Biomes.Label(where), Kind = groups, Biome = where,
+                        };
+                    row.Count++;
+                    continue;
+                }
                 if (!byIcon.TryGetValue(key, out var entry))
                 {
                     byIcon[key] = entry = new TypeCount { Icon = key, Label = TypeLabel(pin), Kind = ClientPins.KindOf(pin) };
                     sourcesOf[key] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    namesOf[key] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 }
                 entry.Count++;
                 sourcesOf[key].Add(pin.Source ?? "");
+                namesOf[key].Add(TypeLabel(pin) ?? "");
             }
             foreach (var entry in byIcon.Values)
             {
-                if (!entry.Kind.HasValue) continue;
-                if (sourcesOf[entry.Icon].Count < 2) continue;
-                // Only where the picture is the kind's own, which is the picture chosen to stand
-                // for the whole kind and so says nothing narrower than the kind. Elsewhere a
-                // repeated picture really is one type, and the first marker's name is right.
-                if (!IconRegistry.SameKey(entry.Icon, Categories.DefaultIcon(entry.Kind.Value))) continue;
-                entry.Label = Categories.Label(entry.Kind.Value);
+                if (!entry.Kind.HasValue || entry.Biome.HasValue) continue;
+                if (!namesOf.ContainsKey(entry.Icon)) continue;
+                // The question is whether this row covers several differently-named things, not
+                // whether its picture happens to be the kind's own. That was the first answer and
+                // it was too narrow by half: the four dvergr bases share the dvergr trophy, which
+                // is nobody's default, so a row covering guard towers, excavations, lighthouses
+                // and harbors alike was labelled "Dvergr Harbour" -- whichever of them the
+                // dictionary met first. Several prefabs under one name (Ruin1, Ruin2, Ruin3 are
+                // all "Black Forest Ruin") are one type and keep theirs.
+                if (namesOf[entry.Icon].Count < 2) continue;
+                // The group they are all in, where they are all in one: that name was written for
+                // exactly this -- "Dvergr Bases" over the four kinds of place the dvergr hold --
+                // and it beats anything worked out from the names themselves. See Tiers.
+                entry.Label = SharedGroup(sourcesOf[entry.Icon])
+                              ?? SharedName(namesOf[entry.Icon])
+                              ?? Categories.Label(entry.Kind.Value);
             }
             var list = new List<TypeCount>(byIcon.Values);
             var order = TgmConfig.TypeRowOrder != null ? TgmConfig.TypeRowOrder.Value : TypeOrder.Progression;
             list.Sort((a, b) =>
             {
+                // Biome rows read as a journey, always, whatever the setting says about the rest:
+                // "most first" over Meadows, Black Forest, Swamp is a list nobody can scan.
+                if (a.Biome.HasValue && b.Biome.HasValue)
+                    return Biomes.Order(a.Biome.Value).CompareTo(Biomes.Order(b.Biome.Value));
                 if (order == TypeOrder.MostFirst && a.Count != b.Count) return b.Count.CompareTo(a.Count);
                 if (order == TypeOrder.Progression)
                 {

@@ -148,6 +148,20 @@ namespace TheGreatestMap
             return KindOf(shared).HasValue ? TgmConfig.IsIconHidden(icon) : TgmConfig.IsOwnIconHidden(icon);
         }
 
+        /// <summary>
+        /// Is this marker's kind switched off where it stands? Only for the kinds whose rows are
+        /// biomes rather than pictures, and only worth the question once something is hidden --
+        /// this is asked of every marker on every relayout, and the biome of a place that cannot
+        /// move is worked out once and remembered.
+        /// </summary>
+        internal static bool BiomeHidden(SharedPin shared, Category? kind)
+        {
+            if (shared == null || !kind.HasValue) return false;
+            if (TgmConfig.HiddenBiomeCount() == 0) return false;
+            if (!Categories.GroupsByBiome(kind.Value) || !Biomes.Known) return false;
+            return TgmConfig.IsBiomeHidden(kind.Value, Biomes.Of(shared.Pos));
+        }
+
         internal static bool IsShown(SharedPin shared)
         {
             if (shared == null) return false;
@@ -162,6 +176,7 @@ namespace TheGreatestMap
             if (PictureHidden(shared)) return false;
             var kind = KindOf(shared);
             if (kind.HasValue && TgmConfig.ShowKind.TryGetValue(kind.Value, out var showKind) && !showKind.Value) return false;
+            if (BiomeHidden(shared, kind)) return false;
             // Never a recorded altar marker. The game marks every altar on every map from the
             // first minute, so one of ours beside it is the same stones twice -- and a swap that
             // drew the records would be a swap into nothing wherever this mod had not recorded
@@ -1844,6 +1859,7 @@ namespace TheGreatestMap
                     // sit on top of its, two labels over one place. Only portals stand down; the
                     // rest of the map stays, which is the point of showing it there at all.
                     else if (kind.Value == Category.Portal && Portals.PortalPickerOpen()) hidden = true;
+                    else if (BiomeHidden(shared, kind)) hidden = true;
                 }
                 // Just recorded: show it for a while anyway, so writing something down always
                 // shows you what you wrote. Not against the master switch or a marker hidden by
@@ -1983,6 +1999,8 @@ namespace TheGreatestMap
             {
                 if (TgmConfig.ShowKind.TryGetValue(kind.Value, out var showKind) && !showKind.Value)
                     return $"\"Show {Categories.Label(kind.Value)}\" is off";
+                if (BiomeHidden(shared, kind))
+                    return $"{Categories.Label(kind.Value)} are switched off in the {Biomes.Label(Biomes.Of(shared.Pos))}";
                 if (TgmConfig.ShowOnMinimap.TryGetValue(kind.Value, out var onMini) && !onMini.Value)
                     return $"\"{Categories.Label(kind.Value)} On Minimap\" is off and this is the small map";
                 if (kind.Value == Category.Portal && Portals.PortalPickerOpen()) return "the portal picker is open";

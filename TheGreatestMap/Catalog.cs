@@ -349,6 +349,22 @@ namespace TheGreatestMap
                 || c == Category.Seeds || c == Category.Plants;
         }
 
+        /// <summary>
+        /// Does this kind's marker list group by biome instead of by picture?
+        ///
+        /// <para>For a kind whose types each have a picture of their own, the picture is the type
+        /// and grouping by it gives a row per type: "Copper Ore", "Tin Ore". Structures have no
+        /// such thing -- every one of them wears the house pin, because the game draws no picture
+        /// of an abandoned farm -- so grouping by picture gives exactly one row for the whole
+        /// kind, which is a row saying what the heading above it already said.</para>
+        ///
+        /// <para>Where they stand is the next most useful thing about them, and the one a player
+        /// is actually deciding by: meadows farms are worth marking while you are hunting early
+        /// axes and worth nothing afterwards, mountain ruins matter while you are looking for
+        /// onion seeds. That is a decision per biome, so the rows are per biome.</para>
+        /// </summary>
+        internal static bool GroupsByBiome(Category c) => c == Category.Structure;
+
         internal static bool IsResource(Category c)
         {
             return c == Category.Berries || c == Category.Mushrooms || c == Category.Herbs
@@ -678,15 +694,22 @@ namespace TheGreatestMap
                            // Nest" with the brute's trophy -- the same name and the same picture as
                            // the spawner, two different things reading identically on the map.
                            "Greydwarf_camp*=Greydwarf Camp|TrophyGreydwarf," +
-                           // Everything the dvergr built and still hold. The guard tower prefix
-                           // takes the ruined ones with it (Mistlands_GuardTower1_ruined_new and
-                           // its two siblings, 150 of the 350), which is a question left open
-                           // rather than answered: a ruined tower is the FortressRuins case, but
-                           // nobody has said yet whether these stand empty.
-                           "Mistlands_GuardTower*=Dvergr Guard Tower|TrophyDvergr," +
-                           "Mistlands_Excavation*=Dvergr Excavation|TrophyDvergr," +
-                           "Mistlands_Harbour*=Dvergr Harbor|TrophyDvergr," +
-                           "Mistlands_Lighthouse*=Dvergr Lighthouse|TrophyDvergr," +
+                           // Everything the dvergr built and still hold. This prefix used to take
+                           // the fallen towers with it as well (Mistlands_GuardTower1_ruined_new
+                           // and its two siblings, 150 of the 350): that question is answered now,
+                           // and they are scenery -- see the Dvergr Ruins group in Tiers, whose
+                           // longer prefixes win over this one.
+                           // Their lantern rather than their trophy. The trophy is a braid that
+                           // reads as nothing at pin size, and a lit lantern is both unmistakably
+                           // dvergr and what one of these places looks like from across a bog.
+                           // Black marble was the other obvious candidate and is spoken for: the
+                           // giant ribs and skulls in the Ashlands wear it, seventy on one map.
+                           // DvergrNeedle and TreasureChest_dvergrtower are both free if this one
+                           // turns out to be muddy -- tgm_items dvergr lists every picture there is.
+                           "Mistlands_GuardTower*=Dvergr Guard Tower|piece:piece_dvergr_lantern," +
+                           "Mistlands_Excavation*=Dvergr Excavation|piece:piece_dvergr_lantern," +
+                           "Mistlands_Harbour*=Dvergr Harbor|piece:piece_dvergr_lantern," +
+                           "Mistlands_Lighthouse*=Dvergr Lighthouse|piece:piece_dvergr_lantern," +
                            // Twenty in a world, and the one Ashlands place you both travel to and
                            // want to know you have cleared. The charred mage's trophy is free
                            // because the hundred FortressRuins that used to wear it are not

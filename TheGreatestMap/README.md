@@ -77,7 +77,10 @@ hidden, show all hidden again. Hidden markers stay on your map and keep syncing;
 drawn. The icon and kind choices are the Display settings "Hidden Icons" and "Show <Kind>", so they
 can also be edited by hand, and `tgm_show` in the console brings everything back. Pictures switched
 off under Yours are kept on a separate list, because a recorded farmstead wears the same house as a
-house pin you dropped and switching off one should not take the other with it. Vanilla pins keep
+house pin you dropped and switching off one should not take the other with it. Structures are
+listed by biome rather than by picture, since every one of them wears that same house: each biome
+switches on its own, so the meadows farmsteads you have finished with can go while the mountain
+ruins stay. Vanilla pins keep
 their vanilla right-click.
 
 **Close up, the map is always honest.** A hidden marker within 50 m of you is drawn anyway (Display,
@@ -480,6 +483,7 @@ list's gear menu to see these rows and switch any of them on.
 | `tgm_status` | Counts of shared markers, erased spots and pending discoveries |
 | `tgm_tiers` | What it records and what it does not, group by group, and which groups you have switched |
 | `tgm_forgotten [confirm]` | Markers standing for something no longer recorded at all; lists them, then erases them for everyone. `tgm_undo` takes it back |
+| `tgm_items <word>` | Every picture the game has whose name contains that word, drawn on screen at marker size with the name each is typed as -- for choosing an icon |
 | `tgm_unmanual [backup] [confirm]` | Takes the word "Manual" back off markers that were recorded, not placed, told apart by their height: a pin you placed by clicking the map stands at no height at all. Name a backup in format 6 or earlier to cross-check it |
 | `tgm_list [n]` | Nearest shared markers |
 | `tgm_find [text]` | Show only the markers mentioning some text, and list the types that matched; on its own, show everything again |

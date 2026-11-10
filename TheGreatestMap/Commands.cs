@@ -675,7 +675,7 @@ namespace TheGreatestMap
                     }
                 }));
 
-            new Terminal.ConsoleCommand("tgm_items", "List every picture the game has whose name contains a word, for choosing a marker icon -- items, build pieces, the map's location pictures and its own pin sprites: tgm_items bear",
+            new Terminal.ConsoleCommand("tgm_items", "Show every picture the game has whose name contains a word, for choosing a marker icon -- items, build pieces, the map's location pictures and its own pin sprites. Drawn on screen at marker size, with the name each one is typed as: tgm_items bear",
                 (Terminal.ConsoleEvent)(args =>
                 {
                     if (args.Args.Length < 2) { args.Context.AddString("Usage: tgm_items <word>"); return; }
@@ -689,6 +689,10 @@ namespace TheGreatestMap
                     }
                     args.Context.AddString($"{found.Count} picture(s) matching '{args.Args[1]}' (a bare name is an item):");
                     foreach (var name in found) args.Context.AddString("  " + name);
+                    // And the same list drawn, because a name is the one form in which a picture
+                    // cannot be judged. The console keeps the text so it can be copied.
+                    if (PicturePanel.Show(args.Args[1], found) > 0)
+                        args.Context.AddString("Shown on screen as pictures -- Esc closes them.");
                 }));
 
             new Terminal.ConsoleCommand("tgm_missing", "What this mod can record that your map has none of yet, by kind. Add all to include the things this game does not have at all",

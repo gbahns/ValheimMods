@@ -185,6 +185,8 @@ namespace TheGreatestMap
         /// </summary>
         private static readonly Dictionary<Category, int> _shown = new Dictionary<Category, int>();
         private static readonly Dictionary<string, int> _shownByIcon = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        /// <summary>The same tally for the rows that stand for a biome, keyed as Biomes.Key writes it.</summary>
+        private static readonly Dictionary<string, int> _shownByBiome = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>The same two numbers for the whole map, for the line under the find box.</summary>
         private static int _all, _allShown;
@@ -2485,6 +2487,7 @@ namespace TheGreatestMap
             _counts.Clear();
             _shown.Clear();
             _shownByIcon.Clear();
+            _shownByBiome.Clear();
             _done.Clear();
             _doneByIcon.Clear();
             _doneOther.Clear();
@@ -2513,6 +2516,12 @@ namespace TheGreatestMap
                     string key = IconRegistry.Normalize(ClientPins.IconOf(pin)) ?? IconRegistry.FallbackKey;
                     _shownByIcon.TryGetValue(key, out int litIcon);
                     _shownByIcon[key] = litIcon + 1;
+                    if (kind.HasValue && Categories.GroupsByBiome(kind.Value) && Biomes.Known)
+                    {
+                        string bkey = Biomes.Key(kind.Value, Biomes.Of(pin.Pos));
+                        _shownByBiome.TryGetValue(bkey, out int litBiome);
+                        _shownByBiome[bkey] = litBiome + 1;
+                    }
                 }
                 if (!pin.Checked) continue;
                 if (!kind.HasValue)
@@ -2695,16 +2704,30 @@ namespace TheGreatestMap
             var t = type;
             string group = CrossedOff.GroupFor(kind, t.Icon);
             bool gone = Categories.IsResource(kind);
+            // A row standing for a biome switches, focuses and points at that biome. It cannot
+            // do any of those by its picture: every structure wears the house pin, so switching
+            // by picture here would switch the lot. See Categories.GroupsByBiome.
+            bool byBiome = t.Biome.HasValue;
+            var where = t.Biome ?? Heightmap.Biome.None;
             SwitchRow(map, _content, 0f, y, TypeIndent, t.Icon, TypeLabel(t),
                 // A place is switched on its own list. The one it wears its picture from is about
                 // trophies, and a place is not a kind of thing: see TgmConfig.IsPlaceHidden.
-                () => { if (t.Place) TgmConfig.SetPlaceHidden(t.Icon, PlaceLit(kind, t)); else ToggleType(kind, t.Icon); },
-                () => t.Place ? PlaceLit(kind, t) : AllShown && IsShown(kind) && !TgmConfig.IsIconHidden(t.Icon),
+                () =>
+                {
+                    if (byBiome) SetBiomeShown(kind, where, !(IsShown(kind) && !TgmConfig.IsBiomeHidden(kind, where)));
+                    else if (t.Place) TgmConfig.SetPlaceHidden(t.Icon, PlaceLit(kind, t));
+                    else ToggleType(kind, t.Icon);
+                },
+                () => byBiome
+                    ? AllShown && IsShown(kind) && !TgmConfig.IsBiomeHidden(kind, where)
+                    : t.Place ? PlaceLit(kind, t) : AllShown && IsShown(kind) && !TgmConfig.IsIconHidden(t.Icon),
                 caption: () => TypeLabel(t),
-                onOnly: () => Focus.SetIcon(t.Icon),
-                onLocate: () => Locate.Icon(t.Icon, t.Label),
-                onlyLit: () => Focus.Icon != null && IconRegistry.SameKey(Focus.Icon, t.Icon),
-                pingLit: () => Locate.PointingAt(t.Icon),
+                onOnly: () => { if (byBiome) Focus.SetBiome(kind, where); else Focus.SetIcon(t.Icon); },
+                onLocate: () => { if (byBiome) Locate.Biome(kind, where, t.Label); else Locate.Icon(t.Icon, t.Label); },
+                onlyLit: () => byBiome
+                    ? Focus.BiomeKind.HasValue && Focus.BiomeKind.Value == kind && Focus.BiomeShown == where
+                    : Focus.Icon != null && IconRegistry.SameKey(Focus.Icon, t.Icon),
+                pingLit: () => byBiome ? Locate.PointingAt(kind, where) : Locate.PointingAt(t.Icon),
                 // The crossed-off ones of this type alone -- a player done with their burial
                 // chambers who still wants the sunken crypts they have cleared. That was the one
                 // thing the right-hand column could do that the kind rows could not, and this is
@@ -2783,8 +2806,33 @@ namespace TheGreatestMap
         /// <summary>A type's name, with how many of it are drawn out of how many there are.</summary>
         private static string TypeLabel(Focus.TypeCount type)
         {
-            _shownByIcon.TryGetValue(type.Icon, out int lit);
+            int lit;
+            if (type.Biome.HasValue && type.Kind.HasValue)
+                _shownByBiome.TryGetValue(Biomes.Key(type.Kind.Value, type.Biome.Value), out lit);
+            else
+                _shownByIcon.TryGetValue(type.Icon, out lit);
             return Named(type.Label, lit, type.Count);
+        }
+
+        /// <summary>
+        /// Show or hide one biome of a kind, the same way <see cref="SetTypeShown"/> does a type:
+        /// asking for one while the whole kind is off turns the kind on and leaves its other
+        /// biomes off, so the row you pressed is the one you get.
+        /// </summary>
+        private static void SetBiomeShown(Category kind, Heightmap.Biome where, bool show)
+        {
+            bool drawn = IsShown(kind) && !TgmConfig.IsBiomeHidden(kind, where);
+            if (drawn == show) return;
+            if (!show) { TgmConfig.SetBiomeHidden(kind, where, true); return; }
+            if (!IsShown(kind))
+            {
+                if (_types != null && _types.TryGetValue(kind, out var siblings))
+                    foreach (var other in siblings)
+                        if (other.Biome.HasValue && other.Biome.Value != where)
+                            TgmConfig.SetBiomeHidden(kind, other.Biome.Value, true);
+                if (TgmConfig.ShowKind.TryGetValue(kind, out var entry)) entry.Value = true;
+            }
+            TgmConfig.SetBiomeHidden(kind, where, false);
         }
 
         /// <summary>
