@@ -113,6 +113,7 @@ namespace TheGreatestMap
         private static List<Focus.TypeCount> _results;
 
         private static string _pendingText;
+        private static bool _pendingFocus;
         private static bool _rebuilding;
         private static bool _rebuildWanted;
 
@@ -561,6 +562,7 @@ namespace TheGreatestMap
                     _types[type.Kind.Value] = list = new List<Focus.TypeCount>();
                 list.Add(type);
             }
+            AddPlaceTypes();
 
             var panel = MenuKit.Panel(parent, "TGM_KindMenu");
             _root = panel.gameObject;
@@ -634,9 +636,18 @@ namespace TheGreatestMap
             if (_pendingText != null && _find != null)
             {
                 _find.SetTextWithoutNotify(_pendingText);
-                _find.ActivateInputField();
+                // Only where it had the keyboard before. Every redraw in place used to take it:
+                // unfolding a kind handed the find box the focus nobody had asked it for, and
+                // while a text box has the keyboard this mod tells the game a text input is up
+                // -- which is what stops the hotkeys firing as you type. The map reads the wheel
+                // only when no text input is up, so it stopped reading it, so the patch that
+                // lends the wheel to this list never ran and the list would not scroll. Clicking
+                // any row took the focus away again and it all came back, which is a bug report
+                // nobody could have written down.
+                if (_pendingFocus) _find.ActivateInputField();
             }
             _pendingText = null;
+            _pendingFocus = false;
             _scroll = scroll;
             ClampScroll();
             Refresh();
@@ -653,6 +664,7 @@ namespace TheGreatestMap
             if (_root == null) return;
             _rebuildWanted = false;
             _pendingText = _find != null ? _find.text : null;
+            _pendingFocus = _find != null && _find.isFocused;
             var pos = _screenPos;
             _rebuilding = true;
             Close();
@@ -886,7 +898,106 @@ namespace TheGreatestMap
             if (Categories.IsPlacedOnly(kind)) return true;
             if (Categories.IsLive(kind))
                 return kind == Category.Portal ? Portals.HaveList : Transports.HaveList;
-            return _counts.ContainsKey(kind) || Categories.MarkedByGame(kind);
+            return _counts.ContainsKey(kind) || Categories.MarkedByGame(kind) || Quiet(kind).Count > 0;
+        }
+
+        /// <summary>
+        /// The groups of this kind nothing is being recorded for, which is what the gear menu's
+        /// "show what you are not recording" reveals.
+        ///
+        /// <para>Read from the catalog rather than from the markers on the map, and that is the
+        /// whole trick: every other row in this panel is built from what has been recorded, which
+        /// cannot mention a group precisely when it is the one somebody is looking for. A group
+        /// that is off has no markers, so it has no types, so until now it had no row and no name
+        /// anywhere a player would look -- only a line in a config file naming prefabs.</para>
+        /// </summary>
+        private static List<Catalog.GroupRow> Quiet(Category kind)
+        {
+            var list = new List<Catalog.GroupRow>();
+            if (TgmConfig.ShowNotRecording == null || !TgmConfig.ShowNotRecording.Value) return list;
+            foreach (var row in Catalog.Groups())
+            {
+                if (row.Cat != kind || row.Tier == Tier.Never) continue;
+                if (Tiers.Recording(row.Label)) continue;
+                list.Add(row);
+            }
+            list.Sort((a, b) => string.Compare(a.Label, b.Label, StringComparison.CurrentCultureIgnoreCase));
+            return list;
+        }
+
+        /// <summary>
+        /// The places the game marks itself, as type rows under their own kind.
+        ///
+        /// <para>Every other type row in this list is read off the markers this mod recorded,
+        /// which is right everywhere else and left these two rows with nothing to unfold: the
+        /// altars are marked by the game whether this mod has recorded them or not, and nothing
+        /// records Hildir's errands at all. So "Hildir's Quests (3)" was a number with no way to
+        /// see what it was made of, while every other row in the panel opens onto its types.
+        /// These come from what the game has marked -- the same answer the swap draws from, so
+        /// the rows and the map cannot disagree.</para>
+        ///
+        /// <para>Only for a picture no record of that kind already wears, so nothing is counted
+        /// twice: a recorded altar marker and the game's mark for the same altar are one boss,
+        /// and the row above them says so once.</para>
+        /// </summary>
+        private static void AddPlaceTypes()
+        {
+            var extra = new Dictionary<Category, List<Focus.TypeCount>>();
+            _cleared.Clear();
+            foreach (var mark in OwnMarks.Marks)
+            {
+                if (string.IsNullOrEmpty(mark.Icon)) continue;
+                var cat = mark.Cat;
+                // The records for these two kinds are not drawn at all, so a type row read off
+                // them would be a row about nothing: taken out, and the places put in their
+                // place. Done once per kind, before anything is added to it.
+                if (_types.ContainsKey(cat) && !_cleared.Contains(cat)) { _cleared.Add(cat); _types.Remove(cat); }
+                if (!extra.TryGetValue(cat, out var list)) extra[cat] = list = new List<Focus.TypeCount>();
+                var entry = Holding(list, mark.Icon);
+                if (entry == null)
+                {
+                    list.Add(entry = new Focus.TypeCount
+                    {
+                        Place = true,
+                        Icon = mark.Icon,
+                        Label = !string.IsNullOrEmpty(mark.Name)
+                            ? mark.Name
+                            : (IconRegistry.DisplayName(mark.Icon) ?? Categories.Label(cat)),
+                        Kind = cat,
+                    });
+                }
+                entry.Count++;
+                // Lit where the place is marked at all, by ours or by the game's own pin: the row
+                // says how many of these are on the map, and with the swap off the game's pin is
+                // what is on it.
+                if (OwnMarks.Lit(mark))
+                {
+                    _shownByIcon.TryGetValue(mark.Icon, out int lit);
+                    _shownByIcon[mark.Icon] = lit + 1;
+                }
+            }
+            foreach (var kv in extra)
+            {
+                // The catalog's own order, which is the order the rest of the panel reads in.
+                kv.Value.Sort((a, b) =>
+                {
+                    int ra = Catalog.OrderOf(a.Icon), rb = Catalog.OrderOf(b.Icon);
+                    return ra != rb
+                        ? ra.CompareTo(rb)
+                        : string.Compare(a.Label, b.Label, StringComparison.OrdinalIgnoreCase);
+                });
+                if (!_types.TryGetValue(kv.Key, out var list)) _types[kv.Key] = list = new List<Focus.TypeCount>();
+                list.AddRange(kv.Value);
+            }
+        }
+
+        /// <summary>The kinds whose recorded types this pass has already taken out, once each.</summary>
+        private static readonly HashSet<Category> _cleared = new HashSet<Category>();
+
+        private static Focus.TypeCount Holding(List<Focus.TypeCount> list, string icon)
+        {
+            foreach (var one in list) if (IconRegistry.SameKey(one.Icon, icon)) return one;
+            return null;
         }
 
         /// <summary>One kind, and its types under it when it is unfolded. Returns the y below them.</summary>
@@ -1156,12 +1267,19 @@ namespace TheGreatestMap
             y = LandmarkRow(map, WorldPins.Kind.Center, y);
             if (kinds.Contains(Category.BossAltar)) y = PlaceRow(map, Category.BossAltar, y);
             if (kinds.Contains(Category.Trader)) y = PlaceRow(map, Category.Trader, y);
-            y = LandmarkRow(map, WorldPins.Kind.Hildir, y);
+            // Her errands are one thing with two halves, the same as the altars and the
+            // traders: the game's pins for them, and whatever an older version of this mod wrote
+            // down before it stopped recording them. They had a row each, side by side, counting
+            // different halves of one answer under two names a letter apart -- "Hildir's Quests"
+            // for the game's nine and "Hildir Quests" for the five this mod still held.
+            if (kinds.Contains(Category.HildirQuest)) y = PlaceRow(map, Category.HildirQuest, y);
+            else y = LandmarkRow(map, WorldPins.Kind.Hildir, y);
             y = LandmarkRow(map, WorldPins.Kind.Other, y);
-            // A kind sorted into Places that is neither of those two: drawn as any other kind, so
+            // A kind sorted into Places that is none of those three: drawn as any other kind, so
             // adding one never leaves it out of its own heading.
             foreach (var kind in kinds)
-                if (kind != Category.BossAltar && kind != Category.Trader) y = KindRow(map, kind, y);
+                if (kind != Category.BossAltar && kind != Category.Trader
+                    && kind != Category.HildirQuest) y = KindRow(map, kind, y);
             return y;
         }
 
@@ -1178,7 +1296,7 @@ namespace TheGreatestMap
             Func<string> caption = () => Named(WorldPins.Label(k), WorldPins.ShownCount(k), WorldPins.CountOf(k));
             SwitchRow(map, _content, 0f, y, KindIndent, WorldPins.IconKey(k), caption(),
                 () => WorldPins.Toggle(k),
-                () => AllShown && WorldPins.Drawn(k),
+                () => AllShown && WorldPins.Wanted(k),
                 onLocate: () => Locate.Spots(WorldPins.Label(k), WorldPins.Spots(k)),
                 pingLit: () => false,
                 caption: caption,
@@ -1199,7 +1317,9 @@ namespace TheGreatestMap
         private static float PlaceRow(Minimap map, Category kind, float y)
         {
             var k = kind;
-            var landmark = kind == Category.BossAltar ? WorldPins.Kind.Boss : WorldPins.Kind.Trader;
+            var landmark = kind == Category.BossAltar ? WorldPins.Kind.Boss
+                         : kind == Category.HildirQuest ? WorldPins.Kind.Hildir
+                         : WorldPins.Kind.Trader;
             var type = kind == Category.BossAltar ? (Minimap.PinType?)Minimap.PinType.Boss : null;
             Func<string> caption = () => PlaceLabel(map, k, landmark, type);
             var row = SwitchRow(map, _content, 0f, y, KindIndent, IconKeyFor(k), caption(),
@@ -1238,12 +1358,21 @@ namespace TheGreatestMap
         /// <summary>How many of these are on the map, counting every way one gets there.</summary>
         private static string PlaceLabel(Minimap map, Category kind, WorldPins.Kind landmark, Minimap.PinType? type)
         {
+            // The altars and Hildir's errands are counted as places: one per place, however many
+            // pins the game has put on it and whichever of them this mod drew. Counted three
+            // ways before -- the records, the world's landmark pins, and the vegvisir pins -- so
+            // an altar somebody had read a stone for was two and her three errands were nine, and
+            // the row could not be made to say all of them were shown. The records are left out
+            // because none of them is drawn: the game marks every one of these places itself, so
+            // a marker of this mod's beside one was the same place twice, and what is kept of
+            // them is the record and its travels rather than a pin. See ClientPins.IsShown.
+            if (kind == Category.BossAltar || kind == Category.HildirQuest)
+            {
+                OwnMarks.Tally(landmark, out int places, out int placesLit);
+                return Named(Categories.Label(kind), placesLit, places);
+            }
             _counts.TryGetValue(kind, out int ours);
             _shown.TryGetValue(kind, out int oursLit);
-            // Our own markers wear the kind's icon, and for the altars that icon is one of
-            // vanilla's own pin types -- so the game's filter hides those along with everything
-            // else wearing it, and a count that said otherwise would be wrong on the screen.
-            if (type.HasValue && !VanillaPins.Drawn(map, type.Value)) oursLit = 0;
             int n = ours + WorldPins.CountOf(landmark);
             int lit = oursLit + WorldPins.ShownCount(landmark);
             if (type.HasValue)
@@ -1256,7 +1385,10 @@ namespace TheGreatestMap
 
         private static bool PlaceShown(Minimap map, Category kind, WorldPins.Kind landmark, Minimap.PinType? type)
         {
-            if (IsShown(kind) && (!type.HasValue || VanillaPins.Drawn(map, type.Value))) return true;
+            // With this mod's own boss markers on, the game's pins are hidden on purpose and
+            // this row is about ours: asking whether vanilla's type is drawn would report the row
+            // switched off while its markers are on the map.
+            if (IsShown(kind) && (!type.HasValue || WorldPins.CustomBoss || VanillaPins.Drawn(map, type.Value))) return true;
             if (WorldPins.CountOf(landmark) > 0 && WorldPins.Drawn(landmark)) return true;
             return type.HasValue && VanillaPins.CountOf(type.Value) > 0 && VanillaPins.Drawn(map, type.Value);
         }
@@ -1265,7 +1397,9 @@ namespace TheGreatestMap
         {
             if (TgmConfig.ShowKind.TryGetValue(kind, out var entry)) entry.Value = show;
             WorldPins.SetDrawn(landmark, show);
-            if (type.HasValue) VanillaPins.SetDrawn(map, type.Value, show);
+            // Left alone while the swap is on: the pass that keeps the game's pins hidden would
+            // only put them away again, and the row would flicker.
+            if (type.HasValue && !WorldPins.CustomBoss) VanillaPins.SetDrawn(map, type.Value, show);
         }
 
         /// <summary>
@@ -1606,34 +1740,74 @@ namespace TheGreatestMap
             var types = group == Group.Yours ? VanillaPins.Yours
                       : group == Group.Places ? VanillaPins.Theirs : null;
             if (types == null) return list;
-            foreach (var type in types) if (VanillaPins.CountOf(type) > 0) list.Add(type);
+            foreach (var type in types)
+            {
+                // The five a player can drop are shown whether or not any are on the map, because
+                // for those this row is also the button that places one -- the only button, once
+                // vanilla's strip under the map is hidden, which is the whole point of being able
+                // to hide it. A row that appears only once you own one of a thing you can only
+                // get from that row is a door locked from the inside.
+                if (group == Group.Yours && VanillaPins.Placeable(type)) { list.Add(type); continue; }
+                // The rest -- the death marker, the bed -- while anything wears the picture,
+                // counting this mod's markers as well as the map's own pins. The row is about the
+                // picture, so either half is reason enough for it to be there.
+                if (VanillaPins.CountOf(type) > 0 || VanillaPins.OursWearing(type) > 0)
+                    list.Add(type);
+            }
             return list;
         }
 
         /// <summary>
-        /// One of the map's own pin types: its picture, what you call it, how many there are, and
-        /// the switch -- which is vanilla's own switch, so its button under the map grays out with
-        /// this row.
+        /// One of the map's own pictures: everything wearing it, however it got there.
         ///
-        /// <para>No crossed-off count, nothing of these being recorded to cross off, and no
-        /// filter: a focus names a kind or an icon of ours and has nothing to say about a pin this
-        /// mod never wrote. The five placeable ones get the place-by-hand button, which arms
-        /// vanilla's own placing for that icon -- the other half of what its button under the map
-        /// does -- so for those five this row is the button, and that is what makes doing without
-        /// the button strip thinkable.</para>
+        /// <para><b>One row per picture, not one per provenance.</b> A hammer you dropped with
+        /// vanilla's button and a hammer this mod recorded are the same thing to the person
+        /// reading the map, so they are one row with one count and one switch -- and the switch
+        /// presses both halves, vanilla's own visibility array and this mod's hidden-icon list,
+        /// because a row that moves half of what it counts is a row that lies.</para>
+        ///
+        /// <para>It had to be one row because it was none. A marker placed by hand belongs to no
+        /// kind, the rows that unfold under a kind are built from the kinds markers belong to,
+        /// and the count here only ever counted pins this mod had <em>not</em> drawn -- so an
+        /// adopted marker fell between the two and appeared in this list nowhere at all. A map
+        /// with fifty-seven dots and forty-eight hammers on it had not one row for any of them,
+        /// and the only thing that could still hide them was vanilla's dot button, which reached
+        /// them only while they were wrongly drawn as vanilla dots.</para>
+        ///
+        /// <para>No crossed-off count: nothing here is recorded against a deposit to cross off.
+        /// The five placeable ones get the place-by-hand button, which arms vanilla's own placing
+        /// for that picture -- so for those five this row is the button, and that is what makes
+        /// doing without the button strip thinkable.</para>
         /// </summary>
         private static float VanillaRow(Minimap map, Minimap.PinType type, float y)
         {
             var t = type;
+            string key = VanillaPins.IconKey(t);
+            Func<int> theirs = () => VanillaPins.CountOf(t);
+            Func<int> ours = () => VanillaPins.OursWearing(t);
+            Func<bool> theirsLit = () => VanillaPins.Drawn(map, t);
+            Func<bool> oursLit = () => VanillaPins.OursLit(t);
             Func<string> caption = () => Named(VanillaPins.Label(t),
-                                               VanillaPins.ShownCount(map, t), VanillaPins.CountOf(t));
-            SwitchRow(map, _content, 0f, y, KindIndent, VanillaPins.IconKey(t), caption(),
-                () => VanillaPins.Toggle(map, t),
-                () => AllShown && VanillaPins.Drawn(map, t),
+                                               (theirsLit() ? theirs() : 0) + (oursLit() ? ours() : 0),
+                                               theirs() + ours());
+            SwitchRow(map, _content, 0f, y, KindIndent, key, caption(),
+                () =>
+                {
+                    // Both halves together. Lit means everything wearing this picture is drawn,
+                    // so pressing it puts all of it away and pressing it again brings all of it
+                    // back -- there is no state in which one half is hiding and the row says so.
+                    bool show = !(theirsLit() && oursLit());
+                    VanillaPins.SetDrawn(map, t, show);
+                    VanillaPins.SetOursDrawn(t, show);
+                },
+                () => AllShown && theirsLit() && oursLit(),
                 onPlace: VanillaPins.Placeable(t) ? (Action)(() => VanillaPins.Place(map, t)) : null,
                 placeLit: () => VanillaPins.Armed(map, t),
-                onLocate: () => Locate.Vanilla(map, t, VanillaPins.Label(t)),
-                pingLit: () => Locate.Pointing(t),
+                // By picture where this mod holds any, which is what the row is about and reaches
+                // both halves at once; by pin type where it holds none, which is the only way to
+                // wave a pin with no record behind it.
+                onLocate: () => { if (ours() > 0) Locate.Icon(key, VanillaPins.Label(t)); else Locate.Vanilla(map, t, VanillaPins.Label(t)); },
+                pingLit: () => ours() > 0 ? Locate.PointingAt(key) : Locate.Pointing(t),
                 caption: caption,
                 tip: VanillaPins.Tip(t));
             return y - RowHeight;
@@ -2305,6 +2479,9 @@ namespace TheGreatestMap
             VanillaPins.Recount(Minimap.instance);
             // And the world's own landmarks, which are told apart by where they stand.
             WorldPins.Recount(Minimap.instance);
+            // And the places the game marks itself, which this list names under their rows
+            // whether this mod is drawing its own markers for them or not.
+            OwnMarks.Ensure();
             _counts.Clear();
             _shown.Clear();
             _shownByIcon.Clear();
@@ -2367,25 +2544,68 @@ namespace TheGreatestMap
         /// </summary>
         private static float Unfold(Minimap map, RectTransform row, float y, Category kind)
         {
-            if (row == null || _types == null) return y;
-            if (!_types.TryGetValue(kind, out var types) || types.Count == 0) return y;
+            if (row == null) return y;
+            List<Focus.TypeCount> types = null;
+            if (_types != null) _types.TryGetValue(kind, out types);
+            int typeCount = types == null ? 0 : types.Count;
+            var quiet = Quiet(kind);
+            if (typeCount + quiet.Count == 0) return y;
             // One type usually needs no triangle, the row under it saying what the row above it
             // already says -- but only where the two are the same word. "Seeds (4)" over a map
             // holding nothing but carrot seeds says how many and not which, and the one thing
             // that would have said which was being hidden for being the only one. So the test is
-            // whether the type is named after its kind rather than whether it is alone.
-            if (types.Count == 1 && SaysTheSame(types[0].Label, Categories.Label(kind))) return y;
+            // whether the type is named after its kind rather than whether it is alone. A group
+            // nobody is recording is never what the row above says, so one of those is always
+            // worth a triangle.
+            if (quiet.Count == 0 && typeCount == 1 && SaysTheSame(types[0].Label, Categories.Label(kind))) return y;
             var k = kind;
             Twisty(row, KindIndent, _unfolded.Contains(kind),
                    () => { if (!_unfolded.Remove(k)) _unfolded.Add(k); });
             if (!_unfolded.Contains(kind)) return y;
 
-            foreach (var type in types)
+            if (types != null)
+                foreach (var type in types)
+                {
+                    TypeRow(map, y, kind, type);
+                    y -= RowHeight;
+                }
+            // Under the types rather than among them: these are not types, having no markers to
+            // be a type of. They are the question "did you want these at all".
+            foreach (var group in quiet)
             {
-                TypeRow(map, y, kind, type);
+                QuietRow(map, y, group);
                 y -= RowHeight;
             }
             return y;
+        }
+
+        /// <summary>
+        /// A group nothing is being recorded for: dim, like everything else in this list that is
+        /// not on the map, and the switch asks for it rather than showing it.
+        ///
+        /// <para>It keeps its row once pressed instead of disappearing, so the press is visibly a
+        /// switch: the row brightens, and it is gone the next time the list is built. Nothing
+        /// appears on the map in that moment unless the recorder still has the place in mind from
+        /// walking past it, which it often does -- that is what the ledger is kept for.</para>
+        /// </summary>
+        private static void QuietRow(Minimap map, float y, Catalog.GroupRow group)
+        {
+            string label = group.Label;
+            string why = string.IsNullOrEmpty(group.Why)
+                ? "Not recorded. Switch it on to start writing markers for these."
+                : group.Why + (group.Tier == Tier.Off
+                    ? " Off until asked for; switch it on to start writing markers for these."
+                    : " Switched off by you; switch it on to start again.");
+            SwitchRow(map, _content, 0f, y, TypeIndent, Catalog.FallbackIcon(group.Cat), label,
+                () =>
+                {
+                    bool on = !Tiers.Recording(label);
+                    Tiers.SetRecording(label, on);
+                    TheGreatestMapMod.Message((on ? "Recording " : "No longer recording ") + label);
+                },
+                () => Tiers.Recording(label),
+                caption: () => label,
+                tip: why);
         }
 
         /// <summary>
@@ -2476,8 +2696,10 @@ namespace TheGreatestMap
             string group = CrossedOff.GroupFor(kind, t.Icon);
             bool gone = Categories.IsResource(kind);
             SwitchRow(map, _content, 0f, y, TypeIndent, t.Icon, TypeLabel(t),
-                () => ToggleType(kind, t.Icon),
-                () => AllShown && IsShown(kind) && !TgmConfig.IsIconHidden(t.Icon),
+                // A place is switched on its own list. The one it wears its picture from is about
+                // trophies, and a place is not a kind of thing: see TgmConfig.IsPlaceHidden.
+                () => { if (t.Place) TgmConfig.SetPlaceHidden(t.Icon, PlaceLit(kind, t)); else ToggleType(kind, t.Icon); },
+                () => t.Place ? PlaceLit(kind, t) : AllShown && IsShown(kind) && !TgmConfig.IsIconHidden(t.Icon),
                 caption: () => TypeLabel(t),
                 onOnly: () => Focus.SetIcon(t.Icon),
                 onLocate: () => Locate.Icon(t.Icon, t.Label),
@@ -2506,6 +2728,10 @@ namespace TheGreatestMap
                 },
                 gone: gone);
         }
+
+        /// <summary>Whether a place's row is lit: its kind is shown and the place itself is not switched off.</summary>
+        private static bool PlaceLit(Category kind, Focus.TypeCount type) =>
+            AllShown && IsShown(kind) && !TgmConfig.IsPlaceHidden(type.Icon);
 
         /// <summary>Flip one type, from a row that is dim or bright accordingly.</summary>
         private static void ToggleType(Category kind, string icon)
@@ -2570,6 +2796,7 @@ namespace TheGreatestMap
         private static bool AnythingPutBack()
         {
             if (TgmConfig.HiddenKindCount() > 0 || TgmConfig.HiddenIconCount() > 0) return true;
+            if (TgmConfig.HiddenPlaceCount() > 0) return true;
             if (ViewPrefs.Count > 0 || CrossedOff.HiddenGroupCount() > 0) return true;
             if (CrossedOff.HiddenClearedCount() > 0 || WorldPins.HiddenCount() > 0) return true;
             return TgmConfig.ShowClearedDeposits != null && !TgmConfig.ShowClearedDeposits.Value;

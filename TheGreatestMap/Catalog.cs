@@ -322,7 +322,9 @@ namespace TheGreatestMap
                 case Category.Ship:      return "Ships";
                 case Category.Cart:      return "Carts";
                 case Category.Spawner:   return "Spawners";
-                case Category.DrakeNest: return "Drake Nests";
+                // Not "Drake Nests" since 4.9.0: the volture nests are here too, and both are
+                // a nest you climb to for the eggs. One picture, one switch, two groups under it.
+                case Category.DrakeNest: return "Nests";
                 // No apostrophe, and not for style: a label becomes part of a BepInEx config key
                 // ("Record Hildir Quests"), and an apostrophe in a key throws inside Awake, which
                 // means the mod does not load at all.
@@ -631,7 +633,14 @@ namespace TheGreatestMap
                            // no row in the marker list, no switch, and tgm_identify called it an
                            // orphan and offered to erase it. It is the leviathan that carries the
                            // barnacles, dives with them and is the thing the marker stands on.
-                           "Leviathan=Leviathan|Chitin";
+                           "Leviathan=Leviathan|Chitin," +
+                           // The Ashlands' flametal is mined off the back of a leviathan too --
+                           // a different leviathan, lying in the lava instead of the sea, but the
+                           // same component and so the same arrangement: a deposit that swims
+                           // away. Marked for what you go there for rather than for the animal,
+                           // which is the other way round from the sea one, because nobody goes
+                           // to a lava leviathan to look at it.
+                           "LeviathanLava=Flametal Vein|FlametalOreNew";
                 case Category.Dungeon:
                     return "Crypt2=Burial Chambers|TrophySkeleton,Crypt3=Burial Chambers|TrophySkeleton,Crypt4=Burial Chambers|TrophySkeleton," +
                            // Iron scrap rather than the draugr's trophy, which was also on the
@@ -676,7 +685,7 @@ namespace TheGreatestMap
                            // nobody has said yet whether these stand empty.
                            "Mistlands_GuardTower*=Dvergr Guard Tower|TrophyDvergr," +
                            "Mistlands_Excavation*=Dvergr Excavation|TrophyDvergr," +
-                           "Mistlands_Harbour*=Dvergr Harbour|TrophyDvergr," +
+                           "Mistlands_Harbour*=Dvergr Harbor|TrophyDvergr," +
                            "Mistlands_Lighthouse*=Dvergr Lighthouse|TrophyDvergr," +
                            // Twenty in a world, and the one Ashlands place you both travel to and
                            // want to know you have cleared. The charred mage's trophy is free
@@ -722,45 +731,15 @@ namespace TheGreatestMap
                     // for onion seeds, and the useful thing a map can say about either is "you
                     // have been in that one". Opening a chest inside one crosses its marker off,
                     // which is the whole point of marking them.
-                    // No StoneHouse and no StoneTowerRuins: 850 heaps of Black Forest and
-                    // Mountain stonework in a world with nothing in them to search, which is the
-                    // same thing the swamp's huts and ruins were and has to be answered the same
-                    // way wherever it stands.
-                    return "WoodFarm1=Abandoned Farm,WoodHouse*=Abandoned House,AbandonedLogCabin*=Log Cabin," +
-                           // Nothing in the swamp. What is worth going to there is marked by
-                           // something else: the crypts are dungeons, the bone piles and body
-                           // piles in the graveyards are spawners, the bog witch is a trader.
-                           // That leaves the huts, the wells, the ruins, the graveyards
-                           // themselves and the wrecks -- about 900 places in a world, all of
-                           // them a building you look at once -- and a swamp painted gold.
-                           // No Ruin. "Ruins" was this mod's own word for Ruin1, Ruin2 and
-                           // Ruin3 -- 450 heaps of Black Forest and Plains stonework in a world
-                           // with nothing in them to search and nothing to come back for. A name
-                           // the catalog had to invent, for a thing nobody can identify on
-                           // sight, is its own argument that the map has nothing to say about it.
-                           // No StoneTower, no Greydwarf_camp and no DrakeNest: the first two are
-                           // somewhere something lives and are Enemy Bases now, and the nests are
-                           // their own kind, marked for the egg rather than for the building.
-                           "StoneHenge*=Stonehenge|pin:Memorial," +
-                           "StoneCircle*=Stone Circle|pin:Memorial,Dolmen*=Dolmen|pin:Memorial," +
-                           "Waymarker*=Waymarker|pin:Memorial," +
-                           // No InfestedTree. It is a swamp tree with guck sacks on it, 700 of
-                           // them in a world, and the guck sacks are already recorded as what they
-                           // are: a marker for the tree says a second time what the sacks say, and
-                           // says it about the biggest type in this list. It wore a seeker trophy
-                           // besides, picked off the word "infested" by somebody who had the
-                           // Mistlands mines in mind -- there is no seeker within a biome of it.
-                           // Dropping the line is not enough on its own, so the prefix is in
-                           // Structures Exclude Prefixes as well; an unlisted location is swept in
-                           // as a structure otherwise.
-                           // The dvergr's own buildings are Enemy Bases. What stays here is what
-                           // they left behind and nobody lives in: the statues and the viaducts,
-                           // which keep their trophy because a dvergr made them.
-                           //
-                           // No CharredRuins. The Ashlands are laid out of them, and what is in
-                           // one is not worth the second walk that a marker invites.
-                           "Mistlands_Statue*=Dvergr Statue|TrophyDvergr,Mistlands_Viaduct*=Viaduct|TrophyDvergr,AshlandRuins*=Ashlands Ruins," +
-                           "PlaceofMystery*=Place of Mystery";
+                    //
+                    // The ruins, the standing stones, the statues, the swamp's buildings and the
+                    // rest of what this kind used to argue about in comments are entries in
+                    // Tiers.All now, at the tier each of them earns. That is the difference the
+                    // tiers were for: a thing named there keeps its name and its picture and is
+                    // understood wherever it is already on somebody's map, and still gets no
+                    // marker written for it. Dropping a line could only ever do half of that,
+                    // and it did the wrong half.
+                    return "WoodFarm1=Abandoned Farm,WoodHouse*=Abandoned House,AbandonedLogCabin*=Log Cabin";
                 case Category.DrakeNest:
                     // Two hundred in a world, on the mountain peaks, and the reason to mark one is
                     // the eggs: three of them to call Moder, and they grow back the way a
@@ -773,9 +752,14 @@ namespace TheGreatestMap
                     // traders have. The list exists so the map can name what the game's own pin
                     // is, and each entry borrows that location's own picture, which is the one
                     // already on the player's map for it.
-                    return "Hildir_cave=Howling Cavern|loc:Hildir_cave," +
-                           "Hildir_crypt=Smoldering Tomb|loc:Hildir_crypt," +
-                           "Hildir_plainsfortress=Sealed Tower|loc:Hildir_plainsfortress";
+                    // The trophy of whoever is waiting inside, which is what the place is for
+                    // and what tells the three apart at a glance. They used to name their own
+                    // locations' map pictures, and the game has one for the cavern and none for
+                    // the other two, so two of the three asked for a sprite that does not exist
+                    // and said so at every login.
+                    return "Hildir_cave=Howling Cavern|TrophyCultist_Hildir," +
+                           "Hildir_crypt=Smoldering Tomb|TrophySkeletonHildir," +
+                           "Hildir_plainsfortress=Sealed Tower|TrophyGoblinBruteBrosBrute";
                 case Category.Campfire:
                     return "fire_pit=Campfire|piece:fire_pit";
                 case Category.Workbench:
@@ -833,6 +817,14 @@ namespace TheGreatestMap
             public Category Cat;
             public string Name;
             public string Icon;
+            /// <summary>Whether a marker is written for this at all. See <see cref="Tiers"/>.</summary>
+            public Tier Tier;
+            /// <summary>
+            /// The switch this is under in the marker list. Several entries share one -- eleven
+            /// prefabs of Black Forest stonework are one line a player can read -- and anything
+            /// no group in <see cref="Tiers.All"/> names is its own, labelled with its own name.
+            /// </summary>
+            public string Group;
         }
 
         // Case-insensitive, like the prefix match below and the icon table above. The game's own
@@ -853,6 +845,10 @@ namespace TheGreatestMap
             // Which of the world's locations are altars and which are traders comes out of the
             // catalog, so the landmarks have to be classified again when it changes.
             WorldPins.Forget();
+            // And so do the names and pictures of the places the game marks itself.
+            OwnMarks.ForgetCatalog();
+            Rediscover.Forget();
+            Tiers.Forget();
         }
 
         private static readonly Dictionary<string, string> _iconBySource =
@@ -913,6 +909,14 @@ namespace TheGreatestMap
                 // burial chambers before them) stayed unknown to everyone who had played before.
                 Parse(cat, Categories.DefaultPrefabs(cat), _builtInByPrefab, _builtInByPrefix);
             }
+            // The tier table has the last word on both, including on a line the player wrote.
+            // That is the point of it being in code: a marker carries only the prefab it was
+            // written for, so what a thing *is* has to be the same for everybody who can see it,
+            // or the player with the shorter catalog gets a gold dot where everyone else has a
+            // named marker. What the player still decides is whether to write one down, which is
+            // the switch, and what to draw, which this never touched.
+            ApplyTiers(_byPrefab, _byPrefix);
+            ApplyTiers(_builtInByPrefab, _builtInByPrefix);
             // Longest prefix wins when several match.
             _byPrefix.Sort((a, b) => b.Key.Length.CompareTo(a.Key.Length));
             _builtInByPrefix.Sort((a, b) => b.Key.Length.CompareTo(a.Key.Length));
@@ -1214,7 +1218,8 @@ namespace TheGreatestMap
             return item.Trim();
         }
 
-        private static void Parse(Category cat, string list, Dictionary<string, Entry> byPrefab, List<KeyValuePair<string, Entry>> byPrefix)
+        private static void Parse(Category cat, string list, Dictionary<string, Entry> byPrefab,
+                                  List<KeyValuePair<string, Entry>> byPrefix, Tier tier = Tier.On, string group = null)
         {
             foreach (var raw in (list ?? "").Split(','))
             {
@@ -1231,6 +1236,14 @@ namespace TheGreatestMap
                     Cat = cat,
                     Name = string.IsNullOrEmpty(name) ? null : name,
                     Icon = string.IsNullOrEmpty(icon) ? null : icon,
+                    Tier = tier,
+                    // Its own name, for everything no group gathers. That is most of the catalog,
+                    // and it is what lets a player turn dandelions off without anybody having had
+                    // to foresee that dandelions would want a group: the thing it says on the map
+                    // is the thing the switch is labelled with.
+                    Group = string.IsNullOrEmpty(group)
+                        ? (string.IsNullOrEmpty(name) ? Prettify(prefab.TrimEnd('*')) : name)
+                        : group,
                 };
                 // Counted across every kind rather than within one: the lists these order are
                 // always of one kind, and one running number needs no second bookkeeping.
@@ -1246,6 +1259,105 @@ namespace TheGreatestMap
                     byPrefab[prefab] = e;
                 }
             }
+        }
+
+        /// <summary>
+        /// Give every entry its tier and its group, adding the ones the catalog lines do not
+        /// mention at all. A tier entry that is already catalogued keeps its name and its picture
+        /// and is only stamped -- those lines were written with care and the table is not trying
+        /// to rewrite them, only to say what is done with them.
+        /// </summary>
+        private static void ApplyTiers(Dictionary<string, Entry> byPrefab, List<KeyValuePair<string, Entry>> byPrefix)
+        {
+            foreach (var g in Tiers.All)
+            {
+                var mine = new Dictionary<string, Entry>(StringComparer.OrdinalIgnoreCase);
+                var minePrefix = new List<KeyValuePair<string, Entry>>();
+                Parse(g.Cat, g.Entries, mine, minePrefix, g.Tier, g.Label);
+                foreach (var kv in mine)
+                {
+                    if (byPrefab.TryGetValue(kv.Key, out var have)) { have.Tier = g.Tier; have.Group = g.Label; }
+                    else byPrefab[kv.Key] = kv.Value;
+                }
+                foreach (var kv in minePrefix)
+                {
+                    bool had = false;
+                    foreach (var existing in byPrefix)
+                    {
+                        if (!string.Equals(existing.Key, kv.Key, StringComparison.OrdinalIgnoreCase)) continue;
+                        existing.Value.Tier = g.Tier;
+                        existing.Value.Group = g.Label;
+                        had = true;
+                    }
+                    if (!had) byPrefix.Add(kv);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Whether a marker would be written for this prefab now: its tier, and then whether the
+        /// player has switched its group. A prefab the catalog has never heard of is nobody's
+        /// business here -- the unlisted sweep decides that one.
+        /// </summary>
+        internal static bool Records(string prefab)
+        {
+            if (string.IsNullOrEmpty(prefab)) return true;
+            if (!Lookup(prefab, out var e)) return true;
+            return e.Tier != Tier.Never && Tiers.Recording(e.Group);
+        }
+
+        /// <summary>The tier this prefab sits at, or On for anything not catalogued.</summary>
+        internal static Tier TierOf(string prefab) =>
+            !string.IsNullOrEmpty(prefab) && Lookup(prefab, out var e) ? e.Tier : Tier.On;
+
+        /// <summary>The switch this prefab is under, or null for anything not catalogued.</summary>
+        internal static string GroupOf(string prefab) =>
+            !string.IsNullOrEmpty(prefab) && Lookup(prefab, out var e) ? e.Group : null;
+
+        /// <summary>One switchable group, as the marker list and the documented table read it.</summary>
+        internal sealed class GroupRow
+        {
+            public Category Cat;
+            public string Label;
+            public Tier Tier;
+            public string Why;
+            /// <summary>How many catalog entries it gathers, which is how plural the label is.</summary>
+            public int Entries;
+        }
+
+        /// <summary>
+        /// Every group in the catalog. Built from the catalog rather than from the markers on the
+        /// map, because a group that is switched off has no markers and is exactly the one
+        /// somebody is looking for.
+        /// </summary>
+        internal static List<GroupRow> Groups()
+        {
+            if (!_built) Rebuild();
+            var rows = new List<GroupRow>();
+            var seen = new Dictionary<string, GroupRow>(StringComparer.OrdinalIgnoreCase);
+            foreach (var table in new[] { _byPrefab, _builtInByPrefab })
+                foreach (var kv in table) Gather(rows, seen, kv.Value);
+            foreach (var table in new[] { _byPrefix, _builtInByPrefix })
+                foreach (var kv in table) Gather(rows, seen, kv.Value);
+            return rows;
+        }
+
+        private static void Gather(List<GroupRow> rows, Dictionary<string, GroupRow> seen, Entry e)
+        {
+            if (e == null || string.IsNullOrEmpty(e.Group)) return;
+            string key = e.Cat + "/" + e.Group;
+            if (seen.TryGetValue(key, out var row)) { row.Entries++; return; }
+            var group = Tiers.Find(e.Group);
+            var made = new GroupRow
+            {
+                Cat = e.Cat,
+                Label = e.Group,
+                Tier = e.Tier,
+                Why = group == null ? null : group.Why,
+                Entries = 1,
+            };
+            seen[key] = made;
+            rows.Add(made);
         }
 
         /// <summary>One catalog line, with the icon it will actually draw and where that came from.</summary>
@@ -1830,6 +1942,35 @@ namespace TheGreatestMap
             return null;
         }
 
+        /// <summary>
+        /// The kind a place is recorded as when the catalog has never heard of its prefab.
+        ///
+        /// <para>Structures take in anything unlisted by default, which is how a location nobody
+        /// has catalogued still gets marked. The rule used to live only where the recording is
+        /// decided, and that was the bug: a marker's kind is not written down -- it is worked out
+        /// again from the catalog every time it is read -- so a place swept in as a structure was
+        /// a structure while it was being recorded and nothing at all afterwards.</para>
+        ///
+        /// <para>That is what became of the prefabs this catalog deliberately dropped. Ruin1,
+        /// Ruin2, Ruin3, the StoneHouses and the StoneTowerRuins were taken out of Structures on
+        /// purpose, as hundreds of heaps of stonework with nothing in them -- but taking the line
+        /// out did not stop them being recorded, because unlisted is exactly what this rule takes
+        /// in. It stopped them being <em>known</em>. Every one already written lost its name, its
+        /// kind and its picture in the same moment: a gold dot titled "marker", under no row in
+        /// the marker list, which no switch could hide and nothing could explain. Asking the same
+        /// question here gives them all three back.</para>
+        ///
+        /// <para>A location with an interior is a dungeon when the recorder meets one, and this
+        /// cannot tell that from a prefab name -- so a dungeon nobody has catalogued reads as a
+        /// structure. A kind it can be seen and switched under beats no kind at all.</para>
+        /// </summary>
+        internal static Category? SweptInAs(string prefab)
+        {
+            if (string.IsNullOrEmpty(prefab)) return null;
+            if (TgmConfig.StructuresIncludeUnlisted == null || !TgmConfig.StructuresIncludeUnlisted.Value) return null;
+            return IsExcludedStructure(prefab) ? (Category?)null : Category.Structure;
+        }
+
         private static bool IsExcludedStructure(string prefab)
         {
             foreach (var prefix in _structureExclusions)
@@ -2169,9 +2310,9 @@ namespace TheGreatestMap
                 name = Prettify(prefab);
                 icon = GuessDungeonIcon(prefab);
             }
-            else if (TgmConfig.StructuresIncludeUnlisted.Value && !IsExcludedStructure(prefab))
+            else if (SweptInAs(prefab).HasValue)
             {
-                cat = Category.Structure;
+                cat = SweptInAs(prefab).Value;
                 name = Prettify(prefab);
                 // Nothing names this place, but its prefab may still say what built it.
                 icon = GuessPlaceIcon(prefab);

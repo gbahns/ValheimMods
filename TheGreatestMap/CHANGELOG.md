@@ -1,5 +1,144 @@
 # Changelog
 
+## 4.9.0 — 2026-11-10
+
+**Everyone has to update. A server on 4.9.0 turns away clients older than 4.9.0, because 4.8.4 and
+4.8.5 damage the shared map just by logging in.**
+
+- Markers that were recorded no longer claim you placed them. A pass wrote the word "Manual" into
+  every marker with a blank source, reasoning that the mod always writes down what it found, so a
+  blank had to mean a person put it there. Formats before 5 had no source field at all, so every
+  marker recorded before that is the same shape -- on the map that showed this up the guess was
+  wrong 376 times out of 376. The pass is gone and the guess with it.
+- tgm_unmanual puts those markers back, and the game itself says which is which. You place a pin
+  by clicking the map, and a click on a map carries no height, so every pin anyone ever placed
+  stands at no height at all -- while a recorded marker stands where the thing stands, and nothing
+  in a Valheim world sits at zero. On the map this was built for, that agrees with the old flag
+  4,703 times out of 4,703. Name a backup in format 6 or earlier and it is asked as well, since
+  that is the last format that wrote the flag down; anything the two disagree about is named and
+  left alone. tgm_undo takes the whole run back.
+- This was worth repairing rather than noting because a marker claiming to be hand-placed is out
+  of reach of everything: no group switch covers it, tgm_forgotten passes over it, tgm_identify
+  refuses it on purpose -- and it cannot be told from the markers you really did place.
+- A whole group can be erased from a marker's own menu: "stop recording and erase 47 black forest
+  ruins", with the count on the label. Markers you have labeled stay. It erases for everyone, it
+  needs the server's Allow Erasing Markers, and tgm_undo puts it all back.
+
+- An erasure can be taken back. tgm_forgotten writes down the markers it erased, and tgm_undo
+  puts them back -- for everyone, not just on your own map. They go back carrying today's date,
+  and an erasure only beats a marker older than itself, so every other copy lets go of its
+  erasure at the next merge. Restoring a backup could never do this: a backup replays the dates
+  the markers had when it was taken, which are older than the erasure, so they lose to it.
+- A marker that comes back stays back. Merging used to keep somebody's erasure even while
+  keeping the newer marker it was about, which left the marker on the map and a tombstone for it
+  sitting alongside -- drawn in the erased view, travelling onward as a claim nobody believed,
+  and swept up by nothing.
+- Flametal veins are recorded. They are mined off a leviathan lying in lava, the same arrangement
+  the sea's barnacles have, so they are crossed off by themselves when it sinks -- and like the
+  sea one, it never comes back up.
+- Surtling geysers are recorded. The cores are the reason to walk to one, which is the same
+  reason the bone and body piles in the graveyards beside them are marked.
+- Volture nests draw with the volture egg, as drake nests draw with the dragon egg.
+
+- What this mod records is three tiers now instead of two, and the tiers are in the code rather
+  than in your config file: never recorded, off until you ask, and recorded. A marker carries
+  only the prefab it was written for and every client works out its name, kind and picture from
+  its own catalog, so a catalog that differs between players is not a preference -- it is a
+  disagreement about what the same marker is, and whoever has the shorter one sees unnamed dots.
+- Things at the never tier are still catalogued, and that is the point: a marker written for one
+  in an older version keeps its name, its picture and a row in the marker list it can be hidden
+  from. Deleting a catalog line could only ever stop the mod understanding a thing, never stop it
+  recording one, which is how 133 markers became gold dots titled "marker".
+- Right-click a marker and choose "Stop recording <its group>". The ones already on your map stay
+  where they are; this is about what gets written from now on.
+- New in the marker list's gear menu: "Show what you are not recording". It adds a dim row for
+  every group nothing is being written for, with a switch to ask for it. A group that is off has
+  no markers, so no list built from the map could ever have mentioned it.
+- Turning a group back on fills in the places you have walked past recently, instead of waiting
+  for you to go round again.
+- A switch covers a group rather than a prefab, because a group is what you are thinking about:
+  Black Forest Ruins is one row and eleven prefab names.
+- New: tgm_tiers prints the whole table as your game is running it, and marks the groups you
+  have switched.
+- Offered and off: Black Forest Ruins, Mountain Ruins, Mountain Graves, Swamp Ruins, Plains
+  Fortress Ruins, Ashlands Ruins, Shipwrecks, Surtling Geysers, Volture Nests. All of these were
+  excluded outright before, with no way to ask for them short of editing prefab names by hand.
+- Never recorded: the standing stones (stonehenges, stone circles, dolmens, waymarkers), the
+  dvergr statues and viaducts, tar puddles, infested trees and the Places of Mystery. The stones
+  used to be recorded -- 435 of them in a world with nothing in any of them -- and the Places of
+  Mystery need no marker from us, the game pinning all three itself.
+- The two mountain ruins that hold onion seeds match by prefix now, so StoneTowerRuins05_leet is
+  recorded with the rest of its family rather than left out of both lists.
+- Drake Nests is called Nests: the volture nests belong to it too, both being a nest you climb to
+  for the eggs.
+- A dvergr harbor is spelled the American way, like the rest of the mod.
+- A marker draws with its kind's own picture rather than a plain dot where the catalog line
+  that names it gives no picture of its own. An Abandoned Farm was a gold dot with a name,
+  while the Structures icon sat configured as a house the whole time.
+- A place recorded because its kind takes in unlisted prefabs keeps the kind that swept it in.
+  A marker does not carry its kind -- it works it out from the catalog whenever it is read --
+  so an unlisted one had no kind, and therefore no name, no picture and no row.
+- The log says at every login how many recorded markers no longer know what they are, and what
+  they stood for. A catalog line is edited once and the markers it unmakes sit on the map for
+  months; nothing said so until somebody noticed a dot and asked.
+- New: tgm_forgotten lists the markers that stand for something this mod no longer records,
+  because the catalog has since dropped or excluded their prefab. Those lost their kind the day
+  the line changed, and with it their name, picture and row: a gold dot whose tooltip says
+  "marker". Add confirm to erase them; your map is backed up first.
+- The game's own filter button moves both halves of a picture as well, so alt-clicking the
+  hammer under the map hides every hammer and not just the ones this mod did not draw. And the
+  buttons start where this mod's switches already are: vanilla forgets its filter every session
+  while a picture switched off in the list stays off, so the two used to disagree at every login.
+- One row per picture under Placed Markers, covering every marker that wears it -- the ones you
+  dropped with the game's own button and the ones this mod recorded alike. One count, and a
+  switch that moves both halves, so the game's button under the map grays out with the row.
+  Markers placed by hand had no row at all: they belong to no kind, and the rows that unfold
+  under a kind are built from kinds, so a map with fifty-seven dots on it listed none of them.
+- A pin placed with the game's own controls is always taken on now, and the Share Placed Markers
+  setting is gone. A pin and a marker were two things that looked the same and behaved
+  differently under every switch, sweep and save; now there is one kind of thing on the map.
+- Taking a pin on draws this mod's own marker in its place instead of adopting the pin itself.
+  An adopted marker used to keep the game's pin number until the next login, so the game's own
+  button hid it today and could not touch it tomorrow.
+- A marker with no icon is drawn with a pin number of this mod's own, like every other marker.
+  One carrying a number of the game's was drawn as that kind of vanilla pin, so vanilla's buttons
+  under the map hid markers the marker list could not account for -- the dot button hid most of a
+  map, the hammer and house buttons beside it hid nothing.
+- The five rows for the pins you place by hand are always under Placed Markers, whether or not
+  any are on the map. Each of those rows is also the button that places one, which is the only
+  button for it once vanilla's strip is hidden.
+- No sweep of this mod's takes down a pin the game put up for you: a boss altar you read a
+  vegvisir for, one of Hildir's errands, a death, a bed. These live in your character file and
+  nothing rebuilds them, so one deleted is gone. A discovered Bonemass altar was.
+- New: tgm_rediscover puts one of those back. On its own it lists every place the world knows a
+  stone marks and whether yours is marked; tgm_rediscover <x> <z> marks one.
+- Two new switches in the gear menu, both off: Custom Boss Markers and Custom Hildir Markers.
+  Each draws this mod's own marker in place of the game's pin for those places, never beside it.
+- One marker per place, drawn from what the game has marked, so every altar gets one whether or
+  not this mod ever recorded it, wearing its boss's trophy and name.
+- A pin the game saved in your character file in another world is read by the name the game gave
+  it. Valheim keeps boss and Hildir pins per character rather than per world, so a well-travelled
+  character carries pins standing where this world has no location at all; thirteen altars came
+  out as thirteen Eikthyrs.
+- A place switched off and on again from the marker list gets its picture back.
+- Markers for what the game marks itself -- boss altars, traders, Hildir's errands -- are taken
+  down and kept down. The game pins all of those without being asked, so one of this mod's beside
+  one was the same place marked twice. A marker you placed by hand where the game has pinned
+  nothing is left alone.
+- Switching a place off in the marker list no longer takes the game's own pin with it unless this
+  mod is the one drawing that place. Hiding a marker's icon is about that kind of thing; hiding a
+  place is about the place, and they are separate lists now.
+- The three places Hildir sends you wear the trophy of whoever waits inside, and the ones nobody
+  has walked into name themselves now.
+- Hildir's errands have one row in the marker list instead of two.
+- Boss Altars and Hildir Quests unfold into the places under them, each with its own switch,
+  ping and picture.
+- Those two rows count places rather than pins: her three errands used to count as nine.
+- The ping on one of those rows finds its places however the game marked them.
+- Showing a row of places again is instant. It asked the game to lay the whole map out, which on
+  a well-used map is a second or two of rebuilding every pin on it to switch eleven back on.
+- The marker list scrolls straight after a kind is unfolded.
+
 ## 4.8.5 — 2026-11-07
 
 - Markers that borrow one of the game's own pin pictures -- runestones, structures, camps, boss

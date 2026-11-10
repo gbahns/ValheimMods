@@ -103,33 +103,32 @@ namespace TheGreatestMap
         public int Type { get { return IconRegistry.TypeFor(Icon); } }
 
         /// <summary>
-        /// Put down by a player rather than recorded by the mod. The source says so outright on
-        /// anything written since that became the rule -- "Manual" and nothing else.
+        /// Put down by a player rather than recorded by the mod. The source says so outright --
+        /// "Manual" and nothing else.
         ///
-        /// <para><b>And a blank source with a picture on it says so too.</b> Maps exist whose
-        /// hand-placed markers carry no source at all: before 4.0.0 a marker said it was placed
-        /// in a flag of its own, the reader turned that flag into the word "Manual", and format 7
-        /// dropped the flag -- so the repair can no longer fire and those markers read as
-        /// recorded forever. A marker found by the mod always carries what it was found as, a
-        /// prefab name or a "kind:" where only the kind is known; blank happens where nothing
-        /// ever filled it in. Blank with a picture stored on it is therefore a marker a person
-        /// placed and chose a picture for, and it is the only shape that can be.</para>
+        /// <para><b>A blank source is not evidence of anything, and this used to think it was.</b>
+        /// It read a blank source carrying a picture as hand-placed, reasoning that a marker the
+        /// mod finds always carries what it was found as, so blank must mean a person put it
+        /// there and chose the picture -- "the only shape that can be", the comment said. It is
+        /// not. Format 4 and earlier had no source field at all, so every marker recorded before
+        /// it is in exactly that shape, and there are thousands of them.</para>
         ///
-        /// <para>Read rather than repaired on purpose. A pass that wrote "Manual" into these
-        /// would run once per map and never again, so a wrong answer would be permanent; this
-        /// costs a string compare, covers maps nobody will ever look at, covers markers arriving
-        /// from another player mid-session, and can be taken back. Blank with no picture stays
-        /// recorded: that is a marker that genuinely lost what it was, and guessing is worse than
-        /// leaving it to tgm_identify.</para>
+        /// <para>Measured rather than argued: one live map's last format-6 copy -- format 6 being
+        /// the last that wrote the recorded-or-placed flag down -- holds 376 markers with a blank
+        /// source and a picture, and the flag says <b>376 recorded, none placed</b>. The guess
+        /// scored nothing out of 376. Its 62 genuinely hand-placed markers all said "Manual"
+        /// outright, so the plain test was already right about every one of them and the clause
+        /// bought nothing to set against the damage: <see cref="Migrations"/> went on to write
+        /// "Manual" into all 376, which rekeyed them, and sent that to everybody.</para>
+        ///
+        /// <para>An old hand-placed marker needs no guess. The reader converts the flag wherever
+        /// it is still written down -- see <see cref="Read"/>, which does it for every format that
+        /// ever carried one -- so by the time anything asks this question the answer is already in
+        /// the source. A blank source with no flag behind it is a marker recorded before the field
+        /// existed, and what it stands for is a question for tgm_identify and the world, not for
+        /// its picture.</para>
         /// </summary>
-        public bool HandPlaced
-        {
-            get
-            {
-                if (string.Equals(_source, Manual, StringComparison.Ordinal)) return true;
-                return string.IsNullOrEmpty(_source) && !string.IsNullOrEmpty(Icon);
-            }
-        }
+        public bool HandPlaced => string.Equals(_source, Manual, StringComparison.Ordinal);
 
         /// <summary>Recorded by the mod rather than put down by a player.</summary>
         public bool Auto { get { return !HandPlaced; } }
@@ -266,6 +265,10 @@ namespace TheGreatestMap
         {
             if (IsKindOnly(_source)) return _source.Substring(5);
             var cat = Catalog.CategoryOf(_source);
+            // Not in the catalog, but recorded all the same: the kind that swept it in. See
+            // Catalog.SweptInAs -- without this a marker written for an unlisted place is a
+            // marker of no kind, which is to say no name, no picture and no row.
+            if (!cat.HasValue) cat = Catalog.SweptInAs(_source);
             return cat.HasValue ? cat.Value.ToString() : "";
             // No icon inference here, though it is tempting and I tried it. ClientPins.KindOf
             // will infer a kind from an icon, but only for a marker this mod recorded: a pin the

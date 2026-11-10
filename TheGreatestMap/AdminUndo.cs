@@ -27,6 +27,14 @@ namespace TheGreatestMap
     /// being told to put a map back the way it was. The trade is that it travels nowhere: a copy
     /// that already took these markers in, another player or a cartography table, would hand them
     /// back at the next merge. The command says so when it has done it.</para>
+    ///
+    /// <para>Markers a tool <em>erased</em> are the third thing, and they are the opposite case
+    /// in every respect. They are kept whole, because an erasure takes the record off every map
+    /// it reaches; and putting one back does travel, because it goes back with today's date and
+    /// a tombstone only beats a marker older than itself. That is what makes a bulk erasure
+    /// safe to offer at all. A tool that erases must do it without suppressing, or the part of
+    /// it that says "and never record here again" would stay behind after the undo -- that list
+    /// is append-only and merges by union, so it cannot be called back.</para>
     /// </summary>
     internal static class AdminUndo
     {
@@ -51,8 +59,16 @@ namespace TheGreatestMap
             public readonly List<Gone> Removed = new List<Gone>();
             /// <summary>Markers that were already there and were crossed off to match a pin.</summary>
             public readonly List<PinKey> Crossed = new List<PinKey>();
+            /// <summary>
+            /// Markers the tool erased, kept whole rather than as keys, because nothing else
+            /// remembers them: an erasure takes the record off every map it reaches and leaves a
+            /// dated tombstone in its place. Written beside the record as a little map of their
+            /// own, in the same format the real one uses, so that the fields cannot drift apart.
+            /// </summary>
+            public readonly List<SharedPin> Erased = new List<SharedPin>();
 
-            public bool Nothing => Wrote.Count == 0 && Removed.Count == 0 && Crossed.Count == 0;
+            public bool Nothing => Wrote.Count == 0 && Removed.Count == 0
+                                   && Crossed.Count == 0 && Erased.Count == 0;
         }
 
         /// <summary>
@@ -82,9 +98,16 @@ namespace TheGreatestMap
                             gone.Type, gone.Pos.x, gone.Pos.y, gone.Pos.z, gone.Checked ? 1 : 0,
                             (gone.Name ?? "").Replace("\r", " ").Replace("\n", " ").Replace("\t", " ")));
                 }
+                if (entry.Erased.Count > 0)
+                {
+                    var side = new MapStore();
+                    foreach (var pin in entry.Erased) side.Pins[pin.Key] = pin;
+                    File.WriteAllBytes(Beside(path), side.ToBytes());
+                }
                 TheGreatestMapMod.Log.LogInfo(
                     $"[TheGreatestMap] {entry.Tool}: wrote down what it did, so it can be taken back: " +
-                    $"{path} ({entry.Wrote.Count} marker(s) written, {entry.Removed.Count} pin(s) removed).");
+                    $"{path} ({entry.Wrote.Count} marker(s) written, {entry.Removed.Count} pin(s) removed, " +
+                    $"{entry.Erased.Count} marker(s) erased).");
                 return path;
             }
             catch (Exception e)
@@ -110,10 +133,29 @@ namespace TheGreatestMap
             return found;
         }
 
+        /// <summary>The little map of erased markers that belongs to one record.</summary>
+        private static string Beside(string path) => path + ".pins.bin";
+
         /// <summary>Read one back. Anything unreadable in it is dropped rather than argued with.</summary>
         internal static Entry Read(string path)
         {
             var entry = new Entry();
+            try
+            {
+                string beside = Beside(path);
+                if (File.Exists(beside))
+                {
+                    var side = MapStore.FromBytes(File.ReadAllBytes(beside));
+                    if (side != null) entry.Erased.AddRange(side.Pins.Values);
+                }
+            }
+            catch (Exception e)
+            {
+                // The rest of the record is still worth having, and a count that comes back short
+                // is better than a command that refuses to run.
+                TheGreatestMapMod.Log.LogWarning(
+                    $"[TheGreatestMap] Could not read the erased markers belonging to {Path.GetFileName(path)}: {e.Message}");
+            }
             foreach (var line in File.ReadAllLines(path))
             {
                 var parts = line.Split('\t');
@@ -153,12 +195,20 @@ namespace TheGreatestMap
         /// are worth saying out loud, because they mean somebody has been working on this map
         /// since and the undo is not the whole story.
         /// </summary>
-        internal static void Apply(Entry entry, out int removed, out int restored, out int uncrossed)
+        internal static void Apply(Entry entry, out int removed, out int restored, out int uncrossed,
+                                   out int unerased)
         {
             removed = 0;
             restored = 0;
             uncrossed = 0;
+            unerased = 0;
             if (entry == null) return;
+
+            // Written again with today's date rather than put back as they were, which is what
+            // makes this reach the other copies: a tombstone only beats a marker older than
+            // itself. See ClientPins.Restore.
+            foreach (var pin in entry.Erased)
+                if (ClientPins.Restore(pin)) unerased++;
 
             // The markers it crossed off go back to not being crossed off. These are markers that
             // were already on the map, so this is the one part of an undo that touches something
@@ -185,7 +235,7 @@ namespace TheGreatestMap
                     if (map.AddPin(gone.Pos, (Minimap.PinType)gone.Type, gone.Name ?? "", true, gone.Checked) == null) continue;
                     restored++;
                 }
-            if (removed > 0 || uncrossed > 0) ClientPins.Restyle();
+            if (removed > 0 || uncrossed > 0 || unerased > 0) ClientPins.Restyle();
         }
 
         /// <summary>Mark a record used, so the same run cannot be undone twice.</summary>

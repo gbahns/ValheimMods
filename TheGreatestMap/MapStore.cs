@@ -379,11 +379,28 @@ namespace TheGreatestMap
             {
                 var key = kv.Key;
                 long at = kv.Value;
-                if (Pins.TryGetValue(key, out var mine) && mine.Modified <= at)
+                if (Pins.TryGetValue(key, out var mine))
                 {
-                    Pins.Remove(key);
-                    result.Deleted++;
-                    result.NewTombstones.Add(new Tombstone { Key = key, DeletedAt = at });
+                    if (mine.Modified <= at)
+                    {
+                        Pins.Remove(key);
+                        result.Deleted++;
+                        result.NewTombstones.Add(new Tombstone { Key = key, DeletedAt = at });
+                    }
+                    else
+                    {
+                        // Our record is newer than their erasure, so the erasure has been taken
+                        // back since -- and taking an erasure back has to mean something, or the
+                        // undo would be a local illusion that the next merge quietly reversed.
+                        //
+                        // Keeping both was the old behavior and it was incoherent: the marker
+                        // stood on the map and a tombstone for the same key sat beside it, which
+                        // drew it in the erased view, blocked any later copy of it that happened
+                        // to be older, and travelled onward as a claim we no longer believed.
+                        // Nothing cleared it either -- ForgetGhosts only sweeps a tombstone that
+                        // a *differently* sourced marker now stands on.
+                        continue;
+                    }
                 }
                 if (!Tombstones.TryGetValue(key, out long myAt) || at > myAt) Tombstones[key] = at;
             }

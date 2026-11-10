@@ -69,7 +69,8 @@ and when. Most markers carry no text label on purpose, since that is what keeps 
 of them readable, so hovering is where the detail lives. "Marker Tooltips" turns it off.
 
 **Right-click a marker** from this mod on the map screen for its menu: hide this one marker, hide
-every marker with that icon (say all dandelions), hide the whole kind (all herbs), cross it off or
+every marker with that icon (say all dandelions), hide the whole kind (all herbs), stop recording
+its group altogether, cross it off or
 uncross it, delete or erase it (always yours to delete if you placed it; recorded markers need the
 server to allow erasing), and, once anything is
 hidden, show all hidden again. Hidden markers stay on your map and keep syncing; they are just not
@@ -390,19 +391,94 @@ it is somewhere you would travel to **or** somewhere you would otherwise walk ba
 nothing: an abandoned house is a place you search once for an early axe, a log cabin a place you
 search once for onion seeds, and what a map can usefully say about either is "you have been in that
 one". Scenery earns nothing -- dolmens, ship settings, waymarkers and statues hold nothing to
-search -- and neither does a building so common that marking it paints the biome. Common structures are matched by name prefix; any other outdoor location
-counts as well unless "Structures Include Unlisted" is off or its prefab name is in the exclusion list.
+search -- and neither does a building so common that marking it paints the biome. Which of them
+earn one is the tier table in "What it records" below. Any outdoor location the table has never
+heard of counts as a structure as well, unless "Structures Include Unlisted" is off or its prefab
+name is in the exclusion list.
 
-The exclusion list is about places the catalog does not name: a location **listed** under Structures
-is recorded because it is listed, whatever the exclusions say, so leaving one out for good means
-taking its catalog line out too. The mod does both for a type it has decided should never be
-recorded, once, to catalog lines you already had.
+## What it records
+
+Everything this mod knows how to record sits at one of three tiers, and the tier is in the code
+rather than in your config file. That is deliberate: a marker carries only the prefab it was
+written for, and every client works out the name, the kind and the picture from its own catalog --
+so if two players had different catalogs they would not merely prefer different things, they would
+disagree about what the same marker *is*, and whoever had the shorter catalog would see unnamed
+gold dots. What each player still decides for themselves is what they **write down**, which is the
+switch described below, and what they **draw**, which is the marker list.
+
+A **group** is what a switch covers, because a group is what a player is actually thinking about:
+"Black Forest ruins" is one thing to you and eleven prefab names to the game. `tgm_tiers` prints
+the table as your game is running it, and says which groups you have changed.
+
+To stop recording something, right-click one of its markers on the map and choose **Stop recording
+`<group>`** -- the one moment the question answers itself, since you are looking at the thing. The
+markers already on your map stay where they are, or choose **Stop recording and erase `<n>`
+`<group>`** to be rid of those as well -- the count is on the label, markers you have labeled are
+left alone, and `tgm_undo` puts them back. For a group this mod does not record at all, such as
+standing stones, erasing the ones an older version wrote is all there is to offer, and the item
+says so. Hide them from the marker list instead if you only want them out of sight. To start recording something, tick **Show what you are not recording** in the
+marker list's gear menu, which adds a dim row for every group nothing is being written for, and
+press the one you want. Turning a group on also fills in any of its places you have walked past
+recently, so changing your mind costs nothing.
+
+### Never recorded
+
+Catalogued so a marker written for one in an older version still knows what it is, and can
+be named, pictured and hidden -- but never written, and not offered as a choice.
+
+| Group | What it covers | Why not |
+|---|---|---|
+| **Standing Stones** | `StoneHenge*`, `StoneCircle*`, `Dolmen*`, `Waymarker*` | 435 in a world between them and nothing in any of them. |
+| **Dvergr Ruins** | `Mistlands_Statue*`, `Mistlands_Viaduct*` | 650 statues and viaducts you walk past; what is worth the trip in the Mistlands is an extractor and a pile of soft tissue, and those are at the towers, harbors and excavations, which are Enemy Bases and already marked. |
+| **Tar Puddles** | `Pickable_Tar` | Every one of them is inside a tar pit, and the pit is marked as a deposit. |
+| **Infested Trees** | `InfestedTree*` | 700 in a world. The guck on them is recorded as guck, which is what anyone goes for. |
+| **Places of Mystery** | `PlaceofMystery*` | Three in a world, and the game pins all three itself -- the same arrangement the boss altars and Hildir's quests have. |
+
+### Off until you ask
+
+In the catalog and switched off. Tick **Show what you are not recording** in the marker
+list's gear menu to see these rows and switch any of them on.
+
+| Group | Kind | What it covers | Why it is off |
+|---|---|---|---|
+| **Black Forest Ruins** | Structures | `Ruin*`, `StoneHouse*` | 850 heaps of stonework in a world. A few hold a chest. |
+| **Mountain Ruins** | Structures | `StoneTowerRuins01*`, `StoneTowerRuins02*`, `StoneTowerRuins03*`, `StoneTowerRuins06*`, `StoneTowerRuins07*`, `StoneTowerRuins08*`, `StoneTowerRuins09*`, `StoneTowerRuins10*`, `StoneTowerRuins11*` | 400 of them, not counting the two kinds with onion seeds in, which are their own group and recorded. |
+| **Mountain Graves** | Structures | `MountainGrave*`, `MountainWell*` | The graves and wells on the peaks. |
+| **Swamp Ruins** | Structures | `SwampHut*`, `SwampRuin*`, `SwampWell*`, `Grave1*` | The swamp is marked by what is worth going to: the crypts are dungeons, the bone and body piles in the graveyards are spawners, the bog witch is a trader. |
+| **Plains Fortress Ruins** | Structures | `FortressRuins*` | Yagluth's broken fortresses. The Fuling towers and villages near them are Enemy Bases and recorded. |
+| **Ashlands Ruins** | Structures | `CharredRuins*`, `AshlandRuins*` | The charred ruins. The fortresses are Enemy Bases and recorded. |
+| **Shipwrecks** | Structures | `ShipWreck*`, `ShipSetting*` | Wrecks and ship settings on the shoreline; a few hold a crate. |
+| **Volture Nests** | Nests | `VoltureNest*` | 338 in a world, and the reason to go to one is the eggs. |
+
+### Recorded by default
+
+| Kind | Groups |
+|---|---|
+| Berries | Raspberries, Blueberries, Cloudberries, Vineberries |
+| Boss Altars | Eikthyr, The Elder, Bonemass, Moder, Yagluth, The Queen, Fader |
+| Campfires | Campfire |
+| Dungeons | Burial Chambers, Sunken Crypt, Frost Cave, Troll Cave, Infested Mine, Bear Cave, Putrid Hole |
+| Enemy Bases | Fuling Village, Fuling Tower, Draugr Village, Greydwarf Camp, Dvergr Guard Tower, Dvergr Excavation, Dvergr Harbor, Dvergr Lighthouse, Charred Fortress |
+| Herbs | Dandelion, Thistle |
+| Hildir Quests | Howling Cavern, Smoldering Tomb, Sealed Tower |
+| Mushrooms | Mushrooms, Yellow Mushrooms, Blue Mushrooms, Magecap, Jotun Puffs, Smoke Puffs |
+| Nests | Drake Nest |
+| Ore | Copper, Tin, Scrap Pile, Silver, Obsidian, Meteorite, Tar Pit, Giant Brain, Giant Helmet, Giant Ribs, Giant Skull, Giant Sword, Yggdrasil Root, Guck, Gold, Frozen Troll, Leviathan, Flametal Vein |
+| Plants | Wild Flax, Wild Barley, Fiddlehead |
+| Seeds | Carrot Seeds, Turnip Seeds, Onion Seeds |
+| Spawners | Greydwarf nest, Body pile, Evil bone pile, Monument of Torment, **Surtling Geysers** |
+| Structures | Abandoned Farm, Abandoned House, Log Cabin, **Onion Seed Ruins** |
+| Traders | Haldor, Hildir, Bog Witch |
+| Workbenches | Workbench |
 
 ## Console commands
 
 | Command | What it does |
 |---|---|
 | `tgm_status` | Counts of shared markers, erased spots and pending discoveries |
+| `tgm_tiers` | What it records and what it does not, group by group, and which groups you have switched |
+| `tgm_forgotten [confirm]` | Markers standing for something no longer recorded at all; lists them, then erases them for everyone. `tgm_undo` takes it back |
+| `tgm_unmanual [backup] [confirm]` | Takes the word "Manual" back off markers that were recorded, not placed, told apart by their height: a pin you placed by clicking the map stands at no height at all. Name a backup in format 6 or earlier to cross-check it |
 | `tgm_list [n]` | Nearest shared markers |
 | `tgm_find [text]` | Show only the markers mentioning some text, and list the types that matched; on its own, show everything again |
 | `tgm_transports` | Which vessel prefabs are watched, how many ships and carts are out there, and why one is or is not drawn |
@@ -433,7 +509,7 @@ recorded, once, to catalog lines you already had.
 | `tgm_items <word>` | Every picture the game has whose name contains that word: items, build pieces, the map's location pictures and its own pin sprites |
 | `tgm_adopt [reach] [apply] [plants]` | Test worlds: ask the world what your hand-placed markers were pointing at, write the recorded marker for it, and remove the hand-placed pin |
 | `tgm_survey [count] [all] [apply] [kinds]` | Test worlds: mark every location and resource the world holds where you have explored, as if you had recorded them; name kinds to take only those. Without `apply` it waves them on the map instead of writing them, for as long as a ping lasts; `tgm_survey off` ends that wave early |
-| `tgm_undo [name] [confirm]` | Take back a `tgm_adopt` or `tgm_survey` run: its markers go, the hand-placed pins it removed come back |
+| `tgm_undo [name] [confirm]` | Take back a `tgm_adopt`, `tgm_survey` or `tgm_forgotten` run: its markers go, the ones it erased come back for everyone, the hand-placed pins it removed come back |
 
 `tgm_adopt` and `tgm_survey` are for building a map to test against, not for playing. Both list
 what they would do and write nothing until told to `apply`, both obey the same spacing, label and

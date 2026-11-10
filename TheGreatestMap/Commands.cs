@@ -210,6 +210,27 @@ namespace TheGreatestMap
                     args.Context.AddString($"Erased {n} recorded {kind} markers within {radius:0} m.");
                 }));
 
+            new Terminal.ConsoleCommand("tgm_rediscover", "Put back a boss altar or Hildir pin the game had marked for you: tgm_rediscover lists every place the world knows a stone marks and whether yours is marked, tgm_rediscover <x> <z> marks the one nearest those coordinates, and tgm_rediscover <x> <z> <location> marks that spot as that location when this client cannot look the spot up. The game keeps these in your character file and nothing rebuilds them, so one that goes is gone until it is put back by hand",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    if (args.Args.Length < 3)
+                    {
+                        foreach (var line in Rediscover.Report()) Say(args, line);
+                        return;
+                    }
+                    float x, z;
+                    if (!float.TryParse(args.Args[1], System.Globalization.NumberStyles.Float,
+                                        System.Globalization.CultureInfo.InvariantCulture, out x)
+                        || !float.TryParse(args.Args[2], System.Globalization.NumberStyles.Float,
+                                           System.Globalization.CultureInfo.InvariantCulture, out z))
+                    {
+                        Say(args, "Usage: tgm_rediscover <x> <z>, or tgm_rediscover on its own to list them.");
+                        return;
+                    }
+                    Say(args, Rediscover.Put(new UnityEngine.Vector3(x, 0f, z),
+                                             args.Args.Length >= 4 ? args.Args[3] : null));
+                }));
+
             new Terminal.ConsoleCommand("tgm_backups", "List the copies kept of your map from before a format change, and how to put one back",
                 (Terminal.ConsoleEvent)(args =>
                 {
@@ -267,6 +288,88 @@ namespace TheGreatestMap
                         $"[TheGreatestMap] tgm_restore: replaced {was} markers with {restored.Pins.Count} from {path}.");
                 }));
 
+            new Terminal.ConsoleCommand("tgm_unmanual", "Take the word \"Manual\" back off markers that were recorded, not placed: an old pass wrote it into every marker with a blank source. A pin you placed by clicking the map stands at no height at all, so the ones standing on real ground are the mod's own. tgm_unmanual [backup] [confirm] -- naming a backup in format 6 or earlier cross-checks that against the flag it still carries",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    if (Player.m_localPlayer == null) { args.Context.AddString("No player."); return; }
+                    bool apply = false;
+                    string want = null;
+                    for (int i = 1; i < args.Args.Length; i++)
+                    {
+                        if (string.Equals(args.Args[i], "confirm", System.StringComparison.OrdinalIgnoreCase)) apply = true;
+                        else want = args.Args[i];
+                    }
+
+                    MapStore vouch = null;
+                    string voucher = null;
+                    if (!string.IsNullOrEmpty(want))
+                    {
+                        string path = null;
+                        foreach (var f in MapBackup.All())
+                            if (System.IO.Path.GetFileName(f).IndexOf(want, System.StringComparison.OrdinalIgnoreCase) >= 0) { path = f; break; }
+                        if (path == null) { args.Context.AddString($"No backup matching \"{want}\". Run tgm_backups."); return; }
+                        try { vouch = MapStore.FromBytes(System.IO.File.ReadAllBytes(path)); }
+                        catch (System.Exception e) { args.Context.AddString("Could not read that backup: " + e.Message); return; }
+                        voucher = System.IO.Path.GetFileName(path);
+                        if (vouch.ReadVersion > 6)
+                        {
+                            args.Context.AddString($"{voucher} is format {vouch.ReadVersion}, which is after the recorded-or-placed flag was dropped, so it cannot settle anything: its sources say whatever the pass left behind. Looking for a format 6 or earlier copy instead -- tgm_backups lists them.");
+                            vouch = null;
+                            voucher = null;
+                        }
+                    }
+
+                    var plan = Unmanual.Study(vouch, voucher);
+                    if (plan.Nothing && plan.Placed == 0 && plan.Guarded == 0 && plan.Disputed.Count == 0)
+                    {
+                        args.Context.AddString("Nothing on this map claims to be hand-placed. Either the pass never ran here or this has been done already.");
+                        return;
+                    }
+                    if (plan.Recorded.Count > 0)
+                        args.Context.AddString($"{plan.Recorded.Count} marker(s) claiming you placed them stand on real ground. A pin placed by clicking the map has no height at all, so those were recorded, not placed.");
+                    if (plan.Duplicate.Count > 0)
+                        args.Context.AddString($"{plan.Duplicate.Count} of those are a second copy of a marker already standing correctly on the same spot, so they are folded into it rather than renamed.");
+                    if (plan.Placed > 0)
+                        args.Context.AddString($"{plan.Placed} stand at no height, which is what a map click leaves behind. Those really are yours and are left alone.");
+                    if (plan.Guarded > 0)
+                        args.Context.AddString($"{plan.Guarded} are death or bed pins the game put down and this mod took on. They stand on real ground without anyone having placed them, so they are left alone too.");
+                    if (plan.Agreed > 0)
+                        args.Context.AddString($"{plan.Voucher} still carries the old flag saying which was which, and agrees about all {plan.Agreed} it knows of.");
+                    if (plan.Disputed.Count > 0)
+                    {
+                        args.Context.AddString($"{plan.Disputed.Count} are left alone because {plan.Voucher} contradicts the height. Two tests disagreeing means one of them is wrong here, so nothing is touched:");
+                        foreach (var p in plan.Disputed)
+                            args.Context.AddString($"   {p.Pos.x:0}, {p.Pos.z:0}  y={p.Pos.y:0.0}  {IconRegistry.DisplayName(p.Icon)}{(string.IsNullOrEmpty(p.Name) ? "" : " \"" + p.Name + "\"")}");
+                    }
+                    if (plan.Nothing) return;
+
+                    if (!apply)
+                    {
+                        string what = plan.Recorded.Count > 0 && plan.Duplicate.Count > 0
+                            ? $"put those {plan.Recorded.Count} back to being recorded markers and fold the other {plan.Duplicate.Count} away"
+                            : plan.Duplicate.Count > 0
+                                ? $"fold those {plan.Duplicate.Count} into the markers already standing on their spots"
+                                : $"put those {plan.Recorded.Count} back to being recorded markers";
+                        args.Context.AddString($"Run tgm_unmanual{(string.IsNullOrEmpty(want) ? "" : " " + want)} confirm to {what}.");
+                        args.Context.AddString("They go back under the identity they had before the word was written in, and it carries to everyone. tgm_undo takes it back.");
+                        return;
+                    }
+
+                    var record = new AdminUndo.Entry { Tool = "tgm_unmanual" };
+                    int fixt = Unmanual.Apply(plan, record);
+                    string undo = AdminUndo.Write(record);
+                    args.Context.AddString(plan.Recorded.Count == 0
+                        ? $"{fixt} marker(s) folded into the ones already standing on their spots."
+                        : $"{fixt} marker(s) are recorded markers again. tgm_identify and the world can say what they stand for now, which nothing could ask while they claimed to be yours.");
+                    if (!string.IsNullOrEmpty(undo))
+                        args.Context.AddString("Changed your mind: tgm_undo " + System.IO.Path.GetFileName(undo) + " confirm");
+                    TheGreatestMapMod.Log.LogWarning(
+                        $"[TheGreatestMap] tgm_unmanual: {fixt} marker(s) un-manualled by their height " +
+                        $"({plan.Duplicate.Count} of them folded into a copy already correct), " +
+                        $"{plan.Placed} left as really placed, {plan.Guarded} death/bed pins left, " +
+                        $"cross-checked against {plan.Voucher ?? "nothing"} ({plan.Agreed} agreed, {plan.Disputed.Count} disputed and untouched).");
+                }));
+
             new Terminal.ConsoleCommand("tgm_scrub", "Admin: erase every marker that stands for one thing, anywhere on the map: tgm_scrub Pickable_Tar [confirm]. Carries to everyone at the next merge",
                 (Terminal.ConsoleEvent)(args =>
                 {
@@ -294,6 +397,96 @@ namespace TheGreatestMap
                     ClientPins.Restyle();
                     args.Context.AddString($"Erased {doomed.Count} marker(s) standing for \"{source}\".");
                     TheGreatestMapMod.Log.LogWarning($"[TheGreatestMap] tgm_scrub: erased {doomed.Count} marker(s) with source \"{source}\".");
+                }));
+
+            // The leftovers of the catalog's own decisions. Every time a prefab is taken out of
+            // a catalog line, or swept into a kind's exclusions, the markers already written for
+            // it stop being understood -- an auto-recorded marker does not carry its kind, it
+            // works it out from the catalog every time it is read. So the record survives and
+            // everything that made it legible goes: no kind, and therefore no name, no picture
+            // and no row in the marker list. What is left on the map is a gold dot whose tooltip
+            // says "marker" over the prefab it stood for, which no switch can hide and nothing
+            // can explain. They are not rubbish -- they were recorded properly, by a version
+            // that marked that thing -- which is why this says what it found and waits.
+            new Terminal.ConsoleCommand("tgm_forgotten", "Admin: markers for things this mod no longer records, because the catalog has dropped or excluded their prefab. Each carries no kind, so no name, no picture and no row -- a gold dot titled \"marker\". Lists them by what they stood for; add confirm to erase them, which carries to everyone at the next merge",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    var doomed = new List<SharedPin>();
+                    foreach (var pin in ClientPins.All)
+                        if (pin != null && pin.Auto && !ClientPins.KindOf(pin).HasValue) doomed.Add(pin);
+                    if (doomed.Count == 0)
+                    {
+                        Say(args, "Every recorded marker on your map still knows what it is.");
+                        return;
+                    }
+                    var counts = new Dictionary<string, int>(System.StringComparer.OrdinalIgnoreCase);
+                    foreach (var pin in doomed)
+                    {
+                        string src = string.IsNullOrEmpty(pin.Source) ? "(nothing recorded)" : pin.Source;
+                        counts.TryGetValue(src, out int n);
+                        counts[src] = n + 1;
+                    }
+                    var sources = new List<string>(counts.Keys);
+                    sources.Sort((a, b) => counts[b] != counts[a] ? counts[b].CompareTo(counts[a])
+                                                                  : string.Compare(a, b, System.StringComparison.Ordinal));
+                    if (!HasWord(args, "confirm"))
+                    {
+                        Say(args, $"{doomed.Count} marker(s) stand for something this mod no longer records:");
+                        foreach (var src in sources) Say(args, $"  {counts[src],5}  {src}");
+                        Say(args, "Each carries no kind, so nothing in the marker list can name, picture or hide it.");
+                        Say(args, "Erasing carries to everyone at the next merge. Run again with: tgm_forgotten confirm");
+                        return;
+                    }
+                    string snapshot = MapBackup.Snapshot(PersonalMap.Label, "tgm_forgotten", PersonalMap.Store.ToBytes());
+                    // The markers themselves, not a copy of the whole map. A backup replays the
+                    // dates the markers had when it was taken, which are older than the erasures
+                    // this is about to write, so restoring one puts them back and the next merge
+                    // takes them away again. The record below writes them afresh instead.
+                    var record = new AdminUndo.Entry { Tool = "tgm_forgotten" };
+                    record.Erased.AddRange(doomed);
+                    string undo = AdminUndo.Write(record);
+                    // suppress: false, which is what makes the undo possible at all -- see
+                    // ClientPins.Restore. RemoveStale erases this way for every tool.
+                    foreach (var pin in doomed) ClientPins.RemoveStale(pin.Key);
+                    ClientPins.Restyle();
+                    Say(args, $"Erased {doomed.Count} marker(s) for things this mod no longer records.");
+                    if (!string.IsNullOrEmpty(undo))
+                        Say(args, "Changed your mind: tgm_undo " + System.IO.Path.GetFileName(undo) + " confirm");
+                    if (!string.IsNullOrEmpty(snapshot))
+                        Say(args, "Your map as it was is also kept as " + System.IO.Path.GetFileName(snapshot) +
+                                  "; tgm_backups lists it.");
+                }));
+
+            // What this mod will and will not write down, read off the table rather than
+            // described: a question people ask about a config file they cannot read, answered by
+            // the code that decides it, so the answer cannot go stale the way a document does.
+            new Terminal.ConsoleCommand("tgm_tiers", "What this mod records and what it does not, by group: never (scenery it knows but will not mark), off until you ask for it, and on. Says which of them you have switched",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    var rows = Catalog.Groups();
+                    rows.Sort((a, b) =>
+                    {
+                        if (a.Tier != b.Tier) return ((int)a.Tier).CompareTo((int)b.Tier);
+                        int cat = string.Compare(Categories.Label(a.Cat), Categories.Label(b.Cat), System.StringComparison.CurrentCultureIgnoreCase);
+                        return cat != 0 ? cat : string.Compare(a.Label, b.Label, System.StringComparison.CurrentCultureIgnoreCase);
+                    });
+                    var tier = (Tier)(-1);
+                    foreach (var row in rows)
+                    {
+                        if (row.Tier != tier)
+                        {
+                            tier = row.Tier;
+                            Say(args, "");
+                            Say(args, tier == Tier.Never ? "Never recorded, and not offered -- known so a marker already written for one keeps its name:"
+                                    : tier == Tier.Off ? "Off until you ask (marker list gear menu, 'Show what you are not recording'):"
+                                    : "Recorded:");
+                        }
+                        bool on = Tiers.Recording(row.Label);
+                        string said = Tiers.Chosen(row.Label) ? (on ? "  <- you turned this on" : "  <- you turned this off") : "";
+                        Say(args, $"  [{(on ? "x" : " ")}] {row.Label} ({Categories.Label(row.Cat)}, {row.Entries} entr{(row.Entries == 1 ? "y" : "ies")}){said}");
+                    }
+                    Say(args, "");
+                    Say(args, "A group is what a switch covers. Right-click a marker to stop recording its group.");
                 }));
 
             new Terminal.ConsoleCommand("tgm_adopt", "Admin, test worlds: turn markers you placed by hand into recorded ones by asking the world what they were pointing at, then remove the hand-placed pin. tgm_adopt [reach, default 20] lists; add apply to write it, plants to allow plants as answers. Reads the Adopt Name Hints setting for your own shorthand",
@@ -361,14 +554,14 @@ namespace TheGreatestMap
                                                       "its own when the wave ends; tgm_survey off ends it early.");
                 }));
 
-            new Terminal.ConsoleCommand("tgm_undo", "Take back a tgm_adopt or tgm_survey run: the markers it wrote go, and the hand-placed pins it removed come back. tgm_undo lists the most recent run; add confirm to do it, or name one of the files it lists",
+            new Terminal.ConsoleCommand("tgm_undo", "Take back a run of tgm_adopt, tgm_survey or tgm_forgotten: the markers it wrote go, the ones it erased come back for everyone, and the hand-placed pins it removed come back. tgm_undo lists the most recent run; add confirm to do it, or name one of the files it lists",
                 (Terminal.ConsoleEvent)(args =>
                 {
                     if (Player.m_localPlayer == null) { args.Context.AddString("No player."); return; }
                     var runs = AdminUndo.All();
                     if (runs.Count == 0)
                     {
-                        args.Context.AddString("Nothing to take back: no run of tgm_adopt or tgm_survey has been recorded on this machine.");
+                        args.Context.AddString("Nothing to take back: no run of tgm_adopt, tgm_survey or tgm_forgotten has been recorded on this machine.");
                         args.Context.AddString("They live in " + AdminUndo.Folder);
                         return;
                     }
@@ -394,21 +587,32 @@ namespace TheGreatestMap
                     if (!HasWord(args, "confirm"))
                     {
                         args.Context.AddString($"{file}: {entry.Tool} on {entry.When} wrote {entry.Wrote.Count} marker(s), " +
+                                               $"erased {entry.Erased.Count}, " +
                                                $"removed {entry.Removed.Count} hand-placed pin(s) and crossed off " +
                                                $"{entry.Crossed.Count} marker(s) that were already there.");
-                        args.Context.AddString("Taking it back removes those markers and puts those pins back, leaving the map as it " +
-                                               "was. Markers anyone has recorded since are left alone.");
-                        args.Context.AddString("Nothing is erased, so nothing travels: a copy that already holds these markers -- another " +
-                                               "player, a cartography table -- would hand them back at the next merge.");
+                        args.Context.AddString("Taking it back removes those markers, puts the erased ones and those pins back, and " +
+                                               "leaves the map as it was. Markers anyone has recorded since are left alone.");
+                        if (entry.Erased.Count > 0)
+                            args.Context.AddString("Markers it erased come back for everyone: they go back with today's date, and an " +
+                                                   "erasure only beats a marker older than itself.");
+                        if (entry.Wrote.Count > 0)
+                            args.Context.AddString("Markers it wrote are only lifted, so that part travels nowhere: a copy that already " +
+                                                   "holds them -- another player, a cartography table -- would hand them back.");
                         if (runs.Count > 1) args.Context.AddString($"{runs.Count} recorded runs in {AdminUndo.Folder}; this is the newest.");
                         args.Context.AddString("Run again with: tgm_undo " + file + " confirm");
                         return;
                     }
 
-                    AdminUndo.Apply(entry, out int removed, out int restored, out int uncrossed);
+                    AdminUndo.Apply(entry, out int removed, out int restored, out int uncrossed, out int unerased);
                     AdminUndo.Done(path);
                     args.Context.AddString($"Took back {entry.Tool}: removed {removed} of its {entry.Wrote.Count} marker(s) " +
                                            $"and put back {restored} of {entry.Removed.Count} pin(s).");
+                    if (entry.Erased.Count > 0)
+                    {
+                        args.Context.AddString($"{unerased} of the {entry.Erased.Count} marker(s) it erased are back.");
+                        args.Context.AddString("Those travel: they go back with today's date, and an erasure only beats a marker " +
+                                               "older than itself, so every other copy lets go of its erasure at the next merge.");
+                    }
                     if (entry.Crossed.Count > 0)
                         args.Context.AddString($"{uncrossed} of {entry.Crossed.Count} marker(s) it had crossed off are not crossed off any more.");
                     if (removed < entry.Wrote.Count)
@@ -416,7 +620,7 @@ namespace TheGreatestMap
                                                "been working on this map since.");
                     TheGreatestMapMod.Log.LogWarning(
                         $"[TheGreatestMap] tgm_undo: {file} -- removed {removed}/{entry.Wrote.Count} markers, " +
-                        $"restored {restored}/{entry.Removed.Count} pins.");
+                        $"restored {restored}/{entry.Removed.Count} pins, put back {unerased}/{entry.Erased.Count} erased markers.");
                 }));
 
             new Terminal.ConsoleCommand("tgm_admin", "Ask the server whether it treats you as an admin, and what player id it sees for you",

@@ -131,6 +131,11 @@ namespace TheGreatestMap
         {
             Clear();
             _icon = IconRegistry.Normalize(icon);
+            // And the places the game marks itself that wear this picture. A row under Boss
+            // Altars or Hildir's Quests is one place rather than a type of marker, and with this
+            // mod drawing none of them there is no marker of ours to point at -- the pin standing
+            // there is the game's own.
+            OwnMarks.SpotsWithIcon(_icon, _spots);
             Begin(label, Count());
         }
 
@@ -280,16 +285,32 @@ namespace TheGreatestMap
                     if (row.Cat == kind
                         && string.Equals(row.Prefab.TrimEnd('*'), kv.Value, System.StringComparison.OrdinalIgnoreCase))
                     { _spots.Add(kv.Key); break; }
+            // And the places the game has marked that its location list cannot account for.
+            // Hildir's quest pins are put up by her table rather than by the landmark pass, and a
+            // site nobody has walked into is in no icon list at all -- so for her three the list
+            // above was empty and the row's ping had nothing to point at.
+            if (kind == Category.BossAltar) OwnMarks.Spots(WorldPins.Kind.Boss, _spots);
+            else if (kind == Category.HildirQuest) OwnMarks.Spots(WorldPins.Kind.Hildir, _spots);
         }
 
-        /// <summary>A pin the game drew for one of those places, rather than one of ours.</summary>
+        /// <summary>
+        /// A pin standing on one of those places, rather than a marker with a record behind it.
+        ///
+        /// <para>Any type: the landmark pin the game's own pass drew, the typed quest pin beside
+        /// it, and this mod's marker where the swap drew one. It used to have to be PinType.None,
+        /// which is the landmark pass's own type and nothing else's, so a row whose places the
+        /// game had marked some other way pulsed nothing at all. Markers with a record behind
+        /// them are left out because those are pulsed by their record.</para>
+        /// </summary>
         private static bool IsSpot(Minimap.PinData pin)
         {
-            if (pin == null || _spots.Count == 0 || pin.m_type != Minimap.PinType.None) return false;
+            if (pin == null || _spots.Count == 0 || ClientPins.IsOurs(pin)) return false;
             foreach (var spot in _spots)
                 if (Geo.FlatDistance(spot, pin.m_pos) < 1f) return true;
             return false;
         }
+
+
 
         private static int Count()
         {

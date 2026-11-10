@@ -913,6 +913,74 @@ namespace TheGreatestMap
                 }));
             }
 
+            // Not a hiding switch like the three above it: this one stops writing them down.
+            // The markers already on the map stay where they are, which is the honest division --
+            // "I have enough of these" and "throw away what I have" are different sentences, and
+            // the second one erases for everybody, so it waits until an erasure can be taken back.
+            //
+            // Offered here because this is the one moment the question answers itself. A player
+            // standing over a Black Forest ruin they did not want knows exactly what they are
+            // looking at; the same player reading "Ruin1,Ruin2,Ruin3,StoneHouse3,StoneHouse4" in
+            // a config file knows nothing at all. The group is named in the item, so what the
+            // press covers is on the label rather than in the player's head.
+            string recGroup = pin.Auto ? Catalog.GroupOf(pin.Source) : null;
+            bool stillRecording = !string.IsNullOrEmpty(recGroup)
+                                  && Tiers.Recording(recGroup) && Tiers.TierOf(recGroup) != Tier.Never;
+            if (stillRecording)
+            {
+                string g = recGroup;
+                items.Add(Item($"Stop recording {g.ToLowerInvariant()}", () =>
+                {
+                    Tiers.SetRecording(g, false);
+                    Note($"No longer recording {g.ToLowerInvariant()}. The ones already on your map stay; " +
+                         "the marker list's gear menu switches it back on.");
+                }));
+            }
+
+            // And the other half of the sentence: the ones already written down.
+            //
+            // Two items rather than one because they are two different wishes. Turning the group
+            // off is about the map filling up again; erasing is about the map as it stands, and
+            // for a group this mod no longer records at all -- standing stones, dvergr ruins --
+            // the first wish cannot be had and the second is the only one left. So the label says
+            // which of the two it is doing, and the count is in it either way: a press that
+            // reaches 47 markers should not be able to look like a press that reaches one.
+            //
+            // Markers somebody labeled are left out and said so. A recorded marker that was
+            // written on is not scenery any more, and whoever wrote on it did not write on the
+            // other forty-six.
+            if (!string.IsNullOrEmpty(recGroup) && pin.Auto)
+            {
+                string g = recGroup;
+                var mine = ClientPins.InGroup(g, out int labeled);
+                if (mine.Count > 0)
+                {
+                    string what = $"{mine.Count} {g.ToLowerInvariant()}";
+                    string erase = stillRecording ? $"Stop recording and erase {what}" : $"Erase {what}";
+                    bool mayErase = TgmConfig.AllowErasingMarkers.Value;
+                    items.Add(Item(mayErase ? erase : $"{erase} (erasing recorded markers is off on this server)",
+                        mayErase
+                            ? () =>
+                            {
+                                if (stillRecording) Tiers.SetRecording(g, false);
+                                var record = new AdminUndo.Entry { Tool = "erase " + g.ToLowerInvariant() };
+                                int gone = ClientPins.EraseGroup(g, record, out int kept);
+                                string undo = AdminUndo.Write(record);
+                                string said = $"Erased {gone} {g.ToLowerInvariant()}, for everyone.";
+                                if (kept > 0)
+                                    said += $" {kept} you had labeled stayed.";
+                                said += string.IsNullOrEmpty(undo)
+                                    ? ""
+                                    : " Changed your mind: tgm_undo in the console puts them back.";
+                                Note(said);
+                                TheGreatestMapMod.Log.LogWarning(
+                                    $"[TheGreatestMap] erased group '{g}': {gone} marker(s) gone, {kept} labeled kept, " +
+                                    $"undo {(string.IsNullOrEmpty(undo) ? "not written" : System.IO.Path.GetFileName(undo))}.");
+                            }
+                            : (Action)null));
+                }
+            }
+
             bool isChecked = pin.Checked;
             items.Add(Item(isChecked ? "Uncross" : "Cross off", canEdit ? () => ClientPins.SetChecked(id, !isChecked) : (Action)null, "take out your map"));
             // A crossed-off marker is where a player is most likely to want the rest of them gone,

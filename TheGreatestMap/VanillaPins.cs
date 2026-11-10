@@ -117,6 +117,7 @@ namespace TheGreatestMap
         {
             if (ClientPins.IsOurs(pin)) return true;
             foreach (var portal in Portals.DrawnPins) if (portal == pin) return true;
+            foreach (var mark in OwnMarks.DrawnPins) if (mark == pin) return true;
             foreach (var shown in Transports.DrawnPins) if (shown != null && shown.Pin == pin) return true;
             foreach (var ghost in Erasures.DrawnPins) if (ghost == pin) return true;
             foreach (var ghost in SurveyPreview.DrawnPins) if (ghost == pin) return true;
@@ -324,9 +325,11 @@ namespace TheGreatestMap
                     return "Pins wearing the game's boss icon that no player placed. The same switch as " +
                            "double-clicking that icon under the map.";
                 default:
-                    return "Pins you placed by hand with this icon. The same switch as double-clicking the icon " +
-                           "under the map, and the picture means whatever you decided it means -- the name is yours " +
-                           "to set in Vanilla Pin Names.";
+                    return "Everything on your map wearing this picture, whether you dropped it with the game's " +
+                           "own button or this mod recorded it -- one row, because they are one thing. The switch " +
+                           "moves both, and the game's button under the map grays out with it. The pin at the end " +
+                           "places one. The picture means whatever you decided it means -- the name is yours to " +
+                           "set in Vanilla Pin Names.";
             }
         }
 
@@ -562,11 +565,88 @@ namespace TheGreatestMap
             }
         }
 
+        /// <summary>
+        /// How many markers of this mod's wear one of these pictures and belong to no kind.
+        ///
+        /// <para>The other half of what a picture is. Kindless on purpose: a marker that belongs
+        /// to a kind is counted and switched by that kind's rows, and counting it here as well
+        /// would say the same markers twice under one heading. What is left is exactly what a
+        /// player placed by hand without saying what it was -- which, since a pin placed with
+        /// vanilla's own control is adopted the moment it is named, is every one of those.</para>
+        /// </summary>
+        internal static int OursWearing(Minimap.PinType type)
+        {
+            string key = IconKey(type);
+            int n = 0;
+            foreach (var pin in ClientPins.All)
+            {
+                if (ClientPins.KindOf(pin).HasValue) continue;
+                if (IconRegistry.SameKey(ClientPins.IconOf(pin), key)) n++;
+            }
+            return n;
+        }
+
+        /// <summary>Is this mod's half of a picture being drawn?</summary>
+        internal static bool OursLit(Minimap.PinType type) => !TgmConfig.IsIconHidden(IconKey(type));
+
+        /// <summary>
+        /// The game's own button was used: bring this mod's half of that picture into line.
+        ///
+        /// <para>The row in the marker list presses both halves, and this is the same thing from
+        /// the other side -- a player who alt-clicks the hammer under the map means the hammers,
+        /// not the hammers this mod happens not to have drawn. Without it the game's button moved
+        /// its own pins and left every marker wearing that picture standing, which is exactly the
+        /// "two controls for one state" the list was built to end.</para>
+        ///
+        /// <para>Written whether or not anything wears the picture yet. The point of the switch
+        /// is the picture rather than today's markers, so a hammer placed after it was switched
+        /// off should stay off; and the list has always written this setting itself, so a key in
+        /// it for a picture nobody is using costs nothing. tgm_show clears the lot.</para>
+        /// </summary>
+        internal static void MirrorFromVanilla(Minimap map, Minimap.PinType type)
+        {
+            bool show = Drawn(map, type);
+            if (OursLit(type) == show) return;
+            SetOursDrawn(type, show);
+        }
+
+        /// <summary>
+        /// Start the game's buttons where this mod's switches already are.
+        ///
+        /// <para>Vanilla builds its filter afresh every session with everything visible, while a
+        /// picture switched off in the marker list stays off because this mod writes it down. So
+        /// the two disagreed at every login: the button under the map white, the row above it
+        /// unlit, and the markers hidden. Pushing our state into vanilla's array once, as the map
+        /// is built, settles it in the direction that has a memory.</para>
+        /// </summary>
+        internal static void Restore(Minimap map)
+        {
+            if (map == null) return;
+            foreach (var type in Yours)
+                if (Placeable(type) && Drawn(map, type) != OursLit(type)) SetDrawn(map, type, OursLit(type));
+        }
+
+        /// <summary>Show or hide this mod's half of a picture.</summary>
+        internal static void SetOursDrawn(Minimap.PinType type, bool show)
+        {
+            if (show) TgmConfig.RemoveHiddenIcon(IconKey(type));
+            else TgmConfig.AddHiddenIcon(IconKey(type));
+        }
+
+        /// <summary>
+        /// Is anything wearing one of these pictures being drawn? Both halves, because a picture
+        /// is one thing: the heading above it would otherwise read "nothing to hide" over a map
+        /// full of markers it had drawn itself.
+        /// </summary>
         internal static bool AnyShown(Minimap map, Group group)
         {
             var types = Under(group);
             if (types == null) return false;
-            foreach (var type in types) if (CountOf(type) > 0 && Drawn(map, type)) return true;
+            foreach (var type in types)
+            {
+                if (CountOf(type) > 0 && Drawn(map, type)) return true;
+                if (OursWearing(type) > 0 && OursLit(type)) return true;
+            }
             return false;
         }
 
@@ -578,7 +658,15 @@ namespace TheGreatestMap
         {
             var types = Under(group);
             if (types == null) return;
-            foreach (var type in types) if (CountOf(type) > 0) SetDrawn(map, type, show);
+            foreach (var type in types)
+            {
+                int ours = OursWearing(type);
+                // Vanilla's own switch moves while either half is there, so its button under the
+                // map stays in step with the row above it. Only a picture nothing wears at all is
+                // left alone, which is the case the old rule was written for.
+                if (CountOf(type) > 0 || ours > 0) SetDrawn(map, type, show);
+                if (ours > 0) SetOursDrawn(type, show);
+            }
         }
     }
 }

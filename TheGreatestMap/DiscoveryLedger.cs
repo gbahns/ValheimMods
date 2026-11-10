@@ -159,6 +159,14 @@ namespace TheGreatestMap
         internal static void MarkFound(Found found)
         {
             if (found == null || string.IsNullOrEmpty(found.Key)) return;
+            // A thing at Tier.Never is still classified -- that is what gives a marker somebody
+            // wrote in an older version its name, its picture and a row it can be hidden from --
+            // but it never becomes a find. Refused here rather than where the writing happens,
+            // because a find is remembered in the character file until it is written or expires,
+            // and the whole reason these are Never is that there are hundreds of them: letting
+            // 850 heaps of stonework through would fill that memory with things waiting for a
+            // decision that will never be made.
+            if (Catalog.TierOf(found.Source) == Tier.Never) return;
             if (Planted(found)) return;
             // Correcting a marker that is already on the map is not recording a discovery, so it
             // does not wait for the pocket map to come out: the moment the place is seen, what the

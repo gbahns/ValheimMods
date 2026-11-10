@@ -207,6 +207,8 @@ namespace TheGreatestMap
             public string Label;
             public Category? Kind;
             public int Count;
+            /// <summary>One of the places the game marks itself, rather than a type of marker this mod recorded.</summary>
+            public bool Place;
         }
 
         /// <summary>

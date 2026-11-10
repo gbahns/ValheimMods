@@ -84,6 +84,13 @@ namespace TheGreatestMap
                 "have to find once, so those are worth folding away; what you cannot plant you have to go out and " +
                 "gather again, which is what a map is for. Ore is a row of its own either way.");
 
+            y = Switch(y, () => TgmConfig.ShowNotRecording, "Show what you are not recording",
+                "Add a row for each group of things this mod knows about and is not writing markers for -- the " +
+                "Black Forest ruins, the swamp's buildings, the volture nests -- so you can see what they are and " +
+                "switch any of them on. The rows sit under the kind they belong to and are dim, like everything " +
+                "else in here that is not on your map. Turning one on also fills in the ones you have walked past " +
+                "recently, so changing your mind costs nothing.");
+
             y = Heading("The Map's Own Buttons", y);
             y = Switch(y, () => TgmConfig.HideVanillaControls, "Hide vanilla controls",
                 "Take the game's row of pin buttons off the large map. This list covers every one of them now: a " +
@@ -124,6 +131,14 @@ namespace TheGreatestMap
                 "pictures are touching, so nothing with a gap around it goes, and never a marker near you, one you " +
                 "have just recorded or one you asked for by name. Drawing a crowded map is the slowest thing it " +
                 "does, so this is also what makes the full map quick. tgm_status says what it is doing.");
+
+            y = Heading("What the Game Marks Itself", y);
+            y = Switch(y, () => TgmConfig.CustomBossMarkers, "Custom boss markers",
+                "Draw this mod's marker for a boss altar instead of the game's pin. Off, the game's pin stands alone; " +
+                "the altars are recorded and shared either way");
+            y = Switch(y, () => TgmConfig.CustomHildirMarkers, "Custom Hildir markers",
+                "Draw this mod's markers for the three places Hildir sends you instead of the game's. Nothing is " +
+                "recorded for her errands either way");
 
             y = Heading("Labels", y);
             y = Switch(y, () => TgmConfig.ShowMarkerLabels, "Marker labels",

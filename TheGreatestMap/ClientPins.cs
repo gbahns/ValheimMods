@@ -70,6 +70,7 @@ namespace TheGreatestMap
             Tilled.Reset();
             Erasures.Reset();
             SurveyPreview.Reset();
+            OwnMarks.Reset();
             Migrations.Reset();
         }
 
@@ -98,6 +99,19 @@ namespace TheGreatestMap
                 && TgmConfig.CategoryIcon.TryGetValue(kind.Value, out var cfg)
                 && !string.IsNullOrEmpty(cfg.Value))
                 return IconRegistry.Normalize(cfg.Value) ?? shared.Icon;
+            // And for anything still without a picture, the kind's own rather than the fallback
+            // dot. A kind that divides into types prefers the type's picture, which is what the
+            // test above is for -- but preferring it is not the same as insisting on it, and
+            // where the catalog gives a line a name and no picture there was nothing left to
+            // prefer. Those markers came out as plain dots carrying a name that said what they
+            // were: "Abandoned Farm" drawn as a dot, by the hundred, while the Structures icon
+            // sat configured as a house the whole time. Every prefab the catalog lists without a
+            // picture was in this state, and so was every prefab it does not list at all while
+            // its kind is set to record unlisted ones.
+            if (string.IsNullOrEmpty(shared.Icon) && kind.HasValue
+                && TgmConfig.CategoryIcon.TryGetValue(kind.Value, out var own)
+                && !string.IsNullOrEmpty(own.Value))
+                return IconRegistry.Normalize(own.Value) ?? shared.Icon;
             return shared.Icon;
         }
 
@@ -131,15 +145,44 @@ namespace TheGreatestMap
             if (TgmConfig.IsIconHidden(IconOf(shared))) return false;
             var kind = KindOf(shared);
             if (kind.HasValue && TgmConfig.ShowKind.TryGetValue(kind.Value, out var showKind) && !showKind.Value) return false;
+            // Never a recorded altar marker. The game marks every altar on every map from the
+            // first minute, so one of ours beside it is the same stones twice -- and a swap that
+            // drew the records would be a swap into nothing wherever this mod had not recorded
+            // one, which is what it was: a player with records for two altars turned it on, had
+            // the game's seven pins hidden as promised, and got two markers. What the switch
+            // draws instead is one marker per altar the game has marked, from the game's own
+            // pins, in OwnMarks. The records stay as they are -- they still sync, and they still
+            // remember what was seen and when -- they are simply not what is drawn.
+            if (kind.HasValue && kind.Value == Category.BossAltar) return false;
             return !CrossedOff.IsHidden(shared);
         }
 
 
+        /// <summary>
+        /// The pin number a marker is drawn with: always one of this mod's own making.
+        ///
+        /// <para>Always, which is the half 4.8.5 missed. It stopped a "pin:" icon from borrowing
+        /// the game's pin type as well as its picture, and left the case where a marker has no
+        /// icon at all borrowing both -- a record carrying one of the game's numbers was drawn
+        /// with that number, and one carrying a stale number of ours was drawn as a literal
+        /// Icon3. So the markers that do not know what they are, which are exactly the ones a
+        /// player cannot identify by looking, were the game's own dots as far as anything could
+        /// tell: vanilla's dot button hid them while the marker list could not account for them,
+        /// because the list counts a pin of ours as ours whatever number it wears. Right-clicking
+        /// the dot under the map hid most of a map and the hammer and house buttons beside it hid
+        /// nothing, and no row anywhere said why.</para>
+        ///
+        /// <para>The picture is kept exactly as it was: the stored number is turned back into the
+        /// "pin:" key for that picture and minted from there, so a marker drawn as a house stays
+        /// a house and is simply no longer a house <em>pin</em>. KeyForVanilla answers the
+        /// fallback for a number the game does not define, which is what a stale number of ours
+        /// is.</para>
+        /// </summary>
         private static int LocalType(SharedPin shared)
         {
             string icon = IconOf(shared);
             if (!string.IsNullOrEmpty(icon)) return IconRegistry.TypeFor(icon);
-            return PinTypes.IsCustom(shared.Type) ? (int)Minimap.PinType.Icon3 : shared.Type;
+            return IconRegistry.TypeFor(IconRegistry.KeyForVanilla(shared.Type));
         }
 
         // ── merging in from the shared map or another player ────────────────────────
@@ -188,6 +231,15 @@ namespace TheGreatestMap
                 // uses, so there is no key to name and no way to send them but all of it.
                 if (incoming.LegacyTombstones.Count > 0) PersonalMap.SendEverything();
             }
+            // What the game marks itself does not need a marker, and a merge is where one comes
+            // back from: the shared map still carries them, and the server never runs the tidy
+            // pass that takes them down. Dropped as they arrive, every time, so taking one down
+            // on one map is not undone by the next player to sync with it.
+            int marked = DropWhatTheGameMarks();
+            if (marked > 0)
+                TheGreatestMapMod.Log.LogInfo(
+                    $"[TheGreatestMap] That map offered {marked} marker(s) for places the game marks by itself; " +
+                    "they are not kept.");
             long total = clock.ElapsedMilliseconds;
             if (total >= 50L)
                 TheGreatestMapMod.Log.LogWarning(
@@ -288,11 +340,23 @@ namespace TheGreatestMap
             // Placed by hand, but still of a kind, so it hides and groups with its fellows. A kind
             // is otherwise only ever inferred, and only for markers this mod recorded itself.
             if (placing != null) pin.SetKind(placing.Kind.ToString());
-            pinData.m_save = true;
-            pinData.m_ownerID = 0L;
             Store.Upsert(pin);
-            _pinById[pin.Key] = pinData;
-            _idByPin[pinData] = pin.Key;
+            // The game's pin comes off and ours goes up in its place, rather than this record
+            // taking that pin over.
+            //
+            // Taking it over left the marker half-adopted for the rest of the session: it was a
+            // record of ours bound to a pin still wearing one of vanilla's numbers, so vanilla's
+            // button under the map hid it today and could not touch it tomorrow, when the next
+            // login redrew it with a number of this mod's own. Every sweep, guard and switch that
+            // asks a pin's number got a different answer on either side of a relog. Drawing our
+            // own now means a marker is the same object from the moment it exists.
+            //
+            // Quietly, because taking a pin off the map is how a player erases a marker: the
+            // removal patch would see this one go and erase the record we have just written.
+            _applyingRemote = true;
+            try { if (Access.Pins(Map).Contains(pinData)) Map.RemovePin(pinData); }
+            finally { _applyingRemote = false; }
+            EnsurePin(pin);
             // Ask for a redraw, or the marker keeps the size and color the game gave it until
             // something else happens to dirty the layout -- a click, a pan -- which looked like
             // the marker not being accepted until you clicked away.
@@ -329,7 +393,6 @@ namespace TheGreatestMap
             var closed = _naming;
             _naming = naming;
             if (closed == null || ReferenceEquals(naming, closed)) return;  // none open, or still the same one
-            if (!TgmConfig.SharePlacedPins.Value) return;
             if (IsOurs(closed)) return;                       // confirmed, and already taken on
             if (!Access.Pins(map).Contains(closed)) return;   // the game dropped it after all
             if (!PinTypes.IsPlayerPlaceable((int)closed.m_type)) return;
@@ -404,6 +467,7 @@ namespace TheGreatestMap
             foreach (var shown in Transports.DrawnPins) if (shown != null && shown.Pin != null) _drawnByUs.Add(shown.Pin);
             foreach (var ghost in Erasures.DrawnPins) if (ghost != null) _drawnByUs.Add(ghost);
             foreach (var ghost in SurveyPreview.DrawnPins) if (ghost != null) _drawnByUs.Add(ghost);
+            foreach (var mark in OwnMarks.DrawnPins) if (mark != null) _drawnByUs.Add(mark);
             return _drawnByUs;
         }
 
@@ -754,6 +818,109 @@ namespace TheGreatestMap
         /// Erase a marker that no longer matches the world, without suppressing the spot: the
         /// thing may come back (a portal rebuilt where one stood) and should be recorded again.
         /// </summary>
+        /// <summary>
+        /// Put an erased marker back, and make the putting back travel.
+        ///
+        /// <para>An erasure is a tombstone with a date on it, and a tombstone only beats a marker
+        /// older than itself -- so writing the marker again with today's date is all it takes.
+        /// Upsert stamps it, drops our own tombstone for it, and at the next merge every other
+        /// copy finds a record newer than the erasure it is holding and lets go of it too. That
+        /// is the difference between this and restoring a backup, which replays the dates the
+        /// markers had when the backup was taken: those are older than the erasure, so the
+        /// erasure wins and the restore appears to do nothing.</para>
+        ///
+        /// <para>It can only undo an erasure that left no suppression behind. A suppression is a
+        /// standing instruction not to record there again; the list of them is append-only and
+        /// merges by union, so one that has reached another player cannot be taken back from
+        /// here. Every bulk tool erases with suppress false for exactly this reason.</para>
+        /// </summary>
+        internal static bool Restore(SharedPin pin)
+        {
+            if (pin == null || pin.Key.IsNone) return false;
+            if (Store.Pins.ContainsKey(pin.Key)) return false;   // already back
+            var copy = pin.Clone();
+            Store.Upsert(copy);
+            EnsurePin(copy);
+            PersonalMap.Touch();
+            return true;
+        }
+
+        /// <summary>
+        /// Every recorded marker standing for something in one group, and how many of them carry
+        /// a label somebody wrote. A marker with a label is not scenery any more, whatever it
+        /// stands for, so it is counted apart and never erased in bulk.
+        /// </summary>
+        internal static List<SharedPin> InGroup(string group, out int labeled)
+        {
+            var found = new List<SharedPin>();
+            labeled = 0;
+            if (string.IsNullOrEmpty(group)) return found;
+            foreach (var pin in Store.Pins.Values)
+            {
+                if (pin == null || !pin.Auto) continue;
+                if (!string.Equals(Catalog.GroupOf(pin.Source), group, System.StringComparison.Ordinal)) continue;
+                if (!string.IsNullOrEmpty(pin.Name)) { labeled++; continue; }
+                found.Add(pin);
+            }
+            return found;
+        }
+
+        /// <summary>
+        /// Erase every recorded marker in one group, for everyone, and write down what went so it
+        /// can be taken back.
+        ///
+        /// <para>Through <see cref="RemoveStale"/>, which erases without suppressing. That is not
+        /// a detail: a suppression is a standing instruction not to record there again, the list
+        /// of them is append-only and merges by union, and one that has reached another player
+        /// cannot be called back from here -- so an erasure that suppressed could never be undone
+        /// whatever record was kept of it. What stops these coming straight back is the group's
+        /// own switch, which is turned off in the same breath.</para>
+        /// </summary>
+        internal static int EraseGroup(string group, AdminUndo.Entry record, out int labeled)
+        {
+            var doomed = InGroup(group, out labeled);
+            if (doomed.Count == 0) return 0;
+            if (record != null) foreach (var pin in doomed) record.Erased.Add(pin.Clone());
+            foreach (var pin in doomed) RemoveStale(pin.Key);
+            Restyle();
+            return doomed.Count;
+        }
+
+        /// <summary>
+        /// Put a marker back under the identity it had before something rewrote its source, and
+        /// make the correction travel.
+        ///
+        /// <para>A marker's key is made of its owner, its place and its source, so changing the
+        /// source is changing which marker it is. Two things have to happen at once: the identity
+        /// it was given has to go, and the one it should have had has to arrive.</para>
+        ///
+        /// <para><b>The old one is erased rather than lifted, and that is the whole difference
+        /// between a repair that holds and one that comes undone.</b> Lifting leaves no tombstone,
+        /// so every other copy still holding the rewritten marker hands it straight back at the
+        /// next merge and the map finishes with both -- the same marker twice, under two
+        /// identities, which is what a wrong source costs in the first place. Erasing says so
+        /// outright, and the record arriving with today's date beats any erasure older than it,
+        /// so the pair settles the same way everywhere.</para>
+        ///
+        /// <para>suppress false, so this stays undoable: a suppression is append-only and merges
+        /// by union, so one that has reached another player could never be called back.</para>
+        /// </summary>
+        /// <summary>Whether the map already holds a marker under this identity.</summary>
+        internal static bool Holds(PinKey key) => !key.IsNone && Store.Pins.ContainsKey(key);
+
+        internal static bool Rewrite(PinKey was, SharedPin back)
+        {
+            if (back == null || back.Key.IsNone) return false;
+            if (was.IsNone || !Store.Pins.ContainsKey(was)) return false;
+            if (Store.Pins.ContainsKey(back.Key)) return false;   // already there under that name
+            RemovePinData(was);
+            Store.Delete(was, out _, suppress: false);
+            Store.Upsert(back);
+            EnsurePin(back);
+            PersonalMap.Touch();
+            return true;
+        }
+
         internal static void RemoveStale(PinKey id)
         {
             if (id.IsNone || !Store.Pins.ContainsKey(id)) return;
@@ -1309,12 +1476,37 @@ namespace TheGreatestMap
             EnsurePin(shared);
         }
 
+        /// <summary>
+        /// A pin the game put there itself, by the two things that say so together: a kind the
+        /// game places once and never again (<see cref="PinTypes.GamePlacedOnce"/>), under a name
+        /// out of the game's own text table.
+        ///
+        /// <para>Both halves are needed, because this mod draws markers with the game's pin
+        /// numbers on purpose -- a boss altar of its own is drawn as PinType.Boss, so the number
+        /// alone cannot tell the game's pin from one of ours standing beside it. The name can:
+        /// the game writes keys ($enemy_bonemass, $hud_pin_hildir1) and this mod writes the words
+        /// a player reads. A marker of ours is therefore still cleaned up, and the altar the game
+        /// marked for you is left exactly where it is.</para>
+        ///
+        /// <para>The case this is for is a record of ours that was bound to the game's own pin
+        /// rather than to one we drew, which an older version could do and this one cannot.
+        /// Retiring such a record used to take the game's pin off the map with it.</para>
+        /// </summary>
+        internal static bool TheGamesOwn(Minimap.PinData pin)
+        {
+            return pin != null && PinTypes.GamePlacedOnce(pin.m_type)
+                && (pin.m_name ?? "").StartsWith("$", System.StringComparison.Ordinal);
+        }
+
         private static void RemovePinData(PinKey id)
         {
             if (!_pinById.TryGetValue(id, out var old)) return;
             _pinById.Remove(id);
             _idByPin.Remove(old);
             if (Map == null) return;
+            // Let go of it and leave it standing, where the pin is the game's own. The record is
+            // gone either way; the altar it was bound to is not ours to unmark.
+            if (TheGamesOwn(old)) return;
             _applyingRemote = true;
             try { if (Access.Pins(Map).Contains(old)) Map.RemovePin(old); }
             finally { _applyingRemote = false; }
@@ -1429,6 +1621,11 @@ namespace TheGreatestMap
             foreach (var pin in new List<Minimap.PinData>(Access.Pins(Map)))
             {
                 if (pin == null || !pin.m_save || ours.Contains(pin)) continue;
+                // The name test below is meant to do this on its own -- a copy of ours carries
+                // this mod's words and the game's own pin carries a key -- but it is doing it on
+                // a record's name, and a record adopted from one of these pins carries the key
+                // too. Asked here of the pin, where the answer cannot have been copied.
+                if (TheGamesOwn(pin)) continue;
                 if (!want.TryGetValue((int)pin.m_type + "|" + (pin.m_name ?? ""), out var spots)) continue;
                 bool onAMarker = false;
                 foreach (var spot in spots)
@@ -1445,6 +1642,89 @@ namespace TheGreatestMap
                     "you had placed by hand. The markers themselves are untouched.");
         }
 
+        /// <summary>
+        /// Take down every record for something the game marks by itself, and say how many.
+        ///
+        /// <para>The boss altars, the traders, the three errands Hildir sends you on. The game
+        /// pins all of those without being asked -- the altars from the first minute of a world,
+        /// the rest the moment you find one -- so a marker of this mod's for one was always a
+        /// second pin saying the same thing in a different picture, and a player looking at two
+        /// pictures on one altar has no way to know which of them is his to switch off.</para>
+        ///
+        /// <para><b>A standing rule rather than a pass that runs once.</b> Retiring them at a
+        /// migration was not enough and could not be: the markers live on the shared map as well
+        /// as this one, so the next merge with a player who had not yet run that version -- or
+        /// with the server, which never runs it -- handed every one of them straight back. So
+        /// this runs when the map is loaded and after every merge, and what it takes down stays
+        /// down however often it comes round again.</para>
+        ///
+        /// <para>Retired, not erased. An erasure is a claim about the world -- the thing is not
+        /// there -- and it travels as one; these are still there, and still marked. What is
+        /// dropped is this mod's second opinion about them.</para>
+        /// </summary>
+        /// <summary>
+        /// How many recorded markers no longer know what they are, and the handful of things they
+        /// stood for, most first.
+        ///
+        /// <para>A recorded marker does not carry its kind: it works it out from the catalog
+        /// every time it is read. So taking a prefab out of a catalog line, or sweeping it into a
+        /// kind's exclusions, quietly unmakes every marker already written for it -- the record
+        /// survives and everything that made it legible does not. No kind means no name, no
+        /// picture and no row in the marker list, which leaves a gold dot titled "marker" that no
+        /// switch can hide and nothing explains.</para>
+        ///
+        /// <para>Counted at every login because that is the thing nobody had. The catalog is
+        /// edited over months, a line goes, and the markers it unmade sit on the map for as long
+        /// as it takes somebody to notice a dot and ask. One line in the log turns that into
+        /// something the map says about itself.</para>
+        /// </summary>
+        internal static int CountForgotten(out string what)
+        {
+            what = "";
+            var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            int n = 0;
+            foreach (var pin in All)
+            {
+                if (pin == null || !pin.Auto || KindOf(pin).HasValue) continue;
+                n++;
+                string src = string.IsNullOrEmpty(pin.Source) ? "(nothing recorded)" : pin.Source;
+                counts.TryGetValue(src, out int had);
+                counts[src] = had + 1;
+            }
+            if (n == 0) return 0;
+            var sources = new List<string>(counts.Keys);
+            sources.Sort((a, b) => counts[b] != counts[a] ? counts[b].CompareTo(counts[a])
+                                                          : string.Compare(a, b, StringComparison.Ordinal));
+            var said = new List<string>();
+            for (int i = 0; i < sources.Count && i < 5; i++) said.Add($"{sources[i]} x{counts[sources[i]]}");
+            what = string.Join(", ", said.ToArray());
+            if (sources.Count > 5) what += $", and {sources.Count - 5} more";
+            return n;
+        }
+
+        internal static int DropWhatTheGameMarks()
+        {
+            if (Store.Pins.Count == 0) return 0;
+            var stale = new List<PinKey>();
+            foreach (var pin in All)
+            {
+                var kind = KindOf(pin);
+                if (!kind.HasValue || !Categories.MarkedByGame(kind.Value)) continue;
+                // One placed by hand is kept unless the game is already marking that spot. "The
+                // trader is over there" is a perfectly good thing to write down for somebody who
+                // has not met him, and the panel offers the button that writes it -- the game
+                // has pinned nothing there, so there is nothing superfluous about it. Dropped
+                // where the game's own pin is standing on it, which is the whole argument.
+                if (!pin.Auto && !WorldPins.MarkedWithin(pin.Pos, ByHandNear)) continue;
+                stale.Add(pin.Key);
+            }
+            foreach (var key in stale) RemoveStale(key);
+            return stale.Count;
+        }
+
+        /// <summary>How near the game's own mark a hand-placed marker has to be to be the same place.</summary>
+        private const float ByHandNear = 48f;
+
         /// <summary>Vanilla cleared every pin (profile load). Our PinData objects are gone; records stay.</summary>
         internal static void OnPinsCleared()
         {
@@ -1452,12 +1732,13 @@ namespace TheGreatestMap
             _idByPin.Clear();
             Portals.OnPinsCleared();
             Transports.OnPinsCleared();
+            OwnMarks.OnPinsCleared();
         }
 
         /// <summary>A new pin got its name on the map screen: put it on the personal map if configured.</summary>
         internal static void OnPinPlaced(Minimap.PinData pin)
         {
-            if (pin == null || Map == null || !TgmConfig.SharePlacedPins.Value) return;
+            if (pin == null || Map == null) return;
             if (!Access.Pins(Map).Contains(pin) || IsOurs(pin)) return;
             if (!PinTypes.IsPlayerPlaceable((int)pin.m_type)) return;
             AdoptLocalPin(pin, auto: false);

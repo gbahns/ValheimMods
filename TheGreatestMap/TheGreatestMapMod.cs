@@ -30,7 +30,7 @@ namespace TheGreatestMap
     {
         public const string ModGuid    = "DeathMonger.TheGreatestMap";
         public const string ModName    = "The Greatest Map";
-        public const string ModVersion = "4.8.5";
+        public const string ModVersion = "4.9.0";
 
         // Oldest version whose shared-marker wire format this build still speaks. ServerSync
         // refuses peers below this, so bump it only when the format or an RPC changes, not on
@@ -72,7 +72,13 @@ namespace TheGreatestMap
         // together taking a tested one, and nobody is owed the first. The code that tolerates a
         // missing watermark stays exactly as it is: read every shape, enforce none, and let the
         // version check decide who is allowed to speak rather than what we are able to hear.
-        public const string MinCompatibleVersion = "4.4.0";
+        // Raised from 4.4.0 for this release and no other reason: 4.8.5 and 4.8.4 run a pass that
+        // writes "Manual" into every marker with a blank source, which rekeys it and sends the new
+        // identity to everyone. A client doing that to the shared map is worse than a client that
+        // cannot join, and tgm_unmanual can only repair a map that something is not still damaging.
+        // It goes back down at the next release that does not need it: a floor belongs to a change,
+        // not to the mod.
+        public const string MinCompatibleVersion = "4.9.0";
 
         internal static TheGreatestMapMod Instance { get; private set; }
         internal static ManualLogSource Log { get; private set; }
@@ -187,6 +193,7 @@ namespace TheGreatestMap
             MarkerMenu.Update();
             MapFrame.Update();
             MarkerToggle.Update();
+            OwnMarks.Update();
             ManualPlace.Update();
             ClientPins.AdoptStrays();
             PlayerSpotlight.Update();

@@ -42,7 +42,7 @@ namespace TheGreatestMap
         /// prove a map was tidied is this one. After this each new pass carries its own date and
         /// an old map still gets the lot.</para>
         /// </summary>
-        private const string NeededUpTo = "4.7.0";
+        private const string NeededUpTo = "4.8.6";
 
         /// <summary>
         /// Has this map been brought up to date by this version of the mod or a newer one? The
@@ -123,7 +123,18 @@ namespace TheGreatestMap
                     "or later, so the passes that fill in markers written by older versions are skipped.");
                 return;
             }
-            int named = NameTheHandPlaced();
+            // There was a pass here that wrote "Manual" into every marker SharedPin.HandPlaced
+            // guessed was placed by hand, on the grounds that a blank source carrying a picture
+            // could be nothing else. It could: a marker recorded before format 5 had nowhere to
+            // put a source. On the map that showed this up the guess was wrong 376 times out of
+            // 376, and this pass is what made it permanent -- it rewrote the source, which
+            // rekeyed the marker, and shipped the new identity to every other player.
+            //
+            // Nothing replaces it, because there was nothing to do: SharedPin.Read already turns
+            // the recorded-or-placed flag into the word "Manual" for every format that wrote one
+            // down, so a genuinely hand-placed old marker arrives here correct. The repair for
+            // the maps this ran on is tgm_unmanual.
+            //
             // Writes answers, never takes one away: see Identify.Run on why stripping a source
             // is something a person has to ask for.
             var identify = Identify.Run(apply: true, strip: false);
@@ -136,7 +147,7 @@ namespace TheGreatestMap
                     "tgm_identify apply clears them when you want it.");
             int kinded = NameTheKindOnly();
             int rekinded = KindTheHandPlaced();
-            int traders = RetireTraders();
+            int traders = RetireWhatTheGameMarks();
             int unnamed = UnnameWhatTheIconSays();
             int unguessed = ForgetKindsGuessedFromADot();
             // Whatever the catalog could not settle, the world is asked about -- and answers only
@@ -145,7 +156,7 @@ namespace TheGreatestMap
             // The answer comes back later, over the network, and says what it did in the log.
             Repair.Run();
             MarkTidied();
-            if (named == 0 && identified == 0 && kinded == 0 && rekinded == 0 && traders == 0
+            if (identified == 0 && kinded == 0 && rekinded == 0 && traders == 0
                 && unnamed == 0 && unguessed == 0)
             {
                 TheGreatestMapMod.Log.LogInfo(
@@ -157,9 +168,8 @@ namespace TheGreatestMap
             var parts = new System.Collections.Generic.List<string>();
             if (identified > 0) parts.Add($"worked out what {identified} marker(s) stand for");
             if (kinded > 0) parts.Add($"said of {kinded} that their kind is the whole answer");
-            if (named > 0) parts.Add($"marked {named} as placed by hand");
             if (rekinded > 0) parts.Add($"gave {rekinded} placed by hand their kind back");
-            if (traders > 0) parts.Add($"retired {traders} trader marker(s) the game marks by itself");
+            if (traders > 0) parts.Add($"retired {traders} marker(s) for things the game marks by itself");
             if (unnamed > 0) parts.Add($"took the name off {unnamed} spawner marker(s), whose icon says it");
             if (unguessed > 0) parts.Add($"stopped calling {unguessed} marker(s) that know nothing about themselves a dungeon");
             TheGreatestMapMod.Log.LogInfo(
@@ -250,26 +260,34 @@ namespace TheGreatestMap
         }
 
         /// <summary>
-        /// Take down the trader markers.
+        /// Take down the markers for the things the game marks itself.
         ///
-        /// Valheim marks Haldor, Hildir and the Bog Witch itself the moment you find one, so ours
-        /// was always a second pin saying the same thing in a different picture. Nothing records
-        /// them any more -- there is not even a setting for it, because the kinds the game marks
-        /// are left out of that list -- but maps written before that still carry the old ones,
-        /// and erasing them by hand did not stick: the erasure was only on the map that made it,
-        /// and the next merge with somebody who still had them brought them straight back.
+        /// Valheim marks Haldor, Hildir and the Bog Witch the moment you find one, and all three
+        /// of the places she sends you once she has asked, so ours was always a second pin saying
+        /// the same thing in a different picture. Nothing records either kind any more -- there
+        /// is not even a setting for it, because the kinds the game marks are left out of that
+        /// list -- but maps written before that still carry the old ones, and erasing them by
+        /// hand did not stick: the erasure was only on the map that made it, and the next merge
+        /// with somebody who still had them brought them straight back.
+        ///
+        /// Her errands joined the traders once the rows were put right and the five left on one
+        /// map turned out to be sitting under a row of their own, all five named after whichever
+        /// of her three sites the icon happened to look up first.
+        ///
+        /// The altars joined them in turn. They were kept at first and simply not drawn -- an
+        /// altar record says a player stood there and when, and it costs little to carry -- but
+        /// a record nothing will ever draw is a thing a player cannot see, cannot switch and
+        /// cannot be told about, and two of them came back as markers on a map anyway through a
+        /// route nobody had thought of. A record only this mod can see is not worth that.
+        ///
+        /// The work is <see cref="ClientPins.DropWhatTheGameMarks"/>, which is also run at every
+        /// load and after every merge: these travel on the shared map, so a pass that ran once
+        /// per map per version was handed them straight back by anybody who had not run it.
         ///
         /// Erased, not suppressed: a suppression says do not record here again, and nothing
         /// records these anyway. The spot is not being refused, the record is retired.
         /// </summary>
-        private static int RetireTraders()
-        {
-            var stored = new System.Collections.Generic.List<PinKey>();
-            foreach (var pin in ClientPins.All)
-                if (pin.Auto && ClientPins.KindOf(pin) == Category.Trader) stored.Add(pin.Key);
-            foreach (var key in stored) ClientPins.RemoveStale(key);
-            return stored.Count;
-        }
+        private static int RetireWhatTheGameMarks() => ClientPins.DropWhatTheGameMarks();
 
         /// <summary>
         /// A marker somebody placed themselves says so, rather than leaving the field blank.
@@ -331,16 +349,5 @@ namespace TheGreatestMap
             return n;
         }
 
-        private static int NameTheHandPlaced()
-        {
-            int n = 0;
-            foreach (var pin in new System.Collections.Generic.List<SharedPin>(ClientPins.All))
-            {
-                if (pin == null || pin.Auto || !string.IsNullOrEmpty(pin.Source)) continue;
-                ClientPins.Reidentify(pin, SharedPin.Manual);
-                n++;
-            }
-            return n;
-        }
     }
 }

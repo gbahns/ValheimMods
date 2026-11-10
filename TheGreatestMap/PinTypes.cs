@@ -73,13 +73,60 @@ namespace TheGreatestMap
                 || type == (int)Minimap.PinType.Icon4
                 || IsCustom(type);
         }
+
+        /// <summary>
+        /// A kind of pin the game puts up once, for one player, and never puts up again.
+        ///
+        /// <para>A boss altar somebody read a vegvisir for, one of the places Hildir sent them,
+        /// where they died, where they will wake up. Every one of these is a fact about that
+        /// player rather than about the world, and the character file is the only copy: the world
+        /// holds where the altars are, not which of them you have been told about, and vanilla
+        /// draws nothing of its own for one you have not. So there is no walking it back. A
+        /// marker of this mod's that goes wrongly comes back at the next merge from anyone else
+        /// holding it; one of these that goes wrongly is gone.</para>
+        ///
+        /// <para>Which is what happened: a discovered Bonemass altar left a character file
+        /// between two days while the twelve altars beside it stayed, and nothing in the map
+        /// could say which pass had taken it or put it back. Hence this, and the two guards that
+        /// read it -- the rule is not "do not delete these by mistake", it is "no sweep of this
+        /// mod's deletes one at all".</para>
+        /// </summary>
+        internal static bool GamePlacedOnce(Minimap.PinType type)
+        {
+            switch (type)
+            {
+                case Minimap.PinType.Boss:
+                case Minimap.PinType.Hildir1:
+                case Minimap.PinType.Hildir2:
+                case Minimap.PinType.Hildir3:
+                case Minimap.PinType.Death:
+                case Minimap.PinType.Bed:
+                    return true;
+                default:
+                    return false;
+            }
+        }
     }
 
     [HarmonyPatch(typeof(Minimap), "Start")]
     internal static class Minimap_Start_PinTypes_Patch
     {
         [HarmonyPriority(Priority.Last)]
-        private static void Postfix(Minimap __instance) => IconRegistry.OnMinimapStart(__instance);
+        private static void Postfix(Minimap __instance)
+        {
+            IconRegistry.OnMinimapStart(__instance);
+            // After the arrays are the right size, since this writes into vanilla's.
+            VanillaPins.Restore(__instance);
+        }
+    }
+
+    // A picture is one thing, so the game's own filter button moves this mod's half of it as
+    // well. The row in the marker list does the same from the other side.
+    [HarmonyPatch(typeof(Minimap), "ToggleIconFilter")]
+    internal static class Minimap_ToggleIconFilter_Patch
+    {
+        private static void Postfix(Minimap __instance, Minimap.PinType type) =>
+            VanillaPins.MirrorFromVanilla(__instance, type);
     }
 
     // Belt and braces: if another mod replaces m_visibleIconTypes with a shorter array, grow it

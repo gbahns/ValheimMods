@@ -24,7 +24,6 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> RequireMapOutToEdit;
         internal static ConfigEntry<bool> RequireMapOutToRecord;
         internal static ConfigEntry<int> CrossOffMinedDownTo;
-        internal static ConfigEntry<bool> SharePlacedPins;
         internal static ConfigEntry<bool> TableCarriesPins;
         internal static ConfigEntry<float> ExchangeRadius;
         internal static ConfigEntry<float> ExchangeCooldown;
@@ -54,6 +53,8 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> HighlightPlayersHidesOthers;
         internal static ConfigEntry<string> HighlightPlayersColor;
         internal static ConfigEntry<int> HighlightPlayersSize;
+        internal static ConfigEntry<bool> CustomBossMarkers;
+        internal static ConfigEntry<bool> CustomHildirMarkers;
         internal static ConfigEntry<string> MapExtraSize;
         internal static ConfigEntry<bool> MapResizeShowsMore;
         internal static ConfigEntry<string> MapPosition;
@@ -72,7 +73,9 @@ namespace TheGreatestMap
         internal static ConfigEntry<string> PortalColor;
         internal static ConfigEntry<string> PortalPulseColor;
         internal static ConfigEntry<float> PortalPulseSeconds;
+        internal static ConfigEntry<string> HiddenPlaces;
         private static HashSet<string> _hiddenIconKeys;
+        private static HashSet<string> _hiddenPlaceKeys;
 
         private static HashSet<string> HiddenIconKeys()
         {
@@ -126,6 +129,49 @@ namespace TheGreatestMap
             HiddenIcons.Value = string.Join(",", keep.ToArray());
         }
 
+        private static HashSet<string> HiddenPlaceKeys()
+        {
+            if (_hiddenPlaceKeys == null)
+            {
+                _hiddenPlaceKeys = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+                foreach (var raw in ((HiddenPlaces != null ? HiddenPlaces.Value : null) ?? "").Split(','))
+                {
+                    string key = IconRegistry.Normalize(raw);
+                    if (key != null) _hiddenPlaceKeys.Add(key);
+                }
+            }
+            return _hiddenPlaceKeys;
+        }
+
+        /// <summary>
+        /// True if this is one of the places the game marks itself that the player has switched
+        /// off: a boss altar, one of Hildir's errands.
+        ///
+        /// <para>Kept apart from the hidden icons on purpose. A place is not a kind of thing. The
+        /// picture one wears is borrowed from a trophy, and a player hiding that trophy is saying
+        /// something about trophies -- taking the game's own pin off an altar because of it is a
+        /// surprise, and it is one a player reported within a minute of meeting it: the altar's
+        /// own pin went with the marker and there was no obvious way back.</para>
+        /// </summary>
+        internal static bool IsPlaceHidden(string icon)
+        {
+            string k = IconRegistry.Normalize(icon);
+            return k != null && HiddenPlaceKeys().Contains(k);
+        }
+
+        internal static int HiddenPlaceCount() => HiddenPlaceKeys().Count;
+
+        internal static void SetPlaceHidden(string icon, bool hidden)
+        {
+            string key = IconRegistry.Normalize(icon);
+            if (key == null || HiddenPlaces == null || IsPlaceHidden(key) == hidden) return;
+            var keep = new List<string>();
+            foreach (var k in HiddenPlaceKeys())
+                if (!IconRegistry.SameKey(k, key)) keep.Add(k.StartsWith("item:") ? k.Substring(5) : k);
+            if (hidden) keep.Add(key.StartsWith("item:") ? key.Substring(5) : key);
+            HiddenPlaces.Value = string.Join(",", keep.ToArray());
+        }
+
         internal static int HiddenKindCount()
         {
             int n = 0;
@@ -138,6 +184,7 @@ namespace TheGreatestMap
         {
             Focus.Clear();
             if (!string.IsNullOrEmpty(HiddenIcons.Value)) HiddenIcons.Value = "";
+            if (HiddenPlaces != null && !string.IsNullOrEmpty(HiddenPlaces.Value)) HiddenPlaces.Value = "";
             foreach (var entry in ShowKind.Values) if (!entry.Value) entry.Value = true;
             if (ShowAllMarkers != null && !ShowAllMarkers.Value) ShowAllMarkers.Value = true;
             // Worked-out deposits too. This was the one switch that hid markers and was not put
@@ -213,6 +260,18 @@ namespace TheGreatestMap
             // picture mean a dungeon in the swamp or a nest in it. Iron scrap is what a sunken
             // crypt is full of.
             new[] { "Dungeons", "SunkenCrypt4", "TrophyDraugr", "IronScrap" },
+            // The three places Hildir sends you wore their own locations' map pictures, and the
+            // game has one for the cavern and none for the other two -- so two of the three asked
+            // for a sprite that does not exist and said so at every login. The trophy of whoever
+            // waits inside says what the place is for and tells the three apart.
+            new[] { "Hildir Quests", "Hildir_cave", "loc:Hildir_cave", "TrophyCultist_Hildir" },
+            new[] { "Hildir Quests", "Hildir_crypt", "loc:Hildir_crypt", "TrophySkeletonHildir" },
+            new[] { "Hildir Quests", "Hildir_plainsfortress", "loc:Hildir_plainsfortress", "TrophyGoblinBruteBrosBrute" },
+            // And from her camp's picture, which an unreleased build put in those two lines for a
+            // day. Published nowhere, so this is only for the maps it was tested on -- and it is
+            // the reason the record below is kept per correction rather than per icon.
+            new[] { "Hildir Quests", "Hildir_crypt", "loc:Hildir_camp", "TrophySkeletonHildir" },
+            new[] { "Hildir Quests", "Hildir_plainsfortress", "loc:Hildir_camp", "TrophyGoblinBruteBrosBrute" },
         };
 
         /// <summary>
@@ -416,7 +475,13 @@ namespace TheGreatestMap
             var made = new List<string>();
             foreach (var fix in ShippedIcons)
             {
-                string id = fix[1] + "=" + fix[3];
+                // Which correction, rather than only what it corrected to: an icon can be
+                // thought better of twice, and then two corrections for one prefab end at the
+                // same picture by different routes. Written down by route, so the second is not
+                // taken for the first and skipped -- which is exactly what happened when
+                // Hildir's two went from a missing location picture to her camp's and then to
+                // the trophies.
+                string id = fix[1] + "=" + fix[2] + ">" + fix[3];
                 if (Listed(done, id)) continue;
                 // Written down whether or not there was anything to correct: a fresh config has
                 // the new icon already, and this is a correction that has been dealt with either
@@ -511,6 +576,8 @@ namespace TheGreatestMap
         internal static readonly Dictionary<Category, ConfigEntry<string>> CategoryPrefabs = new Dictionary<Category, ConfigEntry<string>>();
         internal static readonly Dictionary<Category, ConfigEntry<string>> CategoryIcon = new Dictionary<Category, ConfigEntry<string>>();
         internal static ConfigEntry<bool> StructuresIncludeUnlisted;
+        internal static ConfigEntry<string> RecordingExceptions;
+        internal static ConfigEntry<bool> ShowNotRecording;
         internal static ConfigEntry<string> StructuresExcludePrefixes;
         internal static ConfigEntry<bool> RecordInBase;
         internal static ConfigEntry<bool> ForgetTilledCrops;
@@ -668,7 +735,7 @@ namespace TheGreatestMap
                 "sends you), Other (any landmark this mod cannot name). The game draws all of these as one kind of " +
                 "pin and gives no button for any of them, so these are hidden one pin at a time; the marker list's " +
                 "rows under Places are what write this.");
-            HiddenLandmarks.SettingChanged += (_, __) => { WorldPins.ForgetHidden(); WorldPins.Redraw(); };
+            HiddenLandmarks.SettingChanged += (_, __) => { WorldPins.ForgetHidden(); WorldPins.Apply(); };
 
             HideVanillaControls = mod.BindLocal("Display", "Hide Vanilla Controls", false,
                 "Take the game's own row of pin buttons off the large map, the marker list having grown to cover " +
@@ -719,6 +786,22 @@ namespace TheGreatestMap
                 "Comma-separated marker icons never drawn on your map, as item prefab names or icon keys, e.g. Dandelion,Thistle,pin:Icon1. " +
                 "Hidden markers stay on your map and keep syncing; they are just not shown. Applies at once.");
             HiddenIcons.SettingChanged += (_, __) => { _hiddenIconKeys = null; ClientPins.Restyle(); };
+
+            HiddenPlaces = mod.BindLocal("Display", "Hidden Places", "",
+                "The places the game marks itself that you have switched off in the marker list -- a boss altar, one " +
+                "of Hildir's errands -- by the picture each one wears. The list writes this; there is nothing here to " +
+                "edit by hand. It is kept apart from Hidden Icons because a place is not a kind of thing: hiding the " +
+                "Bonemass trophy is about trophies, and it should not take the game's own pin off the altar.");
+            HiddenPlaces.SettingChanged += (_, __) =>
+            {
+                _hiddenPlaceKeys = null;
+                // The markers the swap draws are not records and are not restyled: they are put
+                // up and taken down, so the thing that draws them has to look again. At once,
+                // rather than at its next look: a switch that takes a second to answer reads as
+                // a switch that did not work.
+                OwnMarks.Forget();
+                WorldPins.Apply();
+            };
             PauseWhileMapOpen = mod.BindLocal("Display", "Pause While Map Open", false,
                 "Pause the game while the large map screen is open, the way the ESC menu does. Works by itself when " +
                 "playing solo or hosting alone; on a dedicated server it takes the Pause My Server mod, which then " +
@@ -884,9 +967,6 @@ namespace TheGreatestMap
             RequireMapOutToRecord = mod.BindSynced("Sharing", "Require Map Out To Record", true,
                 "Automatic recording of found things only happens while the pocket map is out. Turn off to record " +
                 "found things whenever you are within the record radius, map or no map.");
-            SharePlacedPins = mod.BindSynced("Sharing", "Share Placed Markers", true,
-                "Markers you place on the map screen are shared instantly with everyone on the server. " +
-                "When false they stay private, as in vanilla.");
             TableCarriesPins = mod.BindSynced("Sharing", "Table Carries Player Markers", false,
                 "Vanilla's own pin sharing, off by default. Your maps still merge at a cartography table either " +
                 "way -- this is only about the five standard pins you place by hand, which vanilla copies in and out " +
@@ -979,7 +1059,15 @@ namespace TheGreatestMap
                     : mod.BindLocal("Display", "Show " + label, true,
                       "Draw recorded " + label.ToLowerInvariant() + " markers on your map. Off hides them on both the large map and the " +
                     "minimap; they stay on your map and keep syncing. To hide single icons instead (say only dandelions) use Hidden Icons.");
-                ShowKind[cat].SettingChanged += (_, __) => ClientPins.Restyle();
+                ShowKind[cat].SettingChanged += (_, __) =>
+                {
+                    ClientPins.Restyle();
+                    // The two kinds the game marks itself can be drawn by this mod instead, and
+                    // those markers are put up rather than restyled. Told here so the switch
+                    // answers in the same frame instead of at the drawer's next look, which is
+                    // every two seconds and reads as a switch that did not work.
+                    OwnMarks.Forget();
+                };
                 if (Categories.UsesPrefabList(cat))
                 {
                     CategoryPrefabs[cat] = mod.BindLocal("Catalog", label, Categories.DefaultPrefabs(cat),
@@ -996,12 +1084,35 @@ namespace TheGreatestMap
             OrderTheCatalogOnce();
             FixShippedIconsOnce();
 
+            // Written by the marker list, not by hand. It holds what the player has changed
+            // rather than what is on, so that a group added by a later version starts at the tier
+            // that version chose for it -- a saved list of what was on would have said nothing
+            // about a group that did not exist yet, and silence would have read as off.
+            RecordingExceptions = mod.BindLocal("Recording", "Recording Exceptions", "",
+                "Groups of things you have switched recording on or off for, as Group=on or Group=off separated by " +
+                "the | character. The marker list writes this: tick 'Show what you are not recording' in its gear " +
+                "menu to see every group and switch any of them. Anything not named here is recorded or not " +
+                "according to what this version ships, so leaving it empty is the ordinary state.");
+            ShowNotRecording = mod.BindLocal("Display", "Show What You Are Not Recording", false,
+                "Add a row to the marker list for each group of things this mod knows about and is not writing " +
+                "markers for, so you can see what they are and ask for any of them. There is no other honest way " +
+                "to offer the choice: a group nobody is recording has no markers, so nothing in a list built from " +
+                "the map could ever mention it, and a config file full of prefab names is not a question anyone " +
+                "can answer. Also in the marker list's gear menu, which is where it is meant to be used.");
+            ShowNotRecording.SettingChanged += (_, __) => KindMenu.Relayout();
+
+            RecordingExceptions.SettingChanged += (_, __) =>
+            {
+                Tiers.Forget();
+                ClientPins.Restyle();
+            };
+
             StructuresIncludeUnlisted = mod.BindLocal("Catalog", "Structures Include Unlisted", true,
                 "Treat any outdoor location that is not listed under another kind as a structure (the location's prefab name, " +
                 "tidied up, becomes the marker text). Turn off to record only the listed structure prefixes.");
             StructuresExcludePrefixes = mod.BindLocal("Catalog", "Structures Exclude Prefixes", "Vegvisir_,Runestone_,Meteorite,TarPit,Rock,Hugin,StartTemple,Pickable,Vegetation,Tree,Bush,MountainGrave,MountainWell," +
                 "InfestedTree,SwampHut,SwampRuin,SwampWell,Grave1,FireHole,ShipWreck,ShipSetting,CharredRuins," +
-                "FortressRuins,VoltureNest,Ruin,StoneHouse,StoneTowerRuins",
+                "FortressRuins,VoltureNest,Ruin,StoneHouse,StoneTowerRuins,Mistlands_Statue,Mistlands_Viaduct",
                 "Comma-separated prefab name prefixes never swept in as structures. This is about the places the " +
                 "catalog does not name: a location listed under Structures above is recorded because it is listed, " +
                 "whatever this says, so leaving one out means taking its line out as well.");
@@ -1130,6 +1241,36 @@ namespace TheGreatestMap
                 "the thousands of names a recorded map carries. Turning the marker labels off used to take these with " +
                 "them, which is a lot to lose for a change made about berry bushes.");
             ShowBossLabels.SettingChanged += (_, __) => ClientPins.RedrawLabels();
+
+            CustomBossMarkers = mod.BindLocal("Display", "Show Custom Boss Markers", false,
+                "Draw this mod's own marker for a boss altar instead of the game's pin: the boss's own trophy, named " +
+                "for him, where the game draws one picture for all of them. The game marks every altar on every map, " +
+                "so a marker of this mod's beside one is the same stones twice -- on, ours is drawn and the game's " +
+                "pins are hidden; off, the game's stand as they always did. One marker per altar either way, whether " +
+                "or not this mod has ever recorded that one: these are drawn from what the game has marked rather " +
+                "than from what has been written down.");
+            CustomBossMarkers.SettingChanged += (_, __) =>
+            {
+                OwnMarks.Forget();
+                // Put the game's pins back on the way out. The pass that hides them only runs
+                // while this is on, so nothing else would.
+                if (!CustomBossMarkers.Value)
+                    VanillaPins.SetDrawn(Minimap.instance, Minimap.PinType.Boss, true);
+                WorldPins.Redraw();
+                ClientPins.Restyle();
+            };
+
+            CustomHildirMarkers = mod.BindLocal("Display", "Show Custom Hildir Markers", false,
+                "Draw this mod's own markers for the three places Hildir sends you instead of the game's. Nothing is " +
+                "recorded for her errands -- the game marks all three itself once she has asked -- so this is a swap " +
+                "and not an addition: on, ours are drawn and the game's are hidden; off, the game's stand as they " +
+                "always did. Ours are drawn from the game's own marks, so they appear and go with her quests.");
+            CustomHildirMarkers.SettingChanged += (_, __) =>
+            {
+                OwnMarks.Forget();
+                WorldPins.Redraw();
+                ClientPins.Restyle();
+            };
 
             ShowPortalLabels = mod.BindLocal("Display", "Show Portal Labels", true,
                 "Write portal names on the large map. Kept apart from the marker labels because the two are not the " +

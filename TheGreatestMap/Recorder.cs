@@ -63,6 +63,13 @@ namespace TheGreatestMap
                     DiscoveryLedger.MarkRecorded(found.Key);
                     continue;
                 }
+                // Switched off by its group: left where it is rather than used up. Marking it
+                // recorded would say it had been dealt with, and then switching the group back on
+                // would mark nothing you had already walked past -- you would have to go round
+                // again. Left pending, the switch fills in everything still in the ledger, which
+                // is what makes changing your mind about a group free. It expires on its own
+                // timer like any other find, so this cannot grow without end.
+                if (!Tiers.Recording(Catalog.GroupOf(found.Source))) continue;
                 // Locations deduplicate over their whole radius around their origin, so a farm
                 // whose marker sits on the house is still one marker.
                 float spacing = TgmConfig.MarkerSpacing.TryGetValue(found.Cat, out var s) ? s.Value : 1f;

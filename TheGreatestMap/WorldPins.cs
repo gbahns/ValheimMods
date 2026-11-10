@@ -45,8 +45,8 @@ namespace TheGreatestMap
 
         internal static readonly Kind[] All = (Kind[])Enum.GetValues(typeof(Kind));
 
-        /// <summary>The rows these have of their own; Boss and Trader are drawn by their kinds' rows instead.</summary>
-        internal static readonly Kind[] OwnRows = { Kind.Center, Kind.Hildir, Kind.Other };
+        /// <summary>The rows these have of their own; the rest are drawn by their kinds' rows instead.</summary>
+        internal static readonly Kind[] OwnRows = { Kind.Center, Kind.Other };
 
         /// <summary>
         /// The location the world's center stands on. In code rather than in the catalog because
@@ -69,6 +69,13 @@ namespace TheGreatestMap
 
         /// <summary>Where each landmark the world knows about is, and what it is. Read from the world, not from the pins.</summary>
         private static readonly Dictionary<Vector3, Kind> _world = new Dictionary<Vector3, Kind>();
+
+        /// <summary>
+        /// And which location each one is, kept because a kind is not enough to draw with: the
+        /// catalog names Eikthyrnir as Eikthyr and gives it his trophy, and that answer is the
+        /// player's to edit. One dictionary rather than two lookups of the same walk.
+        /// </summary>
+        private static readonly Dictionary<Vector3, string> _where = new Dictionary<Vector3, string>();
         private static float _asked;
         private static HashSet<Kind> _hidden;
 
@@ -85,6 +92,7 @@ namespace TheGreatestMap
         internal static void Forget()
         {
             _world.Clear();
+            _where.Clear();
             _asked = 0f;
             _counts.Clear();
             _spots.Clear();
@@ -103,6 +111,22 @@ namespace TheGreatestMap
             var map = Minimap.instance;
             if (map != null) Access.PinUpdateRequired(map) = true;
         }
+
+        /// <summary>
+        /// Put the landmarks right now, without asking the game to lay the map out again.
+        ///
+        /// <para>Because asking is expensive in a way a switch must not be: a layout destroys and
+        /// rebuilds the marker of every pin on the map, and a well-used map holds thousands --
+        /// one to two seconds of it, for a row that hides eleven pins. A player toggling Hildir's
+        /// errands noticed it at once, and the reason the kind rows above it felt instant is that
+        /// they never asked for a layout at all.</para>
+        ///
+        /// <para>Nothing here needs one. Hiding a landmark switches its marker off and showing it
+        /// switches the same marker back on; the object is still there either way. The one case
+        /// that does need the game is vanilla's own icon filter, which destroys what it hides --
+        /// and that is asked for separately, where it is used.</para>
+        /// </summary>
+        internal static void Apply() => AfterLayout(Minimap.instance);
 
         // ── what the world holds ────────────────────────────────────────────────
 
@@ -125,7 +149,58 @@ namespace TheGreatestMap
                 return;
             }
             _world.Clear();
-            foreach (var kv in icons) _world[kv.Key] = Classify(kv.Value);
+            _where.Clear();
+            foreach (var kv in icons)
+            {
+                _world[kv.Key] = Classify(kv.Value);
+                _where[kv.Key] = kv.Value;
+            }
+        }
+
+        /// <summary>
+        /// Make sure the world has been asked. Called by anything that reads the answer without
+        /// having counted first -- the asking is rate-limited inside, so asking is nearly free
+        /// and not asking leaves an empty answer for a player who never opened the list.
+        /// </summary>
+        internal static void Ask() => AskTheWorld();
+
+        /// <summary>
+        /// Every landmark the world knows of, and which location each one is. For anything that
+        /// has to walk the whole list rather than ask about one spot.
+        /// </summary>
+        internal static IEnumerable<KeyValuePair<Vector3, string>> Known()
+        {
+            AskTheWorld();
+            return _where;
+        }
+
+        /// <summary>What kind of landmark stands at this spot, if the world knows of one.</summary>
+        internal static Kind? KindAt(Vector3 pos)
+        {
+            foreach (var kv in _world)
+                if (Geo.FlatDistance(kv.Key, pos) < Near) return kv.Value;
+            return null;
+        }
+
+        /// <summary>
+        /// Whether the world marks a landmark of its own anywhere near here. A wider question
+        /// than <see cref="KindAt"/>, which asks whether a pin is that landmark's pin: this one
+        /// is asked of a marker a player dropped by hand, and a hand is not accurate to a meter.
+        /// </summary>
+        internal static bool MarkedWithin(Vector3 pos, float radius)
+        {
+            AskTheWorld();
+            foreach (var kv in _world)
+                if (Geo.FlatDistance(kv.Key, pos) < radius) return true;
+            return false;
+        }
+
+        /// <summary>The location standing at this spot, for the catalog to name and picture.</summary>
+        internal static string LocationAt(Vector3 pos)
+        {
+            foreach (var kv in _where)
+                if (Geo.FlatDistance(kv.Key, pos) < Near) return kv.Value;
+            return null;
         }
 
         /// <summary>
@@ -155,7 +230,17 @@ namespace TheGreatestMap
         /// <summary>What kind of landmark this pin is, or null if it is not one of the world's.</summary>
         private static Kind? KindOf(Minimap.PinData pin)
         {
-            if (pin == null || pin.m_type != Minimap.PinType.None) return null;
+            if (pin == null) return null;
+            // Hildir's three are marked by a route of their own: a saved pin wearing a pin type
+            // per quest, put up when she asks, named $hud_pin_hildir1 and so on. That is not the
+            // landmark mechanism below, which is one None pin per location the world draws an
+            // icon for, and only that half was being claimed -- so the row counted a fraction of
+            // the question marks on the map and its switch hid that same fraction, which is what
+            // a player meant by three of six tracked. Claimed by type, with no location to stand
+            // on: nothing but Hildir's quests ever wears one of these three.
+            if (pin.m_type == Minimap.PinType.Hildir1 || pin.m_type == Minimap.PinType.Hildir2
+                || pin.m_type == Minimap.PinType.Hildir3) return Kind.Hildir;
+            if (pin.m_type != Minimap.PinType.None) return null;
             foreach (var kv in _world)
                 if (Geo.FlatDistance(kv.Key, pin.m_pos) < Near) return kv.Value;
             // A None pin standing on no location this world knows about: somebody else's, and
@@ -179,10 +264,20 @@ namespace TheGreatestMap
             {
                 var kind = KindOf(pin);
                 if (!kind.HasValue) continue;
+                if (!_spots.TryGetValue(kind.Value, out var where)) _spots[kind.Value] = where = new List<Vector3>();
+                // One count per place rather than per pin. The game marks one place more than
+                // once: an altar carries a landmark pin and a vegvisir pin, and each of Hildir's
+                // sites carries a landmark pin and the quest pin her table put up. Counting pins
+                // made a row say nine for three errands, which is a number a player cannot check
+                // against anything -- and it would not have added up against the places listed
+                // under it either.
+                bool had = false;
+                foreach (var spot in where)
+                    if (Geo.FlatDistance(spot, pin.m_pos) < Near) { had = true; break; }
+                if (had) continue;
+                where.Add(pin.m_pos);
                 _counts.TryGetValue(kind.Value, out int n);
                 _counts[kind.Value] = n + 1;
-                if (!_spots.TryGetValue(kind.Value, out var where)) _spots[kind.Value] = where = new List<Vector3>();
-                where.Add(pin.m_pos);
             }
         }
 
@@ -192,7 +287,7 @@ namespace TheGreatestMap
             return n;
         }
 
-        internal static int ShownCount(Kind kind) => Drawn(kind) ? CountOf(kind) : 0;
+        internal static int ShownCount(Kind kind) => Wanted(kind) ? CountOf(kind) : 0;
 
         /// <summary>Where the ones on the map are, for a ping.</summary>
         internal static List<Vector3> Spots(Kind kind)
@@ -202,7 +297,36 @@ namespace TheGreatestMap
 
         // ── showing and hiding ──────────────────────────────────────────────────
 
-        internal static bool Drawn(Kind kind) => !Hidden().Contains(kind);
+        /// <summary>
+        /// Whether this mod draws its own markers in place of the game's, for the two kinds the
+        /// game marks by itself and this mod can mark better.
+        ///
+        /// <para>One switch each, because the alternative is two -- ours and the game's -- and
+        /// two switches for one question lets a player ask for both at once, which is the same
+        /// place marked twice and reads as a bug. Here rather than in the drawing code so that
+        /// every side of the swap reads it from one place.</para>
+        /// </summary>
+        internal static bool CustomBoss =>
+            TgmConfig.CustomBossMarkers != null && TgmConfig.CustomBossMarkers.Value;
+
+        internal static bool CustomHildir =>
+            TgmConfig.CustomHildirMarkers != null && TgmConfig.CustomHildirMarkers.Value;
+
+        /// <summary>
+        /// Whether this kind is shown at all, which is what its row's switch says. Not the same
+        /// question as whether the game's own pins for it are drawn: with the swap on, this kind
+        /// is shown and what shows is this mod's.
+        /// </summary>
+        internal static bool Wanted(Kind kind) => !Hidden().Contains(kind);
+
+        /// <summary>Whether the game's own pins for this kind are drawn.</summary>
+        internal static bool Drawn(Kind kind)
+        {
+            if (!Wanted(kind)) return false;
+            if (kind == Kind.Boss && CustomBoss) return false;
+            if (kind == Kind.Hildir && CustomHildir) return false;
+            return true;
+        }
 
         internal static void SetDrawn(Kind kind, bool draw)
         {
@@ -226,15 +350,36 @@ namespace TheGreatestMap
         internal static void AfterLayout(Minimap map)
         {
             if (map == null) return;
-            bool any = Hidden().Count > 0;
+            // The game's vegvisir pins are a type of their own rather than landmarks, so they are
+            // put away through vanilla's own filter. Re-asserted here, with the rest, because
+            // anything that touches that array -- vanilla's icon button, a row in this mod's own
+            // list -- would otherwise bring them back beside ours.
+            if (CustomBoss) VanillaPins.SetDrawn(map, Minimap.PinType.Boss, false);
+            bool any = Hidden().Count > 0 || CustomBoss || CustomHildir || OwnMarks.AnySiteHidden;
             if (!any && !_wasHiding) return;
             _wasHiding = any;
             foreach (var pin in Access.Pins(map))
             {
                 if (pin == null || pin.m_uiElement == null) continue;
                 var kind = KindOf(pin);
-                if (!kind.HasValue) continue;
-                ClientPins.ShowMarker(pin, Drawn(kind.Value));
+                if (!kind.HasValue)
+                {
+                    // A vegvisir pin is an altar with a type of its own, so it is not a landmark
+                    // and KindOf has nothing to say about it -- but the type row for one altar
+                    // does, and vanilla's filter is one switch for every altar at once.
+                    //
+                    // Shown as well as hidden. Whether the type is drawn at all is still
+                    // vanilla's filter's to say and this does not argue with it: a pin that
+                    // filter has put away is destroyed rather than hidden, and a destroyed one
+                    // has no element for the line above to have let through. Hiding without
+                    // showing is what left a row that had been switched off and on again with
+                    // its names back and no pictures under them -- nothing else would ever have
+                    // put those back.
+                    if (pin.m_type == Minimap.PinType.Boss && !ClientPins.IsOurs(pin))
+                        ClientPins.ShowMarker(pin, OwnMarks.SiteShown(pin));
+                    continue;
+                }
+                ClientPins.ShowMarker(pin, Drawn(kind.Value) && OwnMarks.SiteShown(pin));
             }
         }
 

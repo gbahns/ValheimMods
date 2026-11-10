@@ -274,6 +274,24 @@ namespace TheGreatestMap
             // load: this one recognizes a leftover by the marker it is a copy of, and the
             // records are not read until the line above.
             ClientPins.DropVanillaTypedCopies();
+            // And the markers for what the game marks by itself, which is a standing rule rather
+            // than a one-time tidy: they travel on the shared map, so they come round again.
+            int gone = ClientPins.DropWhatTheGameMarks();
+            if (gone > 0)
+                TheGreatestMapMod.Log.LogInfo(
+                    $"[TheGreatestMap] Took down {gone} marker(s) for places the game marks by itself -- boss " +
+                    "altars, traders, the errands Hildir sends you on. The game pins all of those without being " +
+                    "asked, so one of this mod's beside one was the same place marked twice.");
+            // Said, not done: these were recorded properly by a version that marked that thing,
+            // and whether they are still wanted is the player's call. tgm_forgotten erases them.
+            int lost = ClientPins.CountForgotten(out string stoodFor);
+            if (lost > 0)
+                TheGreatestMapMod.Log.LogInfo(
+                    $"[TheGreatestMap] {lost} recorded marker(s) no longer know what they are: {stoodFor}. " +
+                    "The catalog has dropped or excluded those prefabs since the markers were written, and a " +
+                    "marker works its kind out from the catalog rather than carrying it -- so these have no kind, " +
+                    "and therefore no name, no picture and no row in the marker list. tgm_forgotten lists them; " +
+                    "tgm_forgotten confirm erases them.");
             if (TgmConfig.RepairDungeonIcons.Value && PersonalMap.Store.Pins.Count > 0)
             {
                 int fixedUp = ClientPins.RepairDungeonIcons();
