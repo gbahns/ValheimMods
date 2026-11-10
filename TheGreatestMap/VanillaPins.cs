@@ -587,7 +587,7 @@ namespace TheGreatestMap
         }
 
         /// <summary>Is this mod's half of a picture being drawn?</summary>
-        internal static bool OursLit(Minimap.PinType type) => !TgmConfig.IsIconHidden(IconKey(type));
+        internal static bool OursLit(Minimap.PinType type) => !TgmConfig.IsOwnIconHidden(IconKey(type));
 
         /// <summary>
         /// The game's own button was used: bring this mod's half of that picture into line.
@@ -629,8 +629,10 @@ namespace TheGreatestMap
         /// <summary>Show or hide this mod's half of a picture.</summary>
         internal static void SetOursDrawn(Minimap.PinType type, bool show)
         {
-            if (show) TgmConfig.RemoveHiddenIcon(IconKey(type));
-            else TgmConfig.AddHiddenIcon(IconKey(type));
+            // The list about markers a player placed, not the general one: these rows are
+            // counted over markers with no kind (see OursWearing), so they have to hide the same
+            // ones they count. A recorded structure wears the same house pin and is not theirs.
+            TgmConfig.SetOwnIconHidden(IconKey(type), !show);
         }
 
         /// <summary>

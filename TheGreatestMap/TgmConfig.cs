@@ -74,8 +74,10 @@ namespace TheGreatestMap
         internal static ConfigEntry<string> PortalPulseColor;
         internal static ConfigEntry<float> PortalPulseSeconds;
         internal static ConfigEntry<string> HiddenPlaces;
+        internal static ConfigEntry<string> HiddenOwnIcons;
         private static HashSet<string> _hiddenIconKeys;
         private static HashSet<string> _hiddenPlaceKeys;
+        private static HashSet<string> _hiddenOwnIconKeys;
 
         private static HashSet<string> HiddenIconKeys()
         {
@@ -129,6 +131,49 @@ namespace TheGreatestMap
             HiddenIcons.Value = string.Join(",", keep.ToArray());
         }
 
+        private static HashSet<string> HiddenOwnIconKeys()
+        {
+            if (_hiddenOwnIconKeys == null)
+            {
+                _hiddenOwnIconKeys = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+                foreach (var raw in (HiddenOwnIcons == null ? "" : HiddenOwnIcons.Value ?? "").Split(','))
+                {
+                    string key = IconRegistry.Normalize(raw);
+                    if (key != null) _hiddenOwnIconKeys.Add(key);
+                }
+            }
+            return _hiddenOwnIconKeys;
+        }
+
+        /// <summary>
+        /// Is this picture switched off on markers nobody recorded -- the ones a player placed?
+        ///
+        /// <para>Apart from <see cref="IsIconHidden"/> for the same reason places are: a picture
+        /// is not one thing. Structures wear vanilla's house pin because the game draws no
+        /// picture of an abandoned farm, so one list covering both made the marker list's House
+        /// row -- counted and labelled for the handful of house pins a player had placed -- take
+        /// 218 recorded structures down with it, and the kind switch for Structures take the
+        /// player's own house pins.</para>
+        /// </summary>
+        internal static bool IsOwnIconHidden(string icon)
+        {
+            string k = IconRegistry.Normalize(icon);
+            return k != null && HiddenOwnIconKeys().Contains(k);
+        }
+
+        internal static int HiddenOwnIconCount() => HiddenOwnIconKeys().Count;
+
+        internal static void SetOwnIconHidden(string icon, bool hidden)
+        {
+            string key = IconRegistry.Normalize(icon);
+            if (key == null || HiddenOwnIcons == null || IsOwnIconHidden(key) == hidden) return;
+            var keep = new List<string>();
+            foreach (var k in HiddenOwnIconKeys())
+                if (!IconRegistry.SameKey(k, key)) keep.Add(k.StartsWith("item:") ? k.Substring(5) : k);
+            if (hidden) keep.Add(key.StartsWith("item:") ? key.Substring(5) : key);
+            HiddenOwnIcons.Value = string.Join(",", keep.ToArray());
+        }
+
         private static HashSet<string> HiddenPlaceKeys()
         {
             if (_hiddenPlaceKeys == null)
@@ -180,11 +225,40 @@ namespace TheGreatestMap
         }
 
         /// <summary>Clear the hidden icons, switch every kind back on and undo the master hide.</summary>
+        /// <summary>
+        /// One-time: take the five placeable pictures out of Hidden Icons and put them on the
+        /// list that is about markers a player placed. Runs on every load and finds nothing after
+        /// the first, which is cheaper than remembering that it ran.
+        /// </summary>
+        private static void MoveOwnPicturesOut()
+        {
+            if (HiddenIcons == null || HiddenOwnIcons == null) return;
+            var moved = new List<string>();
+            for (int type = (int)Minimap.PinType.Icon0; type <= (int)Minimap.PinType.Icon4; type++)
+            {
+                string key = IconRegistry.KeyForVanilla(type);
+                if (IsIconHidden(key)) moved.Add(key);
+            }
+            if (moved.Count == 0) return;
+            foreach (var key in moved)
+            {
+                RemoveHiddenIcon(key);
+                _hiddenIconKeys = null;
+                SetOwnIconHidden(key, true);
+                _hiddenOwnIconKeys = null;
+            }
+            TheGreatestMapMod.Log.LogInfo(
+                $"[TheGreatestMap] Moved {moved.Count} picture(s) from Hidden Icons to the list about markers you " +
+                "placed: " + string.Join(", ", moved.ToArray()) + ". The two used to be one list, so switching off " +
+                "the House row under Yours also hid every recorded structure.");
+        }
+
         internal static void ShowEverything()
         {
             Focus.Clear();
             if (!string.IsNullOrEmpty(HiddenIcons.Value)) HiddenIcons.Value = "";
             if (HiddenPlaces != null && !string.IsNullOrEmpty(HiddenPlaces.Value)) HiddenPlaces.Value = "";
+            if (HiddenOwnIcons != null && !string.IsNullOrEmpty(HiddenOwnIcons.Value)) HiddenOwnIcons.Value = "";
             foreach (var entry in ShowKind.Values) if (!entry.Value) entry.Value = true;
             if (ShowAllMarkers != null && !ShowAllMarkers.Value) ShowAllMarkers.Value = true;
             // Worked-out deposits too. This was the one switch that hid markers and was not put
@@ -526,7 +600,7 @@ namespace TheGreatestMap
             // is asked to decide whether to offer a way back -- so a player who had hidden five
             // markers by hand and nothing else was told nothing was hidden and offered nothing.
             if (ViewPrefs.Count > 0) return true;
-            return HiddenIconCount() > 0 || HiddenKindCount() > 0;
+            return HiddenIconCount() > 0 || HiddenOwnIconCount() > 0 || HiddenKindCount() > 0;
         }
 
         // ── Cartography table ───────────────────────────────────────────────────────
@@ -786,6 +860,19 @@ namespace TheGreatestMap
                 "Comma-separated marker icons never drawn on your map, as item prefab names or icon keys, e.g. Dandelion,Thistle,pin:Icon1. " +
                 "Hidden markers stay on your map and keep syncing; they are just not shown. Applies at once.");
             HiddenIcons.SettingChanged += (_, __) => { _hiddenIconKeys = null; ClientPins.Restyle(); };
+
+            HiddenOwnIcons = mod.BindLocal("Display", "Hidden Icons On Markers You Placed", "",
+                "The pictures you have switched off for markers you placed yourself, under Yours in the marker list. " +
+                "The list writes this; there is nothing here to edit by hand. It is kept apart from Hidden Icons " +
+                "because a picture is not one thing: a recorded farmstead wears the same house as a house pin you " +
+                "dropped, and switching off one should not take the other with it.");
+            HiddenOwnIcons.SettingChanged += (_, __) => { _hiddenOwnIconKeys = null; ClientPins.Restyle(); };
+
+            // Entries written before the two lists were told apart. Anything in Hidden Icons
+            // naming one of the five pictures a player can place was put there by the Yours rows,
+            // which is the half that moves: left where it was it would now switch off recorded
+            // markers instead, which is the opposite of what the player asked for.
+            MoveOwnPicturesOut();
 
             HiddenPlaces = mod.BindLocal("Display", "Hidden Places", "",
                 "The places the game marks itself that you have switched off in the marker list -- a boss altar, one " +

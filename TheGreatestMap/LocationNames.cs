@@ -194,6 +194,13 @@ namespace TheGreatestMap
         private const float ObjectRadius = 6f;
 
         /// <summary>
+        /// How many answers one place is worth sending. A thousand-marker question has to stay a
+        /// message somebody can carry, and nothing a marker could agree with is more than a few
+        /// objects deep -- but see the trim below for the one answer that is always last.
+        /// </summary>
+        internal const int Most = 8;
+
+        /// <summary>
         /// Every prefab the world has at a place, nearest first: the objects standing there and
         /// the location whose ground it is.
         ///
@@ -265,6 +272,23 @@ namespace TheGreatestMap
 
             var names = new List<string>();
             foreach (var kv in found) if (!names.Contains(kv.Value)) names.Add(kv.Value);
+
+            // Trimmed here, where the place is still known, and never at its expense.
+            //
+            // The place this stands on goes in at float.MaxValue so that every object standing
+            // on it is offered first -- a marker is usually about a thing, not about the ground.
+            // Which means it is always last, and a trim that keeps the head of the list throws
+            // away the one answer a marker about the *place* could ever have agreed with. A
+            // ruined house has dozens of planks, walls and roof pieces within six meters, so the
+            // location was dropped from every answer that had one: the server read 12,100 placed
+            // locations, found one at 202 of 212 markers, and sent none of them.
+            if (names.Count > Most)
+            {
+                bool hasPlace = !string.IsNullOrEmpty(here) && names[names.Count - 1] == here;
+                int keep = hasPlace ? Most - 1 : Most;
+                names.RemoveRange(keep, names.Count - keep);
+                if (hasPlace) names.Add(here);
+            }
             return names;
         }
 
@@ -454,9 +478,8 @@ namespace TheGreatestMap
             {
                 var names = StandingAt(pkg.ReadVector3(), places);
                 if (names.Count > 0) answered++;
-                // Eight is more than any real place has that the catalog could know, and it keeps
-                // a thousand-marker question from becoming a message nobody can carry.
-                if (names.Count > 8) names.RemoveRange(8, names.Count - 8);
+                // The trim is StandingAt's, because only it knows which entry is the place. It
+                // was done here, by cutting the tail, which is exactly where the place sits.
                 reply.Write(names.Count);
                 foreach (var name in names) reply.Write(name);
             }

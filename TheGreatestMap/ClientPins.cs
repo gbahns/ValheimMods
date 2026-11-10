@@ -131,6 +131,23 @@ namespace TheGreatestMap
         /// draws, and it applies those four on top of this answer; the two have to be read
         /// together if either is changed.</para>
         /// </summary>
+        /// <summary>
+        /// Is this marker's picture switched off?
+        ///
+        /// <para>Which list to ask depends on whether anyone recorded it. A recorded marker
+        /// answers to Hidden Icons, which is the list the kind and type rows write and the one a
+        /// player edits by hand. A marker with no kind was placed by a person, and answers to the
+        /// Yours rows' own list. They were one list until 4.9.1, and the two meet on vanilla's
+        /// house pin: every structure wears it, for want of a picture of an abandoned farm, so
+        /// switching off a House row labelled "3" hid 218 recorded structures with it.</para>
+        /// </summary>
+        internal static bool PictureHidden(SharedPin shared)
+        {
+            if (shared == null) return false;
+            string icon = IconOf(shared);
+            return KindOf(shared).HasValue ? TgmConfig.IsIconHidden(icon) : TgmConfig.IsOwnIconHidden(icon);
+        }
+
         internal static bool IsShown(SharedPin shared)
         {
             if (shared == null) return false;
@@ -142,7 +159,7 @@ namespace TheGreatestMap
             // Looking for one thing wins over every switch below it, since a player who asks for
             // frost caves means the frost caves whether or not dungeons are switched off.
             if (Focus.On) return Focus.Shows(shared);
-            if (TgmConfig.IsIconHidden(IconOf(shared))) return false;
+            if (PictureHidden(shared)) return false;
             var kind = KindOf(shared);
             if (kind.HasValue && TgmConfig.ShowKind.TryGetValue(kind.Value, out var showKind) && !showKind.Value) return false;
             // Never a recorded altar marker. The game marks every altar on every map from the
@@ -1818,7 +1835,7 @@ namespace TheGreatestMap
                 // recorded, or it is answering tgm_locate. See Drawn.Always.
                 bool asked = false;
                 bool hiddenByHand = ViewPrefs.IsHidden(kv.Value);
-                bool hidden = hideEverything || hiddenByHand || TgmConfig.IsIconHidden(IconOf(shared));
+                bool hidden = hideEverything || hiddenByHand || PictureHidden(shared);
                 if (!hidden && kind.HasValue)
                 {
                     if (TgmConfig.ShowKind.TryGetValue(kind.Value, out var showKind) && !showKind.Value) hidden = true;
@@ -1957,7 +1974,10 @@ namespace TheGreatestMap
             if (shared == null) return "no marker";
             if (TgmConfig.ShowAllMarkers != null && !TgmConfig.ShowAllMarkers.Value) return "every marker is switched off";
             if (ViewPrefs.IsHidden(shared.Key)) return "hidden on its own, through the marker menu";
-            if (TgmConfig.IsIconHidden(IconOf(shared))) return $"its icon ({IconOf(shared)}) is in Hidden Icons";
+            if (PictureHidden(shared))
+                return KindOf(shared).HasValue
+                    ? $"its icon ({IconOf(shared)}) is in Hidden Icons"
+                    : $"its icon ({IconOf(shared)}) is switched off under Yours in the marker list";
             var kind = KindOf(shared);
             if (kind.HasValue)
             {

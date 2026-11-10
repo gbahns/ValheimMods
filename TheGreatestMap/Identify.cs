@@ -210,7 +210,12 @@ namespace TheGreatestMap
         /// listed one by one, because the decision is per type: a hundred swamp huts is one
         /// choice about swamp huts, and the count is what makes it.</para>
         /// </summary>
-        internal static List<string> Orphans(bool erase)
+        /// <summary>
+        /// Markers naming something the catalog cannot place. <paramref name="erase"/> takes them
+        /// off the map; <paramref name="strip"/> takes only the claim off and leaves the marker,
+        /// which is the right answer when the name is wrong rather than the marker.
+        /// </summary>
+        internal static List<string> Orphans(bool erase, bool strip = false)
         {
             var lines = new List<string>();
             var bySource = new SortedDictionary<string, List<SharedPin>>(StringComparer.OrdinalIgnoreCase);
@@ -258,8 +263,9 @@ namespace TheGreatestMap
                           $"at {Mathf.RoundToInt(at.x)}, {Mathf.RoundToInt(at.z)}");
             }
 
-            if (!erase)
+            if (!erase && !strip)
             {
+                lines.Add("Forget what they claim to be and keep them with: tgm_identify orphans strip");
                 lines.Add("Erase all of them with: tgm_identify orphans confirm");
                 lines.Add("Or one kind at a time, which is the safer way through a long list: " +
                           "tgm_scrub <source> confirm");
@@ -268,10 +274,38 @@ namespace TheGreatestMap
                 return lines;
             }
 
-            // A snapshot first. This erases markers across the whole map in one press, and the
+            // A snapshot first. This reaches markers across the whole map in one press, and the
             // thing it is cleaning up is the result of a decision that has been changed several
             // times already this version.
             string snapshot = MapBackup.Snapshot(PersonalMap.Label, "tgm_identify orphans", PersonalMap.Store.ToBytes());
+            if (strip)
+            {
+                var record = new AdminUndo.Entry { Tool = "tgm_identify orphans strip" };
+                int cleared = 0;
+                foreach (var kv in bySource)
+                    foreach (var pin in kv.Value)
+                    {
+                        var was = pin.Key;
+                        var back = pin.Clone();
+                        back.Source = "";
+                        if (back.Key.IsNone) continue;
+                        record.Erased.Add(pin.Clone());
+                        if (!ClientPins.Rewrite(was, back)) continue;
+                        record.Wrote.Add(back.Key);
+                        cleared++;
+                    }
+                ClientPins.Restyle();
+                string undo = AdminUndo.Write(record);
+                lines.Add($"{cleared} marker(s) no longer claim to stand for anything. They keep their place and " +
+                          "their picture, and tgm_identify can ask the world about them again.");
+                if (!string.IsNullOrEmpty(undo))
+                    lines.Add("Changed your mind: tgm_undo " + System.IO.Path.GetFileName(undo) + " confirm");
+                if (!string.IsNullOrEmpty(snapshot))
+                    lines.Add("The map as it was is also in " + snapshot + ".");
+                TheGreatestMapMod.Log.LogWarning(
+                    $"[TheGreatestMap] tgm_identify orphans strip: cleared {cleared} source(s) over {bySource.Count} name(s).");
+                return lines;
+            }
             foreach (var kv in bySource)
                 foreach (var pin in kv.Value)
                     ClientPins.RemoveStale(pin.Key);

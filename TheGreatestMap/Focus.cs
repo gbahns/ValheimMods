@@ -220,13 +220,35 @@ namespace TheGreatestMap
         {
             string needle = (text ?? "").Trim();
             var byIcon = new Dictionary<string, TypeCount>(StringComparer.OrdinalIgnoreCase);
+            // What each row turned out to cover. A row is keyed by picture, and most pictures
+            // belong to one thing, so the first marker's name is the row's name. The house pin is
+            // not one of those: every structure in the game wears it, for want of a picture of an
+            // abandoned farm. Naming the row after whichever marker the dictionary happened to
+            // meet first put "Graveyard" over 251 markers that were mostly farms and ruins -- and
+            // it only began once those markers knew what they were, since a nameless marker fell
+            // through to the kind's own name and the race never showed.
+            var sourcesOf = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
             foreach (var pin in ClientPins.All)
             {
                 if (needle.Length > 0 && !Mentions(pin, needle)) continue;
                 string key = IconRegistry.Normalize(ClientPins.IconOf(pin)) ?? IconRegistry.FallbackKey;
                 if (!byIcon.TryGetValue(key, out var entry))
+                {
                     byIcon[key] = entry = new TypeCount { Icon = key, Label = TypeLabel(pin), Kind = ClientPins.KindOf(pin) };
+                    sourcesOf[key] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                }
                 entry.Count++;
+                sourcesOf[key].Add(pin.Source ?? "");
+            }
+            foreach (var entry in byIcon.Values)
+            {
+                if (!entry.Kind.HasValue) continue;
+                if (sourcesOf[entry.Icon].Count < 2) continue;
+                // Only where the picture is the kind's own, which is the picture chosen to stand
+                // for the whole kind and so says nothing narrower than the kind. Elsewhere a
+                // repeated picture really is one type, and the first marker's name is right.
+                if (!IconRegistry.SameKey(entry.Icon, Categories.DefaultIcon(entry.Kind.Value))) continue;
+                entry.Label = Categories.Label(entry.Kind.Value);
             }
             var list = new List<TypeCount>(byIcon.Values);
             var order = TgmConfig.TypeRowOrder != null ? TgmConfig.TypeRowOrder.Value : TypeOrder.Progression;

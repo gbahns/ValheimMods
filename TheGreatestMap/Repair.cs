@@ -132,7 +132,37 @@ namespace TheGreatestMap
                 {
                     bool blank = unknown[i].SaysNothing;
                     string prefab = Pick(unknown[i], answers[i]);
-                    if (string.IsNullOrEmpty(prefab)) { refused++; continue; }
+                    if (string.IsNullOrEmpty(prefab))
+                    {
+                        // What was there and why none of it would do. A refusal is the whole
+                        // safety of this pass, so it has to be readable: without this the only
+                        // thing a refusal says is a number, and working out which places are
+                        // being turned away means guessing at the catalog from the outside.
+                        if (refused < 12)
+                        {
+                            // The front of the list and the back of it. StandingAt appends the
+                            // location whose ground this is at distance float.MaxValue, so it
+                            // always sorts last -- a cap that only takes the head drops the one
+                            // answer a structure marker could ever have agreed with.
+                            var offered = new List<string>();
+                            var had = answers[i];
+                            for (int j = 0; j < had.Count; j++)
+                            {
+                                if (string.IsNullOrEmpty(had[j])) continue;
+                                bool last = j == had.Count - 1;
+                                if (offered.Count >= 5 && !last) continue;
+                                string would = Catalog.IconFor(had[j]);
+                                offered.Add((last ? "[place] " : "") + had[j] + " -> " +
+                                            (string.IsNullOrEmpty(would) ? "(no line)" : would));
+                            }
+                            TheGreatestMapMod.Log.LogInfo(
+                                $"[TheGreatestMap]   refused at {unknown[i].Pos.x:0}, {unknown[i].Pos.z:0} " +
+                                $"(wears {IconRegistry.Normalize(unknown[i].Icon) ?? "nothing"}): " +
+                                (offered.Count == 0 ? "nothing standing there" : string.Join(", ", offered.ToArray())));
+                        }
+                        refused++;
+                        continue;
+                    }
                     // The thing it stands for is already marked, by a marker that can say so.
                     // Writing the name on this one as well would put two markers on one tar pit
                     // rather than none -- so it goes, and the one that can be read stays. Only

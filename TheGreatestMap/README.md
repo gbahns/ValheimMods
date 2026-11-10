@@ -75,7 +75,9 @@ uncross it, delete or erase it (always yours to delete if you placed it; recorde
 server to allow erasing), and, once anything is
 hidden, show all hidden again. Hidden markers stay on your map and keep syncing; they are just not
 drawn. The icon and kind choices are the Display settings "Hidden Icons" and "Show <Kind>", so they
-can also be edited by hand, and `tgm_show` in the console brings everything back. Vanilla pins keep
+can also be edited by hand, and `tgm_show` in the console brings everything back. Pictures switched
+off under Yours are kept on a separate list, because a recorded farmstead wears the same house as a
+house pin you dropped and switching off one should not take the other with it. Vanilla pins keep
 their vanilla right-click.
 
 **Close up, the map is always honest.** A hidden marker within 50 m of you is drawn anyway (Display,

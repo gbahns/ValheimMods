@@ -187,7 +187,8 @@ namespace TheGreatestMap
             new Terminal.ConsoleCommand("tgm_show", "Show every hidden marker again: clears markers hidden one by one, the Hidden Icons list and the hidden crossed-off markers, switches every Show <Kind> back on, and draws worked-out deposits again",
                 (Terminal.ConsoleEvent)(args =>
                 {
-                    int single = ViewPrefs.Count, icons = TgmConfig.HiddenIconCount(), kinds = TgmConfig.HiddenKindCount();
+                    int single = ViewPrefs.Count, kinds = TgmConfig.HiddenKindCount();
+                    int icons = TgmConfig.HiddenIconCount() + TgmConfig.HiddenOwnIconCount();
                     ViewPrefs.Clear();
                     TgmConfig.ShowEverything();
                     ClientPins.Restyle();
@@ -798,7 +799,8 @@ namespace TheGreatestMap
                     if (args.Args.Length >= 2 && args.Args[1].ToLowerInvariant() == "orphans")
                     {
                         bool erase = HasWord(args, "confirm");
-                        foreach (var line in Identify.Orphans(erase))
+                        bool strip = HasWord(args, "strip");
+                        foreach (var line in Identify.Orphans(erase && !strip, strip))
                         {
                             args.Context.AddString(line);
                             TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_identify orphans: " + line);

@@ -1,5 +1,27 @@
 # Changelog
 
+## 4.9.1 — unreleased
+
+- A row in the marker list covering several things is named after the kind rather than after
+  whichever of them came first. Every structure wears the house pin, so one row stood for farms,
+  ruins and huts alike and called them all "Graveyard".
+- tgm_identify can work out what a building is. The server was asked what stands at a
+  marker and answered with the objects first and the place itself last, then kept only the
+  first eight -- and a ruined house has dozens of planks within six meters, so the place was
+  dropped from every answer that had one. **Needs the server updated as well as the client.**
+- A structure the catalog has never heard of says what it is instead of "Structures". Turning on
+  Structures Include Unlisted promises that the place's prefab name, tidied up, becomes the marker
+  text, and only the kind ever came of it.
+- Only a place the world generator actually places can be swept in as a structure. The rule asked
+  whether the catalog had no line for the name, which is true of nearly every prefab in the game,
+  so anything standing near a marker could answer for it.
+- tgm_identify orphans strip forgets what a marker claims to stand for and keeps the marker, which
+  is the right answer when the name is wrong rather than the marker. tgm_undo takes it back.
+- Switching off a house pin you placed no longer hides every recorded structure, and switching off
+  Structures no longer hides your house pins. Both wore the same picture and answered to one list,
+  because the game draws no picture of an abandoned farm. Markers you placed now have their own
+  list, and anything you had already switched off under Yours moves across by itself.
+
 ## 4.9.0 — 2026-11-10
 
 **Everyone has to update. A server on 4.9.0 turns away clients older than 4.9.0, because 4.8.4 and

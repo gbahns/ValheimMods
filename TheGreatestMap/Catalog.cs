@@ -875,9 +875,28 @@ namespace TheGreatestMap
             // writer finds nothing to derive and keeps a copy of an icon the kind already says.
             string icon = SharedPin.IsKindOnly(source)
                 ? IconForKind(source.Substring(5))
-                : (Lookup(source, out var e) ? ResolveLegendIcon(source, e, out _) : null);
+                : (Lookup(source, out var e) ? ResolveLegendIcon(source, e, out _) : IconForSweptIn(source));
             _iconBySource[source] = icon;
             return icon;
+        }
+
+        /// <summary>
+        /// The picture an unlisted place swept in as a structure draws with: its kind's own.
+        ///
+        /// <para>This leans entirely on <see cref="SweptInAs"/> meaning a <em>place</em>. The
+        /// first version of it did not: SweptInAs then asked only whether the catalog had no line
+        /// and the name was not excluded, which is true of almost every prefab in the game. Repair
+        /// believes the world only where the catalog would draw the answer the way the marker is
+        /// already drawn, so this handed every plank, bird and music trigger standing at a marker
+        /// the house pin, and all of them agreed: 197 markers were renamed to wood_floor,
+        /// LocationProxy, Music_MeadowsVillageFarm and Crow in one login. A test everything
+        /// passes is not a test. The location check in SweptInAs is what makes this answer
+        /// narrow enough to be worth giving.</para>
+        /// </summary>
+        private static string IconForSweptIn(string source)
+        {
+            var cat = SweptInAs(source);
+            return cat.HasValue ? FallbackIcon(cat.Value) : null;
         }
 
         /// <summary>The icon a kind draws with, as configured or as it comes.</summary>
@@ -1414,7 +1433,13 @@ namespace TheGreatestMap
         {
             if (string.IsNullOrEmpty(source)) return null;
             if (!_built) Rebuild();
-            if (!Lookup(source, out var e)) return null;
+            // A place the catalog never heard of, swept in as a structure. Naming it is what
+            // the setting promises in so many words -- "the location's prefab name, tidied up,
+            // becomes the marker text" -- and it was the one of the three that never happened.
+            // SharedPin already asks SweptInAs for the kind, so such a marker knew it was a
+            // structure and could say nothing narrower: every unlisted village, farmstead and
+            // outpost on the map read "Structures", which is the kind's own name.
+            if (!Lookup(source, out var e)) return SweptInAs(source).HasValue ? Prettify(source) : null;
             return e.Name ?? Prettify(source);
         }
 
@@ -1968,7 +1993,41 @@ namespace TheGreatestMap
         {
             if (string.IsNullOrEmpty(prefab)) return null;
             if (TgmConfig.StructuresIncludeUnlisted == null || !TgmConfig.StructuresIncludeUnlisted.Value) return null;
+            // A place, not a thing. The setting says "any outdoor location", and this used to ask
+            // only whether the catalog had no line and the name was not excluded -- which is true
+            // of almost every prefab in the game. It did not show while this was asked about
+            // locations alone, at the moment of recording. It showed the day Repair asked it
+            // about every ZDO standing near a marker: wood_floor, shrub_2, Crow and a music
+            // trigger all came back "Structure", agreed with the house pin the marker wore, and
+            // were written onto 197 markers in one login.
+            if (!IsLocationPrefab(prefab)) return null;
             return IsExcludedStructure(prefab) ? (Category?)null : Category.Structure;
+        }
+
+        private static HashSet<string> _locationPrefabs;
+
+        /// <summary>
+        /// Is this the name of something the world generator places? Read from ZoneSystem's own
+        /// list, which every client holds, and kept once it has been read -- the list is built
+        /// when the world loads and does not change after.
+        /// </summary>
+        internal static bool IsLocationPrefab(string prefab)
+        {
+            if (string.IsNullOrEmpty(prefab)) return false;
+            if (_locationPrefabs == null)
+            {
+                var zone = ZoneSystem.instance;
+                if (zone == null || zone.m_locations == null || zone.m_locations.Count == 0) return false;
+                var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var loc in zone.m_locations)
+                {
+                    if (loc == null) continue;
+                    if (!string.IsNullOrEmpty(loc.m_prefabName)) names.Add(loc.m_prefabName);
+                    if (!string.IsNullOrEmpty(loc.m_name)) names.Add(loc.m_name);
+                }
+                _locationPrefabs = names;
+            }
+            return _locationPrefabs.Contains(prefab);
         }
 
         private static bool IsExcludedStructure(string prefab)
