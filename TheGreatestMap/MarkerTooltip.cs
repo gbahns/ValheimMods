@@ -185,9 +185,14 @@ namespace TheGreatestMap
             //
             // A marker written before markers remembered what they were has no source, and then
             // this is the icon alone, as it always was.
-            string id = ClientPins.IconOf(shared);
-            if (!string.IsNullOrEmpty(shared.Source)) id = shared.Source + " - " + id;
-            lines.Add(id);
+            // Off until asked for. It is the line that settles an argument and the line nobody
+            // needs on a Tuesday, and a tooltip is read every time the pointer crosses a marker.
+            if (TgmConfig.ShowPrefabNames != null && TgmConfig.ShowPrefabNames.Value)
+            {
+                string id = ClientPins.IconOf(shared);
+                if (!string.IsNullOrEmpty(shared.Source)) id = shared.Source + " - " + id;
+                lines.Add(id);
+            }
 
             string who = !string.IsNullOrEmpty(shared.Author) ? shared.Author : null;
             string when = When(shared.Created);

@@ -386,7 +386,7 @@ namespace TheGreatestMap
         private static readonly Dictionary<string, string> KnownIcons = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             { "Crypt2", "TrophySkeleton" }, { "Crypt3", "TrophySkeleton" }, { "Crypt4", "TrophySkeleton" },
-            { "SunkenCrypt4", "IronScrap" }, { "MountainCave02", "TrophyCultist" }, { "TrollCave02", "TrophyFrostTroll" },
+            { "SunkenCrypt4", "CryptKey" }, { "MountainCave02", "TrophyCultist" }, { "TrollCave02", "TrophyFrostTroll" },
             { "BearCave", "TrophyBjorn" }, { "Mistlands_DvergrTownEntrance1", "TrophySeeker" }, { "Mistlands_DvergrTownEntrance2", "TrophySeeker" },
             { "Vendor_BlackForest", "Coins" }, { "Hildir_camp", "Coins" }, { "BogWitch_Camp", "Coins" },
             // Deposits whose own entry may predate its |Icon: without one the icon falls back to
@@ -663,7 +663,15 @@ namespace TheGreatestMap
                            // draugr piles. This is the picture of the thing a sunken crypt is
                            // full of, and the swamp's scrap piles wear it too: the same metal in
                            // the same biome, which is the one collision anybody asked for.
-                           "SunkenCrypt4=Sunken Crypt|IronScrap,MountainCave02=Frost Cave|TrophyCultist,TrollCave02=Troll Cave|TrophyFrostTroll," +
+                           // The swamp key, which is the thing you need to open one and the one
+                           // picture nothing else in the game is about. It wore iron scrap, which
+                           // is also what the muddy scrap piles wear -- so a crypt and a buried
+                           // iron deposit were one picture, and the scrap has the better claim:
+                           // there is no sprite of a mud pile, and iron is what the pile is for.
+                           // The other dungeons wear the trophy of what lives in them; this one
+                           // is named by its lock instead, which reads better than a draugr it
+                           // would share with the draugr villages.
+                           "SunkenCrypt4=Sunken Crypt|CryptKey,MountainCave02=Frost Cave|TrophyCultist,TrollCave02=Troll Cave|TrophyFrostTroll," +
                            "Mistlands_DvergrTownEntrance1=Infested Mine|TrophySeeker,Mistlands_DvergrTownEntrance2=Infested Mine|TrophySeeker," +
                            "BearCave=Bear Cave|TrophyBjorn,MorgenHole*=Putrid Hole|TrophyMorgen";
                 case Category.Trader:

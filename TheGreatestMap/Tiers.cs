@@ -107,14 +107,20 @@ namespace TheGreatestMap
                 // the trophy of a tower the dvergr still hold. On the map and in the marker list a
                 // ruin and a garrison then read identically, which is the one thing a picture is
                 // there to prevent.
-                // No picture of their own, so they draw as what they are: a structure, the same
-                // as the Black Forest and Swamp ruins above. Wearing the dvergr trophy put them
-                // on the map as the thing you walk to the Mistlands for -- a fallen tower and a
-                // garrison told apart by nothing at all, which was the whole complaint.
-                Entries = "Mistlands_Statue*=Dvergr Statue,Mistlands_Viaduct*=Viaduct," +
-                          "Mistlands_GuardTower1_ruined*=Fallen Guard Tower," +
-                          "Mistlands_GuardTower2_ruined*=Fallen Guard Tower," +
-                          "Mistlands_GuardTower3_ruined*=Fallen Guard Tower",
+                // The stone they are made of, which is the whole of what is there. They wore the
+                // dvergr trophy, the same as the bases, so a fallen tower and a garrison were
+                // told apart by nothing at all -- and the bases wear the dvergr lantern now, so
+                // this is the other half of telling them apart.
+                //
+                // The block from the build menu, not the item: item:BlackMarble is the giant
+                // ribs and skulls in the Ashlands, and there are seventy of those on one map.
+                // Two pictures of the same stone, which is fair enough -- one is a lump of it in
+                // a hand, the other is a wall built of it.
+                Entries = "Mistlands_Statue*=Dvergr Statue|piece:blackmarble_2x2x2," +
+                          "Mistlands_Viaduct*=Viaduct|piece:blackmarble_2x2x2," +
+                          "Mistlands_GuardTower1_ruined*=Fallen Guard Tower|piece:blackmarble_2x2x2," +
+                          "Mistlands_GuardTower2_ruined*=Fallen Guard Tower|piece:blackmarble_2x2x2," +
+                          "Mistlands_GuardTower3_ruined*=Fallen Guard Tower|piece:blackmarble_2x2x2",
             },
             new Group
             {
@@ -208,6 +214,27 @@ namespace TheGreatestMap
                       "surtling cores come from -- the same reason the bone and body piles in the " +
                       "graveyards beside them are marked.",
                 Entries = "FireHole*=Surtling Geyser|SurtlingCore",
+            },
+
+            // The fallen giants come in two heaps that are mined for different things, and the
+            // catalog names each piece -- Giant Helmet, Giant Sword, Giant Ribs, Giant Skull. The
+            // marker list groups by picture, the gear shares copper scrap and the bones share
+            // black marble, so the rows came out as two called "Giant": all the names had in
+            // common was the word, and a row named by what its members share is only as good as
+            // what they share. These are the names.
+            new Group
+            {
+                Label = "Giant Gear", Tier = Tier.On, Cat = Category.Ore,
+                Why = "The helmets and swords of the fallen giants, which are mined for copper scrap.",
+                Entries = "giant_helmet1,giant_helmet2,giant_sword1,giant_sword2",
+            },
+
+            new Group
+            {
+                Label = "Giant Skeleton", Tier = Tier.On, Cat = Category.Ore,
+                Why = "The ribs and skulls of the fallen giants, which are mined for black marble. " +
+                      "The brain is its own thing and gives soft tissue.",
+                Entries = "giant_ribs,giant_skull",
             },
 
             new Group

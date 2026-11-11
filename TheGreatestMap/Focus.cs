@@ -75,6 +75,13 @@ namespace TheGreatestMap
         }
 
         /// <summary>
+        /// What a row is: one kind wearing one picture. Not the picture alone, which two kinds
+        /// can share, and not the kind alone, which has as many rows as it has pictures.
+        /// </summary>
+        internal static string TypeKey(Category? kind, string icon) =>
+            (kind.HasValue ? kind.Value.ToString() : "") + "|" + (IconRegistry.Normalize(icon) ?? icon ?? "");
+
+        /// <summary>
         /// The one group every one of these belongs to, or null if they are not all in one. A
         /// group is a name somebody chose for a set of things, which is better than any name a
         /// machine can work out from the things themselves.
@@ -128,10 +135,41 @@ namespace TheGreatestMap
             return "";
         }
 
-        private static string LabelForIcon(string icon)
+        /// <summary>
+        /// What everything wearing this picture is, said as one thing: the group they are all in,
+        /// or the words their names share, or their kind -- and only failing all three, the name
+        /// of the picture itself.
+        ///
+        /// <para>For anything that acts on a whole picture at once, which is a set and not a
+        /// thing. "Hide all Black Marble 2x2x2 markers" named the block the picture was borrowed
+        /// from; what it would actually hide is the dvergr ruins. A picture is a costume and the
+        /// menu should say who is wearing it.</para>
+        ///
+        /// <para>It used to take the first marker it found and use that one's name, which is the
+        /// same race the type rows lost -- one of the set standing in for all of it.</para>
+        /// </summary>
+        internal static string LabelForIcon(string icon)
         {
+            var sources = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            Category? kind = null;
             foreach (var pin in ClientPins.All)
-                if (IconRegistry.SameKey(ClientPins.IconOf(pin), icon)) return TypeLabel(pin);
+            {
+                if (!IconRegistry.SameKey(ClientPins.IconOf(pin), icon)) continue;
+                sources.Add(pin.Source ?? "");
+                names.Add(TypeLabel(pin) ?? "");
+                if (!kind.HasValue) kind = ClientPins.KindOf(pin);
+            }
+            if (names.Count == 1)
+            {
+                foreach (var only in names) return only;
+            }
+            if (names.Count > 1)
+            {
+                string shared = SharedGroup(sources) ?? SharedName(names);
+                if (!string.IsNullOrEmpty(shared)) return shared;
+                if (kind.HasValue) return Categories.Label(kind.Value);
+            }
             return IconRegistry.DisplayName(icon);
         }
 
@@ -322,20 +360,33 @@ namespace TheGreatestMap
                     row.Count++;
                     continue;
                 }
-                if (!byIcon.TryGetValue(key, out var entry))
+                // Keyed by the kind as well as the picture. A picture can be worn by two
+                // kinds -- iron scrap is a swamp scrap pile and a sunken crypt, guck is a guck
+                // sack and an infested tree -- and keyed by the picture alone those became one
+                // row, filed under whichever kind the first marker happened to belong to. The
+                // other kind then counted markers it had no row for: Ore read "1010" over rows
+                // adding to 1007, and the three missing were scrap piles listed under Dungeons.
+                string rowKey = TypeKey(groups, key);
+                if (!byIcon.TryGetValue(rowKey, out var entry))
                 {
-                    byIcon[key] = entry = new TypeCount { Icon = key, Label = TypeLabel(pin), Kind = ClientPins.KindOf(pin) };
-                    sourcesOf[key] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                    namesOf[key] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    byIcon[rowKey] = entry = new TypeCount { Icon = key, Label = TypeLabel(pin), Kind = groups };
+                    sourcesOf[rowKey] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    namesOf[rowKey] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 }
                 entry.Count++;
-                sourcesOf[key].Add(pin.Source ?? "");
-                namesOf[key].Add(TypeLabel(pin) ?? "");
+                sourcesOf[rowKey].Add(pin.Source ?? "");
+                // What this marker stands for, and only that. TypeLabel falls back to the
+                // kind's own name for a marker that cannot say -- and one unidentified draugr
+                // village putting "Enemy Bases" into this set was enough to outvote the real
+                // name and rename the row after the heading above it.
+                string says = Catalog.NameForSource(pin.Source);
+                if (!string.IsNullOrEmpty(says)) namesOf[rowKey].Add(says);
             }
             foreach (var entry in byIcon.Values)
             {
                 if (!entry.Kind.HasValue || entry.Biome.HasValue) continue;
-                if (!namesOf.ContainsKey(entry.Icon)) continue;
+                string rowKey = TypeKey(entry.Kind, entry.Icon);
+                if (!namesOf.ContainsKey(rowKey)) continue;
                 // The question is whether this row covers several differently-named things, not
                 // whether its picture happens to be the kind's own. That was the first answer and
                 // it was too narrow by half: the four dvergr bases share the dvergr trophy, which
@@ -343,12 +394,23 @@ namespace TheGreatestMap
                 // and harbors alike was labelled "Dvergr Harbour" -- whichever of them the
                 // dictionary met first. Several prefabs under one name (Ruin1, Ruin2, Ruin3 are
                 // all "Black Forest Ruin") are one type and keep theirs.
-                if (namesOf[entry.Icon].Count < 2) continue;
+                var says = namesOf[rowKey];
+                // Nothing wearing this picture can say what it is, so the label it already has --
+                // the kind's, or the picture's -- is the best there is.
+                if (says.Count == 0) continue;
+                // One thing, named. Taken even though the row already has a label, because that
+                // label came from whichever marker was met first and that one may have been a
+                // marker that could not say.
+                if (says.Count == 1)
+                {
+                    foreach (var only in says) entry.Label = only;
+                    continue;
+                }
                 // The group they are all in, where they are all in one: that name was written for
                 // exactly this -- "Dvergr Bases" over the four kinds of place the dvergr hold --
                 // and it beats anything worked out from the names themselves. See Tiers.
-                entry.Label = SharedGroup(sourcesOf[entry.Icon])
-                              ?? SharedName(namesOf[entry.Icon])
+                entry.Label = SharedGroup(sourcesOf[rowKey])
+                              ?? SharedName(says)
                               ?? Categories.Label(entry.Kind.Value);
             }
             var list = new List<TypeCount>(byIcon.Values);

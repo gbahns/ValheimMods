@@ -813,7 +813,9 @@ namespace TheGreatestMap
             float height = Pad + HeaderHeight + items.Count * RowHeight + Pad;
             _rect.sizeDelta = new Vector2(Width, height);
 
-            string title = !string.IsNullOrEmpty(pin.Name) ? pin.Name : IconRegistry.DisplayName(pin.Icon);
+            // What this one is, as narrowly as anything can say it -- "Dvergr Statue", not the
+            // name of the block its picture was borrowed from.
+            string title = !string.IsNullOrEmpty(pin.Name) ? pin.Name : Focus.TypeLabel(pin);
             var header = MenuKit.Text(_root.transform, "Header", title, 15f, MenuKit.Header);
             var hrt = header.rectTransform;
             hrt.anchorMin = new Vector2(0f, 1f);
@@ -855,7 +857,9 @@ namespace TheGreatestMap
             var items = new List<KeyValuePair<string, Action>>();
             var id = pin.Key;
             string icon = pin.Icon;
-            string iconName = IconRegistry.DisplayName(icon);
+            // The set this picture stands for, because the items below that use it act on all
+            // of them at once. See Focus.LabelForIcon.
+            string iconName = Focus.LabelForIcon(icon);
             var kind = ClientPins.KindOf(pin);
             bool canEdit = !TgmConfig.RequireMapOutToEdit.Value || PocketMap.IsOut;
 

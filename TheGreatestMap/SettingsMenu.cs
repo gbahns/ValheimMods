@@ -148,6 +148,11 @@ namespace TheGreatestMap
             y = Switch(y, () => TgmConfig.ShowBossLabels, "Boss names",
                 "Write a boss altar's name beside it, as the game does when you find one");
 
+            y = Heading("Troubleshooting", y);
+            y = Switch(y, () => TgmConfig.ShowPrefabNames, "Prefab names in tooltips",
+                "Add a line to a marker's tooltip with the game's own name for the thing and the icon key it " +
+                "wears. Handy when a marker draws the wrong picture; noise the rest of the time");
+
             float height = -y + Pad;
             _rect.sizeDelta = new Vector2(Width, height);
 

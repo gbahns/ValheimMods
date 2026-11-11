@@ -392,6 +392,32 @@ namespace TheGreatestMap
         }
 
         /// <summary>Every item whose name contains the word, for choosing an icon by eye.</summary>
+        /// <summary>
+        /// Does this thing answer to that word -- by its prefab id, or by the name a player
+        /// knows it as?
+        ///
+        /// <para>The id was the whole of the search, which asks a player to already know the
+        /// answer. Nobody calls the circlet HelmetDverger or the meadows farmstead WoodFarm1, and
+        /// searching for "extractor" came back with nothing at all while the thing it names is
+        /// standing in the game -- filed under a prefab with a different word in it. The id is
+        /// what a setting wants typed, so it is still what gets printed; it is no use as the
+        /// thing you have to type to find it.</para>
+        /// </summary>
+        private static bool Answers(string prefab, string shownName, string contains)
+        {
+            if (!string.IsNullOrEmpty(prefab) && prefab.IndexOf(contains, StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+            if (string.IsNullOrEmpty(shownName)) return false;
+            string shown = shownName;
+            // A token, not a name, until it is localized -- "$piece_sapcollector".
+            if (shown.StartsWith("$") && Localization.instance != null)
+            {
+                string said = Localization.instance.Localize(shown);
+                if (!string.IsNullOrEmpty(said) && !said.StartsWith("[")) shown = said;
+            }
+            return shown.IndexOf(contains, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
         internal static List<string> ItemsLike(string contains)
         {
             var found = new List<string>();
@@ -404,7 +430,7 @@ namespace TheGreatestMap
                     var drop = prefab.GetComponent<ItemDrop>();
                     if (drop == null || drop.m_itemData == null || drop.m_itemData.m_shared == null) continue;
                     string name = Utils.GetPrefabName(prefab);
-                    if (name == null || name.IndexOf(contains, StringComparison.OrdinalIgnoreCase) < 0) continue;
+                    if (!Answers(name, drop.m_itemData.m_shared.m_name, contains)) continue;
                     string note = drop.m_itemData.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Customization ? " (customization, skipped)"
                         : HasIcon(drop) ? "" : " (no icon, skipped)";
                     found.Add(name + note);
@@ -445,9 +471,9 @@ namespace TheGreatestMap
                     {
                         if (prefab == null) continue;
                         string name = Utils.GetPrefabName(prefab);
-                        if (name == null || name.IndexOf(contains, StringComparison.OrdinalIgnoreCase) < 0) continue;
                         var piece = prefab.GetComponent<Piece>();
                         if (piece == null || piece.m_icon == null) continue;
+                        if (!Answers(name, piece.m_name, contains)) continue;
                         pieces.Add("piece:" + name);
                     }
                     pieces.Sort(StringComparer.OrdinalIgnoreCase);

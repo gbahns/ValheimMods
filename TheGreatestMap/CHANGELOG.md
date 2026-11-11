@@ -1,7 +1,23 @@
 # Changelog
 
-## 4.9.1 — unreleased
+## 4.9.1 — 2026-11-10
 
+- Sunken crypts wear the swamp key and dvergr bases their lantern, and a catalog line written by an older version is brought along: the correction only touches an entry still holding word for word what this mod used to ship.
+- A heading in the marker list is the sum of the rows under it. It counted for itself, from
+  a different set of markers than the rows read, so Placed Markers said 2 over 25 hammers
+  and 33 dots and Places said 14 over rows adding to 26.
+- The Ore list names the giants' remains: Giant Gear and Giant Skeleton, which shared the
+  copper scrap and the black marble and so came out as two rows both called "Giant".
+- A marker tooltip's prefab and icon line is off until you want it, under Troubleshooting in
+  the gear menu.
+- Hiding a kind hides it under your feet too, where you built it. Standing next to something
+  shows it whatever is switched off -- so you can tell "none here" from "hidden" -- and that
+  doubt does not arise about your own workbench.
+- Menus name a marker by what it is, and a whole picture by what wears it: "Dvergr Statue",
+  and "Hide all Dvergr Ruins markers" rather than the name of the block the picture was
+  borrowed from. A picture is a costume, and several things can wear one.
+- tgm_items finds a picture by the name the game shows it under, not only by its prefab id. Searching for what a thing is called came back empty while the thing was standing in the
+  game: nobody calls the circlet HelmetDverger.
 - tgm_items draws the pictures it finds, at the size a marker wears them, beside the name each one
   is typed as. It listed names, which is the one form in which a picture cannot be judged.
 - Dvergr bases wear the dvergr lantern. The trophy is a braid that reads as nothing at pin size,

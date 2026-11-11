@@ -552,18 +552,11 @@ namespace TheGreatestMap
         }
 
         /// <summary>How many of the map's own pins sit under this heading, and how many are drawn.</summary>
-        internal static void Tally(Minimap map, Group group, out int all, out int shown)
-        {
-            all = 0;
-            shown = 0;
-            var types = Under(group);
-            if (types == null) return;
-            foreach (var type in types)
-            {
-                all += CountOf(type);
-                shown += ShownCount(map, type);
-            }
-        }
+        // There was a Tally here that added up CountOf over a heading's pictures, for the
+        // heading to print. It counted the pins the game holds and not this mod's markers wearing
+        // the same pictures, while the rows under it counted both -- so Placed Markers said 2
+        // over rows of 25 hammers and 33 dots. A heading adds up its own rows now, which is the
+        // only arithmetic a reader can check: see KindMenu._rowCounts.
 
         /// <summary>
         /// How many markers of this mod's wear one of these pictures and belong to no kind.

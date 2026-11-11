@@ -76,6 +76,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<string> HiddenPlaces;
         internal static ConfigEntry<string> HiddenOwnIcons;
         internal static ConfigEntry<string> HiddenBiomes;
+        internal static ConfigEntry<bool> ShowPrefabNames;
         private static HashSet<string> _hiddenIconKeys;
         private static HashSet<string> _hiddenPlaceKeys;
         private static HashSet<string> _hiddenOwnIconKeys;
@@ -380,6 +381,20 @@ namespace TheGreatestMap
             // the reason the record below is kept per correction rather than per icon.
             new[] { "Hildir Quests", "Hildir_crypt", "loc:Hildir_camp", "TrophySkeletonHildir" },
             new[] { "Hildir Quests", "Hildir_plainsfortress", "loc:Hildir_camp", "TrophyGoblinBruteBrosBrute" },
+            // Iron scrap was on the sunken crypts and on the muddy scrap piles, which made one
+            // picture mean a dungeon in the swamp or a buried iron deposit in it -- the same
+            // collision the draugr trophy made above, one correction later. The scrap has the
+            // better claim: a scrap pile is iron and nothing else, while a crypt has a key that
+            // nothing else in the game is about.
+            new[] { "Dungeons", "SunkenCrypt4", "IronScrap", "CryptKey" },
+            // The dvergr trophy was on all four kinds of dvergr base and on the fallen guard
+            // towers beside them, so a garrison and a ruin read alike. It is a braid that reads
+            // as nothing at pin size besides; their lantern is what one of these places looks
+            // like from across a bog.
+            new[] { "Enemy Bases", "Mistlands_GuardTower*", "TrophyDvergr", "piece:piece_dvergr_lantern" },
+            new[] { "Enemy Bases", "Mistlands_Excavation*", "TrophyDvergr", "piece:piece_dvergr_lantern" },
+            new[] { "Enemy Bases", "Mistlands_Harbour*", "TrophyDvergr", "piece:piece_dvergr_lantern" },
+            new[] { "Enemy Bases", "Mistlands_Lighthouse*", "TrophyDvergr", "piece:piece_dvergr_lantern" },
         };
 
         /// <summary>
@@ -901,6 +916,11 @@ namespace TheGreatestMap
                 "because a picture is not one thing: a recorded farmstead wears the same house as a house pin you " +
                 "dropped, and switching off one should not take the other with it.");
             HiddenOwnIcons.SettingChanged += (_, __) => { _hiddenOwnIconKeys = null; ClientPins.Restyle(); };
+
+            ShowPrefabNames = mod.BindLocal("Display", "Prefab Names In Tooltips", false,
+                "Add a line to a marker's tooltip with the game's own name for the thing it stands for and the icon " +
+                "key it is wearing -- \"WoodFarm1 - pin:Icon1\". It is what an argument about the catalog is " +
+                "actually about, and it is noise the rest of the time, so it is off until you want it.");
 
             HiddenBiomes = mod.BindLocal("Display", "Hidden Biomes", "",
                 "The kinds you have switched off in one biome -- Structure/Mountain switches off mountain ruins and " +

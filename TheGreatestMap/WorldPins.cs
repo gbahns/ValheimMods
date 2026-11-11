@@ -426,16 +426,10 @@ namespace TheGreatestMap
         }
 
         /// <summary>How many of the world's landmarks there are, and how many are drawn.</summary>
-        internal static void Tally(out int all, out int shown)
-        {
-            all = 0;
-            shown = 0;
-            foreach (var kind in All)
-            {
-                all += CountOf(kind);
-                shown += ShownCount(kind);
-            }
-        }
+        // There was a Tally here for the Places heading to print. It counted each landmark
+        // once, while the altar and errand rows beneath it counted the records and the vegvisir
+        // pins as well, so the heading and its rows were answering different questions. The
+        // heading adds up its own rows now: see KindMenu._rowCounts.
 
         internal static bool AnyShown()
         {
@@ -452,6 +446,28 @@ namespace TheGreatestMap
 
         // ── names and pictures ──────────────────────────────────────────────────
 
+        /// <summary>
+        /// The one location every landmark in this bucket is, or null when they are several
+        /// things or none.
+        ///
+        /// <para>For the leftovers row. "Landmarks" is an honest name for a bag of things this
+        /// mod cannot tell apart, and a poor one for a bag holding exactly one thing the world
+        /// has both a name and a picture for -- which is what it usually holds, since everything
+        /// this mod does know about has a row of its own by now.</para>
+        /// </summary>
+        private static string OnlyLocation(Kind kind)
+        {
+            string only = null;
+            foreach (var kv in _world)
+            {
+                if (kv.Value != kind) continue;
+                if (!_where.TryGetValue(kv.Key, out string where) || string.IsNullOrEmpty(where)) return null;
+                if (only == null) only = where;
+                else if (!string.Equals(only, where, StringComparison.OrdinalIgnoreCase)) return null;
+            }
+            return only;
+        }
+
         internal static string Label(Kind kind)
         {
             switch (kind)
@@ -460,7 +476,10 @@ namespace TheGreatestMap
                 case Kind.Boss:    return Categories.Label(Category.BossAltar);
                 case Kind.Trader:  return Categories.Label(Category.Trader);
                 case Kind.Hildir:  return "Hildir's Quests";
-                default:           return "Landmarks";
+                default:
+                    string one = OnlyLocation(kind);
+                    if (string.IsNullOrEmpty(one)) return "Landmarks";
+                    return Catalog.NameForSource(one) ?? Catalog.Prettify(one);
             }
         }
 
@@ -477,7 +496,12 @@ namespace TheGreatestMap
                 // Her quests are the three locked chests, and the key is the thing you carry
                 // around looking for them.
                 case Kind.Hildir:  return IconRegistry.PickItem("HildirKey_forestcrypt", "Coins") ?? "Coins";
-                default:           return "pin:Icon3";
+                default:
+                    // The game's own picture for it, for the same reason the world center uses
+                    // one: the pin is already on the map wearing it, and a plain dot beside it
+                    // is the row saying it does not know what its own marker is.
+                    string one = OnlyLocation(kind);
+                    return string.IsNullOrEmpty(one) ? "pin:Icon3" : "loc:" + one;
             }
         }
 
@@ -493,6 +517,11 @@ namespace TheGreatestMap
                            "pin at a time, since the game draws all its landmarks as one kind of pin and offers no " +
                            "button for any of them.";
                 default:
+                    string one = OnlyLocation(kind);
+                    if (!string.IsNullOrEmpty(one))
+                        return $"A landmark the game draws for this world that this mod has no row of its own for " +
+                               $"({one}) -- another mod's, or one Valheim has added since. It is here so it has a " +
+                               "switch, wearing the picture the game gave it.";
                     return "Landmarks the game draws for this world that this mod cannot name -- another mod's, or " +
                            "one Valheim has added since. They are here so they have a switch, and named for what " +
                            "they are rather than guessed at.";

@@ -184,12 +184,21 @@ namespace TheGreatestMap
         /// where the two differ the row says both, and where they agree it says the one number.
         /// </summary>
         private static readonly Dictionary<Category, int> _shown = new Dictionary<Category, int>();
+        /// <summary>
+        /// How many of each row are drawn, keyed the way a row is: one kind wearing one picture.
+        /// Keyed by the picture alone it counted two kinds together wherever they shared one, so
+        /// a scrap pile row would have reported the sunken crypts with it. See Focus.TypeKey.
+        /// </summary>
         private static readonly Dictionary<string, int> _shownByIcon = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         /// <summary>The same tally for the rows that stand for a biome, keyed as Biomes.Key writes it.</summary>
         private static readonly Dictionary<string, int> _shownByBiome = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>The same two numbers for the whole map, for the line under the find box.</summary>
-        private static int _all, _allShown;
+        // There were _all and _allShown here, counted over this mod's own markers while the
+        // rows below counted those and the game's pins and the live portals, ships and carts as
+        // well. So the top line could not answer for the list: hiding the game's bed pin changed
+        // a row and left "Showing 4 of 7463" where it was, because that 7463 was a different
+        // population from the one the rows were about. It is the sum of the headings now.
 
         /// <summary>
         /// How many of each kind, and of each type, have been crossed off. The count that used to
@@ -735,10 +744,11 @@ namespace TheGreatestMap
                     // box matched, so hiding two thousand resources left it saying "showing all
                     // 2662 markers" while the row at the foot offered to put a kind back. Counted
                     // with everything else, in the one pass over the markers.
-                    if (Focus.On) return $"Only {Focus.What()} — {_allShown} of {_all}, click for all";
-                    return _allShown < _all
-                        ? $"Showing {_allShown} of {_all} markers"
-                        : $"Showing all {_all} markers";
+                    var whole = AllCounts();
+                    if (Focus.On) return $"Only {Focus.What()} — {whole[0]} of {whole[1]}, click for all";
+                    return whole[0] < whole[1]
+                        ? $"Showing {whole[0]} of {whole[1]} markers"
+                        : $"Showing all {whole[1]} markers";
                 },
                 () => !Focus.On);
             y -= RowHeight;
@@ -754,6 +764,7 @@ namespace TheGreatestMap
         {
             float y = 0f;
             _headed.Clear();
+            _rowCounts.Clear();
             if (_results != null)
             {
                 ActionRow(_content, 0f, y, () =>
@@ -793,6 +804,7 @@ namespace TheGreatestMap
             foreach (var group in Categories.AllGroups)
             {
                 var g = group;
+                _counting = g;
                 var kinds = new List<Category>();
                 foreach (var kind in Categories.All) if (Categories.GroupOf(kind) == g && Listed(kind)) kinds.Add(kind);
                 // A heading stands for its vanilla pins as well, and for nothing else if that is
@@ -846,9 +858,14 @@ namespace TheGreatestMap
                 Twisty(heading, GroupIndent, !_foldedGroups.Contains(g),
                        () => { if (!_foldedGroups.Remove(g)) _foldedGroups.Add(g); });
                 y -= RowHeight;
-                if (_foldedGroups.Contains(g)) continue;
+                // Shut headings are walked all the same, and only the drawing is skipped. The
+                // heading's number is the sum of its rows, so a walk that stops here leaves it
+                // with nothing to add up: every heading lost its count the moment it was folded,
+                // and the line at the top -- the sum of the headings -- read "all 0 markers"
+                // with everything collapsed.
+                bool draw = !_foldedGroups.Contains(g);
 
-                if (g == Group.Places) { y = PlacesRows(map, kinds, y); continue; }
+                if (g == Group.Places) { y = PlacesRows(map, kinds, y, draw); continue; }
 
                 bool plantsDone = false;
                 foreach (var kind in kinds)
@@ -856,7 +873,7 @@ namespace TheGreatestMap
                     // The other players are vanilla's markers rather than ours, and the row for
                     // them answers a different question, so it is built in full below rather than
                     // squeezed through the same call.
-                    if (kind == Category.Player) { y = PlayersRow(map, y); continue; }
+                    if (kind == Category.Player) { y = PlayersRow(map, y, draw); continue; }
                     // The plants, split by whether they can be farmed, stand in for the five kinds
                     // their types come from. A grown kind that has nothing in either half keeps
                     // its own row, so no kind can lose its switch by being left out of both.
@@ -864,21 +881,21 @@ namespace TheGreatestMap
                     {
                         if (plantsDone) continue;
                         plantsDone = true;
-                        y = PlantRow(map, Harvest.Gather, y);
+                        y = PlantRow(map, Harvest.Gather, y, draw);
                         continue;
                     }
-                    y = KindRow(map, kind, y);
+                    y = KindRow(map, kind, y, draw);
                 }
                 // Farm last, below the ore, rather than beside the half it was split from. What
                 // can be planted is a note about a trip you will not make again: you find one
                 // patch, you take it home, and the row is finished with for the rest of the game.
                 // The rows above it are all things you will go out for again, which is what the
                 // heading is read for, so the dead half sits at the bottom out of their way.
-                if (plantsDone) y = PlantRow(map, Harvest.Farm, y);
+                if (plantsDone) y = PlantRow(map, Harvest.Farm, y, draw);
                 // Below the kinds rather than among them: these are not kinds, nothing records
                 // them, and what they mean is the player's own business. Under the heading all
                 // the same, because the question the heading asks is the one they answer.
-                foreach (var type in vanilla) y = VanillaRow(map, type, y);
+                foreach (var type in vanilla) y = VanillaRow(map, type, y, draw);
             }
             return LooseEnds(y);
         }
@@ -974,8 +991,9 @@ namespace TheGreatestMap
                 // what is on it.
                 if (OwnMarks.Lit(mark))
                 {
-                    _shownByIcon.TryGetValue(mark.Icon, out int lit);
-                    _shownByIcon[mark.Icon] = lit + 1;
+                    string lk = Focus.TypeKey(cat, mark.Icon);
+                    _shownByIcon.TryGetValue(lk, out int lit);
+                    _shownByIcon[lk] = lit + 1;
                 }
             }
             foreach (var kv in extra)
@@ -1003,8 +1021,11 @@ namespace TheGreatestMap
         }
 
         /// <summary>One kind, and its types under it when it is unfolded. Returns the y below them.</summary>
-        private static float KindRow(Minimap map, Category kind, float y)
+        private static float KindRow(Minimap map, Category kind, float y, bool draw = true)
         {
+            var counted = kind;
+            Counts(() => KindCounts(counted));
+            if (!draw) return y;
             {
                 var k = kind;
                 var row = SwitchRow(map, _content, 0f, y, KindIndent, IconKeyFor(k), KindLabel(k),
@@ -1087,11 +1108,13 @@ namespace TheGreatestMap
         /// it have both, which is where they are wanted anyway: you ping raspberries, not
         /// "everything wild".</para>
         /// </summary>
-        private static float PlantRow(Minimap map, Harvest half, float y)
+        private static float PlantRow(Minimap map, Harvest half, float y, bool draw = true)
         {
             var types = PlantTypes(half);
             if (types.Count == 0) return y;
             var h = half;
+            Counts(() => PlantCounts(h));
+            if (!draw) return y;
             var row = SwitchRow(map, _content, 0f, y, KindIndent, Categories.HarvestIcon(h), PlantHeading(h),
                 () => SetPlantsShown(h, !AnyPlantShown(h)),
                 () => AllShown && AnyPlantShown(h),
@@ -1168,16 +1191,22 @@ namespace TheGreatestMap
         }
 
         /// <summary>"Wild (1893)", or how many of those are drawn where the two differ.</summary>
-        private static string PlantHeading(Harvest half)
+        private static int[] PlantCounts(Harvest half)
         {
             int n = 0, lit = 0;
             foreach (var type in PlantTypes(half))
             {
                 n += type.Count;
-                _shownByIcon.TryGetValue(type.Icon, out int some);
+                _shownByIcon.TryGetValue(Focus.TypeKey(type.Kind, type.Icon), out int some);
                 lit += some;
             }
-            return Named(Categories.HarvestLabel(half), lit, n);
+            return new[] { lit, n };
+        }
+
+        private static string PlantHeading(Harvest half)
+        {
+            var c = PlantCounts(half);
+            return Named(Categories.HarvestLabel(half), c[0], c[1]);
         }
 
         private static int DonePlants(Harvest half)
@@ -1221,9 +1250,12 @@ namespace TheGreatestMap
         /// refresh rather than fixed when the list opened: players come and go, and a pinned list
         /// stays open for hours.</para>
         /// </summary>
-        private static float PlayersRow(Minimap map, float y)
+        private static float PlayersRow(Minimap map, float y, bool draw = true)
         {
             Func<int> players = () => PlayerSpotlight.Players(map);
+            // Everyone sharing is drawn, unless the row is switched off like any other.
+            Counts(() => new[] { AllShown && IsShown(Category.Player) ? players() : 0, players() });
+            if (!draw) return y;
             SwitchRow(map, _content, 0f, y, KindIndent, "pin:Player", "Players",
                 () =>
                 {
@@ -1264,24 +1296,24 @@ namespace TheGreatestMap
         /// and the errands Hildir sends you on. Anything the mod cannot name comes last, where a
         /// catch-all belongs.</para>
         /// </summary>
-        private static float PlacesRows(Minimap map, List<Category> kinds, float y)
+        private static float PlacesRows(Minimap map, List<Category> kinds, float y, bool draw = true)
         {
-            y = LandmarkRow(map, WorldPins.Kind.Center, y);
-            if (kinds.Contains(Category.BossAltar)) y = PlaceRow(map, Category.BossAltar, y);
-            if (kinds.Contains(Category.Trader)) y = PlaceRow(map, Category.Trader, y);
+            y = LandmarkRow(map, WorldPins.Kind.Center, y, draw);
+            if (kinds.Contains(Category.BossAltar)) y = PlaceRow(map, Category.BossAltar, y, draw);
+            if (kinds.Contains(Category.Trader)) y = PlaceRow(map, Category.Trader, y, draw);
             // Her errands are one thing with two halves, the same as the altars and the
             // traders: the game's pins for them, and whatever an older version of this mod wrote
             // down before it stopped recording them. They had a row each, side by side, counting
             // different halves of one answer under two names a letter apart -- "Hildir's Quests"
             // for the game's nine and "Hildir Quests" for the five this mod still held.
-            if (kinds.Contains(Category.HildirQuest)) y = PlaceRow(map, Category.HildirQuest, y);
-            else y = LandmarkRow(map, WorldPins.Kind.Hildir, y);
-            y = LandmarkRow(map, WorldPins.Kind.Other, y);
+            if (kinds.Contains(Category.HildirQuest)) y = PlaceRow(map, Category.HildirQuest, y, draw);
+            else y = LandmarkRow(map, WorldPins.Kind.Hildir, y, draw);
+            y = LandmarkRow(map, WorldPins.Kind.Other, y, draw);
             // A kind sorted into Places that is none of those three: drawn as any other kind, so
             // adding one never leaves it out of its own heading.
             foreach (var kind in kinds)
                 if (kind != Category.BossAltar && kind != Category.Trader
-                    && kind != Category.HildirQuest) y = KindRow(map, kind, y);
+                    && kind != Category.HildirQuest) y = KindRow(map, kind, y, draw);
             return y;
         }
 
@@ -1291,11 +1323,13 @@ namespace TheGreatestMap
         /// ever will -- the game draws them, and all this adds is a name, a count and a switch --
         /// so there is no placing by hand and nothing to cross off.
         /// </summary>
-        private static float LandmarkRow(Minimap map, WorldPins.Kind landmark, float y)
+        private static float LandmarkRow(Minimap map, WorldPins.Kind landmark, float y, bool draw = true)
         {
             if (WorldPins.CountOf(landmark) == 0) return y;
             var k = landmark;
             Func<string> caption = () => Named(WorldPins.Label(k), WorldPins.ShownCount(k), WorldPins.CountOf(k));
+            Counts(() => new[] { WorldPins.ShownCount(k), WorldPins.CountOf(k) });
+            if (!draw) return y;
             SwitchRow(map, _content, 0f, y, KindIndent, WorldPins.IconKey(k), caption(),
                 () => WorldPins.Toggle(k),
                 () => AllShown && WorldPins.Wanted(k),
@@ -1316,7 +1350,7 @@ namespace TheGreatestMap
         /// counts all of them and its switch sets all of them: the markers this mod recorded, the
         /// landmark the world drew, and for the altars the vegvisir pins as well.</para>
         /// </summary>
-        private static float PlaceRow(Minimap map, Category kind, float y)
+        private static float PlaceRow(Minimap map, Category kind, float y, bool draw = true)
         {
             var k = kind;
             var landmark = kind == Category.BossAltar ? WorldPins.Kind.Boss
@@ -1324,6 +1358,8 @@ namespace TheGreatestMap
                          : WorldPins.Kind.Trader;
             var type = kind == Category.BossAltar ? (Minimap.PinType?)Minimap.PinType.Boss : null;
             Func<string> caption = () => PlaceLabel(map, k, landmark, type);
+            Counts(() => PlaceCounts(map, k, landmark, type));
+            if (!draw) return y;
             var row = SwitchRow(map, _content, 0f, y, KindIndent, IconKeyFor(k), caption(),
                 () => SetPlaceShown(map, k, landmark, type, !PlaceShown(map, k, landmark, type)),
                 () => AllShown && PlaceShown(map, k, landmark, type),
@@ -1368,10 +1404,16 @@ namespace TheGreatestMap
             // because none of them is drawn: the game marks every one of these places itself, so
             // a marker of this mod's beside one was the same place twice, and what is kept of
             // them is the record and its travels rather than a pin. See ClientPins.IsShown.
+            var c = PlaceCounts(map, kind, landmark, type);
+            return Named(Categories.Label(kind), c[0], c[1]);
+        }
+
+        private static int[] PlaceCounts(Minimap map, Category kind, WorldPins.Kind landmark, Minimap.PinType? type)
+        {
             if (kind == Category.BossAltar || kind == Category.HildirQuest)
             {
                 OwnMarks.Tally(landmark, out int places, out int placesLit);
-                return Named(Categories.Label(kind), placesLit, places);
+                return new[] { placesLit, places };
             }
             _counts.TryGetValue(kind, out int ours);
             _shown.TryGetValue(kind, out int oursLit);
@@ -1382,7 +1424,7 @@ namespace TheGreatestMap
                 n += VanillaPins.CountOf(type.Value);
                 lit += VanillaPins.ShownCount(map, type.Value);
             }
-            return Named(Categories.Label(kind), lit, n);
+            return new[] { lit, n };
         }
 
         private static bool PlaceShown(Minimap map, Category kind, WorldPins.Kind landmark, Minimap.PinType? type)
@@ -1641,26 +1683,45 @@ namespace TheGreatestMap
         /// kind under it added up, which for the dynamic ones is what the server is answering
         /// right now rather than anything recorded.
         /// </summary>
+        /// <summary>
+        /// The whole list: every row under every heading. The one number on screen that is not
+        /// under a heading, and it has to be the total of the ones that are.
+        /// </summary>
+        private static int[] AllCounts()
+        {
+            int n = 0, lit = 0;
+            foreach (var rows in _rowCounts.Values)
+                foreach (var row in rows)
+                {
+                    var pair = row();
+                    if (pair == null || pair.Length < 2) continue;
+                    lit += pair[0];
+                    n += pair[1];
+                }
+            // Nothing registered means no headings were walked at all -- the list is showing
+            // what a search matched rather than the kinds. There is no heading to be the sum of
+            // then, so this falls back to the markers themselves, which is what the line meant
+            // before the headings learned to add up.
+            if (_rowCounts.Count == 0)
+                foreach (var pin in ClientPins.All)
+                {
+                    n++;
+                    if (ClientPins.IsShown(pin)) lit++;
+                }
+            return new[] { lit, n };
+        }
+
         private static string GroupHeading(Minimap map, Group group, List<Category> kinds)
         {
             int n = 0, lit = 0;
-            foreach (var kind in kinds)
-            {
-                n += KindCount(map, kind);
-                if (Categories.IsLive(kind) || kind == Category.Player) lit += KindCount(map, kind);
-                else { _shown.TryGetValue(kind, out int some); lit += some; }
-            }
-            VanillaPins.Tally(map, group, out int theirs, out int theirsLit);
-            n += theirs;
-            lit += theirsLit;
-            if (group == Group.Places)
-            {
-                // The world's landmarks, every kind of them: the two that are drawn on the kinds'
-                // own rows are counted there as well, and this is the heading over both.
-                WorldPins.Tally(out int world, out int worldLit);
-                n += world;
-                lit += worldLit;
-            }
+            if (_rowCounts.TryGetValue(group, out var rows))
+                foreach (var row in rows)
+                {
+                    var pair = row();
+                    if (pair == null || pair.Length < 2) continue;
+                    lit += pair[0];
+                    n += pair[1];
+                }
             return Named(Categories.GroupLabel(group), lit, n);
         }
 
@@ -1781,7 +1842,7 @@ namespace TheGreatestMap
         /// for that picture -- so for those five this row is the button, and that is what makes
         /// doing without the button strip thinkable.</para>
         /// </summary>
-        private static float VanillaRow(Minimap map, Minimap.PinType type, float y)
+        private static float VanillaRow(Minimap map, Minimap.PinType type, float y, bool draw = true)
         {
             var t = type;
             string key = VanillaPins.IconKey(t);
@@ -1792,6 +1853,10 @@ namespace TheGreatestMap
             Func<string> caption = () => Named(VanillaPins.Label(t),
                                                (theirsLit() ? theirs() : 0) + (oursLit() ? ours() : 0),
                                                theirs() + ours());
+            // The same two numbers the caption prints, so the heading is their sum. Both halves:
+            // the pins the game holds and this mod's own markers wearing the picture.
+            Counts(() => new[] { (theirsLit() ? theirs() : 0) + (oursLit() ? ours() : 0), theirs() + ours() });
+            if (!draw) return y;
             SwitchRow(map, _content, 0f, y, KindIndent, key, caption(),
                 () =>
                 {
@@ -2438,16 +2503,28 @@ namespace TheGreatestMap
         /// apart before this was to look at the map and count. A live kind counts the server's
         /// answer instead of recorded markers, because its pins are that answer.
         /// </summary>
-        private static string KindLabel(Category kind)
+        /// <summary>What a kind's row is counting: shown, then all. See <see cref="_rowCounts"/>.</summary>
+        private static int[] KindCounts(Category kind)
         {
             if (Categories.IsLive(kind))
             {
+                // Drawn by their own pass from what the server says is there now, so there is
+                // nothing stored to switch off one at a time -- but the kind's own switch still
+                // turns the lot off, and saying "113" over a row that is drawing none of them is
+                // how Dynamic Markers came to read "132 of 197" with every row dim. The same
+                // test the row lights itself by.
                 int live = kind == Category.Portal ? Portals.Count : Transports.CountOf(kind == Category.Cart);
-                return Named(Categories.Label(kind), live, live);
+                return new[] { AllShown && IsShown(kind) ? live : 0, live };
             }
             _counts.TryGetValue(kind, out int n);
             _shown.TryGetValue(kind, out int lit);
-            return Named(Categories.Label(kind), lit, n);
+            return new[] { lit, n };
+        }
+
+        private static string KindLabel(Category kind)
+        {
+            var c = KindCounts(kind);
+            return Named(Categories.Label(kind), c[0], c[1]);
         }
 
         /// <summary>
@@ -2460,11 +2537,44 @@ namespace TheGreatestMap
         /// row at all -- a heading whose kinds are mostly on, a kind with one of its types put
         /// away.</para>
         /// </summary>
+        /// <summary>
+        /// What each row under a heading is counting, so the heading can be the sum of them.
+        ///
+        /// <para>A heading used to count for itself, from the kinds under it plus whatever the
+        /// vanilla and world tallies added -- and those are not the same populations the rows
+        /// read. Placed Markers counted the pins the game holds and not this mod's own markers
+        /// wearing the same pictures, so a heading said 2 over rows of 25 hammers and 33 dots;
+        /// Places counted its landmarks once while the altar and errand rows counted the records
+        /// and the vegvisir pins with them. Two sets of arithmetic for one number, drifting apart
+        /// every time either side learned something new.</para>
+        ///
+        /// <para>Now a row hands up the pair it is about to print and the heading adds them, so
+        /// the two cannot disagree: whatever a row says, the heading says the total of. Read when
+        /// the caption is painted rather than when the row is built, because the counts go on
+        /// changing while a pinned list sits open.</para>
+        /// </summary>
+        private static readonly Dictionary<Group, List<Func<int[]>>> _rowCounts =
+            new Dictionary<Group, List<Func<int[]>>>();
+
+        /// <summary>The heading rows are being added to while the list is built.</summary>
+        private static Group _counting;
+
+        /// <summary>Hand this row's (shown, total) up to its heading. Shown first, as Named takes them.</summary>
+        private static void Counts(Func<int[]> row)
+        {
+            if (!_rowCounts.TryGetValue(_counting, out var rows)) _rowCounts[_counting] = rows = new List<Func<int[]>>();
+            rows.Add(row);
+        }
+
         private static string Named(string label, int shown, int total)
         {
             if (TgmConfig.ShowCounts != null && !TgmConfig.ShowCounts.Value) return label;
             if (total <= 0) return label;
-            return shown > 0 && shown < total ? $"{label} ({shown} of {total})" : $"{label} ({total})";
+            // Zero counts as some, not as all. It used to share a branch with shown == total,
+            // so a heading over nothing but dim rows read exactly like one over nothing but lit
+            // ones -- "Resources (6601)" either way, with no way to tell a quiet map from a
+            // full one without opening the heading and looking.
+            return shown < total ? $"{label} ({shown} of {total})" : $"{label} ({total})";
         }
 
         /// <summary>
@@ -2491,15 +2601,11 @@ namespace TheGreatestMap
             _done.Clear();
             _doneByIcon.Clear();
             _doneOther.Clear();
-            _all = 0;
-            _allShown = 0;
             foreach (var pin in ClientPins.All)
             {
-                _all++;
-                // Asked once per marker and used by every row above: the line under the find box,
-                // the headings, the kinds and the types all count the same answer.
+                // Asked once per marker and used by every row above: the headings, the kinds and
+                // the types all count the same answer.
                 bool drawn = ClientPins.IsShown(pin);
-                if (drawn) _allShown++;
                 var kind = ClientPins.KindOf(pin);
                 if (kind.HasValue)
                 {
@@ -2513,7 +2619,7 @@ namespace TheGreatestMap
                 }
                 if (drawn)
                 {
-                    string key = IconRegistry.Normalize(ClientPins.IconOf(pin)) ?? IconRegistry.FallbackKey;
+                    string key = Focus.TypeKey(kind, IconRegistry.Normalize(ClientPins.IconOf(pin)) ?? IconRegistry.FallbackKey);
                     _shownByIcon.TryGetValue(key, out int litIcon);
                     _shownByIcon[key] = litIcon + 1;
                     if (kind.HasValue && Categories.GroupsByBiome(kind.Value) && Biomes.Known)
@@ -2810,7 +2916,7 @@ namespace TheGreatestMap
             if (type.Biome.HasValue && type.Kind.HasValue)
                 _shownByBiome.TryGetValue(Biomes.Key(type.Kind.Value, type.Biome.Value), out lit);
             else
-                _shownByIcon.TryGetValue(type.Icon, out lit);
+                _shownByIcon.TryGetValue(Focus.TypeKey(type.Kind, type.Icon), out lit);
             return Named(type.Label, lit, type.Count);
         }
 

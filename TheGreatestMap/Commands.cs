@@ -340,7 +340,7 @@ namespace TheGreatestMap
                     {
                         args.Context.AddString($"{plan.Disputed.Count} are left alone because {plan.Voucher} contradicts the height. Two tests disagreeing means one of them is wrong here, so nothing is touched:");
                         foreach (var p in plan.Disputed)
-                            args.Context.AddString($"   {p.Pos.x:0}, {p.Pos.z:0}  y={p.Pos.y:0.0}  {IconRegistry.DisplayName(p.Icon)}{(string.IsNullOrEmpty(p.Name) ? "" : " \"" + p.Name + "\"")}");
+                            args.Context.AddString($"   {p.Pos.x:0}, {p.Pos.z:0}  y={p.Pos.y:0.0}  {Focus.TypeLabel(p)}{(string.IsNullOrEmpty(p.Name) ? "" : " \"" + p.Name + "\"")}");
                     }
                     if (plan.Nothing) return;
 
@@ -901,7 +901,7 @@ namespace TheGreatestMap
                     foreach (var kv in byIcon)
                     {
                         if (shown++ >= 15) break;
-                        Say($"  {IconRegistry.DisplayName(kv.Key)} ({kv.Key}): {kv.Value}");
+                        Say($"  {Focus.LabelForIcon(kv.Key)} ({kv.Key}): {kv.Value}");
                     }
                 }));
 
@@ -969,7 +969,7 @@ namespace TheGreatestMap
                     foreach (var g in groups)
                     {
                         extra += g.Drop.Count;
-                        string name = string.IsNullOrEmpty(g.Keep.Name) ? IconRegistry.DisplayName(g.Keep.Icon) : g.Keep.Name;
+                        string name = string.IsNullOrEmpty(g.Keep.Name) ? Focus.TypeLabel(g.Keep) : g.Keep.Name;
                         float worst = 0f;
                         foreach (var d in g.Drop) { float gap = Geo.FlatDistance(g.Keep.Pos, d.Pos); if (gap > worst) worst = gap; }
                         var authors = new List<string>();

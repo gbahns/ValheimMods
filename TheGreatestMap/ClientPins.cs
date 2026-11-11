@@ -1420,7 +1420,9 @@ namespace TheGreatestMap
             // Vanilla builds a label only for a pin added with a name, so naming it afterwards puts
             // no word on the map and still gives anything that reads a pin's name something to know
             // it by -- which is how a compass mod is told to leave the mushrooms off its band.
-            if (string.IsNullOrEmpty(pin.m_name)) pin.m_name = IconRegistry.DisplayName(shared.Icon) ?? "";
+            // What it is rather than what it is wearing: a dvergr statue borrowing the black
+            // marble block's picture should not tell a compass mod it is a block of black marble.
+            if (string.IsNullOrEmpty(pin.m_name)) pin.m_name = Focus.TypeLabel(shared) ?? "";
             _pinById[shared.Key] = pin;
             _idByPin[pin] = shared.Key;
         }
@@ -1641,7 +1643,7 @@ namespace TheGreatestMap
                 if (!IconRegistry.BorrowedVanillaType(icon, out int type)) continue;
                 string name = !string.IsNullOrEmpty(shared.Name)
                     ? shared.Name
-                    : (IconRegistry.DisplayName(shared.Icon) ?? "");
+                    : (Focus.TypeLabel(shared) ?? "");
                 string key = type + "|" + name;
                 if (!want.TryGetValue(key, out var spots)) want[key] = spots = new List<Vector3>();
                 spots.Add(shared.Pos);
@@ -1879,7 +1881,20 @@ namespace TheGreatestMap
                 // marker thinned away as for one switched off.
                 bool near = nearRadiusSq > 0f && havePlayer
                             && Geo.FlatDistanceSquared(shared.Pos, playerPos) <= nearRadiusSq;
-                if (near && !hideEverything && !hiddenByHand) { hidden = false; asked = true; }
+                if (near && !hideEverything && !hiddenByHand)
+                {
+                    // Except for the things you built. The doubt this rule is here to settle is
+                    // "nothing recorded there" against "recorded and hidden", and that doubt is
+                    // about the world: you cannot know whether the ground you are standing on has
+                    // raspberries on it. You do know whether your own base has a workbench in it,
+                    // so switching workbenches off and having six of them stay lit over your base
+                    // is the rule answering a question nobody asked.
+                    //
+                    // Still exempt from thinning, which is the other half of what this does and
+                    // is about a crowded map rather than a hidden kind.
+                    if (!(kind.HasValue && Categories.IsBuilt(kind.Value))) hidden = false;
+                    asked = true;
+                }
                 // Crossed off, and the player would rather not see that kind of crossed-off marker
                 // any more: used-up deposits, or searched places by type.
                 if (!hidden && CrossedOff.IsHidden(shared)) hidden = true;
