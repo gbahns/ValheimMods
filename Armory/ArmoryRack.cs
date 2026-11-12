@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
@@ -29,8 +30,12 @@ namespace Armory
         private const float DoorOpenRate   = 4f;   // 1/seconds — full swing in ~0.25s
         private const float DoorOpenDegrees = 95f; // slightly past 90 reads more naturally
 
+        /// <summary>Every rack currently in the world, for settings that reach all of them.</summary>
+        internal static readonly HashSet<ArmoryRack> Instances = new HashSet<ArmoryRack>();
+
         private void Awake()
         {
+            Instances.Add(this);
             m_nview = GetComponent<ZNetView>();
             if (m_nview != null)
             {
@@ -52,6 +57,22 @@ namespace Armory
         // it -- on every rack in range on every frame.
         private Container _storage;
         public Container GetStorage() => _storage != null ? _storage : (_storage = GetComponent<Container>());
+
+        private void OnDestroy()
+        {
+            Instances.Remove(this);
+        }
+
+        /// <summary>Whether an inventory is some rack's storage.  A Container makes its Inventory
+        /// once, in Awake, and keeps it for life, so the object identifies the rack wherever it
+        /// turns up — the open-container panel or a peek preview.</summary>
+        internal static bool IsRackInventory(Inventory inventory)
+        {
+            if (inventory == null) return false;
+            foreach (var rack in Instances)
+                if (rack != null && rack.GetStorageInventory() == inventory) return true;
+            return false;
+        }
         public Inventory  GetStorageInventory() => GetStorage()?.GetInventory();
 
         private void Update()

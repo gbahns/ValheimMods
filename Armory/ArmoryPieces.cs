@@ -22,6 +22,9 @@ namespace Armory
         private const string Category   = "Furniture";
 
         private static GameObject _clone;
+
+        /// <summary>The rack prefab, once Phase 1 has cloned it; null before.</summary>
+        internal static GameObject Prefab => _clone;
         private static bool _clonesCreated;
         private static bool _piecesConfigured;
 
@@ -306,13 +309,13 @@ namespace Armory
                     storage.m_checkGuardStone    = refContainer.m_checkGuardStone;
                 }
                 storage.m_name   = "$armory_rack_name";
-                // 8×4 = 32 slots — matches the black metal chest layout exactly.  The vanilla
-                // InventoryGui chest panel is hard-coded to 8 columns × 4 rows at fixed cell
-                // size, so going wider or taller would clip the outer slots off-screen until
-                // we ship a custom chest UI.  Players who need more storage can place a regular
-                // chest next to the rack.
-                storage.m_width  = 8;
-                storage.m_height = 4;
+                // The grid comes from the synced Rack Width / Rack Height settings (8×5 by
+                // default).  RackGridFitPatch draws a grid bigger than the vanilla container
+                // panel at a smaller cell size, which is what used to pin this at 8×4.  A change
+                // to the settings later goes through RackSize.Apply, onto this prefab and onto
+                // the racks already standing.
+                storage.m_width  = RackSize.Width;
+                storage.m_height = RackSize.Height;
                 // Logged rather than assumed: these come out of the chest prefab's asset data,
                 // which is not readable from the assemblies, so the run itself is the record of
                 // what the rack inherited.

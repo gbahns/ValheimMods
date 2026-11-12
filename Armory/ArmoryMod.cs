@@ -2,6 +2,7 @@ using BepInEx;
 using BepInEx.Configuration;
 using HarmonyLib;
 using Jotunn.Managers;
+using ServerSync;
 
 namespace Armory
 {
@@ -25,11 +26,20 @@ namespace Armory
     // ArmoryUI is only ever reached from InventoryGui.Show, and ArmoryPause returns immediately
     // while Player.m_localPlayer is null.  What does run is the part the server needs: the clone,
     // its registration into ZNetScene, and the ArmoryRack component on the spawned object.
-    [BepInPlugin(ModGuid, "Armory", "2.0.1")]
+    [BepInPlugin(ModGuid, ModName, ModVersion)]
     [BepInDependency("com.jotunn.jotunn")]
     public class ArmoryMod : BaseUnityPlugin
     {
-        public const string ModGuid = "GBahns.Armory";
+        public const string ModGuid    = "GBahns.Armory";
+        public const string ModName    = "Armory";
+        public const string ModVersion = "2.1.0";
+
+        // 2.1.0: the rack's grid is a synced setting an older client does not have, and a client
+        // on a different grid than the rack's owner opens rows it cannot see.  A literal, raised
+        // only when a release changes what the server and the clients have to agree on.
+        public const string MinCompatibleVersion = "2.1.0";
+
+        private static ConfigSync _configSync;
 
         private readonly Harmony _harmony = new Harmony(ModGuid);
         public static ArmoryMod Instance;
@@ -55,9 +65,22 @@ namespace Armory
         public static ConfigEntry<float> PanelWidth;
         public static ConfigEntry<float> PanelHeight;
 
+        // The rack's storage grid.  Synced, so everyone opens the same grid; see RackSize.
+        public static ConfigEntry<bool> LockConfiguration;
+        public static ConfigEntry<int>  RackWidth;
+        public static ConfigEntry<int>  RackHeight;
+
         private void Awake()
         {
             Instance = this;
+
+            _configSync = new ConfigSync(ModGuid)
+            {
+                DisplayName            = ModName,
+                CurrentVersion         = ModVersion,
+                MinimumRequiredVersion = MinCompatibleVersion,
+                ModRequired            = true,
+            };
 
             // Bind ALL config entries up-front (even when disabled) so users see every option
             // in the .cfg file and can re-enable without first toggling other settings.
@@ -126,6 +149,21 @@ namespace Armory
                 description: "Saved panel height (auto-updated when you drag the grip). 0 means fit the panel to " +
                              "its loadouts, up to most of the screen; the list scrolls past that.");
 
+            LockConfiguration = BindLocking("General", "Lock Configuration", true,
+                "While on, the server's synced settings override every client's, and only admins " +
+                "(adminlist.txt) can change them from their client. Off lets any player change them.");
+
+            RackWidth = BindSynced("Storage", "Rack Width", RackSize.DefaultWidth,
+                "Columns in a rack's storage grid. Every rack, built or not, takes the new size; " +
+                "items left outside a smaller grid are moved into it by whoever opens the rack.",
+                new AcceptableValueRange<int>(1, RackSize.MaxWidth));
+            RackHeight = BindSynced("Storage", "Rack Height", RackSize.DefaultHeight,
+                "Rows in a rack's storage grid. A grid taller than the container panel is drawn " +
+                "with smaller cells rather than a scroll bar.",
+                new AcceptableValueRange<int>(1, RackSize.MaxHeight));
+            RackWidth.SettingChanged  += (_, __) => RackSize.Apply();
+            RackHeight.SettingChanged += (_, __) => RackSize.Apply();
+
             if (!ModEnabled.Value)
             {
                 Jotunn.Logger.LogInfo("[Armory] Mod Enabled = false in config — skipping piece registration and Harmony patches.");
@@ -175,11 +213,36 @@ namespace Armory
             ArmoryPause.Release();
             _harmony.UnpatchSelf();
         }
+
+        /// <summary>
+        /// Binds a BepInEx config entry and registers it with ServerSync so the server's value
+        /// overrides clients.
+        /// </summary>
+        private ConfigEntry<T> BindSynced<T>(string section, string key, T defaultValue, string description, AcceptableValueBase acceptable = null)
+        {
+            var entry = Config.Bind(section, key, defaultValue,
+                new ConfigDescription(description + " [Synced with Server]", acceptable));
+            _configSync.AddConfigEntry(entry).SynchronizedConfig = true;
+            return entry;
+        }
+
+        /// <summary>
+        /// The entry that locks the synced settings: while the server has it on, only admins can
+        /// change a synced setting from their client.  Without one, ServerSync accepts a change
+        /// from anyone.
+        /// </summary>
+        private ConfigEntry<bool> BindLocking(string section, string key, bool defaultValue, string description)
+        {
+            var entry = Config.Bind(section, key, defaultValue,
+                new ConfigDescription(description + " [Synced with Server]"));
+            _configSync.AddLockingConfigEntry(entry);
+            return entry;
+        }
     }
 
     // ── Harmony: block player movement/action while the Armory UI is open ──────────
 
-    [HarmonyPatch(typeof(Player), nameof(Player.TakeInput))]
+    [HarmonyPatch(typeof(Player), "TakeInput")]   // private in the game; a name string, not a member reference
     internal static class Player_TakeInput_Patch
     {
         static bool Prefix() => !ArmoryUI.IsOpen;

@@ -10,7 +10,9 @@
          the DLL carried no version at all (0.0.0.0). Directory.Build.props supplies the
          version from manifest.json. -->
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-    <NoWarn>$(NoWarn);MSB3277</NoWarn>
+    <!-- CS0436/CS8632 come from the vendored ServerSync/ConfigSync.cs (annotation type clash, nullable syntax). -->
+    <NoWarn>$(NoWarn);MSB3277;CS0436;CS8632</NoWarn>
+    <!-- C# 12 required by ServerSync/ConfigSync.cs (primary constructors, with-expressions). -->
     <LangVersion>12</LangVersion>
   </PropertyGroup>
 

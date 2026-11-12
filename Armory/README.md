@@ -11,7 +11,7 @@ The rack is also a real storage container. Drop your alternate gear in, walk up,
 - **Named loadout slots** — save your current equipment as `"Farming"`, `"Mining"`, `"Boss"`, etc. Rename by clicking the slot name. Up to 10 slots per rack.
 - **Combined armor + hotbar** — captures helm, chest, legs, cape, belt, trinket, **and** quickbar items 1–8.
 - **Loadouts are the cells you choose** — each worn slot, hotbar key and quick slot can be in a loadout or out of it, and Load touches only what's in. A new loadout starts as armor and cape. Press **+** on a row to see every saved cell and add or remove some; the group labels add or remove a whole group. An armor set, a weapon kit and a food set load one after another to build an outfit.
-- **Storage + loadouts in one** — the rack is also a Container (6×4 grid). Load pulls items from the rack *and* your inventory; saved gear in the rack counts as "available".
+- **Storage + loadouts in one** — the rack is also a Container, 8×5 by default and configurable. Load pulls items from the rack *and* your inventory; saved gear in the rack counts as "available".
 - **In-place swap** — when Load equips a new item, whatever was in that slot gets stored back at the exact grid position the new item came from. Nothing ends up on the action bar unless that's where it was sitting.
 - **Live status** — a green ● on the Load button means you're already wearing this loadout. Missing items show red in the summary text and red in the icon strip.
 - **Compare window** — side-by-side view of your current gear vs. the saved set, with color-coded availability.
@@ -59,7 +59,11 @@ Buildable at the Workbench. Black Forest tier.
 The config file is created at `BepInEx/config/GBahns.Armory.cfg` on first run.
 
 **\[General\]**
+- `Lock Configuration` (default: true) — while on, the server's synced settings override every client's, and only admins can change them.
 - `Pause Game While Armory Open` (default: false) — pauses the game while the rack panel is open, the way the ESC menu does. It asks the game for the pause rather than stopping your own clock, so it works by itself when you are playing solo or hosting alone, and on a dedicated server it takes [Pause My Server](https://valheim.thunderstore.io/package/DeathMonger/PauseMyServer/) to grant it. Without that mod the request is refused on a server, which is the point — your clock stopping while the server runs on would only desync you. While the pause is in effect, a craft started from the inventory screen cannot finish until you close the rack; the craft timer counts game time.
+
+**\[Storage\]** (synced from the server)
+- `Rack Width` / `Rack Height` (default: 8 × 5) — the rack's storage grid. Every rack takes the new size, standing or not; items left outside a smaller grid are moved into it by whoever opens the rack. A grid taller than the container panel is drawn with smaller cells.
 
 **\[UI\]**
 - `Show Summary Text` (default: true) — show the textual list of items below each loadout's name (`Helm:..., Chest:...`, etc.).
@@ -77,7 +81,7 @@ The config file is created at `BepInEx/config/GBahns.Armory.cfg` on first run.
 - [BepInEx 5](https://valheim.thunderstore.io/package/denikson/BepInExPack_Valheim/)
 - [Jotunn](https://valheim.thunderstore.io/package/ValheimModding/Jotunn/)
 
-**Install it on the dedicated server as well as on every client.** The rack is a new prefab, and
+**Install it on the dedicated server as well as on every client, at the same version.** The server turns away a client on an older version, because the rack's grid is a server setting the client has to follow. The rack is a new prefab, and
 a server that does not have it deletes racks built near the world spawn — permanently, with the
 gear and the saved loadouts inside them. That is Valheim's own handling of a prefab it cannot
 resolve, not something this mod can guard against from the client.

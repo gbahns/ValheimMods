@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.0 — 2026-11-12
+
+- **Everyone must update together.** The rack's grid is now a server setting, and a client on a different grid than the rack's owner would open rows it cannot see, so a server on this version turns away older clients.
+- The rack's storage grid is configurable: `Rack Width` and `Rack Height`, default 8×5 (40 slots), synced from the server and locked to admins (#73). Racks already standing take the new size; items left outside a smaller grid are moved into it by whoever opens the rack.
+- A grid taller than the container panel is drawn with smaller cells instead of a scroll bar.
+
 ## 2.0.1 — 2026-11-11
 
 - Fixed a large frame-rate drop while looking at an Armory rack. Its hover text was rebuilt, and the localization system looked up by reflection, on every single frame.

@@ -223,10 +223,9 @@ namespace Armory
             WatchInventories();
             MarkDirty();
 
-            // Migrate items left out-of-bounds by a previous container size (e.g. the brief
-            // 8×5 layout — anything at y=4 is now outside our 10×4 grid and would be hidden
-            // from the vanilla chest UI).  Move them into the first empty in-bounds slot.  The
-            // grid is rebuilt from the inventory every frame in InventoryGui.UpdateContainer,
+            // Migrate items left outside the grid by a smaller Rack Width / Rack Height than
+            // the one they were stored under.  Move them into the first empty in-bounds slot.
+            // The grid is rebuilt from the inventory every frame in InventoryGui.UpdateContainer,
             // which has not run yet this frame, so the player still sees a clean grid.
             LoadoutManager.MigrateOutOfBoundsItems(rack.GetStorageInventory());
 
