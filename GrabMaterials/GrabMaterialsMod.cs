@@ -70,6 +70,9 @@ namespace GrabMaterialsMod
 		public ConfigEntry<float> BadgeSize;
 		public ConfigEntry<bool> BadgeHideFull;
 		public ConfigEntry<bool> BadgeOnlyVisible;
+		public ConfigEntry<bool> TidyOnOpen;
+		public ConfigEntry<GrabMaterials.ContainerTidy.Order> TidySortOrder;
+		public ConfigEntry<string> TidySkipContainers;
 		private ButtonConfig GrabSelectedPieceMatsButton;
 		//private ConfigEntry<KeyCode> GrabPortalMatsKeyboardConfig;
 		//private ConfigEntry<InputManager.GamepadButton> GrabPortalMatsGamepadConfig;
@@ -216,6 +219,10 @@ namespace GrabMaterialsMod
 			BadgeRange = Config.Bind("Container Badges", "Range", 15f, new ConfigDescription("How far away (in meters) a container can be and still get a badge. Separate from Container Range: this is about what you can read from where you stand.", new AcceptableValueRange<float>(1f, 100f)));
 			BadgeSize = Config.Bind("Container Badges", "Size", 28f, new ConfigDescription("Badge diameter in pixels at 8 m. Nearer badges grow a little, farther ones shrink.", new AcceptableValueRange<float>(12f, 80f)));
 			BadgeHideFull = Config.Bind("Container Badges", "Hide Full Containers", false, new ConfigDescription("Leave full containers without a badge instead of showing a red 0."));
+			TidyOnOpen = Config.Bind("Tidy Containers", "Enabled", true, new ConfigDescription("Tidy a container when you open it: partial stacks of the same item are merged, then the items are laid out in the order below. /sort does the same on demand for the container you have open."));
+			TidySortOrder = Config.Bind("Tidy Containers", "Sort Order", GrabMaterials.ContainerTidy.Order.Category, new ConfigDescription("Category = the /inventory panel's categories, then name. Name, Weight and Value are what SimpleSort offered. Within one item, fuller stacks come first."));
+			TidySkipContainers = Config.Bind("Tidy Containers", "Skip Containers", "", new ConfigDescription("Prefab names of containers to leave alone, separated by commas, for chests whose slot positions you arrange yourself. Armory racks and tombstones are always skipped."));
+
 			BadgeOnlyVisible = Config.Bind("Container Badges", "Only Visible Containers", true, new ConfigDescription("Badge only containers you can actually see. Off shows every container in range, through walls and floors."));
 			PackHudAnchor = Config.Bind("Pack HUD", "Anchor", GrabMaterials.PackHud.Anchor.BottomLeft, new ConfigDescription("Which corner of the screen the pack HUD sits in. Offsets below are measured from that corner."));
 			PackHudOffsetX = Config.Bind("Pack HUD", "Offset X (px)", 10f, new ConfigDescription("Horizontal distance from the anchored corner."));
@@ -267,6 +274,7 @@ namespace GrabMaterialsMod
 			new Terminal.ConsoleCommand("s", "[search-text] - search for items matching this string in nearby containers", (args) => { FindContainersWithMatchingItems(args); });
 			new Terminal.ConsoleCommand("store", "[items] - stores items randomly nearby containers", (args) => { StoreItemsInNearbyContainers(); });
 			new Terminal.ConsoleCommand("badges", "show or hide the free-slot badges over nearby containers", (args) => { ToggleContainerBadges(); });
+			new Terminal.ConsoleCommand("sort", "merge the stacks in the container you have open and sort it", (args) => { GrabMaterials.ContainerTidy.SortOpenContainer(); });
 		}
 
 		private void InitButtons()

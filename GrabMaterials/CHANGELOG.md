@@ -3,6 +3,7 @@
 ## 2.9.0 — unreleased
 
 - **Right-click a row in the inventory panel to grab that item**: Grab 1, 5, 10 or 20, or type an amount (the field remembers your last amount for that item). Amounts the containers cannot cover are greyed out. The result shows as a HUD line and the panel redraws with the new counts, so you can keep pulling.
+- **Containers tidy themselves when you open them**: partial stacks merge, then the items are laid out by category and name (or Name, Weight or Value, under "Tidy Containers"), the way SimpleSort used to work. `/sort` does it on demand. Armory racks, tombstones and any prefab you list are left alone.
 
 ## 2.8.0 — 2026-11-12
 
