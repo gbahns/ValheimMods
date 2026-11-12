@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.13 — unreleased
+## 0.9.13 — 2026-11-12
 
 **Everyone must update: a 0.9.13 server refuses older clients** (three new synced settings).
 
