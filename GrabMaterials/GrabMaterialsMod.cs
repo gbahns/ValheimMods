@@ -70,6 +70,7 @@ namespace GrabMaterialsMod
 		public ConfigEntry<float> BadgeSize;
 		public ConfigEntry<bool> BadgeHideFull;
 		public ConfigEntry<bool> BadgeOnlyVisible;
+		public ConfigEntry<float> BadgeIconRange;
 		public ConfigEntry<bool> TidyOnOpen;
 		public ConfigEntry<GrabMaterials.ContainerTidy.Order> TidySortOrder;
 		public ConfigEntry<string> TidySkipContainers;
@@ -223,6 +224,7 @@ namespace GrabMaterialsMod
 			TidySortOrder = Config.Bind("Tidy Containers", "Sort Order", GrabMaterials.ContainerTidy.Order.Category, new ConfigDescription("Category = the /inventory panel's categories, then name. Name, Weight and Value are what SimpleSort offered. Within one item, fuller stacks come first."));
 			TidySkipContainers = Config.Bind("Tidy Containers", "Skip Containers", "", new ConfigDescription("Prefab names of containers to leave alone, separated by commas, for chests whose slot positions you arrange yourself. Armory racks and tombstones are always skipped."));
 
+			BadgeIconRange = Config.Bind("Container Badges", "Icon Range", 10f, new ConfigDescription("Within this many meters a badge also shows the icons of the one or two items that take the most slots in the container, so you can tell the wood chest from the stone chest without opening either. 0 turns the icons off.", new AcceptableValueRange<float>(0f, 100f)));
 			BadgeOnlyVisible = Config.Bind("Container Badges", "Only Visible Containers", true, new ConfigDescription("Badge only containers you can actually see. Off shows every container in range, through walls and floors."));
 			PackHudAnchor = Config.Bind("Pack HUD", "Anchor", GrabMaterials.PackHud.Anchor.BottomLeft, new ConfigDescription("Which corner of the screen the pack HUD sits in. Offsets below are measured from that corner."));
 			PackHudOffsetX = Config.Bind("Pack HUD", "Offset X (px)", 10f, new ConfigDescription("Horizontal distance from the anchored corner."));

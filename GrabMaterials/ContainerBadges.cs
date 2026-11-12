@@ -22,6 +22,8 @@ namespace GrabMaterials
 		private const float ScanInterval = 0.2f;
 		private const float RingWidth = 2f;
 		private const float AboveTop = 0.15f;   // meters above the container's collider
+		private const float IconGap = 3f;
+		private const int MaxIcons = 2;
 
 		private sealed class Badge
 		{
@@ -30,6 +32,7 @@ namespace GrabMaterials
 			public Image Ring;
 			public Image Fill;
 			public Text Label;
+			public Image[] Icons;   // up to two, to the right of the disc: what the container mostly holds
 			public Container Owner;
 		}
 
@@ -40,6 +43,7 @@ namespace GrabMaterials
 			public int Free;
 			public bool Empty;
 			public float Distance;
+			public Sprite[] Icons;  // null when out of icon range or empty
 		}
 
 		private static GameObject _root;
@@ -59,6 +63,7 @@ namespace GrabMaterials
 		private static float Size        => Mod?.BadgeSize?.Value ?? 28f;
 		private static bool  HideFull    => Mod?.BadgeHideFull?.Value ?? false;
 		private static bool  OnlyVisible => Mod?.BadgeOnlyVisible?.Value ?? true;
+		private static float IconRange   => Mod?.BadgeIconRange?.Value ?? 10f;
 
 		public static void Tick()
 		{
@@ -131,13 +136,16 @@ namespace GrabMaterials
 					if (hit.collider.GetComponentInParent<Container>() != container) continue;
 				}
 
+				var distance = Mathf.Sqrt(distSq);
+				var empty = inventory.NrOfItems() == 0;
 				_candidates.Add(new Candidate
 				{
 					Container = container,
 					Anchor = anchor,
 					Free = free,
-					Empty = inventory.NrOfItems() == 0,
-					Distance = Mathf.Sqrt(distSq),
+					Empty = empty,
+					Distance = distance,
+					Icons = !empty && distance <= IconRange ? TopIcons(inventory) : null,
 				});
 			}
 		}
@@ -179,7 +187,79 @@ namespace GrabMaterials
 				badge.Label.text = c.Free.ToString();
 				badge.Fill.color = ColorFor(c.Free, c.Empty);
 				badge.Ring.color = c.Empty ? EmptyRing : DarkRing;
+
+				// Item icons sit in a row to the right of the disc, the first one touching it.
+				var iconSize = diameter * 0.95f;
+				var x = diameter / 2f + IconGap + iconSize / 2f;
+				for (var i = 0; i < MaxIcons; i++)
+				{
+					var image = badge.Icons[i];
+					var sprite = c.Icons != null && i < c.Icons.Length ? c.Icons[i] : null;
+					if (sprite == null)
+					{
+						if (image.gameObject.activeSelf) image.gameObject.SetActive(false);
+						continue;
+					}
+					if (!image.gameObject.activeSelf) image.gameObject.SetActive(true);
+					image.sprite = sprite;
+					image.rectTransform.sizeDelta = new Vector2(iconSize, iconSize);
+					image.rectTransform.anchoredPosition = new Vector2(x + i * (iconSize + IconGap), 0f);
+				}
 			}
+		}
+
+		// The one or two items that take the most slots in the container: slots, not counts,
+		// because thirty slots of wood and one stack of coins make a wood chest.  One icon when
+		// a single item holds half or more of the used slots, otherwise the top two.
+		private static readonly Dictionary<string, int> _slotsByName = new Dictionary<string, int>();
+		private static readonly Dictionary<string, Sprite> _iconByName = new Dictionary<string, Sprite>();
+
+		private static Sprite[] TopIcons(Inventory inventory)
+		{
+			_slotsByName.Clear();
+			_iconByName.Clear();
+			var used = 0;
+			foreach (var item in inventory.GetAllItems())
+			{
+				if (item == null || item.m_shared == null) continue;
+				used++;
+				var name = item.m_shared.m_name;
+				_slotsByName.TryGetValue(name, out var slots);
+				_slotsByName[name] = slots + 1;
+				if (!_iconByName.ContainsKey(name))
+				{
+					var icon = IconOf(item);
+					if (icon != null) _iconByName[name] = icon;
+				}
+			}
+			if (used == 0) return null;
+
+			string first = null, second = null;
+			var firstSlots = 0; var secondSlots = 0;
+			foreach (var kv in _slotsByName)
+			{
+				if (!_iconByName.ContainsKey(kv.Key)) continue;
+				if (kv.Value > firstSlots)
+				{
+					second = first; secondSlots = firstSlots;
+					first = kv.Key; firstSlots = kv.Value;
+				}
+				else if (kv.Value > secondSlots)
+				{
+					second = kv.Key; secondSlots = kv.Value;
+				}
+			}
+			if (first == null) return null;
+			if (second == null || firstSlots * 2 >= used) return new[] { _iconByName[first] };
+			return new[] { _iconByName[first], _iconByName[second] };
+		}
+
+		private static Sprite IconOf(ItemDrop.ItemData item)
+		{
+			var icons = item.m_shared.m_icons;
+			if (icons == null || icons.Length == 0) return null;
+			var variant = item.m_variant;
+			return variant >= 0 && variant < icons.Length && icons[variant] != null ? icons[variant] : icons[0];
 		}
 
 		private static readonly Color DarkRing  = new Color(0f, 0f, 0f, 0.75f);
@@ -297,7 +377,21 @@ namespace GrabMaterials
 			outline.effectColor = new Color(0f, 0f, 0f, 0.8f);
 			outline.effectDistance = new Vector2(1f, -1f);
 
-			return new Badge { Root = root, Rect = rect, Ring = ring, Fill = fill, Label = label };
+			var icons = new Image[MaxIcons];
+			for (var i = 0; i < MaxIcons; i++)
+			{
+				var go = new GameObject("Icon" + i, typeof(RectTransform), typeof(Image));
+				go.transform.SetParent(root.transform, false);
+				var image = go.GetComponent<Image>();
+				image.preserveAspect = true;
+				image.raycastTarget = false;
+				image.rectTransform.anchorMin = image.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+				image.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+				go.SetActive(false);
+				icons[i] = image;
+			}
+
+			return new Badge { Root = root, Rect = rect, Ring = ring, Fill = fill, Label = label, Icons = icons };
 		}
 
 		private static Image MakeImage(string name, Transform parent, Color color)

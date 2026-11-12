@@ -10,6 +10,7 @@ Quickly pull materials from nearby chests into your inventory without having to 
 <h3>New in version 2.9.0</h3>
 
 <li>Right-click any row in the inventory panel to grab that item from the nearby containers: Grab 1, 5, 10 or 20, or type an amount (the field remembers your last amount for that item).  Amounts the containers cannot cover are greyed out.  The result shows as a HUD line and the panel redraws with the new counts, so you can keep pulling.  Left-click still highlights the containers.
+<li>Container badges now show what is inside: within 10 m (the "Icon Range" setting) a badge carries the icons of the one or two items that take the most slots in the chest, so you can tell the wood chest from the stone chest without opening either.
 <li>Containers tidy themselves when you open them: partial stacks merge, then the items are laid out by category and name, the way SimpleSort used to work.  Pick Name, Weight or Value instead under "Tidy Containers", turn it off there and use '/sort' on demand, or list prefabs to leave alone.  Armory racks and tombstones are never touched.
 
 <h3>New in version 2.8.0</h3>
