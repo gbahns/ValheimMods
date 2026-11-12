@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.9.2 — 2026-11-11
+
+- Portal markers stand down for the whole of TheGreatestPortal's map, not only while a
+  destination is being chosen, so its "Show on map" no longer draws two markers per portal.
+
 ## 4.9.1 — 2026-11-10
 
 - Sunken crypts wear the swamp key and dvergr bases their lantern, and a catalog line written by an older version is brought along: the correction only touches an entry still holding word for word what this mod used to ship.

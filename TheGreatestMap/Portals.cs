@@ -479,11 +479,16 @@ namespace TheGreatestMap
         private static bool _probed;
 
         /// <summary>
-        /// True while TheGreatestPortal is showing its own portal picker over the map. It draws a
-        /// pin for every portal itself, so the draw-only pins from "Map All Portals" stand down
-        /// while it is up rather than showing every portal twice. Only those stand down: the
-        /// picker shows the map as it normally looks, recorded markers and all. Found by name, so
-        /// there is no reference to that mod and no need for it to be installed.
+        /// True while TheGreatestPortal has its own portal list and pins over the map. It draws a
+        /// pin for every portal itself, so the portal markers drawn from the server's list stand
+        /// down while it is up rather than showing every portal twice. Only those stand down: its
+        /// map shows everything else as it normally looks, recorded markers and all. Found by
+        /// name, so there is no reference to that mod and no need for it to be installed.
+        ///
+        /// Asks for Active, not IsSelecting: that one is true only while a destination is being
+        /// chosen, and left "Show on map" -- which opens the same list to look rather than to
+        /// travel -- drawing both mods' markers on every portal, labelled differently by each.
+        /// IsSelecting is the fallback for a version of that mod old enough not to say Active.
         /// </summary>
         internal static bool PortalPickerOpen()
         {
@@ -493,7 +498,7 @@ namespace TheGreatestMap
                 var type = AccessTools.TypeByName("TheGreatestPortal.MapPicker");
                 if (type != null)
                 {
-                    _pickerOpen = AccessTools.Property(type, "IsSelecting");
+                    _pickerOpen = AccessTools.Property(type, "Active") ?? AccessTools.Property(type, "IsSelecting");
                     _listHovered = AccessTools.Property(type, "ListPointerOver");
                 }
             }
