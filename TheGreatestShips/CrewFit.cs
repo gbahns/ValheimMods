@@ -196,8 +196,15 @@ namespace TheGreatestShips
         {
             var held = new Held { Point = Nearest(own, attachWorld), IsPole = false };
             float bestD = Flat(held.Point - attachWorld).magnitude;
+            // On the Karve the mast's chair IS the mast's pole-sized collider, so the thing held
+            // is the chair's own box, a pole.  (The longship's mast chair has a wide box of its
+            // own, and the pole is found below.)  Until 0.9.13 the Karve took the box path, where
+            // the Hold Fast Offset and the bearing, both applied about a pole, never moved it.
+            if (poles.Contains(own))
+                held = new Held { Point = held.Point, IsPole = true, Axis = own.transform.TransformPoint(own.center), Radius = poleRadius };
             foreach (var pole in poles)
             {
+                if (pole == own) continue;
                 var n = Nearest(pole, attachWorld);
                 float dist = Flat(n - attachWorld).magnitude;
                 if (dist < 1.5f && dist < bestD)
