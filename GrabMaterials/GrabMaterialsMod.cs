@@ -212,7 +212,7 @@ namespace GrabMaterialsMod
 			PackHudToggleKey = Config.Bind("Pack HUD", "Toggle Key", new KeyboardShortcut(KeyCode.O), new ConfigDescription("Key to show or hide the pack HUD."));
 
 			ShowContainerBadges = Config.Bind("Container Badges", "Enabled", true, new ConfigDescription("Show a round badge over each nearby container with its number of free slots: green when there is room, amber at 3 or fewer, red when full. The toggle key and /badges flip this setting, so the state persists."));
-			BadgeToggleKey = Config.Bind("Container Badges", "Toggle Key", new KeyboardShortcut(KeyCode.B), new ConfigDescription("Key to show or hide the container badges."));
+			BadgeToggleKey = Config.Bind("Container Badges", "Toggle Key", new KeyboardShortcut(KeyCode.Slash), new ConfigDescription("Key to show or hide the container badges."));
 			BadgeRange = Config.Bind("Container Badges", "Range", 15f, new ConfigDescription("How far away (in meters) a container can be and still get a badge. Separate from Container Range: this is about what you can read from where you stand.", new AcceptableValueRange<float>(1f, 100f)));
 			BadgeSize = Config.Bind("Container Badges", "Size", 28f, new ConfigDescription("Badge diameter in pixels at 8 m. Nearer badges grow a little, farther ones shrink.", new AcceptableValueRange<float>(12f, 80f)));
 			BadgeHideFull = Config.Bind("Container Badges", "Hide Full Containers", false, new ConfigDescription("Leave full containers without a badge instead of showing a red 0."));
