@@ -2,9 +2,9 @@
 # (https://github.com/users/gbahns/projects/1) in Backlog, and sets its Mod when the title
 # names one. The built-in auto-add workflow is not available on this account's project.
 #
-# Needs the repo secret ADD_TO_PROJECT_PAT: a fine-grained token for gbahns with
-# Projects: read and write (account) and Issues + Pull requests: read (this repo).
-# The default GITHUB_TOKEN cannot write to a user-level project.
+# Needs the repo secret ADD_TO_PROJECT_PAT: a CLASSIC personal access token with the
+# `project` scope (plus `repo` only if the repo ever goes private). Fine-grained tokens
+# cannot access user-owned projects yet, and the default GITHUB_TOKEN cannot either.
 name: Add to board
 
 on:
