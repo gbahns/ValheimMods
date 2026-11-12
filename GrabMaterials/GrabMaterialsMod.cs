@@ -64,6 +64,12 @@ namespace GrabMaterialsMod
 		public ConfigEntry<float> PackHudOffsetY;
 		public ConfigEntry<bool> PackHudShowBuildPieceKey;
 		public ConfigEntry<bool> PackHudHideUndiscovered;
+		public ConfigEntry<bool> ShowContainerBadges;
+		public ConfigEntry<KeyboardShortcut> BadgeToggleKey;
+		public ConfigEntry<float> BadgeRange;
+		public ConfigEntry<float> BadgeSize;
+		public ConfigEntry<bool> BadgeHideFull;
+		public ConfigEntry<bool> BadgeOnlyVisible;
 		private ButtonConfig GrabSelectedPieceMatsButton;
 		//private ConfigEntry<KeyCode> GrabPortalMatsKeyboardConfig;
 		//private ConfigEntry<InputManager.GamepadButton> GrabPortalMatsGamepadConfig;
@@ -204,6 +210,13 @@ namespace GrabMaterialsMod
 
 			ShowPackHud = Config.Bind("Pack HUD", "Show Pack HUD", true, new ConfigDescription("Show a small on-screen list of your grab packs and their hotkeys, like the quick-slot labels in AzuExtendedPlayerInventory. Packs with no items are left out. The toggle key below flips this setting, so the state persists."));
 			PackHudToggleKey = Config.Bind("Pack HUD", "Toggle Key", new KeyboardShortcut(KeyCode.O), new ConfigDescription("Key to show or hide the pack HUD."));
+
+			ShowContainerBadges = Config.Bind("Container Badges", "Enabled", true, new ConfigDescription("Show a round badge over each nearby container with its number of free slots: green when there is room, amber at 3 or fewer, red when full. The toggle key and /badges flip this setting, so the state persists."));
+			BadgeToggleKey = Config.Bind("Container Badges", "Toggle Key", new KeyboardShortcut(KeyCode.B), new ConfigDescription("Key to show or hide the container badges."));
+			BadgeRange = Config.Bind("Container Badges", "Range", 15f, new ConfigDescription("How far away (in meters) a container can be and still get a badge. Separate from Container Range: this is about what you can read from where you stand.", new AcceptableValueRange<float>(1f, 100f)));
+			BadgeSize = Config.Bind("Container Badges", "Size", 28f, new ConfigDescription("Badge diameter in pixels at 8 m. Nearer badges grow a little, farther ones shrink.", new AcceptableValueRange<float>(12f, 80f)));
+			BadgeHideFull = Config.Bind("Container Badges", "Hide Full Containers", false, new ConfigDescription("Leave full containers without a badge instead of showing a red 0."));
+			BadgeOnlyVisible = Config.Bind("Container Badges", "Only Visible Containers", true, new ConfigDescription("Badge only containers you can actually see. Off shows every container in range, through walls and floors."));
 			PackHudAnchor = Config.Bind("Pack HUD", "Anchor", GrabMaterials.PackHud.Anchor.BottomLeft, new ConfigDescription("Which corner of the screen the pack HUD sits in. Offsets below are measured from that corner."));
 			PackHudOffsetX = Config.Bind("Pack HUD", "Offset X (px)", 10f, new ConfigDescription("Horizontal distance from the anchored corner."));
 			PackHudOffsetY = Config.Bind("Pack HUD", "Offset Y (px)", 300f, new ConfigDescription("Vertical distance from the anchored corner. The default clears the health and stamina bars in the bottom-left."));
@@ -253,6 +266,7 @@ namespace GrabMaterialsMod
 			new Terminal.ConsoleCommand("search", "[search-text] - search for items matching this string in nearby containers", (args) => { FindContainersWithMatchingItems(args); });
 			new Terminal.ConsoleCommand("s", "[search-text] - search for items matching this string in nearby containers", (args) => { FindContainersWithMatchingItems(args); });
 			new Terminal.ConsoleCommand("store", "[items] - stores items randomly nearby containers", (args) => { StoreItemsInNearbyContainers(); });
+			new Terminal.ConsoleCommand("badges", "show or hide the free-slot badges over nearby containers", (args) => { ToggleContainerBadges(); });
 		}
 
 		private void InitButtons()
@@ -366,6 +380,7 @@ namespace GrabMaterialsMod
 			GrabMaterials.MaterialsPanel.Tick();
 			GrabMaterials.DistanceHud.Tick();
 			GrabMaterials.PackHud.Tick();
+			GrabMaterials.ContainerBadges.Tick();
 			GrabMaterials.PanelPause.Refresh();
 
 			if (Player.m_localPlayer && Chat.instance && !Chat.instance.IsChatDialogWindowVisible())
@@ -402,6 +417,11 @@ namespace GrabMaterialsMod
 					GrabMaterials.PackHud.Refresh();
 				}
 
+				if (BadgeToggleKey.Value.IsDown() && !GuiHasFocus())
+				{
+					ToggleContainerBadges();
+				}
+
 				foreach (var grabPack in GrabPacks)
 				{
 					if (grabPack.Button != null && ZInput.GetButtonDown(grabPack.Button.Name))
@@ -415,6 +435,15 @@ namespace GrabMaterialsMod
 		void OnDestroy()
 		{
 			harmony.UnpatchSelf();
+		}
+
+		private static void ToggleContainerBadges()
+		{
+			var mod = Instance;
+			if (mod?.ShowContainerBadges == null) return;
+			mod.ShowContainerBadges.Value = !mod.ShowContainerBadges.Value;
+			GrabMaterials.ContainerBadges.Refresh();
+			Player.m_localPlayer?.Message(MessageHud.MessageType.TopLeft, mod.ShowContainerBadges.Value ? "Container badges on" : "Container badges off");
 		}
 
 		//private static List<GameObject> GetPrefabs()

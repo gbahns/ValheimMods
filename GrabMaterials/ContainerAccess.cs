@@ -30,6 +30,27 @@ namespace GrabMaterials
 		// True when vanilla would open this container for the local player right now.
 		internal static bool CanOpen(Container container, out string reason)
 		{
+			if (!HasAccess(container, out reason)) return false;
+
+			// Container.IsInUse() is a local field only the owner keeps current; the owner publishes
+			// it on the ZDO for everyone else, which is what draws the open-lid visual.
+			var nview = NetView(container);
+			if (nview != null && nview.IsValid())
+			{
+				var inUse = nview.IsOwner() ? container.IsInUse() : nview.GetZDO().GetInt(ZDOVars.s_inUse) == 1;
+				if (inUse)
+				{
+					reason = "in use";
+					return false;
+				}
+			}
+			return true;
+		}
+
+		// The lasting part of CanOpen: wards and the container's privacy setting.  Someone
+		// having it open right now is not held against it here.
+		internal static bool HasAccess(Container container, out string reason)
+		{
 			reason = null;
 			if (container == null) return false;
 
@@ -55,19 +76,6 @@ namespace GrabMaterials
 				default:
 					reason = "group";
 					return false;
-			}
-
-			// Container.IsInUse() is a local field only the owner keeps current; the owner publishes
-			// it on the ZDO for everyone else, which is what draws the open-lid visual.
-			var nview = NetView(container);
-			if (nview != null && nview.IsValid())
-			{
-				var inUse = nview.IsOwner() ? container.IsInUse() : nview.GetZDO().GetInt(ZDOVars.s_inUse) == 1;
-				if (inUse)
-				{
-					reason = "in use";
-					return false;
-				}
 			}
 			return true;
 		}
