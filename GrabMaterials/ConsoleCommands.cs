@@ -294,8 +294,8 @@ namespace GrabMaterials
 				return null;
 			}
 			Log.LogInfo("looking for prefab...");
-			Log.LogInfo($"ZNetScene.instance has {ZNetScene.instance.m_prefabs.Count} prefabs");
-			var prefab = ZNetScene.instance.m_prefabs.Find(_prefab => _prefab.name == pieceName);
+			// GetPrefab reads the hash dictionary, which holds every registered prefab.
+			var prefab = ZNetScene.instance.GetPrefab(pieceName);
 			if (prefab == null)
 			{
 				Log.LogError($"No prefab found for {pieceName}");
@@ -773,6 +773,33 @@ namespace GrabMaterials
 			}
 		}
 
+		// Every prefab ZNetScene knows.  m_prefabs is the list the game filled at startup; a mod
+		// that registers a prefab later (TheGreatestShips, and anything else that avoids Jotunn's
+		// PieceManager on 1.0) puts it only in the private hash dictionary m_namedPrefabs, which is
+		// what the game itself looks things up in.  Walking only the list missed every such piece,
+		// so "/g Fast Longship" found nothing (#60).
+		private static AccessTools.FieldRef<ZNetScene, Dictionary<int, GameObject>> _namedPrefabsRef;
+
+		private static IEnumerable<GameObject> AllNetPrefabs()
+		{
+			var seen = new HashSet<GameObject>();
+			foreach (var prefab in ZNetScene.instance.m_prefabs)
+				if (prefab != null && seen.Add(prefab)) yield return prefab;
+			Dictionary<int, GameObject> named = null;
+			try
+			{
+				if (_namedPrefabsRef == null) _namedPrefabsRef = AccessTools.FieldRefAccess<ZNetScene, Dictionary<int, GameObject>>("m_namedPrefabs");
+				named = _namedPrefabsRef(ZNetScene.instance);
+			}
+			catch (Exception e)
+			{
+				Log.LogWarning($"cannot read ZNetScene.m_namedPrefabs; pieces registered outside the prefab list will be missing: {e.Message}");
+			}
+			if (named == null) yield break;
+			foreach (var prefab in named.Values)
+				if (prefab != null && seen.Add(prefab)) yield return prefab;
+		}
+
 		private static void BuildPieceLookUp()
 		{
 			// ObjectDB contains all prefabs, including pieces.
@@ -785,9 +812,9 @@ namespace GrabMaterials
 			}
 
 			Log.LogInfo("building lookup table for all build pieces");
-			foreach (var prefab in ZNetScene.instance.m_prefabs)
+			foreach (var prefab in AllNetPrefabs())
 			{
-				if (prefab.TryGetComponent<Piece>(out var piece))
+				if (prefab != null && prefab.TryGetComponent<Piece>(out var piece))
 				{
 					if (prefab.name.ContainsAny("loot_chest", "TreasureChest"))
 					{

@@ -3,6 +3,7 @@
 ## 2.7.0 — unreleased
 
 - The grab results now say how much of each material is **left in the nearby containers**, as "(180 left nearby)", so you know whether the next build will find any.
+- **Fixed: pieces from some mods could not be grabbed by name**, such as `/g Fast Longship` from TheGreatestShips. The piece list came from the game's startup prefab list, and a mod that registers its pieces later puts them only in the game's lookup dictionary. Both are read now, so any piece the hammer can build can be grabbed for.
 - **Fixed: a pack entry with a space in its name, such as "Stone Cutter" or "Shield Generator", was never found.** The default Pack 6 had two of them. Piece names now match with or without spaces, the way item names already did.
 - **Fixed: seeds the mod did not know by name were sorted as plants** instead of seeds.
 - Internal cleanup: dead code removed, the container registry simplified, a teleport cleanup that never removed anything now does, and a typo in a setting description fixed.
