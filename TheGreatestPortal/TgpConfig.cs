@@ -1,3 +1,4 @@
+using System;
 using BepInEx.Configuration;
 using UnityEngine;
 
@@ -25,6 +26,8 @@ namespace TheGreatestPortal
         internal static ConfigEntry<bool> ShowDistances;
         internal static ConfigEntry<bool> GroupByBiome;
         internal static ConfigEntry<string> CollapsedGroups;
+        internal static ConfigEntry<bool> CombinedRecents;
+        internal static ConfigEntry<int> CombinedRecentsCount;
         internal static ConfigEntry<int> RecentPortals;
         internal static ConfigEntry<int> OthersRecentPortals;
         internal static ConfigEntry<int> RecentlyCreatedPortals;
@@ -32,9 +35,24 @@ namespace TheGreatestPortal
         internal static ConfigEntry<string> PanelPosition;
         internal static ConfigEntry<int> ListScrollRows;
         internal static ConfigEntry<float> AutoCloseGraceSeconds;
-        internal static ConfigEntry<bool> ShowPortalListOnMap;
         internal static ConfigEntry<string> MapListSize;
         internal static ConfigEntry<string> MapListPosition;
+
+        // ── how it looks ────────────────────────────────────────────────────────────
+        internal static ConfigEntry<Color> RowColorMine;
+        internal static ConfigEntry<Color> RowColorOthers;
+        internal static ConfigEntry<float> RowColorStrength;
+        internal static ConfigEntry<bool> RowColorPatterns;
+        internal static ConfigEntry<float> PanelOpacity;
+
+        /// <summary>
+        /// Raised when a setting that changes nothing but how things look is changed.
+        ///
+        /// What is already on screen follows it. These are the settings a player sets by looking
+        /// at the result, and a color you have to close and reopen a panel to see is a color
+        /// nobody lands on.
+        /// </summary>
+        internal static event Action AppearanceChanged;
 
         internal static void Bind(TheGreatestPortalMod mod)
         {
@@ -67,8 +85,9 @@ namespace TheGreatestPortal
                 "counts; you do not have to be standing at it.");
 
             TogglePinsKey = mod.BindLocal("Keys", "Toggle Portal Pins", new KeyboardShortcut(KeyCode.P),
-                "While the large map is open: show or hide every portal on the map, with the portal list on the left. " +
-                "Click a portal there to center the map on it; right-click to mark it as a favorite.");
+                "While the large map is open and you are not choosing a destination: show or hide the portal " +
+                "pins, whichever way \"Show Pins In Normal Map View\" leaves them. Does nothing while another " +
+                "mod is already marking the portals.");
 
             DetourKey = mod.BindLocal("Keys", "Detour Key", new KeyboardShortcut(KeyCode.LeftAlt),
                 "Hold this as you step into a portal to go somewhere else just this once: the destination map " +
@@ -77,9 +96,11 @@ namespace TheGreatestPortal
 
             ShowMessages = mod.BindLocal("Display", "Show Messages", true,
                 "Show small top-left messages when a portal is configured, a favorite is added, and so on.");
-            ShowPinsOnMap = mod.BindLocal("Display", "Always Show Portal Pins", false,
-                "Draw every portal on the large map all the time, not only after pressing the toggle key or while " +
-                "choosing a destination.");
+            ShowPinsOnMap = mod.BindLocal("Display", "Show Pins In Normal Map View", false,
+                "Draw every portal on the large map when you are not at a portal: markers only, with no list and " +
+                "nothing to click. This does nothing while another mod is already marking the portals -- " +
+                "TheGreatestMap draws them all by itself, and others do too -- because two pins on one portal " +
+                "is worse than neither mod drawing it.");
             ShowDistances = mod.BindLocal("Display", "Show Distances", true,
                 "Show how far away each portal is in the destination lists.");
             GroupByBiome = mod.BindLocal("Display", "Group By Biome", false,
@@ -88,6 +109,15 @@ namespace TheGreatestPortal
             CollapsedGroups = mod.BindLocal("Display", "Collapsed Groups", "",
                 "Which groups are folded away in the destination lists, kept between sessions. Click a group's " +
                 "header, or Expand all / Collapse all, in the lists themselves rather than editing this.");
+            CombinedRecents = mod.BindLocal("Display", "One Combined Recents List", true,
+                "Show a single Recents section instead of three: the portals most recently used or built by " +
+                "anybody, newest first. The row's background says who -- blue for a portal only you have " +
+                "been through, green once anybody else has, each banded as well. Off gives the three " +
+                "separate sections instead. " +
+                "Right-click any Recents heading in a list to switch.");
+            CombinedRecentsCount = mod.BindLocalRangeInt("Display", "Combined Recents Count", 15, 0, 50,
+                "How many portals the combined Recents section shows. 0 leaves it out. More history than this " +
+                "is kept, so raising it fills in at once rather than from then on.");
             RecentPortals = mod.BindLocalRangeInt("Display", "Recent Portals", 5, 0, 20,
                 "How many portals the Recents section at the top of the lists shows: the ones you most recently " +
                 "traveled to or from, newest first. They keep their usual place in the list as well. 0 hides the section.");
@@ -107,12 +137,38 @@ namespace TheGreatestPortal
                 "its heading. Set to 20,-12 to put it back.");
             ListScrollRows = mod.BindLocalRangeInt("Display", "List Scroll Rows", 4, 1, 20,
                 "How many rows a destination list moves per notch of the mouse wheel.");
-            ShowPortalListOnMap = mod.BindLocal("Display", "Show Portal List On Map", true,
-                "Show the list of portals on the left of the map while choosing a destination. With it off, only " +
-                "the pins are clickable.");
             AutoCloseGraceSeconds = mod.BindLocalRange("Display", "Auto Close Grace Seconds", 0.5f, 0f, 3f,
                 "When you leave an open portal's doorway while its destination map is up, the map closes after this " +
                 "many seconds. 0 keeps it open until you close it.");
+
+            RowColorMine = mod.BindLocal("Appearance", "Row Color Yours Alone", UiKit.DefaultRowMine,
+                "The background color of a portal you are the only one to have been through. Only the hue is " +
+                "taken from this; Row Color Strength decides how strongly it is painted.");
+            RowColorOthers = mod.BindLocal("Appearance", "Row Color Used By Others", UiKit.DefaultRowTheirs,
+                "The background color of a portal another player has been through, whether or not you have. Only " +
+                "the hue is taken from this; Row Color Strength decides how strongly it is painted.");
+            RowColorStrength = mod.BindLocalRange("Appearance", "Row Color Strength", UiKit.DefaultRowStrength, 0f, 0.6f,
+                "How strongly those two colors are painted over a row. 0 leaves every row plain. One setting for " +
+                "both colors, so neither of them ends up looking like it means more than the other.");
+            RowColorPatterns = mod.BindLocal("Appearance", "Row Color Patterns", true,
+                "Band a tinted row diagonally in its own color as well: leaning right for a portal only you " +
+                "have been through, leaning left once another player has. Two colors alone leave out the " +
+                "players who cannot tell them apart, and a direction reads the same in grey.");
+            PanelOpacity = mod.BindLocalRange("Appearance", "Panel Opacity", 1f, 0.15f, 1f,
+                "How solid the portal panel and the portal list on the map are, as a fraction of their usual look. " +
+                "1 is as they have always been; lower lets more of the map and the world through. The text, the " +
+                "buttons and the rows are not touched.");
+
+            // The panels watch these rather than read them once, so a color or a slider lands while
+            // you are looking at the thing it changes. Watched by section rather than one entry at a
+            // time, so a setting added to Appearance later is carried without anyone remembering to.
+            mod.Config.SettingChanged += (_, args) =>
+            {
+                if (args == null || args.ChangedSetting == null) return;
+                if (args.ChangedSetting.Definition.Section != "Appearance") return;
+                var handler = AppearanceChanged;
+                if (handler != null) handler();
+            };
         }
     }
 }

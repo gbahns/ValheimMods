@@ -55,6 +55,17 @@ namespace TheGreatestPortal
         private static readonly List<long> _rowIds = new List<long>();
         private static List<ListEntry> _entries = new List<ListEntry>();
 
+        /// <summary>The prompt's own background art, each piece under a group whose alpha is how
+        /// see-through the panel is. Rebuilt with the panel, so it is cleared as one is built.</summary>
+        private static readonly List<CanvasGroup> _backdrop = new List<CanvasGroup>();
+
+        /// <summary>Art on the panel itself rather than on a child of it, if the prompt has any.
+        /// It cannot take a group of its own -- everything in the panel is inside it, text and all
+        /// -- so it is faded by its own color, against the alpha it was built with.</summary>
+        private static Graphic _rootArt;
+        private static float _rootArtAlpha = 1f;
+        private static bool _appearanceHooked;
+
         // Renaming a portal in the list: one text box that moves onto the row being edited.
         private static readonly RowRename _rename = new RowRename();
 
@@ -154,6 +165,7 @@ namespace TheGreatestPortal
 
         internal static void Close()
         {
+            UiKit.HideTip();
             _rename.Cancel();
             UiKit.ContextMenu.Close();
             if (_root != null && _root.activeSelf)
@@ -246,10 +258,14 @@ namespace TheGreatestPortal
                 if (e.IsHeader)
                 {
                     string key = e.GroupKey;
-                    AddRow(HeaderId, UiKit.SectionHeader(_listContent, e.Title, key == null ? null : (Action)(() => { PortalList.ToggleCollapsed(key); Populate(); }), key == null ? (bool?)null : e.Collapsed));
+                    AddRow(HeaderId, UiKit.SectionHeader(_listContent, e.Title,
+                        key == null ? null : (Action)(() => { PortalList.ToggleCollapsed(key); Populate(); }),
+                        key == null ? (bool?)null : e.Collapsed,
+                        e.RecentsHeader ? (Action)(() => { PortalList.ToggleCombinedRecents(); Populate(); }) : null,
+                        e.Tip, _content));
                     continue;
                 }
-                AddPortalRow(e.Portal, e.Favorite);
+                AddPortalRow(e.Portal, e.Favorite, e.Tint);
                 if (e.Portal.Id == _selected) selectedPresent = true;
             }
             if (!selectedPresent)
@@ -270,7 +286,32 @@ namespace TheGreatestPortal
             UpdateRedirectButton();   // the catalog may have changed who leads here
         }
 
-        private static void AddPortalRow(PortalInfo p, bool fav)
+        /// <summary>
+        /// The panel following the appearance settings, without being closed and opened again.
+        ///
+        /// The rows only need telling to paint themselves: each holds what its color means, not
+        /// the color, so it reads the settings as it paints. Subscribed for the life of the game,
+        /// so it has to survive the panel being gone -- a rack dies with the HUD, and this panel
+        /// is rebuilt the same way.
+        /// </summary>
+        private static void ApplyAppearance()
+        {
+            float opacity = UiKit.PanelOpacity;
+            for (int i = _backdrop.Count - 1; i >= 0; i--)
+            {
+                if (_backdrop[i] == null) { _backdrop.RemoveAt(i); continue; }
+                _backdrop[i].alpha = opacity;
+            }
+            if (_rootArt != null)
+            {
+                var c = _rootArt.color;
+                _rootArt.color = new Color(c.r, c.g, c.b, _rootArtAlpha * opacity);
+            }
+            for (int i = 0; i < _rows.Count; i++)
+                if (_rows[i] != null) _rows[i].Refresh();
+        }
+
+        private static void AddPortalRow(PortalInfo p, bool fav, UiKit.RowTint tint = UiKit.RowTint.None)
         {
             var captured = p;
             string dist = TgpConfig.ShowDistances.Value ? UiKit.Distance(_pos, p.Pos) : null;
@@ -287,6 +328,9 @@ namespace TheGreatestPortal
                 16f, fav ? UiKit.Gold : (Color?)null,
                 () => { Choose(captured.Id, index); Apply(); },    // double-click: choose and confirm
                 PortalList.DestinationText(p), icons);
+            row.Tint = tint;
+            row.SetTip(() => PortalList.TipFor(captured), _content);
+            row.Refresh();
             AddRow(p.Id, row);
         }
 
@@ -529,6 +573,8 @@ namespace TheGreatestPortal
                 return false;
             }
             UiKit.EnsureFont();
+            _backdrop.Clear();
+            _rootArt = null;
 
             string topicPath = src.m_topic != null ? UiKit.PathBelow(src.m_topic.transform, src.m_panel.transform) : null;
 
@@ -607,9 +653,21 @@ namespace TheGreatestPortal
                     child.SetParent(content.transform, false);
                     child.SetAsFirstSibling();
                     UiKit.Stretch(child.GetComponent<RectTransform>());
+                    var group = child.GetComponent<CanvasGroup>();
+                    if (group == null) group = child.gameObject.AddComponent<CanvasGroup>();
+                    _backdrop.Add(group);
                 }
                 else UnityEngine.Object.Destroy(child.gameObject);
             }
+
+            _rootArt = _root.GetComponent<Graphic>();
+            if (_rootArt != null) _rootArtAlpha = _rootArt.color.a;
+            if (!_appearanceHooked)
+            {
+                _appearanceHooked = true;
+                TgpConfig.AppearanceChanged += ApplyAppearance;
+            }
+            ApplyAppearance();
 
             var rt = _root.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0.5f, 0.5f);

@@ -12,6 +12,15 @@ namespace TheGreatestPortal
         public bool Collapsed;
         public PortalInfo Portal;
         public bool Favorite;
+
+        /// <summary>What this row's background says, where the color means something.</summary>
+        public UiKit.RowTint Tint;
+
+        /// <summary>What hovering this row or heading says.</summary>
+        public string Tip;
+
+        /// <summary>A Recents heading: right-clicking it switches between one list and three.</summary>
+        public bool RecentsHeader;
     }
 
     /// <summary>
@@ -26,6 +35,29 @@ namespace TheGreatestPortal
         internal const string RecentsKey = "recents";
         internal const string OthersKey = "others";
         internal const string CreatedKey = "created";
+
+        private const string CombinedTip =
+            "Blue, bands leaning right: you are the only one who has been through it.\n" +
+            "Green, bands leaning left: other players have.\n" +
+            "Right-click to switch to separate lists.";
+
+        private const string SeparateTip = "Right-click to switch to one combined Recents list.";
+
+        /// <summary>Whether the three recent sections are shown as one.</summary>
+        internal static bool Combined => TgpConfig.CombinedRecents == null || TgpConfig.CombinedRecents.Value;
+
+        /// <summary>
+        /// Switches between one Recents list and three. Right-clicking any of those headings does
+        /// this, which is the only way to it besides the setting itself: it is a way of reading the
+        /// list rather than a thing the list does, and it belongs where the reading happens.
+        /// </summary>
+        internal static void ToggleCombinedRecents()
+        {
+            var cfg = TgpConfig.CombinedRecents;
+            if (cfg == null) return;
+            cfg.Value = !cfg.Value;
+            TheGreatestPortalMod.Message(cfg.Value ? "Recents: one combined list" : "Recents: three separate lists", always: true);
+        }
 
         private static readonly Dictionary<long, Heightmap.Biome> _biomes = new Dictionary<long, Heightmap.Biome>();
         private static HashSet<string> _collapsed;
@@ -143,9 +175,18 @@ namespace TheGreatestPortal
             all.Sort(ByName);
             var entries = new List<ListEntry>();
             var above = new HashSet<long>();   // what the sections on top have already shown
-            AddRecents(entries, above, exclude, excludeZdo, query);
-            AddOthersRecents(entries, above, exclude, excludeZdo, query);
-            AddRecentlyCreated(entries, above, exclude, excludeZdo, query);
+            if (Combined) AddCombinedRecents(entries, above, exclude, excludeZdo, query);
+            else
+            {
+                // No portal appears in more than one of the three. Each is asked to skip whatever
+                // the sections above it have already shown, which is what `above` is for: three
+                // headings read as one block of recents, and the same row twice in it looks like a
+                // bug whatever the headings say. A section coming up one row short is the cheaper
+                // of the two.
+                AddRecents(entries, above, exclude, excludeZdo, query);
+                AddOthersRecents(entries, above, exclude, excludeZdo, query);
+                AddRecentlyCreated(entries, above, exclude, excludeZdo, query);
+            }
             bool haveTop = entries.Count > 0;
 
             if (!groupByBiome)
@@ -195,6 +236,155 @@ namespace TheGreatestPortal
         }
 
         /// <summary>
+        /// One Recents section in place of three: everything that has lately happened to a portal,
+        /// in one order, newest first -- you went through it, somebody else did, or it was built
+        /// and nobody has yet. Three lists of five answer "where have I been", "where has everyone
+        /// else been" and "what is new" separately; most of the time the question is the one they
+        /// share, which is what has been going on.
+        ///
+        /// Which of the three a row is comes from its color rather than from a heading, and the
+        /// details from hovering it. Only the catalog is read, never this player's own history
+        /// file: the catalog says who was last at every portal in the world, which is the whole
+        /// of what this orders by, and it goes back as far as the portals do -- so raising the
+        /// count fills in at once instead of from now on.
+        /// </summary>
+        private static void AddCombinedRecents(List<ListEntry> entries, HashSet<long> above, long exclude, ZDOID excludeZdo, string query)
+        {
+            int limit = TgpConfig.CombinedRecentsCount != null ? TgpConfig.CombinedRecentsCount.Value : 0;
+            if (limit <= 0) return;
+            var candidates = new List<PortalInfo>();
+            foreach (var p in Catalog.All)
+            {
+                if (When(p) <= 0L) continue;   // nothing recorded: not news either way
+                if (exclude != 0L && p.Id == exclude) continue;
+                if (excludeZdo != ZDOID.None && p.ZdoId == excludeZdo) continue;
+                if (!Matches(p, query)) continue;
+                candidates.Add(p);
+            }
+            candidates.Sort((a, b) => When(b).CompareTo(When(a)));
+            var shown = Take(candidates, above, limit);
+            if (shown.Count == 0) return;
+            foreach (var pi in shown) above.Add(pi.Id);
+            bool collapsed = IsCollapsed(RecentsKey);
+            var header = Header($"Recents ({shown.Count})", RecentsKey, collapsed);
+            header.RecentsHeader = true;
+            header.Tip = CombinedTip;
+            entries.Add(header);
+            if (collapsed) return;
+            foreach (var pi in shown)
+                entries.Add(new ListEntry
+                {
+                    Portal = pi,
+                    Favorite = Favorites.IsFavorite(pi.Id),
+                    Tint = TintFor(pi),
+                });
+        }
+
+        /// <summary>When a portal last had anything happen to it: gone through, or failing that built.</summary>
+        internal static long When(PortalInfo p)
+        {
+            if (p == null) return 0L;
+            return p.UsedAt > p.Born ? p.UsedAt : p.Born;
+        }
+
+        /// <summary>Whether a name is this player's own.</summary>
+        private static bool IsMe(string who)
+        {
+            if (string.IsNullOrEmpty(who)) return false;
+            string me = Player.m_localPlayer != null ? Player.m_localPlayer.GetPlayerName() : "";
+            return !string.IsNullOrEmpty(me) && string.Equals(who, me, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Everyone who has been through a portal, newest first.
+        ///
+        /// The log is what the server has recorded since it began keeping one. A portal last used
+        /// before that has only the single name the older record kept, which is still worth
+        /// saying, so it stands in as a log of one.
+        /// </summary>
+        internal static List<PortalData.Visit> Visits(PortalInfo p)
+        {
+            var visits = p != null ? PortalData.ParseVisits(p.UsedLog) : new List<PortalData.Visit>();
+            if (visits.Count == 0 && p != null && p.UsedAt > 0L)
+                visits.Add(new PortalData.Visit(string.IsNullOrEmpty(p.UsedBy) ? "Someone" : p.UsedBy, p.UsedAt));
+            return visits;
+        }
+
+        /// <summary>
+        /// What color says who uses a portal: blue if you are the only one who has been through
+        /// it, green once anybody else has, and the plain row if nobody has at all.
+        ///
+        /// Anyone else having used it outranks your having used it, because that is the thing
+        /// worth seeing at a glance: blue is a portal that is yours alone. It reads the whole log
+        /// rather than the last trip, so a portal stays green after you pass through it. Your own
+        /// trips come from your own file as well as from the log, so a portal only you use is
+        /// blue from the start rather than once the server has seen you go through it.
+        /// </summary>
+        private static UiKit.RowTint TintFor(PortalInfo p)
+        {
+            if (p == null) return UiKit.RowTint.None;
+            bool mine = false;
+            foreach (var v in Visits(p))
+            {
+                if (!IsMe(v.Who)) return UiKit.RowTint.Theirs;
+                mine = true;
+            }
+            if (!mine) mine = Favorites.HasUsed(p.Id);
+            return mine ? UiKit.RowTint.Mine : UiKit.RowTint.None;
+        }
+
+        /// <summary>
+        /// Who has been through a portal and who built it, for hovering the row: the trips newest
+        /// first, and the building last, because that is the oldest thing that happened to it.
+        /// </summary>
+        internal static string TipFor(PortalInfo p)
+        {
+            if (p == null) return null;
+            var lines = new List<string>();
+            bool mine = false;
+            foreach (var v in Visits(p))
+            {
+                if (IsMe(v.Who)) mine = true;
+                lines.Add(IsMe(v.Who) ? $"You {Ago(v.At)}" : $"{v.Who} {Ago(v.At)}");
+            }
+            // Your own file remembers trips the server's log is too young to have seen. It keeps no
+            // times, so this one goes last among the trips: everything above it is dated, and a
+            // line with no date cannot claim a place among them.
+            if (!mine && Favorites.HasUsed(p.Id)) lines.Add("You at some point");
+            if (lines.Count == 0) lines.Add("Nobody has been through it yet");
+            lines.Add(p.Born <= 0L
+                ? "Built a long time ago"
+                : string.IsNullOrEmpty(p.BornBy)
+                    ? "Built " + Ago(p.Born)
+                    : $"Built by {p.BornBy} {Ago(p.Born)}");
+            return string.Join("\n", lines.ToArray());
+        }
+
+        /// <summary>
+        /// How long ago a world second was, in words.
+        ///
+        /// The world's own clock, not the wall clock: it stands still while nobody is playing, so
+        /// "ten minutes ago" is ten minutes of the world being lived in rather than ten minutes
+        /// that might have been spent asleep. A day here is a day of that, not an in-game day.
+        /// </summary>
+        internal static string Ago(long worldSecond)
+        {
+            long now = PortalData.Now();
+            if (now <= 0L || worldSecond <= 0L) return "at some point";
+            long since = now - worldSecond;
+            if (since < 0L) return "at some point";
+            if (since < 60L) return "just now";
+            if (since < 3600L) return $"{since / 60L} min ago";
+            if (since < 86400L)
+            {
+                long hours = since / 3600L;
+                return hours == 1L ? "an hour ago" : $"{hours} hours ago";
+            }
+            long days = since / 86400L;
+            return days == 1L ? "a day ago" : $"{days} days ago";
+        }
+
+        /// <summary>
         /// The Recents section: newest first, as many as the setting asks for, counted after the
         /// portal you are standing at and any gone or filtered-out ones are skipped.
         /// </summary>
@@ -207,13 +397,14 @@ namespace TheGreatestPortal
             {
                 if (shown.Count >= limit) break;
                 if (exclude != 0L && id == exclude) continue;
+                if (above.Contains(id)) continue;   // nothing is above this one today; the rule holds anyway
                 var p = Catalog.Get(id);
                 if (p == null) continue;
                 if (excludeZdo != ZDOID.None && p.ZdoId == excludeZdo) continue;
                 if (!Matches(p, query)) continue;
                 shown.Add(p);
             }
-            Section(entries, above, shown, RecentsKey, "Recents");
+            Section(entries, above, shown, RecentsKey, "Recents", SeparateTip);
         }
 
         /// <summary>
@@ -238,7 +429,7 @@ namespace TheGreatestPortal
                 candidates.Add(p);
             }
             candidates.Sort((a, b) => b.UsedAt.CompareTo(a.UsedAt));
-            Section(entries, above, Take(candidates, above, limit), OthersKey, "Others' Recents");
+            Section(entries, above, Take(candidates, above, limit), OthersKey, "Others' Recents", SeparateTip);
         }
 
         /// <summary>The portals built most recently, newest first. One with no recorded birth is
@@ -257,7 +448,7 @@ namespace TheGreatestPortal
                 candidates.Add(p);
             }
             candidates.Sort((a, b) => b.Born.CompareTo(a.Born));
-            Section(entries, above, Take(candidates, above, limit), CreatedKey, "Recently Created");
+            Section(entries, above, Take(candidates, above, limit), CreatedKey, "Recently Created", SeparateTip);
         }
 
         /// <summary>The first <paramref name="limit"/> that no section above has already shown.</summary>
@@ -274,12 +465,15 @@ namespace TheGreatestPortal
         }
 
         /// <summary>Adds one of the sections that sit above the list proper, if it has anything in it.</summary>
-        private static void Section(List<ListEntry> entries, HashSet<long> above, List<PortalInfo> shown, string key, string title)
+        private static void Section(List<ListEntry> entries, HashSet<long> above, List<PortalInfo> shown, string key, string title, string tip = null)
         {
             if (shown.Count == 0) return;
             foreach (var p in shown) above.Add(p.Id);
             bool collapsed = IsCollapsed(key);
-            entries.Add(Header($"{title} ({shown.Count})", key, collapsed));
+            var header = Header($"{title} ({shown.Count})", key, collapsed);
+            header.RecentsHeader = true;
+            header.Tip = tip;
+            entries.Add(header);
             if (collapsed) return;
             foreach (var p in shown) entries.Add(new ListEntry { Portal = p, Favorite = Favorites.IsFavorite(p.Id) });
         }

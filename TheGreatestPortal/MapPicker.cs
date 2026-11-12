@@ -11,11 +11,16 @@ namespace TheGreatestPortal
     /// Choosing a portal on the large map. Three ways in:
     ///  * Travel: you stepped into an open portal. Click a portal (pin or list) and you go there.
     ///  * Pick: the panel's "Pick on map" button. Click a portal and it becomes the destination.
-    ///  * Browse: the toggle key on the map, or "Show on map". Click a portal to center on it.
+    ///  * Browse: "Show on map", from the panel at a portal. Click a portal to center on it.
     /// The map is the one the M key gives: every marker you normally see is still there, with the
     /// portals added on top as pins and, on the left, a searchable list with
-    /// favorites on top, optionally grouped by biome. Right-clicking a portal (pin or row) marks
-    /// it as a favorite. Closing the map ends it.
+    /// favorites on top, optionally grouped by biome. Right-clicking a portal (pin or row) opens
+    /// a menu for it. Closing the map ends it.
+    ///
+    /// None of the three starts from the map itself. The list is for deciding where to go, and
+    /// deciding where to go is something you do at a portal; the map opened in the field used to
+    /// offer the whole thing on a key, and nobody used it. What it can still do is draw the
+    /// portals as plain markers, which is <see cref="UpdatePlainPins"/> below.
     /// </summary>
     internal static class MapPicker
     {
@@ -63,6 +68,11 @@ namespace TheGreatestPortal
         private static List<ListEntry> _entries = new List<ListEntry>();
         private static readonly List<UiKit.RowHandle> _rows = new List<UiKit.RowHandle>();
         private static readonly List<long> _rowIds = new List<long>();
+        private static Image _listBg;
+        private static bool _appearanceHooked;
+
+        /// <summary>How dark the list's backdrop is at the normal panel opacity.</summary>
+        private const float ListBackdropAlpha = 0.55f;
         private static bool _catalogDirty;
 
         static MapPicker()
@@ -174,6 +184,7 @@ namespace TheGreatestPortal
         {
             bool had = Active || _list != null || PortalPins.Count > 0;
             Current = Mode.None;
+            _plainPins = false;
             _source = null;
             _sourceZdo = ZDOID.None;
             _sourceId = 0L;
@@ -202,13 +213,15 @@ namespace TheGreatestPortal
                 if (Active) End();
                 return;
             }
-            if (map.m_mode == Minimap.MapMode.Large && Keys.CanTakeInput() && Keys.IsDown(TgpConfig.TogglePinsKey.Value))
+            bool large = map.m_mode == Minimap.MapMode.Large;
+            if (!Active)
             {
-                if (Current == Mode.Browse) End();
-                else if (Current == Mode.None) BeginBrowse(null);
+                if (!large) { PlainPinsDown(); return; }
+                if (Keys.CanTakeInput() && Keys.IsDown(TgpConfig.TogglePinsKey.Value)) TogglePlainPins(map);
+                UpdatePlainPins(map);
+                return;
             }
-            if (!Active) return;
-            if (map.m_mode != Minimap.MapMode.Large)
+            if (!large)
             {
                 End();
                 return;
@@ -259,7 +272,11 @@ namespace TheGreatestPortal
         {
             if (mode == Minimap.MapMode.Large)
             {
-                if (!Active && TgpConfig.ShowPinsOnMap != null && TgpConfig.ShowPinsOnMap.Value) BeginBrowse(null);
+                if (!Active)
+                {
+                    _plainWanted = TgpConfig.ShowPinsOnMap != null && TgpConfig.ShowPinsOnMap.Value;
+                    _foreignCheckedAt = -99f;   // ask again: another mod may have drawn since
+                }
                 return;
             }
             End();
@@ -558,6 +575,96 @@ namespace TheGreatestPortal
             Game.m_noMap = noMap;
         }
 
+        // ── pins on the map you opened to look at ───────────────────────────────────
+
+        /// <summary>Whether the plain pins are asked for right now; the key flips it.</summary>
+        private static bool _plainWanted;
+        private static bool _plainPins;
+        private static bool _foreignMarkers;
+        private static float _foreignCheckedAt = -99f;
+
+        private const float ForeignCheckSeconds = 1f;
+        private const float ForeignRadius = 6f;
+
+        private static void TogglePlainPins(Minimap map)
+        {
+            if (AnotherModMarksPortals(map))
+            {
+                TheGreatestPortalMod.Message("Another mod is already showing the portals on the map", always: true);
+                return;
+            }
+            _plainWanted = !_plainWanted;
+            _foreignCheckedAt = -99f;
+        }
+
+        /// <summary>
+        /// Portals on the ordinary large map: markers, and nothing else. No list, nothing to
+        /// click, no mode to be in -- the map you open in the field only says where the portals
+        /// are.
+        /// </summary>
+        private static void UpdatePlainPins(Minimap map)
+        {
+            if (!_plainWanted || ForeignMarkers(map))
+            {
+                PlainPinsDown();
+                return;
+            }
+            if (!_plainPins || _catalogDirty)
+            {
+                _catalogDirty = false;
+                _plainPins = true;
+                PortalPins.Show(PinLabel);
+                Access.PinUpdateRequired(map) = true;
+            }
+            // Vanilla paints its markers white whenever it lays the map out again, so every frame.
+            PortalPins.Tint(Access.PortalPinColor());
+        }
+
+        private static void PlainPinsDown()
+        {
+            if (!_plainPins) return;
+            _plainPins = false;
+            PortalPins.Clear();
+        }
+
+        /// <summary>Asked once a second: the answer changes only when another mod draws or stops.</summary>
+        private static bool ForeignMarkers(Minimap map)
+        {
+            if (Time.unscaledTime - _foreignCheckedAt < ForeignCheckSeconds) return _foreignMarkers;
+            _foreignCheckedAt = Time.unscaledTime;
+            _foreignMarkers = AnotherModMarksPortals(map);
+            return _foreignMarkers;
+        }
+
+        /// <summary>
+        /// Whether something else is already marking the portals, in which case these pins stay
+        /// down: two markers on one portal is worse than neither mod drawing it.
+        ///
+        /// The test is what is on the map rather than which mods are installed, so TheGreatestMap,
+        /// any other mod that draws portals, and any future one all count without being named.
+        /// Most of the portals have to be marked for it to count as somebody's doing: a player who
+        /// has pinned a couple of portals by hand has not taken the job over.
+        /// </summary>
+        private static bool AnotherModMarksPortals(Minimap map)
+        {
+            var pins = Access.Pins(map);
+            if (pins == null) return false;
+            const float radiusSq = ForeignRadius * ForeignRadius;
+            int total = 0, marked = 0;
+            foreach (var p in Catalog.All)
+            {
+                total++;
+                for (int i = 0; i < pins.Count; i++)
+                {
+                    var pin = pins[i];
+                    if (pin == null || PortalPins.IsOurs(pin)) continue;
+                    float dx = pin.m_pos.x - p.Pos.x, dz = pin.m_pos.z - p.Pos.z;
+                    if (dx * dx + dz * dz <= radiusSq) { marked++; break; }
+                }
+            }
+            return total > 0 && marked * 2 >= total;
+        }
+
         // ── pins and the list ───────────────────────────────────────────────────────
 
         private static void Refresh()
@@ -579,7 +686,7 @@ namespace TheGreatestPortal
 
         private static void RefreshList(Minimap map)
         {
-            if (TgpConfig.ShowPortalListOnMap == null || !TgpConfig.ShowPortalListOnMap.Value || map.m_largeRoot == null)
+            if (map.m_largeRoot == null)
             {
                 DestroyList();
                 return;
@@ -603,10 +710,13 @@ namespace TheGreatestPortal
                     break;
                 default:
                     _header.text = "Portals";
-                    _hint.text = $"Click a portal to center the map on it. The star marks a favorite; right-click for a menu. {TgpConfig.TogglePinsKey.Value.MainKey} hides them.";
+                    _hint.text = "Click a portal to center the map on it. The star marks a favorite; right-click for a menu. Esc closes the map.";
                     break;
             }
 
+            // Hung on the map itself rather than on the list, so a note is not clipped by the
+            // scrolling area it belongs to.
+            var tipRoot = map.m_largeRoot.transform as RectTransform;
             _rename.Cancel();   // the row it is sitting on is about to go
             UiKit.ClearChildren(_listContent);
             _rows.Clear();
@@ -628,7 +738,11 @@ namespace TheGreatestPortal
                 if (e.IsHeader)
                 {
                     string key = e.GroupKey;
-                    _rows.Add(UiKit.SectionHeader(_listContent, e.Title, key == null ? null : (Action)(() => { PortalList.ToggleCollapsed(key); RefreshList(map); }), key == null ? (bool?)null : e.Collapsed));
+                    _rows.Add(UiKit.SectionHeader(_listContent, e.Title,
+                        key == null ? null : (Action)(() => { PortalList.ToggleCollapsed(key); RefreshList(map); }),
+                        key == null ? (bool?)null : e.Collapsed,
+                        e.RecentsHeader ? (Action)(() => { PortalList.ToggleCombinedRecents(); RefreshList(map); }) : null,
+                        e.Tip, tipRoot));
                     _rowIds.Add(long.MinValue);
                     continue;
                 }
@@ -642,6 +756,8 @@ namespace TheGreatestPortal
                     new UiKit.RowIcon(UiKit.Pin(), () => CenterOn(captured)),
                 };
                 var row = UiKit.Row(_listContent, captured.DisplayName, dist, () => Select(captured), () => RowMenu(map, captured), 16f, fav ? UiKit.Gold : (Color?)null, null, PortalList.DestinationText(captured), icons);
+                row.Tint = e.Tint;
+                row.SetTip(() => PortalList.TipFor(captured), tipRoot);
                 row.SetSelected(captured.Id == _highlightId && _highlightId != 0L);
                 long rowId = captured.Id;
                 var rowHover = row.Hover.OnHoverChanged;
@@ -669,9 +785,14 @@ namespace TheGreatestPortal
             _listRt = rt;
             LoadListPlacement();
             rt.anchoredPosition = _listPos;
-            var bg = _list.GetComponent<Image>();
-            bg.color = new Color(0f, 0f, 0f, 0.55f);
-            bg.raycastTarget = true;
+            _listBg = _list.GetComponent<Image>();
+            _listBg.raycastTarget = true;
+            if (!_appearanceHooked)
+            {
+                _appearanceHooked = true;
+                TgpConfig.AppearanceChanged += ApplyAppearance;
+            }
+            ApplyAppearance();
             _listHover = _list.GetComponent<UiKit.Hover>();
 
             _header = UiKit.Text(_list.transform, "Header", "Portals", 22f, TextAlignmentOptions.Left, UiKit.Gold);
@@ -827,12 +948,26 @@ namespace TheGreatestPortal
                 && float.TryParse(parts[1].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out b);
         }
 
+        /// <summary>
+        /// The list following the appearance settings, without being closed and opened again.
+        /// Subscribed for the life of the game, so it holds for a list that is not up: the rows
+        /// hold what their color means rather than the color, and paint from the settings.
+        /// </summary>
+        private static void ApplyAppearance()
+        {
+            if (_listBg != null) _listBg.color = new Color(0f, 0f, 0f, ListBackdropAlpha * UiKit.PanelOpacity);
+            for (int i = 0; i < _rows.Count; i++)
+                if (_rows[i] != null) _rows[i].Refresh();
+        }
+
         private static void DestroyList()
         {
+            UiKit.HideTip();
             _panning = false;
             UiKit.ContextMenu.Close();
             if (_list != null) UnityEngine.Object.Destroy(_list);
             _list = null;
+            _listBg = null;
             _listRt = null;
             _listMover = null;
             _listHover = null;

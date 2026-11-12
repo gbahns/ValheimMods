@@ -25,7 +25,8 @@ sides say to each other raises that floor and says so in the changelog.
 |---|---|
 | Name | Up to 32 characters (configurable). Names do not have to be unique. |
 | Star beside the name | Marks the portal you are standing at as a favorite; click again to take it off. Takes effect at once. |
-| Destination list | Every other portal in the world, favorites first, each with where it leads and its distance. Above it sit **Recents** (the portals you most recently traveled to or from), **Others' Recents** (where everyone else has been lately) and **Recently Created** (the newest portals), 5 each by default. A star at the end of every row marks a favorite and flips it: filled for a favorite, hollow for not. The first entry, *Open portal*, means no fixed destination. Up/Down move the selection, Enter confirms; a double-click on a row does both. Right-click a row for Travel here now, Rename, Favorite / Un-favorite and Show on map; renaming works on any portal, wherever it is. |
+| Destination list | Every other portal in the world, favorites first, each with where it leads and its distance. Above it sits **Recents**: the 15 portals anybody has most recently traveled through or built, newest first, with the row's background saying who -- blue for a portal only you have been through, green once anybody else has, each banded diagonally in its own color so the two read without the color as well. Right-click the heading to split it into the three sections it replaces (**Recents**, **Others' Recents**, **Recently Created**, 5 each) and right-click any of those to put it back. A star at the end of every row marks a favorite and flips it: filled for a favorite, hollow for not. The first entry, *Open portal*, means no fixed destination. Up/Down move the selection, Enter confirms; a double-click on a row does both. Right-click a row for Travel here now, Rename, Favorite / Un-favorite and Show on map; renaming works on any portal, wherever it is. |
+| Hovering a row | Everyone who has been through that portal, newest first, and who built it, with how long ago for each. Works on every row, not only the recent ones. |
 | Search | Type part of a name (or a biome) to filter the list. |
 | Group by biome | Sections per biome, with a Favorites section first; a favorite is listed only there. Click a header to fold or open that group; Expand all / Collapse all do the lot. All of it is remembered between sessions. |
 | Default new portals to point here | New portals you build lead here automatically. |
@@ -55,9 +56,11 @@ pick anywhere, travel, and the portal is unchanged for the next person who uses 
 remote portal is set to lead home but you want a different stop this time. The same thing is on the
 panel: press Use, right-click a portal in the list and choose **Travel here now**.
 
-**On the map at other times.** Press `P` while the large map is open to show every portal with the
-list, click a portal to center the map on it, press `P` again to hide them. Right-click a portal
-to mark a favorite.
+**On the map at other times.** The list belongs to a portal: you get it by stepping into an open
+one, or from **Show on map** in the panel. The map you open in the field can still draw the portals
+as plain markers -- turn on **Show Pins In Normal Map View**, and `P` shows and hides them. With
+TheGreatestMap installed, or any other mod that marks portals, that setting does nothing, because
+those pins are already there.
 
 ## Keys (configurable)
 
@@ -66,7 +69,7 @@ to mark a favorite.
 | `E` on a portal | Configure it |
 | `Up` / `Down`, `Enter`, `Esc` in the panel | Move the selection, confirm, cancel |
 | Mouse wheel over a list | Scroll by a few rows per notch (configurable) |
-| `P` on the large map | Show or hide every portal and the portal list |
+| `P` on the large map | Show or hide the portal pins |
 | `Alt` held while stepping into a portal | Choose a destination for this trip only |
 
 ## Configuration
@@ -82,13 +85,15 @@ to mark a favorite.
 | Rules | Adopt Existing Connections | true | Portals this mod has not configured keep their vanilla tag pair (server-synced) |
 | Rules | Anyone Can Redirect All Portals | false | Let any player use "Point all portals to here"; otherwise admins only (server-synced) |
 | Rules | Anyone Can Rename Remote Portals | true | Let any player rename portals from the list without standing at them; otherwise admins only (server-synced) |
-| Keys | Toggle Portal Pins | P | On the large map: show or hide every portal |
+| Keys | Toggle Portal Pins | P | On the large map: show or hide the portal pins |
 | Keys | Detour Key | LeftAlt | Hold while stepping into a portal to pick a destination for that trip only |
-| Display | Always Show Portal Pins | false | Draw every portal on the large map all the time |
+| Display | Show Pins In Normal Map View | false | Draw every portal on the large map when you are not at a portal; does nothing when another mod already marks them |
 | Display | Show Distances | true | Distances in the lists |
-| Display | Recent Portals | 5 | How many recent portals the Recents section shows; 0 hides it |
-| Display | Other Players Recent Portals | 5 | How many portals other players have used lately to show in Others' Recents; 0 hides it |
-| Display | Recently Created Portals | 5 | How many newly built portals to show in Recently Created; 0 hides it |
+| Display | One Combined Recents List | true | One Recents section instead of three, colored by who was last at each portal; right-click the heading to switch |
+| Display | Combined Recents Count | 15 | How many portals that combined section shows; 0 hides it |
+| Display | Recent Portals | 5 | With the combined list off: how many recent portals the Recents section shows; 0 hides it |
+| Display | Other Players Recent Portals | 5 | With it off: how many portals other players have used lately to show in Others' Recents; 0 hides it |
+| Display | Recently Created Portals | 5 | With it off: how many newly built portals to show in Recently Created; 0 hides it |
 | Display | Map List Size | 380,660 | Width and height of the portal list on the map, remembered when you drag its corner |
 | Display | Map List Position | 20,-12 | Where that list sits, from the top-left of the map, remembered when you drag it by its heading |
 | Display | Group By Biome | false | Group the lists by biome; the switches on the panel and the map change it too |
@@ -96,9 +101,13 @@ to mark a favorite.
 | Display | Panel Position | 0,0 | The panel's offset from the screen center, saved when you drag its title |
 | Display | List Scroll Rows | 4 | Rows a list moves per mouse-wheel notch |
 | Display | Collapsed Groups | empty | Which biome groups are folded away, written for you as you fold them |
-| Display | Show Portal List On Map | true | The list on the left of the map |
 | Display | Auto Close Grace Seconds | 0.5 | Leave the doorway for this long and the destination map closes |
 | Display | Show Messages | true | Small top-left messages |
+| Appearance | Row Color Yours Alone | blue-grey | The background of a portal only you have been through |
+| Appearance | Row Color Used By Others | green-grey | The background once another player has been through it |
+| Appearance | Row Color Strength | 0.17 | How strongly those two colors are painted; 0 leaves every row plain |
+| Appearance | Row Color Patterns | true | Band each color diagonally as well, leaning right for yours alone and left for the rest |
+| Appearance | Panel Opacity | 1 | How solid the panel and the map list are; lower shows more of the world |
 
 Favorites, recent portals and the default portal are yours alone and are kept per world in
 `BepInEx/config/TheGreatestPortal/<world>-<seed>.txt`.

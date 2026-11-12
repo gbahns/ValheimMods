@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace TheGreatestPortal
@@ -33,6 +35,14 @@ namespace TheGreatestPortal
         /// <summary>string: who that last traveller was.</summary>
         internal static readonly int UserHash = "TGP_by".GetStableHashCode();
 
+        /// <summary>string: everyone who has been through it, newest first, one entry per player.
+        /// Packed; read it with <see cref="ParseVisits"/> rather than by hand.</summary>
+        internal static readonly int LogHash = "TGP_log".GetStableHashCode();
+
+        /// <summary>string: who built it, stamped once when the server first meets the portal
+        /// (empty for one built before this was recorded, or when the builder could not be told).</summary>
+        internal static readonly int BornByHash = "TGP_bby".GetStableHashCode();
+
         private static readonly Regex RichText = new Regex("<[^>]*>", RegexOptions.Compiled);
         private static readonly System.Random Rng = new System.Random();
 
@@ -44,6 +54,80 @@ namespace TheGreatestPortal
         internal static long GetBorn(ZDO zdo) => zdo == null ? 0L : zdo.GetLong(BornHash, 0L);
         internal static long GetUsed(ZDO zdo) => zdo == null ? 0L : zdo.GetLong(UsedHash, 0L);
         internal static string GetUser(ZDO zdo) => zdo == null ? "" : (zdo.GetString(UserHash, "") ?? "");
+        internal static string GetBornBy(ZDO zdo) => zdo == null ? "" : (zdo.GetString(BornByHash, "") ?? "");
+        internal static string GetLog(ZDO zdo) => zdo == null ? "" : (zdo.GetString(LogHash, "") ?? "");
+
+        /// <summary>One player and the last time they went through a portal.</summary>
+        internal struct Visit
+        {
+            public string Who;
+            public long At;
+
+            public Visit(string who, long at) { Who = who; At = at; }
+        }
+
+        /// <summary>
+        /// How many players a portal remembers going through it.
+        ///
+        /// One entry per player rather than one per trip: the question a list of names answers is
+        /// who uses this portal, and somebody who goes through it twenty times a day would
+        /// otherwise be the whole answer. There is a cap at all because this rides along in every
+        /// portal list the server sends to everyone.
+        /// </summary>
+        internal const int MaxVisits = 8;
+
+        // Characters no name has in it, so a name can never be read as the end of its own entry.
+        private const char VisitField = '\u001f';
+        private const char VisitRecord = '\u001e';
+
+        internal static List<Visit> ParseVisits(string packed)
+        {
+            var visits = new List<Visit>();
+            if (string.IsNullOrEmpty(packed)) return visits;
+            foreach (var record in packed.Split(VisitRecord))
+            {
+                int cut = record.IndexOf(VisitField);
+                if (cut <= 0) continue;
+                if (!long.TryParse(record.Substring(cut + 1), out long when)) continue;
+                visits.Add(new Visit(record.Substring(0, cut), when));
+            }
+            return visits;
+        }
+
+        internal static string PackVisits(List<Visit> visits)
+        {
+            if (visits == null) return "";
+            var sb = new StringBuilder();
+            for (int i = 0; i < visits.Count && i < MaxVisits; i++)
+            {
+                if (sb.Length > 0) sb.Append(VisitRecord);
+                sb.Append(Plain(visits[i].Who)).Append(VisitField).Append(visits[i].At);
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// The log with one more trip written into it: that player's own entry brought up to date
+        /// and moved to the front, and the player nobody has seen for longest dropped once there
+        /// are more than the cap.
+        /// </summary>
+        internal static string NoteVisit(string packed, string who, long at)
+        {
+            if (string.IsNullOrEmpty(who)) return packed ?? "";
+            var visits = ParseVisits(packed);
+            visits.RemoveAll(v => string.Equals(v.Who, who, StringComparison.OrdinalIgnoreCase));
+            visits.Add(new Visit(who, at));
+            visits.Sort((a, b) => b.At.CompareTo(a.At));
+            if (visits.Count > MaxVisits) visits.RemoveRange(MaxVisits, visits.Count - MaxVisits);
+            return PackVisits(visits);
+        }
+
+        /// <summary>A name with the log's own separators taken out of it.</summary>
+        private static string Plain(string who)
+        {
+            if (string.IsNullOrEmpty(who)) return "";
+            return who.Replace(VisitField, ' ').Replace(VisitRecord, ' ');
+        }
 
         /// <summary>
         /// The world's own clock in whole seconds. It is saved with the world and carries on where

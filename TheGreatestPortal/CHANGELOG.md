@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.3.0 — 2026-11-11
+
+- The portal list no longer appears on the map you open to look at it; it belongs to a portal you
+  are standing at.
+- "Always Show Portal Pins" is now "Show Pins In Normal Map View", and stands down while another
+  mod is already marking the portals.
+- An unnamed portal reads as "Portal" on the map, the way the other mods write it.
+- One Recents section instead of three: everything anybody has lately traveled through or built,
+  newest first, its background saying whose portal it is. Right-click the heading to go back to three.
+- Hovering a portal row in either list says who has been through it, newest first, and who built it.
+- The two Recents colors are greyer, and under Appearance you can set both hues, how strongly they
+  are painted, and how see-through the panel and the map list are. Changes land while you watch.
+- Each of those colors is banded diagonally in its own color as well -- leaning right for a portal
+  only you have been through, left once another player has -- so which is which reads without the
+  color. Thanks to Truncated for the suggestion.
+
 ## 1.2.2 — 2026-10-16
 
 - **Naming a portal no longer runs the game's own text prompt as well.** The panel is a copy of

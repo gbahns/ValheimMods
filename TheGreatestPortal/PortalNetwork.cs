@@ -287,6 +287,7 @@ namespace TheGreatestPortal
                 Own(zdo);
                 zdo.Set(PortalData.UsedHash, now);
                 zdo.Set(PortalData.UserHash, who);
+                zdo.Set(PortalData.LogHash, PortalData.NoteVisit(PortalData.GetLog(zdo), who, now));
                 ZDOMan.instance.ForceSendZDO(zdo.m_uid);
                 any = true;
             }
@@ -314,6 +315,26 @@ namespace TheGreatestPortal
                 return Player.m_localPlayer != null ? Player.m_localPlayer.GetPlayerName() : "the server";
             var peer = znet.GetPeer(sender);
             return peer != null && !string.IsNullOrEmpty(peer.m_playerName) ? peer.m_playerName : "a player";
+        }
+
+        /// <summary>
+        /// Who owns a ZDO, by name, or "" when that cannot be told.
+        ///
+        /// This is how the builder of a portal is known. Nothing announces a piece being placed,
+        /// but the client that placed it owns it, and the sweep comes round within two seconds, so
+        /// whoever owns a portal the sweep has never seen before is whoever just built it. It has
+        /// to be asked before Own(), which takes the ZDO over for the server.
+        /// </summary>
+        private static string OwnerName(ZDO zdo)
+        {
+            var znet = ZNet.instance;
+            if (zdo == null || znet == null) return "";
+            long owner = zdo.GetOwner();
+            if (owner == 0L) return "";
+            if (owner == ZDOMan.GetSessionID())
+                return Player.m_localPlayer != null ? Player.m_localPlayer.GetPlayerName() : "";
+            var peer = znet.GetPeer(owner);
+            return peer != null && !string.IsNullOrEmpty(peer.m_playerName) ? peer.m_playerName : "";
         }
 
         private static bool IsPortalPrefab(int hash)
@@ -397,8 +418,10 @@ namespace TheGreatestPortal
                     // the world as it already stood, and stamping that would call it all brand new.
                     if (PortalData.GetBorn(zdo) == 0L)
                     {
+                        string builder = OwnerName(zdo);   // before Own(), which makes this the owner
                         Own(zdo);
                         zdo.Set(PortalData.BornHash, PortalData.Now());
+                        if (!string.IsNullOrEmpty(builder)) zdo.Set(PortalData.BornByHash, builder);
                         ZDOMan.instance.ForceSendZDO(zdo.m_uid);
                     }
                 }
@@ -442,6 +465,8 @@ namespace TheGreatestPortal
                     Born = PortalData.GetBorn(zdo),
                     UsedAt = PortalData.GetUsed(zdo),
                     UsedBy = PortalData.GetUser(zdo),
+                    BornBy = PortalData.GetBornBy(zdo),
+                    UsedLog = PortalData.GetLog(zdo),
                 });
             }
             // A stable order, because the snapshot is compared byte for byte to decide whether to

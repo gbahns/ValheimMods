@@ -19,8 +19,12 @@ namespace TheGreatestPortal
         public long Born;          // world second it was built, 0 = unknown
         public long UsedAt;        // world second someone last travelled through it, 0 = never
         public string UsedBy = ""; // and who that was
+        public string BornBy = ""; // who built it, "" = not recorded
+        public string UsedLog = ""; // everyone who has been through it, newest first (packed)
 
-        public string DisplayName => string.IsNullOrEmpty(Name) ? "Unnamed portal" : Name;
+        // "Portal" rather than "Unnamed portal": it is what the game and the other mods that draw
+        // portals call one, and a map with both on it reads as two different things.
+        public string DisplayName => string.IsNullOrEmpty(Name) ? "Portal" : Name;
 
         public void Write(ZPackage pkg)
         {
@@ -48,6 +52,21 @@ namespace TheGreatestPortal
             Born = pkg.ReadLong();
             UsedAt = pkg.ReadLong();
             UsedBy = pkg.ReadString();
+        }
+
+        // A block of its own rather than a fourth field in the one above, for the same reason that
+        // one is appended rather than folded into the records: a client that knows only the first
+        // block stops at the end of it, and both sides still understand each other either way round.
+        public void WriteMore(ZPackage pkg)
+        {
+            pkg.Write(BornBy ?? "");
+            pkg.Write(UsedLog ?? "");
+        }
+
+        public void ReadMore(ZPackage pkg)
+        {
+            BornBy = pkg.ReadString();
+            UsedLog = pkg.ReadString();
         }
 
         public static PortalInfo Read(ZPackage pkg)
@@ -83,6 +102,9 @@ namespace TheGreatestPortal
         /// never sees the extra bytes, so old and new still understand each other either way round.
         /// </summary>
         private const int Extra = 1;
+
+        /// <summary>Version of the second block, appended after the first. Same bargain again.</summary>
+        private const int More = 2;
 
         private static readonly Dictionary<long, PortalInfo> _byId = new Dictionary<long, PortalInfo>();
         private static readonly List<PortalInfo> _all = new List<PortalInfo>();
@@ -143,7 +165,11 @@ namespace TheGreatestPortal
                 _all.Add(p);
             }
             if (pkg.GetPos() < pkg.Size() && pkg.ReadInt() == Extra)
+            {
                 for (int i = 0; i < order.Count && pkg.GetPos() < pkg.Size(); i++) order[i].ReadExtra(pkg);
+                if (pkg.GetPos() < pkg.Size() && pkg.ReadInt() == More)
+                    for (int i = 0; i < order.Count && pkg.GetPos() < pkg.Size(); i++) order[i].ReadMore(pkg);
+            }
             HasSnapshot = true;
             try { Changed?.Invoke(); }
             catch (Exception e) { TheGreatestPortalMod.Log.LogError($"[TheGreatestPortal] Catalog listener failed: {e}"); }
@@ -158,6 +184,8 @@ namespace TheGreatestPortal
             for (int i = 0; i < infos.Count; i++) infos[i].Write(pkg);
             pkg.Write(Extra);
             for (int i = 0; i < infos.Count; i++) infos[i].WriteExtra(pkg);
+            pkg.Write(More);
+            for (int i = 0; i < infos.Count; i++) infos[i].WriteMore(pkg);
             return pkg;
         }
 

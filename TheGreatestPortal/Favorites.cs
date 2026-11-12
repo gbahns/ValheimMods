@@ -15,7 +15,7 @@ namespace TheGreatestPortal
     {
         private static readonly HashSet<long> _favs = new HashSet<long>();
         private static readonly List<long> _recents = new List<long>();   // newest first
-        private const int MaxRecents = 20;   // kept longer than any list shows, so raising the setting has history
+        private const int MaxRecents = 50;   // kept longer than any list shows, so raising the setting has history
         private static long _default;
         private static string _path;
         private static bool _loaded;
@@ -45,6 +45,20 @@ namespace TheGreatestPortal
             if (!changed) return;
             if (_recents.Count > MaxRecents) _recents.RemoveRange(MaxRecents, _recents.Count - MaxRecents);
             Save();
+        }
+
+        /// <summary>
+        /// Whether this player has been through a portal, as far back as this file goes.
+        ///
+        /// The server's own log only knows the trips it has recorded, which began with the
+        /// version that added it; this file has been kept all along. It holds no times, so it can
+        /// say whether but never when -- which is enough for the thing that asks, the color of a
+        /// row, and is why a trip it alone remembers is worded without one.
+        /// </summary>
+        internal static bool HasUsed(long id)
+        {
+            Load();
+            return id != 0L && _recents.Contains(id);
         }
 
         internal static bool IsFavorite(long id)

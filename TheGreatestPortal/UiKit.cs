@@ -56,6 +56,56 @@ namespace TheGreatestPortal
         internal static readonly Color RowHover = new Color(1f, 1f, 1f, 0.22f);
         internal static readonly Color RowSelected = new Color(1f, 0.78f, 0.3f, 0.35f);
         internal static readonly Color RowSelectedHover = new Color(1f, 0.78f, 0.3f, 0.5f);
+
+        // Backgrounds for a row that means something by its color: who uses that portal. Two of
+        // them, and a portal nobody has used keeps the plain row -- the colors are there to pick
+        // something out of a list, and a list where every row is a color picks out nothing.
+        //
+        // The defaults are greyed: each hue is pulled roughly halfway to a neutral of the same
+        // brightness, so the row reads as a plain row with a cast rather than as a colored row,
+        // and the two are matched in brightness because the brighter of two colors is the one the
+        // eye goes to first and neither of these means more than the other. The panel they sit on
+        // is see-through, so what is behind it shifts how strong they look; that is why the hues
+        // and the strength are the player's to set rather than numbers settled here.
+        internal static readonly Color DefaultRowMine = new Color(0.52f, 0.66f, 0.84f);
+        internal static readonly Color DefaultRowTheirs = new Color(0.52f, 0.75f, 0.60f);
+        internal const float DefaultRowStrength = 0.17f;
+
+        /// <summary>
+        /// Which of the two things a row's background can say, if either.
+        ///
+        /// A row holds the meaning rather than the color, so a row already on screen follows the
+        /// settings: the color is looked up as the row paints, not when it was built.
+        /// </summary>
+        internal enum RowTint { None, Mine, Theirs }
+
+        /// <summary>How strongly a tinted row is painted. 0 leaves every row plain.</summary>
+        internal static float RowStrength =>
+            TgpConfig.RowColorStrength != null ? TgpConfig.RowColorStrength.Value : DefaultRowStrength;
+
+        internal static Color RowMine => AtStrength(TgpConfig.RowColorMine, DefaultRowMine);
+        internal static Color RowTheirs => AtStrength(TgpConfig.RowColorOthers, DefaultRowTheirs);
+
+        /// <summary>A chosen hue at the chosen strength. Whatever transparency the player left in
+        /// the color itself is ignored: one slider holds the two in step, and two colors painted at
+        /// different strengths would say one of them matters more than the other.</summary>
+        private static Color AtStrength(ConfigEntry<Color> entry, Color fallback)
+        {
+            var c = entry != null ? entry.Value : fallback;
+            return new Color(c.r, c.g, c.b, RowStrength);
+        }
+
+        /// <summary>Whether a tinted row also carries its bands.</summary>
+        internal static bool RowPatterns =>
+            TgpConfig.RowColorPatterns == null || TgpConfig.RowColorPatterns.Value;
+
+        /// <summary>How strongly a band is painted, against the tint it lies on. The band is the
+        /// row's own color over itself, so this is how much deeper the band is than the gap.</summary>
+        private const float BandShade = 0.75f;
+
+        /// <summary>How solid a panel's background art is, as a fraction of its usual look.</summary>
+        internal static float PanelOpacity =>
+            TgpConfig.PanelOpacity != null ? Mathf.Clamp01(TgpConfig.PanelOpacity.Value) : 1f;
         internal static readonly Color Gold = new Color(1f, 0.85f, 0.45f);
         internal static readonly Color Header = new Color(1f, 0.72f, 0.32f);
         internal static readonly Color Dim = new Color(0.78f, 0.75f, 0.7f);
@@ -340,12 +390,67 @@ namespace TheGreatestPortal
             public float RightInset;
             public bool Selected;
 
+            /// <summary>What this row's background says, for a list where the color means something.</summary>
+            public RowTint Tint;
+
+            /// <summary>The bands laid over a tinted row, behind everything else in it.</summary>
+            public Image Pattern;
+
+            /// <summary>
+            /// What hovering this row says, and what to hang that note on. Both or neither.
+            ///
+            /// Asked for on hover rather than handed over when the row is built, because a list
+            /// stays open: a note saying "just now" would still say it ten minutes later, and a
+            /// hundred rows would each have paid for a note nobody looked at.
+            /// </summary>
+            public Func<string> Tip;
+            public RectTransform TipParent;
+
             public void SetSelected(bool on) { Selected = on; Refresh(); }
+
+            public void SetTip(Func<string> tip, RectTransform parent)
+            {
+                Tip = tip;
+                TipParent = parent;
+            }
+
             public void Refresh()
             {
                 if (Background == null) return;
                 bool over = Hover != null && Hover.Over;
-                Background.color = Selected ? (over ? RowSelectedHover : RowSelected) : (over ? RowHover : RowColor);
+                if (Selected)
+                {
+                    Background.color = over ? RowSelectedHover : RowSelected;
+                    ShowBands(RowTint.None, Color.clear);
+                    return;
+                }
+                if (Tint != RowTint.None && RowStrength > 0.001f)
+                {
+                    var c = Tint == RowTint.Mine ? RowMine : RowTheirs;
+                    float a = over ? Mathf.Min(1f, c.a * 2.1f) : c.a;
+                    Background.color = new Color(c.r, c.g, c.b, a);
+                    ShowBands(Tint, new Color(c.r, c.g, c.b, a * BandShade));
+                    return;
+                }
+                Background.color = over ? RowHover : RowColor;
+                ShowBands(RowTint.None, Color.clear);
+            }
+
+            /// <summary>
+            /// The bands over a tinted row, leaning by what the row means.
+            ///
+            /// Off for a row that means nothing by its color, and off for the selected row, whose
+            /// own color has taken the whole row over and would have a second hue banded across it.
+            /// </summary>
+            private void ShowBands(RowTint tint, Color color)
+            {
+                if (Pattern == null) return;
+                bool want = tint != RowTint.None && RowPatterns;
+                if (Pattern.gameObject.activeSelf != want) Pattern.gameObject.SetActive(want);
+                if (!want) return;
+                var sprite = Bands(tint);
+                if (Pattern.sprite != sprite) Pattern.sprite = sprite;
+                Pattern.color = color;
             }
         }
 
@@ -375,7 +480,19 @@ namespace TheGreatestPortal
             btn.transition = Selectable.Transition.None;
             btn.targetGraphic = img;
             var handle = new RowHandle { Root = go, Background = img, Hover = go.GetComponent<Hover>() };
-            handle.Hover.OnHoverChanged = _ => handle.Refresh();
+            // Made before the label and the icons, so those are drawn over the bands, not under.
+            var bandsGo = new GameObject("Bands", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            bandsGo.transform.SetParent(go.transform, false);
+            Stretch(bandsGo.GetComponent<RectTransform>());
+            handle.Pattern = bandsGo.GetComponent<Image>();
+            handle.Pattern.type = Image.Type.Tiled;
+            handle.Pattern.raycastTarget = false;
+            bandsGo.SetActive(false);
+            handle.Hover.OnHoverChanged = over =>
+            {
+                handle.Refresh();
+                if (over) ShowTip(handle.TipParent, handle.Tip != null ? handle.Tip() : null); else HideTip();
+            };
             handle.Hover.OnRightClick = onRightClick;
             if (onClick != null || onDoubleClick != null)
             {
@@ -501,6 +618,60 @@ namespace TheGreatestPortal
             _star = Sprite.Create(tex, new Rect(0f, 0f, n, n), new Vector2(0.5f, 0.5f), 100f);
             _star.hideFlags = HideFlags.HideAndDontSave;
             return _star;
+        }
+
+        private static Sprite _bandsRight;
+        private static Sprite _bandsLeft;
+
+        /// <summary>
+        /// Diagonal bands that tile, for a row whose color says something.
+        ///
+        /// Color on its own leaves out the players who cannot tell these two hues apart, so each
+        /// hue carries a direction as well: one leans right, the other left, and which of the two
+        /// a row is reads the same in grey as in color. Drawn in white and tinted by the row, so a
+        /// band is the row's own color laid over itself rather than a second color arriving.
+        /// </summary>
+        internal static Sprite Bands(RowTint tint)
+        {
+            if (tint == RowTint.Mine) return _bandsRight ?? (_bandsRight = BuildBands(true));
+            if (tint == RowTint.Theirs) return _bandsLeft ?? (_bandsLeft = BuildBands(false));
+            return null;
+        }
+
+        /// <summary>The tile, and the band period within it. The period divides the tile, which is
+        /// what lets a diagonal repeat without a seam down the middle of the row.</summary>
+        private const int BandTile = 16;
+        private const int BandPeriod = 8;
+
+        private static Sprite BuildBands(bool leaningRight)
+        {
+            const int n = BandTile;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    // Where along the diagonal this pixel falls. x - y runs up to the right,
+                    // x + y down to it; the extra period keeps the modulo positive.
+                    int d = leaningRight ? x - y : x + y;
+                    float u = (((d % BandPeriod) + BandPeriod) % BandPeriod) / (float)BandPeriod;
+                    // Half the period is band and half is gap, with the band's two edges faded so
+                    // the diagonal does not come out as a staircase.
+                    float edge = Mathf.Abs(u - 0.25f) / 0.25f;
+                    float a = 1f - Mathf.SmoothStep(0.7f, 1f, edge);
+                    px[y * n + x] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(Mathf.Clamp01(a) * 255f));
+                }
+            tex.SetPixels32(px);
+            tex.Apply(false, true);
+            tex.filterMode = FilterMode.Bilinear;
+            // Repeat, with a sprite over the whole texture: a tiled Image then draws the row as one
+            // quad with the texture repeating across it, rather than a quad per tile.
+            tex.wrapMode = TextureWrapMode.Repeat;
+            tex.hideFlags = HideFlags.HideAndDontSave;
+            var sprite = Sprite.Create(tex, new Rect(0f, 0f, n, n), new Vector2(0.5f, 0.5f), 100f, 0,
+                                       SpriteMeshType.FullRect);
+            sprite.hideFlags = HideFlags.HideAndDontSave;
+            return sprite;
         }
 
         private static Sprite _pin;
@@ -651,7 +822,8 @@ namespace TheGreatestPortal
         /// its group, and <paramref name="collapsed"/> draws the fold marker: a triangle pointing
         /// right when folded, down when open.
         /// </summary>
-        internal static RowHandle SectionHeader(Transform content, string title, Action onClick = null, bool? collapsed = null)
+        internal static RowHandle SectionHeader(Transform content, string title, Action onClick = null, bool? collapsed = null,
+                                                Action onRightClick = null, string tip = null, RectTransform tipParent = null)
         {
             var go = new GameObject("Header", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(LayoutElement), typeof(Hover));
             go.transform.SetParent(content, false);
@@ -694,9 +866,76 @@ namespace TheGreatestPortal
                 btn.transition = Selectable.Transition.None;
                 btn.targetGraphic = img;
                 btn.onClick.AddListener(() => onClick());
-                go.GetComponent<Hover>().OnHoverChanged = over => img.color = over ? hover : normal;
             }
-            return new RowHandle { Root = go, Background = null, Label = lbl };
+            var hov = go.GetComponent<Hover>();
+            hov.OnRightClick = onRightClick;
+            hov.OnHoverChanged = over =>
+            {
+                if (onClick != null) img.color = over ? hover : normal;
+                if (over) ShowTip(tipParent, tip); else HideTip();
+            };
+            return new RowHandle { Root = go, Background = null, Label = lbl, Tip = tip == null ? null : (Func<string>)(() => tip), TipParent = tipParent };
+        }
+
+        // ── the tip ─────────────────────────────────────────────────────────────────
+
+        private const float TipWidth = 300f;
+        private static GameObject _tip;
+        private static TextMeshProUGUI _tipText;
+        private static RectTransform _tipRt;
+
+        /// <summary>
+        /// A short note beside the pointer, for what a row has no room to say: who built a portal,
+        /// who was there last, how long ago. One object, moved to whatever is hovered.
+        ///
+        /// It is placed once, where the pointer was when it appeared, rather than following the
+        /// pointer: a note that chases the cursor is harder to read than one that stays put. The
+        /// parent is the list's own root rather than the row, so a note longer than a row is not
+        /// clipped by the scrolling area.
+        /// </summary>
+        internal static void ShowTip(RectTransform parent, string text)
+        {
+            if (parent == null || string.IsNullOrEmpty(text)) { HideTip(); return; }
+            if (_tip == null)
+            {
+                _tip = new GameObject("TGP_Tip", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                var bg = _tip.GetComponent<Image>();
+                bg.color = new Color(0.06f, 0.045f, 0.03f, 0.97f);
+                bg.raycastTarget = false;           // a note must never swallow a click
+                var outline = _tip.AddComponent<Outline>();
+                outline.effectColor = new Color(0.75f, 0.62f, 0.4f, 0.9f);
+                outline.effectDistance = new Vector2(1f, -1f);
+                _tipRt = _tip.GetComponent<RectTransform>();
+                _tipText = Text(_tip.transform, "Text", "", 15f, TextAlignmentOptions.TopLeft);
+                _tipText.raycastTarget = false;
+                var trt = _tipText.rectTransform;
+                trt.anchorMin = Vector2.zero;
+                trt.anchorMax = Vector2.one;
+                trt.offsetMin = new Vector2(9f, 7f);
+                trt.offsetMax = new Vector2(-9f, -7f);
+            }
+            if (_tipRt.parent != parent) _tipRt.SetParent(parent, false);
+            _tipRt.SetAsLastSibling();
+            _tipText.text = text;
+            float height = _tipText.GetPreferredValues(text, TipWidth - 18f, 0f).y + 16f;
+
+            // The pointer's top-left corner, kept inside the parent: the same arithmetic the
+            // context menu does, for the same reason.
+            var canvas = parent.GetComponentInParent<Canvas>();
+            var cam = canvas != null && canvas.rootCanvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.rootCanvas.worldCamera : null;
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(parent, ZInput.pointerPosition, cam, out Vector2 local);
+            var pr = parent.rect;
+            float x = local.x - pr.xMin + 18f;
+            float top = pr.yMax - local.y + 12f;
+            if (x + TipWidth > pr.width) x = Mathf.Max(0f, pr.width - TipWidth);
+            if (top + height > pr.height) top = Mathf.Max(0f, pr.height - height);
+            Place(_tipRt, x, top, TipWidth, height);
+            _tip.SetActive(true);
+        }
+
+        internal static void HideTip()
+        {
+            if (_tip != null && _tip.activeSelf) _tip.SetActive(false);
         }
 
         // ── context menu ────────────────────────────────────────────────────────────
