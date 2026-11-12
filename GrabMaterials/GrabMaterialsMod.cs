@@ -19,7 +19,7 @@ using UnityEngine;
 namespace GrabMaterialsMod
 {
 
-	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.6.1")]
+	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.7.0")]
 	[BepInProcess("valheim.exe")]
 	public class GrabMaterialsMod : BaseUnityPlugin
 	{
@@ -178,7 +178,7 @@ namespace GrabMaterialsMod
 			//GrabPortalMatsKeyboardConfig = Config.Bind("Client config", "GrabPortalMaterialsKey", KeyCode.I, configDescription);
 			//GrabPortalMatsGamepadConfig = Config.Bind("Client config", "GrabPortalMaterialsButton", InputManager.GamepadButton.ButtonSouth, configDescription);
 			//new KeyboardShortcut(KeyCode.G, KeyCode.LeftShift, KeyCode.RightShift)
-			GrabSelectedPieceMatsKeyboardConfig = Config.Bind("Grab Selected Piece", "GrabSelectedPieceMatsKey", KeyCode.J, new ConfigDescription("Key to grab materials for the currently selectede build piece"));
+			GrabSelectedPieceMatsKeyboardConfig = Config.Bind("Grab Selected Piece", "GrabSelectedPieceMatsKey", KeyCode.J, new ConfigDescription("Key to grab materials for the currently selected build piece"));
 			HighlightDuration = Config.Bind("Client config", "Highlight Duration", 2f, new ConfigDescription("Duration in seconds to highlight containers when grabbing materials"));
 			ContainerRange = Config.Bind("Client config", "Container Range", 20f, new ConfigDescription("How far away (in meters) a container can be and still be used by every command in this mod: grabs, packs, the build-piece hotkey, /inventory, /search and /store. Set it to match your craft-from-containers and auto-store mods so one distance means 'in reach' everywhere.", new AcceptableValueRange<float>(1f, 100f)));
 			GrabDeltaGlobal = Config.Bind("Client config", "Grab Delta (default)", true, new ConfigDescription("If true, all grabs (packs, individual build pieces, /grab <piece>) only grab the shortfall between what you already have and what's needed. Per-pack settings can override this."));
@@ -228,11 +228,6 @@ namespace GrabMaterialsMod
 				new GrabPackConfig(Config, "Grab Pack 10", "Grab Pack 10", new KeyboardShortcut(KeyCode.Semicolon, KeyCode.LeftShift), ""),
 			};
 
-			GrabPacks[8].Name.SettingChanged += (sender, e) =>
-			{
-				Log.LogInfo($"Grabpack renamed {sender.ToString()} {e.ToString()}");
-			};
-
 			new ConfigFileWatcher(Config);
 		}
 
@@ -262,14 +257,6 @@ namespace GrabMaterialsMod
 
 		private void InitButtons()
 		{
-			//GrabPortalMatsButton = new ButtonConfig()
-			//{
-			//	Name = "GrabPortalMaterials",
-			//	Config = GrabPortalMatsKeyboardConfig,
-			//	GamepadConfig = GrabPortalMatsGamepadConfig,
-			//};
-			//InputManager.Instance.AddButton(ModGuid, GrabPortalMatsButton);
-
 			GrabSelectedPieceMatsButton = new ButtonConfig()
 			{
 				Name = "GrabSelectedPieceMaterials",
@@ -277,9 +264,6 @@ namespace GrabMaterialsMod
 			};
 			InputManager.Instance.AddButton(ModGuid, GrabSelectedPieceMatsButton);
 
-			//InputManager.Instance.AddButton(ModGuid, GrabPack1.Button);
-			//InputManager.Instance.AddButton(ModGuid, GrabPack2.Button);
-			//InputManager.Instance.AddButton(ModGuid, GrabPack3.Button);
 			// A pack is reachable three ways: its key, "/g <name>", and "/g pack <n>".  Only the key
 			// needs anything registered, so a pack without one is still a pack; it just gets no
 			// button.  Every shortcoming is said plainly here, once, instead of leaving Jotunn to

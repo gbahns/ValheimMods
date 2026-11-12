@@ -196,7 +196,9 @@ namespace GrabMaterials
 
 			// Non-food plants (flax, sap, etc.). Edible plants like mushroom and
 			// raspberry hit the food branch above and never reach this check.
-			if (PlantNames.Contains(prefabName) || prefabName.Contains("Seed")) return ItemCategory.Plant;
+			if (PlantNames.Contains(prefabName)) return ItemCategory.Plant;
+			// prefabName is lowercased above; this compared against "Seed" for a year and never matched (#33).
+			if (prefabName.Contains("seed")) return ItemCategory.Seed;
 
 			// If no other category matches, return a generic fallback.
 			if (shared.m_itemType == ItemDrop.ItemData.ItemType.Material) return ItemCategory.Material;
@@ -327,31 +329,6 @@ namespace GrabMaterials
 			Log.LogInfo($"moved {item.Name()} {item.Count()}");
 			container.Highlight();
 			return true;
-		}
-
-		public static int CountItems(this Inventory inventory)
-		{
-			var count = 0;
-			var player = Player.m_localPlayer;
-			var playerInventory = player.GetInventory();
-			foreach (var item in playerInventory.GetAllItems())
-			{
-				count += item.Count();
-			}
-			return count;
-		}
-
-		public static int CountItems(this Inventory inventory, string name)
-		{
-			var count = 0;
-			var player = Player.m_localPlayer;
-			var playerInventory = player.GetInventory();
-			foreach (var item in playerInventory.GetAllItems())
-			{
-				if (item.Name() == name)
-					count += item.Count();
-			}
-			return count;
 		}
 
 		public static string GetResourceList(this Piece piece)

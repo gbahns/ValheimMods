@@ -43,12 +43,13 @@ namespace GrabMaterials
 			{
 				return;
 			}
-			foreach (Container item in from container in Boxes.Containers.ToList()
-									   where !((Object)(object)container != (Object)null) || !((Object)(object)((Component)container).transform != (Object)null) || container.GetInventory() == null
-									   where (Object)(object)container != (Object)null
-									   select container)
+			// Drop containers that have been destroyed or lost their inventory.  The old LINQ
+			// selected the dead ones and then filtered the nulls back out, so it never removed
+			// anything (#36).
+			foreach (var container in Boxes.Containers.ToList())
 			{
-				Boxes.RemoveContainer(item);
+				if (container == null || container.transform == null || container.GetInventory() == null)
+					Boxes.RemoveContainer(container);
 			}
 		}
 	}

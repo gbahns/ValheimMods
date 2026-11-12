@@ -1,5 +1,4 @@
-﻿using System.Collections.Concurrent;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using HarmonyLib;
 using static GrabMaterialsMod.GrabMaterialsMod;
@@ -9,44 +8,31 @@ namespace GrabMaterials
 	internal class Boxes
 	{
 		internal static readonly List<Container> Containers = new List<Container>();
-		private static readonly List<Container> ContainersToAdd = new List<Container>();
+		// Containers found dead while GetNearbyContainers walks the list; removed once the walk
+		// is over, since the list cannot change under its own foreach.  Add/Remove below write
+		// the list directly (#37).
 		private static readonly List<Container> ContainersToRemove = new List<Container>();
 
 		internal static readonly List<Smelter> Smelters = new List<Smelter>();
-		private static readonly List<Smelter> SmeltersToAdd = new List<Smelter>();
 		private static readonly List<Smelter> SmeltersToRemove = new List<Smelter>();
-		//private static ConcurrentDictionary<float, Stopwatch> stopwatches = new ConcurrentDictionary<float, Stopwatch>();
 
 		internal static void AddContainer(Container container)
 		{
-			if (!Containers.Contains(container))
-			{
-				ContainersToAdd.Add(container);
-				Jotunn.Logger.LogDebug($"Added container {container.name} ({container.GetType()} {container.GetInstanceID()}) to list");
-			}
-			UpdateContainers();
+			if (container == null || Containers.Contains(container)) return;
+			Containers.Add(container);
+			Jotunn.Logger.LogDebug($"Added container {container.name} ({container.GetInstanceID()}) to list");
 		}
 		internal static void RemoveContainer(Container container)
 		{
-			if (Containers.Contains(container))
-			{
-				ContainersToRemove.Add(container);
-				Jotunn.Logger.LogDebug($"Removed container {container.name} ({container.GetType()} {container.GetInstanceID()}) from list");
-			}
-			UpdateContainers();
+			// A destroyed Unity object is "== null" but still a list entry; Remove finds it by Equals.
+			if (Containers.Remove(container) && container != null)
+				Jotunn.Logger.LogDebug($"Removed container {container.name} ({container.GetInstanceID()}) from list");
 		}
 
+		// Flush the dead-container list after a walk of Containers.
 		internal static void UpdateContainers()
 		{
-			foreach (Container item in ContainersToAdd)
-			{
-				Containers.Add(item);
-			}
-			ContainersToAdd.Clear();
-			foreach (Container item2 in ContainersToRemove)
-			{
-				Containers.Remove(item2);
-			}
+			foreach (var container in ContainersToRemove) Containers.Remove(container);
 			ContainersToRemove.Clear();
 		}
 
@@ -72,28 +58,19 @@ namespace GrabMaterials
 
 		internal static void AddSmelter(Smelter smelter)
 		{
-			if (!Smelters.Contains(smelter))
-			{
-				SmeltersToAdd.Add(smelter);
-				Jotunn.Logger.LogDebug($"Added smelter {smelter.name} ({smelter.GetType()} {smelter.GetInstanceID()}) to list");
-			}
-			UpdateSmelters();
+			if (smelter == null || Smelters.Contains(smelter)) return;
+			Smelters.Add(smelter);
+			Jotunn.Logger.LogDebug($"Added smelter {smelter.name} ({smelter.GetInstanceID()}) to list");
 		}
 
 		internal static void RemoveSmelter(Smelter smelter)
 		{
-			if (Smelters.Contains(smelter))
-			{
-				SmeltersToRemove.Add(smelter);
-				Jotunn.Logger.LogDebug($"Removed smelter {smelter.name} ({smelter.GetType()} {smelter.GetInstanceID()}) from list");
-			}
-			UpdateSmelters();
+			if (Smelters.Remove(smelter) && smelter != null)
+				Jotunn.Logger.LogDebug($"Removed smelter {smelter.name} ({smelter.GetInstanceID()}) from list");
 		}
 
 		internal static void UpdateSmelters()
 		{
-			foreach (var s in SmeltersToAdd) Smelters.Add(s);
-			SmeltersToAdd.Clear();
 			foreach (var s in SmeltersToRemove) Smelters.Remove(s);
 			SmeltersToRemove.Clear();
 		}

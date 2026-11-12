@@ -554,6 +554,7 @@ namespace GrabMaterials
 						Needed = aggregated[i].Count,
 						Had = had[i],
 						Available = available[i],
+						Remaining = -1,
 					});
 					if (effectiveNeed[i] > available[i])
 					{
@@ -597,6 +598,8 @@ namespace GrabMaterials
 					Needed = itemToGrab.Count,
 					Had = had[i],
 					Available = grabbedAmount,
+					// The pre-flight counted the containers only for items that needed grabbing.
+					Remaining = effectiveNeed[i] > 0 ? Mathf.Max(0, available[i] - grabbedAmount) : -1,
 				});
 			}
 			if (grabDelta) _lastGrabTime = Time.time;
@@ -811,7 +814,13 @@ namespace GrabMaterials
 						localizedName = piece.m_name;
 					}
 					//Log.LogInfo($"{prefab.name} \"{localizedName}\" {GetPieceResourceList(piece)}");
-					pieceLookup[localizedName.ToLowerInvariant()] = piece;
+					var key = localizedName.ToLowerInvariant();
+					pieceLookup[key] = piece;
+					// And without spaces: a pack's item list is parsed with spaces stripped, so
+					// "Stone Cutter" arrives as "stonecutter", and a typed "/g stonecutter" should
+					// work as well as "/g stone cutter" does (#30).
+					var squeezedKey = key.Replace(" ", "");
+					if (squeezedKey != key && !pieceLookup.ContainsKey(squeezedKey)) pieceLookup[squeezedKey] = piece;
 					//Log.LogInfo($"Piece: {piece.name} ({prefab.name})");
 				}
 				else
@@ -891,7 +900,8 @@ namespace GrabMaterials
 		private static bool TryGetPiece(string name, out Piece piece)
 		{
 			if (pieceLookup.Count == 0) BuildPieceLookUp();
-			if (!pieceLookup.TryGetValue(name.ToLowerInvariant(), out piece)) return false;
+			var lookupName = name.ToLowerInvariant();
+			if (!pieceLookup.TryGetValue(lookupName, out piece) && !pieceLookup.TryGetValue(lookupName.Replace(" ", ""), out piece)) return false;
 			if (piece.GetComponent<Plant>() == null) return true;
 			if (sharedNameLookup.Count == 0) BuildSharedNameLookup();
 			if (!sharedNameLookup.ContainsKey(name.Replace("$item_", ""))) return true;

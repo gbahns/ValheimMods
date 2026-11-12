@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.7.0 — unreleased
+
+- The grab results now say how much of each material is **left in the nearby containers**, as "(180 left nearby)", so you know whether the next build will find any.
+- **Fixed: a pack entry with a space in its name, such as "Stone Cutter" or "Shield Generator", was never found.** The default Pack 6 had two of them. Piece names now match with or without spaces, the way item names already did.
+- **Fixed: seeds the mod did not know by name were sorted as plants** instead of seeds.
+- Internal cleanup: dead code removed, the container registry simplified, a teleport cleanup that never removed anything now does, and a typo in a setting description fixed.
+
 ## 2.6.1 — 2026-10-19
 
 - **Fixed: the scrollbar from a tall `/i` panel stayed on screen beside the next grab-results panel.** It now leaves with the rows it belongs to.

@@ -15,6 +15,7 @@ namespace GrabMaterials
 			public int Needed;     // original request
 			public int Available;  // amount actually grabbed (success) or amount in containers (shortage)
 			public int Had;        // amount already in player inventory at request time (only > 0 with GrabDelta)
+			public int Remaining;  // what the nearby containers still hold after the grab; -1 when nothing was looked for
 		}
 
 		public struct InventoryItem
@@ -1420,9 +1421,13 @@ namespace GrabMaterials
 			{
 				if (item.Had >= item.Needed)
 					return $"<color=#88ff88>✓ {item.Needed} {item.Name}</color> <color=#aaaaaa>(already had)</color>";
+				// What is left nearby, so the player knows whether the next build will find any (#28).
+				var left = item.Remaining >= 0 ? $"{item.Remaining} left nearby" : null;
 				if (item.Had > 0)
-					return $"<color=#88ff88>✓ {item.Needed} {item.Name}</color> <color=#aaaaaa>(had {item.Had}, grabbed {item.Available})</color>";
-				return $"<color=#88ff88>✓ {item.Needed} {item.Name}</color>";
+					return $"<color=#88ff88>✓ {item.Needed} {item.Name}</color> <color=#aaaaaa>(had {item.Had}, grabbed {item.Available}{(left != null ? ", " + left : "")})</color>";
+				return left != null
+					? $"<color=#88ff88>✓ {item.Needed} {item.Name}</color> <color=#aaaaaa>({left})</color>"
+					: $"<color=#88ff88>✓ {item.Needed} {item.Name}</color>";
 			}
 			var missing = item.Needed - totalCovered;
 			if (item.Had > 0)
