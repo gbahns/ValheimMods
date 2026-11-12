@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Jotunn.Managers;
 using UnityEngine;
 using UnityEngine.UI;
@@ -40,8 +41,23 @@ namespace Armory
         private static Animator           _invAnimator;
         private static AnimatorUpdateMode _invAnimatorMode;
 
-        // Throttle icon-availability re-checks (rebuilding the strip on every frame is wasteful).
-        private static float _lastIconRefresh;
+        // What drives the row refresh. Set by the things that can actually change a row and
+        // cleared when the rows are redrawn -- see MarkDirty.
+        private static bool  _rowsDirty;
+        private static float _lastRowRefresh;
+
+        // A floor under the event wiring, not a poll. Every source of change is subscribed to
+        // below, but "every" is a claim about a game this mod does not own, and the cost of
+        // being wrong should be a redraw half a second late rather than a panel that is quietly
+        // wrong until it is closed. Half a second of this is about 1/200th of what the per-frame
+        // version cost, and it is skipped entirely while nothing is open.
+        private const  float RefreshFloorSeconds = 0.5f;
+
+        // The inventories subscribed to while the panel is open, remembered so the handlers can
+        // be taken off again: m_onChanged is a field on an object that outlives the panel, and
+        // leaving a handler on it would keep marking a closed panel dirty forever.
+        private static Inventory _watchedPlayerInv;
+        private static Inventory _watchedRackInv;
 
         private const int   DefaultSlotCount    = 5;
         private const int   MaxSlotCount        = 10;
@@ -146,6 +162,45 @@ namespace Armory
         /// the keypress.  By this point the ownership exchange has happened and InventoryGui is
         /// already up; all that is left is to put the loadout panel beside it.
         /// </summary>
+        /// <summary>
+        /// Something a row displays has changed; redraw them on the next frame.
+        ///
+        /// Cheap enough to call from anywhere and from any number of places at once: it sets a
+        /// bool, and the redraw happens once however many times it was called. The callers are
+        /// the two inventories' own change events, the equip patches in ArmoryMod, and this
+        /// file wherever it changes the data itself.
+        /// </summary>
+        internal static void MarkDirty() => _rowsDirty = true;
+
+        /// <summary>
+        /// Listen to the player's inventory and the rack's while the panel is up.
+        ///
+        /// Inventory.m_onChanged is a public Action that vanilla fires from every add, remove,
+        /// move, stack and Load -- Player and Container both subscribe to it the same way. Load
+        /// matters most here: it is how a change somebody else made to a shared rack arrives, so
+        /// a rack emptied from another machine redraws here without anything polling for it.
+        ///
+        /// Equipping is the one thing it does not cover, because equipping moves nothing in the
+        /// inventory -- it sets a flag on an item. ArmoryMod patches Humanoid.EquipItem and
+        /// UnequipItem for that.
+        /// </summary>
+        private static void WatchInventories()
+        {
+            UnwatchInventories();
+            _watchedPlayerInv = Player.m_localPlayer?.GetInventory();
+            _watchedRackInv   = _rack?.GetStorageInventory();
+            if (_watchedPlayerInv != null) _watchedPlayerInv.m_onChanged += MarkDirty;
+            if (_watchedRackInv   != null) _watchedRackInv.m_onChanged   += MarkDirty;
+        }
+
+        private static void UnwatchInventories()
+        {
+            if (_watchedPlayerInv != null) _watchedPlayerInv.m_onChanged -= MarkDirty;
+            if (_watchedRackInv   != null) _watchedRackInv.m_onChanged   -= MarkDirty;
+            _watchedPlayerInv = null;
+            _watchedRackInv   = null;
+        }
+
         public static void Open(ArmoryRack rack)
         {
             // Tear our own panel down without hiding the inventory — vanilla has just shown it.
@@ -165,6 +220,8 @@ namespace Armory
             _isOpen      = true;
 
             BuildUI();
+            WatchInventories();
+            MarkDirty();
 
             // Migrate items left out-of-bounds by a previous container size (e.g. the brief
             // 8×5 layout — anything at y=4 is now outside our 10×4 grid and would be hidden
@@ -183,6 +240,7 @@ namespace Armory
 
         private static void CloseInternal(bool hideInventory)
         {
+            UnwatchInventories();
             CloseRowMenu();
             _isOpen      = false;
             _editingSlot = -1;
@@ -323,37 +381,49 @@ namespace Armory
             {
                 _lastShowSummary = showSummary;
                 _lastShowIcons   = showIcons;
+                MarkDirty();                // a summary just turned on has no text yet
                 ResizeMainPanel();
             }
             if (_lastShowButtons != ShowRowButtons)
             {
                 _lastShowButtons = ShowRowButtons;
+                MarkDirty();                // rebuilt rows start blank
                 RebuildSlotRows();
             }
 
-            for (int i = 0; i < _rows.Count && i < _data.Slots.Count; i++)
+            // Redrawn when something changed, not on a clock.
+            //
+            // A row shows three things, and each has an owner that announces itself: whether the
+            // loadout matches what is worn (the equip patches in ArmoryMod), whether each saved
+            // item is to hand in the player's inventory or the rack's (those two inventories'
+            // m_onChanged), and the loadout's own contents (this file, which marks itself dirty
+            // wherever it edits _data). Nothing else can change what a row says.
+            //
+            // This used to run on every frame, which is what made an open panel cost frame rate.
+            // Only the cell colors are refreshed alongside -- the icon strip itself is rebuilt on
+            // data changes and never on a timer, so a switch stays put under the cursor between
+            // press and release.
+            if (_rowsDirty || Time.unscaledTime - _lastRowRefresh >= RefreshFloorSeconds)
             {
-                var refs = _rows[i];
-                var slot = _data.Slots[i];
-                UpdateRowEmptyState(refs, slot);
-                if (refs.Summary != null)
-                {
-                    refs.Summary.text = BuildSummary(slot);
-                    if (refs.Summary.gameObject.activeSelf != showSummary)
-                        refs.Summary.gameObject.SetActive(showSummary);
-                }
-                if (refs.IconsContainer != null && refs.IconsContainer.activeSelf != showIcons)
-                    refs.IconsContainer.SetActive(showIcons);
-            }
-
-            // Refresh icon availability colors a few times a second (not every frame).  Only the
-            // cell colors change — the strip itself is rebuilt on data changes, never on a timer,
-            // so the switches in it stay put under the cursor between press and release.
-            if (showIcons && Time.unscaledTime - _lastIconRefresh > 0.5f)
-            {
-                _lastIconRefresh = Time.unscaledTime;
+                _rowsDirty      = false;
+                _lastRowRefresh = Time.unscaledTime;
                 for (int i = 0; i < _rows.Count && i < _data.Slots.Count; i++)
-                    RefreshIconColors(_rows[i]);
+                {
+                    var refs = _rows[i];
+                    var slot = _data.Slots[i];
+                    UpdateRowEmptyState(refs, slot);
+                    if (refs.Summary != null)
+                    {
+                        // Built only while it is on screen: a hidden summary costs the same to
+                        // build as a visible one and nobody reads it.
+                        if (showSummary) refs.Summary.text = BuildSummary(slot);
+                        if (refs.Summary.gameObject.activeSelf != showSummary)
+                            refs.Summary.gameObject.SetActive(showSummary);
+                    }
+                    if (refs.IconsContainer != null && refs.IconsContainer.activeSelf != showIcons)
+                        refs.IconsContainer.SetActive(showIcons);
+                    if (showIcons) RefreshIconColors(refs);
+                }
             }
         }
 
@@ -553,6 +623,10 @@ namespace Armory
             _rows.Clear();
             for (int i = 0; i < _data.Slots.Count; i++)
                 _rows.Add(BuildSlotRow(i));
+            // Every edit to _data funnels through here -- add, delete, rename, capture, and
+            // every include/exclude switch -- so this one line covers all of them. New rows are
+            // blank until the refresh below fills them in, which is the same frame.
+            MarkDirty();
         }
 
         private static SlotRowRefs BuildSlotRow(int index)
@@ -2087,35 +2161,56 @@ namespace Armory
 
         // One line per loadout: what it loads, by category, hotbar items keyed by their number.
         // Missing items read red; an included empty worn slot reads as "no helm" and so on.
+        // Buffers for the summary, reused across rows and refreshes. This ran once per visible
+        // row and allocated an entry list, a List<string> per category and a string per item
+        // every time; with the panel open that was megabytes a second of garbage for text that
+        // mostly did not change.
+        //
+        // Its own entry list, deliberately not shared with HasIncludedContent: that one is
+        // reached from IsLoadoutActive on this very path, and a buffer shared between them
+        // would be cleared out from underneath this loop.
+        private static readonly List<LoadoutCategories.Entry> _summaryEntries =
+            new List<LoadoutCategories.Entry>(24);
+        private static readonly StringBuilder _summary     = new StringBuilder(256);
+        private static readonly StringBuilder _summaryPart = new StringBuilder(128);
+
         private static string BuildSummary(LoadoutSlot slot)
         {
             if (slot.IsEmpty()) return "<color=#666666>empty</color>";
             var playerInv = Player.m_localPlayer?.GetInventory();
             var rackInv   = _rack?.GetStorageInventory();
-            var entries   = LoadoutCategories.Entries(slot);
+            LoadoutCategories.Entries(slot, _summaryEntries);
 
-            var parts = new List<string>(8);
+            _summary.Length = 0;
             foreach (var cat in LoadoutCategories.Order)
             {
-                var names = new List<string>();
-                foreach (var e in entries)
+                _summaryPart.Length = 0;
+                int shown = 0;
+                for (int i = 0; i < _summaryEntries.Count; i++)
                 {
+                    var e = _summaryEntries[i];
                     if (e.Category != cat || !e.Included) continue;
                     if (e.Item == null)
                     {
-                        if (e.Worn) names.Add($"<color=#777777>no {e.Label.ToLower()}</color>");
+                        if (!e.Worn) continue;
+                        if (shown++ > 0) _summaryPart.Append(' ');
+                        _summaryPart.Append("<color=#777777>no ").Append(e.Label.ToLower()).Append("</color>");
                         continue;
                     }
-                    var name = LoadoutManager.GetItemDisplayName(e.Item);
-                    if (e.HotbarIndex >= 0) name = $"{e.Label}={name}";
+                    if (shown++ > 0) _summaryPart.Append(' ');
                     bool available = LoadoutManager.IsItemAvailable(e.Item, playerInv, rackInv);
-                    names.Add(available ? name : $"<color=#d8584a>{name}</color>");
+                    if (!available) _summaryPart.Append("<color=#d8584a>");
+                    if (e.HotbarIndex >= 0) _summaryPart.Append(e.Label).Append('=');
+                    _summaryPart.Append(LoadoutManager.GetItemDisplayName(e.Item));
+                    if (!available) _summaryPart.Append("</color>");
                 }
-                if (names.Count == 0) continue;
-                parts.Add($"<color=#b8943a>{LoadoutCategories.Label(cat)}:</color>{string.Join(" ", names)}");
+                if (shown == 0) continue;
+                if (_summary.Length > 0) _summary.Append("  ");
+                _summary.Append("<color=#b8943a>").Append(LoadoutCategories.Label(cat))
+                        .Append(":</color>").Append(_summaryPart);
             }
-            return parts.Count > 0
-                ? string.Join("  ", parts)
+            return _summary.Length > 0
+                ? _summary.ToString()
                 : "<color=#666666>nothing in this loadout — press + to add cells</color>";
         }
     }

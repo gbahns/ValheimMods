@@ -601,11 +601,33 @@ namespace Armory
         {
             if (saved == null || string.IsNullOrEmpty(saved.SharedName)) return true;
             foreach (var inv in inventories)
+                if (Holds(inv, saved.SharedName)) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// The two-inventory case, without the params array.
+        ///
+        /// The open panel asks this once per saved item per visible row. The params overload
+        /// allocates an Inventory[2] on each of those calls and the LINQ Any() underneath it
+        /// allocated an enumerator and a closure as well -- invisible in a click handler, and
+        /// not invisible in a frame.
+        /// </summary>
+        public static bool IsItemAvailable(SavedItem saved, Inventory a, Inventory b)
+        {
+            if (saved == null || string.IsNullOrEmpty(saved.SharedName)) return true;
+            return Holds(a, saved.SharedName) || Holds(b, saved.SharedName);
+        }
+
+        private static bool Holds(Inventory inv, string sharedName)
+        {
+            if (inv == null) return false;
+            var items = inv.GetAllItems();      // the live list, not a copy
+            for (int i = 0; i < items.Count; i++)
             {
-                if (inv == null) continue;
-                if (inv.GetAllItems().Any(i =>
-                        i.m_shared?.m_name == saved.SharedName && i.m_stack > 0))
-                    return true;
+                var it = items[i];
+                if (it != null && it.m_stack > 0 && it.m_shared != null
+                    && it.m_shared.m_name == sharedName) return true;
             }
             return false;
         }

@@ -25,7 +25,7 @@ namespace Armory
     // ArmoryUI is only ever reached from InventoryGui.Show, and ArmoryPause returns immediately
     // while Player.m_localPlayer is null.  What does run is the part the server needs: the clone,
     // its registration into ZNetScene, and the ArmoryRack component on the spawned object.
-    [BepInPlugin(ModGuid, "Armory", "2.0.0")]
+    [BepInPlugin(ModGuid, "Armory", "2.0.1")]
     [BepInDependency("com.jotunn.jotunn")]
     public class ArmoryMod : BaseUnityPlugin
     {
@@ -192,6 +192,37 @@ namespace Armory
     internal static class Player_SetMouseLook_Patch
     {
         static bool Prefix() => !ArmoryUI.IsOpen;
+    }
+
+    // ── The one change an open panel cannot hear about ────────────────────────────
+    //
+    // A row shows whether the loadout it names is what the player is wearing, and equipping
+    // moves nothing in the inventory - it sets a flag on an item already in it - so none of
+    // Inventory's own change events fire. These two patches are that event.
+    //
+    // They run for every Humanoid in the world, creatures included, which is why the body is a
+    // reference comparison and a bool, and why it reads the cheap test first: with no panel
+    // open this costs one static bool read per equip, anywhere, by anybody.
+    //
+    // Postfix, not prefix: a refused equip (mid-attack, swimming, broken item) should not
+    // redraw anything, and by the postfix the decision has been made.
+
+    [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.EquipItem))]
+    internal static class Humanoid_EquipItem_Patch
+    {
+        static void Postfix(Humanoid __instance)
+        {
+            if (ArmoryUI.IsOpen && (object)__instance == Player.m_localPlayer) ArmoryUI.MarkDirty();
+        }
+    }
+
+    [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.UnequipItem))]
+    internal static class Humanoid_UnequipItem_Patch
+    {
+        static void Postfix(Humanoid __instance)
+        {
+            if (ArmoryUI.IsOpen && (object)__instance == Player.m_localPlayer) ArmoryUI.MarkDirty();
+        }
     }
 
     // While the player is typing into our rename InputField, claim chat focus so Valheim's

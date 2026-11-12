@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.1 — 2026-11-11
+
+- Fixed a large frame-rate drop while looking at an Armory rack. Its hover text was rebuilt, and the localization system looked up by reflection, on every single frame.
+- Fixed a frame-rate drop while an Armory panel is open. Each row rebuilt its summary, and searched both inventories for every item in it, on every frame. Rows now redraw when something changes them: an item moved, a rack changed by somebody else, a piece of gear equipped.
+
 ## 2.0.0 — 2026-09-21
 
 Loadouts changed shape in this release: what a loadout loads is now chosen cell by cell, and the panel was rebuilt around that. Everything below is new since 1.3.0.

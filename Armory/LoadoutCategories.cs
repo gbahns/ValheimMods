@@ -97,7 +97,22 @@ namespace Armory
         public static List<Entry> Entries(LoadoutSlot slot)
         {
             var list = new List<Entry>(24);
-            if (slot == null) return list;
+            Entries(slot, list);
+            return list;
+        }
+
+        /// <summary>
+        /// Fills a list the caller owns, instead of allocating one.
+        ///
+        /// The open panel's per-row refresh asked for this list three times per row -- here, in
+        /// HasIncludedContent, and again in BuildSummary -- and used to do it on every frame.
+        /// The allocating overload above stays for the click handlers, where one list per click
+        /// costs nothing and a shared buffer would be a trap.
+        /// </summary>
+        public static void Entries(LoadoutSlot slot, List<Entry> list)
+        {
+            list.Clear();
+            if (slot == null) return;
             void AddWorn(LoadoutCategory cat, string label, SavedItem item, WornSlot key) =>
                 list.Add(new Entry
                 {
@@ -133,7 +148,6 @@ namespace Armory
                         HotbarIndex = -1, IsExtended = true, Cell = new Vector2i(ext.GridX, ext.GridY),
                     });
                 }
-            return list;
         }
 
         public static void SetIncluded(LoadoutSlot slot, Entry e, bool on)
@@ -169,10 +183,20 @@ namespace Armory
         /// True when loading this slot would do anything: a worn slot is included (empty or
         /// not — empty means "wear nothing there"), or an included cell has an item.
         /// </summary>
+        // Its own buffer. See the note on the Entries overload for why this one is not shared
+        // with the panel's summary builder.
+        private static readonly List<Entry> _contentScratch = new List<Entry>(24);
+
         public static bool HasIncludedContent(LoadoutSlot slot)
         {
             if (slot == null) return false;
-            return Entries(slot).Any(e => e.Included && (e.Worn || e.Item != null));
+            Entries(slot, _contentScratch);
+            for (int i = 0; i < _contentScratch.Count; i++)
+            {
+                var e = _contentScratch[i];
+                if (e.Included && (e.Worn || e.Item != null)) return true;
+            }
+            return false;
         }
     }
 }

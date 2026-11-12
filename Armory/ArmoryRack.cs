@@ -46,7 +46,12 @@ namespace Armory
         // The Container component attached to the same GameObject (added in Phase 2).  Used by
         // the UI to show the rack's storage grid alongside the player inventory, and by the
         // LoadoutManager to source loadout items from the rack as well as the player's inv.
-        public Container GetStorage() => GetComponent<Container>();
+        // Looked up lazily rather than in Awake: ArmoryPieces removes and re-adds the
+        // Container after ArmoryRack, so it is not necessarily present when Awake runs.
+        // Cached because Update calls ApplyPrivacy and ApplyName -- each of which asked for
+        // it -- on every rack in range on every frame.
+        private Container _storage;
+        public Container GetStorage() => _storage != null ? _storage : (_storage = GetComponent<Container>());
         public Inventory  GetStorageInventory() => GetStorage()?.GetInventory();
 
         private void Update()
@@ -223,37 +228,62 @@ namespace Armory
         public string GetHoverName() => RackName;
         public float  GetHoverOffset() => 0f; // Valheim 1.0: new Hoverable member (vertical hover-text offset)
 
+        // Hud.Update calls UpdateCrosshair every frame, and UpdateCrosshair calls
+        // GetHoverText on whatever the crosshair is on -- so this runs once a frame for as
+        // long as the player looks at the rack. The text only changes when the name or the
+        // privacy flag changes, so it is built once and kept until one of those two moves.
+        // Rebuilt when the name or privacy changes, and in any case every few seconds:
+        // Localize also expands $KEY_* into the glyph for the key the player has bound, so a
+        // rebind would otherwise leave a stale glyph on the cached string until relog. A
+        // timeout covers that and a language change too, and still spends one build per
+        // RefreshSeconds instead of one per frame.
+        private const float RefreshSeconds = 5f;
+        private string _hoverCache;
+        private string _hoverCacheName;
+        private bool   _hoverCachePrivate;
+        private float  _hoverCacheAt;
+
         public string GetHoverText()
         {
             if (m_nview == null || !m_nview.IsValid()) return string.Empty;
+
+            string rackName = RackName;
+            bool isPriv = IsPrivate;
+            if (_hoverCache != null && _hoverCacheName == rackName && _hoverCachePrivate == isPriv
+                && Time.unscaledTime - _hoverCacheAt < RefreshSeconds)
+                return _hoverCache;
             // Valheim's hover UI shows the result of this method verbatim — it does not run
             // localization on it for us.  Vanilla Localization.instance.Localize() expands BOTH
             // $-translation tokens AND $KEY_* key-binding tokens into the player's actual bound
             // glyph (e.g. "[E]").  Jotunn's LocalizationManager only handles the former, which
             // is why $KEY_Use stayed raw through it.
-            return LocalizeText(
-                RackName + "\n" +
+            _hoverCache = LocalizeText(
+                rackName + "\n" +
                 "[<color=yellow><b>$KEY_Use</b></color>] Manage Loadouts\n" +
                 "[<color=yellow><b>$KEY_AltPlace</b> + <b>$KEY_Use</b></color>] Rename\n" +
-                (IsPrivate
+                (isPriv
                     ? "<color=#ffb14e>Personal</color> <color=#aaaaaa>— only you can open it</color>"
                     : "<color=#aaaaaa>Shared — anyone can open it</color>"));
+            _hoverCacheName = rackName;
+            _hoverCachePrivate = isPriv;
+            _hoverCacheAt = Time.unscaledTime;
+            return _hoverCache;
         }
 
-        // The vanilla Localization class isn't in any of the assemblies we reference at compile
-        // time (it's loaded into the game process at runtime, but not in assembly_valheim_*.dll).
-        // Use HarmonyLib's AccessTools to find it across loaded assemblies at runtime.
+        // Localization is a plain global type in assembly_valheim, which this project already
+        // references -- CaptainsLog, Comfortometer, DiagnoseServerLag and DudeWhatAreMyStats
+        // all call it directly. The comment that used to be here claimed otherwise and resolved
+        // it through AccessTools.TypeByName on every call. TypeByName is not cached: it falls
+        // through to scanning every type in every loaded assembly, allocating an array per
+        // assembly. With fifty-odd plugins loaded that cost milliseconds -- once a frame, for
+        // as long as the player looked at the rack. That is what tanked the frame rate,
+        // reported 2026-11-10.
         private static string LocalizeText(string text)
         {
             try
             {
-                var locType = AccessTools.TypeByName("Localization");
-                if (locType == null) return text;
-                var instance = AccessTools.Property(locType, "instance")?.GetValue(null)
-                            ?? AccessTools.Field(locType, "instance")?.GetValue(null);
-                if (instance == null) return text;
-                var localize = AccessTools.Method(locType, "Localize", new[] { typeof(string) });
-                return localize?.Invoke(instance, new object[] { text }) as string ?? text;
+                var loc = Localization.instance;
+                return loc != null ? loc.Localize(text) : text;
             }
             catch { return text; }
         }
