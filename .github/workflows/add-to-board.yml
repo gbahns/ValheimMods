@@ -24,11 +24,13 @@ jobs:
           project-url: https://github.com/users/gbahns/projects/1
           github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}
 
-      - name: Set Status to Backlog and Mod from the title
+      - name: Set Status to Backlog, Reporter, and Mod from the title
         env:
           GH_TOKEN: ${{ secrets.ADD_TO_PROJECT_PAT }}
           ITEM_ID: ${{ steps.add.outputs.itemId }}
           TITLE: ${{ github.event.issue.title || github.event.pull_request.title }}
+          REPORTER: ${{ github.event.issue.user.login || github.event.pull_request.user.login }}
+          REPORTER_FIELD: PVTF_lAHOAI9cvs4Axb5UzhpqhHc
           PROJECT_ID: PVT_kwHOAI9cvs4Axb5U
           STATUS_FIELD: PVTSSF_lAHOAI9cvs4Axb5UzgnjDRA
           STATUS_BACKLOG: f75ad846
@@ -42,6 +44,11 @@ jobs:
           }
           set_option "$STATUS_FIELD" "$STATUS_BACKLOG"
           echo "Status: Backlog"
+
+          # Cards show assignees but not who opened the issue, so keep that in a text field.
+          gh api graphql -f query='mutation($p:ID!,$i:ID!,$f:ID!,$t:String!){
+            updateProjectV2ItemFieldValue(input:{projectId:$p,itemId:$i,fieldId:$f,value:{text:$t}}){clientMutationId}}'             -f p="$PROJECT_ID" -f i="$ITEM_ID" -f f="$REPORTER_FIELD" -f t="$REPORTER" >/dev/null
+          echo "Reporter: $REPORTER"
 
           # Match the title against the Mod options, ignoring case and spaces, so
           # "[The Greatest Portal] ..." and "TheGreatestPortal: ..." both resolve.
