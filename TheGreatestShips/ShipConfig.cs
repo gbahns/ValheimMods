@@ -146,10 +146,10 @@ namespace TheGreatestShips
                 "inside the pole, so the default steps you a few centimeters back. Yours alone; applies at once, and the " +
                 "console command tgs_hold reads and sets it while you stand there.");
             HoldFastOffsetLongship.SettingChanged += (_, __) => ShipPrefabs.RefitCrew();
-            // The Karve's own spot has the fingers in the pole too (Greg, on the Cargo Karve: a bit too far
-            // forward, maybe a bit right), so the same step back as the longship's; his tgs_hold numbers
-            // replace it when he has them.  0.9.12's (0.04, 0) was a guess the other way.
-            HoldFastOffsetKarve = mod.Config.Bind("General", "Hold Fast Offset (Karve hull)", new Vector2(0f, -0.06f),
+            // The Karve's own spot has the fingers in the pole too.  Greg dialed this in by eye on the
+            // Cargo Karve with tgs_hold, 2026-11-12: 3.5 cm left, 4.5 cm back.  (0.9.12's (0.04, 0) was a
+            // guess, and never applied anyway: see CrewFit.Surface.)
+            HoldFastOffsetKarve = mod.Config.Bind("General", "Hold Fast Offset (Karve hull)", new Vector2(-0.035f, -0.045f),
                 "The same for the Fast Karve and the Cargo Karve: (right, forward) in meters from the game's own spot at " +
                 "the Karve's mast, which puts the fingers a little inside the pole. Yours alone; applies at once; tgs_hold " +
                 "reads and sets it.");
