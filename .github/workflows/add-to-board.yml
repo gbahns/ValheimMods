@@ -1,0 +1,58 @@
+# Puts every new issue and pull request on the "Valheim Mods" project board
+# (https://github.com/users/gbahns/projects/1) in Backlog, and sets its Mod when the title
+# names one. The built-in auto-add workflow is not available on this account's project.
+#
+# Needs the repo secret ADD_TO_PROJECT_PAT: a fine-grained token for gbahns with
+# Projects: read and write (account) and Issues + Pull requests: read (this repo).
+# The default GITHUB_TOKEN cannot write to a user-level project.
+name: Add to board
+
+on:
+  issues:
+    types: [opened, reopened]
+  pull_request_target:
+    types: [opened, reopened]
+
+jobs:
+  add:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add to the project
+        id: add
+        uses: actions/add-to-project@v1.0.2
+        with:
+          project-url: https://github.com/users/gbahns/projects/1
+          github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}
+
+      - name: Set Status to Backlog and Mod from the title
+        env:
+          GH_TOKEN: ${{ secrets.ADD_TO_PROJECT_PAT }}
+          ITEM_ID: ${{ steps.add.outputs.itemId }}
+          TITLE: ${{ github.event.issue.title || github.event.pull_request.title }}
+          PROJECT_ID: PVT_kwHOAI9cvs4Axb5U
+          STATUS_FIELD: PVTSSF_lAHOAI9cvs4Axb5UzgnjDRA
+          STATUS_BACKLOG: f75ad846
+          MOD_FIELD: PVTSSF_lAHOAI9cvs4Axb5UzhpmisU
+        run: |
+          set -e
+          set_option() {
+            gh api graphql -f query='mutation($p:ID!,$i:ID!,$f:ID!,$o:String!){
+              updateProjectV2ItemFieldValue(input:{projectId:$p,itemId:$i,fieldId:$f,value:{singleSelectOptionId:$o}}){clientMutationId}}' \
+              -f p="$PROJECT_ID" -f i="$ITEM_ID" -f f="$1" -f o="$2" >/dev/null
+          }
+          set_option "$STATUS_FIELD" "$STATUS_BACKLOG"
+          echo "Status: Backlog"
+
+          # Match the title against the Mod options, ignoring case and spaces, so
+          # "[The Greatest Portal] ..." and "TheGreatestPortal: ..." both resolve.
+          squeezed=$(printf '%s' "$TITLE" | tr -d ' ' | tr '[:upper:]' '[:lower:]')
+          gh api graphql -f query='query($f:ID!){ node(id:$f){ ... on ProjectV2SingleSelectField{ options{ id name } } } }' \
+            -f f="$MOD_FIELD" --jq '.data.node.options[] | "\(.id)\t\(.name)"' |
+          while IFS=$'\t' read -r id name; do
+            key=$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]')
+            if [[ "$squeezed" == *"$key"* ]]; then
+              set_option "$MOD_FIELD" "$id"
+              echo "Mod: $name"
+              break
+            fi
+          done
