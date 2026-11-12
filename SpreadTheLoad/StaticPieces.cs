@@ -15,19 +15,29 @@ namespace SpreadTheLoad
     /// be - hitting it - is already covered by Ownership Follows Attacker, which hands over whatever
     /// you swing at. So transferring inert pieces was all cost and no benefit.
     ///
-    /// In a built-up base that cost is not small. Measured 2026-11-02, five players, in the admin's
-    /// own base, comparing his stalling seconds against his calm ones with location held constant -
-    /// 6,266 nearby pieces either way, 11,600 instances either way, the same 31 terrain-modified
-    /// zones, the same 6,046 objects owned by somebody else:
+    /// What prompted it, measured 2026-11-02, five players, in the admin's own base, comparing his
+    /// stalling seconds against his calm ones with location held constant - 6,266 nearby pieces
+    /// either way, 11,600 instances either way, the same 31 terrain-modified zones, the same 6,046
+    /// objects owned by somebody else:
     ///
     ///     frame time       130.4 ms  against  37.7 ms
     ///     owned objects       5,176  against    1,185
     ///     owned creatures        49  against        9
     ///     change queue           63  against       12
     ///
-    /// Nothing about where he stood differed. Only what he was holding. And this mod's own log said
-    /// where it came from: "handed 275 object(s) to the player standing on them in the last minute",
-    /// minute after minute, while he walked around his own base.
+    /// And this mod's own log said where those objects came from: "handed 275 object(s) to the
+    /// player standing on them in the last minute", minute after minute, while he walked his base.
+    ///
+    /// Do not read that table as the owned count causing the frame time, which is how it was first
+    /// written up. A five-player hour on 2026-11-10, with this change already live, has the same
+    /// admin holding a median 5,559 objects in the same base at 30.0 ms. The count alone is not the
+    /// cost - and his graphics settings changed in between, so the 130 ms is not pinned on anything
+    /// here. What survives is the narrower claim this change actually rests on: these transfers buy
+    /// nothing, so not making them is free. The churn was worth removing, not the tally.
+    ///
+    /// That same session does show the intended shape. Three players stood in that base for roughly
+    /// 1,400 seconds each while holding a median 154, 257 and 162 objects, where the old rule would
+    /// have handed each of them the base a few hundred pieces at a time.
     ///
     /// A base is the worst case by construction. The rule fires when a player is within Near while
     /// the owner is beyond Far, and a base is thousands of persistent objects packed within a few

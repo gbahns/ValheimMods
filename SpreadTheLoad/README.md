@@ -57,6 +57,13 @@ graphics settings and hardware question, and [DiagnoseServerLag][dsl] will tell 
 | `Log Activity` | `false` | Occasional summary line; never one line per object. |
 | `Ownership Follows Attacker` | `true` | Give a tree, rock or ore vein to whoever is hitting it. |
 | `Attacker Dwell Seconds` | `5` | How long it stays put afterwards. |
+| `Ownership Follows Proximity` | `true` | Give an object to a player standing on it when its owner is nowhere near. |
+| `Proximity Near Meters` | `2` | How close a player must be to take an object this way. |
+| `Proximity Far Meters` | `5` | How far the owner must be for it to be taken from them. |
+| `Proximity Skips Inert Pieces` | `true` | Leave walls, floors and beams with their owner; only what interacts, ticks or moves is handed over. |
+| `Send To Every Peer Each Cycle` | `true` | Send every player their world update each cycle, not one player per frame. |
+| `Updates Per Second` | `20` | How often each player is served, no longer divided by the player count. |
+| `Max Simulation Distance` | `-1` | The server's ceiling on the draw distance clients may ask for; `-1` leaves it to vanilla. |
 | `Auto Detect Struggling Players` | `false` | Find struggling machines without naming anyone. |
 | `Stalls Per Minute` | `6` | How many stalls a minute before flagging someone. |
 | `Assign Ship To Captain` | `true` | Give a ship to whoever is steering it. |

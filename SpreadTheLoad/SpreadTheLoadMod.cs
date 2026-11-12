@@ -149,9 +149,9 @@ namespace SpreadTheLoad
                 "a piece that does nothing is invisible - there is no lurch to feel, and hitting " +
                 "one is already covered by Ownership Follows Attacker - while the cost of holding " +
                 "it is real: a base is thousands of objects packed within a couple of metres, so " +
-                "walking around one collects them by the hundred. Measured in a five-player " +
-                "session, the admin's frame time in his own base was 130 ms while he held 5,176 " +
-                "objects and 38 ms while he held 1,185, with the same pieces loaded either way. " +
+                "walking around one collects them by the hundred - this mod's own log reported 275 " +
+                "objects a minute changing hands this way, minute after minute, while one player " +
+                "walked around his base. " +
                 "Anything that interacts, ticks or moves is still handed over: chests, doors, " +
                 "fires, smelters, crafting stations, carts and ships, as well as every creature " +
                 "and dropped item. Turn this off to get the rule's previous behavior back.");

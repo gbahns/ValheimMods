@@ -1,42 +1,16 @@
 # Changelog
 
-## 0.4.0 - unreleased
+## 0.4.0 - 2026-11-11
 
-- **The proximity rule no longer hands over inert building pieces.** `Ownership Follows Proximity`
-  gives you an object you are standing on when its owner is far away, which is right for a boar you
-  are shoving or a chest you are opening - things you change and then watch, where the round trip to
-  a distant owner is a visible lurch. A floor tile is not one of those. Owning it changes nothing
-  anybody can see, and the one case that would - hitting it - is already covered by
-  `Ownership Follows Attacker`.
-
-  Meanwhile the cost of holding it is real. A base is thousands of persistent objects packed within
-  a couple of metres of each other, so every step through one is another handful of transfers, and
-  they accumulate for as long as you stay. This mod's own log, in a five-player session on
-  2026-11-02: `handed 275 object(s) to the player standing on them in the last minute`, minute after
-  minute, while the admin walked around his own base.
-
-  What that was costing him, comparing his stalling seconds against his calm ones in the same base -
-  6,266 nearby pieces either way, 11,600 instances either way, the same 31 terrain-modified zones,
-  the same 6,046 objects owned by somebody else:
-
-  | | stalling | calm |
-  |---|---|---|
-  | frame time | 130.4 ms | 37.7 ms |
-  | objects owned | 5,176 | 1,185 |
-  | creatures owned | 49 | 9 |
-  | change queue | 63 | 12 |
-
-  Nothing about where he stood differed between those two sets of seconds. Only what he was holding.
-  The hysteresis that keeps one object from flitting between two people does nothing about one person
-  collecting thousands of different objects, which is what a base does.
-
-  Anything that interacts, ticks or moves is still handed over: chests, doors, fires, smelters,
-  crafting stations, carts and ships, plus every creature and dropped item. New setting
-  `Proximity Skips Inert Pieces`, on by default; turn it off for the old behavior.
-
-- The yield rule is deliberately unchanged. It exists to keep work off a named machine, and a wall
-  on that machine still costs that machine - so it keeps moving them. Whether it should is a
-  separate question with a separate measurement behind it.
+- **The proximity rule no longer hands over inert building pieces.** Walking through a base used to
+  collect the floor under you by the hundred, for as long as you stayed, and owning a wall changes
+  nothing anybody can see. Anything that interacts, ticks or moves is still handed over: chests,
+  doors, fires, smelters, crafting stations, carts and ships, plus every creature and dropped item.
+  New setting `Proximity Skips Inert Pieces`, on by default; turn it off for the old behavior.
+- The yield rule is unchanged. It exists to keep work off a named machine, and a wall on that
+  machine still costs that machine.
+- The README now lists the proximity, pacing and simulation-distance settings, which had been
+  shipping undocumented.
 
 ## 0.3.0 - 2026-10-14
 
