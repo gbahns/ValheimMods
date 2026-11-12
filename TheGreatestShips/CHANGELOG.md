@@ -9,6 +9,9 @@
   at rowing speed slid sideways instead, "like steering a bar of soap" (#57). The rudder's leverage
   now grows with the hull, as the game's own Drakkar's does, so every ship answers the rudder as the
   hull it is built on; Rudder Speed still swings it more slowly on the big ships.
+- Fixed: after a change of world, the Hold Fast Offsets (and tgs_hold) and a hull size arriving from
+  the server no longer moved the crew's places; the refit was measuring against a vanilla hull the
+  game had unloaded with the old world.
 - New per-ship setting "Turn Rate Multiplier" (1 = as the vanilla hull) to make a ship more ponderous
   on purpose.
 - New ship: the Cargo Karve (#57), a Karve a quarter wider with an 8-slot hold (its "Hold Slots"

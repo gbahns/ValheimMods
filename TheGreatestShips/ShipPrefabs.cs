@@ -26,8 +26,24 @@ namespace TheGreatestShips
             public HullTurning.Moments Moments;  // the vanilla hull's mass spread, for its yaw inertia
             // The base hull's transform scale, which Hull Width / Length / Scale multiply.
             public Vector3 BaseScale;
-            // The vanilla hull itself, unscaled: the crew's places are measured on it.
+            // The vanilla hull itself, unscaled: the crew's places are measured on it.  Read it
+            // through BaseOf: the game's prefabs are soft references since 1.0 and are unloaded
+            // with the world they were loaded for, while this mod's clones live on.
             public GameObject Base;
+        }
+
+        // The vanilla hull, fetched again once the last world took its copy away.  Before this,
+        // every refit after a change of world (a Hold Fast Offset, the server's hull size)
+        // measured against a dead object and did nothing, without a word.
+        private static GameObject BaseOf(ShipDefinition def, Built built)
+        {
+            if (built.Base == null)
+            {
+                built.Base = PrefabManager.Instance.GetPrefab(def.BasePrefab);
+                if (built.Base == null)
+                    Jotunn.Logger.LogWarning($"[TheGreatestShips] '{def.BasePrefab}' is not loaded; the {def.DisplayName}'s crew places were not refit.");
+            }
+            return built.Base;
         }
 
         private static readonly Dictionary<ShipDefinition, Built> _built =
@@ -304,11 +320,13 @@ namespace TheGreatestShips
             {
                 var def = pair.Key; var built = pair.Value;
                 if (built.Clone == null) continue;
+                var vanilla = BaseOf(def, built);
+                if (vanilla == null) continue;
                 var ratio = Ratio(built.Clone.transform.localScale, built.BaseScale);
-                var fit = FitCrew(def, built.Clone, built.Base, ratio);
+                var fit = FitCrew(def, built.Clone, vanilla, ratio);
                 foreach (var updater in Ship.Instances)
                     if (updater is Ship ship && Utils.GetPrefabName(ship.gameObject) == def.PrefabName)
-                        FitCrew(def, ship.gameObject, built.Base, ratio);
+                        FitCrew(def, ship.gameObject, vanilla, ratio);
                 if (fit != null) Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: {fit}.");
             }
         }
@@ -333,7 +351,8 @@ namespace TheGreatestShips
             if (built.Clone.transform.localScale == target) return;
             built.Clone.transform.localScale = target;
             var ratio = Ratio(target, built.BaseScale);
-            var fit = FitCrew(def, built.Clone, built.Base, ratio);
+            var vanilla = BaseOf(def, built);
+            var fit = vanilla != null ? FitCrew(def, built.Clone, vanilla, ratio) : null;
 
             int updated = 0;
             foreach (var updater in Ship.Instances)
@@ -341,7 +360,7 @@ namespace TheGreatestShips
                 if (updater is Ship ship && Utils.GetPrefabName(ship.gameObject) == def.PrefabName)
                 {
                     ship.transform.localScale = target;
-                    FitCrew(def, ship.gameObject, built.Base, ratio);
+                    if (vanilla != null) FitCrew(def, ship.gameObject, vanilla, ratio);
                     updated++;
                 }
             }
