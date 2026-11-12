@@ -39,7 +39,12 @@ namespace TheGreatestPortal
         [HarmonyPostfix]
         private static void Postfix(Player __instance)
         {
-            if (__instance == Player.m_localPlayer) PortalNetwork.RequestCatalog();
+            if (__instance == Player.m_localPlayer)
+            {
+                PortalNetwork.RequestCatalog();
+                // Every connection has to be told again: the server keeps the wish against a peer.
+                PortalNetwork.SendReveal();
+            }
         }
     }
 
@@ -62,6 +67,12 @@ namespace TheGreatestPortal
         private static bool Prefix(TeleportWorld __instance, Humanoid human, bool hold, ref bool __result)
         {
             if (hold) { __result = false; return false; }
+            if (PortalData.HiddenFromMe(PortalData.ZdoOf(__instance)))
+            {
+                human.Message(MessageHud.MessageType.Center, "This portal is private");
+                __result = true;
+                return false;
+            }
             if (!PrivateArea.CheckAccess(__instance.transform.position))
             {
                 human.Message(MessageHud.MessageType.Center, "$piece_noaccess");
@@ -122,6 +133,11 @@ namespace TheGreatestPortal
             if (player == null || player != Player.m_localPlayer) return true;
             var portal = __instance.GetComponentInParent<TeleportWorld>();
             if (portal == null) return true;
+            if (PortalData.HiddenFromMe(PortalData.ZdoOf(portal)))
+            {
+                player.Message(MessageHud.MessageType.Center, "This portal is private");
+                return false;
+            }
             // Holding the detour key turns any portal into an open one for this trip only.
             if (!MapPicker.IsOpenPortal(portal) && Keys.IsHeld(TgpConfig.DetourKey.Value))
             {
@@ -150,9 +166,29 @@ namespace TheGreatestPortal
     internal static class TeleportWorld_Teleport_Patch
     {
         [HarmonyPrefix]
-        private static void Prefix(Player player, out bool __state)
+        private static bool Prefix(TeleportWorld __instance, Player player, out bool __state)
         {
             __state = player != null && player.IsTeleporting();
+            // Neither end of a trip may be somebody else's private portal. The far end is checked
+            // too, because the connection was made before the portal was made private and the
+            // portal you are standing in is nothing to do with the one you would arrive at.
+            if (player != null && player == Player.m_localPlayer)
+            {
+                var zdo = PortalData.ZdoOf(__instance);
+                bool mine = !PortalData.HiddenFromMe(zdo);
+                if (mine && zdo != null)
+                {
+                    ZDOID conn = PortalData.Connection(zdo);
+                    if (conn != ZDOID.None && ZDOMan.instance != null)
+                        mine = !PortalData.HiddenFromMe(ZDOMan.instance.GetZDO(conn));
+                }
+                if (!mine)
+                {
+                    player.Message(MessageHud.MessageType.Center, "This portal is private");
+                    return false;
+                }
+            }
+            return true;
         }
 
         [HarmonyPostfix]

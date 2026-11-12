@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.5.0 — 2026-11-12
+
+- Private portals, off until a server turns them on (**Allow Private Portals**, a synced rule).
+  The Private toggle on the panel, or Make private in a row's menu, makes a portal yours alone:
+  out of everyone else's list and map, and nobody else able to walk through it or arrive at it.
+- Only the character that built a portal can, and the game's own record of who placed a piece is
+  what decides that, so it works on portals that were standing long before this version.
+- Turn the rule on only once everybody is on 1.5.0 or newer: what keeps a player out of a private
+  portal is the mod in their own game. Off, none of this is on screen, and a portal marked private
+  is an ordinary portal again with its mark kept for if the rule comes back.
+- While any portal is private the server sends each player their own list; while none is, it is
+  the one shared list it has always been.
+- Admins: Show Private Portals asks for everyone's, for cleaning up after somebody. Off by
+  default, and ignored from anyone the server does not have in its adminlist.txt.
+
 ## 1.4.0 — 2026-11-12
 
 - A gold edge marks the last portal you traveled through, usually the one you came from, so the

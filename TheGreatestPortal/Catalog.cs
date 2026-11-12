@@ -21,6 +21,19 @@ namespace TheGreatestPortal
         public string UsedBy = ""; // and who that was
         public string BornBy = ""; // who built it, "" = not recorded
         public string UsedLog = ""; // everyone who has been through it, newest first (packed)
+        public long OwnerId;       // the character that built it (vanilla's creator), 0 = unknown
+        public bool Private;       // its owner has made it theirs alone
+
+        /// <summary>Whether this portal is this character's to make private, rename from afar and
+        /// so on. A portal with no owner recorded is nobody's.</summary>
+        public bool Mine
+        {
+            get
+            {
+                long me = PortalData.LocalPlayerId();
+                return me != 0L && OwnerId == me;
+            }
+        }
 
         // "Portal" rather than "Unnamed portal": it is what the game and the other mods that draw
         // portals call one, and a map with both on it reads as two different things.
@@ -61,6 +74,20 @@ namespace TheGreatestPortal
         {
             pkg.Write(BornBy ?? "");
             pkg.Write(UsedLog ?? "");
+        }
+
+        /// <summary>The owner and whether they have made it private. A private portal only ever
+        /// reaches the client that may see it, so this block says "yours" more often than not.</summary>
+        public void WriteOwner(ZPackage pkg)
+        {
+            pkg.Write(OwnerId);
+            pkg.Write(Private);
+        }
+
+        public void ReadOwner(ZPackage pkg)
+        {
+            OwnerId = pkg.ReadLong();
+            Private = pkg.ReadBool();
         }
 
         public void ReadMore(ZPackage pkg)
@@ -105,6 +132,10 @@ namespace TheGreatestPortal
 
         /// <summary>Version of the second block, appended after the first. Same bargain again.</summary>
         private const int More = 2;
+
+        /// <summary>Version of the third block. Same bargain: a client that does not know it reads
+        /// the two blocks it does know and stops, and sees every portal it is allowed to see.</summary>
+        private const int Own = 3;
 
         private static readonly Dictionary<long, PortalInfo> _byId = new Dictionary<long, PortalInfo>();
         private static readonly List<PortalInfo> _all = new List<PortalInfo>();
@@ -168,7 +199,11 @@ namespace TheGreatestPortal
             {
                 for (int i = 0; i < order.Count && pkg.GetPos() < pkg.Size(); i++) order[i].ReadExtra(pkg);
                 if (pkg.GetPos() < pkg.Size() && pkg.ReadInt() == More)
+                {
                     for (int i = 0; i < order.Count && pkg.GetPos() < pkg.Size(); i++) order[i].ReadMore(pkg);
+                    if (pkg.GetPos() < pkg.Size() && pkg.ReadInt() == Own)
+                        for (int i = 0; i < order.Count && pkg.GetPos() < pkg.Size(); i++) order[i].ReadOwner(pkg);
+                }
             }
             HasSnapshot = true;
             try { Changed?.Invoke(); }
@@ -186,6 +221,8 @@ namespace TheGreatestPortal
             for (int i = 0; i < infos.Count; i++) infos[i].WriteExtra(pkg);
             pkg.Write(More);
             for (int i = 0; i < infos.Count; i++) infos[i].WriteMore(pkg);
+            pkg.Write(Own);
+            for (int i = 0; i < infos.Count; i++) infos[i].WriteOwner(pkg);
             return pkg;
         }
 

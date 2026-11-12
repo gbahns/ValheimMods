@@ -25,12 +25,28 @@ namespace TheGreatestPortal
         private const string RpcRename  = "TGP_Rename";    // client -> server: long portal id, string name
         private const string RpcNotice  = "TGP_Notice";    // server -> client: string message
         private const string RpcUsed    = "TGP_Used";     // client -> server: long from, long to
+        private const string RpcPrivate = "TGP_Private";  // client -> server: long portal id, int 1 = private
+        private const string RpcReveal  = "TGP_Reveal";   // client -> server: int 1 = an admin asking to see every private portal
 
         private const float Interval = 2f;
 
         private static float _nextMaintain;
         private static bool _dirty;
         private static byte[] _lastSnapshot;
+
+        /// <summary>What each peer was last sent, while private portals mean each gets its own
+        /// list. Empty while nobody has made a portal private, which is the ordinary case.</summary>
+        private static readonly Dictionary<long, byte[]> _lastPerPeer = new Dictionary<long, byte[]>();
+
+        /// <summary>Peer uid to the id of the character playing on it, rebuilt each sweep. A portal
+        /// records the character that built it, and the server knows peers, so the two are joined
+        /// through the player's own character ZDO, which carries both.</summary>
+        private static readonly Dictionary<long, long> _peerPlayer = new Dictionary<long, long>();
+
+        /// <summary>The peers that have asked to be shown every private portal. Being in here is
+        /// only a request; whether it is honored is decided again at every send, because adminship
+        /// can be taken away between one and the next.</summary>
+        private static readonly HashSet<long> _wantsAll = new HashSet<long>();
         private static readonly List<PortalInfo> _infos = new List<PortalInfo>();
         private static readonly Dictionary<long, ZDO> _byId = new Dictionary<long, ZDO>();
         private static readonly List<ZDO> _portals = new List<ZDO>();
@@ -53,6 +69,8 @@ namespace TheGreatestPortal
             rpc.Register<long, string>(RpcRename, RPC_Rename);
             rpc.Register<string>(RpcNotice, RPC_Notice);
             rpc.Register<long, long>(RpcUsed, RPC_Used);
+            rpc.Register<long, int>(RpcPrivate, RPC_Private);
+            rpc.Register<int>(RpcReveal, RPC_Reveal);
         }
 
         internal static void Reset()
@@ -60,6 +78,9 @@ namespace TheGreatestPortal
             _nextMaintain = 0f;
             _dirty = false;
             _lastSnapshot = null;
+            _lastPerPeer.Clear();
+            _peerPlayer.Clear();
+            _wantsAll.Clear();
             _infos.Clear();
             _byId.Clear();
             _portals.Clear();
@@ -98,6 +119,27 @@ namespace TheGreatestPortal
         {
             if (ZRoutedRpc.instance == null) return;
             ZRoutedRpc.instance.InvokeRoutedRPC(RpcRequest);
+        }
+
+        /// <summary>Asks the server to make one of your own portals private, or public again.</summary>
+        internal static void SendPrivate(long portalId, bool on)
+        {
+            if (ZRoutedRpc.instance == null || portalId == 0L) return;
+            ZRoutedRpc.instance.InvokeRoutedRPC(RpcPrivate, portalId, on ? 1 : 0);
+        }
+
+        /// <summary>
+        /// Tells the server whether this client is asking to see other players' private portals.
+        ///
+        /// Sent on every connection and whenever the setting changes, because the server has to be
+        /// told again each time: it keeps the wish against the peer, and a peer is a connection.
+        /// An ordinary player may send this all day; the server will not honor it.
+        /// </summary>
+        internal static void SendReveal()
+        {
+            if (ZRoutedRpc.instance == null) return;
+            bool on = TgpConfig.ShowPrivatePortals != null && TgpConfig.ShowPrivatePortals.Value;
+            ZRoutedRpc.instance.InvokeRoutedRPC(RpcReveal, on ? 1 : 0);
         }
 
         /// <summary>Asks the server to rename a portal and point it at a destination (0 = none).</summary>
@@ -170,7 +212,66 @@ namespace TheGreatestPortal
             var znet = ZNet.instance;
             if (znet == null || !znet.IsServer()) return;
             Maintain();
-            ZRoutedRpc.instance.InvokeRoutedRPC(sender, RpcCatalog, Catalog.Pack(_infos));
+            SendCatalogTo(znet, sender);
+        }
+
+        /// <summary>An admin asking to see every private portal, or giving that up again.</summary>
+        private static void RPC_Reveal(long sender, int on)
+        {
+            var znet = ZNet.instance;
+            if (znet == null || !znet.IsServer()) return;
+            bool want = on != 0;
+            bool had = _wantsAll.Contains(sender);
+            if (want == had) return;
+            if (want) _wantsAll.Add(sender); else _wantsAll.Remove(sender);
+            if (want && !IsAdmin(znet, sender))
+            {
+                TheGreatestPortalMod.Log.LogInfo($"[TheGreatestPortal] {PeerName(znet, sender)} asked to see every private portal but is not an admin.");
+                Notice(sender, "Only an admin can see other players private portals");
+                return;
+            }
+            TheGreatestPortalMod.Log.LogInfo($"[TheGreatestPortal] {PeerName(znet, sender)} is {(want ? "now" : "no longer")} being shown every private portal.");
+            SendCatalogTo(znet, sender);
+        }
+
+        /// <summary>
+        /// Making a portal private, or public again.
+        ///
+        /// Only its owner may, which is the character that built it. An admin who has asked to be
+        /// shown private portals may as well -- that is the whole point of asking, since a portal
+        /// nobody can reach any more is cleaned up by making it public first.
+        /// </summary>
+        private static void RPC_Private(long sender, long portalId, int on)
+        {
+            var znet = ZNet.instance;
+            if (znet == null || !znet.IsServer()) return;
+            if (!PortalData.PrivateAllowed)
+            {
+                Notice(sender, "Private portals are turned off on this server");
+                return;
+            }
+            if (!_byId.TryGetValue(portalId, out var zdo) || zdo == null)
+            {
+                Notice(sender, "That portal is not in the list yet");
+                return;
+            }
+            long who = PlayerIdOf(sender);
+            long owner = PortalData.GetCreator(zdo);
+            bool mine = who != 0L && owner != 0L && owner == who;
+            bool cleaning = _wantsAll.Contains(sender) && IsAdmin(znet, sender);
+            if (!mine && !cleaning)
+            {
+                TheGreatestPortalMod.Log.LogInfo($"[TheGreatestPortal] {PeerName(znet, sender)} asked to change a portal they do not own.");
+                Notice(sender, owner == 0L ? "Nobody owns that portal, so it cannot be made private" : "Only the portal's owner can do that");
+                return;
+            }
+            bool want = on != 0;
+            if (PortalData.GetPrivate(zdo) == want) return;
+            Own(zdo);
+            zdo.Set(PortalData.PrivateHash, want);
+            ZDOMan.instance.ForceSendZDO(zdo.m_uid);
+            TheGreatestPortalMod.Log.LogInfo($"[TheGreatestPortal] {PeerName(znet, sender)} made portal {portalId} {(want ? "private" : "public")}.");
+            _dirty = true;
         }
 
         private static void RPC_SetPortal(long sender, ZPackage pkg)
@@ -294,6 +395,69 @@ namespace TheGreatestPortal
             if (any) _dirty = true;
         }
 
+        /// <summary>The character id playing on a peer, or 0 while that cannot be told.</summary>
+        private static long PlayerIdOf(long peer)
+        {
+            long id;
+            return _peerPlayer.TryGetValue(peer, out id) ? id : 0L;
+        }
+
+        /// <summary>
+        /// Which peer each character is playing on, rebuilt as the sweep runs.
+        ///
+        /// A portal carries the id of the character that built it; ownership of anything on the
+        /// wire is by peer. They are different id spaces, and the bridge is the player's own
+        /// character ZDO, which carries both: its uid names the peer, and it holds the character
+        /// id inside. A player whose character ZDO the server has not got yet is nobody, and sees
+        /// public portals only until it arrives -- which is the safe way round.
+        /// </summary>
+        private static void BuildPlayerMap(ZNet znet)
+        {
+            _peerPlayer.Clear();
+            var zdoMan = ZDOMan.instance;
+            if (zdoMan == null) return;
+            try
+            {
+                ForgetGonePeers(znet);
+                foreach (var info in znet.GetPlayerList())
+                {
+                    var zdo = zdoMan.GetZDO(info.m_characterID);
+                    if (zdo == null) continue;
+                    long playerId = zdo.GetLong(ZDOVars.s_playerID, 0L);
+                    if (playerId != 0L) _peerPlayer[info.m_characterID.UserID] = playerId;
+                }
+            }
+            catch { /* a player who cannot be placed sees the public portals, and no more */ }
+        }
+
+        /// <summary>
+        /// Drops what is remembered about peers that have gone.
+        ///
+        /// Two things are kept against a connection rather than a player: the last list it was
+        /// sent, and whether it asked to see every private portal. Both have to go when it does --
+        /// the first is so much dead weight, and the second is a wish nobody made that would be
+        /// waiting if the id ever came round again.
+        /// </summary>
+        private static void ForgetGonePeers(ZNet znet)
+        {
+            if (_lastPerPeer.Count == 0 && _wantsAll.Count == 0) return;
+            var here = new HashSet<long>();
+            var peers = znet.GetPeers();
+            if (peers != null) foreach (var peer in peers) here.Add(peer.m_uid);
+            if (Player.m_localPlayer != null) here.Add(ZDOMan.GetSessionID());
+            Prune(_lastPerPeer, here);
+            _wantsAll.RemoveWhere(uid => !here.Contains(uid));
+        }
+
+        private static void Prune(Dictionary<long, byte[]> map, HashSet<long> keep)
+        {
+            List<long> gone = null;
+            foreach (var uid in map.Keys)
+                if (!keep.Contains(uid)) (gone ?? (gone = new List<long>())).Add(uid);
+            if (gone == null) return;
+            foreach (var uid in gone) map.Remove(uid);
+        }
+
         private static bool IsAdmin(ZNet znet, long sender)
         {
             if (sender == ZDOMan.GetSessionID()) return true;     // the hosting player
@@ -377,6 +541,8 @@ namespace TheGreatestPortal
         /// </summary>
         private static void Maintain()
         {
+            var znet = ZNet.instance;
+            if (znet != null) BuildPlayerMap(znet);
             _portals.Clear();
             _portals.AddRange(ZDOMan.instance.GetPortalList());
             _byId.Clear();
@@ -462,6 +628,8 @@ namespace TheGreatestPortal
                     AllowAllItems = allowAll,
                     ExitDistance = exit,
                     Prefab = prefabName,
+                    OwnerId = PortalData.GetCreator(zdo),
+                    Private = PortalData.GetPrivate(zdo),
                     Born = PortalData.GetBorn(zdo),
                     UsedAt = PortalData.GetUsed(zdo),
                     UsedBy = PortalData.GetUser(zdo),
@@ -494,13 +662,80 @@ namespace TheGreatestPortal
             return t != null && t != zdo && IsPortalPrefab(t.GetPrefab()) ? t : null;
         }
 
+        /// <summary>
+        /// The list, to everyone who should have it.
+        ///
+        /// While no portal is private this is one package sent once to everybody, which is what it
+        /// has always been. The moment one is, each player has to be sent a list of their own, and
+        /// the saving of a single broadcast is given up: a private portal that reached anybody
+        /// else would be a private portal in name only, and no amount of hiding it in the client
+        /// would help, because the client holds whatever it was sent.
+        ///
+        /// So the cost is paid only by the servers that use the feature, and then only while they
+        /// do -- take the last portal out of private and the next send is a broadcast again.
+        /// </summary>
         private static void BroadcastIfChanged()
         {
-            var pkg = Catalog.Pack(_infos);
-            byte[] bytes = pkg.GetArray();
-            if (_lastSnapshot != null && SameBytes(bytes, _lastSnapshot)) return;
-            _lastSnapshot = bytes;
-            ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.Everybody, RpcCatalog, pkg);
+            var znet = ZNet.instance;
+            if (znet == null) return;
+            bool anyPrivate = false;
+            if (PortalData.PrivateAllowed)
+                for (int i = 0; i < _infos.Count; i++) if (_infos[i].Private) { anyPrivate = true; break; }
+            if (!anyPrivate)
+            {
+                var pkg = Catalog.Pack(_infos);
+                byte[] bytes = pkg.GetArray();
+                if (_lastPerPeer.Count > 0) _lastPerPeer.Clear();
+                if (_lastSnapshot != null && SameBytes(bytes, _lastSnapshot)) return;
+                _lastSnapshot = bytes;
+                ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.Everybody, RpcCatalog, pkg);
+                return;
+            }
+            _lastSnapshot = null;   // so that going back to none sends the shared list again
+            foreach (var peer in Recipients(znet)) SendCatalogTo(znet, peer, onlyIfChanged: true);
+        }
+
+        /// <summary>Everyone the list goes to: the connected peers, and the player hosting from
+        /// their own game, who is not one of them.</summary>
+        private static List<long> Recipients(ZNet znet)
+        {
+            var who = new List<long>();
+            var peers = znet.GetPeers();
+            if (peers != null) foreach (var peer in peers) who.Add(peer.m_uid);
+            if (Player.m_localPlayer != null) who.Add(ZDOMan.GetSessionID());
+            return who;
+        }
+
+        /// <summary>The list as one player may see it: every portal that is not private, their own
+        /// private ones, and everybody's if they are an admin who has asked.</summary>
+        private static void SendCatalogTo(ZNet znet, long peer, bool onlyIfChanged = false)
+        {
+            long who = PlayerIdOf(peer);
+            bool all = _wantsAll.Contains(peer) && IsAdmin(znet, peer);
+            List<PortalInfo> list = _infos;
+            bool filtered = false;
+            if (PortalData.PrivateAllowed)
+                for (int i = 0; i < _infos.Count; i++)
+                    if (_infos[i].Private) { filtered = true; break; }
+            if (filtered && !all)
+            {
+                list = new List<PortalInfo>(_infos.Count);
+                for (int i = 0; i < _infos.Count; i++)
+                {
+                    var p = _infos[i];
+                    if (!p.Private || (who != 0L && p.OwnerId == who)) list.Add(p);
+                }
+            }
+            var pkg = Catalog.Pack(list);
+            if (onlyIfChanged)
+            {
+                byte[] bytes = pkg.GetArray();
+                byte[] last;
+                if (_lastPerPeer.TryGetValue(peer, out last) && SameBytes(bytes, last)) return;
+                _lastPerPeer[peer] = bytes;
+            }
+            else _lastPerPeer.Remove(peer);   // sent out of turn; let the next sweep compare afresh
+            ZRoutedRpc.instance.InvokeRoutedRPC(peer, RpcCatalog, pkg);
         }
 
         private static bool SameBytes(byte[] a, byte[] b)

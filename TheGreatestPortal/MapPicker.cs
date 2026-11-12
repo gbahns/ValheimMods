@@ -542,6 +542,15 @@ namespace TheGreatestPortal
         /// The right-click menu for a row. Right-clicking used to favorite outright, which left no
         /// way to ask for anything else and was easy to do by accident; the star does that now.
         /// </summary>
+        private static void MakePublic(PortalInfo p)
+        {
+            if (p == null || p.Id == 0L) return;
+            PortalNetwork.SendPrivate(p.Id, false);
+            p.Private = false;
+            TheGreatestPortalMod.Message(p.DisplayName + " is public again");
+            Refresh();
+        }
+
         private static void RowMenu(Minimap map, PortalInfo p)
         {
             if (p == null || map == null || map.m_largeRoot == null) return;
@@ -556,6 +565,7 @@ namespace TheGreatestPortal
             };
             var pRow = p.Id != 0L ? RowFor(p.Id) : null;
             if (_rename.Ready && pRow != null) items.Add(PortalMenu.RenameItem(p, _rename, pRow));
+            PortalMenu.AddPrivateItem(items, p, Refresh);
             PortalMenu.AddCategoryItems(items, p, _rename.Ready ? _rename : null, pRow, Refresh);
             if (Current == Mode.Browse) items.RemoveAt(0);   // the first two would be the same act
             UiKit.ContextMenu.Show(parent, ZInput.pointerPosition, items);
@@ -748,11 +758,18 @@ namespace TheGreatestPortal
                 bool fav = e.Favorite;
                 string dist = TgpConfig.ShowDistances.Value && player != null ? UiKit.Distance(from, captured.Pos) : null;
                 // The star says whether it is a favorite and flips it; the name no longer has to.
-                var icons = new[]
-                {
-                    new UiKit.RowIcon(fav ? UiKit.Star() : UiKit.StarOutline(), () => PortalMenu.ToggleFavorite(captured, Refresh), fav ? UiKit.Gold : (Color?)null),
-                    new UiKit.RowIcon(UiKit.Pin(), () => CenterOn(captured)),
-                };
+                var icons = PortalData.PrivateAllowed && captured.Private && captured.Mine
+                    ? new[]
+                    {
+                        new UiKit.RowIcon(fav ? UiKit.Star() : UiKit.StarOutline(), () => PortalMenu.ToggleFavorite(captured, Refresh), fav ? UiKit.Gold : (Color?)null),
+                        new UiKit.RowIcon(UiKit.Lock(), () => MakePublic(captured), UiKit.Gold),
+                        new UiKit.RowIcon(UiKit.Pin(), () => CenterOn(captured)),
+                    }
+                    : new[]
+                    {
+                        new UiKit.RowIcon(fav ? UiKit.Star() : UiKit.StarOutline(), () => PortalMenu.ToggleFavorite(captured, Refresh), fav ? UiKit.Gold : (Color?)null),
+                        new UiKit.RowIcon(UiKit.Pin(), () => CenterOn(captured)),
+                    };
                 var row = UiKit.Row(_listContent, captured.DisplayName, dist, () => Select(captured), () => RowMenu(map, captured), 16f, fav ? UiKit.Gold : (Color?)null, null, PortalList.DestinationText(captured), icons);
                 row.Tint = e.Tint;
                 row.SetMarked(PortalList.LastUsedId != 0L && captured.Id == PortalList.LastUsedId);

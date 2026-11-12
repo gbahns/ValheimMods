@@ -649,6 +649,60 @@ namespace TheGreatestPortal
             return _star;
         }
 
+        private static Sprite _lock;
+
+        /// <summary>
+        /// A padlock, shut: a body with a shackle over it, drawn with soft edges.
+        ///
+        /// Shown on a row for a portal of yours that nobody else can see. A shape rather than a
+        /// color, for the same reason the bands are: "this one is private" has to read for
+        /// everybody, and it is a thing you look for rather than something to notice in passing.
+        /// </summary>
+        internal static Sprite Lock()
+        {
+            if (_lock != null) return _lock;
+            const int n = 48;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            var px = new Color32[n * n];
+            // The body, and the shackle as the top half of a ring standing on it.
+            const float bodyLeft = 11f, bodyRight = 37f, bodyBottom = 5f, bodyTop = 27f, bodyRound = 4f;
+            const float ringX = 24f, ringY = 27f, ringOuter = 11.5f, ringInner = 6.5f;
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    int hit = 0;
+                    for (int sy = 0; sy < 3; sy++)
+                        for (int sx = 0; sx < 3; sx++)
+                        {
+                            float fx = x + (sx + 0.5f) / 3f, fy = y + (sy + 0.5f) / 3f;
+                            if (InRoundedBox(fx, fy, bodyLeft, bodyBottom, bodyRight, bodyTop, bodyRound)) { hit++; continue; }
+                            if (fy < ringY) continue;
+                            float dx = fx - ringX, dy = fy - ringY;
+                            float d = Mathf.Sqrt(dx * dx + dy * dy);
+                            if (d <= ringOuter && d >= ringInner) hit++;
+                        }
+                    px[y * n + x] = new Color32(255, 255, 255, (byte)(hit * 255 / 9));
+                }
+            tex.SetPixels32(px);
+            tex.Apply(false, true);
+            tex.filterMode = FilterMode.Bilinear;
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.hideFlags = HideFlags.HideAndDontSave;
+            _lock = Sprite.Create(tex, new Rect(0f, 0f, n, n), new Vector2(0.5f, 0.5f), 100f);
+            _lock.hideFlags = HideFlags.HideAndDontSave;
+            return _lock;
+        }
+
+        /// <summary>Whether a point is inside a box whose corners are rounded.</summary>
+        private static bool InRoundedBox(float x, float y, float left, float bottom, float right, float top, float radius)
+        {
+            if (x < left || x > right || y < bottom || y > top) return false;
+            float cx = Mathf.Clamp(x, left + radius, right - radius);
+            float cy = Mathf.Clamp(y, bottom + radius, top - radius);
+            float dx = x - cx, dy = y - cy;
+            return dx * dx + dy * dy <= radius * radius;
+        }
+
         private static Sprite _bandsRight;
         private static Sprite _bandsLeft;
 

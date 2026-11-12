@@ -33,6 +33,7 @@ namespace TheGreatestPortal
         private static RectTransform _listContent;
         private static ScrollRect _scroll;
         private static Toggle _default;
+        private static Toggle _private;
         private static Button _star;
         private static Image _starImage;
         private static bool _starHover;
@@ -116,6 +117,10 @@ namespace TheGreatestPortal
                 else status = "To " + t.DisplayName + (PortalData.Connection(zdo) == ZDOID.None ? " (connecting)" : "");
             }
             string head = string.IsNullOrEmpty(name) ? "$piece_portal" : "$piece_portal \"" + name + "\"";
+            // Private is said as well as where it leads, not instead: the owner of a private
+            // portal still wants to know what it is pointing at.
+            if (PortalData.PrivateAllowed && PortalData.GetPrivate(zdo))
+                head += PortalData.HiddenFromMe(zdo) ? " [Private]" : " [Private, yours]";
             if (status != null) head += $" [{status}]";
             return Localization.instance.Localize($"{head}\n[<color=yellow><b>$KEY_Use</b></color>] Configure");
         }
@@ -150,6 +155,16 @@ namespace TheGreatestPortal
             UiKit.SetToggle(_group, TgpConfig.GroupByBiome.Value);
             UiKit.SetToggle(_default, _id != 0L && Favorites.DefaultId == _id);
             _default.interactable = _id != 0L;
+            var ownZdo = _zdo != ZDOID.None && ZDOMan.instance != null ? ZDOMan.instance.GetZDO(_zdo) : null;
+            long me = PortalData.LocalPlayerId();
+            bool ownedByMe = ownZdo != null && me != 0L && PortalData.GetCreator(ownZdo) == me;
+            UiKit.SetToggle(_private, ownZdo != null && PortalData.GetPrivate(ownZdo));
+            if (_private != null)
+            {
+                bool offer = PortalData.PrivateAllowed;
+                if (_private.gameObject.activeSelf != offer) _private.gameObject.SetActive(offer);
+                _private.interactable = offer && ownedByMe && _id != 0L;
+            }
             UpdateStar();
             _redirectAll.interactable = _id != 0L;
             UiKit.SetLabel(_redirectAll.gameObject, RedirectLabel);
@@ -318,10 +333,17 @@ namespace TheGreatestPortal
             UiKit.RowHandle row = null;
             int index = _rows.Count;
             // The star both says whether it is a favorite and flips it, so the name need not.
-            var icons = new[]
-            {
-                new UiKit.RowIcon(fav ? UiKit.Star() : UiKit.StarOutline(), () => PortalMenu.ToggleFavorite(captured, Populate), fav ? UiKit.Gold : (Color?)null),
-            };
+            var icons = PortalData.PrivateAllowed && p.Private && p.Mine
+                ? new[]
+                {
+                    new UiKit.RowIcon(fav ? UiKit.Star() : UiKit.StarOutline(), () => PortalMenu.ToggleFavorite(captured, Populate), fav ? UiKit.Gold : (Color?)null),
+                    // The padlock says this one is yours alone, and clicking it gives that up.
+                    new UiKit.RowIcon(UiKit.Lock(), () => MakePublic(captured), UiKit.Gold),
+                }
+                : new[]
+                {
+                    new UiKit.RowIcon(fav ? UiKit.Star() : UiKit.StarOutline(), () => PortalMenu.ToggleFavorite(captured, Populate), fav ? UiKit.Gold : (Color?)null),
+                };
             row = UiKit.Row(_listContent, p.DisplayName, dist,
                 () => Choose(captured.Id, index),
                 () => ShowRowMenu(captured, row),
@@ -333,6 +355,15 @@ namespace TheGreatestPortal
             row.SetTip(() => PortalList.TipFor(captured), _content);
             row.Refresh();
             AddRow(p.Id, row);
+        }
+
+        private static void MakePublic(PortalInfo p)
+        {
+            if (p == null || p.Id == 0L) return;
+            PortalNetwork.SendPrivate(p.Id, false);
+            p.Private = false;
+            TheGreatestPortalMod.Message(p.DisplayName + " is public again");
+            Populate();
         }
 
         /// <summary>The right-click menu on a portal row.</summary>
@@ -353,6 +384,7 @@ namespace TheGreatestPortal
             }
             if (_rename.Ready && p.Id != 0L) items.Add(PortalMenu.RenameItem(p, _rename, row));
             if (p.Id != 0L) items.Add(PortalMenu.FavoriteItem(p, Populate));
+            PortalMenu.AddPrivateItem(items, p, Populate);
             PortalMenu.AddCategoryItems(items, p, _rename.Ready ? _rename : null, row, Populate);
             items.Add(new KeyValuePair<string, Action>("Show on map", () =>
             {
@@ -466,6 +498,23 @@ namespace TheGreatestPortal
             Color color = on ? UiKit.Gold : new Color(0.62f, 0.58f, 0.52f, usable ? 0.55f : 0.2f);
             if (usable && _starHover) color = on ? Color.Lerp(UiKit.Gold, Color.white, 0.35f) : new Color(0.85f, 0.8f, 0.7f, 0.85f);
             _starImage.color = color;
+        }
+
+        /// <summary>
+        /// Private, or public again, for the portal you are standing at.
+        ///
+        /// Takes effect as it is clicked rather than waiting for the panel to be confirmed, the
+        /// way the favorite star does: both are about the portal itself rather than about the
+        /// destination being chosen, and a player who clicks it and walks away has said what they
+        /// meant. Set with SetToggle elsewhere, which does not call this back.
+        /// </summary>
+        private static void OnPrivateToggle(bool on)
+        {
+            if (_id == 0L) return;
+            PortalNetwork.SendPrivate(_id, on);
+            TheGreatestPortalMod.Message(on
+                ? "This portal is private: only you can see or use it"
+                : "This portal is public again");
         }
 
         private static void ApplyToggles()
@@ -733,6 +782,8 @@ namespace TheGreatestPortal
             // Toggles and the redirect-all button
             _default = UiKit.SimpleToggle(content.transform, "Default", "Default new portals to point here", false, _ => UpdateRedirectButton());
             UiKit.Place(_default.GetComponent<RectTransform>(), 30f, 418f, 400f, 30f);
+            _private = UiKit.SimpleToggle(content.transform, "Private", "Private (only you)", false, OnPrivateToggle);
+            UiKit.Place(_private.GetComponent<RectTransform>(), 440f, 418f, 210f, 30f);
             _redirectAll = ok != null ? UiKit.CloneButton(ok, content.transform, "RedirectAll", RedirectLabel, RedirectAll)
                                       : UiKit.SimpleButton(content.transform, "RedirectAll", RedirectLabel, RedirectAll);
             UiKit.Place(_redirectAll.GetComponent<RectTransform>(), 30f, 456f, 250f, 36f);
@@ -818,6 +869,7 @@ namespace TheGreatestPortal
             if (_collapseAll != null) UiKit.Place(_collapseAll.GetComponent<RectTransform>(), w - 116f, 150f, 86f, 22f);
             if (_scroll != null) UiKit.Place(_scroll.GetComponent<RectTransform>(), 30f, 176f, w - 60f, h - 370f);
             if (_default != null) UiKit.Place(_default.GetComponent<RectTransform>(), 30f, h - 182f, 400f, 30f);
+            if (_private != null) UiKit.Place(_private.GetComponent<RectTransform>(), w - 240f, h - 182f, 210f, 30f);
             if (_redirectAll != null) UiKit.Place(_redirectAll.GetComponent<RectTransform>(), 30f, h - 144f, 250f, 36f);
             float by = h - 92f, bh = 44f;
             if (_pick != null) UiKit.Place(_pick.GetComponent<RectTransform>(), 30f, by, 160f, bh);

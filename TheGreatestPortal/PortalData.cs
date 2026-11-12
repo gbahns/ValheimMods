@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using UnityEngine;
 using System.Text.RegularExpressions;
 
 namespace TheGreatestPortal
@@ -42,6 +43,64 @@ namespace TheGreatestPortal
         /// <summary>string: who built it, stamped once when the server first meets the portal
         /// (empty for one built before this was recorded, or when the builder could not be told).</summary>
         internal static readonly int BornByHash = "TGP_bby".GetStableHashCode();
+
+        /// <summary>Set on a portal its owner has made private.</summary>
+        internal static readonly int PrivateHash = "TGP_prv".GetStableHashCode();
+
+        internal static bool GetPrivate(ZDO zdo) => zdo != null && zdo.GetBool(PrivateHash, false);
+
+        /// <summary>
+        /// Whether portals may be private in this world at all. The server's rule, so a client
+        /// reads whatever the server synced to it.
+        ///
+        /// Off, the mark a portal already carries is left alone and simply not acted on: nothing
+        /// is hidden, nothing is refused, and the toggle is not offered. A world that turns this
+        /// back on finds its private portals as they were.
+        /// </summary>
+        internal static bool PrivateAllowed =>
+            TgpConfig.AllowPrivatePortals != null && TgpConfig.AllowPrivatePortals.Value;
+
+        /// <summary>
+        /// Who owns a portal: the character that built it, by the id the game itself stamps on
+        /// every piece anyone places.
+        ///
+        /// Vanilla's own field, so it is already on every portal that was ever built, including the
+        /// ones standing before this mod was installed. It is the character's id rather than the
+        /// player's account, so a second character of the same player is somebody else here -- the
+        /// same rule the game uses for who may dismantle a piece inside a ward.
+        /// </summary>
+        internal static long GetCreator(ZDO zdo) => zdo == null ? 0L : zdo.GetLong(ZDOVars.s_creator, 0L);
+
+        /// <summary>The ZDO behind a portal, or null if it has none worth reading yet.</summary>
+        internal static ZDO ZdoOf(Component c)
+        {
+            var nview = c != null ? c.GetComponent<ZNetView>() : null;
+            return nview != null && nview.IsValid() ? nview.GetZDO() : null;
+        }
+
+        /// <summary>This character's id, or 0 before the profile is loaded.</summary>
+        internal static long LocalPlayerId()
+        {
+            var game = Game.instance;
+            var profile = game != null ? game.GetPlayerProfile() : null;
+            return profile != null ? profile.GetPlayerID() : 0L;
+        }
+
+        /// <summary>
+        /// Whether this portal is one another player has made private.
+        ///
+        /// The server keeps private portals out of everybody else's list, so this is for the
+        /// portal in front of you, whose ZDO you hold because you are standing next to it. An
+        /// admin who has asked to see private portals is let through here too: the server has
+        /// already decided whether to honor that, and a portal it sent is one it meant to send.
+        /// </summary>
+        internal static bool HiddenFromMe(ZDO zdo)
+        {
+            if (zdo == null || !PrivateAllowed || !GetPrivate(zdo)) return false;
+            if (TgpConfig.ShowPrivatePortals != null && TgpConfig.ShowPrivatePortals.Value) return false;
+            long me = LocalPlayerId();
+            return me == 0L || GetCreator(zdo) != me;
+        }
 
         private static readonly Regex RichText = new Regex("<[^>]*>", RegexOptions.Compiled);
         private static readonly System.Random Rng = new System.Random();

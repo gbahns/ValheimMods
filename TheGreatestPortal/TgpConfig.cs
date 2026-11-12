@@ -15,6 +15,7 @@ namespace TheGreatestPortal
         internal static ConfigEntry<bool> AnyoneCanRedirectAll;
         internal static ConfigEntry<bool> AnyoneCanRenameRemote;
         internal static ConfigEntry<bool> AltarSpellingIsFatal;
+        internal static ConfigEntry<bool> AllowPrivatePortals;
 
         // ── keys ────────────────────────────────────────────────────────────────────
         internal static ConfigEntry<KeyboardShortcut> TogglePinsKey;
@@ -35,6 +36,7 @@ namespace TheGreatestPortal
         internal static ConfigEntry<string> PanelPosition;
         internal static ConfigEntry<int> ListScrollRows;
         internal static ConfigEntry<float> AutoCloseGraceSeconds;
+        internal static ConfigEntry<bool> ShowPrivatePortals;
         internal static ConfigEntry<string> MapListSize;
         internal static ConfigEntry<string> MapListPosition;
 
@@ -77,6 +79,13 @@ namespace TheGreatestPortal
                 "Let any player rename a portal from the panel's list without standing at it (Rename in a " +
                 "row's right-click menu). When false only admins can; renaming the portal you are standing at is always allowed.");
 
+            AllowPrivatePortals = mod.BindSynced("Rules", "Allow Private Portals", false,
+                "Let a portal's owner make it theirs alone: out of everyone else's list and map, and nobody " +
+                "else able to walk through it or arrive at it. Off, the Private toggle is not there, nobody " +
+                "can make a portal private, and a portal somebody made private while it was on is an " +
+                "ordinary portal again -- its mark is kept, so turning this back on restores it. " +
+                "Turn it on only once everybody is on 1.5.0 or newer: what keeps a player out of a private " +
+                "portal is the mod in their own game, and an older one knows nothing about it.");
             AltarSpellingIsFatal = mod.BindSynced("Rules", "Altar Spelling Is Fatal", false,
                 "A portal within 50 m of the sacrificial stones in the middle of the world, named \"alter\" " +
                 "(only the letters count, so spaces, digits and punctuation do not help), " +
@@ -130,6 +139,11 @@ namespace TheGreatestPortal
                 "How many portals other players have used lately to show in an Others' Recents section. 0 leaves it out.");
             RecentlyCreatedPortals = mod.BindLocalRangeInt("Display", "Recently Created Portals", 5, 0, 20,
                 "How many newly built portals to show in a Recently Created section. 0 leaves it out.");
+            ShowPrivatePortals = mod.BindLocal("Display", "Show Private Portals", false,
+                "Admins only: ask the server for the private portals of other players as well, for when one " +
+                "has to be found or cleaned up. The server ignores this from anyone who is not in its " +
+                "adminlist.txt, so leaving it on does nothing for an ordinary player. Off is how a portal " +
+                "somebody marked private stays theirs, admin or not.");
             MapListSize = mod.BindLocal("Display", "Map List Size", "380,660",
                 "Width and height of the portal list on the map, remembered when you drag its bottom-right corner.");
             MapListPosition = mod.BindLocal("Display", "Map List Position", "20,-12",
@@ -158,6 +172,9 @@ namespace TheGreatestPortal
                 "How solid the portal panel and the portal list on the map are, as a fraction of their usual look. " +
                 "1 is as they have always been; lower lets more of the map and the world through. The text, the " +
                 "buttons and the rows are not touched.");
+
+            // The server keeps this wish against the connection, so it has to hear about a change.
+            ShowPrivatePortals.SettingChanged += (_, __) => PortalNetwork.SendReveal();
 
             // The panels watch these rather than read them once, so a color or a slider lands while
             // you are looking at the thing it changes. Watched by section rather than one entry at a

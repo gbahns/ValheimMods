@@ -41,6 +41,26 @@ namespace TheGreatestPortal
         }
 
         /// <summary>
+        /// Making a portal private, or public again. Only offered for your own portals: the owner
+        /// is the character that built it, and the server refuses anybody else.
+        /// </summary>
+        internal static void AddPrivateItem(List<KeyValuePair<string, Action>> items, PortalInfo p, Action refresh)
+        {
+            if (items == null || p == null || p.Id == 0L || !p.Mine || !PortalData.PrivateAllowed) return;
+            long id = p.Id;
+            bool on = p.Private;
+            items.Add(new KeyValuePair<string, Action>(on ? "Make public" : "Make private", () =>
+            {
+                PortalNetwork.SendPrivate(id, !on);
+                p.Private = !on;    // shown at once; the server's next portal list confirms it
+                TheGreatestPortalMod.Message(on
+                    ? p.DisplayName + " is public again"
+                    : p.DisplayName + " is private: only you can see or use it");
+                refresh?.Invoke();
+            }));
+        }
+
+        /// <summary>
         /// Filing a portal under one of this player's own categories, from the row's menu.
         ///
         /// Every category in use is offered by name, so putting a portal in one is a single click
