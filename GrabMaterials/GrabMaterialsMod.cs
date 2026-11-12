@@ -19,7 +19,7 @@ using UnityEngine;
 namespace GrabMaterialsMod
 {
 
-	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.8.0")]
+	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.9.0")]
 	[BepInProcess("valheim.exe")]
 	public class GrabMaterialsMod : BaseUnityPlugin
 	{
@@ -491,8 +491,26 @@ namespace GrabMaterialsMod
 
 		private static void ListLocalInventory(Terminal.ConsoleEventArgs args)
 		{
+			ListLocalInventory(args.Length > 1 ? args.ArgsAll.ToLower() : null, highlight: true);
+		}
+
+		// The filter of the last /i, so the panel can be redrawn after a grab from its menu.
+		private static string _lastInventoryFilter;
+
+		// Redraw the inventory panel with current counts, where the player had it scrolled to,
+		// without flashing every container again.  Nothing left to show closes it.
+		internal static void RefreshInventoryPanel()
+		{
+			if (!GrabMaterials.MaterialsPanel.IsVisible || !GrabMaterials.MaterialsPanel.ShowingInventory) return;
+			var scroll = GrabMaterials.MaterialsPanel.ScrollPosition;
+			ListLocalInventory(_lastInventoryFilter, highlight: false);
+			GrabMaterials.MaterialsPanel.ScrollPosition = scroll;
+		}
+
+		private static void ListLocalInventory(string text, bool highlight)
+		{
 			var radius = Range;
-			var text = args.Length > 1 ? args.ArgsAll.ToLower() : null;
+			_lastInventoryFilter = text;
 
 			// "/i new" lists only what this character has never held, rather than matching the
 			// word "new" against item names.  Valheim keeps that set itself and fills it the
@@ -564,7 +582,7 @@ namespace GrabMaterialsMod
 						iconsByName[itemName] = item.m_shared.m_icons[0];
 					}
 
-					if (!alreadyHighlighted)
+					if (highlight && !alreadyHighlighted)
 					{
 						container.Highlight();
 						alreadyHighlighted = true;
@@ -614,7 +632,7 @@ namespace GrabMaterialsMod
 						iconsByName[itemName] = itemData.m_shared.m_icons[0];
 					}
 
-					if (!alreadyHighlighted)
+					if (highlight && !alreadyHighlighted)
 					{
 						GrabMaterials.Processors.Highlight(smelter);
 						alreadyHighlighted = true;
@@ -663,11 +681,13 @@ namespace GrabMaterialsMod
 					iconsByName[itemName] = itemData.m_shared.m_icons[0];
 				}
 
-				GrabMaterials.Piles.Highlight(pile.Piece);
+				if (highlight) GrabMaterials.Piles.Highlight(pile.Piece);
 			}
 
 			if (byCategory.Count == 0)
 			{
+				// A redraw with nothing left: the panel would be showing stale counts.
+				if (!highlight) GrabMaterials.MaterialsPanel.Hide();
 				var emptyMsg = string.IsNullOrEmpty(text) ? "No items in nearby containers, processors, stacks or piles"
 					: isNewSearch ? "Nothing here you have not held before"
 					: $"No items match '{text}'";

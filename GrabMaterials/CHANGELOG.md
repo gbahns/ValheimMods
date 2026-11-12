@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.9.0 — unreleased
+
+- **Right-click a row in the inventory panel to grab that item**: Grab 1, 5, 10 or 20, or type an amount (the field remembers your last amount for that item). Amounts the containers cannot cover are greyed out. The result shows as a HUD line and the panel redraws with the new counts, so you can keep pulling.
+
 ## 2.8.0 — 2026-11-12
 
 - **Container badges**: a round badge over each nearby container shows its free slots, green with room, amber at 3 or fewer, red when full, blue with a white ring when it is completely empty. Only containers you can see get one. Press / or type `/badges` to hide or show them; range, size and the rest are under "Container Badges".

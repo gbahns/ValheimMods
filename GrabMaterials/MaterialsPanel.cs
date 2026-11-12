@@ -155,6 +155,16 @@ namespace GrabMaterials
 		private static Image _pauseSlash;
 
 		public static bool IsVisible => _panel != null && _panel.activeSelf;
+		// True while the panel shows a categorized inventory, the one kind that redraws after a
+		// grab from its right-click menu.
+		public static bool ShowingInventory { get; private set; }
+
+		// Where the rows are scrolled to, 1 = top, so a redraw can land where the player was.
+		public static float ScrollPosition
+		{
+			get => _rowsScrollbar != null && _rowsScrollbar.gameObject.activeSelf ? _rowsScrollbar.value : 1f;
+			set { if (_rowsScrollbar != null && _rowsScrollbar.gameObject.activeSelf) _rowsScrollbar.value = value; }
+		}
 		public static bool PausablePanelVisible => _pausable && IsVisible;
 		public static bool InteractivePanelVisible => _interactive && IsVisible;
 		private static Text _contentText;
@@ -182,6 +192,7 @@ namespace GrabMaterials
 		{
 			_pausable = false;
 			_interactive = false;
+			ShowingInventory = false;
 			var lines = new List<string>(items.Count);
 			foreach (var item in items) lines.Add(FormatItemStatus(item));
 			ShowLines(title, lines);
@@ -191,6 +202,7 @@ namespace GrabMaterials
 		{
 			_pausable = false;
 			_interactive = false;
+			ShowingInventory = false;
 			var maxWidth = MaxCountWidth(items);
 			var lines = new List<string>(items.Count);
 			foreach (var item in items)
@@ -204,6 +216,7 @@ namespace GrabMaterials
 		{
 			_pausable = true;
 			_interactive = true;
+			ShowingInventory = true;
 			switch (style)
 			{
 				case InventoryStyle.Table: ShowTable(title, groups); break;
@@ -225,6 +238,7 @@ namespace GrabMaterials
 			System.Action<string, string, GrabMaterialsMod.GrabMaterialsMod.DeltaSetting> onSave,
 			System.Action onCancel)
 		{
+			ShowingInventory = false;
 			EnsureCreated();
 			if (_panel == null) return;
 
@@ -409,6 +423,7 @@ namespace GrabMaterials
 		{
 			_pausable = false;
 			_interactive = true;
+			ShowingInventory = false;
 			EnsureCreated();
 			if (_panel == null) return;
 
@@ -629,7 +644,7 @@ namespace GrabMaterials
 					colHeight += LineHeight + (showUnderlines ? HeaderUnderlineHeight : 0f);
 					foreach (var item in group.Items)
 					{
-						BuildDataRow(item.Count.ToString(), item.Icon, item.Name, item.InProcess, item.InProcessLocation, item.Undiscovered, item.SharedName, ListRowPadding, countCol);
+						BuildDataRow(item.Count.ToString(), item.Icon, item.Name, item.InProcess, item.InProcessLocation, item.Undiscovered, item, ListRowPadding, countCol);
 						colHeight += LineHeight;
 					}
 				}
@@ -811,7 +826,7 @@ namespace GrabMaterials
 			{
 				foreach (var item in group.Items)
 				{
-					BuildFlatDataRow(group.CategoryName, item.Icon, item.Name, item.InProcess, item.InProcessLocation, item.Undiscovered, item.Count.ToString(), item.SharedName);
+					BuildFlatDataRow(group.CategoryName, item.Icon, item.Name, item.InProcess, item.InProcessLocation, item.Undiscovered, item.Count.ToString(), item);
 					totalHeight += LineHeight;
 				}
 			}
@@ -987,6 +1002,7 @@ namespace GrabMaterials
 		{
 			get
 			{
+				if (GrabMenu.Typing) return true;
 				if (!IsVisible) return false;
 				var events = EventSystem.current;
 				var selected = events != null ? events.currentSelectedGameObject : null;
@@ -1005,6 +1021,8 @@ namespace GrabMaterials
 			_dismissArmed = false;
 			_rowsHovered = 0;
 			_panelHovered = false;
+			ShowingInventory = false;
+			GrabMenu.Close();
 			DestroyEditor();
 		}
 
@@ -1033,15 +1051,16 @@ namespace GrabMaterials
 
 		public static void Tick()
 		{
+			GrabMenu.Tick();
 			if (_panel == null || !_panel.activeSelf) return;
 
 			UpdatePauseButton();
 
 			var now = Time.time;
 
-			// Active engagement: pointer is over the panel. Reset all timers
-			// and ensure the panel stays fully opaque, even mid-fade.
-			if (IsPanelHovered)
+			// Active engagement: pointer is over the panel, or its grab menu is open. Reset all
+			// timers and ensure the panel stays fully opaque, even mid-fade.
+			if (IsPanelHovered || GrabMenu.IsOpen)
 			{
 				_shownAt = now;
 				_fadeStart = -1f;
@@ -1122,10 +1141,10 @@ namespace GrabMaterials
 		// fixed-width column). Icon column is omitted when ShowItemIcons is off.
 		// sharedName drives click-to-highlight (#40); pass null to skip.
 		// inProcess > 0 appends a dim "(N in <location>)" marker via rich text.
-		private static void BuildDataRow(string countText, Sprite icon, string nameText, int inProcess, string inProcessLocation, bool undiscovered, string sharedName, float sidePadding, float countWidth)
+		private static void BuildDataRow(string countText, Sprite icon, string nameText, int inProcess, string inProcessLocation, bool undiscovered, InventoryItem item, float sidePadding, float countWidth)
 		{
 			var row = MakeRow("DataRow", sidePadding);
-			MakeRowClickable(row, sharedName);
+			MakeRowClickable(row, item);
 			MakeCellText(row, countText, TextAnchor.MiddleRight, Color.white, countWidth, 0f);
 			if (ShowItemIcons) MakeIconCell(row, icon);
 			MakeCellText(row, ItemDisplayRich(nameText, inProcess, inProcessLocation, undiscovered), TextAnchor.MiddleLeft, Color.white, 0f, 1f, inProcess > 0 || undiscovered);
@@ -1179,10 +1198,10 @@ namespace GrabMaterials
 		}
 
 		// Table style: category + (icon) + item + count.
-		private static void BuildFlatDataRow(string category, Sprite icon, string itemName, int inProcess, string inProcessLocation, bool undiscovered, string countText, string sharedName)
+		private static void BuildFlatDataRow(string category, Sprite icon, string itemName, int inProcess, string inProcessLocation, bool undiscovered, string countText, InventoryItem item)
 		{
 			var row = MakeRow("FlatDataRow", TableRowPadding);
-			MakeRowClickable(row, sharedName);
+			MakeRowClickable(row, item);
 			MakeCellText(row, category, TextAnchor.MiddleLeft, Color.white, CategoryColumnWidth, 0f);
 			if (ShowItemIcons) MakeIconCell(row, icon);
 			MakeCellText(row, ItemDisplayRich(itemName, inProcess, inProcessLocation, undiscovered), TextAnchor.MiddleLeft, Color.white, 0f, 1f, inProcess > 0 || undiscovered);
@@ -1269,15 +1288,30 @@ namespace GrabMaterials
 			private void OnDisable() { _panelHovered = false; }
 		}
 
-		// Click-to-highlight: a single item's containers (#40).
-		private static void MakeRowClickable(GameObject row, string sharedName)
+		// Left click highlights the item's containers (#40); right click opens the grab menu (#46).
+		private static void MakeRowClickable(GameObject row, InventoryItem item)
 		{
+			var sharedName = item.SharedName;
 			if (string.IsNullOrEmpty(sharedName)) return;
 			MakeClickable(row, () =>
 			{
 				ConsoleCommands.HighlightContainersHolding(sharedName);
 				KeepAlive();  // clicking is intentional engagement, not a "dismiss" signal
 			});
+			var rightClick = row.AddComponent<RowRightClick>();
+			rightClick.Item = item;
+		}
+
+		// Button only reports left clicks, so the right button is caught here.
+		internal class RowRightClick : MonoBehaviour, IPointerClickHandler
+		{
+			public InventoryItem Item;
+
+			public void OnPointerClick(PointerEventData eventData)
+			{
+				if (eventData.button != PointerEventData.InputButton.Right) return;
+				GrabMenu.Show(Item, eventData.position);
+			}
 		}
 
 		// Click-to-highlight: every container holding any item in this category.

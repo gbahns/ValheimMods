@@ -437,7 +437,10 @@ namespace GrabMaterials
 			//GrabMaterialsForPiece(piece);
 		}
 
-		static void GrabItemsFromNearbyContainers(List<ItemToGrab> itemsToGrab, float radius, string requestLabel = null, bool grabDelta = false)
+		// partialOk: take what is there rather than refusing a short request; the inventory panel
+		// asks that way, since its amounts came from a listing that may be a moment stale.
+		// report: where the outcome goes instead of the results panel.
+		static void GrabItemsFromNearbyContainers(List<ItemToGrab> itemsToGrab, float radius, string requestLabel = null, bool grabDelta = false, bool partialOk = false, Action<string, List<MaterialsPanel.ItemStatus>> report = null)
 		{
 			// Only containers the player could open, so a locked chest's stock is neither counted
 			// in the pre-flight nor taken from.  Of those, only the ones holding something asked
@@ -451,11 +454,11 @@ namespace GrabMaterials
 				if (inventory.GetAllItems().Any(item => itemsToGrab.Any(want => item.isMatch(want.Name))))
 					wanted.Add(container);
 			}
-			ContainerAccess.Acquire(wanted, owned => GrabItemsFromContainers(itemsToGrab, owned, requestLabel, grabDelta));
+			ContainerAccess.Acquire(wanted, owned => GrabItemsFromContainers(itemsToGrab, owned, requestLabel, grabDelta, partialOk, report));
 		}
 
 		// The grab proper, over containers this machine owns.
-		static void GrabItemsFromContainers(List<ItemToGrab> itemsToGrab, List<Container> nearbyContainers, string requestLabel, bool grabDelta)
+		static void GrabItemsFromContainers(List<ItemToGrab> itemsToGrab, List<Container> nearbyContainers, string requestLabel, bool grabDelta, bool partialOk = false, Action<string, List<MaterialsPanel.ItemStatus>> report = null)
 		{
 			var player = Player.m_localPlayer;
 
@@ -540,7 +543,7 @@ namespace GrabMaterials
 			// Run-again override: if the player repeats a request that previously
 			// failed on shortages, fall through to a partial grab instead of aborting.
 			var requestKey = ComputeRequestKey(requestLabel, aggregated);
-			var isOverride = anyShort && IsOverrideRequest(requestKey);
+			var isOverride = anyShort && (partialOk || IsOverrideRequest(requestKey));
 
 			if (anyShort && !isOverride)
 			{
@@ -620,7 +623,31 @@ namespace GrabMaterials
 			{
 				successTitle = string.IsNullOrEmpty(requestLabel) ? "Grabbed materials" : $"Grabbed materials for {requestLabel}";
 			}
-			MaterialsPanel.Show(successTitle, grabbed);
+			if (report != null) report(successTitle, grabbed);
+			else MaterialsPanel.Show(successTitle, grabbed);
+		}
+
+		// A grab from the inventory panel's right-click menu (#46).  The amount was picked off a
+		// listing, so a shortfall is taken as far as it goes; the outcome is a HUD line rather
+		// than a panel, and the inventory panel redraws with what is left.
+		public static void GrabFromPanel(string sharedName, string displayName, int count)
+		{
+			var itemsToGrab = new List<ItemToGrab> { new ItemToGrab(sharedName, count) };
+			GrabItemsFromNearbyContainers(itemsToGrab, GrabMaterialsMod.GrabMaterialsMod.Range, null, false, partialOk: true, report: (title, statuses) =>
+			{
+				var player = Player.m_localPlayer;
+				if (player == null) return;
+				var status = statuses.Count > 0 ? statuses[0] : default;
+				var name = string.IsNullOrEmpty(displayName) ? status.Name : displayName;
+				string message;
+				if (status.Available <= 0 && status.Remaining > 0) message = $"No room in your inventory for {name}";
+				else if (status.Available <= 0) message = $"No {name} within reach";
+				else if (status.Available < status.Needed && status.Remaining > 0) message = $"Grabbed {status.Available} {name}, no room for the rest";
+				else if (status.Available < status.Needed) message = $"Grabbed {status.Available} {name}, all there was";
+				else message = $"Grabbed {status.Available} {name} ({status.Remaining} left nearby)";
+				player.Message(MessageHud.MessageType.TopLeft, message);
+				GrabMaterialsMod.GrabMaterialsMod.RefreshInventoryPanel();
+			});
 		}
 
 		private static string LocalizeItemName(ItemToGrab item)

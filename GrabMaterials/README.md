@@ -7,6 +7,10 @@ Version 2.0.0 released on September 9 2026.
 
 Quickly pull materials from nearby chests into your inventory without having to manually click on each chest.  The concept is similar to mods that let you craft or build directly from containers, but for things that you're not building in your base.  The typical example is workbench and portal when exploring - you're constantly having to grab 10 wood, 20 finewood, 10 greydwarf eyes, and 2 surtling cores.  This mod removes that tedium.
 
+<h3>New in version 2.9.0</h3>
+
+<li>Right-click any row in the inventory panel to grab that item from the nearby containers: Grab 1, 5, 10 or 20, or type an amount (the field remembers your last amount for that item).  Amounts the containers cannot cover are greyed out.  The result shows as a HUD line and the panel redraws with the new counts, so you can keep pulling.  Left-click still highlights the containers.
+
 <h3>New in version 2.8.0</h3>
 
 <li>Container badges — a round badge floats over each nearby container showing how many free slots it has: green when there is room, amber at 3 or fewer, red when full, and blue with a white ring when the container is completely empty.  Only containers you can actually see get one, so a chest with no badge is behind a wall or out of range.  Press / or type '/badges' to hide or show them; range, size, hiding full containers and seeing through walls are under "Container Badges".
