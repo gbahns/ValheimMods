@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.7.0 — unreleased
+## 2.7.0 — 2026-11-11
 
 - The grab results now say how much of each material is **left in the nearby containers**, as "(180 left nearby)", so you know whether the next build will find any.
 - **Fixed: pieces from some mods could not be grabbed by name**, such as `/g Fast Longship` from TheGreatestShips. The piece list came from the game's startup prefab list, and a mod that registers its pieces later puts them only in the game's lookup dictionary. Both are read now, so any piece the hammer can build can be grabbed for.
