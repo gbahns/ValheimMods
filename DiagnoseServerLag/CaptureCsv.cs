@@ -36,6 +36,29 @@ namespace DiagnoseServerLag
         internal static readonly string[] Columns = Header.Split(',');
 
         /// <summary>
+        /// A label fit for a '#' metadata line: no commas, no line breaks.
+        ///
+        /// The free text at the end of one of these lines - a settings line, a hardware line - runs
+        /// to the end of the line and contains commas of its own, so a reader splits on the first
+        /// comma or two and takes the rest whole. That only works while the fields in front of the
+        /// free text cannot themselves contain a comma, and a character name can.
+        /// </summary>
+        internal static string MetaLabel(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return "";
+            return s.Replace(',', ' ').Replace('\r', ' ').Replace('\n', ' ').Trim();
+        }
+
+        /// <summary>
+        /// Free text fit for the end of a '#' metadata line: no line breaks, commas allowed.
+        /// </summary>
+        internal static string MetaText(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return "";
+            return s.Replace('\r', ' ').Replace('\n', ' ').Trim();
+        }
+
+        /// <summary>
         /// A row where only some columns are known, addressed by name rather than by position.
         ///
         /// For an old client that sent only the correlation columns. The previous version of this

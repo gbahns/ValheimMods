@@ -115,7 +115,7 @@ ALONE: stalls nobody else had, which are local to that machine.
 
 Stalls in the **same wall-clock second** on two or more machines are one shared event — the server, or the path everyone crosses. The same stalls at different seconds are separate local problems. The numbers look identical; only the alignment separates them.
 
-A `group-<timestamp>.csv` is written on the server, one row per machine per second.
+A `group-<timestamp>.csv` is written on the server, one row per machine per second. Its `#` header names every machine and the graphics settings it was running, so a capture kept for weeks can still say what produced it.
 
 Each client decides whether to answer via **Share My Performance** (default on). It sends frame times, stalls, CPU share and collection counts — performance numbers only. Clients that do not answer are counted and named, so a partial picture is never mistaken for a complete one.
 

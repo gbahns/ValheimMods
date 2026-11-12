@@ -521,6 +521,15 @@ namespace DiagnoseServerLag
                 sb.AppendLine($"# cpu_readable,{(Machine.Readable ? 1 : 0)}");
                 sb.AppendLine($"# gc_generations_distinct,{(Machine.GenerationsDistinct ? 1 : 0)}");
                 sb.AppendLine($"# working_set_readable,{(Machine.HasWorkingSet ? 1 : 0)}");
+
+                // This machine's hardware and graphics settings. See the matching block in
+                // GroupReport for why a capture has to carry its own configuration: the report
+                // that used to be the only record of it lives in a log that the next restart
+                // truncates, while the rows below are kept for months.
+                string hw = CaptureCsv.MetaText(Hardware.Describe());
+                if (hw.Length > 0) sb.AppendLine($"# hardware,{hw}");
+                string gfx = CaptureCsv.MetaText(GraphicsConfig.Describe());
+                if (gfx.Length > 0) sb.AppendLine($"# settings,{gfx}");
                 sb.AppendLine("#");
 
                 // The same columns the group capture writes - see CaptureCsv for why there is only

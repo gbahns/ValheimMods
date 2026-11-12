@@ -89,12 +89,7 @@ namespace DiagnoseServerLag
             foreach (var c in clients)
             {
                 if (string.IsNullOrEmpty(c.Gpu) && c.RamMB == 0) continue;
-                string res = c.ScreenWidth > 0
-                    ? $"{c.ScreenWidth}x{c.ScreenHeight}" + (c.RefreshHz > 0 ? $"@{c.RefreshHz}Hz" : "")
-                    : "?";
-                string vram = c.VramMB > 0 ? $" {c.VramMB / 1024f:0.#} GB" : "";
-                string ram = c.RamMB > 0 ? $", {c.RamMB / 1024f:0.#} GB RAM" : "";
-                sb.AppendLine($"  {Trim(c.Name, 16),-16} {c.CpuName} ({c.Cores}c){ram}, {c.Gpu}{vram}, {res}");
+                sb.AppendLine($"  {Trim(c.Name, 16),-16} {HardwareLine(c)}");
                 // The settings on their own line: it is long, and it is the half that explains a
                 // frame time once the hardware has been accounted for.
                 if (!string.IsNullOrEmpty(c.GpuDetail))
@@ -242,6 +237,22 @@ namespace DiagnoseServerLag
         /// "slowest machine in the group" for a week on the strength of a flat 16.7 ms that was
         /// only ever his monitor.
         /// </summary>
+        /// <summary>
+        /// What a client's machine is, as one line.
+        ///
+        /// Shared by the printed report and the saved capture's header so the two cannot drift -
+        /// the same reason CaptureCsv holds one column layout instead of two.
+        /// </summary>
+        private static string HardwareLine(ClientSeries c)
+        {
+            string res = c.ScreenWidth > 0
+                ? $"{c.ScreenWidth}x{c.ScreenHeight}" + (c.RefreshHz > 0 ? $"@{c.RefreshHz}Hz" : "")
+                : "?";
+            string vram = c.VramMB > 0 ? $" {c.VramMB / 1024f:0.#} GB" : "";
+            string ram = c.RamMB > 0 ? $", {c.RamMB / 1024f:0.#} GB RAM" : "";
+            return $"{c.CpuName} ({c.Cores}c){ram}, {c.Gpu}{vram}, {res}";
+        }
+
         private static string DisplayCapped(ClientSeries c)
         {
             if (c == null || c.RefreshHz <= 0 || c.FrameMedianMs <= 0f) return null;
@@ -599,6 +610,28 @@ namespace DiagnoseServerLag
                 sb.AppendLine($"# mod,{DiagnoseServerLagMod.ModVersion}");
                 sb.AppendLine($"# captured,{DateTime.Now:yyyy-MM-dd HH:mm:ss}");
                 sb.AppendLine($"# machines,{clients.Count + 1}");
+
+                // What each machine is and how it was configured, one line apiece.
+                //
+                // These used to exist only in the report printed to the console, which is to say
+                // only in a log that is truncated on the next restart. The per-second rows outlive
+                // that by months, so a capture from three weeks ago could still be measured and no
+                // longer explained: on 2026-11-11 a five-player session's settings were gone and
+                // the capture could not say which shadow or draw-distance values produced any of
+                // it. settings_rev numbers the configuration but does not describe it.
+                string serverHw = CaptureCsv.MetaText(Hardware.Describe());
+                if (serverHw.Length > 0) sb.AppendLine($"# hardware,server,{serverHw}");
+                foreach (var cl in clients)
+                {
+                    string name = CaptureCsv.MetaLabel(cl.Name);
+                    string gfx = CaptureCsv.MetaText(cl.Graphics);
+                    // Same guard the printed report uses: with no GPU and no RAM the client told
+                    // us nothing, and HardwareLine would still return a line-shaped " (0c), , ?".
+                    bool knowsHardware = !(string.IsNullOrEmpty(cl.Gpu) && cl.RamMB == 0);
+                    string hw = knowsHardware ? CaptureCsv.MetaText(HardwareLine(cl)) : "";
+                    if (hw.Length > 0) sb.AppendLine($"# hardware,{name},{hw}");
+                    if (gfx.Length > 0) sb.AppendLine($"# settings,{name},{gfx}");
+                }
                 sb.AppendLine("#");
                 sb.AppendLine(CaptureCsv.Header);
 

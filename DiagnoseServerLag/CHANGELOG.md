@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.10.22 - 2026-11-11
+
+- **A saved capture now records what each machine is and how it was set up.** The hardware and
+  graphics settings only ever appeared in the report printed to the console, so a capture kept for
+  weeks could still be measured and no longer explained once the log was truncated. Both now sit in
+  the file's `#` header, one line per machine.
+
 ## 0.10.21 - 2026-10-29
 
 - **Fixed: 0.10.20 spammed dedicated server logs** with `Can't return the graphics config when
