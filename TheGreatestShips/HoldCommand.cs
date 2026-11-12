@@ -7,14 +7,14 @@ namespace TheGreatestShips
 {
     /// <summary>
     /// <c>tgs_hold [right forward]</c>: shows or sets the Hold Fast Offset of the hull you are
-    /// aboard -- the Karve's if the nearest of this mod's ships is the Fast Karve, else the
+    /// aboard -- the Karve's if the nearest of this mod's ships is a Karve hull, else the
     /// longship hulls' -- in meters, and applies it at once.  So the spot can be dialed in by
     /// eye while holding the mast, and the numbers read back for this mod's defaults.
     /// </summary>
     internal sealed class HoldCommand : ConsoleCommand
     {
         public override string Name => "tgs_hold";
-        public override string Help => "tgs_hold [right forward]: show or set, in meters, where you stand to hold fast to the mast of the hull you are aboard (the Fast Karve's or the longship hulls'). Applies at once.";
+        public override string Help => "tgs_hold [right forward]: show or set, in meters, where you stand to hold fast to the mast of the hull you are aboard (the Karve hulls' or the longship hulls'). Applies at once.";
 
         internal static void Register() => CommandManager.Instance.AddConsoleCommand(new HoldCommand());
 
