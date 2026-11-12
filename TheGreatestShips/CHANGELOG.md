@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.9.13 — unreleased
+
+**Everyone must update: a 0.9.13 server refuses older clients** (two new synced settings).
+
+- The big hulls turn. A scaled hull's resistance to turning grew with the square of its size while
+  the rudder's push stayed a longship's, so a Greater Byrding turned at 45% of a longship's rate and
+  at rowing speed slid sideways instead, "like steering a bar of soap" (#57). The rudder's leverage
+  now grows with the hull, as the game's own Drakkar's does, so every ship answers the rudder as the
+  hull it is built on; Rudder Speed still swings it more slowly on the big ships.
+- New per-ship setting "Turn Rate Multiplier" (1 = as the vanilla hull) to make a ship more ponderous
+  on purpose.
+- New setting "Karve Hold Slots" (#57): the vanilla Karve's hold, 4 up to a longship's 18, synced with
+  the server. Applies to Karves already afloat; cargo outside a shrunken grid moves to free slots.
+
 ## 0.9.12 — 2026-11-02
 
 - The crew fits the ship again on scaled hulls. Holding the mast on a wider ship (Knarr,

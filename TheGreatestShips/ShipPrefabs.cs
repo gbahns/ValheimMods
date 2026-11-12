@@ -22,6 +22,8 @@ namespace TheGreatestShips
             // The base hull's own sail force, read from its prefab so a game update that retunes
             // the vanilla ship carries over.
             public float BaseSailForceFactor;
+            public float BaseStearForceOffset;   // where the vanilla hull's rudder pushes, meters from its origin
+            public HullTurning.Moments Moments;  // the vanilla hull's mass spread, for its yaw inertia
             // The base hull's transform scale, which Hull Width / Length / Scale multiply.
             public Vector3 BaseScale;
             // The vanilla hull itself, unscaled: the crew's places are measured on it.
@@ -161,7 +163,12 @@ namespace TheGreatestShips
             var icon = piece != null ? ShipIcons.Render(def, clone) : null;
             if (icon != null) piece.m_icon = icon;
 
-            _built[def] = new Built { Clone = clone, Base = basePrefab, BaseSailForceFactor = ship.m_sailForceFactor, BaseScale = baseScale };
+            _built[def] = new Built
+            {
+                Clone = clone, Base = basePrefab, BaseScale = baseScale,
+                BaseSailForceFactor = ship.m_sailForceFactor, BaseStearForceOffset = ship.m_stearForceOffset,
+                Moments = HullTurning.Measure(basePrefab),
+            };
             ApplyHandling(def);
             Jotunn.Logger.LogInfo($"[TheGreatestShips] Cloned {def.BasePrefab} as {def.PrefabName} ({def.BaseName} sail force {ship.m_sailForceFactor}).");
         }
@@ -338,6 +345,7 @@ namespace TheGreatestShips
                 }
             }
             if (fit != null) Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: {fit}.");
+            ApplyHandling(def);   // the rudder's leverage follows the hull's size
 
             var piece = built.Clone.GetComponent<Piece>();
             var icon  = piece != null ? ShipIcons.Render(def, built.Clone) : null;
@@ -355,6 +363,16 @@ namespace TheGreatestShips
         // applies m_sailForceFactor * wind as the push and speed² * m_dampingForward as the drag
         // on every physics step, so top speed ∝ √(m_sailForceFactor / m_dampingForward): the
         // multiplier is squared to scale the push.
+        //
+        // Turning: the rudder is a sideways push at a point m_stearForceOffset meters aft of the
+        // hull's origin, in world meters whatever the hull's scale, and every push is x mass, so a
+        // vanilla hull's yaw is set by its shape alone.  A scaled hull's yaw inertia grows with
+        // the square of its size (2.25x for one half again a longship) while the push and its
+        // lever stay the longship's, so it barely turned, and at rowing speed the push slid the
+        // whole hull sideways instead -- the "bar of soap" of issue #57.  The lever is scaled by
+        // the yaw inertia's growth, which is what Iron Gate did for the Drakkar (its lever is 30 m
+        // to the longship's 8): the same sideways push, turning the hull as it turns a longship.
+        // Turn Rate Multiplier scales the lever on top of that.
         internal static void ApplyHandling(ShipDefinition def)
         {
             if (!_built.TryGetValue(def, out var built) || built.BaseSailForceFactor <= 0f) return;
@@ -364,6 +382,9 @@ namespace TheGreatestShips
             float factor     = built.BaseSailForceFactor * multiplier * multiplier;
             float rudder     = Mathf.Clamp(cfg.RudderSpeed.Value, 0.1f, 5f);
             float health     = Mathf.Max(1f, cfg.Health.Value);
+            float turn       = Mathf.Clamp(cfg.TurnRate.Value, 0.1f, 5f);
+            float yaw        = HullTurning.Ratio(built.Moments, Ratio(built.Clone.transform.localScale, built.BaseScale));
+            float lever      = built.BaseStearForceOffset * yaw * turn;
 
             Apply(built.Clone.GetComponent<Ship>());
 
@@ -376,12 +397,13 @@ namespace TheGreatestShips
                     updated++;
                 }
             }
-            Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: sail force {factor} (x{multiplier} top speed), rudder {rudder}, health {health}; {updated} ship(s) in the world updated.");
+            Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: sail force {factor} (x{multiplier} top speed), rudder {rudder}, steer lever {lever:0.0} m (yaw inertia {yaw:0.00}x the {def.BaseName}'s, turn rate x{turn}), health {health}; {updated} ship(s) in the world updated.");
 
             void Apply(Ship ship)
             {
-                ship.m_sailForceFactor = factor;
-                ship.m_rudderSpeed     = rudder;
+                ship.m_sailForceFactor  = factor;
+                ship.m_rudderSpeed      = rudder;
+                ship.m_stearForceOffset = lever;
                 var wnt = ship.GetComponent<WearNTear>() ?? ship.GetComponentInChildren<WearNTear>();
                 if (wnt != null) wnt.m_health = health;
             }
@@ -395,6 +417,7 @@ namespace TheGreatestShips
             try
             {
                 CreateClones();
+                KarveHold.Apply();
                 foreach (var def in ShipDefinitions.All)
                     ApplyRecipe(def);
                 EnsureInPieceTable();

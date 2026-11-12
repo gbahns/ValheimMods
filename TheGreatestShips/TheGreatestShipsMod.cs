@@ -16,13 +16,15 @@ namespace TheGreatestShips
     {
         public const string ModGuid    = "DeathMonger.TheGreatestShips";
         public const string ModName    = "The Greatest Ships";
-        public const string ModVersion = "0.9.12";
+        public const string ModVersion = "0.9.13";
 
         // Oldest version this one can share a server with.  Raise it only for a release that
         // changes what the two sides must agree on (prefab names, synced config, storage size).
         // 0.9.1: the Fast Longship's hold grew from 3x3 to 4x3, and a client that still thinks
         // it is 3x3 would mishandle the items in the new slots.
-        public const string MinCompatibleVersion = "0.9.5";
+        // 0.9.13: Karve Hold Slots resizes the vanilla Karve's hold by a synced setting an older
+        // client does not have, and Turn Rate Multiplier steers by a synced setting too.
+        public const string MinCompatibleVersion = "0.9.13";
 
         internal static TheGreatestShipsMod Instance { get; private set; }
 
@@ -62,10 +64,10 @@ namespace TheGreatestShips
         /// Binds a BepInEx config entry and registers it with ServerSync so the server's value
         /// overrides clients.
         /// </summary>
-        internal ConfigEntry<T> BindSynced<T>(string section, string key, T defaultValue, string description)
+        internal ConfigEntry<T> BindSynced<T>(string section, string key, T defaultValue, string description, AcceptableValueBase acceptable = null)
         {
             var entry = Config.Bind(section, key, defaultValue,
-                new ConfigDescription(description + " [Synced with Server]"));
+                new ConfigDescription(description + " [Synced with Server]", acceptable));
             _configSync.AddConfigEntry(entry).SynchronizedConfig = true;
             return entry;
         }

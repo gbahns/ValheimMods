@@ -9,7 +9,7 @@ New ships built on Valheim's own hulls. Install on the server and on every clien
 
 | Ship | Based on | Top speed | Health | Turning | Storage | Width | Length | Sail | Hull | Recipe (Workbench) |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Karve *(vanilla)* | | 7.3 | 500 | normal | 4 | | | | | |
+| Karve *(vanilla)* | | 7.3 | 500 | normal | 4 (Karve Hold Slots) | | | | | |
 | **Fast Karve** | Karve | 10.1 | 400 | normal | 2 | 0.85× | | blue | red stripes | Fine Wood 30, Ancient Bark 20, Bronze Nails 60, Troll Hide 8, Resin 20 |
 | Longship *(vanilla)* | | 9.65 | 1000 | normal | 18 | | | | | |
 | **Fast Longship** | Longship | 13.0 | 800 | normal | 12 | 0.85× | 1.1× | blue | red stripes | Fine Wood 40, Ancient Bark 40, Iron Nails 120, Deer Hide 10, Troll Hide 10 |
@@ -103,10 +103,12 @@ file (or just the entries you want reset) and start the game.
 | Sail Opacity On Deck (General) | Sail Opacity always applies at the rudder. On: also anywhere on the deck. Off: only at the rudder | Yours alone; applies at once |
 | Remember Boat Zoom (General) | Go back to the zoom you had at the rudder when you take it again, instead of starting zoomed in | Yours alone |
 | Name Vanilla Ships (General) | Label the vanilla ships' rudders and holds too | Needs a restart |
+| Karve Hold Slots (General) | The vanilla Karve's hold: 4 (the game's 2x2), 6, 8, 9, 10, 12, 15, 16 or 18 (a longship's 6x3). Every Karve, built or not | Synced with the server |
 | Recipe | Comma-separated `ItemName:Amount` prefab names, at most five: the build HUD has room for five plus the crafting station (a sixth is shown, but the station's icon hangs off the panel) | Synced with the server |
 | Top Speed Multiplier | Relative to the vanilla ship it is based on | Synced with the server |
 | Health | Maximum hull health | Synced with the server |
 | Rudder Speed | How quickly the rudder swings; the vanilla ships use 1 | Synced with the server |
+| Turn Rate Multiplier | How hard the rudder turns the hull, relative to the vanilla ship. The hull's size is already allowed for, so 1 answers the rudder as the vanilla ship does; lower for a more ponderous ship | Synced with the server |
 | Sail Color | Multiplied into the sail. White leaves it as it is | Needs a restart |
 | Hull Color | Paint multiplied into the hull planks, not the mast or rudder | Needs a restart |
 | Hull Stripes | Number of painted bands; 0 paints the hull solid | Needs a restart |

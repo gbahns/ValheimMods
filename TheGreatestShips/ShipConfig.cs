@@ -16,6 +16,7 @@ namespace TheGreatestShips
             public ConfigEntry<float>  Speed;
             public ConfigEntry<float>  Health;
             public ConfigEntry<float>  RudderSpeed;
+            public ConfigEntry<float>  TurnRate;
             public ConfigEntry<Color>  SailColor;
             public ConfigEntry<Color>  HullColor;
             public ConfigEntry<int>    HullStripes;
@@ -30,6 +31,7 @@ namespace TheGreatestShips
         internal static Entries For(ShipDefinition def) => _entries[def];
 
         internal static ConfigEntry<bool> NameVanillaShips;
+        internal static ConfigEntry<int>  KarveHoldSlots;
         internal static ConfigEntry<bool> LockConfiguration;
         internal static ConfigEntry<int> BoatCameraDistance;
 
@@ -149,6 +151,12 @@ namespace TheGreatestShips
             NameVanillaShips = mod.Config.Bind("General", "Name Vanilla Ships", true,
                 "Label the vanilla ships' rudders and holds with the ship's name (\"Use rudder (Karve)\", \"Longship Storage\"), " +
                 "as this mod's own ships are, so you can tell which ship you are looking at. Requires a game restart.");
+            KarveHoldSlots = mod.BindSynced("General", "Karve Hold Slots", 4,
+                "The vanilla Karve's hold. 4 is the game's own 2x2; a longship's is 18. Laid out 3x2 for 6, 4x2 for 8, " +
+                "3x3 for 9, 5x2 for 10, 6x2 for 12, 5x3 for 15, 4x4 for 16 and 6x3 for 18. Applies to every Karve, afloat " +
+                "or not yet built; one shrunk below its cargo keeps rows for what is aboard until it is emptied.",
+                new AcceptableValueList<int>(4, 6, 8, 9, 10, 12, 15, 16, 18));
+            KarveHoldSlots.SettingChanged += (_, __) => KarveHold.Apply();
 
             foreach (var def in ShipDefinitions.All)
             {
@@ -172,6 +180,11 @@ namespace TheGreatestShips
 
                 e.RudderSpeed = mod.BindSynced(section, "Rudder Speed", Migrated(mod, def, "Rudder Speed", def.DefaultRudderSpeed),
                     $"How quickly the rudder swings (the vanilla {def.BaseName} has 1). Lower turns more slowly.");
+                e.TurnRate = mod.BindSynced(section, "Turn Rate Multiplier", 1f,
+                    $"How hard the rudder turns the hull, relative to the vanilla {def.BaseName}. The hull's size is already " +
+                    "allowed for (a hull half again a longship's size resists turning 2.25 times as much, and is given that " +
+                    $"much more leverage), so 1 answers the rudder as a {def.BaseName} does, at any speed. Lower to make a " +
+                    "ship more ponderous on purpose.");
 
                 // Cosmetic and read once when the ship is created, so not synced.
                 e.SailColor = mod.Config.Bind(section, "Sail Color", Migrated(mod, def, "Sail Color", def.DefaultSailColor),
@@ -204,6 +217,7 @@ namespace TheGreatestShips
                 e.Speed.SettingChanged  += (_, __) => ShipPrefabs.ApplyHandling(captured);
                 e.Health.SettingChanged += (_, __) => ShipPrefabs.ApplyHandling(captured);
                 e.RudderSpeed.SettingChanged += (_, __) => ShipPrefabs.ApplyHandling(captured);
+                e.TurnRate.SettingChanged += (_, __) => ShipPrefabs.ApplyHandling(captured);
                 e.Width.SettingChanged  += (_, __) => ShipPrefabs.ApplyDimensions(captured);
                 e.Length.SettingChanged += (_, __) => ShipPrefabs.ApplyDimensions(captured);
                 e.Scale.SettingChanged  += (_, __) => ShipPrefabs.ApplyDimensions(captured);
