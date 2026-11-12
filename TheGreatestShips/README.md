@@ -11,6 +11,7 @@ New ships built on Valheim's own hulls. Install on the server and on every clien
 |---|---|---|---|---|---|---|---|---|---|---|
 | Karve *(vanilla)* | | 7.3 | 500 | normal | 4 (Karve Hold Slots) | | | | | |
 | **Fast Karve** | Karve | 10.1 | 400 | normal | 2 | 0.85× | | blue | red stripes | Fine Wood 30, Ancient Bark 20, Bronze Nails 60, Troll Hide 8, Resin 20 |
+| **Cargo Karve** | Karve | about 6.4 | 600 | a little slower | 10 | 1.25× | | amber | green stripes | Fine Wood 40, Core Wood 20, Bronze Nails 100, Deer Hide 12, Resin 20 |
 | Longship *(vanilla)* | | 9.65 | 1000 | normal | 18 | | | | | |
 | **Fast Longship** | Longship | 13.0 | 800 | normal | 12 | 0.85× | 1.1× | blue | red stripes | Fine Wood 40, Ancient Bark 40, Iron Nails 120, Deer Hide 10, Troll Hide 10 |
 | **Knarr** | Longship | 8.6 | 1100 | slower | 32 | 1.25× | | amber | green stripes | Fine Wood 40, Ancient Bark 50, Iron Nails 120, Deer Hide 10, Troll Hide 10 |
@@ -41,6 +42,13 @@ piece, it shows up once you have picked up each of its materials.
 
 A light racing karve with an oversized sail. It outruns a longship, but its hull is lighter and it
 has only two storage slots.
+
+## Cargo Karve
+
+A broad, deep karve built to haul: the step between a karve's four slots and a longship's eighteen.
+Slower and clumsier than a karve, but sturdier, with ten slots, and built from the Karve's own
+materials plus core wood, so it needs nothing from the swamp. (Karve Hold Slots, below, enlarges the
+vanilla Karve's hold instead, for those who would rather.)
 
 ## Fast Longship
 

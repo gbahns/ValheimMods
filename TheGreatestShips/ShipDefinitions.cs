@@ -85,6 +85,27 @@ namespace TheGreatestShips
             },
             new ShipDefinition
             {
+                // The step between a karve's 4 slots and a longship's 18 (issue #57), Black Forest
+                // tier like the Karve: no swamp material in it.  Sits after the Fast Karve in the Hammer.
+                PrefabName         = "DM_CargoKarve",
+                BasePrefab         = "Karve",
+                BaseName           = "Karve",
+                BaseTopSpeed       = 7.3f,
+                DisplayName        = "Cargo Karve",
+                Description        = "A broad, deep karve built to haul. Slower and clumsier than a karve, but sturdier, with ten slots to its four: the step between a karve and a longship.",
+                StorageWidth       = 5,
+                StorageHeight      = 2,
+                DefaultRecipe      = "FineWood:40,RoundLog:20,BronzeNails:100,DeerHide:12,Resin:20",   // the Karve's materials plus core wood; weighs 188
+                DefaultSpeed       = 0.87f,   // about 6.4: the Knarr's share of its hull's speed
+                DefaultHealth      = 600f,    // Karve 500: a third more planking
+                DefaultRudderSpeed = 0.9f,
+                DefaultSailColor   = Amber,
+                DefaultHullColor   = Green,
+                DefaultHullStripes = 6,
+                DefaultWidth       = 1.25f,   // the Knarr's beam on the Karve's hull
+            },
+            new ShipDefinition
+            {
                 PrefabName         = "DM_FastLongship",
                 BasePrefab         = "VikingShip",
                 BaseName           = "Longship",
