@@ -2,7 +2,7 @@
 
 ## 2.8.0 — unreleased
 
-- **Container badges**: a round badge over each nearby container shows its free slots, green with room, amber at 3 or fewer, red when full. Only containers you can see get one. Press / or type `/badges` to hide or show them; range, size and the rest are under "Container Badges".
+- **Container badges**: a round badge over each nearby container shows its free slots, green with room, amber at 3 or fewer, red when full, blue with a white ring when it is completely empty. Only containers you can see get one. Press / or type `/badges` to hide or show them; range, size and the rest are under "Container Badges".
 
 ## 2.7.0 — 2026-11-11
 

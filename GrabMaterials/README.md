@@ -9,7 +9,7 @@ Quickly pull materials from nearby chests into your inventory without having to 
 
 <h3>New in version 2.8.0</h3>
 
-<li>Container badges — a round badge floats over each nearby container showing how many free slots it has: green when there is room, amber at 3 or fewer, red when full.  Only containers you can actually see get one, so a chest with no badge is behind a wall or out of range.  Press / or type '/badges' to hide or show them; range, size, hiding full containers and seeing through walls are under "Container Badges".
+<li>Container badges — a round badge floats over each nearby container showing how many free slots it has: green when there is room, amber at 3 or fewer, red when full, and blue with a white ring when the container is completely empty.  Only containers you can actually see get one, so a chest with no badge is behind a wall or out of range.  Press / or type '/badges' to hide or show them; range, size, hiding full containers and seeing through walls are under "Container Badges".
 
 <h3>New in version 2.4.0</h3>
 

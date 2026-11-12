@@ -38,6 +38,7 @@ namespace GrabMaterials
 			public Container Container;
 			public Vector3 Anchor;
 			public int Free;
+			public bool Empty;
 			public float Distance;
 		}
 
@@ -135,6 +136,7 @@ namespace GrabMaterials
 					Container = container,
 					Anchor = anchor,
 					Free = free,
+					Empty = inventory.NrOfItems() == 0,
 					Distance = Mathf.Sqrt(distSq),
 				});
 			}
@@ -175,12 +177,17 @@ namespace GrabMaterials
 				badge.Fill.rectTransform.sizeDelta = new Vector2(diameter - RingWidth * 2f, diameter - RingWidth * 2f);
 				badge.Label.fontSize = Mathf.Max(8, Mathf.RoundToInt(diameter * 0.55f));
 				badge.Label.text = c.Free.ToString();
-				badge.Fill.color = ColorFor(c.Free);
+				badge.Fill.color = ColorFor(c.Free, c.Empty);
+				badge.Ring.color = c.Empty ? EmptyRing : DarkRing;
 			}
 		}
 
-		private static Color ColorFor(int free)
+		private static readonly Color DarkRing  = new Color(0f, 0f, 0f, 0.75f);
+		private static readonly Color EmptyRing = new Color(1f, 1f, 1f, 0.95f);
+
+		private static Color ColorFor(int free, bool empty)
 		{
+			if (empty)     return new Color(0.25f, 0.55f, 0.95f, 0.92f);  // nothing in it at all: blue, white ring
 			if (free <= 0) return new Color(0.80f, 0.20f, 0.18f, 0.92f);  // full: red
 			if (free <= 3) return new Color(0.92f, 0.70f, 0.18f, 0.92f);  // nearly full: amber
 			return new Color(0.28f, 0.66f, 0.30f, 0.92f);                 // room: green
@@ -263,7 +270,7 @@ namespace GrabMaterials
 			rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
 			rect.pivot = new Vector2(0.5f, 0.5f);
 
-			var ring = MakeImage("Ring", root.transform, new Color(0f, 0f, 0f, 0.75f));
+			var ring = MakeImage("Ring", root.transform, DarkRing);
 			ring.rectTransform.anchorMin = Vector2.zero;
 			ring.rectTransform.anchorMax = Vector2.one;
 			ring.rectTransform.offsetMin = Vector2.zero;
