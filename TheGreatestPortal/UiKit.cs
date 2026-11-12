@@ -396,6 +396,17 @@ namespace TheGreatestPortal
             /// <summary>The bands laid over a tinted row, behind everything else in it.</summary>
             public Image Pattern;
 
+            /// <summary>The edge down the left of the one row worth finding first.</summary>
+            public Image Mark;
+
+            /// <summary>Marks this row, or stops marking it. One row in a list at a time: the mark
+            /// says "this one", and two of them say nothing.</summary>
+            public void SetMarked(bool on)
+            {
+                if (Mark == null) return;
+                if (Mark.gameObject.activeSelf != on) Mark.gameObject.SetActive(on);
+            }
+
             /// <summary>
             /// What hovering this row says, and what to hang that note on. Both or neither.
             ///
@@ -457,6 +468,10 @@ namespace TheGreatestPortal
         /// <summary>Seconds between two clicks on a row for them to count as a double-click.</summary>
         internal const float DoubleClickSeconds = 0.35f;
 
+        /// <summary>How wide the mark down a row's left edge is. The label starts at 10, so the
+        /// mark sits in the gap before it rather than over anything.</summary>
+        private const float MarkWidth = 4f;
+
         /// <summary>Room a row's icon button takes at its right edge, and the button's own size.</summary>
         private const float IconRoom = 28f;
         private const float IconSize = 20f;
@@ -488,6 +503,20 @@ namespace TheGreatestPortal
             handle.Pattern.type = Image.Type.Tiled;
             handle.Pattern.raycastTarget = false;
             bandsGo.SetActive(false);
+            // The mark: gold, the full height of the row, down its left edge. A shape rather than
+            // another color, so it does not have to compete with what the background already says.
+            var markGo = new GameObject("Mark", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            markGo.transform.SetParent(go.transform, false);
+            var mrt0 = markGo.GetComponent<RectTransform>();
+            mrt0.anchorMin = new Vector2(0f, 0f);
+            mrt0.anchorMax = new Vector2(0f, 1f);
+            mrt0.pivot = new Vector2(0f, 0.5f);
+            mrt0.anchoredPosition = Vector2.zero;
+            mrt0.sizeDelta = new Vector2(MarkWidth, 0f);
+            handle.Mark = markGo.GetComponent<Image>();
+            handle.Mark.color = Gold;
+            handle.Mark.raycastTarget = false;
+            markGo.SetActive(false);
             handle.Hover.OnHoverChanged = over =>
             {
                 handle.Refresh();

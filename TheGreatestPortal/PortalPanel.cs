@@ -329,6 +329,7 @@ namespace TheGreatestPortal
                 () => { Choose(captured.Id, index); Apply(); },    // double-click: choose and confirm
                 PortalList.DestinationText(p), icons);
             row.Tint = tint;
+            row.SetMarked(PortalList.LastUsedId != 0L && p.Id == PortalList.LastUsedId);
             row.SetTip(() => PortalList.TipFor(captured), _content);
             row.Refresh();
             AddRow(p.Id, row);
@@ -352,6 +353,7 @@ namespace TheGreatestPortal
             }
             if (_rename.Ready && p.Id != 0L) items.Add(PortalMenu.RenameItem(p, _rename, row));
             if (p.Id != 0L) items.Add(PortalMenu.FavoriteItem(p, Populate));
+            PortalMenu.AddCategoryItems(items, p, _rename.Ready ? _rename : null, row, Populate);
             items.Add(new KeyValuePair<string, Action>("Show on map", () =>
             {
                 Vector3 center = p.Pos;

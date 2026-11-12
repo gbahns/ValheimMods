@@ -97,6 +97,8 @@ namespace TheGreatestPortal
         {
             if (string.IsNullOrEmpty(query)) return true;
             if (p.DisplayName.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0) return true;
+            string category = Favorites.CategoryOf(p.Id);
+            if (category != null && category.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0) return true;
             return BiomeName(BiomeOf(p)).IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
@@ -161,6 +163,7 @@ namespace TheGreatestPortal
         /// </summary>
         internal static List<ListEntry> Build(long exclude, ZDOID excludeZdo, string query, bool groupByBiome)
         {
+            LastUsedId = LastUsedByMe(exclude, excludeZdo);
             var all = new List<PortalInfo>();
             var favs = new List<PortalInfo>();
             foreach (var p in Catalog.All)
@@ -198,6 +201,7 @@ namespace TheGreatestPortal
                     if (!favsCollapsed) foreach (var p in favs) entries.Add(new ListEntry { Portal = p, Favorite = true });
                     haveTop = true;
                 }
+                if (AddCategories(entries, all)) haveTop = true;
                 // With sections above it, the list proper needs a heading of its own too, or it
                 // reads as more of the same section.
                 if (haveTop && all.Count > 0) entries.Add(new ListEntry { IsHeader = true, Title = "All portals" });
@@ -211,6 +215,7 @@ namespace TheGreatestPortal
                 entries.Add(Header($"Favorites ({favs.Count})", FavoritesKey, collapsed));
                 if (!collapsed) foreach (var p in favs) entries.Add(new ListEntry { Portal = p, Favorite = true });
             }
+            AddCategories(entries, all);
             // A favorite is in its biome as well as under Favorites: starring a portal should not
             // take it out of the place you would go looking for it.
             var groups = new Dictionary<Heightmap.Biome, List<PortalInfo>>();
@@ -280,6 +285,76 @@ namespace TheGreatestPortal
                 });
         }
 
+        /// <summary>What a category's collapsed-section key starts with, so a category called
+        /// Meadows and the biome of that name fold and unfold separately.</summary>
+        private const string CategoryKey = "cat:";
+
+        /// <summary>
+        /// A section for each of this player's categories, above the body of the list.
+        ///
+        /// Like Favorites: a categorized portal is in its category and still in the list proper,
+        /// because filing a portal should put it somewhere, not take it out of the place you would
+        /// have looked for it. The sections are in alphabetical order -- the player named them, so
+        /// there is no order of their own to honor -- and each can be folded like any other.
+        /// </summary>
+        private static bool AddCategories(List<ListEntry> entries, List<PortalInfo> all)
+        {
+            if (all.Count == 0) return false;
+            var byName = new Dictionary<string, List<PortalInfo>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var p in all)
+            {
+                string name = Favorites.CategoryOf(p.Id);
+                if (string.IsNullOrEmpty(name)) continue;
+                List<PortalInfo> list;
+                if (!byName.TryGetValue(name, out list)) byName[name] = list = new List<PortalInfo>();
+                list.Add(p);
+            }
+            if (byName.Count == 0) return false;
+            var names = new List<string>(byName.Keys);
+            names.Sort(StringComparer.OrdinalIgnoreCase);
+            foreach (string name in names)
+            {
+                var list = byName[name];
+                list.Sort(ByName);
+                string key = CategoryKey + name;
+                bool collapsed = IsCollapsed(key);
+                entries.Add(Header($"{name} ({list.Count})", key, collapsed));
+                if (collapsed) continue;
+                foreach (var p in list) entries.Add(new ListEntry { Portal = p, Favorite = Favorites.IsFavorite(p.Id) });
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// The portal the player most recently traveled through, of the ones a list can show.
+        ///
+        /// Set as a list is built and read as its rows are made, so every section marks the same
+        /// portal and the panel and the map agree.
+        /// </summary>
+        internal static long LastUsedId { get; private set; }
+
+        /// <summary>
+        /// The newest portal in the player's own history that this list has a row for.
+        ///
+        /// A trip remembers both ends with the destination newest, so the top of that history is
+        /// the portal you are standing in -- which is the one the list leaves out. Skipping what
+        /// the list leaves out therefore lands on where you came from, which is the one worth
+        /// marking: the way back is one click rather than a search.
+        /// </summary>
+        private static long LastUsedByMe(long exclude, ZDOID excludeZdo)
+        {
+            foreach (long id in Favorites.Recents)
+            {
+                if (id == 0L) continue;
+                if (exclude != 0L && id == exclude) continue;
+                var p = Catalog.Get(id);
+                if (p == null) continue;
+                if (excludeZdo != ZDOID.None && p.ZdoId == excludeZdo) continue;
+                return id;
+            }
+            return 0L;
+        }
+
         /// <summary>When a portal last had anything happen to it: gone through, or failing that built.</summary>
         internal static long When(PortalInfo p)
         {
@@ -341,6 +416,7 @@ namespace TheGreatestPortal
         {
             if (p == null) return null;
             var lines = new List<string>();
+            if (LastUsedId != 0L && p.Id == LastUsedId) lines.Add("The last portal you traveled through");
             bool mine = false;
             foreach (var v in Visits(p))
             {

@@ -39,12 +39,51 @@ namespace TheGreatestPortal
         {
             return new KeyValuePair<string, Action>("Rename", () => rename.Begin(p, row));
         }
+
+        /// <summary>
+        /// Filing a portal under one of this player's own categories, from the row's menu.
+        ///
+        /// Every category in use is offered by name, so putting a portal in one is a single click
+        /// and there is no list of categories to go and manage first. "New category" is the only
+        /// way one comes into being, and a portal leaving the last one takes it away again.
+        /// </summary>
+        internal static void AddCategoryItems(List<KeyValuePair<string, Action>> items, PortalInfo p,
+                                              RowRename rename, UiKit.RowHandle row, Action refresh)
+        {
+            if (items == null || p == null || p.Id == 0L) return;
+            long id = p.Id;
+            string mine = Favorites.CategoryOf(id);
+            foreach (string name in Favorites.CategoryNames())
+            {
+                if (string.Equals(name, mine, StringComparison.OrdinalIgnoreCase)) continue;
+                string to = name;
+                items.Add(new KeyValuePair<string, Action>((mine == null ? "Add to " : "Move to ") + to, () =>
+                {
+                    Favorites.SetCategory(id, to);
+                    TheGreatestPortalMod.Message(p.DisplayName + " is in " + to);
+                    refresh?.Invoke();
+                }));
+            }
+            if (rename != null && rename.Ready && row != null)
+                items.Add(new KeyValuePair<string, Action>("New category", () => rename.BeginCategory(p, row)));
+            if (!string.IsNullOrEmpty(mine))
+                items.Add(new KeyValuePair<string, Action>("Take out of " + mine, () =>
+                {
+                    Favorites.SetCategory(id, null);
+                    TheGreatestPortalMod.Message(p.DisplayName + " is out of " + mine);
+                    refresh?.Invoke();
+                }));
+        }
     }
 
     /// <summary>
-    /// Renaming a portal from a row of a list: a text box swapped in over the name, in place. One
-    /// of these belongs to each list. The server decides whether the rename is allowed and says so
-    /// itself, so there is nothing to check here beyond the name being different.
+    /// Typing on a row of a list: a text box swapped in over the name, in place. One of these
+    /// belongs to each list, and it is used for the two things a row can be asked to name -- the
+    /// portal itself, and the category it is filed under. Which of them is being typed is the
+    /// commit handler the box was opened with; everything about the box is the same either way.
+    ///
+    /// For a rename the server decides whether it is allowed and says so itself, so there is
+    /// nothing to check here beyond the name being different.
     /// </summary>
     internal sealed class RowRename
     {
@@ -52,6 +91,7 @@ namespace TheGreatestPortal
         private Transform _home;            // where the box lives when it is not over a row
         private UiKit.RowHandle _row;
         private long _id;
+        private Action<string> _onCommit;
         private bool _active;
         private int _doneFrame = -10;
 
@@ -76,13 +116,30 @@ namespace TheGreatestPortal
             _field.gameObject.SetActive(false);
         }
 
+        /// <summary>Renaming the portal on this row.</summary>
         internal void Begin(PortalInfo p, UiKit.RowHandle row)
+        {
+            BeginEdit(p, row, p != null ? p.Name ?? "" : "", TgpConfig.MaxNameLength.Value, CommitRename);
+        }
+
+        /// <summary>Naming the category this portal goes in. An empty name takes it out of the one
+        /// it is in, which is also how a category with nothing left in it disappears.</summary>
+        internal void BeginCategory(PortalInfo p, UiKit.RowHandle row)
+        {
+            if (p == null) return;
+            BeginEdit(p, row, Favorites.CategoryOf(p.Id) ?? "", Favorites.MaxCategoryLength, CommitCategory);
+            if (!_active) return;
+            TheGreatestPortalMod.Message("Type a category for " + p.DisplayName + ", or nothing to take it out of one", always: true);
+        }
+
+        private void BeginEdit(PortalInfo p, UiKit.RowHandle row, string initial, int limit, Action<string> commit)
         {
             if (_field == null || p == null || row == null || row.Root == null) return;
             Cancel();
             _active = true;
             _id = p.Id;
             _row = row;
+            _onCommit = commit;
             if (row.Label != null) row.Label.gameObject.SetActive(false);
             var rt = _field.GetComponent<RectTransform>();
             rt.SetParent(row.Root.transform, false);
@@ -92,8 +149,8 @@ namespace TheGreatestPortal
             rt.offsetMin = new Vector2(6f, 2f);
             rt.offsetMax = new Vector2(-row.RightInset, -2f);   // clear of the distance and the icons
             _field.gameObject.SetActive(true);
-            _field.characterLimit = TgpConfig.MaxNameLength.Value;
-            _field.text = p.Name ?? "";
+            _field.characterLimit = limit;
+            _field.text = initial ?? "";
             _field.ActivateInputField();
         }
 
@@ -114,17 +171,38 @@ namespace TheGreatestPortal
         private void Commit(string text)
         {
             if (!_active) return;
+            var handler = _onCommit;
+            End();          // leaves _id alone: the handler below is the only thing that reads it
+            handler?.Invoke(text);
+        }
+
+        private void CommitRename(string text)
+        {
             long id = _id;
             string name = PortalData.CleanName(text, TgpConfig.MaxNameLength.Value);
             var p = Catalog.Get(id);
             string old = p != null ? p.Name : "";
-            End();
             if (p == null || name == old) return;
             PortalNetwork.SendRename(id, name);
             p.Name = name;   // shown at once; the server's next portal list confirms it
             TheGreatestPortalMod.Message((string.IsNullOrEmpty(old) ? "Portal" : old) + " renamed to " + (string.IsNullOrEmpty(name) ? "(no name)" : name));
             Refresh?.Invoke();
             Renamed?.Invoke(p, name);
+        }
+
+        private void CommitCategory(string text)
+        {
+            long id = _id;
+            var p = Catalog.Get(id);
+            if (p == null) return;
+            string name = Favorites.CleanCategory(text);
+            string old = Favorites.CategoryOf(id);
+            if (string.Equals(name, old, StringComparison.OrdinalIgnoreCase)) return;
+            Favorites.SetCategory(id, name);
+            TheGreatestPortalMod.Message(string.IsNullOrEmpty(name)
+                ? p.DisplayName + " is out of " + old
+                : p.DisplayName + " is in " + name);
+            Refresh?.Invoke();
         }
 
         private void End()

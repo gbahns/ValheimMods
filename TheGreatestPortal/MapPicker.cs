@@ -554,11 +554,9 @@ namespace TheGreatestPortal
                 new KeyValuePair<string, Action>("Center the map here", () => CenterOn(p)),
                 PortalMenu.FavoriteItem(p, Refresh),
             };
-            if (_rename.Ready && p.Id != 0L)
-            {
-                var row = RowFor(p.Id);
-                if (row != null) items.Add(PortalMenu.RenameItem(p, _rename, row));
-            }
+            var pRow = p.Id != 0L ? RowFor(p.Id) : null;
+            if (_rename.Ready && pRow != null) items.Add(PortalMenu.RenameItem(p, _rename, pRow));
+            PortalMenu.AddCategoryItems(items, p, _rename.Ready ? _rename : null, pRow, Refresh);
             if (Current == Mode.Browse) items.RemoveAt(0);   // the first two would be the same act
             UiKit.ContextMenu.Show(parent, ZInput.pointerPosition, items);
         }
@@ -757,6 +755,7 @@ namespace TheGreatestPortal
                 };
                 var row = UiKit.Row(_listContent, captured.DisplayName, dist, () => Select(captured), () => RowMenu(map, captured), 16f, fav ? UiKit.Gold : (Color?)null, null, PortalList.DestinationText(captured), icons);
                 row.Tint = e.Tint;
+                row.SetMarked(PortalList.LastUsedId != 0L && captured.Id == PortalList.LastUsedId);
                 row.SetTip(() => PortalList.TipFor(captured), tipRoot);
                 row.SetSelected(captured.Id == _highlightId && _highlightId != 0L);
                 long rowId = captured.Id;

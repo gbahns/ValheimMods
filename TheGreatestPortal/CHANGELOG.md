@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.0 — 2026-11-12
+
+- A gold edge marks the last portal you traveled through, usually the one you came from, so the
+  way back is one click rather than a search.
+- Categories you name yourself: right-click a portal, New category, type a name, and it gets a
+  section of its own above the list. Add to or take out of one from the same menu. Yours alone,
+  per world, and the search box finds a category by name.
+
 ## 1.3.0 — 2026-11-11
 
 - The portal list no longer appears on the map you open to look at it; it belongs to a portal you
