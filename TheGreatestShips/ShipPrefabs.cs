@@ -137,8 +137,9 @@ namespace TheGreatestShips
             var container = clone.GetComponentInChildren<Container>(true);
             if (container != null)
             {
-                container.m_width  = def.StorageWidth;
-                container.m_height = def.StorageHeight;
+                var grid = ShipConfig.HoldGrid(def);
+                container.m_width  = grid.x;
+                container.m_height = grid.y;
             }
             else
             {
@@ -373,6 +374,16 @@ namespace TheGreatestShips
         // the yaw inertia's growth, which is what Iron Gate did for the Drakkar (its lever is 30 m
         // to the longship's 8): the same sideways push, turning the hull as it turns a longship.
         // Turn Rate Multiplier scales the lever on top of that.
+        // A configurable hold's setting changed: the prefab and every ship of it afloat.
+        internal static void ApplyHold(ShipDefinition def)
+        {
+            if (!_built.TryGetValue(def, out var built) || built.Clone == null) return;
+            var grid = ShipConfig.HoldGrid(def);
+            int? updated = KarveHold.Resize(built.Clone, def.PrefabName, grid);
+            if (updated.HasValue)
+                Jotunn.Logger.LogInfo($"[TheGreatestShips] {def.DisplayName}: hold {grid.x}x{grid.y} ({grid.x * grid.y} slots); {updated} ship(s) in the world updated.");
+        }
+
         internal static void ApplyHandling(ShipDefinition def)
         {
             if (!_built.TryGetValue(def, out var built) || built.BaseSailForceFactor <= 0f) return;

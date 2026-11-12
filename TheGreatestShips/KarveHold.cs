@@ -14,6 +14,9 @@ namespace TheGreatestShips
     /// </summary>
     internal static class KarveHold
     {
+        /// <summary>The slot counts a hold setting offers: each has a grid in <see cref="Layout"/>.</summary>
+        internal static readonly int[] Sizes = { 4, 6, 8, 9, 10, 12, 15, 16, 18 };
+
         private static readonly AccessTools.FieldRef<Inventory, int> _width  = AccessTools.FieldRefAccess<Inventory, int>("m_width");
         private static readonly AccessTools.FieldRef<Inventory, int> _height = AccessTools.FieldRefAccess<Inventory, int>("m_height");
 
@@ -37,18 +40,29 @@ namespace TheGreatestShips
 
         internal static void Apply()
         {
-            var prefab    = PrefabManager.Instance?.GetPrefab("Karve");
-            var container = prefab != null ? prefab.GetComponentInChildren<Container>(true) : null;
-            if (container == null) return;
+            var prefab = PrefabManager.Instance?.GetPrefab("Karve");
+            if (prefab == null) return;
             var grid = Layout(ShipConfig.KarveHoldSlots.Value);
-            if (container.m_width == grid.x && container.m_height == grid.y) return;
+            int? updated = Resize(prefab, "Karve", grid);
+            if (updated.HasValue)
+                Jotunn.Logger.LogInfo($"[TheGreatestShips] Karve hold {grid.x}x{grid.y} ({grid.x * grid.y} slots); {updated} Karve(s) in the world updated.");
+        }
+
+        /// <summary>Sizes the hold of a ship prefab and of every ship of it afloat (this mod's
+        /// configurable holds use it too).</summary>
+        /// <returns>How many ships afloat were updated, or null when the prefab already had that grid.</returns>
+        internal static int? Resize(GameObject prefab, string prefabName, Vector2Int grid)
+        {
+            var container = prefab.GetComponentInChildren<Container>(true);
+            if (container == null) return null;
+            if (container.m_width == grid.x && container.m_height == grid.y) return null;
             container.m_width  = grid.x;
             container.m_height = grid.y;
 
             int updated = 0;
             foreach (var updater in Ship.Instances)
             {
-                if (!(updater is Ship ship) || Utils.GetPrefabName(ship.gameObject) != "Karve") continue;
+                if (!(updater is Ship ship) || Utils.GetPrefabName(ship.gameObject) != prefabName) continue;
                 var hold = ship.GetComponentInChildren<Container>(true);
                 if (hold == null) continue;
                 hold.m_width  = grid.x;
@@ -63,7 +77,7 @@ namespace TheGreatestShips
                     HoldGrid.KeepRows(hold);       // the owner moves the cargo; until then, show it where it is
                 updated++;
             }
-            Jotunn.Logger.LogInfo($"[TheGreatestShips] Karve hold {grid.x}x{grid.y} ({grid.x * grid.y} slots); {updated} Karve(s) in the world updated.");
+            return updated;
         }
     }
 

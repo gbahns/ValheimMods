@@ -2,7 +2,7 @@
 
 ## 0.9.13 — unreleased
 
-**Everyone must update: a 0.9.13 server refuses older clients** (two new synced settings).
+**Everyone must update: a 0.9.13 server refuses older clients** (three new synced settings).
 
 - The big hulls turn. A scaled hull's resistance to turning grew with the square of its size while
   the rudder's push stayed a longship's, so a Greater Byrding turned at 45% of a longship's rate and
@@ -11,9 +11,9 @@
   hull it is built on; Rudder Speed still swings it more slowly on the big ships.
 - New per-ship setting "Turn Rate Multiplier" (1 = as the vanilla hull) to make a ship more ponderous
   on purpose.
-- New ship: the Cargo Karve (#57), a Karve a quarter wider with a 10-slot hold, 600 health, about 6.4
-  top speed and a slower rudder, from the Karve's own materials plus core wood. The step between a
-  karve and a longship.
+- New ship: the Cargo Karve (#57), a Karve a quarter wider with an 8-slot hold (its "Hold Slots"
+  setting goes to 18), 600 health, about 6.4 top speed and a slower rudder, from the Karve's own
+  materials plus core wood. The step between a karve and a longship.
 - New setting "Karve Hold Slots": the vanilla Karve's hold, 4 up to a longship's 18, synced with the
   server, for those who would rather enlarge the Karve itself. Applies to Karves already afloat; cargo
   outside a shrunken grid moves to free slots.

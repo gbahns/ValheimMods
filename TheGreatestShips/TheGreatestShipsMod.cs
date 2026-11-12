@@ -23,7 +23,7 @@ namespace TheGreatestShips
         // 0.9.1: the Fast Longship's hold grew from 3x3 to 4x3, and a client that still thinks
         // it is 3x3 would mishandle the items in the new slots.
         // 0.9.13: Karve Hold Slots resizes the vanilla Karve's hold by a synced setting an older
-        // client does not have, and Turn Rate Multiplier steers by a synced setting too.
+        // client does not have (the Cargo Karve's Hold Slots likewise), and Turn Rate Multiplier steers by a synced setting too.
         public const string MinCompatibleVersion = "0.9.13";
 
         internal static TheGreatestShipsMod Instance { get; private set; }

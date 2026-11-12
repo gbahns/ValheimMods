@@ -11,7 +11,7 @@ New ships built on Valheim's own hulls. Install on the server and on every clien
 |---|---|---|---|---|---|---|---|---|---|---|
 | Karve *(vanilla)* | | 7.3 | 500 | normal | 4 (Karve Hold Slots) | | | | | |
 | **Fast Karve** | Karve | 10.1 | 400 | normal | 2 | 0.85× | | blue | red stripes | Fine Wood 30, Ancient Bark 20, Bronze Nails 60, Troll Hide 8, Resin 20 |
-| **Cargo Karve** | Karve | about 6.4 | 600 | a little slower | 10 | 1.25× | | amber | green stripes | Fine Wood 40, Core Wood 20, Bronze Nails 100, Deer Hide 12, Resin 20 |
+| **Cargo Karve** | Karve | about 6.4 | 600 | a little slower | 8 (Hold Slots) | 1.25× | | amber | green stripes | Fine Wood 40, Core Wood 20, Bronze Nails 100, Deer Hide 12, Resin 20 |
 | Longship *(vanilla)* | | 9.65 | 1000 | normal | 18 | | | | | |
 | **Fast Longship** | Longship | 13.0 | 800 | normal | 12 | 0.85× | 1.1× | blue | red stripes | Fine Wood 40, Ancient Bark 40, Iron Nails 120, Deer Hide 10, Troll Hide 10 |
 | **Knarr** | Longship | 8.6 | 1100 | slower | 32 | 1.25× | | amber | green stripes | Fine Wood 40, Ancient Bark 50, Iron Nails 120, Deer Hide 10, Troll Hide 10 |
@@ -46,9 +46,9 @@ has only two storage slots.
 ## Cargo Karve
 
 A broad, deep karve built to haul: the step between a karve's four slots and a longship's eighteen.
-Slower and clumsier than a karve, but sturdier, with ten slots, and built from the Karve's own
-materials plus core wood, so it needs nothing from the swamp. (Karve Hold Slots, below, enlarges the
-vanilla Karve's hold instead, for those who would rather.)
+Slower and clumsier than a karve, but sturdier, with eight slots (its Hold Slots setting goes to a
+longship's 18), and built from the Karve's own materials plus core wood, so it needs nothing from the
+swamp. (Karve Hold Slots, below, enlarges the vanilla Karve's hold instead, for those who would rather.)
 
 ## Fast Longship
 
@@ -116,6 +116,7 @@ file (or just the entries you want reset) and start the game.
 | Top Speed Multiplier | Relative to the vanilla ship it is based on | Synced with the server |
 | Health | Maximum hull health | Synced with the server |
 | Rudder Speed | How quickly the rudder swings; the vanilla ships use 1 | Synced with the server |
+| Hold Slots (Cargo Karve only) | Its hold: 4, 6, 8 (the default 4x2), 9, 10, 12, 15, 16 or 18, in the grids Karve Hold Slots uses. Every Cargo Karve, built or not | Synced with the server |
 | Turn Rate Multiplier | How hard the rudder turns the hull, relative to the vanilla ship. The hull's size is already allowed for, so 1 answers the rudder as the vanilla ship does; lower for a more ponderous ship | Synced with the server |
 | Sail Color | Multiplied into the sail. White leaves it as it is | Needs a restart |
 | Hull Color | Paint multiplied into the hull planks, not the mast or rudder | Needs a restart |

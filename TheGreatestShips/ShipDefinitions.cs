@@ -22,6 +22,8 @@ namespace TheGreatestShips
         public string[] OldDisplayNames;
         public int    StorageWidth;
         public int    StorageHeight;
+        public bool   HoldConfigurable;   // a synced "Hold Slots" setting sizes the hold (StorageWidth x Height
+                                          // is its default), in the grids Karve Hold Slots uses
         public string DefaultRecipe;
         public float  DefaultSpeed;   // multiplier on the base hull's top speed
         public float  DefaultHealth;
@@ -92,9 +94,10 @@ namespace TheGreatestShips
                 BaseName           = "Karve",
                 BaseTopSpeed       = 7.3f,
                 DisplayName        = "Cargo Karve",
-                Description        = "A broad, deep karve built to haul. Slower and clumsier than a karve, but sturdier, with ten slots to its four: the step between a karve and a longship.",
-                StorageWidth       = 5,
+                Description        = "A broad, deep karve built to haul. Slower and clumsier than a karve, but sturdier, with eight slots to its four: the step between a karve and a longship.",
+                StorageWidth       = 4,       // 8: the Knarr's share over its hull (32 to a longship's 18), as the Drakkar's
                 StorageHeight      = 2,
+                HoldConfigurable   = true,    // the Karve's hold is configurable, so this one is too
                 DefaultRecipe      = "FineWood:40,RoundLog:20,BronzeNails:100,DeerHide:12,Resin:20",   // the Karve's materials plus core wood; weighs 188
                 DefaultSpeed       = 0.87f,   // about 6.4: the Knarr's share of its hull's speed
                 DefaultHealth      = 600f,    // Karve 500: a third more planking

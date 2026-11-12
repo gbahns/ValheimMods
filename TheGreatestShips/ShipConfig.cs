@@ -23,12 +23,20 @@ namespace TheGreatestShips
             public ConfigEntry<float>  Width;
             public ConfigEntry<float>  Length;
             public ConfigEntry<float>  Scale;
+            public ConfigEntry<int>    HoldSlots;   // only a ship whose HoldConfigurable is set
         }
 
         private static readonly Dictionary<ShipDefinition, Entries> _entries =
             new Dictionary<ShipDefinition, Entries>();
 
         internal static Entries For(ShipDefinition def) => _entries[def];
+
+        /// <summary>The ship's hold grid: its setting's layout when it has one, else the definition's.</summary>
+        internal static Vector2Int HoldGrid(ShipDefinition def)
+        {
+            var e = _entries.TryGetValue(def, out var entries) ? entries : null;
+            return e?.HoldSlots != null ? KarveHold.Layout(e.HoldSlots.Value) : new Vector2Int(def.StorageWidth, def.StorageHeight);
+        }
 
         internal static ConfigEntry<bool> NameVanillaShips;
         internal static ConfigEntry<int>  KarveHoldSlots;
@@ -159,7 +167,7 @@ namespace TheGreatestShips
                 "The vanilla Karve's hold. 4 is the game's own 2x2; a longship's is 18. Laid out 3x2 for 6, 4x2 for 8, " +
                 "3x3 for 9, 5x2 for 10, 6x2 for 12, 5x3 for 15, 4x4 for 16 and 6x3 for 18. Applies to every Karve, afloat " +
                 "or not yet built; one shrunk below its cargo keeps rows for what is aboard until it is emptied.",
-                new AcceptableValueList<int>(4, 6, 8, 9, 10, 12, 15, 16, 18));
+                new AcceptableValueList<int>(KarveHold.Sizes));
             KarveHoldSlots.SettingChanged += (_, __) => KarveHold.Apply();
 
             foreach (var def in ShipDefinitions.All)
@@ -217,6 +225,15 @@ namespace TheGreatestShips
                     "multiply on top of it.");
 
                 var captured = def;
+                if (def.HoldConfigurable)
+                {
+                    e.HoldSlots = mod.BindSynced(section, "Hold Slots", def.StorageWidth * def.StorageHeight,
+                        $"The {def.DisplayName}'s hold, laid out as Karve Hold Slots is: 2x2 for 4, 3x2 for 6, 4x2 for 8, 3x3 for 9, " +
+                        $"5x2 for 10, 6x2 for 12, 5x3 for 15, 4x4 for 16 and 6x3 for 18. Applies to every {def.DisplayName}, afloat " +
+                        "or not yet built; one shrunk below its cargo keeps rows for what is aboard until it is emptied.",
+                        new AcceptableValueList<int>(KarveHold.Sizes));
+                    e.HoldSlots.SettingChanged += (_, __) => ShipPrefabs.ApplyHold(captured);
+                }
                 e.Recipe.SettingChanged += (_, __) => ShipPrefabs.ApplyRecipe(captured);
                 e.Speed.SettingChanged  += (_, __) => ShipPrefabs.ApplyHandling(captured);
                 e.Health.SettingChanged += (_, __) => ShipPrefabs.ApplyHandling(captured);
