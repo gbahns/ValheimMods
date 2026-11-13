@@ -27,6 +27,28 @@ namespace GrabMaterials
 
 		private const float OwnershipWait = 1f;
 
+		// Inventory.Changed is private in the game (the publicized reference only makes it
+		// compile; Mono throws MethodAccessException at runtime).  It is what tells the Container
+		// to write the inventory to its ZDO and the open UI to redraw.  1.0 gave it two bool
+		// parameters that only gate an achievement toast; the argument array is built from the
+		// runtime signature so either form works.
+		private static readonly System.Reflection.MethodInfo ChangedMethod = AccessTools.Method(typeof(Inventory), "Changed");
+		private static readonly object[] ChangedArgs = DefaultArgs(ChangedMethod);
+
+		private static object[] DefaultArgs(System.Reflection.MethodInfo method)
+		{
+			var ps = method?.GetParameters();
+			if (ps == null || ps.Length == 0) return null;
+			var args = new object[ps.Length];
+			for (var i = 0; i < ps.Length; i++) args[i] = ps[i].ParameterType.IsValueType ? Activator.CreateInstance(ps[i].ParameterType) : null;
+			return args;
+		}
+
+		private static void MarkChanged(Inventory inventory)
+		{
+			ChangedMethod?.Invoke(inventory, ChangedArgs);
+		}
+
 		// The container whose UI is open, for /sort; null when none is.
 		internal static Container Open { get; private set; }
 
@@ -137,7 +159,7 @@ namespace GrabMaterials
 			}
 
 			if (merged == 0 && moved == 0) return false;
-			inventory.Changed();
+			MarkChanged(inventory);
 
 			var parts = new List<string>();
 			if (merged > 0) parts.Add(merged == 1 ? "merged 1 stack" : $"merged {merged} stacks");

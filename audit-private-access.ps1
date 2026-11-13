@@ -26,6 +26,7 @@ try {
     if ($errors) {
         Write-Host "Private members reached directly in $Mod (fix with AccessTools.FieldRefAccess / AccessTools.Method):" -ForegroundColor Yellow
         $errors | ForEach-Object { Write-Host "  $_" }
+        Write-Host "Fix these and run again: Roslyn reports no method-body errors while any declaration (a field, property or parameter type) fails to bind, so this list can be incomplete. One such field hid every other private access in GrabMaterials until 2026-11-12." -ForegroundColor Yellow
         exit 1
     }
     Write-Host "$Mod reaches no private game members directly." -ForegroundColor Green

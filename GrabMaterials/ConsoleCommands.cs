@@ -688,9 +688,15 @@ namespace GrabMaterials
 			GrabMaterialsForPiece(piece);
 		}
 
-		// The publicized Valheim assembly fixes compile-time access, but the runtime
-		// DLL still has m_pieceIcons as private; AccessTools bypasses that.
-		private static AccessTools.FieldRef<Hud, List<Hud.PieceIconData>> _pieceIconsAccessor;
+		// Hud.m_pieceIcons and its element type Hud.PieceIconData are private in the game, so
+		// both go through reflection.  Naming the nested type in a declaration would compile
+		// against the publicized copy but, worse than failing at runtime, it is a declaration
+		// error against the real assembly, and Roslyn reports no method-body errors while a
+		// declaration is broken: it hid every other private access in this mod from
+		// audit-private-access.ps1 until 2026-11-12.
+		private static readonly System.Reflection.FieldInfo _pieceIconsField = AccessTools.Field(typeof(Hud), "m_pieceIcons");
+		private static readonly System.Reflection.FieldInfo _pieceIconField =
+			AccessTools.Field(typeof(Hud).GetNestedType("PieceIconData", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic), "m_icon");
 
 		// Highlight every nearby container that holds at least one item whose
 		// m_shared.m_name matches. Powers the click-to-highlight behavior on
@@ -747,25 +753,18 @@ namespace GrabMaterials
 			var player = Player.m_localPlayer;
 			if (hud == null || player == null) return null;
 
-			if (_pieceIconsAccessor == null)
+			if (_pieceIconsField == null || _pieceIconField == null)
 			{
-				try
-				{
-					_pieceIconsAccessor = AccessTools.FieldRefAccess<Hud, List<Hud.PieceIconData>>("m_pieceIcons");
-				}
-				catch (Exception e)
-				{
-					Log.LogWarning($"GrabMaterials: cannot reflect Hud.m_pieceIcons - {e.Message}");
-					return null;
-				}
+				Log.LogWarning("GrabMaterials: cannot reflect Hud.m_pieceIcons / PieceIconData.m_icon");
+				return null;
 			}
-			var pieceIcons = _pieceIconsAccessor(hud);
+			var pieceIcons = _pieceIconsField.GetValue(hud) as System.Collections.IEnumerable;
 			if (pieceIcons == null) return null;
 
 			foreach (var iconData in pieceIcons)
 			{
 				if (iconData == null) continue;
-				var icon = iconData.m_icon;
+				var icon = _pieceIconField.GetValue(iconData) as Image;
 				if (icon == null || !icon.gameObject.activeInHierarchy) continue;
 				if (!RectTransformUtility.RectangleContainsScreenPoint(icon.rectTransform, Input.mousePosition)) continue;
 				// PieceIconData doesn't expose the Piece directly, so match the
