@@ -10,7 +10,7 @@ Quickly pull materials from nearby chests into your inventory without having to 
 <h3>New in version 2.10.0</h3>
 
 <li>Gather: look at a chest and press \ (the "Gather Key") and the item it mostly holds is pulled into it from every other chest within Container Range, farthest chest first, so one material stops living in five places.  When the chest fills, the overflow goes to the chest nearest it with room.  Hold Shift and the chest's other items first move to your inventory to make room; hold Ctrl and they slide to other chests in reach, each to a chest already holding that item where there is one.  '/gather' does the same as the plain key; '/gather &lt;item&gt;' names the item.
-<li>Pack results by piece: a grab pack's results list each piece with its own materials under it (Workbench: 10 Wood; 2 Chest: 20 Wood; Portal: 20 Fine wood, 10 Greydwarf eye, 2 Surtling core), so you can see what the totals were for, with what is left nearby on each material's line.  "Pack Results By Piece" under Panel UI turns the old one-line-per-material list back on.
+<li>Pack results by piece: a grab pack's results list each piece with its own materials under it (Workbench: 10 Wood; 2 Chest: 20 Wood; Portal: 20 Fine wood, 10 Greydwarf eye, 2 Surtling core), so you can see what the totals were for, with what remains nearby on each material's line.  "Pack Results By Piece" under Panel UI turns the old one-line-per-material list back on.
 <li>Pack HUD shows what is in each pack: the icon of each piece or item follows the pack's name, with a count on the icon for "Chest:2".  "Show Pack Contents" under Pack HUD turns it off.
 
 <h3>New in version 2.9.0</h3>

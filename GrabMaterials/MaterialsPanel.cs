@@ -1494,7 +1494,7 @@ namespace GrabMaterials
 				if (item.Had >= item.Needed)
 					return $"<color=#88ff88>✓ {item.Needed} {item.Name}</color> <color=#aaaaaa>(already had)</color>";
 				// What is left nearby, so the player knows whether the next build will find any (#28).
-				var left = item.Remaining >= 0 ? $"{item.Remaining} left nearby" : null;
+				var left = item.Remaining >= 0 ? $"{item.Remaining} remaining" : null;
 				if (item.Had > 0)
 					return $"<color=#88ff88>✓ {item.Needed} {item.Name}</color> <color=#aaaaaa>(had {item.Had}, grabbed {item.Available}{(left != null ? ", " + left : "")})</color>";
 				return left != null

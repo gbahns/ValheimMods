@@ -722,7 +722,7 @@ namespace GrabMaterials
 				entries.Add(new MaterialsPanel.EntryStatus { Label = entry.Label, Count = entry.Count, IsPiece = entry.IsPiece, Items = items });
 			}
 
-			// "N left nearby" on the last line that uses each material, walking backwards so a
+			// "N remaining" on the last line that uses each material, walking backwards so a
 			// material two pieces share is not reported twice.
 			var reported = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 			for (int e = breakdown.Count - 1; e >= 0; e--)
@@ -762,7 +762,7 @@ namespace GrabMaterials
 				else if (status.Available <= 0) message = $"No {name} within reach";
 				else if (status.Available < status.Needed && status.Remaining > 0) message = $"Grabbed {status.Available} {name}, no room for the rest";
 				else if (status.Available < status.Needed) message = $"Grabbed {status.Available} {name}, all there was";
-				else message = $"Grabbed {status.Available} {name} ({status.Remaining} left nearby)";
+				else message = $"Grabbed {status.Available} {name} ({status.Remaining} remaining)";
 				player.Message(MessageHud.MessageType.TopLeft, message);
 				GrabMaterialsMod.GrabMaterialsMod.RefreshInventoryPanel();
 			});
