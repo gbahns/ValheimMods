@@ -73,8 +73,7 @@ namespace GrabMaterials
 				player?.Message(MessageHud.MessageType.Center, "This container is not yours to change right now");
 				return;
 			}
-			var changed = Tidy(container.GetInventory());
-			player?.Message(MessageHud.MessageType.TopLeft, changed ? "Sorted" : "Already tidy");
+			if (!Tidy(container)) player?.Message(MessageHud.MessageType.TopLeft, "Already tidy");
 		}
 
 		// Containers whose slot positions mean something are left alone.
@@ -105,7 +104,7 @@ namespace GrabMaterials
 				if (nview == null || !nview.IsValid()) yield break;
 				if (nview.IsOwner())
 				{
-					Tidy(container.GetInventory());
+					Tidy(container);
 					yield break;
 				}
 				yield return null;
@@ -113,15 +112,18 @@ namespace GrabMaterials
 			GrabMaterialsMod.GrabMaterialsMod.Log.LogInfo($"not tidying {container?.name}: ownership did not arrive");
 		}
 
-		// Merge, sort, lay out.  Returns whether anything moved.
-		internal static bool Tidy(Inventory inventory)
+		// Merge, sort, lay out, and say what happened.  Returns whether anything moved; a chest
+		// that was already tidy (opened twice in a row, say) gets no message and no log line.
+		internal static bool Tidy(Container container)
 		{
+			var inventory = container?.GetInventory();
 			if (inventory == null) return false;
 			var items = new List<ItemDrop.ItemData>(inventory.GetAllItems());
 			if (items.Count == 0) return false;
 
-			var changed = MergeStacks(inventory, items);
+			var merged = MergeStacks(inventory, items);
 
+			var moved = 0;
 			var ordered = Sorted(items);
 			var width = inventory.GetWidth();
 			for (var i = 0; i < ordered.Count; i++)
@@ -130,19 +132,27 @@ namespace GrabMaterials
 				if (ordered[i].m_gridPos != pos)
 				{
 					ordered[i].m_gridPos = pos;
-					changed = true;
+					moved++;
 				}
 			}
 
-			if (changed) inventory.Changed();
-			return changed;
+			if (merged == 0 && moved == 0) return false;
+			inventory.Changed();
+
+			var parts = new List<string>();
+			if (merged > 0) parts.Add(merged == 1 ? "merged 1 stack" : $"merged {merged} stacks");
+			if (moved > 0) parts.Add(moved == 1 ? "moved 1 item" : $"moved {moved} items");
+			var what = string.Join(", ", parts);
+			Player.m_localPlayer?.Message(MessageHud.MessageType.TopLeft, "Tidied: " + what);
+			GrabMaterialsMod.GrabMaterialsMod.Log.LogInfo($"tidied {container.name} at {container.transform.position}: {what} ({SortOrder})");
+			return true;
 		}
 
 		// Pour partial stacks of the same item together, biggest first, up to the stack limit.
-		// Only true stacks: same item, quality and variant, no per-item custom data.
-		private static bool MergeStacks(Inventory inventory, List<ItemDrop.ItemData> items)
+		// Only true stacks: same item, quality and variant, no per-item custom data.  Returns
+		// how many stacks disappeared into others.
+		private static int MergeStacks(Inventory inventory, List<ItemDrop.ItemData> items)
 		{
-			var changed = false;
 			var groups = items
 				.Where(item => item.m_shared.m_maxStackSize > 1 && (item.m_customData == null || item.m_customData.Count == 0))
 				// A string key, not a tuple: the game's Mono cannot load System.ValueTuple.
@@ -163,7 +173,6 @@ namespace GrabMaterials
 						var moved = Math.Min(room, stacks[from].m_stack);
 						stacks[into].m_stack += moved;
 						stacks[from].m_stack -= moved;
-						changed = true;
 					}
 					if (stacks[from].m_stack == 0) emptied.Add(stacks[from]);
 				}
@@ -173,7 +182,7 @@ namespace GrabMaterials
 				inventory.RemoveItem(item);
 				items.Remove(item);
 			}
-			return changed;
+			return emptied.Count;
 		}
 
 		private static List<ItemDrop.ItemData> Sorted(List<ItemDrop.ItemData> items)
