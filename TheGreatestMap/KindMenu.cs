@@ -720,7 +720,7 @@ namespace TheGreatestMap
             // Pinned, the title strip is what you drag the list about by. Built before the
             // things that sit in it, so the master switch and the stick pin stay on top of it and
             // keep taking their own clicks: in a Unity canvas the later child is the nearer one.
-            if (Pinned) BuildMover();
+            BuildMover();
             Header(_results != null ? "Matches" : "Markers", 0f, y);
             // The master switch used to be this box, and it is behind the gear now: it is not a
             // peer of the switches in this list and it is not a peer of this list either. It beats
@@ -1579,16 +1579,19 @@ namespace TheGreatestMap
         }
 
         /// <summary>
-        /// The strip across the title that moves the list, for a list that is staying open.
+        /// The strip across the title that moves the list. A list that cannot be moved off the
+        /// part of the map you are reading is furniture in the way.
         ///
-        /// <para>Only while pinned, because only then is there anywhere for it to stay: an
-        /// unpinned list is put up by a click and goes away at the next one, and opens where the
-        /// button is every time, so moving it would be a gesture with nothing to remember it.
-        /// Pinned, it is furniture, and furniture that cannot be moved off the part of the map
-        /// you are reading is furniture in the way.</para>
+        /// <para>Built whether the list is pinned or not. It used to be pinned only, on the
+        /// grounds that an unpinned list opens where the button is every time and so moving one
+        /// would be a gesture with nothing to remember it -- which stopped being true when the
+        /// remembered spot came to apply either way. Until then the title bar simply did not
+        /// respond to a drag for most of the time anybody tried it, with nothing on screen to say
+        /// the list was not meant to move yet; the pin state is not something you think about
+        /// when you reach for a window's title bar.</para>
         ///
-        /// <para>Where it ends up is remembered the way pinning already remembered it -- as a
-        /// fraction of the screen, so it lands in the same place on any monitor.</para>
+        /// <para>Where it ends up is remembered as a fraction of the screen, so it lands in the
+        /// same place on any monitor. See SpotOr.</para>
         /// </summary>
         private static void BuildMover()
         {

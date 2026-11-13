@@ -6,6 +6,8 @@
   lowering it does not put labels back on the ones you already have.
 - The marker list opens where you dragged it, pinned or not, and pinning no longer overwrites a
   spot you set yourself.
+- The list's title bar drags it whether or not it is pinned. It only answered while pinned, which
+  read as the title bar going unresponsive for no reason.
 - "Marker Button At Map Bottom" puts the map pin beside the game's icon column and measures its
   offsets from that corner, so a button moved down there holds its place when the map is resized.
 
