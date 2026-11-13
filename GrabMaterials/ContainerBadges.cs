@@ -101,6 +101,7 @@ namespace GrabMaterials
 		private static Camera _badgeCamera;  // flat world mode only
 		private static Material _flatMaterial;
 		private static int _badgeLayer = -1;
+		private static Camera _maskedCamera;   // the main camera we took _badgeLayer out of, to give it back
 		private const float FlatFade = 100f;   // soft-particle steepness: fully hidden 1 cm behind the scene
 		private static readonly string[] FlatShaders =
 		{
@@ -161,6 +162,8 @@ namespace GrabMaterials
 			if (_root != null) Object.Destroy(_root);
 			if (_badgeCamera != null) Object.Destroy(_badgeCamera.gameObject);
 			if (_flatMaterial != null) Object.Destroy(_flatMaterial);
+			if (_maskedCamera != null && _badgeLayer >= 0) _maskedCamera.cullingMask |= 1 << _badgeLayer;
+			_maskedCamera = null;
 			_root = null;
 			_rootRect = null;
 			_canvas = null;
@@ -205,23 +208,26 @@ namespace GrabMaterials
 				return false;
 			}
 
-			// A layer the main camera does not draw, unnamed for preference, so the badges are
-			// drawn once, by the badge camera.
+			// A layer for the badges alone.  The main camera draws every layer, so one is taken
+			// from it: an unnamed one, which nothing in the game sits on, so the main camera's
+			// picture does not change.  Unity names none of 3, 6 and 7 and the game names few
+			// of the upper ones.  Rebuild gives the layer back.
 			_badgeLayer = -1;
-			for (var pass = 0; pass < 2 && _badgeLayer < 0; pass++)
+			foreach (var layer in new[] { 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 3 })
 			{
-				for (var layer = 31; layer >= 8; layer--)
-				{
-					if ((main.cullingMask & (1 << layer)) != 0) continue;
-					if (pass == 0 && !string.IsNullOrEmpty(LayerMask.LayerToName(layer))) continue;
-					_badgeLayer = layer;
-					break;
-				}
+				if (!string.IsNullOrEmpty(LayerMask.LayerToName(layer))) continue;
+				_badgeLayer = layer;
+				break;
 			}
 			if (_badgeLayer < 0)
 			{
-				Log.LogWarning("badges: the main camera draws every layer, so there is none to give the badge camera; world badges take the scene's light");
+				Log.LogWarning("badges: every layer is named, so there is none to give the badge camera; world badges take the scene's light");
 				return false;
+			}
+			if ((main.cullingMask & (1 << _badgeLayer)) != 0)
+			{
+				main.cullingMask &= ~(1 << _badgeLayer);
+				_maskedCamera = main;
 			}
 
 			_flatMaterial = new Material(shader);
@@ -234,7 +240,7 @@ namespace GrabMaterials
 			go.transform.SetParent(main.transform, false);
 			_badgeCamera = go.GetComponent<Camera>();
 			SyncBadgeCamera(main);
-			Log.LogInfo($"badges: flat world badges on layer {_badgeLayer} ({LayerMask.LayerToName(_badgeLayer) ?? ""}) through {shader.name}");
+			Log.LogInfo($"badges: flat world badges on layer {_badgeLayer}{(_maskedCamera != null ? ", taken from the main camera" : "")}, through {shader.name}");
 			return true;
 		}
 
