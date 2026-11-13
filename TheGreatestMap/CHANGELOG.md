@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.9.3 — unreleased
+## 4.9.3 — 2026-11-13
 
 - Label Spacing says what it really does: it decides the markers you find from now on, and
   lowering it does not put labels back on the ones you already have.
