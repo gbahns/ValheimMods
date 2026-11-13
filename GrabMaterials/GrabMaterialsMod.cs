@@ -234,7 +234,7 @@ namespace GrabMaterialsMod
 			BadgeRange = Config.Bind("Container Badges", "Range", 15f, new ConfigDescription("How far away (in meters) a container can be and still get a badge. Separate from Container Range: this is about what you can read from where you stand.", new AcceptableValueRange<float>(1f, 100f)));
 			BadgeSize = Config.Bind("Container Badges", "Size", 28f, new ConfigDescription("Badge diameter in pixels at 8 m. Nearer badges grow a little, farther ones shrink.", new AcceptableValueRange<float>(12f, 80f)));
 			BadgeHideFull = Config.Bind("Container Badges", "Hide Full Containers", false, new ConfigDescription("Leave full containers without a badge instead of showing a red 0."));
-			GatherKey = Config.Bind("Gather", "Gather Key", new KeyboardShortcut(KeyCode.Backslash), new ConfigDescription("Look at a chest and press this: the item that chest mostly holds is pulled into it from every other chest within Container Range, farthest chest first. When it fills, the overflow goes to the chest nearest it with room. /gather does the same; /gather <item> names the item instead."));
+			GatherKey = Config.Bind("Gather", "Gather Key", new KeyboardShortcut(KeyCode.Backslash), new ConfigDescription("Look at a chest and press this: the item that chest mostly holds is pulled into it from every other chest within Container Range, farthest chest first. When it fills, the overflow goes to the chest nearest it with room. With Shift held the chest's other items first move to your inventory to make room; with Ctrl held they slide to other chests in reach. /gather does the same as the plain key; /gather <item> names the item instead."));
 			TidyOnOpen = Config.Bind("Tidy Containers", "Enabled", true, new ConfigDescription("Tidy a container when you open it: partial stacks of the same item are merged, then the items are laid out in the order below. /sort does the same on demand for the container you have open."));
 			TidySortOrder = Config.Bind("Tidy Containers", "Sort Order", GrabMaterials.ContainerTidy.Order.Category, new ConfigDescription("Category = the /inventory panel's categories, then name. Name, Weight and Value are what SimpleSort offered. Within one item, fuller stacks come first."));
 			TidySkipContainers = Config.Bind("Tidy Containers", "Skip Containers", "", new ConfigDescription("Prefab names of containers to leave alone, separated by commas, for chests whose slot positions you arrange yourself. Armory racks and tombstones are always skipped."));
@@ -394,6 +394,15 @@ namespace GrabMaterialsMod
 
 		// Player.TakeInput() is protected at runtime (the publicized DLL only makes it look public,
 		// and calling it throws MethodAccessException), so mirror its intent with the public checks.
+		private bool GatherKeyPressed()
+		{
+			var key = GatherKey.Value;
+			if (key.MainKey == KeyCode.None || !Input.GetKeyDown(key.MainKey)) return false;
+			foreach (var modifier in key.Modifiers)
+				if (!Input.GetKey(modifier)) return false;
+			return true;
+		}
+
 		private static bool GuiHasFocus()
 		{
 			return Console.IsVisible() || Menu.IsVisible() || InventoryGui.IsVisible()
@@ -449,9 +458,16 @@ namespace GrabMaterialsMod
 					GrabMaterials.ContainerBadges.CycleDisplay();
 				}
 
-				if (GatherKey.Value.IsDown() && !GuiHasFocus())
+				// Read by hand rather than KeyboardShortcut.IsDown(), which refuses to fire while
+				// any key outside the shortcut is held, and Shift and Ctrl choose the mode here.
+				if (GatherKeyPressed() && !GuiHasFocus())
 				{
-					GrabMaterials.ContainerGather.GatherIntoHovered();
+					var ctrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+					var shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+					var mode = ctrl ? GrabMaterials.ContainerGather.MakeRoom.ToChests
+						: shift ? GrabMaterials.ContainerGather.MakeRoom.ToPlayer
+						: GrabMaterials.ContainerGather.MakeRoom.None;
+					GrabMaterials.ContainerGather.GatherIntoHovered(null, mode);
 				}
 
 				foreach (var grabPack in GrabPacks)

@@ -9,7 +9,7 @@ Quickly pull materials from nearby chests into your inventory without having to 
 
 <h3>New in version 2.10.0</h3>
 
-<li>Gather: look at a chest and press \ (the "Gather Key") and the item it mostly holds is pulled into it from every other chest within Container Range, farthest chest first, so one material stops living in five places.  When the chest fills, the overflow goes to the chest nearest it with room.  '/gather' does the same; '/gather &lt;item&gt;' names the item.
+<li>Gather: look at a chest and press \ (the "Gather Key") and the item it mostly holds is pulled into it from every other chest within Container Range, farthest chest first, so one material stops living in five places.  When the chest fills, the overflow goes to the chest nearest it with room.  Hold Shift and the chest's other items first move to your inventory to make room; hold Ctrl and they slide to other chests in reach, each to a chest already holding that item where there is one.  '/gather' does the same as the plain key; '/gather &lt;item&gt;' names the item.
 
 <h3>New in version 2.9.0</h3>
 

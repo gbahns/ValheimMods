@@ -16,8 +16,19 @@ namespace GrabMaterials
 	//
 	// `/gather` does the same from the console; `/gather <item>` names the item instead of
 	// reading it off the target.
+	//
+	// With Shift or Ctrl held, the target first makes room for what is coming: the other items
+	// in it move to the player's inventory (Shift) or to other chests in reach (Ctrl), whole
+	// item types at a time, fewest slots first, and only as many as the incoming material needs.
 	internal static class ContainerGather
 	{
+		internal enum MakeRoom
+		{
+			None,
+			ToPlayer,   // Shift: the target's other items go to the player's inventory
+			ToChests,   // Ctrl: they slide to other chests in reach, ones already holding that item first
+		}
+
 		private sealed class Slot
 		{
 			public Container Container;
@@ -32,8 +43,16 @@ namespace GrabMaterials
 		// the game keeps running while the log says so, instead of hanging as it did on
 		// 2026-11-12 when a source chest was chosen as its own overflow destination.
 		private const int MaxMoves = 5000;
+		private static int _moves;
 
-		internal static void GatherIntoHovered(string requested = null)
+		private static bool OverBudget(string doing)
+		{
+			if (++_moves <= MaxMoves) return false;
+			Log.LogError($"gather: stopped after {MaxMoves} moves while {doing}; not converging");
+			return true;
+		}
+
+		internal static void GatherIntoHovered(string requested = null, MakeRoom makeRoom = MakeRoom.None)
 		{
 			var player = Player.m_localPlayer;
 			if (player == null) return;
@@ -70,7 +89,7 @@ namespace GrabMaterials
 			var others = Boxes.GetOpenableContainers(Range).Where(c => c != target && Usable(c, out _)).ToList();
 			var all = new List<Container> { target };
 			all.AddRange(others);
-			ContainerAccess.Acquire(all, owned => Gather(target, material, owned));
+			ContainerAccess.Acquire(all, owned => Gather(target, material, owned, makeRoom));
 		}
 
 		// Chests whose contents are not ordinary storage are neither drained nor filled.
@@ -129,8 +148,9 @@ namespace GrabMaterials
 		}
 
 		// The move proper, over containers this machine now owns.
-		private static void Gather(Container target, string material, List<Container> owned)
+		private static void Gather(Container target, string material, List<Container> owned, MakeRoom makeRoom)
 		{
+			_moves = 0;
 			var player = Player.m_localPlayer;
 			if (player == null || target == null) return;
 			if (!owned.Contains(target))
@@ -160,13 +180,14 @@ namespace GrabMaterials
 			sources.Sort((a, b) => b.Distance.CompareTo(a.Distance));   // farthest first
 			spare.Sort((a, b) => a.Distance.CompareTo(b.Distance));     // nearest first
 
+			var roomMade = makeRoom == MakeRoom.None ? null : MakeRoomIn(target, material, sources, spare, makeRoom);
+
 			var destination = new Slot { Container = target, Inventory = target.GetInventory(), Distance = 0f };
 			var destinations = new List<Slot> { destination };
 			var drained = new HashSet<Container>();
 			var moved = 0;
 			var leftBehind = 0;
 			var outOfRoom = false;
-			var moves = 0;
 			Log.LogInfo($"gather: {name} into {target.name} from {sources.Count} source(s), {spare.Count} chest(s) in reach");
 
 			foreach (var source in sources)
@@ -175,9 +196,8 @@ namespace GrabMaterials
 				var tookFromThis = 0;
 				while (!outOfRoom)
 				{
-					if (++moves > MaxMoves)
+					if (OverBudget($"moving {name} from {source.Container.name} into {destination.Container.name}"))
 					{
-						Log.LogError($"gather: stopped after {MaxMoves} moves; {name} from {source.Container.name} into {destination.Container.name} was not converging");
 						outOfRoom = true;
 						break;
 					}
@@ -236,8 +256,129 @@ namespace GrabMaterials
 			if (moved == 0) message = outOfRoom ? $"No room for {name}: the chest and every chest near it are full" : $"Nothing to gather: no {name} elsewhere";
 			else if (leftBehind > 0) message = $"Gathered {moved} {name} from {from} into {into}; {leftBehind} left behind, no room nearby";
 			else message = $"Gathered {moved} {name} from {from} into {into}";
+			if (roomMade != null) player.Message(MessageHud.MessageType.TopLeft, roomMade);
 			player.Message(MessageHud.MessageType.TopLeft, message);
-			Log.LogInfo($"gather: {message} (target {target.name} at {origin}, {moves} move(s))");
+			Log.LogInfo($"gather: {message} (target {target.name} at {origin}, {_moves} move(s))");
+		}
+
+		// Shift/Ctrl: clear the target's other items until what is coming fits, or until there is
+		// nowhere left to put them.  Whole item types go at a time, the ones taking the fewest
+		// slots first, so the chest's main tenant is the last thing to leave.  Returns a line
+		// for the HUD, or null when nothing needed to move.
+		private static string MakeRoomIn(Container target, string material, List<Slot> sources, List<Slot> spare, MakeRoom mode)
+		{
+			var inventory = target.GetInventory();
+			var player = Player.m_localPlayer;
+			if (inventory == null || player == null) return null;
+
+			ItemDrop.ItemData sample = null;
+			var coming = 0;
+			foreach (var source in sources)
+			{
+				foreach (var item in source.Inventory.GetAllItems())
+				{
+					if (item?.m_shared == null || item.m_shared.m_name != material) continue;
+					coming += item.m_stack;
+					if (sample == null) sample = item;
+				}
+			}
+			if (sample == null || coming <= 0) return null;
+			if (TotalRoom(inventory, sample) >= coming) return null;
+
+			var groups = inventory.GetAllItems()
+				.Where(item => item?.m_shared != null && item.m_shared.m_name != material)
+				.GroupBy(item => item.m_shared.m_name)
+				.OrderBy(g => g.Count())
+				.ThenBy(g => g.Sum(item => item.m_stack))
+				.ToList();
+			if (groups.Count == 0) return null;
+
+			var playerInventory = player.GetInventory();
+			var movedOut = new List<string>();
+			var stuck = new List<string>();
+			foreach (var group in groups)
+			{
+				if (TotalRoom(inventory, sample) >= coming) break;
+				var typeName = DisplayName(group.Key, inventory);
+				var count = 0;
+				var blocked = false;
+				foreach (var stack in group.ToList())
+				{
+					var remaining = stack.m_stack;
+					while (remaining > 0 && !blocked)
+					{
+						if (OverBudget($"moving {typeName} out of {target.name}")) { blocked = true; break; }
+						Inventory into;
+						string intoName;
+						if (mode == MakeRoom.ToPlayer)
+						{
+							into = playerInventory;
+							intoName = "your inventory";
+						}
+						else
+						{
+							var chest = ChestFor(stack, spare);
+							into = chest?.Inventory;
+							intoName = chest?.Container.name;
+						}
+						var amount = into == null ? 0 : Math.Min(remaining, RoomFor(into, stack));
+						if (amount <= 0) { blocked = true; break; }
+
+						var clone = stack.Clone();
+						clone.m_stack = amount;
+						if (!into.AddItem(clone))
+						{
+							Log.LogError($"gather: {intoName} refused {amount} {typeName} it had room for ({clone.m_stack} unplaced); stopping. Check it and {target.name} for a duplicated stack.");
+							blocked = true;
+							break;
+						}
+						inventory.RemoveItem(stack, amount);
+						remaining -= amount;
+						count += amount;
+						Log.LogInfo($"gather: moved {amount} {typeName} out of {target.name} to {intoName}");
+					}
+					if (blocked) break;
+				}
+				if (count > 0) movedOut.Add($"{count} {typeName}");
+				if (blocked) { stuck.Add(typeName); break; }
+			}
+
+			var where = mode == MakeRoom.ToPlayer ? "your inventory" : "other chests";
+			if (movedOut.Count == 0) return $"No room in {where} to move anything out";
+			var line = $"Moved {string.Join(", ", movedOut)} to {where} to make room";
+			if (stuck.Count > 0) line += $"; {where} filled up at {stuck[0]}";
+			return line;
+		}
+
+		// Everything the inventory could take of this item, partial stacks and empty slots.
+		private static int TotalRoom(Inventory inventory, ItemDrop.ItemData stack)
+		{
+			var max = stack.m_shared.m_maxStackSize;
+			var room = inventory.GetEmptySlots() * max;
+			if (max > 1)
+			{
+				foreach (var item in inventory.GetAllItems())
+				{
+					if (item?.m_shared == null || item.m_shared.m_name != stack.m_shared.m_name) continue;
+					if (item.m_quality != stack.m_quality || item.m_worldLevel != stack.m_worldLevel) continue;
+					room += Math.Max(0, max - item.m_stack);
+				}
+			}
+			return room;
+		}
+
+		// Where an evicted stack goes: the nearest chest already holding that item with room,
+		// else the nearest chest with room.
+		private static Slot ChestFor(ItemDrop.ItemData stack, List<Slot> spare)
+		{
+			Slot fallback = null;
+			foreach (var slot in spare)
+			{
+				if (RoomFor(slot.Inventory, stack) <= 0) continue;
+				if (slot.Inventory.GetAllItems().Any(item => item?.m_shared != null && item.m_shared.m_name == stack.m_shared.m_name)) return slot;
+				if (fallback == null) fallback = slot;
+			}
+			return fallback;
 		}
 
 		// How much of this stack to hand Inventory.AddItem in one call.  Vanilla's AddItem tops
