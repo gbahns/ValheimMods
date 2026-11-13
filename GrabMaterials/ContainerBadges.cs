@@ -15,10 +15,36 @@ namespace GrabMaterials
 	// range, in front of the camera, and (by default) not hidden behind a wall, which one
 	// linecast per candidate answers.
 	//
-	// Toggled with the "Container Badges" key or `/badges`; the on/off state is written back
-	// to the "Enabled" setting so it persists.
+	// The "Container Badges" key and `/badges` step the "Display" setting through off, badges,
+	// and badges with item icons; which of those the key visits is the "Toggle Cycle" setting.
+	// The state is written back to the setting so it persists.
 	public static class ContainerBadges
 	{
+		public enum Display
+		{
+			Off,
+			Badges,           // the free-slot disc only
+			BadgesAndIcons,   // the disc plus the icons of what the container mostly holds
+		}
+
+		// Which Display states the toggle key walks through.
+		public enum Cycle
+		{
+			ThreeWay,              // off, badges, badges and icons
+			OffOrBadges,           // off, badges
+			OffOrBadgesAndIcons,   // off, badges and icons
+		}
+
+		public enum IconSide
+		{
+			Right,      // a row out to the right of the disc
+			Down,       // a column under the disc
+			Left,
+			Up,
+			BelowRow,   // a row centered under the disc: disc and two icons make a triangle
+			AboveRow,
+		}
+
 		private const float ScanInterval = 0.2f;
 		private const float RingWidth = 2f;
 		private const float AboveTop = 0.15f;   // meters above the container's collider
@@ -32,7 +58,7 @@ namespace GrabMaterials
 			public Image Ring;
 			public Image Fill;
 			public Text Label;
-			public Image[] Icons;   // up to two, to the right of the disc: what the container mostly holds
+			public Image[] Icons;   // up to two, beside the disc: what the container mostly holds
 			public Container Owner;
 		}
 
@@ -58,7 +84,9 @@ namespace GrabMaterials
 		private static readonly Dictionary<Container, Collider> _colliders = new Dictionary<Container, Collider>();
 
 		private static GrabMaterialsMod.GrabMaterialsMod Mod => GrabMaterialsMod.GrabMaterialsMod.Instance;
-		private static bool  Enabled     => Mod?.ShowContainerBadges?.Value ?? true;
+		private static Display Mode      => Mod?.BadgeDisplay?.Value ?? Display.BadgesAndIcons;
+		private static Cycle ToggleCycle => Mod?.BadgeToggleCycle?.Value ?? Cycle.ThreeWay;
+		private static IconSide Side     => Mod?.BadgeIconPosition?.Value ?? IconSide.Right;
 		private static float Range       => Mod?.BadgeRange?.Value ?? 15f;
 		private static float Size        => Mod?.BadgeSize?.Value ?? 28f;
 		private static bool  HideFull    => Mod?.BadgeHideFull?.Value ?? false;
@@ -91,9 +119,36 @@ namespace GrabMaterials
 			_lastScan = 0f;
 		}
 
+		// The toggle key and `/badges`: step Display to the next state in the configured cycle.
+		// A state outside the cycle (set in the config) steps to the cycle's first, which is off.
+		public static void CycleDisplay()
+		{
+			var setting = Mod?.BadgeDisplay;
+			if (setting == null) return;
+			Display[] states;
+			switch (ToggleCycle)
+			{
+				case Cycle.OffOrBadges:         states = new[] { Display.Off, Display.Badges }; break;
+				case Cycle.OffOrBadgesAndIcons: states = new[] { Display.Off, Display.BadgesAndIcons }; break;
+				default:                        states = new[] { Display.Off, Display.Badges, Display.BadgesAndIcons }; break;
+			}
+			var at = System.Array.IndexOf(states, setting.Value);
+			setting.Value = states[(at + 1) % states.Length];
+			Refresh();
+
+			string message;
+			switch (setting.Value)
+			{
+				case Display.Off:    message = "Container badges off"; break;
+				case Display.Badges: message = "Container badges on"; break;
+				default:             message = "Container badges on, with contents"; break;
+			}
+			Player.m_localPlayer?.Message(MessageHud.MessageType.TopLeft, message);
+		}
+
 		private static bool Wanted()
 		{
-			if (!Enabled) return false;
+			if (Mode == Display.Off) return false;
 			var player = Player.m_localPlayer;
 			var hud = Hud.instance;
 			if (player == null || hud == null) return false;
@@ -138,6 +193,7 @@ namespace GrabMaterials
 
 				var distance = Mathf.Sqrt(distSq);
 				var empty = inventory.NrOfItems() == 0;
+				var icons = Mode == Display.BadgesAndIcons && !empty && distance <= IconRange;
 				_candidates.Add(new Candidate
 				{
 					Container = container,
@@ -145,7 +201,7 @@ namespace GrabMaterials
 					Free = free,
 					Empty = empty,
 					Distance = distance,
-					Icons = !empty && distance <= IconRange ? TopIcons(inventory) : null,
+					Icons = icons ? TopIcons(inventory) : null,
 				});
 			}
 		}
@@ -188,9 +244,14 @@ namespace GrabMaterials
 				badge.Fill.color = ColorFor(c.Free, c.Empty);
 				badge.Ring.color = c.Empty ? EmptyRing : DarkRing;
 
-				// Item icons sit in a row to the right of the disc, the first one touching it.
+				// Item icons sit in a row out from the disc on the configured side, the first one
+				// touching it.
 				var iconSize = diameter * 0.95f;
-				var x = diameter / 2f + IconGap + iconSize / 2f;
+				var first = diameter / 2f + IconGap + iconSize / 2f;
+				var step = iconSize + IconGap;
+				var side = Side;
+				var dir = Direction(side);
+				var count = c.Icons != null ? c.Icons.Length : 0;
 				for (var i = 0; i < MaxIcons; i++)
 				{
 					var image = badge.Icons[i];
@@ -203,8 +264,29 @@ namespace GrabMaterials
 					if (!image.gameObject.activeSelf) image.gameObject.SetActive(true);
 					image.sprite = sprite;
 					image.rectTransform.sizeDelta = new Vector2(iconSize, iconSize);
-					image.rectTransform.anchoredPosition = new Vector2(x + i * (iconSize + IconGap), 0f);
+					if (side == IconSide.BelowRow || side == IconSide.AboveRow)
+					{
+						// A centered row one icon-height away, in the disc's pivot plane.
+						var x = (i - (count - 1) / 2f) * step;
+						var y = side == IconSide.BelowRow ? -first : first;
+						image.rectTransform.anchoredPosition = new Vector2(x, y);
+					}
+					else
+					{
+						image.rectTransform.anchoredPosition = dir * (first + i * step);
+					}
 				}
+			}
+		}
+
+		private static Vector2 Direction(IconSide side)
+		{
+			switch (side)
+			{
+				case IconSide.Down: return Vector2.down;
+				case IconSide.Left: return Vector2.left;
+				case IconSide.Up:   return Vector2.up;
+				default:            return Vector2.right;
 			}
 		}
 

@@ -10,12 +10,13 @@ Quickly pull materials from nearby chests into your inventory without having to 
 <h3>New in version 2.9.0</h3>
 
 <li>Right-click any row in the inventory panel to grab that item from the nearby containers: Grab 1, 5, 10 or 20, or type an amount (the field remembers your last amount for that item).  Amounts the containers cannot cover are greyed out.  The result shows as a HUD line and the panel redraws with the new counts, so you can keep pulling.  Left-click still highlights the containers.
-<li>Container badges now show what is inside: within 10 m (the "Icon Range" setting) a badge carries the icons of the one or two items that take the most slots in the chest, so you can tell the wood chest from the stone chest without opening either.
+<li>Container badges now show what is inside: within 10 m (the "Icon Range" setting) a badge carries the icons of the one or two items that take the most slots in the chest, so you can tell the wood chest from the stone chest without opening either.  "Icon Position" puts them right, down, left or up of the disc, or in a centered row under or over it.
+<li>The badge toggle is three-way: / and '/badges' step through off, badges, and badges with contents.  "Toggle Cycle" can limit the key to off/badges or off/badges with contents.  The on/off "Enabled" setting is now "Display".
 <li>Containers tidy themselves when you open them: partial stacks merge, then the items are laid out by category and name, the way SimpleSort used to work.  Pick Name, Weight or Value instead under "Tidy Containers", turn it off there and use '/sort' on demand, or list prefabs to leave alone.  Armory racks and tombstones are never touched.
 
 <h3>New in version 2.8.0</h3>
 
-<li>Container badges — a round badge floats over each nearby container showing how many free slots it has: green when there is room, amber at 3 or fewer, red when full, and blue with a white ring when the container is completely empty.  Only containers you can actually see get one, so a chest with no badge is behind a wall or out of range.  Press / or type '/badges' to hide or show them; range, size, hiding full containers and seeing through walls are under "Container Badges".
+<li>Container badges — a round badge floats over each nearby container showing how many free slots it has: green when there is room, amber at 3 or fewer, red when full, and blue with a white ring when the container is completely empty.  Only containers you can actually see get one, so a chest with no badge is behind a wall or out of range.  Press / or type '/badges' to step them through off, on, and on with the icons of what each chest mostly holds; range, size, hiding full containers and seeing through walls are under "Container Badges".
 
 <h3>New in version 2.4.0</h3>
 
