@@ -1182,7 +1182,12 @@ namespace TheGreatestMap
                 LabelSpacing[cat] = mod.BindLocal("Recording", label + " Label Spacing", Categories.DefaultLabelSpacing(cat),
                     "Text labels on recorded " + label.ToLowerInvariant() + " markers: -1 = never (the icon says it all), " +
                     "0 = always, or a distance in meters so a clump gets one label (a new marker is icon-only when a marker " +
-                    "with the same icon and name that already has a label lies within that distance).");
+                    "with the same icon and name that already has a label lies within that distance). Whether a marker " +
+                    "carries a label is settled when it is written, so this decides the " + label.ToLowerInvariant() +
+                    " you find from now on. Asking for fewer labels thins the markers you already have, at the next " +
+                    "sync; asking for more does not write a label onto a marker that has none, because a marker whose " +
+                    "label you rubbed out yourself looks exactly like one that never had one. Hovering a marker names " +
+                    "it whatever this says.");
                 LookDistance[cat] = mod.BindLocal("Recording", label + " Look Distance", Categories.DefaultLookDistance(cat),
                     "How far away " + label.ToLowerInvariant() + " can be and still count as seen when you look straight at them " +
                     "with clear line of sight. Interacting, or having them under the crosshair within reach, always counts.");

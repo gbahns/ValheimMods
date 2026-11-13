@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.9.3 — unreleased
+
+- Label Spacing says what it really does: it decides the markers you find from now on, and
+  lowering it does not put labels back on the ones you already have.
+
 ## 4.9.2 — 2026-11-11
 
 - Portal markers stand down for the whole of TheGreatestPortal's map, not only while a
