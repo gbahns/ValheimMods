@@ -145,7 +145,8 @@ namespace GrabMaterials
 			var changed = false;
 			var groups = items
 				.Where(item => item.m_shared.m_maxStackSize > 1 && (item.m_customData == null || item.m_customData.Count == 0))
-				.GroupBy(item => (item.m_shared.m_name, item.m_quality, item.m_variant));
+				// A string key, not a tuple: the game's Mono cannot load System.ValueTuple.
+				.GroupBy(item => item.m_shared.m_name + "|" + item.m_quality + "|" + item.m_variant);
 			var emptied = new List<ItemDrop.ItemData>();
 			foreach (var group in groups)
 			{
