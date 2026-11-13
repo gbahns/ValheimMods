@@ -1,11 +1,11 @@
 # Changelog
 
-## 2.9.0 — unreleased
+## 2.9.0 — 2026-11-12
 
 - **Right-click a row in the inventory panel to grab that item**: Grab 1, 5, 10 or 20, or type an amount (the field remembers your last amount for that item). Amounts the containers cannot cover are greyed out. The result shows as a HUD line and the panel redraws with the new counts, so you can keep pulling.
 - **Container badges show what is inside**: within 10 m (the "Icon Range" setting) a badge carries the icons of the one or two items that take the most slots in the chest. "Icon Position" puts them right, down, left or up of the disc, or in a centered row under or over it.
 - **Three-way badge toggle**: / and `/badges` step through off, badges, and badges with contents. "Toggle Cycle" can limit the key to off/badges or off/badges with contents. The on/off "Enabled" setting is now "Display".
-- **Containers tidy themselves when you open them**: partial stacks merge, then the items are laid out by category and name (or Name, Weight or Value, under "Tidy Containers"), the way SimpleSort used to work. `/sort` does it on demand. Armory racks, tombstones and any prefab you list are left alone.
+- **Containers tidy themselves when you open them**: partial stacks merge, then the items are laid out by category and name (or Name, Weight or Value, under "Tidy Containers"), the way SimpleSort used to work. `/sort` does it on demand. A HUD line says what was merged and moved; an already tidy chest says nothing. Armory racks, tombstones and any prefab you list are left alone.
 
 ## 2.8.0 — 2026-11-12
 
