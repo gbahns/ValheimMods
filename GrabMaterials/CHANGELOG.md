@@ -125,3 +125,26 @@
 - Log output now attributes to `[Grab Materials]` instead of `[Unity Log]`.
 - The Distance HUD now defaults to off.
 - Editing the .cfg file while the game is running now takes effect immediately, including pack hotkeys; previously the file was only read at startup and could be overwritten by the in-game values.
+
+## 1.1.0 — May 2026
+
+- Grab results are shown in a wood-styled panel at the top center of the screen instead of a brief HUD message, every requested material with a green ✓ when it is fully available and a red ✗ with "X of Y Item (missing N)" for a shortage.
+- Atomic grab: if any requested material is short, nothing is taken from any container; the panel says exactly what is missing.
+- The panel fades over 3 seconds when you start moving, attacking, blocking or jumping, after a brief grace period for a grab triggered while already running, or on its own after 15 seconds of no input. Click it to dismiss it at once. The new "Panel UI" config section tunes the idle timeout, the fade duration and whether movement dismisses it.
+- Grab materials for any build piece by hovering its icon in the build menu and pressing J; falls back to the selected piece when nothing is hovered.
+- Grab pack "Grab Delta" flag: when on for a pack, only the shortfall between what you have and what is needed is grabbed.
+
+## 1.0.1 — May 2026
+
+- Fixed grabbing 10 stone instead of 10 wood for the Chest build piece.
+
+## 1.0.0 — July 2025
+
+- Press J with the build menu open to grab the materials for the selected build piece.
+- Ten grab packs with configurable keyboard shortcuts; build piece names allowed in a pack's item list.
+- `/grab portal` for a build piece's materials, `/grab <n>` or `/grab <pack-name>` for a pack, `/g` as shorthand.
+- The count can go before or after the item name: `/grab 10 wood` or `/grab wood 10`. Names match the in-game name or the internal id, case-insensitively.
+- `/listpacks` writes the packs to the log.
+- `/inventory [search-text]` counts the items within range, filtered by name or category.
+- Configurable highlight duration for containers that were pulled from or searched.
+- Settings changes in the config file are picked up while the game runs; destroyed containers no longer linger in the list and throw; unnecessary logging removed.

@@ -1,101 +1,84 @@
 # Grab Materials
 
-Created on January 30 2025.<br>
-Version 2.0.0 released on September 9 2026.
+Pull materials out of nearby chests without clicking through each one. Craft-from-containers mods cover building at your base; this covers what you carry away from it. Heading out to explore means grabbing 10 wood, 20 fine wood, 10 greydwarf eyes and 2 surtling cores every time. Press one key instead.
 
-> **Moved:** Grab Materials is now published under **DeathMonger**. If you installed it from the old `MojoRyzen/GrabMaterials` listing, uninstall that one and install this one. The plugin ID and config file are unchanged, so your settings, grab packs and hotkeys carry over.
+## Grab packs
 
-Quickly pull materials from nearby chests into your inventory without having to manually click on each chest.  The concept is similar to mods that let you craft or build directly from containers, but for things that you're not building in your base.  The typical example is workbench and portal when exploring - you're constantly having to grab 10 wood, 20 finewood, 10 greydwarf eyes, and 2 surtling cores.  This mod removes that tedium.
+A grab pack is a list of build pieces and items on a hotkey. Press the key and the materials for everything in the pack come out of the chests in reach, with a panel showing each piece, its materials, and how much of each remains nearby. If anything is short, nothing is taken and the panel shows what is missing. Press the key again within 30 seconds to grab what is there anyway.
 
-<h3>New in version 2.10.0</h3>
+The defaults, all configurable under `Grab Pack 1` through `Grab Pack 10`:
 
-<li>Gather: look at a chest and press \ (the "Gather Key") and the item it mostly holds is pulled into it from every other chest within Container Range, farthest chest first, so one material stops living in five places.  When the chest fills, the overflow goes to the chest nearest it with room.  Hold Shift and the chest's other items first move to your inventory to make room; hold Ctrl and they slide to other chests in reach, each to a chest already holding that item where there is one.  '/gather' does the same as the plain key; '/gather &lt;item&gt;' names the item.
-<li>Pack results by piece: a grab pack's results list each piece with its own materials under it (Workbench: 10 Wood; 2 Chest: 20 Wood; Portal: 20 Fine wood, 10 Greydwarf eye, 2 Surtling core), so you can see what the totals were for, with what remains nearby on each material's line.  "Pack Results By Piece" under Panel UI turns the old one-line-per-material list back on.
-<li>Pack HUD shows what is in each pack: the icon of each piece or item follows the pack's name, with a count on the icon for "Chest:2".  "Show Pack Contents" under Pack HUD turns it off.
+| Key | Pack | Items |
+|---|---|---|
+| K | Explore | Workbench, Chest, Portal |
+| Shift+K | Karve Explore | Workbench, Chest, Portal, Karve |
+| Ctrl+K | Longship Explore | Workbench, Chest, Portal, Longship |
+| Alt+K | Swamp Explore | Workbench, Chest, Portal, Campfire |
+| L | Ashlands Explore | Workbench, Portal, Campfire:10 |
+| Shift+L | Ashlands Flametal | Workbench, Stone Cutter, Stone Portal, Shield Generator, Bones:10 |
+| Ctrl+L, Alt+L, ;, Shift+; | Packs 7 to 10 | empty |
 
-<h3>New in version 2.9.0</h3>
+An entry is a build piece or an item, by the name you see in game or its internal name, with an optional count: `Chest:2`, `Wood:50`. Any piece the hammer can build works, including pieces from other mods.
 
-<li>Right-click any row in the inventory panel to grab that item from the nearby containers: Grab 1, 5, 10 or 20, or type an amount (the field remembers your last amount for that item).  Amounts the containers cannot cover are greyed out.  The result shows as a HUD line and the panel redraws with the new counts, so you can keep pulling.  Left-click still highlights the containers.
-<li>Container badges now show what is inside: within 10 m (the "Icon Range" setting) a badge carries the icons of the one or two items that take the most slots in the chest, so you can tell the wood chest from the stone chest without opening either.  "Icon Position" puts them right, down, left or up of the disc, or in a centered row under or over it.
-<li>The badge toggle is three-way: / and '/badges' step through off, badges, and badges with contents.  "Toggle Cycle" can limit the key to off/badges or off/badges with contents.  The on/off "Enabled" setting is now "Display".
-<li>Containers tidy themselves when you open them: partial stacks merge, then the items are laid out by category and name, the way SimpleSort used to work.  Pick Name, Weight or Value instead under "Tidy Containers", turn it off there and use '/sort' on demand, or list prefabs to leave alone.  Armory racks and tombstones are never touched.
+**Grab Delta** (on by default) takes only the shortfall between what you carry and what the pack needs. A grab a few seconds after another remembers what the first one was for, so `/g cart` and then an explore pack does not count the cart's wood twice. Each pack can override the global setting.
 
-<h3>New in version 2.8.0</h3>
+Packs that need a material you have never held stay hidden until you pick it up, so Karve and Longship packs are out of the way until you have nails.
 
-<li>Container badges — a round badge floats over each nearby container showing how many free slots it has: green when there is room, amber at 3 or fewer, red when full, and blue with a white ring when the container is completely empty.  Only containers you can actually see get one, so a chest with no badge is behind a wall or out of range.  Press / or type '/badges' to step them through off, on, and on with the icons of what each chest mostly holds; range, size, hiding full containers and seeing through walls are under "Container Badges".
+## In the build menu
 
-<h3>New in version 2.4.0</h3>
+Hover a piece in the build menu and press **J** to grab its materials. With nothing under the cursor it uses the selected piece.
 
-<li>'/i empty' — highlights every nearby container with nothing in it and lists them by type with a count.  Handy when you need somewhere to put a haul.
-<li>Fixed the inventory and grab-pack panels blocking the keyboard.  With a panel open you can walk and use your hotkeys again; the cursor stays free for clicking, the mouse no longer turns the camera, and scrolling the list does not zoom.
+## Console commands
 
-<h3>New in version 2.3.0</h3>
+Type these in the chat window.
 
-<li>Fixed a bug that could destroy items when your inventory was full — a grab emptied the container before checking that the items fit.  Nothing leaves a container now until it is safely in your inventory.
-<li>'/g new' — grabs one of every item in range you have never held, which is a quick way to learn the recipes they unlock.
-<li>Escape closes the inventory panel instead of opening the game menu; press it again for the menu.
-<li>The inventory and grab-pack panels now take the mouse cursor while open, so you can point at and click rows directly.
-<li>Fixed some items showing a raw token such as "[$item_upgrader_tier0 $item_upgrader_armor $item_upgrader_name]" instead of a name.  Valheim 1.0 added items whose name is several localization tokens joined together, and names now go through the game's own translator, which handles them.
-<li>Optional pause while the inventory panel is open — toggle it with the button in the panel's top-right corner and it is remembered.  It uses the game's own pause, so it works solo or hosting alone; on a dedicated server it takes the Pause My Server mod.  The button shows whether the pause actually took effect.
+| Command | What it does |
+|---|---|
+| `/grab <piece or item> [count]`, `/g` | Materials for a piece (`/g portal`), or an amount of an item (`/g 10 wood`, `/g wood 10`). A pack by name or `/g pack 3` runs that pack. `/g new` takes one of every item in range you have never held, which teaches you their recipes. |
+| `/inventory [filter]`, `/i` | A panel of everything in the nearby containers, grouped by category with icons and counts. Filter by name or category (`/i wood`, `/i food`), `/i new` for items you have never held, `/i empty` to find and highlight the empty containers. |
+| `/listpacks` | A panel of your packs with their keys and items. Click a row to run the pack, or the pencil to edit its name, items and delta setting in game. |
+| `/search <text>`, `/s` | Highlights the containers holding anything matching the text. |
+| `/store` | Puts everything in your inventory except the top row into the nearby containers. |
+| `/gather [item]` | The same as the Gather key below. |
+| `/sort` | Merges the stacks in the container you have open and sorts it. |
+| `/badges` | Steps the container badges through off, on, and on with contents. |
+| `/istyle` | Cycles the inventory panel between List and Table style. |
+| `/grabreset` | Forgets recent grabs, so the next delta grab looks only at your inventory. |
 
-<h3>New in version 2.2.0</h3>
+## The inventory panel
 
-<li>'/i new' — lists just the items in range you have never held, instead of searching names for the word "new".
+`/i` opens a wood-styled panel listing the items in reach by category. Items this character has never held carry a blue **(new)** tag. Material queued in kilns, smelters and refineries, and material sitting in wood stacks, stone piles and the like, is counted and noted on the row.
 
-<h3>New in version 2.1.0</h3>
+- **Left-click a row** to flash the containers that hold that item; click a category header for every container holding anything in it.
+- **Right-click a row** to grab that item: 1, 5, 10, 20 or an amount you type. Amounts the containers cannot cover are greyed out. The panel redraws so you can keep pulling.
+- **Escape** closes it. Movement and hotkeys keep working while it is open, and the cursor is free.
+- **Pause** while it is open with the button in its top-right corner. On a dedicated server this takes the Pause My Server mod.
+- Pick a List or Table style and a panel shape from single column to as wide as the screen under `Panel UI`. A panel taller than the screen scrolls.
 
-<li>Undiscovered item marker — '/inventory' tags anything this character has never held with a blue '(new)'.  Most useful in multiplayer, where a shared chest is often full of a friend's crafting you have never handled yourself.  Configurable under "Panel UI".
+## Pack HUD
 
-<h3>New in version 2.0.0</h3>
+A small list of your packs and their keys stays on screen, with the icon of each piece in the pack after its name. Press **O** to show or hide it. Corner, offsets and what it lists are under `Pack HUD`.
 
-<li>Inventory panel — '/inventory' (or '/i') opens a wood-styled panel listing items in nearby containers, grouped by category with item icons.  Optional filter on item name or category, e.g. '/i wood' or '/i food'.
-<li>Configurable inventory layout — choose a List (grouped by category) or Table (flat columns) style, and a panel shape from MaxHeight (single column) through Square to MaxWidth (fans out as many columns as fit on the screen).  The mod auto-picks the column count that best matches your shape.  Cycle styles in-game with '/istyle'.
-<li>Click to highlight — click any inventory row to highlight nearby containers holding that item; click a category header to highlight every container holding any item in the category.
-<li>Grab pack panel — '/listpacks' opens an in-game panel showing each pack's name, hotkey, delta state, and items.  Click a row to trigger that pack; click the ✎ pencil to edit the pack's name, items, and delta inline (no need to alt-tab to the config file).
-<li>Pack HUD — a small always-on list of your grab packs and their hotkeys (like the quick-slot labels in AzuExtendedPlayerInventory), so you never have to remember what is on Shift+K vs Ctrl+K.  Packs with no items are left out.  Press O to show or hide it; corner and offsets are configurable under "Pack HUD".  Packs that need a material you have never held are hidden until you have picked it up (configurable).
-<li>Global Grab Delta default — new "Grab Delta (default)" client setting (default ON) makes every grab take only the shortfall between what you have and what's needed.  Per-pack settings are now a tri-state — UseGlobal (the default), On, or Off — so you can override either way.
-<li>Cross-grab delta ledger — back-to-back delta grabs no longer double-count the same inventory.  E.g. '/g cart' (10 wood) then '/g explore' (20 wood total) — the ledger remembers the cart's wood is already spoken for, so Explore grabs the 20 it actually needs.  The ledger clears after 30 seconds of inactivity (configurable) so a fresh build session starts clean.  Use '/grabreset' to clear it explicitly.
-<li>Default hotkeys moved — Valheim 1.0 put its new radial menu on G, so the pack defaults are now K (packs 1-4), L (5-8) and ; (9-10) with the same Shift/Ctrl/Alt modifiers.  Existing configs keep whatever keys they have; if yours are still on G, rebind the packs (or the radial) to stop both firing at once.
+## Container badges
 
-<h3>New in version 1.1.0</h3>
+A round badge over each container you can see shows its free slots: green with room, amber at 3 or fewer, red when full, blue when it is completely empty. Within 10 m the badge also carries the icons of the one or two items that take the most slots, so the wood chest and the stone chest tell apart from across the room. Press **/** to step through off, badges, and badges with contents. Range, size, icon placement and whether badges show through walls are under `Container Badges`.
 
-<li>Grab results are now shown in a wood-styled panel at the top center of the screen (instead of a brief HUD message).  The panel lists every requested material with a green ✓ for items that are fully available and a red ✗ with "X of Y Item (missing N)" for shortages.
-<li>Atomic grab — if any requested material is short, nothing is taken from any container; the panel tells you exactly what's missing so you can go get it.
-<li>The panel auto-fades over 3 seconds when you start moving, attacking, blocking, or jumping (after a brief grace period to handle the case where you trigger the grab while already running).  After 15 seconds of no input it fades on its own.  Click anywhere on the panel to dismiss it instantly.
-<li>New "Panel UI" config section to tune the idle timeout, the fade duration, and whether movement dismisses the panel.
-<li>You can now grab materials for any build piece by hovering over its icon in the build menu and pressing 'j' — no need to select it first.  (Falls back to the selected piece when you're not hovering anything.)
-<li>Grab pack "Grab Delta" flag is now supported — when enabled for a pack, only the shortfall between what you already have and what's needed is grabbed.  E.g. if the pack needs 10 wood and you have 7, only 3 will be pulled.
+## Gather
 
-<h3>Fix in version 1.0.1</h3>
+Look at a chest and press **\\**. The item that chest mostly holds is pulled into it from every other chest in reach, farthest first, so one material stops living in five places. When it fills, the overflow goes to the chest nearest it with room. Hold **Shift** and the chest's other items first move to your inventory to make room; hold **Ctrl** and they slide to other chests, each to one already holding that item where there is one.
 
-<li>Fixed a bug where it would grab 10 stone instead of 10 wood for the Chest build piece
+## Tidy containers
 
-<h3>New in version 1.0.0</h3>
+Opening a chest merges its partial stacks and lays the items out by category and name, the way SimpleSort used to work. Choose Name, Weight or Value instead, turn it off, or list containers to leave alone under `Tidy Containers`. Armory racks and tombstones are never touched.
 
-<li>Hit 'j' when the build menu is open to automatically grab materials for the currently selected build piece
-<li>Support for ten different grab packs with configurable keyboard shortcuts
-<li>Grab the materials for a build piece by typing '/grab portal' in the chat window
-<li>Grab the materials for a grab pack by typing '/grab <n>' or '/grab <pack-name>' in the chat window
-<li>Specify build piece names in grab pack configuration
-<li>Shorthand console commands, e.g. type '/g' instead of '/grab'
-<li>Specify the count before or after the material name, e.g. '/grab 10 wood' or '/grab wood 10'
-<li>Match on both the user-friendly name that you see in-game and the internal ID.
-<li>Case insensitive matching
-<li>'/listpacks' to write the list of grabpacks to the log
-<li>Configure how long containers are highlighted when you pull items from them or search for items
-<li>Configure how far away a container can be and still be used ("Container Range", default 20 m); match it to your craft-from-containers and auto-store mods
-<li>'/inventory [search-text]' to count the number of items within range; if search-text specifies, looks for items that match on name or category
-<li>'/inventory' also counts what is queued in kilns, smelters and the like, and what is in wood stacks, stone piles, coal piles and other stacks and piles, and notes it on the row
+## Range and multiplayer
 
-<h3>Fixes in version 1.0.0</h3>
+`Container Range` (default 20 m) is how far away a container can be for everything in the mod. Set it to whatever your craft-from-containers and auto-store mods use so one distance means "in reach" everywhere.
 
-<li>Settings changes are now automatically picked up when you change the config file directly
-<li>Destroyed containers not removed from the list causing NullPointerException
-<li>Removed unnecessary logging
+Every container is reached through the game's own open request, the same check as pressing Use. A chest you may not open, one inside someone else's ward, or one another player has open is left alone, and two players racing a chest cannot come away with the same item.
 
+## Links
 
-Join [my discord server](https://discord.gg/eH7UfRj5mG) to ask questions or provide feedback.
+Join [the Discord](https://discord.gg/eH7UfRj5mG) to ask questions or give feedback.
 
-View [the backlog](https://github.com/users/gbahns/projects/1/views/1) here.
-
-See the [project on GitHub](https://github.com/gbahns/ValheimMods/tree/main/GrabMaterials) for source, issues and the full changelog.
+The [backlog](https://github.com/users/gbahns/projects/1/views/1) and the [source, issues and full changelog](https://github.com/gbahns/ValheimMods/tree/main/GrabMaterials) are on GitHub.
