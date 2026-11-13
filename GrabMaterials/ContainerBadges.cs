@@ -42,6 +42,14 @@ namespace GrabMaterials
 	// badge camera binds that copy as the depth texture just before the badges draw.  Without
 	// this the badges showed through every wall and body in flat mode (reported 2026-11-13).
 	//
+	// The shader turns a depth value into meters with _ZBufferParams, which the engine sets
+	// for the way this platform's depth buffers run (1 at the near plane on D3D and Vulkan, 0
+	// there on OpenGL).  The first copy came out the other way round, and every badge was
+	// hidden exactly when it should have shown.  So once, a few frames after the copy starts,
+	// the center pixel is read back and turned into meters both ways, a ray through the
+	// screen center says which is right, and if it is the other way the badge camera gets
+	// _ZBufferParams for that; the log carries the numbers either way.
+	//
 	// "Only Visible Containers" is the one setting that means something in every mode: in
 	// front it is the linecast; flat, it decides whether the depth test is done at all.  Lit
 	// world badges are depth-tested by the UI shader and cannot be told otherwise.  If the
@@ -124,6 +132,10 @@ namespace GrabMaterials
 		private static CommandBuffer _copyDepth;   // on _depthCamera: depth texture -> _depthCopy
 		private static CommandBuffer _bindDepth;   // on _badgeCamera: _depthCopy -> _CameraDepthTexture
 		private static readonly int DepthTextureId = Shader.PropertyToID("_CameraDepthTexture");
+		private static readonly int ZBufferParamsId = Shader.PropertyToID("_ZBufferParams");
+		private static bool _probed;          // the copy's convention has been checked against a ray
+		private static int _probeFrames;
+		private static bool _otherWayRound;   // the copy runs the other way from this platform's buffers
 		private const CameraEvent CopyDepthAt = CameraEvent.AfterForwardAlpha;   // the scene is complete, the effects have not run
 		private const CameraEvent BindDepthAt = CameraEvent.BeforeForwardAlpha;  // right before the badges draw
 		private const float FlatFade = 100f;   // soft-particle steepness: fully hidden 1 cm behind the scene
@@ -166,6 +178,7 @@ namespace GrabMaterials
 			var cam = Utils.GetMainCamera();
 			if (cam == null) return;
 			if (_badgeCamera != null) SyncBadgeCamera(cam);
+			if (_copyDepth != null && !_probed && ++_probeFrames >= 3) ProbeDepthCopy(cam);
 
 			if (Time.time - _lastScan >= ScanInterval)
 			{
@@ -202,6 +215,9 @@ namespace GrabMaterials
 			_copyDepth = null;
 			_bindDepth = null;
 			_depthCopy = null;
+			_probed = false;
+			_probeFrames = 0;
+			_otherWayRound = false;
 			_root = null;
 			_rootRect = null;
 			_canvas = null;
@@ -254,8 +270,61 @@ namespace GrabMaterials
 			_depthCopy.Create();
 			_copyDepth.Clear();
 			_copyDepth.Blit(BuiltinRenderTextureType.Depth, _depthCopy);
+			RecordBind(main);
+		}
+
+		private static void RecordBind(Camera main)
+		{
 			_bindDepth.Clear();
 			_bindDepth.SetGlobalTexture(DepthTextureId, _depthCopy);
+			if (_otherWayRound) _bindDepth.SetGlobalVector(ZBufferParamsId, ZBufferParams(main.nearClipPlane, main.farClipPlane, !SystemInfo.usesReversedZBuffer));
+		}
+
+		// What the engine puts in _ZBufferParams for a depth buffer that is 1 at the near
+		// plane (reversed) or 0 there; LinearEyeDepth is 1 / (z * depth + w).
+		private static Vector4 ZBufferParams(float near, float far, bool reversed)
+		{
+			if (reversed)
+			{
+				var x = -1f + far / near;
+				return new Vector4(x, 1f, x / far, 1f / far);
+			}
+			var x0 = 1f - far / near;
+			var y0 = far / near;
+			return new Vector4(x0, y0, x0 / far, y0 / far);
+		}
+
+		private static float EyeDepth(float raw, Vector4 p) => 1f / (p.z * raw + p.w);
+
+		// Read the copy's center pixel back, turn it into meters both ways, and ask a ray which
+		// one the scene agrees with.  Runs once per setup, off the main thread's critical path.
+		private static void ProbeDepthCopy(Camera cam)
+		{
+			_probed = true;
+			var copy = _depthCopy;
+			var camPos = cam.transform.position;
+			var forward = cam.transform.forward;
+			var near = cam.nearClipPlane;
+			var far = cam.farClipPlane;
+			var truth = far;
+			if (Physics.Raycast(camPos, forward, out var hit, far, ~0, QueryTriggerInteraction.Ignore)) truth = Mathf.Max(near, Vector3.Dot(hit.point - camPos, forward));
+			var usual = ZBufferParams(near, far, SystemInfo.usesReversedZBuffer);
+			var other = ZBufferParams(near, far, !SystemInfo.usesReversedZBuffer);
+			AsyncGPUReadback.Request(copy, 0, copy.width / 2, 1, copy.height / 2, 1, 0, 1, TextureFormat.RFloat, request =>
+			{
+				if (copy != _depthCopy || _bindDepth == null) return;   // rebuilt meanwhile; the next setup probes again
+				if (request.hasError)
+				{
+					Log.LogWarning("badges: the depth copy could not be read back; the badges read it this platform's way");
+					return;
+				}
+				var raw = request.GetData<float>()[0];
+				var usualZ = Mathf.Max(EyeDepth(raw, usual), 0.001f);
+				var otherZ = Mathf.Max(EyeDepth(raw, other), 0.001f);
+				_otherWayRound = Mathf.Abs(Mathf.Log(otherZ / truth)) < Mathf.Abs(Mathf.Log(usualZ / truth));
+				Log.LogInfo($"badges: the depth copy reads {raw:F5} at the screen center: {usualZ:F2} m this platform's way, {otherZ:F2} m the other; a ray finds the scene {truth:F2} m off, so the copy runs {(_otherWayRound ? "the other way round and the badges read it so" : "the usual way")} (reversed Z {SystemInfo.usesReversedZBuffer}, {cam.actualRenderingPath}, drawn to {(cam.targetTexture != null ? "a texture" : "the screen")})");
+				if (_otherWayRound) RecordBind(cam);
+			});
 		}
 
 		// The shader, layer, material and camera for flat world badges.  False, with the
