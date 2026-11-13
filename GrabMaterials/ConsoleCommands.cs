@@ -689,8 +689,9 @@ namespace GrabMaterials
 		// the pack with its own materials under it, so the player sees what the 30 wood were
 		// for (#81).  The grab itself worked on totals, so what covered each total (what the
 		// player had, then what was grabbed or is available) is handed out to the entries in
-		// pack order; what was already had and what is left nearby stay totals, on grey lines
-		// at the bottom.  Anything else shows the flat per-material list.
+		// pack order.  What is left nearby is a total too, shown in parentheses on the last line
+		// that uses the material; what the player already had is a grey line at the bottom.
+		// Anything else shows the flat per-material list.
 		private static void ShowResults(string title, List<MaterialsPanel.ItemStatus> statuses, List<ItemToGrab> aggregated, List<PackEntry> breakdown)
 		{
 			if (breakdown == null || breakdown.Count == 0 || !ResultsByPiece)
@@ -700,8 +701,12 @@ namespace GrabMaterials
 			}
 
 			var pool = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+			var remaining = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 			for (int i = 0; i < aggregated.Count && i < statuses.Count; i++)
+			{
 				pool[aggregated[i].Name] = statuses[i].Had + statuses[i].Available;
+				remaining[aggregated[i].Name] = statuses[i].Remaining;
+			}
 
 			var entries = new List<MaterialsPanel.EntryStatus>(breakdown.Count);
 			foreach (var entry in breakdown)
@@ -717,11 +722,25 @@ namespace GrabMaterials
 				entries.Add(new MaterialsPanel.EntryStatus { Label = entry.Label, Count = entry.Count, IsPiece = entry.IsPiece, Items = items });
 			}
 
+			// "N left nearby" on the last line that uses each material, walking backwards so a
+			// material two pieces share is not reported twice.
+			var reported = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+			for (int e = breakdown.Count - 1; e >= 0; e--)
+			{
+				for (int i = breakdown[e].Items.Count - 1; i >= 0; i--)
+				{
+					var name = breakdown[e].Items[i].Name;
+					if (!reported.Add(name)) continue;
+					if (!remaining.TryGetValue(name, out var left) || left < 0) continue;
+					var status = entries[e].Items[i];
+					status.Remaining = left;
+					entries[e].Items[i] = status;
+				}
+			}
+
 			var footers = new List<string>();
 			var had = statuses.Where(st => st.Had > 0).Select(st => $"{st.Had} {st.Name}").ToList();
 			if (had.Count > 0) footers.Add("Already had: " + string.Join(", ", had));
-			var remaining = statuses.Where(st => st.Remaining >= 0).Select(st => $"{st.Remaining} {st.Name}").ToList();
-			if (remaining.Count > 0) footers.Add("Left nearby: " + string.Join(", ", remaining));
 
 			MaterialsPanel.Show(title, entries, footers);
 		}
