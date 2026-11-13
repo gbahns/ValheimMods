@@ -120,18 +120,11 @@ namespace GrabMaterials
 		}
 
 		// The toggle key and `/badges`: step Display to the next state in the configured cycle.
-		// A state outside the cycle (set in the config) steps to the cycle's first, which is off.
 		public static void CycleDisplay()
 		{
 			var setting = Mod?.BadgeDisplay;
 			if (setting == null) return;
-			Display[] states;
-			switch (ToggleCycle)
-			{
-				case Cycle.OffOrBadges:         states = new[] { Display.Off, Display.Badges }; break;
-				case Cycle.OffOrBadgesAndIcons: states = new[] { Display.Off, Display.BadgesAndIcons }; break;
-				default:                        states = new[] { Display.Off, Display.Badges, Display.BadgesAndIcons }; break;
-			}
+			var states = States(ToggleCycle);
 			var at = System.Array.IndexOf(states, setting.Value);
 			setting.Value = states[(at + 1) % states.Length];
 			Refresh();
@@ -144,6 +137,30 @@ namespace GrabMaterials
 				default:             message = "Container badges on, with contents"; break;
 			}
 			Player.m_localPlayer?.Message(MessageHud.MessageType.TopLeft, message);
+		}
+
+		// Toggle Cycle decides which states exist; Display is only the remembered position.  So a
+		// Display the cycle never visits is snapped to its nearest member, on load and whenever
+		// either setting changes: a two-way cycle without icons never shows icons, and one with
+		// icons never shows a bare badge.
+		public static void ConformDisplay()
+		{
+			var setting = Mod?.BadgeDisplay;
+			if (setting == null) return;
+			var states = States(ToggleCycle);
+			if (System.Array.IndexOf(states, setting.Value) >= 0) return;
+			setting.Value = setting.Value == Display.Off ? Display.Off : states[states.Length - 1];
+			Refresh();
+		}
+
+		private static Display[] States(Cycle cycle)
+		{
+			switch (cycle)
+			{
+				case Cycle.OffOrBadges:         return new[] { Display.Off, Display.Badges };
+				case Cycle.OffOrBadgesAndIcons: return new[] { Display.Off, Display.BadgesAndIcons };
+				default:                        return new[] { Display.Off, Display.Badges, Display.BadgesAndIcons };
+			}
 		}
 
 		private static bool Wanted()

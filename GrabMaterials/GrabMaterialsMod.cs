@@ -225,8 +225,11 @@ namespace GrabMaterialsMod
 
 			BadgeDisplay = Config.Bind("Container Badges", "Display", GrabMaterials.ContainerBadges.Display.BadgesAndIcons, new ConfigDescription("Off, Badges, or BadgesAndIcons. A badge is a round disc over each nearby container with its number of free slots: green when there is room, amber at 3 or fewer, red when full, and blue with a white ring when the container is completely empty. With icons, the badge also carries the icons of the one or two items that take the most slots in the container. The toggle key and /badges step this setting, so the state persists."));
 			if (legacyOff) BadgeDisplay.Value = GrabMaterials.ContainerBadges.Display.Off;
-			BadgeToggleCycle = Config.Bind("Container Badges", "Toggle Cycle", GrabMaterials.ContainerBadges.Cycle.ThreeWay, new ConfigDescription("Which Display states the toggle key and /badges step through. ThreeWay = off, badges, badges and icons. OffOrBadges = off, badges. OffOrBadgesAndIcons = off, badges and icons."));
+			BadgeToggleCycle = Config.Bind("Container Badges", "Toggle Cycle", GrabMaterials.ContainerBadges.Cycle.ThreeWay, new ConfigDescription("Which Display states the toggle key and /badges step through. ThreeWay = off, badges, badges and icons. OffOrBadges = off, badges (icons never shown). OffOrBadgesAndIcons = off, badges and icons (no bare badges). A Display outside the chosen cycle is moved into it."));
 			BadgeToggleKey = Config.Bind("Container Badges", "Toggle Key", new KeyboardShortcut(KeyCode.Slash), new ConfigDescription("Key that steps the container badges through the Toggle Cycle."));
+			BadgeDisplay.SettingChanged += (s, e) => GrabMaterials.ContainerBadges.ConformDisplay();
+			BadgeToggleCycle.SettingChanged += (s, e) => GrabMaterials.ContainerBadges.ConformDisplay();
+			GrabMaterials.ContainerBadges.ConformDisplay();
 			BadgeRange = Config.Bind("Container Badges", "Range", 15f, new ConfigDescription("How far away (in meters) a container can be and still get a badge. Separate from Container Range: this is about what you can read from where you stand.", new AcceptableValueRange<float>(1f, 100f)));
 			BadgeSize = Config.Bind("Container Badges", "Size", 28f, new ConfigDescription("Badge diameter in pixels at 8 m. Nearer badges grow a little, farther ones shrink.", new AcceptableValueRange<float>(12f, 80f)));
 			BadgeHideFull = Config.Bind("Container Badges", "Hide Full Containers", false, new ConfigDescription("Leave full containers without a badge instead of showing a red 0."));
