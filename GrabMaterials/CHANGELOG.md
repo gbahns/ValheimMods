@@ -5,6 +5,8 @@
 - **Gather**: look at a chest and press \ (the "Gather Key") and the item it mostly holds is pulled into it from every other chest within Container Range, farthest chest first, so one material stops living in five places. When the chest fills, the overflow goes to the chest nearest it with room. Hold Shift and the chest's other items first move to your inventory to make room; hold Ctrl and they slide to other chests in reach, each to a chest already holding that item where there is one. `/gather` does the same as the plain key; `/gather <item>` names the item.
 - **Pack results by piece**: a grab pack's results list each piece with its own materials under it (Workbench: 10 Wood; 2 Chest: 20 Wood; Portal: 20 Fine wood, 10 Greydwarf eye, 2 Surtling core), so you can see what the totals were for, with what remains nearby on each material's line. "Pack Results By Piece" under Panel UI turns the old one-line-per-material list back on (#81).
 - **Pack HUD shows what is in each pack**: the icon of each piece or item follows the pack's name, with a count on the icon for "Chest:2". "Show Pack Contents" under Pack HUD turns it off (#81).
+- **Fixed: J in the hammer menu grabbed for the selected piece, never the one under the cursor.** Valheim 1.0 replaced the menu, and the mod was still looking at the old one. Hovering a piece and pressing J now grabs for that piece.
+- **Fixed: typing in the hammer menu's search box fired the pack HUD, badge and gather keys.**
 
 ## 2.9.0 — 2026-11-12
 

@@ -407,12 +407,15 @@ namespace GrabMaterialsMod
 			return true;
 		}
 
+		// The hammer menu's search box is not a TextInput, so it is checked by itself; without
+		// it, typing "o" or "/" into the search fired these keys.
 		private static bool GuiHasFocus()
 		{
 			return Console.IsVisible() || Menu.IsVisible() || InventoryGui.IsVisible()
 				|| TextInput.IsVisible() || StoreGui.IsVisible() || Minimap.IsOpen()
 				|| PlayerCustomizaton.IsBarberGuiVisible()
-				|| (Chat.instance != null && Chat.instance.IsChatDialogWindowVisible());
+				|| (Chat.instance != null && Chat.instance.IsChatDialogWindowVisible())
+				|| (Hud.instance != null && Hud.instance.m_buildUi != null && Hud.instance.m_buildUi.SearchFieldFocused);
 		}
 
 		private void Update()

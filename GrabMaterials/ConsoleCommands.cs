@@ -806,15 +806,13 @@ namespace GrabMaterials
 			GrabMaterialsForPiece(piece);
 		}
 
-		// Hud.m_pieceIcons and its element type Hud.PieceIconData are private in the game, so
-		// both go through reflection.  Naming the nested type in a declaration would compile
-		// against the publicized copy but, worse than failing at runtime, it is a declaration
-		// error against the real assembly, and Roslyn reports no method-body errors while a
-		// declaration is broken: it hid every other private access in this mod from
-		// audit-private-access.ps1 until 2026-11-12.
-		private static readonly System.Reflection.FieldInfo _pieceIconsField = AccessTools.Field(typeof(Hud), "m_pieceIcons");
-		private static readonly System.Reflection.FieldInfo _pieceIconField =
-			AccessTools.Field(typeof(Hud).GetNestedType("PieceIconData", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic), "m_icon");
+		// The piece under the cursor in the hammer menu.  Valheim 1.0's menu is BuildUi, whose
+		// buttons report their hover to Hud.OnHoverPiece(Piece), and Hud keeps the result in the
+		// private m_hoveredPiece for its own tooltip; it is cleared when the menu closes.  Read
+		// through reflection, since the field is private.  (Until 2.10.0 this hit-tested
+		// Hud.m_pieceIcons, the pre-1.0 icon grid, which 1.0 never puts on screen, so J always
+		// fell through to the selected piece.)
+		private static readonly System.Reflection.FieldInfo _hoveredPieceField = AccessTools.Field(typeof(Hud), "m_hoveredPiece");
 
 		// Highlight every nearby container that holds at least one item whose
 		// m_shared.m_name matches. Powers the click-to-highlight behavior on
@@ -868,36 +866,14 @@ namespace GrabMaterials
 		public static Piece GetHoveredBuildPiece()
 		{
 			var hud = Hud.instance;
-			var player = Player.m_localPlayer;
-			if (hud == null || player == null) return null;
-
-			if (_pieceIconsField == null || _pieceIconField == null)
+			if (hud == null || !Hud.IsPieceSelectionVisible()) return null;
+			if (_hoveredPieceField == null)
 			{
-				Log.LogWarning("GrabMaterials: cannot reflect Hud.m_pieceIcons / PieceIconData.m_icon");
+				Log.LogWarning("GrabMaterials: cannot reflect Hud.m_hoveredPiece; J uses the selected piece only");
 				return null;
 			}
-			var pieceIcons = _pieceIconsField.GetValue(hud) as System.Collections.IEnumerable;
-			if (pieceIcons == null) return null;
-
-			foreach (var iconData in pieceIcons)
-			{
-				if (iconData == null) continue;
-				var icon = _pieceIconField.GetValue(iconData) as Image;
-				if (icon == null || !icon.gameObject.activeInHierarchy) continue;
-				if (!RectTransformUtility.RectangleContainsScreenPoint(icon.rectTransform, Input.mousePosition)) continue;
-				// PieceIconData doesn't expose the Piece directly, so match the
-				// icon's sprite against the player's available build pieces.
-				var sprite = icon.sprite;
-				if (sprite == null) return null;
-				var pieces = player.GetBuildPieces();
-				if (pieces == null) return null;
-				foreach (var piece in pieces)
-				{
-					if (piece != null && piece.m_icon == sprite) return piece;
-				}
-				return null;
-			}
-			return null;
+			var piece = _hoveredPieceField.GetValue(hud) as Piece;
+			return piece ? piece : null;
 		}
 
 		public static void GrabMaterialsForPiece(Piece piece)
