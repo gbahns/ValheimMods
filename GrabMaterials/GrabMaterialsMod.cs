@@ -19,7 +19,7 @@ using UnityEngine;
 namespace GrabMaterialsMod
 {
 
-	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.9.0")]
+	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.10.0")]
 	[BepInProcess("valheim.exe")]
 	public class GrabMaterialsMod : BaseUnityPlugin
 	{
@@ -73,6 +73,7 @@ namespace GrabMaterialsMod
 		public ConfigEntry<bool> BadgeHideFull;
 		public ConfigEntry<bool> BadgeOnlyVisible;
 		public ConfigEntry<float> BadgeIconRange;
+		public ConfigEntry<KeyboardShortcut> GatherKey;
 		public ConfigEntry<bool> TidyOnOpen;
 		public ConfigEntry<GrabMaterials.ContainerTidy.Order> TidySortOrder;
 		public ConfigEntry<string> TidySkipContainers;
@@ -233,6 +234,7 @@ namespace GrabMaterialsMod
 			BadgeRange = Config.Bind("Container Badges", "Range", 15f, new ConfigDescription("How far away (in meters) a container can be and still get a badge. Separate from Container Range: this is about what you can read from where you stand.", new AcceptableValueRange<float>(1f, 100f)));
 			BadgeSize = Config.Bind("Container Badges", "Size", 28f, new ConfigDescription("Badge diameter in pixels at 8 m. Nearer badges grow a little, farther ones shrink.", new AcceptableValueRange<float>(12f, 80f)));
 			BadgeHideFull = Config.Bind("Container Badges", "Hide Full Containers", false, new ConfigDescription("Leave full containers without a badge instead of showing a red 0."));
+			GatherKey = Config.Bind("Gather", "Gather Key", new KeyboardShortcut(KeyCode.G), new ConfigDescription("Look at a chest and press this: the item that chest mostly holds is pulled into it from every other chest within Container Range, farthest chest first. When it fills, the overflow goes to the chest nearest it with room. /gather does the same; /gather <item> names the item instead."));
 			TidyOnOpen = Config.Bind("Tidy Containers", "Enabled", true, new ConfigDescription("Tidy a container when you open it: partial stacks of the same item are merged, then the items are laid out in the order below. /sort does the same on demand for the container you have open."));
 			TidySortOrder = Config.Bind("Tidy Containers", "Sort Order", GrabMaterials.ContainerTidy.Order.Category, new ConfigDescription("Category = the /inventory panel's categories, then name. Name, Weight and Value are what SimpleSort offered. Within one item, fuller stacks come first."));
 			TidySkipContainers = Config.Bind("Tidy Containers", "Skip Containers", "", new ConfigDescription("Prefab names of containers to leave alone, separated by commas, for chests whose slot positions you arrange yourself. Armory racks and tombstones are always skipped."));
@@ -291,6 +293,7 @@ namespace GrabMaterialsMod
 			new Terminal.ConsoleCommand("store", "[items] - stores items randomly nearby containers", (args) => { StoreItemsInNearbyContainers(); });
 			new Terminal.ConsoleCommand("badges", "step the badges over nearby containers through off, on, and on with contents", (args) => { GrabMaterials.ContainerBadges.CycleDisplay(); });
 			new Terminal.ConsoleCommand("sort", "merge the stacks in the container you have open and sort it", (args) => { GrabMaterials.ContainerTidy.SortOpenContainer(); });
+			new Terminal.ConsoleCommand("gather", "[item] - pull the item the chest you are looking at mostly holds (or the named item) into it from the other chests in range", (args) => { GrabMaterials.ContainerGather.GatherIntoHovered(args.Length > 1 ? args.ArgsAll : null); });
 		}
 
 		private void InitButtons()
@@ -444,6 +447,11 @@ namespace GrabMaterialsMod
 				if (BadgeToggleKey.Value.IsDown() && !GuiHasFocus())
 				{
 					GrabMaterials.ContainerBadges.CycleDisplay();
+				}
+
+				if (GatherKey.Value.IsDown() && !GuiHasFocus())
+				{
+					GrabMaterials.ContainerGather.GatherIntoHovered();
 				}
 
 				foreach (var grabPack in GrabPacks)

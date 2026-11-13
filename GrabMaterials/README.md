@@ -7,6 +7,10 @@ Version 2.0.0 released on September 9 2026.
 
 Quickly pull materials from nearby chests into your inventory without having to manually click on each chest.  The concept is similar to mods that let you craft or build directly from containers, but for things that you're not building in your base.  The typical example is workbench and portal when exploring - you're constantly having to grab 10 wood, 20 finewood, 10 greydwarf eyes, and 2 surtling cores.  This mod removes that tedium.
 
+<h3>New in version 2.10.0</h3>
+
+<li>Gather: look at a chest and press G (the "Gather Key") and the item it mostly holds is pulled into it from every other chest within Container Range, farthest chest first, so one material stops living in five places.  When the chest fills, the overflow goes to the chest nearest it with room.  '/gather' does the same; '/gather &lt;item&gt;' names the item.
+
 <h3>New in version 2.9.0</h3>
 
 <li>Right-click any row in the inventory panel to grab that item from the nearby containers: Grab 1, 5, 10 or 20, or type an amount (the field remembers your last amount for that item).  Amounts the containers cannot cover are greyed out.  The result shows as a HUD line and the panel redraws with the new counts, so you can keep pulling.  Left-click still highlights the containers.
