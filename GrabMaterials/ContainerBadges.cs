@@ -22,6 +22,17 @@ namespace GrabMaterials
 	// depth buffer covers a badge with whatever stands in front of it, pixel by pixel: the
 	// player's own body, a wall, a boar.  No linecast is needed, and none is done.
 	//
+	// Drawn by the main camera, a world badge also goes through the game's post-processing
+	// (bloom, color grading, fog, sun shafts), which is what makes it look lit.  Unless "Lit
+	// World Badges" is on, the badges are instead drawn by a second camera, parented to the
+	// main one and given none of its effects, that renders only the badges' layer after the
+	// main camera has finished.  That camera has no scene depth of its own, so the badges use
+	// a soft-particle shader, which reads the main camera's depth texture and fades a pixel
+	// out when it is behind the scene.  With a steep fade that is a depth test, and the
+	// badges come out in their flat colors while still hiding behind whatever is in front.
+	// If the shader or a spare layer cannot be found, the badges fall back to the lit look
+	// and the log says why.
+	//
 	// The "Container Badges" key and `/badges` step the "Display" setting through off, badges,
 	// and badges with item icons; which of those the key visits is the "Toggle Cycle" setting.
 	// The state is written back to the setting so it persists.
@@ -86,12 +97,24 @@ namespace GrabMaterials
 		private static float _lastScan;
 		private static int _occluders;
 		private static bool _builtInFront;   // which mode _root was built for
+		private static bool _builtLit;
+		private static Camera _badgeCamera;  // flat world mode only
+		private static Material _flatMaterial;
+		private static int _badgeLayer = -1;
+		private const float FlatFade = 100f;   // soft-particle steepness: fully hidden 1 cm behind the scene
+		private static readonly string[] FlatShaders =
+		{
+			"Legacy Shaders/Particles/Alpha Blended",
+			"Particles/Alpha Blended",
+			"Mobile/Particles/Alpha Blended",
+		};
 		private static readonly List<Badge> _pool = new List<Badge>();
 		private static readonly List<Badge> _inUse = new List<Badge>();
 		private static readonly List<Candidate> _candidates = new List<Candidate>();
 		private static readonly Dictionary<Container, Collider> _colliders = new Dictionary<Container, Collider>();
 
 		private static GrabMaterialsMod.GrabMaterialsMod Mod => GrabMaterialsMod.GrabMaterialsMod.Instance;
+		private static BepInEx.Logging.ManualLogSource Log => GrabMaterialsMod.GrabMaterialsMod.Log;
 		private static Display Mode      => Mod?.BadgeDisplay?.Value ?? Display.BadgesAndIcons;
 		private static Cycle ToggleCycle => Mod?.BadgeToggleCycle?.Value ?? Cycle.ThreeWay;
 		private static IconSide Side     => Mod?.BadgeIconPosition?.Value ?? IconSide.Right;
@@ -101,19 +124,22 @@ namespace GrabMaterials
 		private static bool  OnlyVisible => Mod?.BadgeOnlyVisible?.Value ?? true;
 		private static float IconRange   => Mod?.BadgeIconRange?.Value ?? 10f;
 		private static bool  InFront     => Mod?.BadgeDrawInFront?.Value ?? true;
+		private static bool  Lit         => Mod?.BadgeWorldLit?.Value ?? false;
 
 		public static void Tick()
 		{
-			if (_root != null && _builtInFront != InFront) Rebuild();
+			if (_root != null && (_builtInFront != InFront || _builtLit != Lit)) Rebuild();
 			EnsureCreated();
 			if (_root == null) return;
 
 			var show = Wanted();
 			if (_root.activeSelf != show) _root.SetActive(show);
+			if (_badgeCamera != null && _badgeCamera.enabled != show) _badgeCamera.enabled = show;
 			if (!show) return;
 
 			var cam = Utils.GetMainCamera();
 			if (cam == null) return;
+			if (_badgeCamera != null) SyncBadgeCamera(cam);
 
 			if (Time.time - _lastScan >= ScanInterval)
 			{
@@ -133,12 +159,92 @@ namespace GrabMaterials
 		public static void Rebuild()
 		{
 			if (_root != null) Object.Destroy(_root);
+			if (_badgeCamera != null) Object.Destroy(_badgeCamera.gameObject);
+			if (_flatMaterial != null) Object.Destroy(_flatMaterial);
 			_root = null;
 			_rootRect = null;
 			_canvas = null;
+			_badgeCamera = null;
+			_flatMaterial = null;
+			_badgeLayer = -1;
 			_pool.Clear();
 			_inUse.Clear();
 			_lastScan = 0f;
+		}
+
+		// Keep the badge camera a copy of the main one, drawing only the badges' layer, after
+		// it, over its finished image, with no effects and no scene depth of its own.
+		private static void SyncBadgeCamera(Camera main)
+		{
+			_badgeCamera.CopyFrom(main);
+			_badgeCamera.cullingMask = 1 << _badgeLayer;
+			_badgeCamera.clearFlags = CameraClearFlags.Depth;
+			_badgeCamera.depth = main.depth + 1f;
+			_badgeCamera.depthTextureMode = DepthTextureMode.None;
+			_badgeCamera.allowHDR = false;
+			_badgeCamera.useOcclusionCulling = false;
+			_badgeCamera.transform.localPosition = Vector3.zero;
+			_badgeCamera.transform.localRotation = Quaternion.identity;
+		}
+
+		// The shader, layer, material and camera for flat world badges.  False, with the
+		// reason logged, when the game does not offer what it needs.
+		private static bool SetupFlat(Camera main)
+		{
+			Shader shader = null;
+			foreach (var candidate in Resources.FindObjectsOfTypeAll<Shader>())
+			{
+				if (candidate == null || !candidate.isSupported) continue;
+				var rank = System.Array.IndexOf(FlatShaders, candidate.name);
+				if (rank < 0) continue;
+				if (shader == null || rank < System.Array.IndexOf(FlatShaders, shader.name)) shader = candidate;
+			}
+			if (shader == null)
+			{
+				Log.LogWarning("badges: no soft-particle shader is loaded (" + string.Join(", ", FlatShaders) + "); world badges take the scene's light");
+				return false;
+			}
+
+			// A layer the main camera does not draw, unnamed for preference, so the badges are
+			// drawn once, by the badge camera.
+			_badgeLayer = -1;
+			for (var pass = 0; pass < 2 && _badgeLayer < 0; pass++)
+			{
+				for (var layer = 31; layer >= 8; layer--)
+				{
+					if ((main.cullingMask & (1 << layer)) != 0) continue;
+					if (pass == 0 && !string.IsNullOrEmpty(LayerMask.LayerToName(layer))) continue;
+					_badgeLayer = layer;
+					break;
+				}
+			}
+			if (_badgeLayer < 0)
+			{
+				Log.LogWarning("badges: the main camera draws every layer, so there is none to give the badge camera; world badges take the scene's light");
+				return false;
+			}
+
+			_flatMaterial = new Material(shader);
+			_flatMaterial.EnableKeyword("SOFTPARTICLES_ON");
+			if (_flatMaterial.HasProperty("_InvFade")) _flatMaterial.SetFloat("_InvFade", FlatFade);
+			// The legacy particle shaders output 2 * vertex color * tint; a half tint makes that the plain color.
+			if (_flatMaterial.HasProperty("_TintColor")) _flatMaterial.SetColor("_TintColor", new Color(0.5f, 0.5f, 0.5f, 0.5f));
+
+			var go = new GameObject("GrabMaterials_BadgeCamera", typeof(Camera));
+			go.transform.SetParent(main.transform, false);
+			_badgeCamera = go.GetComponent<Camera>();
+			SyncBadgeCamera(main);
+			Log.LogInfo($"badges: flat world badges on layer {_badgeLayer} ({LayerMask.LayerToName(_badgeLayer) ?? ""}) through {shader.name}");
+			return true;
+		}
+
+		// Flat world badges live on their own layer and use the soft-particle material.
+		private static void ApplyFlat(GameObject go)
+		{
+			if (_badgeCamera == null) return;
+			go.layer = _badgeLayer;
+			var graphic = go.GetComponent<Graphic>();
+			if (graphic != null) graphic.material = _flatMaterial;
 		}
 
 		// The toggle key and `/badges`: step Display to the next state in the configured cycle.
@@ -488,6 +594,7 @@ namespace GrabMaterials
 			if (_circle == null) _circle = MakeCircle(64);
 
 			_builtInFront = InFront;
+			_builtLit = Lit;
 			if (_builtInFront)
 			{
 				_root = new GameObject("GrabMaterials_ContainerBadges", typeof(RectTransform));
@@ -504,13 +611,16 @@ namespace GrabMaterials
 				// A world-space canvas at the origin with no size of its own; each badge is
 				// positioned, turned and scaled in world units by Place.  It sits in the scene,
 				// so a scene change destroys it and the next Tick builds it again.
+				var main = Utils.GetMainCamera();
+				if (main == null) return;
 				_root = new GameObject("GrabMaterials_ContainerBadges_World", typeof(RectTransform), typeof(Canvas));
 				_canvas = _root.GetComponent<Canvas>();
 				_canvas.renderMode = RenderMode.WorldSpace;
-				_canvas.worldCamera = Utils.GetMainCamera();
+				_canvas.worldCamera = main;
 				_rootRect = _root.GetComponent<RectTransform>();
 				_rootRect.position = Vector3.zero;
 				_rootRect.sizeDelta = Vector2.zero;
+				if (!_builtLit && SetupFlat(main)) _root.layer = _badgeLayer;
 			}
 		}
 
@@ -522,6 +632,7 @@ namespace GrabMaterials
 			rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
 			rect.pivot = new Vector2(0.5f, 0.5f);
 
+			ApplyFlat(root);
 			var ring = MakeImage("Ring", root.transform, DarkRing);
 			ring.rectTransform.anchorMin = Vector2.zero;
 			ring.rectTransform.anchorMax = Vector2.one;
@@ -533,6 +644,7 @@ namespace GrabMaterials
 
 			var labelGo = new GameObject("Label", typeof(RectTransform), typeof(Text), typeof(Outline));
 			labelGo.transform.SetParent(root.transform, false);
+			ApplyFlat(labelGo);
 			var labelRect = labelGo.GetComponent<RectTransform>();
 			labelRect.anchorMin = Vector2.zero;
 			labelRect.anchorMax = Vector2.one;
@@ -554,6 +666,7 @@ namespace GrabMaterials
 			{
 				var go = new GameObject("Icon" + i, typeof(RectTransform), typeof(Image));
 				go.transform.SetParent(root.transform, false);
+				ApplyFlat(go);
 				var image = go.GetComponent<Image>();
 				image.preserveAspect = true;
 				image.raycastTarget = false;
@@ -570,6 +683,7 @@ namespace GrabMaterials
 		{
 			var go = new GameObject(name, typeof(RectTransform), typeof(Image));
 			go.transform.SetParent(parent, false);
+			ApplyFlat(go);
 			var image = go.GetComponent<Image>();
 			image.sprite = _circle;
 			image.color = color;

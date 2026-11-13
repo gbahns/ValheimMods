@@ -75,6 +75,7 @@ namespace GrabMaterialsMod
 		public ConfigEntry<bool> BadgeHideFull;
 		public ConfigEntry<bool> BadgeOnlyVisible;
 		public ConfigEntry<bool> BadgeDrawInFront;
+		public ConfigEntry<bool> BadgeWorldLit;
 		public ConfigEntry<float> BadgeIconRange;
 		public ConfigEntry<KeyboardShortcut> GatherKey;
 		public ConfigEntry<bool> TidyOnOpen;
@@ -248,6 +249,8 @@ namespace GrabMaterialsMod
 			BadgeOnlyVisible = Config.Bind("Container Badges", "Only Visible Containers", true, new ConfigDescription("Badge only containers you can actually see. Off shows every container in range, through walls and floors. Only while Draw Container Badges In Front is on; drawn in the world, a badge is covered by whatever stands in front of it."));
 			BadgeDrawInFront = Config.Bind("Container Badges", "Draw Container Badges In Front", true, new ConfigDescription("When enabled, draws badges in front of your character so you don't obscure them. Otherwise the badges are drawn in the world, where your character, a wall or a creature in front of a container covers its badge the way it would cover the container."));
 			BadgeDrawInFront.SettingChanged += (_, __) => GrabMaterials.ContainerBadges.Rebuild();
+			BadgeWorldLit = Config.Bind("Container Badges", "Lit World Badges", false, new ConfigDescription("Only while Draw Container Badges In Front is off. On, badges drawn in the world take the game's fog, bloom and color grading like everything else, so they dim at night and glow in the sun. Off draws them in their flat colors, which is easier to read."));
+			BadgeWorldLit.SettingChanged += (_, __) => GrabMaterials.ContainerBadges.Rebuild();
 			PackHudAnchor = Config.Bind("Pack HUD", "Anchor", GrabMaterials.PackHud.Anchor.BottomLeft, new ConfigDescription("Which corner of the screen the pack HUD sits in. Offsets below are measured from that corner."));
 			PackHudOffsetX = Config.Bind("Pack HUD", "Offset X (px)", 10f, new ConfigDescription("Horizontal distance from the anchored corner."));
 			PackHudOffsetY = Config.Bind("Pack HUD", "Offset Y (px)", 300f, new ConfigDescription("Vertical distance from the anchored corner. The default clears the health and stamina bars in the bottom-left."));
