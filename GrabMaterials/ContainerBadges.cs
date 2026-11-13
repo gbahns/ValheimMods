@@ -428,7 +428,11 @@ namespace GrabMaterials
 			_inUse.Clear();
 			_colliders.Clear();
 
-			_occluders = LayerMask.GetMask("Default", "static_solid", "Default_small", "piece", "terrain", "vehicle");
+			// Badges are a screen overlay, so nothing in the world can draw over one; whatever
+			// should hide a badge has to be in this mask.  Characters are in it so a chest behind
+			// the player's own body, or behind a boar, loses its badge instead of the badge
+			// floating in front of them (reported after 2.10.0).
+			_occluders = LayerMask.GetMask("Default", "static_solid", "Default_small", "piece", "terrain", "vehicle", "character", "character_net");
 			if (_circle == null) _circle = MakeCircle(64);
 
 			_root = new GameObject("GrabMaterials_ContainerBadges", typeof(RectTransform));
