@@ -2,7 +2,8 @@
 
 ## 2.10.1 — unreleased
 
-- **Fixed: container badges drew in front of your own character.** A badge is an overlay, and bodies were not among the things that could hide one. A chest behind you, or behind a creature, now loses its badge until it is in view again.
+- **Container badges can be drawn in the world**: turn off "Draw Container Badges In Front" and a badge is covered by whatever stands in front of its container, your own character included, instead of floating over them. On, the default, keeps them as an overlay that nothing covers.
+- Container badges stay up while the ESC menu is open.
 
 ## 2.10.0 — 2026-11-13
 

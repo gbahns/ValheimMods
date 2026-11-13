@@ -8,12 +8,19 @@ namespace GrabMaterials
 	// A round badge floating over each nearby container with its number of free slots, so
 	// you can find a chest with room without opening them one by one (#45).
 	//
-	// The badges are ordinary screen-space UI on Jotunn's back canvas, placed every frame by
-	// projecting a point just above each container into the screen.  That keeps them behind
-	// every panel, lets them scale with distance, and costs nothing per container beyond a
-	// matrix multiply.  Which containers get a badge is decided five times a second: in
-	// range, in front of the camera, and (by default) not hidden behind a wall, which one
-	// linecast per candidate answers.
+	// Two ways to draw them, chosen by "Draw Container Badges In Front":
+	//
+	// In front (the default): ordinary screen-space UI on Jotunn's back canvas, placed every
+	// frame by projecting a point just above each container into the screen.  That keeps them
+	// behind every panel, lets them scale with distance, and costs nothing per container
+	// beyond a matrix multiply.  Nothing in the world can cover one, so which containers get a
+	// badge is decided five times a second: in range, in front of the camera, and (by default)
+	// not hidden behind a wall, which one linecast per candidate answers.
+	//
+	// In the world: the same UI on a world-space canvas, each badge turned to face the camera
+	// and scaled so it keeps its pixel size.  UI/Default depth-tests in world space, so the
+	// depth buffer covers a badge with whatever stands in front of it, pixel by pixel: the
+	// player's own body, a wall, a boar.  No linecast is needed, and none is done.
 	//
 	// The "Container Badges" key and `/badges` step the "Display" setting through off, badges,
 	// and badges with item icons; which of those the key visits is the "Toggle Cycle" setting.
@@ -78,6 +85,7 @@ namespace GrabMaterials
 		private static Sprite _circle;
 		private static float _lastScan;
 		private static int _occluders;
+		private static bool _builtInFront;   // which mode _root was built for
 		private static readonly List<Badge> _pool = new List<Badge>();
 		private static readonly List<Badge> _inUse = new List<Badge>();
 		private static readonly List<Candidate> _candidates = new List<Candidate>();
@@ -92,9 +100,11 @@ namespace GrabMaterials
 		private static bool  HideFull    => Mod?.BadgeHideFull?.Value ?? false;
 		private static bool  OnlyVisible => Mod?.BadgeOnlyVisible?.Value ?? true;
 		private static float IconRange   => Mod?.BadgeIconRange?.Value ?? 10f;
+		private static bool  InFront     => Mod?.BadgeDrawInFront?.Value ?? true;
 
 		public static void Tick()
 		{
+			if (_root != null && _builtInFront != InFront) Rebuild();
 			EnsureCreated();
 			if (_root == null) return;
 
@@ -116,6 +126,18 @@ namespace GrabMaterials
 		// Called on toggle so the badges appear or vanish at once.
 		public static void Refresh()
 		{
+			_lastScan = 0f;
+		}
+
+		// Throw the badges away; the next Tick builds them again for the current mode.
+		public static void Rebuild()
+		{
+			if (_root != null) Object.Destroy(_root);
+			_root = null;
+			_rootRect = null;
+			_canvas = null;
+			_pool.Clear();
+			_inUse.Clear();
 			_lastScan = 0f;
 		}
 
@@ -171,7 +193,7 @@ namespace GrabMaterials
 			if (player == null || hud == null) return false;
 			if (player.IsDead() || player.IsTeleporting() || player.InCutscene()) return false;
 			if (Hud.IsUserHidden()) return false;
-			if (Menu.IsVisible() || Minimap.IsOpen()) return false;
+			if (Minimap.IsOpen()) return false;
 			return true;
 		}
 
@@ -202,7 +224,8 @@ namespace GrabMaterials
 				var sp = cam.WorldToScreenPoint(anchor);
 				if (sp.z <= 0f || !screen.Contains(new Vector2(sp.x, sp.y))) continue;
 
-				if (OnlyVisible && Physics.Linecast(eye, anchor, out var hit, _occluders, QueryTriggerInteraction.Ignore))
+				// Drawn in the world, the depth buffer does this per pixel.
+				if (InFront && OnlyVisible && Physics.Linecast(eye, anchor, out var hit, _occluders, QueryTriggerInteraction.Ignore))
 				{
 					// Hitting the container itself still counts as seeing it.
 					if (hit.collider.GetComponentInParent<Container>() != container) continue;
@@ -243,17 +266,46 @@ namespace GrabMaterials
 				_pool.Add(badge);
 			}
 
+			var inFront = InFront;
 			var canvasCam = _canvas != null && _canvas.renderMode == RenderMode.ScreenSpaceCamera ? _canvas.worldCamera : null;
+			// In the world, one canvas unit is one overlay pixel at the overlay's scale, so the
+			// badge keeps the size the overlay would give it at that distance.
+			var overlayCanvas = GUIManager.CustomGUIBack != null ? GUIManager.CustomGUIBack.GetComponent<Canvas>() : null;
+			var uiScale = overlayCanvas != null ? overlayCanvas.scaleFactor : 1f;
+			var pixelAngle = 2f * Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad) / Mathf.Max(1, Screen.height);
+			var camPos = cam.transform.position;
+			var camForward = cam.transform.forward;
 			foreach (var c in _candidates)
 			{
 				var badge = Find(c.Container) ?? Take(c.Container);
-				var sp = cam.WorldToScreenPoint(c.Anchor);
-				if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(_rootRect, new Vector2(sp.x, sp.y), canvasCam, out var local)) continue;
-				badge.Rect.anchoredPosition = local;
 
 				// Nearer badges are a little bigger; the clamp keeps them readable at the edge of range.
 				var scale = Mathf.Clamp(8f / Mathf.Max(c.Distance, 0.1f), 0.6f, 1.25f);
 				var diameter = Size * scale;
+
+				if (inFront)
+				{
+					var sp = cam.WorldToScreenPoint(c.Anchor);
+					if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(_rootRect, new Vector2(sp.x, sp.y), canvasCam, out var local)) continue;
+					badge.Rect.anchoredPosition = local;
+				}
+				else
+				{
+					var depth = Vector3.Dot(c.Anchor - camPos, camForward);
+					if (depth <= 0.1f)
+					{
+						if (badge.Root.activeSelf) badge.Root.SetActive(false);
+						continue;
+					}
+					if (!badge.Root.activeSelf) badge.Root.SetActive(true);
+					var worldPerPixel = depth * pixelAngle * uiScale;
+					// Face the camera, and lean out of the lid toward it by the disc's radius so
+					// the disc does not cut into the container it marks.
+					var toCam = (camPos - c.Anchor).normalized;
+					badge.Rect.position = c.Anchor + toCam * (diameter * 0.5f * worldPerPixel + 0.05f);
+					badge.Rect.rotation = cam.transform.rotation;
+					badge.Rect.localScale = Vector3.one * worldPerPixel;
+				}
 				badge.Rect.sizeDelta = new Vector2(diameter, diameter);
 				badge.Fill.rectTransform.sizeDelta = new Vector2(diameter - RingWidth * 2f, diameter - RingWidth * 2f);
 				badge.Label.fontSize = Mathf.Max(8, Mathf.RoundToInt(diameter * 0.55f));
@@ -421,6 +473,7 @@ namespace GrabMaterials
 		private static void EnsureCreated()
 		{
 			if (_root != null) return;
+			// The font comes from Jotunn either way, and the overlay lives on its back canvas.
 			if (GUIManager.Instance == null || GUIManager.CustomGUIBack == null) return;
 
 			// The canvas is rebuilt on every scene change, taking our objects with it.
@@ -428,21 +481,37 @@ namespace GrabMaterials
 			_inUse.Clear();
 			_colliders.Clear();
 
-			// Badges are a screen overlay, so nothing in the world can draw over one; whatever
-			// should hide a badge has to be in this mask.  Characters are in it so a chest behind
-			// the player's own body, or behind a boar, loses its badge instead of the badge
-			// floating in front of them (reported after 2.10.0).
-			_occluders = LayerMask.GetMask("Default", "static_solid", "Default_small", "piece", "terrain", "vehicle", "character", "character_net");
+			// What hides an overlay badge.  Characters are not in it: a badge over a chest behind
+			// the player stays up in front of them, which is what "Draw Container Badges In
+			// Front" promises; the world mode is the one that lets a body cover a badge.
+			_occluders = LayerMask.GetMask("Default", "static_solid", "Default_small", "piece", "terrain", "vehicle");
 			if (_circle == null) _circle = MakeCircle(64);
 
-			_root = new GameObject("GrabMaterials_ContainerBadges", typeof(RectTransform));
-			_root.transform.SetParent(GUIManager.CustomGUIBack.transform, false);
-			_rootRect = _root.GetComponent<RectTransform>();
-			_rootRect.anchorMin = Vector2.zero;
-			_rootRect.anchorMax = Vector2.one;
-			_rootRect.offsetMin = Vector2.zero;
-			_rootRect.offsetMax = Vector2.zero;
-			_canvas = _root.GetComponentInParent<Canvas>();
+			_builtInFront = InFront;
+			if (_builtInFront)
+			{
+				_root = new GameObject("GrabMaterials_ContainerBadges", typeof(RectTransform));
+				_root.transform.SetParent(GUIManager.CustomGUIBack.transform, false);
+				_rootRect = _root.GetComponent<RectTransform>();
+				_rootRect.anchorMin = Vector2.zero;
+				_rootRect.anchorMax = Vector2.one;
+				_rootRect.offsetMin = Vector2.zero;
+				_rootRect.offsetMax = Vector2.zero;
+				_canvas = _root.GetComponentInParent<Canvas>();
+			}
+			else
+			{
+				// A world-space canvas at the origin with no size of its own; each badge is
+				// positioned, turned and scaled in world units by Place.  It sits in the scene,
+				// so a scene change destroys it and the next Tick builds it again.
+				_root = new GameObject("GrabMaterials_ContainerBadges_World", typeof(RectTransform), typeof(Canvas));
+				_canvas = _root.GetComponent<Canvas>();
+				_canvas.renderMode = RenderMode.WorldSpace;
+				_canvas.worldCamera = Utils.GetMainCamera();
+				_rootRect = _root.GetComponent<RectTransform>();
+				_rootRect.position = Vector3.zero;
+				_rootRect.sizeDelta = Vector2.zero;
+			}
 		}
 
 		private static Badge Create()

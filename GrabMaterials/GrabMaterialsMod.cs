@@ -74,6 +74,7 @@ namespace GrabMaterialsMod
 		public ConfigEntry<float> BadgeSize;
 		public ConfigEntry<bool> BadgeHideFull;
 		public ConfigEntry<bool> BadgeOnlyVisible;
+		public ConfigEntry<bool> BadgeDrawInFront;
 		public ConfigEntry<float> BadgeIconRange;
 		public ConfigEntry<KeyboardShortcut> GatherKey;
 		public ConfigEntry<bool> TidyOnOpen;
@@ -244,7 +245,9 @@ namespace GrabMaterialsMod
 
 			BadgeIconRange = Config.Bind("Container Badges", "Icon Range", 10f, new ConfigDescription("Within this many meters a badge also shows the icons of the one or two items that take the most slots in the container, so you can tell the wood chest from the stone chest without opening either. Only when Display is BadgesAndIcons.", new AcceptableValueRange<float>(1f, 100f)));
 			BadgeIconPosition = Config.Bind("Container Badges", "Icon Position", GrabMaterials.ContainerBadges.IconSide.Right, new ConfigDescription("Where the item icons go. Right, Left, Up and Down line them out from the disc on that side. BelowRow and AboveRow center them in a row under or over the disc, so the disc and two icons make a triangle."));
-			BadgeOnlyVisible = Config.Bind("Container Badges", "Only Visible Containers", true, new ConfigDescription("Badge only containers you can actually see. Off shows every container in range, through walls and floors."));
+			BadgeOnlyVisible = Config.Bind("Container Badges", "Only Visible Containers", true, new ConfigDescription("Badge only containers you can actually see. Off shows every container in range, through walls and floors. Only while Draw Container Badges In Front is on; drawn in the world, a badge is covered by whatever stands in front of it."));
+			BadgeDrawInFront = Config.Bind("Container Badges", "Draw Container Badges In Front", true, new ConfigDescription("When enabled, draws badges in front of your character so you don't obscure them. Otherwise the badges are drawn in the world, where your character, a wall or a creature in front of a container covers its badge the way it would cover the container."));
+			BadgeDrawInFront.SettingChanged += (_, __) => GrabMaterials.ContainerBadges.Rebuild();
 			PackHudAnchor = Config.Bind("Pack HUD", "Anchor", GrabMaterials.PackHud.Anchor.BottomLeft, new ConfigDescription("Which corner of the screen the pack HUD sits in. Offsets below are measured from that corner."));
 			PackHudOffsetX = Config.Bind("Pack HUD", "Offset X (px)", 10f, new ConfigDescription("Horizontal distance from the anchored corner."));
 			PackHudOffsetY = Config.Bind("Pack HUD", "Offset Y (px)", 300f, new ConfigDescription("Vertical distance from the anchored corner. The default clears the health and stamina bars in the bottom-left."));
