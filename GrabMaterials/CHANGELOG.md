@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.10.0 — unreleased
+## 2.10.0 — 2026-11-13
 
 - **Gather**: look at a chest and press \ (the "Gather Key") and the item it mostly holds is pulled into it from every other chest within Container Range, farthest chest first, so one material stops living in five places. When the chest fills, the overflow goes to the chest nearest it with room. Hold Shift and the chest's other items first move to your inventory to make room; hold Ctrl and they slide to other chests in reach, each to a chest already holding that item where there is one. `/gather` does the same as the plain key; `/gather <item>` names the item.
 - **Pack results by piece**: a grab pack's results list each piece with its own materials under it (Workbench: 10 Wood; 2 Chest: 20 Wood; Portal: 20 Fine wood, 10 Greydwarf eye, 2 Surtling core), so you can see what the totals were for, with what remains nearby on each material's line. "Pack Results By Piece" under Panel UI turns the old one-line-per-material list back on (#81).
