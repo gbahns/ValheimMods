@@ -2,7 +2,7 @@
 
 ## 2.10.1 — unreleased
 
-- **Container badges can be drawn in the world**: turn off "Draw Container Badges In Front" and a badge is covered by whatever stands in front of its container, your own character included, instead of floating over them. On, the default, keeps them as an overlay that nothing covers. World badges keep their flat colors; "Lit World Badges" lets the game's fog, bloom and color grading at them instead.
+- **Container badges can be drawn in the world**: turn off "Draw Badges In Front" and a badge is covered by whatever stands in front of its container, your own character included, instead of floating over them. On, the default, keeps them as an overlay that nothing covers. World badges keep their flat colors; "Lit World Badges" lets the game's fog, bloom and color grading at them instead. "Only Visible Containers" still decides whether walls hide them.
 - Container badges stay up while the ESC menu is open.
 
 ## 2.10.0 — 2026-11-13

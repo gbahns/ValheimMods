@@ -61,7 +61,7 @@ A small list of your packs and their keys stays on screen, with the icon of each
 
 ## Container badges
 
-A round badge over each container you can see shows its free slots: green with room, amber at 3 or fewer, red when full, blue when it is completely empty. Within 10 m the badge also carries the icons of the one or two items that take the most slots, so the wood chest and the stone chest tell apart from across the room. Press **/** to step through off, badges, and badges with contents. Range, size, icon placement and whether badges show through walls are under `Container Badges`.
+A round badge over each container you can see shows its free slots: green with room, amber at 3 or fewer, red when full, blue when it is completely empty. Within 10 m the badge also carries the icons of the one or two items that take the most slots, so the wood chest and the stone chest tell apart from across the room. Press **/** to step through off, badges, and badges with contents. Range, size, icon placement and whether badges show through walls are under `Container Badges`. Badges float over everything by default; turn off `Draw Badges In Front` and your character, walls and creatures cover them like they cover the chest.
 
 ## Gather
 

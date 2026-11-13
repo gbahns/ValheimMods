@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Jotunn.Managers;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.UI;
 
 namespace GrabMaterials
@@ -8,7 +9,7 @@ namespace GrabMaterials
 	// A round badge floating over each nearby container with its number of free slots, so
 	// you can find a chest with room without opening them one by one (#45).
 	//
-	// Two ways to draw them, chosen by "Draw Container Badges In Front":
+	// Two ways to draw them, chosen by "Draw Badges In Front":
 	//
 	// In front (the default): ordinary screen-space UI on Jotunn's back canvas, placed every
 	// frame by projecting a point just above each container into the screen.  That keeps them
@@ -27,11 +28,25 @@ namespace GrabMaterials
 	// World Badges" is on, the badges are instead drawn by a second camera, parented to the
 	// main one and given none of its effects, that renders only the badges' layer after the
 	// main camera has finished.  That camera has no scene depth of its own, so the badges use
-	// a soft-particle shader, which reads the main camera's depth texture and fades a pixel
-	// out when it is behind the scene.  With a steep fade that is a depth test, and the
-	// badges come out in their flat colors while still hiding behind whatever is in front.
-	// If the shader or a spare layer cannot be found, the badges fall back to the lit look
-	// and the log says why.
+	// a soft-particle shader, which reads a depth texture and fades a pixel out when it is
+	// behind the scene.  With a steep fade that is a depth test, and the badges come out in
+	// their flat colors while still hiding behind whatever is in front.
+	//
+	// The depth it reads has to be the main camera's, and getting it there takes two steps.
+	// The game asks its camera for a depth-normals texture only, so the badges add the plain
+	// depth texture to the request.  That texture is a temporary the engine hands back at the
+	// end of the main camera's render, and a second camera cannot count on finding it still
+	// bound (if the game's soft particles are on, the badge camera renders a depth texture of
+	// its own layer and gets the same temporary, now empty).  So a command buffer on the main
+	// camera copies the depth texture into one the badges own, and a command buffer on the
+	// badge camera binds that copy as the depth texture just before the badges draw.  Without
+	// this the badges showed through every wall and body in flat mode (reported 2026-11-13).
+	//
+	// "Only Visible Containers" is the one setting that means something in every mode: in
+	// front it is the linecast; flat, it decides whether the depth test is done at all.  Lit
+	// world badges are depth-tested by the UI shader and cannot be told otherwise.  If the
+	// shader, a spare layer or a float render texture cannot be had, the badges fall back to
+	// the lit look and the log says why.
 	//
 	// The "Container Badges" key and `/badges` step the "Display" setting through off, badges,
 	// and badges with item icons; which of those the key visits is the "Toggle Cycle" setting.
@@ -98,10 +113,19 @@ namespace GrabMaterials
 		private static int _occluders;
 		private static bool _builtInFront;   // which mode _root was built for
 		private static bool _builtLit;
+		private static bool _builtOnlyVisible;
 		private static Camera _badgeCamera;  // flat world mode only
 		private static Material _flatMaterial;
 		private static int _badgeLayer = -1;
 		private static Camera _maskedCamera;   // the main camera we took _badgeLayer out of, to give it back
+		private static Camera _depthCamera;    // the main camera whose depth the flat badges test against
+		private static bool _addedDepthMode;   // we asked _depthCamera for a depth texture it was not making
+		private static RenderTexture _depthCopy;
+		private static CommandBuffer _copyDepth;   // on _depthCamera: depth texture -> _depthCopy
+		private static CommandBuffer _bindDepth;   // on _badgeCamera: _depthCopy -> _CameraDepthTexture
+		private static readonly int DepthTextureId = Shader.PropertyToID("_CameraDepthTexture");
+		private const CameraEvent CopyDepthAt = CameraEvent.AfterForwardAlpha;   // the scene is complete, the effects have not run
+		private const CameraEvent BindDepthAt = CameraEvent.BeforeForwardAlpha;  // right before the badges draw
 		private const float FlatFade = 100f;   // soft-particle steepness: fully hidden 1 cm behind the scene
 		private static readonly string[] FlatShaders =
 		{
@@ -129,7 +153,8 @@ namespace GrabMaterials
 
 		public static void Tick()
 		{
-			if (_root != null && (_builtInFront != InFront || _builtLit != Lit)) Rebuild();
+			if (_root != null && (_builtInFront != InFront || _builtLit != Lit
+				|| (!_builtInFront && !_builtLit && _builtOnlyVisible != OnlyVisible))) Rebuild();
 			EnsureCreated();
 			if (_root == null) return;
 
@@ -163,7 +188,20 @@ namespace GrabMaterials
 			if (_badgeCamera != null) Object.Destroy(_badgeCamera.gameObject);
 			if (_flatMaterial != null) Object.Destroy(_flatMaterial);
 			if (_maskedCamera != null && _badgeLayer >= 0) _maskedCamera.cullingMask |= 1 << _badgeLayer;
+			if (_depthCamera != null)
+			{
+				if (_copyDepth != null) _depthCamera.RemoveCommandBuffer(CopyDepthAt, _copyDepth);
+				if (_addedDepthMode) _depthCamera.depthTextureMode &= ~DepthTextureMode.Depth;
+			}
+			_copyDepth?.Dispose();
+			_bindDepth?.Dispose();
+			if (_depthCopy != null) { _depthCopy.Release(); Object.Destroy(_depthCopy); }
 			_maskedCamera = null;
+			_depthCamera = null;
+			_addedDepthMode = false;
+			_copyDepth = null;
+			_bindDepth = null;
+			_depthCopy = null;
 			_root = null;
 			_rootRect = null;
 			_canvas = null;
@@ -180,14 +218,44 @@ namespace GrabMaterials
 		private static void SyncBadgeCamera(Camera main)
 		{
 			_badgeCamera.CopyFrom(main);
+			_badgeCamera.targetTexture = main.targetTexture;   // the game's lowered render scale draws into a texture
 			_badgeCamera.cullingMask = 1 << _badgeLayer;
 			_badgeCamera.clearFlags = CameraClearFlags.Depth;
 			_badgeCamera.depth = main.depth + 1f;
+			_badgeCamera.renderingPath = RenderingPath.Forward;   // nothing opaque to defer, and BeforeForwardAlpha must fire
 			_badgeCamera.depthTextureMode = DepthTextureMode.None;
 			_badgeCamera.allowHDR = false;
+			_badgeCamera.allowMSAA = false;
 			_badgeCamera.useOcclusionCulling = false;
 			_badgeCamera.transform.localPosition = Vector3.zero;
 			_badgeCamera.transform.localRotation = Quaternion.identity;
+			if (_copyDepth != null)
+			{
+				// The game's effects set the mode as they please; keep our bit in it.
+				if ((main.depthTextureMode & DepthTextureMode.Depth) == 0) main.depthTextureMode |= DepthTextureMode.Depth;
+				EnsureDepthCopy(main);
+			}
+		}
+
+		// A float texture the size of the main camera's picture, and the two command buffers
+		// that fill it and bind it.  Re-recorded when the picture changes size.
+		private static void EnsureDepthCopy(Camera main)
+		{
+			var w = Mathf.Max(1, main.pixelWidth);
+			var h = Mathf.Max(1, main.pixelHeight);
+			if (_depthCopy != null && _depthCopy.width == w && _depthCopy.height == h) return;
+			if (_depthCopy != null) { _depthCopy.Release(); Object.Destroy(_depthCopy); }
+			_depthCopy = new RenderTexture(w, h, 0, RenderTextureFormat.RFloat)
+			{
+				name = "GrabMaterials_BadgeDepth",
+				filterMode = FilterMode.Point,
+				wrapMode = TextureWrapMode.Clamp,
+			};
+			_depthCopy.Create();
+			_copyDepth.Clear();
+			_copyDepth.Blit(BuiltinRenderTextureType.Depth, _depthCopy);
+			_bindDepth.Clear();
+			_bindDepth.SetGlobalTexture(DepthTextureId, _depthCopy);
 		}
 
 		// The shader, layer, material and camera for flat world badges.  False, with the
@@ -230,8 +298,15 @@ namespace GrabMaterials
 				_maskedCamera = main;
 			}
 
+			var onlyVisible = OnlyVisible;
+			if (onlyVisible && !SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.RFloat))
+			{
+				Log.LogWarning("badges: no float render texture for the scene depth; world badges take the scene's light");
+				return false;
+			}
+
 			_flatMaterial = new Material(shader);
-			_flatMaterial.EnableKeyword("SOFTPARTICLES_ON");
+			if (onlyVisible) _flatMaterial.EnableKeyword("SOFTPARTICLES_ON");
 			if (_flatMaterial.HasProperty("_InvFade")) _flatMaterial.SetFloat("_InvFade", FlatFade);
 			// The legacy particle shaders output 2 * vertex color * tint; a half tint makes that the plain color.
 			if (_flatMaterial.HasProperty("_TintColor")) _flatMaterial.SetColor("_TintColor", new Color(0.5f, 0.5f, 0.5f, 0.5f));
@@ -239,8 +314,24 @@ namespace GrabMaterials
 			var go = new GameObject("GrabMaterials_BadgeCamera", typeof(Camera));
 			go.transform.SetParent(main.transform, false);
 			_badgeCamera = go.GetComponent<Camera>();
+			if (onlyVisible)
+			{
+				_depthCamera = main;
+				if ((main.depthTextureMode & DepthTextureMode.Depth) == 0)
+				{
+					main.depthTextureMode |= DepthTextureMode.Depth;
+					_addedDepthMode = true;
+				}
+				_copyDepth = new CommandBuffer { name = "GrabMaterials badge depth copy" };
+				_bindDepth = new CommandBuffer { name = "GrabMaterials badge depth bind" };
+				main.AddCommandBuffer(CopyDepthAt, _copyDepth);
+				_badgeCamera.AddCommandBuffer(BindDepthAt, _bindDepth);
+			}
 			SyncBadgeCamera(main);
-			Log.LogInfo($"badges: flat world badges on layer {_badgeLayer}{(_maskedCamera != null ? ", taken from the main camera" : "")}, through {shader.name}");
+			var depth = onlyVisible
+				? $"; scene depth copied from the main camera ({main.actualRenderingPath}{(_addedDepthMode ? ", depth texture added" : "")})"
+				: "; Only Visible Containers is off, so nothing covers them";
+			Log.LogInfo($"badges: flat world badges on layer {_badgeLayer}{(_maskedCamera != null ? ", taken from the main camera" : "")}, through {shader.name}{depth}");
 			return true;
 		}
 
@@ -336,7 +427,7 @@ namespace GrabMaterials
 				var sp = cam.WorldToScreenPoint(anchor);
 				if (sp.z <= 0f || !screen.Contains(new Vector2(sp.x, sp.y))) continue;
 
-				// Drawn in the world, the depth buffer does this per pixel.
+				// Drawn in the world, the depth test does this per pixel.
 				if (InFront && OnlyVisible && Physics.Linecast(eye, anchor, out var hit, _occluders, QueryTriggerInteraction.Ignore))
 				{
 					// Hitting the container itself still counts as seeing it.
@@ -594,13 +685,14 @@ namespace GrabMaterials
 			_colliders.Clear();
 
 			// What hides an overlay badge.  Characters are not in it: a badge over a chest behind
-			// the player stays up in front of them, which is what "Draw Container Badges In
-			// Front" promises; the world mode is the one that lets a body cover a badge.
+			// the player stays up in front of them, which is what "Draw Badges In Front"
+			// promises; the world mode is the one that lets a body cover a badge.
 			_occluders = LayerMask.GetMask("Default", "static_solid", "Default_small", "piece", "terrain", "vehicle");
 			if (_circle == null) _circle = MakeCircle(64);
 
 			_builtInFront = InFront;
 			_builtLit = Lit;
+			_builtOnlyVisible = OnlyVisible;
 			if (_builtInFront)
 			{
 				_root = new GameObject("GrabMaterials_ContainerBadges", typeof(RectTransform));
