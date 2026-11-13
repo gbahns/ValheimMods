@@ -25,8 +25,13 @@ namespace GrabMaterials
 			public float Distance;   // from the target
 		}
 
-		private static GrabMaterialsMod.GrabMaterialsMod Mod => GrabMaterialsMod.GrabMaterialsMod.Instance;
 		private static float Range => GrabMaterialsMod.GrabMaterialsMod.Range;
+		private static BepInEx.Logging.ManualLogSource Log => GrabMaterialsMod.GrabMaterialsMod.Log;
+
+		// More stack moves than any chest wall can hold.  A gather that reaches it has a bug, and
+		// the game keeps running while the log says so, instead of hanging as it did on
+		// 2026-11-12 when a source chest was chosen as its own overflow destination.
+		private const int MaxMoves = 5000;
 
 		internal static void GatherIntoHovered(string requested = null)
 		{
@@ -161,6 +166,8 @@ namespace GrabMaterials
 			var moved = 0;
 			var leftBehind = 0;
 			var outOfRoom = false;
+			var moves = 0;
+			Log.LogInfo($"gather: {name} into {target.name} from {sources.Count} source(s), {spare.Count} chest(s) in reach");
 
 			foreach (var source in sources)
 			{
@@ -168,10 +175,17 @@ namespace GrabMaterials
 				var tookFromThis = 0;
 				while (!outOfRoom)
 				{
+					if (++moves > MaxMoves)
+					{
+						Log.LogError($"gather: stopped after {MaxMoves} moves; {name} from {source.Container.name} into {destination.Container.name} was not converging");
+						outOfRoom = true;
+						break;
+					}
 					var stack = source.Inventory.GetAllItems().FirstOrDefault(item => item?.m_shared != null && item.m_shared.m_name == material);
 					if (stack == null) break;
 
-					var amount = Math.Min(stack.m_stack, RoomFor(destination.Inventory, stack));
+					var before = stack.m_stack;
+					var amount = Math.Min(before, RoomFor(destination.Inventory, stack));
 					if (amount <= 0)
 					{
 						// The destination is full for this item: the nearest chest to the target
@@ -180,7 +194,11 @@ namespace GrabMaterials
 						if (next == null) { outOfRoom = true; break; }
 						destinations.Add(next);
 						destination = next;
-						GrabMaterialsMod.GrabMaterialsMod.Log.LogInfo($"gather: {target.name} is full, continuing into {next.Container.name} {next.Distance:0.0} m away");
+						Log.LogInfo($"gather: {(destinations.Count == 2 ? target.name : "that chest")} is full, continuing into {next.Container.name} {next.Distance:0.0} m from the target");
+						// The chest being drained is itself the nearest with room: it keeps what it
+						// has and becomes the overflow chest.  Moving a stack into its own chest
+						// would never end.
+						if (next == source) break;
 						continue;
 					}
 
@@ -188,13 +206,16 @@ namespace GrabMaterials
 					clone.m_stack = amount;
 					if (!destination.Inventory.AddItem(clone))
 					{
-						GrabMaterialsMod.GrabMaterialsMod.Log.LogWarning($"gather: {destination.Container.name} refused {amount} {name} it had room for; stopping");
+						// Should not happen with the amount sized above.  If it does, the units
+						// AddItem stacked before failing are in both chests now; say so loudly.
+						Log.LogError($"gather: {destination.Container.name} refused {amount} {name} it had room for ({clone.m_stack} unplaced); stopping. Check that chest and {source.Container.name} for a duplicated stack.");
 						outOfRoom = true;
 						break;
 					}
 					source.Inventory.RemoveItem(stack, amount);
 					moved += amount;
 					tookFromThis += amount;
+					Log.LogInfo($"gather: moved {amount} {name} from {source.Container.name} ({source.Distance:0.0} m) to {destination.Container.name}, stack {before} -> {Math.Max(0, before - amount)}");
 				}
 				if (tookFromThis > 0) drained.Add(source.Container);
 				if (outOfRoom) break;
@@ -216,23 +237,26 @@ namespace GrabMaterials
 			else if (leftBehind > 0) message = $"Gathered {moved} {name} from {from} into {into}; {leftBehind} left behind, no room nearby";
 			else message = $"Gathered {moved} {name} from {from} into {into}";
 			player.Message(MessageHud.MessageType.TopLeft, message);
-			GrabMaterialsMod.GrabMaterialsMod.Log.LogInfo($"gather: {message} (target {target.name} at {origin})");
+			Log.LogInfo($"gather: {message} (target {target.name} at {origin}, {moves} move(s))");
 		}
 
-		// How many of this stack the inventory could take: topping up its own partial stacks of
-		// the same item, quality and variant, then empty slots.  Computed here rather than
-		// trusting AddItem, which fills partial stacks before discovering it has no empty slot
-		// for the rest.
+		// How much of this stack to hand Inventory.AddItem in one call.  Vanilla's AddItem tops
+		// up partial stacks of the same name, quality and world level one unit at a time, then
+		// drops whatever is left into ONE empty slot without capping it, and if there is no empty
+		// slot it returns false with the partial stacks already raised.  So each move is sized to
+		// what AddItem will place cleanly: the partial room plus, if an empty slot exists, one
+		// full stack.  Never more, or a slot ends up over its limit; never a guess, or a false
+		// return would leave the units it did add counted in both chests.
 		private static int RoomFor(Inventory inventory, ItemDrop.ItemData stack)
 		{
 			var max = stack.m_shared.m_maxStackSize;
-			var room = inventory.GetEmptySlots() * max;
+			var room = inventory.GetEmptySlots() > 0 ? max : 0;
 			if (max > 1)
 			{
 				foreach (var item in inventory.GetAllItems())
 				{
 					if (item?.m_shared == null || item.m_shared.m_name != stack.m_shared.m_name) continue;
-					if (item.m_quality != stack.m_quality || item.m_variant != stack.m_variant) continue;
+					if (item.m_quality != stack.m_quality || item.m_worldLevel != stack.m_worldLevel) continue;
 					room += Math.Max(0, max - item.m_stack);
 				}
 			}

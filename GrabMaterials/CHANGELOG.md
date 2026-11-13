@@ -2,7 +2,7 @@
 
 ## 2.10.0 — unreleased
 
-- **Gather**: look at a chest and press G (the "Gather Key") and the item it mostly holds is pulled into it from every other chest within Container Range, farthest chest first, so one material stops living in five places. When the chest fills, the overflow goes to the chest nearest it with room. `/gather` does the same; `/gather <item>` names the item.
+- **Gather**: look at a chest and press \ (the "Gather Key") and the item it mostly holds is pulled into it from every other chest within Container Range, farthest chest first, so one material stops living in five places. When the chest fills, the overflow goes to the chest nearest it with room. `/gather` does the same; `/gather <item>` names the item.
 
 ## 2.9.0 — 2026-11-12
 
