@@ -44,11 +44,14 @@ namespace GrabMaterials
 	//
 	// The shader turns a depth value into meters with _ZBufferParams, which the engine sets
 	// for the way this platform's depth buffers run (1 at the near plane on D3D and Vulkan, 0
-	// there on OpenGL).  The first copy came out the other way round, and every badge was
-	// hidden exactly when it should have shown.  So once, a few frames after the copy starts,
-	// the center pixel is read back and turned into meters both ways, a ray through the
-	// screen center says which is right, and if it is the other way the badge camera gets
-	// _ZBufferParams for that; the log carries the numbers either way.
+	// there on OpenGL), and a copy made with Blit can come out upside down, since Blit decides
+	// about flipping from the targets involved and a depth texture is not an ordinary one.
+	// Either fault hides badges that should show and shows ones that should hide; the first
+	// build did exactly that.  So once, a few frames after the copy starts, it is read back,
+	// five points on it are turned into meters both ways, right side up and flipped, and rays
+	// through those screen points say which of the four readings the scene agrees with.  A
+	// flipped copy is blitted the other way up from then on; one that runs the other way gets
+	// the badge camera matching _ZBufferParams.  The log carries the numbers either way.
 	//
 	// "Only Visible Containers" is the one setting that means something in every mode: in
 	// front it is the linecast; flat, it decides whether the depth test is done at all.  Lit
@@ -136,6 +139,7 @@ namespace GrabMaterials
 		private static bool _probed;          // the copy's convention has been checked against a ray
 		private static int _probeFrames;
 		private static bool _otherWayRound;   // the copy runs the other way from this platform's buffers
+		private static bool _flipped;         // the copy comes out upside down and is blitted back
 		private const CameraEvent CopyDepthAt = CameraEvent.AfterForwardAlpha;   // the scene is complete, the effects have not run
 		private const CameraEvent BindDepthAt = CameraEvent.BeforeForwardAlpha;  // right before the badges draw
 		private const float FlatFade = 100f;   // soft-particle steepness: fully hidden 1 cm behind the scene
@@ -218,6 +222,7 @@ namespace GrabMaterials
 			_probed = false;
 			_probeFrames = 0;
 			_otherWayRound = false;
+			_flipped = false;
 			_root = null;
 			_rootRect = null;
 			_canvas = null;
@@ -268,9 +273,15 @@ namespace GrabMaterials
 				wrapMode = TextureWrapMode.Clamp,
 			};
 			_depthCopy.Create();
-			_copyDepth.Clear();
-			_copyDepth.Blit(BuiltinRenderTextureType.Depth, _depthCopy);
+			RecordCopy();
 			RecordBind(main);
+		}
+
+		private static void RecordCopy()
+		{
+			_copyDepth.Clear();
+			if (_flipped) _copyDepth.Blit(BuiltinRenderTextureType.Depth, _depthCopy, new Vector2(1f, -1f), new Vector2(0f, 1f));
+			else _copyDepth.Blit(BuiltinRenderTextureType.Depth, _depthCopy);
 		}
 
 		private static void RecordBind(Camera main)
@@ -296,8 +307,15 @@ namespace GrabMaterials
 
 		private static float EyeDepth(float raw, Vector4 p) => 1f / (p.z * raw + p.w);
 
-		// Read the copy's center pixel back, turn it into meters both ways, and ask a ray which
-		// one the scene agrees with.  Runs once per setup, off the main thread's critical path.
+		// Five points on the screen: the center and part way toward each edge.
+		private static readonly Vector2[] ProbePoints =
+		{
+			new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.2f), new Vector2(0.5f, 0.8f), new Vector2(0.2f, 0.5f), new Vector2(0.8f, 0.5f),
+		};
+
+		// Read the copy back, turn five of its points into meters every way they could be
+		// read, and ask rays through those points which way the scene agrees with.  Runs once
+		// per setup, off the main thread's critical path.
 		private static void ProbeDepthCopy(Camera cam)
 		{
 			_probed = true;
@@ -306,23 +324,59 @@ namespace GrabMaterials
 			var forward = cam.transform.forward;
 			var near = cam.nearClipPlane;
 			var far = cam.farClipPlane;
-			var truth = far;
-			if (Physics.Raycast(camPos, forward, out var hit, far, ~0, QueryTriggerInteraction.Ignore)) truth = Mathf.Max(near, Vector3.Dot(hit.point - camPos, forward));
+			var truths = new float[ProbePoints.Length];
+			for (var i = 0; i < ProbePoints.Length; i++)
+			{
+				var ray = cam.ViewportPointToRay(new Vector3(ProbePoints[i].x, ProbePoints[i].y, 0f));
+				truths[i] = far;
+				if (Physics.Raycast(ray, out var hit, far, ~0, QueryTriggerInteraction.Ignore)) truths[i] = Mathf.Max(near, Vector3.Dot(hit.point - camPos, forward));
+			}
 			var usual = ZBufferParams(near, far, SystemInfo.usesReversedZBuffer);
 			var other = ZBufferParams(near, far, !SystemInfo.usesReversedZBuffer);
-			AsyncGPUReadback.Request(copy, 0, copy.width / 2, 1, copy.height / 2, 1, 0, 1, TextureFormat.RFloat, request =>
+			AsyncGPUReadback.Request(copy, 0, TextureFormat.RFloat, request =>
 			{
 				if (copy != _depthCopy || _bindDepth == null) return;   // rebuilt meanwhile; the next setup probes again
 				if (request.hasError)
 				{
-					Log.LogWarning("badges: the depth copy could not be read back; the badges read it this platform's way");
+					Log.LogWarning("badges: the depth copy could not be read back; the badges read it as it is");
 					return;
 				}
-				var raw = request.GetData<float>()[0];
-				var usualZ = Mathf.Max(EyeDepth(raw, usual), 0.001f);
-				var otherZ = Mathf.Max(EyeDepth(raw, other), 0.001f);
-				_otherWayRound = Mathf.Abs(Mathf.Log(otherZ / truth)) < Mathf.Abs(Mathf.Log(usualZ / truth));
-				Log.LogInfo($"badges: the depth copy reads {raw:F5} at the screen center: {usualZ:F2} m this platform's way, {otherZ:F2} m the other; a ray finds the scene {truth:F2} m off, so the copy runs {(_otherWayRound ? "the other way round and the badges read it so" : "the usual way")} (reversed Z {SystemInfo.usesReversedZBuffer}, {cam.actualRenderingPath}, drawn to {(cam.targetTexture != null ? "a texture" : "the screen")})");
+				var data = request.GetData<float>();
+				var w = copy.width;
+				var h = copy.height;
+				float Raw(int i, bool flipped)
+				{
+					var x = Mathf.Clamp(Mathf.RoundToInt(ProbePoints[i].x * (w - 1)), 0, w - 1);
+					var v = flipped ? 1f - ProbePoints[i].y : ProbePoints[i].y;
+					var y = Mathf.Clamp(Mathf.RoundToInt(v * (h - 1)), 0, h - 1);
+					return data[y * w + x];
+				}
+				float Error(Vector4 p, bool flipped)
+				{
+					var sum = 0f;
+					for (var i = 0; i < ProbePoints.Length; i++)
+					{
+						var z = Mathf.Max(EyeDepth(Raw(i, flipped), p), 0.001f);
+						sum += Mathf.Abs(Mathf.Log(z / truths[i]));
+					}
+					return sum;
+				}
+				var errors = new[] { Error(usual, false), Error(usual, true), Error(other, false), Error(other, true) };
+				var best = 0;
+				for (var i = 1; i < errors.Length; i++) if (errors[i] < errors[best]) best = i;
+				_otherWayRound = best >= 2;
+				_flipped = (best & 1) == 1;
+
+				var sb = new System.Text.StringBuilder("badges: the depth copy, at the screen center and toward the bottom, top, left and right, reads");
+				for (var i = 0; i < ProbePoints.Length; i++) sb.Append($" {Raw(i, false):F4}");
+				sb.Append("; rays find the scene at");
+				for (var i = 0; i < ProbePoints.Length; i++) sb.Append($" {truths[i]:F1}");
+				sb.Append($" m; fit (lower is better): as is {errors[0]:F2}, flipped {errors[1]:F2}, other way {errors[2]:F2}, both {errors[3]:F2}; so the copy is read ");
+				sb.Append(_flipped ? "flipped" : "right side up");
+				sb.Append(_otherWayRound ? " and the other way round" : " and the usual way");
+				sb.Append($" (near {near:F2}, far {far:F0}, reversed Z {SystemInfo.usesReversedZBuffer}, {cam.actualRenderingPath}, drawn to {(cam.targetTexture != null ? "a texture" : "the screen")}, {w}x{h})");
+				Log.LogInfo(sb.ToString());
+				if (_flipped) RecordCopy();
 				if (_otherWayRound) RecordBind(cam);
 			});
 		}
