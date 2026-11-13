@@ -18,6 +18,16 @@ namespace GrabMaterials
 			public int Remaining;  // what the nearby containers still hold after the grab; -1 when nothing was looked for
 		}
 
+		// One entry of a grab pack in the results: a piece with its materials under it, or a
+		// loose material that stands on its own line (#81).
+		public struct EntryStatus
+		{
+			public string Label;
+			public int Count;
+			public bool IsPiece;
+			public List<ItemStatus> Items;
+		}
+
 		public struct InventoryItem
 		{
 			public string Name;
@@ -195,6 +205,34 @@ namespace GrabMaterials
 			ShowingInventory = false;
 			var lines = new List<string>(items.Count);
 			foreach (var item in items) lines.Add(FormatItemStatus(item));
+			ShowLines(title, lines);
+		}
+
+		// Results grouped by pack entry: a piece line, green when every material under it is
+		// covered, then its materials indented; a loose material is its own line.  footers are
+		// grey lines at the end for the totals that do not belong to any one piece.
+		public static void Show(string title, List<EntryStatus> entries, List<string> footers)
+		{
+			_pausable = false;
+			_interactive = false;
+			ShowingInventory = false;
+			var lines = new List<string>();
+			foreach (var entry in entries)
+			{
+				if (!entry.IsPiece)
+				{
+					foreach (var item in entry.Items) lines.Add(FormatItemStatus(item));
+					continue;
+				}
+				var covered = true;
+				foreach (var item in entry.Items)
+					if (item.Had + item.Available < item.Needed) { covered = false; break; }
+				var label = entry.Count > 1 ? $"{entry.Count} {entry.Label}" : entry.Label;
+				lines.Add(covered ? $"<color=#88ff88>✓ {label}</color>" : $"<color=#ff8888>✗ {label}</color>");
+				foreach (var item in entry.Items) lines.Add("      " + FormatItemStatus(item));
+			}
+			if (footers != null)
+				foreach (var footer in footers) lines.Add($"<color=#aaaaaa>{footer}</color>");
 			ShowLines(title, lines);
 		}
 

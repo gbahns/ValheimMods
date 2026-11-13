@@ -64,6 +64,8 @@ namespace GrabMaterialsMod
 		public ConfigEntry<float> PackHudOffsetY;
 		public ConfigEntry<bool> PackHudShowBuildPieceKey;
 		public ConfigEntry<bool> PackHudHideUndiscovered;
+		public ConfigEntry<bool> PackHudShowContents;
+		public ConfigEntry<bool> PackResultsByPiece;
 		public ConfigEntry<GrabMaterials.ContainerBadges.Display> BadgeDisplay;
 		public ConfigEntry<GrabMaterials.ContainerBadges.Cycle> BadgeToggleCycle;
 		public ConfigEntry<GrabMaterials.ContainerBadges.IconSide> BadgeIconPosition;
@@ -207,6 +209,7 @@ namespace GrabMaterialsMod
 			PanelMarkUndiscovered = Config.Bind("Panel UI", "Mark Undiscovered Items", true, new ConfigDescription("Mark items in the /inventory panel that this character has never held with a '(new)' tag. Handy in multiplayer, where a shared chest is often full of a friend's crafting you have never handled yourself."));
 			PanelPauseWhileOpen = Config.Bind("Panel UI", "Pause While Inventory Panel Open", false, new ConfigDescription("Pause the game while the /inventory panel is up, the way the ESC menu does. Toggle it from the button in the panel's top-right corner. This works by itself when playing solo or hosting alone; on a dedicated server it takes the Pause My Server mod. The button shows whether the pause actually took effect."));
 			PanelPauseWhileOpen.SettingChanged += (s, e) => GrabMaterials.PanelPause.Refresh();
+			PackResultsByPiece = Config.Bind("Panel UI", "Pack Results By Piece", true, new ConfigDescription("After a grab pack runs, the results list each piece in the pack with its own materials under it, so you can see what the wood and the cores were for. Off lists one total per material. A material several pieces share goes to the earlier pieces first; what you already had and what is left nearby are totals on the last lines."));
 			PanelIconSize = Config.Bind("Panel UI", "Icon Size", 24f, new ConfigDescription("Width of the item-icon column in pixels. Icons are square and sized to fit. Beyond ~26 the row stays the same height so icons get visually capped by the row.", new AcceptableValueRange<float>(12f, 40f)));
 			PanelScrollRows = Config.Bind("Panel UI", "Scroll Rows", 4, new ConfigDescription("Rows a panel scrolls per mouse-wheel notch when it is taller than the screen.", new AcceptableValueRange<int>(1, 20)));
 
@@ -246,6 +249,7 @@ namespace GrabMaterialsMod
 			PackHudOffsetX = Config.Bind("Pack HUD", "Offset X (px)", 10f, new ConfigDescription("Horizontal distance from the anchored corner."));
 			PackHudOffsetY = Config.Bind("Pack HUD", "Offset Y (px)", 300f, new ConfigDescription("Vertical distance from the anchored corner. The default clears the health and stamina bars in the bottom-left."));
 			PackHudShowBuildPieceKey = Config.Bind("Pack HUD", "Show Build Piece Key", true, new ConfigDescription("Also list the key that grabs materials for the build piece under the cursor."));
+			PackHudShowContents = Config.Bind("Pack HUD", "Show Pack Contents", true, new ConfigDescription("Show the icon of each piece or item in a pack after its name, with a count on the icon when the pack asks for more than one."));
 			PackHudHideUndiscovered = Config.Bind("Pack HUD", "Hide Undiscovered Packs", true, new ConfigDescription("Hide packs that need a material you have never held. A pack reappears once you have picked up every material it needs, so early-game clutter like Karve or Longship packs stays out of the way until nails and the like are in hand."));
 
 			//GrabPack1 = new GrabPackConfig(Config, "Grab Pack 1", new KeyboardShortcut(KeyCode.K), "wood:10,finewood:20,greydwarfeye:10,surtlingcore:2");

@@ -16,7 +16,7 @@ namespace GrabMaterials
 {
 	internal static class ConsoleCommands
 	{
-		struct ItemToGrab
+		internal struct ItemToGrab
 		{
 			public string Name;
 			public int Count;
@@ -25,6 +25,19 @@ namespace GrabMaterials
 			// matches Core wood by its display name, but its token is $item_roundlog.
 			public ItemToGrab(string name, int count) { Name = CanonicalItemName(name.Replace("$item_", "")); Count = count; }
 			public string FullName { get { return $"$item_{Name}"; } }
+		}
+
+		// One comma-separated entry of a grab pack ("Workbench", "Chest:2", "Wood:50"): what it
+		// resolved to, how it should be shown, and the materials it asks for (already multiplied
+		// by Count).  The pack HUD draws the icons; the results panel groups by entry (#81).
+		internal class PackEntry
+		{
+			public string Name;      // as typed
+			public string Label;     // localized piece or item name
+			public Sprite Icon;      // the piece's build-menu icon or the item's icon; may be null
+			public int Count;
+			public bool IsPiece;
+			internal List<ItemToGrab> Items = new List<ItemToGrab>();
 		}
 
 		private static Dictionary<string, Piece> pieceLookup = new Dictionary<string, Piece>();
@@ -140,35 +153,76 @@ namespace GrabMaterials
 		public static void GrabMaterialsForPack(string packName, string itemsString, bool grabDelta = false)
 		{
 			Log.LogInfo($"GrabMaterialsForPack({packName}, {itemsString})");
+			var entries = ParsePack(itemsString, out var error);
+			if (entries == null)
+			{
+				Log.LogError($"Invalid format for {packName} item list: {error}");
+				return;
+			}
 			var itemsToGrab = new List<ItemToGrab>();
-			var entries = itemsString.Replace(" ", "").Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
 			foreach (var entry in entries)
 			{
-				var parts = entry.Split(new[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
-				if (parts.Length > 2)
-				{
-					Log.LogError($"Invalid format for {packName} item list: was {itemsString}, expected 'item[:quantity],item[:quantity],...'");
-					return;
-				}
-				var item = parts[0];
-				var amount = 1;
-				if (parts.Length == 2)
-				{
-					if (!int.TryParse(parts[1], out amount))
-					{
-						Log.LogError($"Invalid format for {packName} item list: was {itemsString}, expected 'item[:quantity],item[:quantity],...'");
-						return;
-					}
-				}
-				Log.LogInfo($"grabbing {amount} {item}");
-				//itemsToGrab.Add(new ItemToGrab(item, amount));
-				foreach (var itemToGrab in GetItemsToGrab(item, amount))
-				{
-					itemsToGrab.Add(itemToGrab);
-				}
-				//GrabItemsFromNearbyContainers(item, amount);
+				Log.LogInfo($"grabbing {entry.Count} {entry.Name} ({(entry.IsPiece ? "piece" : "material")}: {string.Join(", ", entry.Items.Select(i => $"{i.Count} {i.Name}"))})");
+				itemsToGrab.AddRange(entry.Items);
 			}
-			GrabItemsFromNearbyContainers(itemsToGrab, GrabMaterialsMod.GrabMaterialsMod.Range, packName, grabDelta);
+			GrabItemsFromNearbyContainers(itemsToGrab, GrabMaterialsMod.GrabMaterialsMod.Range, packName, grabDelta, breakdown: entries);
+		}
+
+		// A pack's item list as entries.  Null, with error set, when the list is malformed.
+		// Quiet: the pack HUD calls this for every pack it draws.
+		internal static List<PackEntry> ParsePack(string itemsString, out string error)
+		{
+			error = null;
+			var entries = new List<PackEntry>();
+			if (string.IsNullOrWhiteSpace(itemsString)) return entries;
+			foreach (var token in itemsString.Replace(" ", "").Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
+			{
+				var parts = token.Split(new[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
+				var amount = 1;
+				if (parts.Length > 2 || (parts.Length == 2 && !int.TryParse(parts[1], out amount)))
+				{
+					error = $"was {itemsString}, expected 'item[:quantity],item[:quantity],...'";
+					return null;
+				}
+				entries.Add(ResolveEntry(parts[0], amount));
+			}
+			return entries;
+		}
+
+		// A name and a count as a pack entry: a build piece's materials, or the item itself.
+		private static PackEntry ResolveEntry(string name, int count)
+		{
+			if (pieceLookup.Count == 0) BuildPieceLookUp();
+			if (itemLookup.Count == 0) BuildItemLookUp();
+			var entry = new PackEntry { Name = name, Count = count };
+			if (TryGetPiece(name, out var piece))
+			{
+				entry.IsPiece = true;
+				entry.Label = LocalizePieceName(piece) ?? name;
+				entry.Icon = piece.m_icon;
+				if (piece.m_resources != null)
+				{
+					foreach (var requirement in piece.m_resources)
+						entry.Items.Add(new ItemToGrab(requirement.m_resItem.m_itemData.Name(), requirement.m_amount * count));
+				}
+			}
+			else
+			{
+				var item = new ItemToGrab(name, count);
+				entry.Items.Add(item);
+				entry.Label = LocalizeItemName(item);
+				entry.Icon = ItemIcon(item.Name);
+			}
+			return entry;
+		}
+
+		// The icon for an item's token name ("wood"), or null when the name resolves to nothing.
+		private static Sprite ItemIcon(string tokenName)
+		{
+			if (string.IsNullOrEmpty(tokenName)) return null;
+			if (sharedNameLookup.Count == 0) BuildSharedNameLookup();
+			if (!sharedNameLookup.TryGetValue(tokenName, out var shared)) return null;
+			return iconByShared.TryGetValue(shared, out var icon) ? icon : null;
 		}
 
 		/// <summary>
@@ -440,7 +494,9 @@ namespace GrabMaterials
 		// partialOk: take what is there rather than refusing a short request; the inventory panel
 		// asks that way, since its amounts came from a listing that may be a moment stale.
 		// report: where the outcome goes instead of the results panel.
-		static void GrabItemsFromNearbyContainers(List<ItemToGrab> itemsToGrab, float radius, string requestLabel = null, bool grabDelta = false, bool partialOk = false, Action<string, List<MaterialsPanel.ItemStatus>> report = null)
+		// breakdown: the pack entries the request came from, so the results can be shown per
+		// piece (#81); null for a plain item or single-piece request.
+		static void GrabItemsFromNearbyContainers(List<ItemToGrab> itemsToGrab, float radius, string requestLabel = null, bool grabDelta = false, bool partialOk = false, Action<string, List<MaterialsPanel.ItemStatus>> report = null, List<PackEntry> breakdown = null)
 		{
 			// Only containers the player could open, so a locked chest's stock is neither counted
 			// in the pre-flight nor taken from.  Of those, only the ones holding something asked
@@ -454,11 +510,11 @@ namespace GrabMaterials
 				if (inventory.GetAllItems().Any(item => itemsToGrab.Any(want => item.isMatch(want.Name))))
 					wanted.Add(container);
 			}
-			ContainerAccess.Acquire(wanted, owned => GrabItemsFromContainers(itemsToGrab, owned, requestLabel, grabDelta, partialOk, report));
+			ContainerAccess.Acquire(wanted, owned => GrabItemsFromContainers(itemsToGrab, owned, requestLabel, grabDelta, partialOk, report, breakdown));
 		}
 
 		// The grab proper, over containers this machine owns.
-		static void GrabItemsFromContainers(List<ItemToGrab> itemsToGrab, List<Container> nearbyContainers, string requestLabel, bool grabDelta, bool partialOk = false, Action<string, List<MaterialsPanel.ItemStatus>> report = null)
+		static void GrabItemsFromContainers(List<ItemToGrab> itemsToGrab, List<Container> nearbyContainers, string requestLabel, bool grabDelta, bool partialOk = false, Action<string, List<MaterialsPanel.ItemStatus>> report = null, List<PackEntry> breakdown = null)
 		{
 			var player = Player.m_localPlayer;
 
@@ -568,7 +624,7 @@ namespace GrabMaterials
 				var failTitle = string.IsNullOrEmpty(requestLabel)
 					? "Missing materials — run again to grab what's available"
 					: $"Missing materials for {requestLabel} — run again to grab what's available";
-				MaterialsPanel.Show(failTitle, statuses);
+				ShowResults(failTitle, statuses, aggregated, breakdown);
 				// Remember the request so a repeat within the window triggers the override.
 				_lastFailedRequestKey = requestKey;
 				_lastFailedRequestTime = Time.time;
@@ -624,7 +680,50 @@ namespace GrabMaterials
 				successTitle = string.IsNullOrEmpty(requestLabel) ? "Grabbed materials" : $"Grabbed materials for {requestLabel}";
 			}
 			if (report != null) report(successTitle, grabbed);
-			else MaterialsPanel.Show(successTitle, grabbed);
+			else ShowResults(successTitle, grabbed, aggregated, breakdown);
+		}
+
+		private static bool ResultsByPiece => GrabMaterialsMod.GrabMaterialsMod.Instance?.PackResultsByPiece?.Value ?? true;
+
+		// The results panel.  A pack request with "Pack Results By Piece" on lists each entry of
+		// the pack with its own materials under it, so the player sees what the 30 wood were
+		// for (#81).  The grab itself worked on totals, so what covered each total (what the
+		// player had, then what was grabbed or is available) is handed out to the entries in
+		// pack order; what was already had and what is left nearby stay totals, on grey lines
+		// at the bottom.  Anything else shows the flat per-material list.
+		private static void ShowResults(string title, List<MaterialsPanel.ItemStatus> statuses, List<ItemToGrab> aggregated, List<PackEntry> breakdown)
+		{
+			if (breakdown == null || breakdown.Count == 0 || !ResultsByPiece)
+			{
+				MaterialsPanel.Show(title, statuses);
+				return;
+			}
+
+			var pool = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+			for (int i = 0; i < aggregated.Count && i < statuses.Count; i++)
+				pool[aggregated[i].Name] = statuses[i].Had + statuses[i].Available;
+
+			var entries = new List<MaterialsPanel.EntryStatus>(breakdown.Count);
+			foreach (var entry in breakdown)
+			{
+				var items = new List<MaterialsPanel.ItemStatus>(entry.Items.Count);
+				foreach (var item in entry.Items)
+				{
+					pool.TryGetValue(item.Name, out var left);
+					var covered = Math.Min(item.Count, left);
+					pool[item.Name] = left - covered;
+					items.Add(new MaterialsPanel.ItemStatus { Name = LocalizeItemName(item), Needed = item.Count, Available = covered, Had = 0, Remaining = -1 });
+				}
+				entries.Add(new MaterialsPanel.EntryStatus { Label = entry.Label, Count = entry.Count, IsPiece = entry.IsPiece, Items = items });
+			}
+
+			var footers = new List<string>();
+			var had = statuses.Where(st => st.Had > 0).Select(st => $"{st.Had} {st.Name}").ToList();
+			if (had.Count > 0) footers.Add("Already had: " + string.Join(", ", had));
+			var remaining = statuses.Where(st => st.Remaining >= 0).Select(st => $"{st.Remaining} {st.Name}").ToList();
+			if (remaining.Count > 0) footers.Add("Left nearby: " + string.Join(", ", remaining));
+
+			MaterialsPanel.Show(title, entries, footers);
 		}
 
 		// A grab from the inventory panel's right-click menu (#46).  The amount was picked off a
@@ -905,6 +1004,8 @@ namespace GrabMaterials
 
 		// "wood" -> "$item_wood", case-insensitive, built from ObjectDB so user-typed casing does not matter.
 		private static Dictionary<string, string> sharedNameLookup = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		// "$item_wood" -> its icon, for the pack HUD; first prefab with an icon wins.
+		private static Dictionary<string, Sprite> iconByShared = new Dictionary<string, Sprite>();
 
 		private static void BuildSharedNameLookup()
 		{
@@ -914,6 +1015,8 @@ namespace GrabMaterials
 				var drop = itemPrefab != null ? itemPrefab.GetComponent<ItemDrop>() : null;
 				var shared = drop?.m_itemData?.m_shared?.m_name;
 				if (string.IsNullOrEmpty(shared) || !shared.StartsWith("$item_")) continue;
+				var icons = drop.m_itemData.m_shared.m_icons;
+				if (icons != null && icons.Length > 0 && icons[0] != null && !iconByShared.ContainsKey(shared)) iconByShared[shared] = icons[0];
 				// Keyed on the first token, the same way ItemData.Name() renders it, so the
 				// multi-token names Valheim 1.0 added still resolve.  First prefab wins if
 				// two of them lead with the same token.
@@ -995,30 +1098,11 @@ namespace GrabMaterials
 
 		private static List<ItemToGrab> GetItemsToGrab (string name, int count = 1)
 		{
-			var itemsToGrab = new List<ItemToGrab>();
-			if (pieceLookup.Count == 0)
-				BuildPieceLookUp();
-			if (itemLookup.Count == 0)
-				BuildItemLookUp();
-			if (TryGetPiece(name, out var piece))
-			{
-				Log.LogInfo($"Found piece {name} in lookup table, grabbing materials for it");
-				var resources = piece.m_resources;
-				if (resources != null)
-				{
-					foreach (var requirement in resources)
-					{
-						Log.LogInfo($"{requirement.m_amount} {requirement.m_resItem.m_itemData.Name()}");
-						itemsToGrab.Add(new ItemToGrab(requirement.m_resItem.m_itemData.Name(), requirement.m_amount * count));
-					}
-				}
-			}
-			else
-			{
-				Log.LogInfo($"No piece found for {name}, looking for material by this name instead");
-				itemsToGrab.Add(new ItemToGrab(name, count));
-			}
-			return itemsToGrab;
+			var entry = ResolveEntry(name, count);
+			Log.LogInfo(entry.IsPiece
+				? $"Found piece {name} in lookup table, grabbing materials for it: {string.Join(", ", entry.Items.Select(i => $"{i.Count} {i.Name}"))}"
+				: $"No piece found for {name}, looking for material by this name instead");
+			return entry.Items;
 		}
 
 		public static void GrabItemsFromNearbyContainers(string name, int count = 1)
