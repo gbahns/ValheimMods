@@ -182,18 +182,35 @@ namespace TheGreatestMap
             var rect = (RectTransform)_button.transform;
             float dx = TgmConfig.MarkerButtonOffsetX != null ? TgmConfig.MarkerButtonOffsetX.Value : 0f;
             float dy = TgmConfig.MarkerButtonOffsetY != null ? TgmConfig.MarkerButtonOffsetY.Value : 0f;
-            var want = MapFrame.Slot(0) + new Vector2(dx, dy);
-            // A large enough offset would push the button off the top of a map opened out to the
-            // whole screen. It is pivoted in its middle, so its top is half a button above its own
-            // y: hold that on screen whatever the offset asks for.
+            // Which corner the offsets are measured from. Set every frame along with the position,
+            // so switching the setting with the map open moves the button at once; and it has to
+            // be the anchor rather than a larger offset, because the two corners travel in
+            // opposite directions as the map is resized -- see MapFrame.BottomSlot.
+            bool bottom = TgmConfig.MarkerButtonAtBottom != null && TgmConfig.MarkerButtonAtBottom.Value;
+            var anchor = new Vector2(1f, bottom ? 0f : 1f);
+            if (rect.anchorMin != anchor) { rect.anchorMin = anchor; rect.anchorMax = anchor; }
+            var want = (bottom ? MapFrame.BottomSlot(0) : MapFrame.Slot(0)) + new Vector2(dx, dy);
+            // A large enough offset would push the button off the edge of a map opened out to the
+            // whole screen. It is pivoted in its middle, so it reaches half a button past its own
+            // y: hold that on screen whatever the offset asks for, at whichever edge it is
+            // measured from.
             var parent = rect.parent as RectTransform;
             if (parent != null)
             {
                 var corners = new Vector3[4];
                 parent.GetWorldCorners(corners);
                 float scale = Mathf.Abs(parent.lossyScale.y) > 0.0001f ? parent.lossyScale.y : 1f;
-                float highest = (Screen.height - 2f - corners[1].y) / scale - MapFrame.ButtonSize * 0.5f;
-                if (want.y > highest) want.y = highest;
+                float half = MapFrame.ButtonSize * 0.5f;
+                if (bottom)
+                {
+                    float lowest = (2f - corners[0].y) / scale + half;
+                    if (want.y < lowest) want.y = lowest;
+                }
+                else
+                {
+                    float highest = (Screen.height - 2f - corners[1].y) / scale - half;
+                    if (want.y > highest) want.y = highest;
+                }
             }
             if (rect.anchoredPosition != want) rect.anchoredPosition = want;
         }
@@ -248,7 +265,9 @@ namespace TheGreatestMap
                 else if (eventData.button == PointerEventData.InputButton.Left)
                 {
                     if (KindMenu.IsOpen) KindMenu.Close();
-                    else KindMenu.Open(ZInput.pointerPosition);
+                    // Where it was last dragged to, or under the pointer if it has never
+                    // been moved -- so unpinning no longer drops it back onto the button.
+                    else KindMenu.Open(KindMenu.SpotOr(ZInput.pointerPosition));
                 }
             }
         }

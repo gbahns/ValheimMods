@@ -69,6 +69,28 @@ namespace TheGreatestMap
             return new Vector2(-Margin - half + dx - index * (ButtonSize + ButtonGap), -Margin - half + dy);
         }
 
+        /// <summary>
+        /// The same place in the row, measured up from the map's bottom-right corner instead of
+        /// down from its top-right.
+        ///
+        /// <para>The map grows about its middle -- its rect is an inset on a stretched parent, so
+        /// adding height lifts the top edge by half of it and drops the bottom edge by the other
+        /// half. A button placed a fixed distance below the top therefore walks away from
+        /// anything measured from the bottom, vanilla's icon column among them, by the whole of
+        /// the growth. Lining a button up with those icons on a normal map and then opening the
+        /// map out to the screen moved it hundreds of pixels off them, which is exactly what was
+        /// reported.</para>
+        ///
+        /// <para>"Pause Button Offset Y" is left out on purpose: it moves the row in the top
+        /// corner, and a button down here is not in that row.</para>
+        /// </summary>
+        internal static Vector2 BottomSlot(int index)
+        {
+            float dx = TgmConfig.PauseButtonOffsetX != null ? TgmConfig.PauseButtonOffsetX.Value : 0f;
+            float half = ButtonSize * 0.5f;
+            return new Vector2(-Margin - half + dx - index * (ButtonSize + ButtonGap), Margin + half);
+        }
+
         internal static void Reset()
         {
             _grip = null;

@@ -4,6 +4,10 @@
 
 - Label Spacing says what it really does: it decides the markers you find from now on, and
   lowering it does not put labels back on the ones you already have.
+- The marker list opens where you dragged it, pinned or not, and pinning no longer overwrites a
+  spot you set yourself.
+- "Marker Button At Map Bottom" puts the map pin beside the game's icon column and measures its
+  offsets from that corner, so a button moved down there holds its place when the map is resized.
 
 ## 4.9.2 — 2026-11-11
 

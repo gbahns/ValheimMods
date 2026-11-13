@@ -265,6 +265,28 @@ namespace TheGreatestMap
         }
 
         /// <summary>
+        /// Where the list should open: where you last left it, or <paramref name="fallback"/> if
+        /// you have never moved it.
+        ///
+        /// <para>Dragging the list is the one thing that records the spot. Pinning used to record
+        /// it as well, which meant pinning wrote wherever the list happened to be sitting over
+        /// whatever had just been typed into the setting -- so a spot set by hand was swallowed
+        /// the moment it was pinned, and only a restart, where the list is already pinned when
+        /// the map first opens, ever honored it.</para>
+        ///
+        /// <para>And it is read whether the list is pinned or not. Unpinning used to drop the
+        /// list back to wherever the button was, because the spot was only ever read on the way
+        /// to putting a pinned list back; a list you have carried to a corner of the map belongs
+        /// in that corner either way, pinning being about whether it stays open.</para>
+        /// </summary>
+        internal static Vector2 SpotOr(Vector2 fallback)
+        {
+            var spot = PinnedSpot;
+            if (spot == Vector2.zero || Screen.width <= 0 || Screen.height <= 0) return fallback;
+            return new Vector2(spot.x * Screen.width, spot.y * Screen.height);
+        }
+
+        /// <summary>
         /// Put a pinned list back when the map opens, without a click. Called while the large map
         /// is up; does nothing once it is already there.
         /// </summary>
@@ -274,14 +296,10 @@ namespace TheGreatestMap
             if (ClientPins.Count == 0) return;
             var parent = map.m_largeRoot.transform as RectTransform;
             if (parent == null) return;
-            var spot = PinnedSpot;
-            var rect = parent.rect;
-            // A spot of nothing means it has never been pinned anywhere: open where the button is.
-            var screen = spot == Vector2.zero
-                ? new Vector2(Screen.width * 0.72f, Screen.height * 0.75f)
-                : new Vector2(spot.x * Screen.width, spot.y * Screen.height);
+            // Never moved anywhere: open about where the button is, there being no pointer to
+            // open under when the map put the list back by itself.
             _closedFrame = -10;
-            Open(screen);
+            Open(SpotOr(new Vector2(Screen.width * 0.72f, Screen.height * 0.75f)));
         }
 
         private static Image _pinImage;
@@ -478,9 +496,10 @@ namespace TheGreatestMap
             button.onClick.AddListener(() =>
             {
                 if (TgmConfig.PinMarkerMenu == null) return;
-                bool now = !TgmConfig.PinMarkerMenu.Value;
-                TgmConfig.PinMarkerMenu.Value = now;
-                if (now) RememberSpot();
+                TgmConfig.PinMarkerMenu.Value = !TgmConfig.PinMarkerMenu.Value;
+                // The spot is not written here. Dragging the list records where it sits, and
+                // pinning is about whether it stays open -- recording it here overwrote a spot
+                // set by hand with wherever the list was. See SpotOr.
                 PaintPin();
             });
             MenuKit.Tip(go, "Pin the list",

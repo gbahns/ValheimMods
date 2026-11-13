@@ -45,6 +45,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> MarkerButton;
         internal static ConfigEntry<float> MarkerButtonOffsetX;
         internal static ConfigEntry<float> MarkerButtonOffsetY;
+        internal static ConfigEntry<bool> MarkerButtonAtBottom;
         internal static ConfigEntry<float> PauseButtonOffsetX;
         internal static ConfigEntry<float> PauseButtonOffsetY;
         internal static ConfigEntry<bool> ClipMinimapMarkers;
@@ -959,15 +960,24 @@ namespace TheGreatestMap
                 "with a slash through it when the pause was asked for but refused, which happens on a server with other " +
                 "players online or one without the Pause My Server mod.");
             MarkerButton = mod.BindLocal("Display", "Marker Button On Map", true,
-                "Add a map-pin button above vanilla's icon buttons on the right edge of the large map. Right-clicking it hides " +
-                "or shows every marker from this mod at once, as right-clicking a vanilla icon does for that icon; " +
-                "left-clicking it opens the list of kinds, for hiding them one at a time. The pin is drawn gold while " +
-                "markers are shown and gray while they are hidden.");
+                "Add a map-pin button to the row in the top-right corner of the large map, beside the maximize square. " +
+                "Right-clicking it hides or shows every marker from this mod at once, as right-clicking a vanilla icon " +
+                "does for that icon; left-clicking it opens the list of kinds, for hiding them one at a time. The pin is " +
+                "drawn gold while markers are shown and gray while they are hidden.");
             MarkerButtonOffsetX = mod.BindLocal("Display", "Marker Button Offset X", 0f,
                 "Move the map-pin button sideways from its place in the row, in pixels: positive right, negative left. " +
                 "0 leaves it beside the maximize square. Changes show at once with the map open.");
             MarkerButtonOffsetY = mod.BindLocal("Display", "Marker Button Offset Y", 0f,
-                "Move the map-pin button up or down from its place in the row, in pixels: positive up, negative down.");
+                "Move the map-pin button up or down from its place in the row, in pixels: positive up, negative down. " +
+                "Measured from whichever corner the setting below names, which is the only way a large offset can hold " +
+                "its place: the map grows about its middle, so the two corners travel in opposite directions as it is " +
+                "resized.");
+            MarkerButtonAtBottom = mod.BindLocal("Display", "Marker Button At Map Bottom", false,
+                "Put the map-pin button in the bottom-right corner of the large map rather than the top-right, next to " +
+                "the game's own column of icon buttons, and measure the two offsets above from there. Worth having if " +
+                "you keep the game's buttons (see Hide Vanilla Controls) and would rather all the pin controls sat " +
+                "together. Moving the button down with a large negative Offset Y instead does not survive resizing the " +
+                "map, because that offset is measured from the top edge and the icons are measured from the bottom.");
             PauseButtonOffsetX = mod.BindLocal("Display", "Pause Button Offset X", 0f,
                 "Move the whole row of map buttons sideways from the map's top-right corner, in pixels: positive " +
                 "right, negative left. The pause mark, the maximize square and the map pin move together.");
@@ -1340,8 +1350,10 @@ namespace TheGreatestMap
                 "by itself each time you open the map, and can be dragged about the map by its title. Escape still " +
                 "closes it. The stick pin in the list's top corner sets this, so it can be set without leaving the map.");
             PinnedMenuSpot = mod.BindLocal("Display", "Pinned Marker List Spot", Vector2.zero,
-                "Where a pinned marker list sits, as a fraction of the screen. Set when you pin it; zero means it has " +
-                "not been pinned anywhere yet.");
+                "Where the marker list sits, as a fraction of the screen. Dragging the list by its title is what sets " +
+                "this; zero means it has never been moved, and then the list opens where you clicked the button. It is " +
+                "honored whether the list is pinned or not, so a list you have carried to a corner of the map stays in " +
+                "that corner. Pinning does not write it, so a value typed in here is not overwritten.");
 
             AdoptNameHints = mod.BindLocal("Catalog", "Adopt Name Hints", "",
                 "What your own shorthand on a hand-placed marker means, for tgm_adopt, as " +

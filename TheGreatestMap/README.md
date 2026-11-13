@@ -99,8 +99,10 @@ thinned. The checkbox is on the map's settings menu, and in Display as "Thin Ove
 with "Marker Spacing On Screen" for how close two of a kind may be drawn and "Most Markers Drawn"
 as a hard limit. `tgm_status` says what it is doing right now.
 
-**The marker button.** Above vanilla's icon buttons on the right edge of the large map sits a map
-pin in the same pale gold as recorded markers. **Right-click** it to hide or show every marker from
+**The marker button.** In the row along the top-right corner of the large map, beside the
+maximize square, sits a map pin in the same pale gold as recorded markers. "Marker Button At Map
+Bottom" moves it down beside the game's own column of icon buttons instead, and the two Marker
+Button Offset settings are measured from whichever corner it is in. **Right-click** it to hide or show every marker from
 this mod at once, the pin turning gray while they are hidden. That is the same gesture vanilla uses
 on its own icon buttons, so right-click means the same thing everywhere in that column. Unlike the
 per-kind switches, it also covers markers that have no kind, such as ones you placed yourself.
@@ -211,6 +213,9 @@ crossed-off groups, icons hidden one picture at a time and markers hidden one at
 as `tgm_show`. It names what it will put back ("Show everything hidden -- 2 kinds, 5 markers") and
 is there only while there is something to put back, so it cannot be read as another copy of the
 hide-all row above it. Config "Marker Button On Map" turns the button off.
+
+Drag the list by its title to move it, and it opens there from then on, pinned or not; the stick
+pin only decides whether it stays open when you click the map.
 
 **Finding one thing.** At the top of that list is a find box. Type into it and the map keeps only
 the markers mentioning what you typed, as the letters go in: "frost" leaves the frost caves,
