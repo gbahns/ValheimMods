@@ -56,9 +56,15 @@ namespace GrabMaterials
 	// The probe also tells whether the copy is depth at all.  On this game's deferred camera
 	// neither the Depth builtin nor the _CameraDepthTexture property handed Blit depth (the
 	// readings ran above 1, which no depth holds, and fit the rays at 2 to 6 where real depth
-	// fits at 0.3 to 0.4); the resolved depth buffer did.  So that is the first source, a copy
-	// whose readings are impossible or fit badly moves on to the next, and when none passes the
-	// best of them is used, with a warning.
+	// fits at 0.3 to 0.4); the resolved depth buffer did.  So that is the first source, and a
+	// copy whose readings are impossible (outside 0 to 1) moves on to the next.
+	//
+	// A probe that fails any other way changes nothing.  Right after login the copy and the rays
+	// disagreed by a factor of ten while the scene was still settling, and acting on that
+	// verdict rejected every source and locked in a flipped copy, which is exactly the reversed
+	// behavior; a toggle later re-probed and passed at once.  So a bad fit with plausible
+	// readings is tried again half a second later, for up to a minute, and only a passing probe
+	// settles anything.  When the minute runs out the copy is kept as it is, with a warning.
 	//
 	// Two things make the particle shader draw the badges differently from the UI shader, and
 	// both are undone so flat badges look like the overlay ones.  Its tint is a Color property,
@@ -173,11 +179,12 @@ namespace GrabMaterials
 			BuiltinRenderTextureType.Depth,
 		};
 		private static readonly string[] DepthSourceNames = { "the resolved depth buffer", "the _CameraDepthTexture property", "the Depth builtin" };
-		private static int _bestSource = -1;      // of the sources probed and refused, the one that fit best
-		private static float _bestFit = float.PositiveInfinity;
-		private static bool _bestFlipped, _bestOtherWay;
 		private static int _depthSource;          // index into DepthSources the copy is taken from
 		private const float GoodFit = 1.5f;       // summed |ln(read / ray)| over the five points; real depth measured 0.3 to 0.4, color 2 to 6
+		private const int ProbeAfter = 3;         // frames after setup before the first probe
+		private const int ProbeRetryAfter = 30;   // frames between probes while none has passed
+		private const int ProbeTries = 120;       // about a minute of retries before giving up
+		private static int _probeTries;
 		private static readonly int ZBufferParamsId = Shader.PropertyToID("_ZBufferParams");
 		private static bool _probed;          // the copy's convention has been checked against a ray
 		private static int _probeFrames;
@@ -226,7 +233,7 @@ namespace GrabMaterials
 			if (cam == null) return;
 			if (_badgeCamera != null) SyncBadgeCamera(cam);
 			if (_badgeCamera != null) RefreshFontCopy();
-			if (_copyDepth != null && !_probed && ++_probeFrames >= 3) ProbeDepthCopy(cam);
+			if (_copyDepth != null && !_probed && ++_probeFrames >= ProbeAfter) ProbeDepthCopy(cam);
 
 			if (Time.time - _lastScan >= ScanInterval)
 			{
@@ -268,8 +275,7 @@ namespace GrabMaterials
 			_otherWayRound = false;
 			_flipped = false;
 			_depthSource = 0;
-			_bestSource = -1;
-			_bestFit = float.PositiveInfinity;
+			_probeTries = 0;
 			_root = null;
 			_rootRect = null;
 			_canvas = null;
@@ -361,8 +367,8 @@ namespace GrabMaterials
 		};
 
 		// Read the copy back, turn five of its points into meters every way they could be
-		// read, and ask rays through those points which way the scene agrees with.  Runs once
-		// per setup, off the main thread's critical path.
+		// read, and ask rays through those points which way the scene agrees with.  Runs off
+		// the main thread's critical path, again and again until a reading passes.
 		private static void ProbeDepthCopy(Camera cam)
 		{
 			_probed = true;
@@ -411,14 +417,14 @@ namespace GrabMaterials
 				var errors = new[] { Error(usual, false), Error(usual, true), Error(other, false), Error(other, true) };
 				var best = 0;
 				for (var i = 1; i < errors.Length; i++) if (errors[i] < errors[best]) best = i;
-				var isDepth = errors[best] < GoodFit;
-				for (var i = 0; i < ProbePoints.Length && isDepth; i++)
+				var plausible = true;   // every reading is something a depth buffer could hold
+				for (var i = 0; i < ProbePoints.Length && plausible; i++)
 				{
 					var raw = Raw(i, false);
-					if (raw < 0f || raw > 1.0001f) isDepth = false;
+					if (raw < 0f || raw > 1.0001f) plausible = false;
 				}
-				_otherWayRound = best >= 2;
-				_flipped = (best & 1) == 1;
+				var isDepth = plausible && errors[best] < GoodFit;
+				_probeTries++;
 
 				var sb = new System.Text.StringBuilder($"badges: the depth copy from {DepthSourceNames[_depthSource]}, at the screen center and toward the bottom, top, left and right, reads");
 				for (var i = 0; i < ProbePoints.Length; i++) sb.Append($" {Raw(i, false):F4}");
@@ -426,40 +432,41 @@ namespace GrabMaterials
 				for (var i = 0; i < ProbePoints.Length; i++) sb.Append($" {truths[i]:F1}");
 				sb.Append($" m; fit (lower is better): as is {errors[0]:F2}, flipped {errors[1]:F2}, other way {errors[2]:F2}, both {errors[3]:F2}");
 				var tail = $" (near {near:F2}, far {far:F0}, reversed Z {SystemInfo.usesReversedZBuffer}, {cam.actualRenderingPath}, drawn to {(cam.targetTexture != null ? "a texture" : "the screen")}, {w}x{h})";
+				if (!plausible && _depthSource + 1 < DepthSources.Length)
+				{
+					// Not depth at all; the next source gets the same chance.
+					_depthSource++;
+					_probed = false;
+					_probeFrames = 0;
+					sb.Append($"; that is not depth, so the copy is taken from {DepthSourceNames[_depthSource]} next").Append(tail);
+					Log.LogInfo(sb.ToString());
+					RecordCopy();
+					RecordBind(cam);
+					return;
+				}
+				if (!isDepth && _probeTries < ProbeTries)
+				{
+					// The scene and the copy disagree, as they do while a login settles; look again soon.
+					_probed = false;
+					_probeFrames = ProbeAfter - ProbeRetryAfter;
+					if (_probeTries == 1) Log.LogInfo(sb.Append("; the scene and the copy do not agree yet, so the probe runs again until they do").Append(tail).ToString());
+					return;
+				}
 				if (!isDepth)
 				{
-					if (errors[best] < _bestFit)
-					{
-						_bestFit = errors[best];
-						_bestSource = _depthSource;
-						_bestFlipped = _flipped;
-						_bestOtherWay = _otherWayRound;
-					}
-					if (_depthSource + 1 < DepthSources.Length)
-					{
-						_depthSource++;
-						_flipped = false;
-						_otherWayRound = false;
-						_probed = false;
-						_probeFrames = 0;
-						sb.Append($"; that is not depth, so the copy is taken from {DepthSourceNames[_depthSource]} next").Append(tail);
-						Log.LogInfo(sb.ToString());
-						RecordCopy();
-						RecordBind(cam);
-						return;
-					}
-					// Nothing passed; take the least bad and say so.
-					_depthSource = _bestSource;
-					_flipped = _bestFlipped;
-					_otherWayRound = _bestOtherWay;
-					sb.Append($"; no source gave scene depth, so world badges may not hide behind things; the copy is taken from {DepthSourceNames[_depthSource]} (fit {_bestFit:F2}), read ");
+					// A minute of disagreement; keep the copy as it is and say so.
+					sb.Append("; no probe passed, so world badges may not hide behind things; the copy is read as it is").Append(tail);
+					Log.LogWarning(sb.ToString());
+					return;
 				}
-				else sb.Append("; so the copy is read ");
+				_otherWayRound = best >= 2;
+				_flipped = (best & 1) == 1;
+				sb.Append("; so the copy is read ");
 				sb.Append(_flipped ? "flipped" : "right side up");
 				sb.Append(_otherWayRound ? " and the other way round" : " and the usual way");
+				if (_probeTries > 1) sb.Append($" (probe {_probeTries})");
 				sb.Append(tail);
-				if (isDepth) Log.LogInfo(sb.ToString());
-				else Log.LogWarning(sb.ToString());
+				Log.LogInfo(sb.ToString());
 				RecordCopy();
 				RecordBind(cam);
 			});
