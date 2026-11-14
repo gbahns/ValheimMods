@@ -60,11 +60,11 @@ namespace GrabMaterials
 	// copy whose readings are impossible (outside 0 to 1) moves on to the next.
 	//
 	// A probe that fails any other way changes nothing.  Right after login the copy and the rays
-	// disagreed by a factor of ten while the scene was still settling, and acting on that
-	// verdict rejected every source and locked in a flipped copy, which is exactly the reversed
-	// behavior; a toggle later re-probed and passed at once.  So a bad fit with plausible
-	// readings is tried again half a second later, for up to a minute, and only a passing probe
-	// settles anything.  When the minute runs out the copy is kept as it is, with a warning.
+	// once disagreed by a factor of ten (the copy still held the main menu's scene; see
+	// EnsureCreated), and acting on that verdict rejected every source and locked in a flipped
+	// copy, which is exactly the reversed behavior.  So a bad fit with plausible readings is
+	// tried again half a second later, for up to a minute, and only a passing probe settles
+	// anything.  When the minute runs out the copy is kept as it is, with a warning.
 	//
 	// Two things make the particle shader draw the badges differently from the UI shader, and
 	// both are undone so flat badges look like the overlay ones.  Its tint is a Color property,
@@ -221,13 +221,19 @@ namespace GrabMaterials
 		{
 			if (_root != null && (_builtInFront != InFront || _builtLit != Lit
 				|| (!_builtInFront && !_builtLit && _builtOnlyVisible != OnlyVisible))) Rebuild();
+			// Nothing is built until it is wanted: the main menu has a camera and Jotunn's canvas
+			// too, and badges set up there took the menu's depth picture into the game.
+			var show = Wanted();
+			if (!show)
+			{
+				if (_root != null && _root.activeSelf) _root.SetActive(false);
+				if (_badgeCamera != null && _badgeCamera.enabled) _badgeCamera.enabled = false;
+				return;
+			}
 			EnsureCreated();
 			if (_root == null) return;
-
-			var show = Wanted();
-			if (_root.activeSelf != show) _root.SetActive(show);
-			if (_badgeCamera != null && _badgeCamera.enabled != show) _badgeCamera.enabled = show;
-			if (!show) return;
+			if (!_root.activeSelf) _root.SetActive(true);
+			if (_badgeCamera != null && !_badgeCamera.enabled) _badgeCamera.enabled = true;
 
 			var cam = Utils.GetMainCamera();
 			if (cam == null) return;
@@ -934,6 +940,12 @@ namespace GrabMaterials
 		private static void EnsureCreated()
 		{
 			if (_root != null) return;
+			// A scene change destroys the root and the badge camera but not the statics behind
+			// them: the depth copy, the command buffers, the material, the probe's verdict.  A
+			// setup built over those found a copy of the right size and recorded nothing into
+			// its new command buffers, so the copy kept the old scene's last frame and every
+			// badge passed the depth test, or failed it, on every login (2026-11-14).  Start clean.
+			if (_flatMaterial != null || _copyDepth != null || _depthCopy != null) Rebuild();
 			// The font comes from Jotunn either way, and the overlay lives on its back canvas.
 			if (GUIManager.Instance == null || GUIManager.CustomGUIBack == null) return;
 

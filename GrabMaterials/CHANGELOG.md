@@ -2,7 +2,7 @@
 
 ## 2.10.2 — unreleased
 
-- World badges with "Draw Badges In Front" and "Lit World Badges" both off were reversed right after login, shown where something stood in front and hidden where nothing did, until a toggle fixed them. The depth check that decides this now waits for the scene to settle instead of acting on its first look.
+- World badges with "Draw Badges In Front" and "Lit World Badges" both off came up wrong right after login, reversed or shown through everything, until a toggle fixed them. They were first set up at the main menu and the game inherited that setup's picture of the menu; they are now set up once you are in the world, and from nothing after every scene change.
 
 ## 2.10.1 — 2026-11-14
 
