@@ -54,9 +54,11 @@ namespace GrabMaterials
 	// the badge camera matching _ZBufferParams.  The log carries the numbers either way.
 	//
 	// The probe also tells whether the copy is depth at all.  On this game's deferred camera
-	// the Depth builtin handed Blit the scene's color (readings above 1, which no depth holds),
-	// so the copy is taken from the _CameraDepthTexture property first, and a copy whose
-	// readings are impossible or fit no way at all moves on to the next source.
+	// neither the Depth builtin nor the _CameraDepthTexture property handed Blit depth (the
+	// readings ran above 1, which no depth holds, and fit the rays at 2 to 6 where real depth
+	// fits at 0.3 to 0.4); the resolved depth buffer did.  So that is the first source, a copy
+	// whose readings are impossible or fit badly moves on to the next, and when none passes the
+	// best of them is used, with a warning.
 	//
 	// "Only Visible Containers" is the one setting that means something in every mode: in
 	// front it is the linecast; flat, it decides whether the depth test is done at all.  Lit
@@ -142,13 +144,16 @@ namespace GrabMaterials
 		private static readonly int DepthTextureId = Shader.PropertyToID("_CameraDepthTexture");
 		private static readonly RenderTargetIdentifier[] DepthSources =
 		{
-			new RenderTargetIdentifier(DepthTextureId),
 			BuiltinRenderTextureType.ResolvedDepth,
+			new RenderTargetIdentifier(DepthTextureId),
 			BuiltinRenderTextureType.Depth,
 		};
-		private static readonly string[] DepthSourceNames = { "the _CameraDepthTexture property", "the resolved depth buffer", "the Depth builtin" };
+		private static readonly string[] DepthSourceNames = { "the resolved depth buffer", "the _CameraDepthTexture property", "the Depth builtin" };
+		private static int _bestSource = -1;      // of the sources probed and refused, the one that fit best
+		private static float _bestFit = float.PositiveInfinity;
+		private static bool _bestFlipped, _bestOtherWay;
 		private static int _depthSource;          // index into DepthSources the copy is taken from
-		private const float GoodFit = 3.5f;       // summed |ln(read / ray)| over the five points a real depth copy stays under
+		private const float GoodFit = 1.5f;       // summed |ln(read / ray)| over the five points; real depth measured 0.3 to 0.4, color 2 to 6
 		private static readonly int ZBufferParamsId = Shader.PropertyToID("_ZBufferParams");
 		private static bool _probed;          // the copy's convention has been checked against a ray
 		private static int _probeFrames;
@@ -238,6 +243,8 @@ namespace GrabMaterials
 			_otherWayRound = false;
 			_flipped = false;
 			_depthSource = 0;
+			_bestSource = -1;
+			_bestFit = float.PositiveInfinity;
 			_root = null;
 			_rootRect = null;
 			_canvas = null;
@@ -394,27 +401,42 @@ namespace GrabMaterials
 				for (var i = 0; i < ProbePoints.Length; i++) sb.Append($" {truths[i]:F1}");
 				sb.Append($" m; fit (lower is better): as is {errors[0]:F2}, flipped {errors[1]:F2}, other way {errors[2]:F2}, both {errors[3]:F2}");
 				var tail = $" (near {near:F2}, far {far:F0}, reversed Z {SystemInfo.usesReversedZBuffer}, {cam.actualRenderingPath}, drawn to {(cam.targetTexture != null ? "a texture" : "the screen")}, {w}x{h})";
-				if (!isDepth && _depthSource + 1 < DepthSources.Length)
+				if (!isDepth)
 				{
-					_depthSource++;
-					_flipped = false;
-					_otherWayRound = false;
-					_probed = false;
-					_probeFrames = 0;
-					sb.Append($"; that is not depth, so the copy is taken from {DepthSourceNames[_depthSource]} next").Append(tail);
-					Log.LogInfo(sb.ToString());
-					RecordCopy();
-					RecordBind(cam);
-					return;
+					if (errors[best] < _bestFit)
+					{
+						_bestFit = errors[best];
+						_bestSource = _depthSource;
+						_bestFlipped = _flipped;
+						_bestOtherWay = _otherWayRound;
+					}
+					if (_depthSource + 1 < DepthSources.Length)
+					{
+						_depthSource++;
+						_flipped = false;
+						_otherWayRound = false;
+						_probed = false;
+						_probeFrames = 0;
+						sb.Append($"; that is not depth, so the copy is taken from {DepthSourceNames[_depthSource]} next").Append(tail);
+						Log.LogInfo(sb.ToString());
+						RecordCopy();
+						RecordBind(cam);
+						return;
+					}
+					// Nothing passed; take the least bad and say so.
+					_depthSource = _bestSource;
+					_flipped = _bestFlipped;
+					_otherWayRound = _bestOtherWay;
+					sb.Append($"; no source gave scene depth, so world badges may not hide behind things; the copy is taken from {DepthSourceNames[_depthSource]} (fit {_bestFit:F2}), read ");
 				}
-				sb.Append("; so the copy is read ");
+				else sb.Append("; so the copy is read ");
 				sb.Append(_flipped ? "flipped" : "right side up");
 				sb.Append(_otherWayRound ? " and the other way round" : " and the usual way");
 				sb.Append(tail);
 				if (isDepth) Log.LogInfo(sb.ToString());
-				else Log.LogWarning("badges: no source gave scene depth, so world badges will not hide behind things. " + sb.ToString().Substring("badges: ".Length));
-				if (_flipped) RecordCopy();
-				if (_otherWayRound) RecordBind(cam);
+				else Log.LogWarning(sb.ToString());
+				RecordCopy();
+				RecordBind(cam);
 			});
 		}
 
