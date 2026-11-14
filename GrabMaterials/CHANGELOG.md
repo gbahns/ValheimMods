@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.10.3 — unreleased
+## 2.10.3 — 2026-11-14
 
 - World badges with "Draw Badges In Front" and "Lit World Badges" both off could come up without their numbers, and stay that way through toggles: the white copy of the font that draws them was made before the digits had been added to the font, and the game adds them without saying so. The copy is now made again after a badge changes its number or size.
 
