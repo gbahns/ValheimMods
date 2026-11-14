@@ -19,7 +19,7 @@ using UnityEngine;
 namespace GrabMaterialsMod
 {
 
-	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.10.2")]
+	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.10.3")]
 	[BepInProcess("valheim.exe")]
 	public class GrabMaterialsMod : BaseUnityPlugin
 	{

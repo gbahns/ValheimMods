@@ -73,8 +73,11 @@ namespace GrabMaterials
 	// the sRGB value that converts to one half.  And a font atlas is an alpha-only texture
 	// that samples as black; the UI shader adds white to it, the particle shader multiplies
 	// by it, so the number came out black.  The label is a Text whose texture, in flat mode,
-	// is a copy of the atlas with every pixel's color set to white (FlatText below), refreshed
-	// whenever the font rebuilds its atlas.
+	// is a copy of the atlas with every pixel's color set to white (FlatText below).  Unity
+	// adds glyphs to a dynamic atlas in place without raising textureRebuilt, so a copy made
+	// before the labels first drew their digits had nothing where the digits are and the
+	// numbers vanished (2.10.3); the copy is made again when the font does rebuild its atlas,
+	// and a frame after any label changes its text or size, which is when new glyphs land.
 	//
 	// "Only Visible Containers" is the one setting that means something in every mode: in
 	// front it is the linecast; flat, it decides whether the depth test is done at all.  Lit
@@ -131,6 +134,9 @@ namespace GrabMaterials
 		private static Texture _fontCopySource;    // the atlas it was copied from
 		private static bool _fontCopyDirty = true;
 		private static bool _fontHooked;
+		private static int _fontCopyAsk = -1;       // frame a label changed; the copy is made again after it
+		private static float _fontCopyMade;         // when the copy was last made
+		private const float FontCopyEvery = 0.5f;   // a ReadPixels stalls the GPU, so no more often than this
 
 		private sealed class Badge
 		{
@@ -491,9 +497,15 @@ namespace GrabMaterials
 				Font.textureRebuilt += rebuilt => { if (rebuilt == font) _fontCopyDirty = true; };
 				_fontHooked = true;
 			}
+			if (_fontCopyAsk >= 0 && Time.frameCount > _fontCopyAsk && Time.unscaledTime - _fontCopyMade >= FontCopyEvery)
+			{
+				_fontCopyAsk = -1;
+				_fontCopyDirty = true;
+			}
 			if (!_fontCopyDirty && _fontCopySource == atlas && _fontCopy != null && _fontCopy.width == atlas.width && _fontCopy.height == atlas.height) return;
 			_fontCopyDirty = false;
 			_fontCopySource = atlas;
+			_fontCopyMade = Time.unscaledTime;
 
 			var rt = RenderTexture.GetTemporary(atlas.width, atlas.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
 			var was = RenderTexture.active;
@@ -775,8 +787,14 @@ namespace GrabMaterials
 				}
 				badge.Rect.sizeDelta = new Vector2(diameter, diameter);
 				badge.Fill.rectTransform.sizeDelta = new Vector2(diameter - RingWidth * 2f, diameter - RingWidth * 2f);
-				badge.Label.fontSize = Mathf.Max(8, Mathf.RoundToInt(diameter * 0.55f));
-				badge.Label.text = c.Free.ToString();
+				var fontSize = Mathf.Max(8, Mathf.RoundToInt(diameter * 0.55f));
+				var text = c.Free.ToString();
+				if (badge.Label.fontSize != fontSize || badge.Label.text != text)
+				{
+					badge.Label.fontSize = fontSize;
+					badge.Label.text = text;
+					if (_badgeCamera != null) _fontCopyAsk = Time.frameCount;   // the atlas may gain glyphs at this frame's end
+				}
 				badge.Fill.color = ColorFor(c.Free, c.Empty);
 				badge.Ring.color = c.Empty ? EmptyRing : DarkRing;
 

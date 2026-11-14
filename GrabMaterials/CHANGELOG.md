@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.10.3 — unreleased
+
+- World badges with "Draw Badges In Front" and "Lit World Badges" both off could come up without their numbers, and stay that way through toggles: the white copy of the font that draws them was made before the digits had been added to the font, and the game adds them without saying so. The copy is now made again after a badge changes its number or size.
+
 ## 2.10.2 — 2026-11-14
 
 - World badges with "Draw Badges In Front" and "Lit World Badges" both off came up wrong right after login, reversed or shown through everything, until a toggle fixed them. They were first set up at the main menu and the game inherited that setup's picture of the menu; they are now set up once you are in the world, and from nothing after every scene change.
