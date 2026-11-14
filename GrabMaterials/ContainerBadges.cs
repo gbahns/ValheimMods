@@ -60,6 +60,16 @@ namespace GrabMaterials
 	// whose readings are impossible or fit badly moves on to the next, and when none passes the
 	// best of them is used, with a warning.
 	//
+	// Two things make the particle shader draw the badges differently from the UI shader, and
+	// both are undone so flat badges look like the overlay ones.  Its tint is a Color property,
+	// which a linear-color project converts from sRGB, so the one-half tint that should cancel
+	// the shader's doubling arrived as 0.21 and the colors came out at 43%: the tint is set to
+	// the sRGB value that converts to one half.  And a font atlas is an alpha-only texture
+	// that samples as black; the UI shader adds white to it, the particle shader multiplies
+	// by it, so the number came out black.  The label is a Text whose texture, in flat mode,
+	// is a copy of the atlas with every pixel's color set to white (FlatText below), refreshed
+	// whenever the font rebuilds its atlas.
+	//
 	// "Only Visible Containers" is the one setting that means something in every mode: in
 	// front it is the linecast; flat, it decides whether the depth test is done at all.  Lit
 	// world badges are depth-tested by the UI shader and cannot be told otherwise.  If the
@@ -101,6 +111,20 @@ namespace GrabMaterials
 		private const float AboveTop = 0.15f;   // meters above the container's collider
 		private const float IconGap = 3f;
 		private const int MaxIcons = 2;
+
+		// A Text that, in flat mode, draws from the white copy of its font's atlas.
+		private sealed class FlatText : Text
+		{
+			public override Texture mainTexture =>
+				_badgeCamera != null && _fontCopy != null && font != null && font.material != null && font.material.mainTexture == _fontCopySource
+					? _fontCopy
+					: base.mainTexture;
+		}
+
+		private static Texture2D _fontCopy;        // the badge font's atlas, alpha kept, color made white
+		private static Texture _fontCopySource;    // the atlas it was copied from
+		private static bool _fontCopyDirty = true;
+		private static bool _fontHooked;
 
 		private sealed class Badge
 		{
@@ -201,6 +225,7 @@ namespace GrabMaterials
 			var cam = Utils.GetMainCamera();
 			if (cam == null) return;
 			if (_badgeCamera != null) SyncBadgeCamera(cam);
+			if (_badgeCamera != null) RefreshFontCopy();
 			if (_copyDepth != null && !_probed && ++_probeFrames >= 3) ProbeDepthCopy(cam);
 
 			if (Time.time - _lastScan >= ScanInterval)
@@ -440,6 +465,47 @@ namespace GrabMaterials
 			});
 		}
 
+		// Copy the badge font's atlas with its alpha and white color, so the particle shader
+		// draws the number white.  The atlas is not readable, so it goes through a render
+		// texture; a font rebuild marks the copy stale and it is made again.
+		private static void RefreshFontCopy()
+		{
+			var font = GUIManager.Instance != null ? GUIManager.Instance.AveriaSerifBold : null;
+			var atlas = font != null && font.material != null ? font.material.mainTexture : null;
+			if (atlas == null) return;
+			if (!_fontHooked)
+			{
+				Font.textureRebuilt += rebuilt => { if (rebuilt == font) _fontCopyDirty = true; };
+				_fontHooked = true;
+			}
+			if (!_fontCopyDirty && _fontCopySource == atlas && _fontCopy != null && _fontCopy.width == atlas.width && _fontCopy.height == atlas.height) return;
+			_fontCopyDirty = false;
+			_fontCopySource = atlas;
+
+			var rt = RenderTexture.GetTemporary(atlas.width, atlas.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+			var was = RenderTexture.active;
+			Graphics.Blit(atlas, rt);
+			RenderTexture.active = rt;
+			if (_fontCopy == null || _fontCopy.width != atlas.width || _fontCopy.height != atlas.height)
+			{
+				if (_fontCopy != null) Object.Destroy(_fontCopy);
+				_fontCopy = new Texture2D(atlas.width, atlas.height, TextureFormat.RGBA32, false) { name = "GrabMaterials_BadgeFont", filterMode = atlas.filterMode };
+			}
+			_fontCopy.ReadPixels(new Rect(0, 0, atlas.width, atlas.height), 0, 0, false);
+			RenderTexture.active = was;
+			RenderTexture.ReleaseTemporary(rt);
+			var pixels = _fontCopy.GetPixels32();
+			for (var i = 0; i < pixels.Length; i++)
+			{
+				var a = pixels[i].a;
+				pixels[i] = new Color32(255, 255, 255, a);
+			}
+			_fontCopy.SetPixels32(pixels);
+			_fontCopy.Apply(false, false);
+			foreach (var badge in _inUse) badge.Label.SetMaterialDirty();
+			foreach (var badge in _pool) badge.Label.SetMaterialDirty();
+		}
+
 		// The shader, layer, material and camera for flat world badges.  False, with the
 		// reason logged, when the game does not offer what it needs.
 		private static bool SetupFlat(Camera main)
@@ -490,8 +556,11 @@ namespace GrabMaterials
 			_flatMaterial = new Material(shader);
 			if (onlyVisible) _flatMaterial.EnableKeyword("SOFTPARTICLES_ON");
 			if (_flatMaterial.HasProperty("_InvFade")) _flatMaterial.SetFloat("_InvFade", FlatFade);
-			// The legacy particle shaders output 2 * vertex color * tint; a half tint makes that the plain color.
-			if (_flatMaterial.HasProperty("_TintColor")) _flatMaterial.SetColor("_TintColor", new Color(0.5f, 0.5f, 0.5f, 0.5f));
+			// The legacy particle shaders output 2 * vertex color * tint; a half tint makes that the
+			// plain color.  A Color property is converted from sRGB in a linear project, so the
+			// value set is the one that converts to a half there.
+			var half = QualitySettings.activeColorSpace == ColorSpace.Linear ? Mathf.LinearToGammaSpace(0.5f) : 0.5f;
+			if (_flatMaterial.HasProperty("_TintColor")) _flatMaterial.SetColor("_TintColor", new Color(half, half, half, 0.5f));
 
 			var go = new GameObject("GrabMaterials_BadgeCamera", typeof(Camera));
 			go.transform.SetParent(main.transform, false);
@@ -922,7 +991,7 @@ namespace GrabMaterials
 			var fill = MakeImage("Fill", root.transform, Color.white);
 			fill.rectTransform.anchorMin = fill.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
 
-			var labelGo = new GameObject("Label", typeof(RectTransform), typeof(Text), typeof(Outline));
+			var labelGo = new GameObject("Label", typeof(RectTransform), typeof(FlatText), typeof(Outline));
 			labelGo.transform.SetParent(root.transform, false);
 			ApplyFlat(labelGo);
 			var labelRect = labelGo.GetComponent<RectTransform>();
