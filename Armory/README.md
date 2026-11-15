@@ -66,6 +66,10 @@ The config file is created at `BepInEx/config/GBahns.Armory.cfg` on first run.
 - `Rack Width` / `Rack Height` (default: 8 × 5) — the rack's storage grid. Every rack takes the new size, standing or not; items left outside a smaller grid are moved into it by whoever opens the rack. A grid taller than the container panel is drawn with smaller cells.
 
 **\[UI\]**
+- **Style** button on the Manage Loadouts panel — picks the model, decoration and wood for that one rack from three dropdowns, with a picture of the choice and the rack redrawn as you go, and everyone sees it that way. The metal decorations appear once you have reached that metal. `Use my default` makes it follow your settings again. Whoever can manage the rack's loadouts can restyle it, within a ward.
+- `Rack Model` (default: Armoire) — Armoire is a modeled wardrobe with a crown, arched door panels and iron strap hinges; Cabinet is a plainer boarded one; Panels is the original build from floor planks and shutters. Switches at once on every rack in view.
+- `Rack Decoration` (default: None) — what hangs on the doors of any model: Shields is a carved shield over crossed axes on each door; Bronze hangs the game's bronze buckler and crossed bronze swords on one door and crossed axes on the other, and Iron, Silver, Blackmetal, Carapace and Flametal the same in each later metal.
+- `Rack Wood` (default: Darkwood) — the wood the Armoire and Cabinet are drawn in: the game's darkwood, the darkwood beam's brown planks, or plain wood.
 - `Show Summary Text` (default: true) — show the textual list of items below each loadout's name (`Helm:..., Chest:...`, etc.).
 - `Show Icons` (default: true) — show the row of item icons at the bottom of each loadout row.
 - `Show Row Buttons` (default: false) — show Save, Load, +, Cmp and x on every row. Off puts them in a menu behind one button per row, which takes less room and lets the panel be narrower.

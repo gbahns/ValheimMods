@@ -22,8 +22,9 @@ namespace Armory
     {
         private ZNetView m_nview;
 
-        // Door animation — purely local visual (no ZDO sync).  Hinges are child GameObjects
-        // created in ArmoryPieces.BuildArmoireMesh; we find them by name in Awake.
+        // Door animation — purely local visual (no ZDO sync).  Hinges are GameObjects under
+        // the ArmoryVisual child RackVisual builds; found by name in Awake and again when the
+        // look is swapped.
         private Transform _leftHinge;
         private Transform _rightHinge;
         private float     _doorAngle01;        // 0 = closed, 1 = fully open
@@ -42,10 +43,92 @@ namespace Armory
                 m_nview.Register<string>("ArmoryRPC_SetData", RPC_SetData);
                 m_nview.Register<bool>("ArmoryRPC_SetPrivate", RPC_SetPrivate);
                 m_nview.Register<string>("ArmoryRPC_SetName", RPC_SetName);
+                m_nview.Register<string, string, string>("ArmoryRPC_SetStyle", RPC_SetStyle);
             }
 
-            _leftHinge  = transform.Find("ArmoryDoorLeft");
-            _rightHinge = transform.Find("ArmoryDoorRight");
+            // The prefab was drawn with the settings' style; a rack with its own catches up in
+            // its first Update, once the ZDO is there to read.
+            _appliedModel = RackVisual.Model;
+            _appliedDecor = RackVisual.Decor;
+            _appliedWood  = RackVisual.Wood;
+            RefreshHinges();
+        }
+
+        // ── Style (#77) ────────────────────────────────────────────────────────────────
+        //
+        // A rack can be dressed in game, from the Manage Loadouts panel, and keeps that look
+        // for everyone: the model, decoration and wood sit in the ZDO as enum names (empty =
+        // follow the Rack Model / Rack Decoration / Rack Wood settings), so a server full of
+        // racks can each look different and a reordered enum later cannot shuffle them.
+        private const string ModelKey = "armory_model";
+        private const string DecorKey = "armory_decor";
+        private const string WoodKey  = "armory_wood";
+        private RackModel _appliedModel;
+        private RackDecor _appliedDecor;
+        private RackWood  _appliedWood;
+
+        /// <summary>The model this rack was given in game, or null when it follows the setting.</summary>
+        public RackModel? OwnModel => Parse<RackModel>(ModelKey);
+        public RackDecor? OwnDecor => Parse<RackDecor>(DecorKey);
+        public RackWood?  OwnWood  => Parse<RackWood>(WoodKey);
+        public RackModel  EffectiveModel => OwnModel ?? RackVisual.Model;
+        public RackDecor  EffectiveDecor => OwnDecor ?? RackVisual.Decor;
+        public RackWood   EffectiveWood  => OwnWood  ?? RackVisual.Wood;
+
+        private T? Parse<T>(string key) where T : struct
+        {
+            if (m_nview == null || !m_nview.IsValid()) return null;
+            var text = m_nview.GetZDO().GetString(key, "");
+            return text.Length > 0 && System.Enum.TryParse<T>(text, out var value) ? value : (T?)null;
+        }
+
+        /// <summary>Dresses this rack; null for any part means "follow the setting".</summary>
+        public void SetStyle(RackModel? model, RackDecor? decor, RackWood? wood)
+        {
+            if (m_nview == null || !m_nview.IsValid()) return;
+            string m = model?.ToString() ?? "", d = decor?.ToString() ?? "", w = wood?.ToString() ?? "";
+            if (m_nview.IsOwner()) { var zdo = m_nview.GetZDO(); zdo.Set(ModelKey, m); zdo.Set(DecorKey, d); zdo.Set(WoodKey, w); }
+            else                   m_nview.InvokeRPC("ArmoryRPC_SetStyle", m, d, w);
+        }
+
+        private void RPC_SetStyle(long sender, string model, string decor, string wood)
+        {
+            if (!m_nview.IsOwner()) return;
+            var zdo = m_nview.GetZDO();
+            zdo.Set(ModelKey, model ?? "");
+            zdo.Set(DecorKey, decor ?? "");
+            zdo.Set(WoodKey,  wood  ?? "");
+        }
+
+        /// <summary>RackVisual says what it just drew, so Update knows when the ZDO moves away from it.</summary>
+        internal void NoteApplied(RackModel model, RackDecor decor, RackWood wood) { _appliedModel = model; _appliedDecor = decor; _appliedWood = wood; }
+
+        // Redraws the rack when its style changes under us: someone restyling it on another
+        // client, the ZDO arriving after Awake, or the setting moving while the rack follows it.
+        private void ApplyStyle()
+        {
+            if (m_nview == null || !m_nview.IsValid()) return;
+            var model = EffectiveModel; var decor = EffectiveDecor; var wood = EffectiveWood;
+            if (model == _appliedModel && decor == _appliedDecor && wood == _appliedWood) return;
+            RackVisual.Rebuild(this);
+        }
+
+        /// <summary>Finds the door hinges again, after RackVisual has redrawn the rack.</summary>
+        internal void RefreshHinges()
+        {
+            _leftHinge  = FindDeep(transform, RackVisual.LeftHinge);
+            _rightHinge = FindDeep(transform, RackVisual.RightHinge);
+        }
+
+        private static Transform FindDeep(Transform t, string name)
+        {
+            if (t.name == name) return t;
+            for (int i = 0; i < t.childCount; i++)
+            {
+                var hit = FindDeep(t.GetChild(i), name);
+                if (hit != null) return hit;
+            }
+            return null;
         }
 
         // The Container component attached to the same GameObject (added in Phase 2).  Used by
@@ -79,6 +162,7 @@ namespace Armory
         {
             ApplyPrivacy();
             ApplyName();
+            ApplyStyle();
 
             if (_leftHinge == null || _rightHinge == null) return;
 

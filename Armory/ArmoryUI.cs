@@ -241,6 +241,7 @@ namespace Armory
         {
             UnwatchInventories();
             CloseRowMenu();
+            ArmoryStyleUI.Close();
             _isOpen      = false;
             _editingSlot = -1;
             _compareSlot = -1;
@@ -498,6 +499,18 @@ namespace Armory
             _privacyButton.onClick.AddListener(OnPrivacyClicked);
             AttachTooltip(privacyBtn, PrivacyTooltip);
             RefreshPrivacyButton();
+
+            // Style — beside the privacy toggle; opens the model and wood picker for this rack.
+            var styleBtn = GUIManager.Instance.CreateButton(
+                text:      "Style",
+                parent:    panel,
+                anchorMin: new Vector2(0f, 1f),
+                anchorMax: new Vector2(0f, 1f),
+                position:  new Vector2(160f, -32f),
+                width:     76f,
+                height:    36f);
+            styleBtn.GetComponent<Button>().onClick.AddListener(() => ArmoryStyleUI.Toggle(_rack, _mainPanel.transform));
+            AttachTooltip(styleBtn, "How this rack is drawn, for everyone who sees it.");
 
             // Scrollable slot-list area.
             var scrollGo = GUIManager.Instance.CreateScrollView(

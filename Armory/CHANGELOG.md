@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.2.0 — 2026-11-14
+
+- **Everyone must update together.** A rack's style travels in a new message, so a server on this version turns away older clients.
+- The rack is a modeled armoire: bracket feet, a stepped crown, raised and arched door panels, iron strap hinges and ring pulls, a shelf and a hanging rail inside, all in the game's own wood textures (#77). `Rack Model` under UI also offers a plainer boarded Cabinet and the original planks-and-shutters Panels; `Rack Wood` picks Darkwood, Brownwood or Plainwood.
+- `Rack Decoration` hangs something on the doors of any model: carved shields over crossed axes, or the game's own shields and crossed weapons in bronze, iron, silver, black metal, carapace or flametal.
+- A **Style** button on the Manage Loadouts panel dresses that one rack, model, decoration and wood, with a picture of each choice, for everyone who sees it; the metal decorations open up as you reach each metal; the settings above are what a rack wears until someone styles it.
+
 ## 2.1.0 — 2026-11-12
 
 - **Everyone must update together.** The rack's grid is now a server setting, and a client on a different grid than the rack's owner would open rows it cannot see, so a server on this version turns away older clients.

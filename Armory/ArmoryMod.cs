@@ -32,12 +32,12 @@ namespace Armory
     {
         public const string ModGuid    = "GBahns.Armory";
         public const string ModName    = "Armory";
-        public const string ModVersion = "2.1.0";
+        public const string ModVersion = "2.2.0";
 
         // 2.1.0: the rack's grid is a synced setting an older client does not have, and a client
         // on a different grid than the rack's owner opens rows it cannot see.  A literal, raised
         // only when a release changes what the server and the clients have to agree on.
-        public const string MinCompatibleVersion = "2.1.0";
+        public const string MinCompatibleVersion = "2.2.0";
 
         private static ConfigSync _configSync;
 
@@ -64,6 +64,11 @@ namespace Armory
         public static ConfigEntry<float> PanelPosY;
         public static ConfigEntry<float> PanelWidth;
         public static ConfigEntry<float> PanelHeight;
+
+        // Which model the rack wears, and in which wood (RackVisual).  Client-side.
+        public static ConfigEntry<RackModel> RackModel;
+        public static ConfigEntry<RackDecor> RackDecor;
+        public static ConfigEntry<RackWood>  RackWood;
 
         // The rack's storage grid.  Synced, so everyone opens the same grid; see RackSize.
         public static ConfigEntry<bool> LockConfiguration;
@@ -163,6 +168,32 @@ namespace Armory
                 new AcceptableValueRange<int>(1, RackSize.MaxHeight));
             RackWidth.SettingChanged  += (_, __) => RackSize.Apply();
             RackHeight.SettingChanged += (_, __) => RackSize.Apply();
+
+            RackModel = Config.Bind(
+                section:     "UI",
+                key:         "Rack Model",
+                defaultValue: Armory.RackModel.Armoire,
+                description: "How the rack is drawn. Armoire is a modeled wardrobe with a crown, arched door panels " +
+                             "and iron strap hinges; Cabinet is a plainer boarded one; Panels is the original build " +
+                             "from floor planks and shutters. Changes at once, on every rack in view that has not " +
+                             "been given its own style with the Style button.");
+            RackDecor = Config.Bind(
+                section:     "UI",
+                key:         "Rack Decoration",
+                defaultValue: Armory.RackDecor.None,
+                description: "What hangs on the doors of any model. Shields is a carved shield over crossed axes on " +
+                             "each door; Bronze hangs the game's bronze buckler and crossed bronze swords on one door " +
+                             "and crossed axes on the other, and Iron, Silver, Blackmetal, Carapace and Flametal the " +
+                             "same in each later metal. Changes at once, on every rack that has not been given its own.");
+            RackWood = Config.Bind(
+                section:     "UI",
+                key:         "Rack Wood",
+                defaultValue: Armory.RackWood.Darkwood,
+                description: "The wood the Armoire and Cabinet are drawn in: the game's darkwood, the darkwood beam's " +
+                             "brown planks, or plain wood. Changes at once, on every rack that has not been given its own.");
+            RackModel.SettingChanged += (_, __) => RackVisual.RebuildAll();
+            RackDecor.SettingChanged += (_, __) => RackVisual.RebuildAll();
+            RackWood.SettingChanged  += (_, __) => RackVisual.RebuildAll();
 
             if (!ModEnabled.Value)
             {

@@ -11,7 +11,8 @@ namespace Armory
 {
     /// <summary>
     /// Registers the Armory Rack as a buildable Hammer piece.
-    /// Phase 1 (OnVanillaPrefabsAvailable): clone piece_chest_blackmetal, strip Container, attach ArmoryRack.
+    /// Phase 1 (OnVanillaPrefabsAvailable): clone piece_chest_blackmetal, strip Container, attach
+    /// ArmoryRack, hide the chest and draw the rack's own look (RackVisual).
     /// Phase 2 (OnPiecesRegistered): set requirements, WearNTear, icon, and register with Jotunn.
     /// </summary>
     internal static class ArmoryPieces
@@ -68,8 +69,15 @@ namespace Armory
 
             _clone.AddComponent<ArmoryRack>();
 
-            // Replace the blackmetal chest visual with a composite wood-panel armoire.
-            BuildArmoireMesh(_clone);
+            // The chest's own look goes; its Piece, WearNTear and ZNetView stay on the root.
+            foreach (var r in _clone.GetComponentsInChildren<Renderer>()) r.enabled = false;
+
+            // One collider for the whole rack, whatever look it wears.
+            var col = _clone.AddComponent<BoxCollider>();
+            col.center = new Vector3(0, RackVisual.Height / 2f, 0);
+            col.size   = new Vector3(RackVisual.Width, RackVisual.Height, RackVisual.Depth);
+
+            RackVisual.Build(_clone);
 
             var piece = _clone.GetComponent<Piece>() ?? _clone.AddComponent<Piece>();
             piece.m_name        = "$armory_rack_name";
@@ -81,23 +89,20 @@ namespace Armory
             Jotunn.Logger.LogInfo("[Armory] Phase 1 — cloned armory_rack");
         }
 
-        // Compose the armoire shape from vanilla wood floor panels.  Dimensions: 2m wide (X) x
-        // 1m deep (Z) x 3m tall (Y), open front at +Z, solid sides/back/top/bottom.  The cloned
-        // blackmetal chest visual is hidden but its components (Piece, WearNTear, ZNetView) are
-        // retained on the root.  Child colliders are stripped in favor of a single combined
-        // BoxCollider so the whole rack interacts as one shape.
-        private static void BuildArmoireMesh(GameObject parent)
+        // The original look (Rack Look = Panels): the armoire composed from vanilla wood floor
+        // panels, 2m wide (X) x 1m deep (Z) x 3m tall (Y), open front at +Z, solid sides, back,
+        // top and bottom, under the ArmoryVisual child RackVisual hands in.  Child colliders are
+        // stripped; the rack's one BoxCollider is on the root.
+        internal static void BuildPanelLook(GameObject parent)
         {
-            // Hide the chest renderers — we're replacing the visual entirely.
-            var chestRenderers = parent.GetComponentsInChildren<Renderer>();
-            foreach (var r in chestRenderers) r.enabled = false;
-
             // Plain wood floor panels for back/sides/top/bottom — these read cleanly as a wood box.
             var panelSrc = PrefabManager.Instance.GetPrefab("wood_floor_1x1");
             if (panelSrc == null)
             {
                 Jotunn.Logger.LogWarning("[Armory] wood_floor_1x1 unavailable — reverting to chest visual.");
-                foreach (var r in chestRenderers) r.enabled = true;
+                var rack = parent.transform.parent;
+                if (rack != null)
+                    foreach (var r in rack.GetComponentsInChildren<Renderer>()) r.enabled = true;
                 return;
             }
 
@@ -112,7 +117,7 @@ namespace Armory
                 if (doorSrc != null) { doorName = candidate; break; }
             }
             if (doorSrc == null) { doorSrc = panelSrc; doorName = "wood_floor_1x1 (shutter unavailable)"; }
-            Jotunn.Logger.LogInfo($"[Armory] BuildArmoireMesh: door prefab = '{doorName}'.");
+            Jotunn.Logger.LogInfo($"[Armory] Panel look: door prefab = '{doorName}'.");
 
             // Back wall: 2-wide x 3-tall at z = -0.5.  Texture faces -Z (outside the box).
             for (int x = 0; x < 2; x++)
@@ -145,11 +150,6 @@ namespace Armory
             BuildDoor(parent, doorSrc, "ArmoryDoorLeft",  new Vector3(-1f, 0f, 0.5f), 0f, flipped: true);
             BuildDoor(parent, doorSrc, "ArmoryDoorRight", new Vector3( 1f, 0f, 0.5f), 0f, flipped: false);
 
-            // Single combined BoxCollider so the whole armoire raycasts as one shape.
-            var col = parent.AddComponent<BoxCollider>();
-            col.center = new Vector3(0, 1.5f, 0);
-            col.size   = new Vector3(2f, 3f, 1f);
-
             // Tint everything dark first — panels at 50% brightness for a charcoal wood look.
             // Then re-tint the front shutters slightly brighter (75%) so the doors read as a
             // distinct layer rather than blending into the body.  Uses Renderer.materials
@@ -161,7 +161,7 @@ namespace Armory
             if (leftHinge  != null) ApplyTint(leftHinge,  new Color(0.75f, 0.75f, 0.75f));
             if (rightHinge != null) ApplyTint(rightHinge, new Color(0.75f, 0.75f, 0.75f));
 
-            Jotunn.Logger.LogInfo("[Armory] BuildArmoireMesh: composed 16 wood panels + 2 doors (panels 50%, shutters 75%).");
+            Jotunn.Logger.LogInfo("[Armory] Panel look: composed 16 wood panels + 2 doors (panels 50%, shutters 75%).");
         }
 
         // Walk a transform subtree and apply a color tint to every enabled renderer.  Skip
@@ -196,7 +196,7 @@ namespace Armory
             var scale = flipped ? new Vector3(-1f, 1f, 1f) : Vector3.one;
             for (int y = 0; y < 3; y++)
             {
-                var panel = UnityEngine.Object.Instantiate(panelSrc, hinge.transform);
+                var panel = InstantiateInert(panelSrc, hinge.transform);
                 panel.transform.localPosition = new Vector3(panelOffsetX, 0.5f + y, 0f);
                 panel.transform.localRotation = Quaternion.identity;
                 panel.transform.localScale    = scale;
@@ -219,9 +219,21 @@ namespace Armory
             foreach (var c in visual.GetComponentsInChildren<SnapToGround>())   UnityEngine.Object.DestroyImmediate(c);
         }
 
+        // A copy of a vanilla piece that is only a shape.  On a rack standing in the world the
+        // copy is active, so its ZNetView would wake and register a real networked piece before
+        // StripChildComponents reached it: switching Rack Look to Panels once left live
+        // wood_window pieces sticking out of every rack (2026-11-13).  The game's placement
+        // ghost uses this same flag to keep ZNetView from initializing during Instantiate.
+        internal static GameObject InstantiateInert(GameObject source, Transform parent)
+        {
+            ZNetView.m_forceDisableInit = true;
+            try { return UnityEngine.Object.Instantiate(source, parent); }
+            finally { ZNetView.m_forceDisableInit = false; }
+        }
+
         private static void AddPanel(GameObject parent, GameObject source, Vector3 localPos, Quaternion localRot)
         {
-            var visual = UnityEngine.Object.Instantiate(source, parent.transform);
+            var visual = InstantiateInert(source, parent.transform);
             visual.transform.localPosition = localPos;
             visual.transform.localRotation = localRot;
             visual.name = source.name + "_panel";
