@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.6.0 — unreleased
+## 1.6.0 — 2026-11-15
 
 - **Open a private portal to everyone for a while.** Your own private portal gets an
   **Open to everyone for 15 min** button on its panel, and the same in a row's right-click menu.
