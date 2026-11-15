@@ -20,7 +20,10 @@ namespace Armory
 
         private static ArmoryRack _rack;
         private static ArmoryData _data;
+        private static Button     _pasteButton;   // greyed while pasting would change nothing
+        private static Text       _copyLabel;     // "Copied" while the clipboard holds what Copy would take
         private static bool       _isOpen;
+        private static bool       _readOnly;      // someone else's personal rack: look and copy, change nothing
         public  static bool       IsOpen      => _isOpen;
         public  static ArmoryRack CurrentRack => _rack;
 
@@ -93,6 +96,7 @@ namespace Armory
             public Text        SlotsButtonLabel;
             public Button      MenuButton;        // menu mode: the one button that holds the others
             public Button      ClearButton;
+            public Text        CopyButtonLabel;   // read-only rows: "Copied" while the clipboard is this loadout
             public Text        Summary;
             public GameObject  IconsContainer;  // re-populated on data change
             public readonly List<IconCell> IconCells = new List<IconCell>();  // recolored in place as items move
@@ -201,17 +205,36 @@ namespace Armory
             _watchedRackInv   = null;
         }
 
-        public static void Open(ArmoryRack rack)
+        /// <summary>
+        /// Someone else's personal rack, opened to read (#85).  The loadouts are not what Personal
+        /// protects — every client with the rack loaded already has them in the ZDO — so the
+        /// panel opens on its own over the player's inventory, with Copy and nothing that
+        /// changes the rack.  The storage stays closed; vanilla never gets asked.  False when
+        /// there is nothing to read, and the caller says so.
+        /// </summary>
+        public static bool OpenReadOnly(ArmoryRack rack)
+        {
+            if (rack == null || InventoryGui.instance == null) return false;
+            if (!rack.GetData().Slots.Any(s => !s.IsEmpty())) return false;
+            InventoryGui.instance.Show(null);   // the player's own inventory, no container: how Tab opens it
+            Open(rack, readOnly: true);
+            return true;
+        }
+
+        public static void Open(ArmoryRack rack, bool readOnly = false)
         {
             // Tear our own panel down without hiding the inventory — vanilla has just shown it.
             if (_isOpen) CloseInternal(hideInventory: false);
 
-            _rack = rack;
-            _data = rack.GetData();
+            _rack     = rack;
+            _readOnly = readOnly;
+            _data     = rack.GetData();
             // A rack that has never been saved starts with a few empty slots to fill.  One that
             // has keeps exactly the slots it was left with — deleting the last three is a
-            // choice, not something to undo on the next open.
-            if (!_data.Saved) LoadoutManager.EnsureSlots(_data, DefaultSlotCount);
+            // choice, not something to undo on the next open.  A read-only view shows only what
+            // is saved; an empty slot is nothing to read.
+            if (readOnly) _data.Slots.RemoveAll(s => s == null || s.IsEmpty());
+            else if (!_data.Saved) LoadoutManager.EnsureSlots(_data, DefaultSlotCount);
             Jotunn.Logger.LogInfo($"[Armory] Open: rack instance {rack.GetInstanceID()}, slots loaded={_data.Slots.Count}");
             for (int i = 0; i < _data.Slots.Count; i++)
                 Jotunn.Logger.LogInfo($"[Armory]   slot {i}: name='{_data.Slots[i].Name}' empty={_data.Slots[i].IsEmpty()}");
@@ -226,8 +249,9 @@ namespace Armory
             // Migrate items left outside the grid by a smaller Rack Width / Rack Height than
             // the one they were stored under.  Move them into the first empty in-bounds slot.
             // The grid is rebuilt from the inventory every frame in InventoryGui.UpdateContainer,
-            // which has not run yet this frame, so the player still sees a clean grid.
-            LoadoutManager.MigrateOutOfBoundsItems(rack.GetStorageInventory());
+            // which has not run yet this frame, so the player still sees a clean grid.  Not for
+            // a read-only view: that storage is somebody else's and was never opened.
+            if (!readOnly) LoadoutManager.MigrateOutOfBoundsItems(rack.GetStorageInventory());
 
             // The optional pause (config-gated, default off) is ArmoryPause's business: the mod's
             // Update calls its Refresh, which picks the panel up on the next frame and asks
@@ -272,6 +296,9 @@ namespace Armory
             _slotsContent  = null;
             _privacyButton = null;
             _privacyLabel  = null;
+            _pasteButton   = null;
+            _copyLabel     = null;
+            _readOnly      = false;
             _rows.Clear();
             _lastShowSummary = null;
             _lastShowIcons   = null;
@@ -424,6 +451,7 @@ namespace Armory
                         refs.IconsContainer.SetActive(showIcons);
                     if (showIcons) RefreshIconColors(refs);
                 }
+                RefreshClipboardButtons();   // the loadouts or the clipboard may have moved apart
             }
         }
 
@@ -484,6 +512,37 @@ namespace Armory
                 height:    36f);
             closeBtn.GetComponent<Button>().onClick.AddListener(Close);
 
+            // Copy / Paste — left of the close button; the whole rack's loadouts to and from
+            // the character's clipboard (#85).  Each row's menu has the same for one loadout.
+            // A read-only view has no Paste, and Copy moves up into its place.
+            if (!_readOnly)
+            {
+                var pasteBtn = GUIManager.Instance.CreateButton(
+                    text:      "Paste",
+                    parent:    panel,
+                    anchorMin: new Vector2(1f, 1f),
+                    anchorMax: new Vector2(1f, 1f),
+                    position:  new Vector2(-106f, -32f),
+                    width:     76f,
+                    height:    36f);
+                _pasteButton = pasteBtn.GetComponent<Button>();
+                _pasteButton.onClick.AddListener(OnPasteAllClicked);
+                AttachTooltip(pasteBtn, PasteTooltip);
+            }
+            var copyBtn = GUIManager.Instance.CreateButton(
+                text:      "Copy",
+                parent:    panel,
+                anchorMin: new Vector2(1f, 1f),
+                anchorMax: new Vector2(1f, 1f),
+                position:  new Vector2(_readOnly ? -106f : -190f, -32f),
+                width:     76f,
+                height:    36f);
+            copyBtn.GetComponent<Button>().onClick.AddListener(OnCopyAllClicked);
+            _copyLabel = copyBtn.GetComponentInChildren<Text>();
+            AttachTooltip(copyBtn, "Copy every loadout here to your clipboard: the names and cells, not the items. " +
+                                   "It stays with your character, across logouts and worlds, until you copy again.");
+            RefreshClipboardButtons();
+
             // Personal/Shared toggle — top-left, mirroring the close button.  Only the player who
             // built the rack may change it; everyone else sees which it is and cannot flip it.
             var privacyBtn = GUIManager.Instance.CreateButton(
@@ -501,6 +560,9 @@ namespace Armory
             RefreshPrivacyButton();
 
             // Style — beside the privacy toggle; opens the model and wood picker for this rack.
+            // Not in a read-only view: the rack is somebody else's to dress.
+            if (!_readOnly)
+            {
             var styleBtn = GUIManager.Instance.CreateButton(
                 text:      "Style",
                 parent:    panel,
@@ -511,6 +573,27 @@ namespace Armory
                 height:    36f);
             styleBtn.GetComponent<Button>().onClick.AddListener(() => ArmoryStyleUI.Toggle(_rack, _mainPanel.transform));
             AttachTooltip(styleBtn, "How this rack is drawn, for everyone who sees it.");
+            }
+            else
+            {
+                // Under the title, so the view says what it is before anyone looks for Save.
+                var noteGo = GUIManager.Instance.CreateText(
+                    text:      "Read only: another player's personal rack. Copy what you like.",
+                    parent:    panel,
+                    anchorMin: new Vector2(0.5f, 1f),
+                    anchorMax: new Vector2(0.5f, 1f),
+                    position:  new Vector2(0f, -58f),
+                    font:      GUIManager.Instance.AveriaSerif,
+                    fontSize:  12,
+                    color:     new Color(0.78f, 0.72f, 0.58f),
+                    outline:   false,
+                    outlineColor: Color.black,
+                    width:     460f,
+                    height:    16f,
+                    addContentSizeFitter: false);
+                var noteTxt = noteGo.GetComponent<Text>();
+                if (noteTxt != null) noteTxt.alignment = TextAnchor.MiddleCenter;
+            }
 
             // Scrollable slot-list area.
             var scrollGo = GUIManager.Instance.CreateScrollView(
@@ -568,16 +651,19 @@ namespace Armory
             }
             _slotsContent = content;
 
-            // Footer "+ Add Slot" button.
-            var addBtn = GUIManager.Instance.CreateButton(
-                text:      "+ Add Slot",
-                parent:    panel,
-                anchorMin: new Vector2(0.5f, 0f),
-                anchorMax: new Vector2(0.5f, 0f),
-                position:  new Vector2(0f, 36f),
-                width:     180f,
-                height:    40f);
-            addBtn.GetComponent<Button>().onClick.AddListener(OnAddSlotClicked);
+            // Footer "+ Add Slot" button; a read-only view adds nothing.
+            if (!_readOnly)
+            {
+                var addBtn = GUIManager.Instance.CreateButton(
+                    text:      "+ Add Slot",
+                    parent:    panel,
+                    anchorMin: new Vector2(0.5f, 0f),
+                    anchorMax: new Vector2(0.5f, 0f),
+                    position:  new Vector2(0f, 36f),
+                    width:     180f,
+                    height:    40f);
+                addBtn.GetComponent<Button>().onClick.AddListener(OnAddSlotClicked);
+            }
 
             BuildResizeGrip(panel);
 
@@ -587,6 +673,9 @@ namespace Armory
         private static string PrivacyTooltip()
         {
             if (_rack == null) return string.Empty;
+            if (_readOnly)
+                return "Personal: only the player who built this rack can open its storage or change its loadouts. " +
+                       "You can read them here and copy them to a rack of your own.";
             if (_rack.CreatorId == 0L)
                 return "Valheim has no record of who built this rack, and its personal setting " +
                        "is enforced by comparing against the builder — so it cannot be made " +
@@ -684,6 +773,8 @@ namespace Armory
             var nameLabelPair = AddText(topRow.transform, slot.Name, 16, 200f, 44f, GUIManager.Instance.ValheimOrange, leftAlign: true, richText: true);
             refs.NameLabel   = nameLabelPair.Txt;
             refs.NameLabelGo = nameLabelPair.Go;
+            if (!_readOnly)
+            {
             if (refs.NameLabel != null) refs.NameLabel.raycastTarget = true;  // Button needs a raycast-able Graphic
             var nameBtn = nameLabelPair.Go.AddComponent<Button>();
             int capturedNameIdx = index;
@@ -715,6 +806,7 @@ namespace Armory
             // (Enter-to-commit is handled in Tick() — the runtime Unity InputField in this Valheim
             //  build doesn't expose onEndEdit via the API our reference assembly claims, so we
             //  poll the key directly.)
+            }
 
             // (No separate Rename button — clicking the name label above starts rename mode.)
 
@@ -728,7 +820,18 @@ namespace Armory
             // Save / Load / Cmp / Clear buttons.  Save & Load are icon-only.  Load's label
             // switches to the literal text "Active" (in green) when the loadout matches the
             // player's current equipment — see UpdateRowEmptyState.
-            if (ShowRowButtons)
+            if (_readOnly)
+            {
+                // Someone else's loadout: take a copy, or look at every cell it saved.
+                var copyGo = AddRowButton(topRow.transform, "Copy", 76f, () => OnCopyRowClicked(index));
+                AttachTooltip(copyGo, "Copy this loadout to your clipboard, to paste into a rack of your own.");
+                refs.CopyButtonLabel = copyGo.GetComponentInChildren<Text>();
+                var slotsGo = AddRowButton(topRow.transform, "+", 44f, () => OnSlotsToggled(index));
+                AttachTooltip(slotsGo, () => SlotsTooltip(index));
+                refs.SlotsButton      = slotsGo.GetComponent<Button>();
+                refs.SlotsButtonLabel = slotsGo.GetComponentInChildren<Text>();
+            }
+            else if (ShowRowButtons)
             {
             var saveGo = AddRowButton(topRow.transform, SaveIcon, 44f, () => OnSaveClicked(index));
             AttachTooltip(saveGo, "Save");
@@ -766,7 +869,7 @@ namespace Armory
                 refs.LoadButtonDefaultColor = refs.LoadButtonLabel != null ? refs.LoadButtonLabel.color : Color.white;
 
                 var menuGo = AddRowButton(topRow.transform, "", 44f, () => OnMenuClicked(index));
-                AttachTooltip(menuGo, "Save, Compare, Delete, show all cells");
+                AttachTooltip(menuGo, "Save, Copy, Paste, Compare, Delete, show all cells");
                 var bars = new GameObject("Bars", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
                 bars.transform.SetParent(menuGo.transform, false);
                 var brt = bars.GetComponent<RectTransform>();
@@ -903,7 +1006,7 @@ namespace Armory
             refs.IconCells.Clear();
             var parent    = refs.IconsContainer.transform;
             var playerInv = Player.m_localPlayer?.GetInventory();
-            var rackInv   = _rack?.GetStorageInventory();
+            var rackInv   = RackInventoryForColors();
             var visible   = VisibleEntries(slot, LoadoutCategories.Entries(slot));
 
             var le = refs.IconsContainer.GetComponent<LayoutElement>();
@@ -970,12 +1073,15 @@ namespace Armory
             headerLE.preferredHeight = IconHeaderPx;
             headerLE.minWidth        = IconSize;
             if (headerPair.Txt != null) headerPair.Txt.raycastTarget = true;  // Button needs a raycast-able Graphic
-            var headerBtn = headerPair.Go.AddComponent<Button>();
-            headerBtn.onClick.AddListener(() => OnCategoryToggled(index, cat));
-            var hc = headerBtn.colors;
-            hc.highlightedColor = new Color(1f, 0.95f, 0.75f, 1f);
-            hc.pressedColor     = new Color(1f, 0.85f, 0.55f, 1f);
-            headerBtn.colors = hc;
+            if (!_readOnly)
+            {
+                var headerBtn = headerPair.Go.AddComponent<Button>();
+                headerBtn.onClick.AddListener(() => OnCategoryToggled(index, cat));
+                var hc = headerBtn.colors;
+                hc.highlightedColor = new Color(1f, 0.95f, 0.75f, 1f);
+                hc.pressedColor     = new Color(1f, 0.85f, 0.55f, 1f);
+                headerBtn.colors = hc;
+            }
             AttachTooltip(headerPair.Go, () => CategoryTooltip(index, cat));
 
             var cells = new GameObject("Cells", typeof(RectTransform));
@@ -998,6 +1104,10 @@ namespace Armory
             if (index < 0 || index >= _data.Slots.Count) return string.Empty;
             var (total, included) = LoadoutCategories.CategoryState(_data.Slots[index], cat);
             var label = LoadoutCategories.Label(cat);
+            if (_readOnly)
+                return included == total ? $"{label}: all in this loadout."
+                     : included == 0     ? $"{label}: none in this loadout."
+                                         : $"{label}: {included} of {total} in this loadout.";
             if (included == total) return $"{label}: all in this loadout.\nClick to leave the whole group out.";
             if (included == 0)     return $"{label}: none in this loadout.\nClick to add the whole group.";
             return $"{label}: {included} of {total} in this loadout.\nClick to add the rest.";
@@ -1025,20 +1135,26 @@ namespace Armory
             refs.IconCells.Add(cellRef);
             ApplyIconColor(cellRef, playerInv, rackInv);
 
-            var btn = cell.AddComponent<Button>();
-            btn.targetGraphic = bg;
-            var bc = btn.colors;
-            bc.highlightedColor = new Color(1.4f, 1.3f, 1.1f, 1f);
-            bc.pressedColor     = new Color(1.6f, 1.4f, 1.0f, 1f);
-            btn.colors = bc;
-            var captured = entry;
-            btn.onClick.AddListener(() => OnCellToggled(index, captured));
+            if (!_readOnly)
+            {
+                var btn = cell.AddComponent<Button>();
+                btn.targetGraphic = bg;
+                var bc = btn.colors;
+                bc.highlightedColor = new Color(1.4f, 1.3f, 1.1f, 1f);
+                bc.pressedColor     = new Color(1.6f, 1.4f, 1.0f, 1f);
+                btn.colors = bc;
+                var captured = entry;
+                btn.onClick.AddListener(() => OnCellToggled(index, captured));
+            }
 
-            string how = included ? "in this loadout — click to leave it out" : "not in this loadout — click to add it";
+            string how = _readOnly ? (included ? "in this loadout" : "not in this loadout")
+                       : included  ? "in this loadout — click to leave it out" : "not in this loadout — click to add it";
             if (item == null)
             {
-                AttachTooltip(cell, included
+                AttachTooltip(cell, included && !_readOnly
                     ? $"{entry.Label}: nothing — Load takes off whatever is worn here.\nClick to leave the slot alone."
+                    : included
+                    ? $"{entry.Label}: nothing — Load takes off whatever is worn here."
                     : $"{entry.Label}: nothing — {how}.");
                 return;
             }
@@ -1090,10 +1206,15 @@ namespace Armory
         {
             if (refs == null || refs.IconCells.Count == 0) return;
             var playerInv = Player.m_localPlayer?.GetInventory();
-            var rackInv   = _rack?.GetStorageInventory();
+            var rackInv   = RackInventoryForColors();
             foreach (var cell in refs.IconCells)
                 ApplyIconColor(cell, playerInv, rackInv);
         }
+
+        // Where a saved item may be found when a row grades it: the rack's storage counts
+        // only when the player can open it.  In a read-only view the gear behind a personal
+        // rack's doors is not theirs to take, so red means "not in your inventory".
+        private static Inventory RackInventoryForColors() => _readOnly ? null : _rack?.GetStorageInventory();
 
         // ── Toast ──────────────────────────────────────────────────────────────────
         // Vanilla's center message draws on the HUD canvas, which sits beneath Jotunn's front
@@ -1345,11 +1466,16 @@ namespace Armory
             vlg.childControlWidth      = true;
             vlg.childControlHeight     = true;
             const float itemW = 210f, itemH = 36f;
-            const int   items = 4;
+            const int   items = 6;
             float menuH = items * itemH + (items - 1) * vlg.spacing + vlg.padding.vertical;
             _menuRT.sizeDelta = new Vector2(itemW + vlg.padding.horizontal, menuH);
 
+            var  one       = new[] { slot };
+            bool copiedOne = LoadoutClipboard.TryRead(out var copied) && copied.Count == 1;
+            bool sameAsRow = copiedOne && LoadoutClipboard.Text(one) == LoadoutClipboard.Text(copied);
             AddMenuItem("Save",                                         true,                 () => OnSaveClicked(index));
+            AddMenuItem(LoadoutClipboard.Matches(one) ? "Copied" : "Copy", hasContent,        () => OnCopyRowClicked(index));
+            AddMenuItem(copied != null && copied.Count > 1 ? "Paste (several copied)" : "Paste", copiedOne && !sameAsRow, () => OnPasteRowClicked(index));
             AddMenuItem(expanded ? "Show only loaded cells" : "Show all cells", true,        () => OnSlotsToggled(index));
             AddMenuItem(_compareSlot == index ? "Hide compare" : "Compare", hasContent,       () => OnCompareClicked(index));
             AddMenuItem("Delete",                                       true,                 () => OnClearClicked(index), danger: true);
@@ -1531,6 +1657,108 @@ namespace Armory
             _rack.SaveData(_data);
             RebuildSlotRows();
             ResizeMainPanel();
+        }
+
+        // ── Clipboard (#85) ────────────────────────────────────────────────────────
+        // Loadout definitions travel between racks on the character's clipboard.  Copy takes
+        // what is here; Paste fills this rack's empty slots from the top and adds slots for
+        // the rest, up to the rack's limit, and never overwrites a saved loadout.  A row's
+        // menu copies that one loadout, and pastes a single copied one over the row.
+
+        private static string PasteTooltip()
+        {
+            int n = LoadoutClipboard.Count;
+            if (n == 0) return "Nothing copied yet. Copy a rack's loadouts, or one from a row's menu, and paste them here.";
+            if (!PasteWouldChange()) return n == 1 ? "This rack already holds the copied loadout." : "This rack already holds every copied loadout.";
+            return (n == 1 ? "Paste the copied loadout" : $"Paste the {n} copied loadouts") +
+                   " into this rack's empty slots, adding slots as needed. Items it names that are not in this rack show as missing.";
+        }
+
+        // Copy reads "Copied" while the clipboard holds exactly what it would take now, and
+        // Paste rests while every copied loadout is already here or there is no room for one.
+        private static void RefreshClipboardButtons()
+        {
+            if (_data == null) return;
+            if (_copyLabel != null)
+            {
+                var mine = _data.Slots.Where(s => !s.IsEmpty()).ToList();
+                _copyLabel.text = LoadoutClipboard.Matches(mine) ? "Copied" : "Copy";
+            }
+            if (_pasteButton != null) _pasteButton.interactable = PasteWouldChange();
+            for (int i = 0; i < _rows.Count && i < _data.Slots.Count; i++)
+            {
+                var label = _rows[i].CopyButtonLabel;
+                if (label != null) label.text = LoadoutClipboard.Matches(new[] { _data.Slots[i] }) ? "Copied" : "Copy";
+            }
+        }
+
+        private static bool PasteWouldChange()
+        {
+            if (_data == null || !LoadoutClipboard.TryRead(out var copied)) return false;
+            bool room = _data.Slots.Count < MaxSlotCount || _data.Slots.Any(s => s.IsEmpty());
+            if (!room) return false;
+            var have = new HashSet<string>(_data.Slots.Where(s => !s.IsEmpty()).Select(s => LoadoutClipboard.Text(new[] { s })));
+            return copied.Any(c => !have.Contains(LoadoutClipboard.Text(new[] { c })));
+        }
+
+        private static void Say(string text) => Player.m_localPlayer?.Message(MessageHud.MessageType.TopLeft, text);
+
+        private static void OnCopyAllClicked()
+        {
+            Jotunn.Logger.LogInfo("[Armory] Click: Copy all");
+            CommitPendingEdit();
+            var slots = _data.Slots.Where(s => !s.IsEmpty()).ToList();
+            if (slots.Count == 0) { Say("Nothing to copy: every loadout here is empty"); return; }
+            LoadoutClipboard.Write(slots);
+            Say(slots.Count == 1 ? "Copied 1 loadout" : $"Copied {slots.Count} loadouts");
+            RefreshClipboardButtons();
+        }
+
+        private static void OnCopyRowClicked(int index)
+        {
+            if (index < 0 || index >= _data.Slots.Count) return;
+            Jotunn.Logger.LogInfo($"[Armory] Click: Copy slot {index}");
+            CommitPendingEdit();
+            var slot = _data.Slots[index];
+            if (slot.IsEmpty()) { Say("Nothing to copy: this loadout is empty"); return; }
+            LoadoutClipboard.Write(new[] { slot });
+            Say($"Copied {slot.Name}");
+            RefreshClipboardButtons();
+        }
+
+        private static void OnPasteAllClicked()
+        {
+            Jotunn.Logger.LogInfo("[Armory] Click: Paste all");
+            CommitPendingEdit();
+            if (!LoadoutClipboard.TryRead(out var copied)) { Say("Nothing copied yet"); return; }
+            int pasted = 0, at = 0;
+            foreach (var slot in copied)
+            {
+                while (at < _data.Slots.Count && !_data.Slots[at].IsEmpty()) at++;
+                if (at < _data.Slots.Count) _data.Slots[at] = slot;
+                else if (_data.Slots.Count < MaxSlotCount) _data.Slots.Add(slot);
+                else break;
+                at++; pasted++;
+            }
+            if (pasted == 0) { Say($"No room: a rack holds {MaxSlotCount} loadouts"); return; }
+            _rack.SaveData(_data);
+            RebuildSlotRows();
+            ResizeMainPanel();
+            Say(pasted < copied.Count ? $"Pasted {pasted} of {copied.Count}: a rack holds {MaxSlotCount} loadouts"
+                                      : pasted == 1 ? "Pasted 1 loadout" : $"Pasted {pasted} loadouts");
+        }
+
+        private static void OnPasteRowClicked(int index)
+        {
+            if (index < 0 || index >= _data.Slots.Count) return;
+            Jotunn.Logger.LogInfo($"[Armory] Click: Paste into slot {index}");
+            CommitPendingEdit();
+            if (!LoadoutClipboard.TryRead(out var copied) || copied.Count != 1) return;
+            _data.Slots[index] = copied[0];
+            _rack.SaveData(_data);
+            RebuildSlotRows();
+            ResizeMainPanel();
+            Say($"Pasted {copied[0].Name}");
         }
 
         // Per-row preferred height, accounting for whether Summary and Icons are visible.
@@ -2190,7 +2418,7 @@ namespace Armory
         {
             if (slot.IsEmpty()) return "<color=#666666>empty</color>";
             var playerInv = Player.m_localPlayer?.GetInventory();
-            var rackInv   = _rack?.GetStorageInventory();
+            var rackInv   = RackInventoryForColors();
             LoadoutCategories.Entries(slot, _summaryEntries);
 
             _summary.Length = 0;

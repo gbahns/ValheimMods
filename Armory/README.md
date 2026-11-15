@@ -18,6 +18,7 @@ The rack is also a real storage container. Drop your alternate gear in, walk up,
 - **Named racks** — point at a rack and press **Shift+[Use]** to name it. The name shows on the hover text and heads both panels, so a wall of racks is readable at a glance.
 - **Personal or shared** — a button in the panel decides whether anyone may open the rack or only the player who built it. Build your own rack, set it to Personal, and your loadouts and the gear behind them are yours.
 - **Optional in-game pause** — config flag pauses the game while the panel is open, the way the ESC menu does. Works by itself solo or hosting alone; on a dedicated server it takes [Pause My Server](https://valheim.thunderstore.io/package/DeathMonger/PauseMyServer/).
+- **Copy and Paste** carry loadouts to another rack, a second base or a rebuilt one: Copy on the panel takes every loadout, a row's menu takes one, and Paste puts them into the other rack's empty slots, adding slots for the rest. Only the definitions travel; bring the items yourself, and until you do they show as missing. The clipboard is part of your character, so it survives logout and goes to any world. Another player's Personal rack opens read-only, so you can copy their loadouts without them having to share it.
 
 ---
 
@@ -34,7 +35,7 @@ The rack is also a real storage container. Drop your alternate gear in, walk up,
 
 ### Personal racks
 
-A rack set to **Personal** can only be opened by the player who built it — loadouts, storage and all. That is how each player keeps their own sets: build a rack, make it personal, and the gear those loadouts need lives inside it. A **Shared** rack is open to everyone, which is what you want for a communal armory.
+A rack set to **Personal** can only be opened by the player who built it — its storage and its loadouts are theirs to change. That is how each player keeps their own sets: build a rack, make it personal, and the gear those loadouts need lives inside it. Everyone else who presses **[Use]** on it gets a read-only view of the loadouts, to look at and **Copy** into a rack of their own; nothing in that view changes the rack, and the storage stays closed. A **Shared** rack is open to everyone, which is what you want for a communal armory.
 
 Valheim enforces this itself, with the same rule it applies to a personal chest, and the same consequence: **nobody can hammer down a personal rack while it still holds items.** To remove one, empty it first or set it back to Shared.
 

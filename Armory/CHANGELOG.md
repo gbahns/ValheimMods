@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.4.0 — 2026-11-15
+
+- Copy and Paste carry loadouts between racks (#85): Copy on the panel takes every loadout here, a row's menu takes that one; Paste fills the other rack's empty slots and adds slots for the rest. The definitions travel, not the items, and gear the new rack does not hold shows as missing. The clipboard lives in your character's save, so it survives logout and goes to any world.
+- Another player's Personal rack opens to read (#85): [Use] shows its loadouts over your inventory, with Copy and nothing that changes it. The storage stays the builder's, as before.
+
 ## 2.3.0 — 2026-11-15
 
 **Everyone updates together:** a rack's style now carries its crown, so 2.3.0 is the floor.

@@ -371,13 +371,17 @@ namespace Armory
             // $-translation tokens AND $KEY_* key-binding tokens into the player's actual bound
             // glyph (e.g. "[E]").  Jotunn's LocalizationManager only handles the former, which
             // is why $KEY_Use stayed raw through it.
+            // Another player's personal rack opens to read (ArmoryRenamePatch), and is not
+            // theirs to rename.
+            bool theirs = isPriv && !IsBuilder;
             _hoverCache = LocalizeText(
                 rackName + "\n" +
-                "[<color=yellow><b>$KEY_Use</b></color>] Manage Loadouts\n" +
-                "[<color=yellow><b>$KEY_AltPlace</b> + <b>$KEY_Use</b></color>] Rename\n" +
-                (isPriv
-                    ? "<color=#ffb14e>Personal</color> <color=#aaaaaa>— only you can open it</color>"
-                    : "<color=#aaaaaa>Shared — anyone can open it</color>"));
+                (theirs ? "[<color=yellow><b>$KEY_Use</b></color>] Read Loadouts\n"
+                        : "[<color=yellow><b>$KEY_Use</b></color>] Manage Loadouts\n" +
+                          "[<color=yellow><b>$KEY_AltPlace</b> + <b>$KEY_Use</b></color>] Rename\n") +
+                (theirs ? "<color=#ffb14e>Personal</color> <color=#aaaaaa>— only its builder can open it; you can read and copy its loadouts</color>"
+                 : isPriv ? "<color=#ffb14e>Personal</color> <color=#aaaaaa>— only you can open it; others can read and copy its loadouts</color>"
+                          : "<color=#aaaaaa>Shared — anyone can open it</color>"));
             _hoverCacheName = rackName;
             _hoverCachePrivate = isPriv;
             _hoverCacheAt = Time.unscaledTime;

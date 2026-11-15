@@ -13,6 +13,9 @@ namespace Armory
     ///
     /// Everything the rack used to re-implement — the exchange, the ownership transfer, the
     /// in-use refusal, wards, privacy — is vanilla's again, and is deleted from this mod.
+    ///
+    /// The one opening that does not come this way is the read-only view of someone else's
+    /// personal rack (ArmoryRenamePatch): no container opens, so Show is called with none.
     /// </summary>
     [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.Show))]
     internal static class ArmoryOpenPatch
