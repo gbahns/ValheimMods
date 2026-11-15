@@ -47,7 +47,66 @@ namespace TheGreatestPortal
         /// <summary>Set on a portal its owner has made private.</summary>
         internal static readonly int PrivateHash = "TGP_prv".GetStableHashCode();
 
+        /// <summary>long: the world second a private portal stops being open to everyone
+        /// (0 = it has never been opened, or the owner has shut it again).</summary>
+        internal static readonly int OpenToAllHash = "TGP_all".GetStableHashCode();
+
         internal static bool GetPrivate(ZDO zdo) => zdo != null && zdo.GetBool(PrivateHash, false);
+
+        internal static long GetOpenToAll(ZDO zdo) => zdo == null ? 0L : zdo.GetLong(OpenToAllHash, 0L);
+
+        /// <summary>
+        /// Whether a private portal is, for the moment, everybody's.
+        ///
+        /// Nothing to do with <see cref="IsOpen"/>, which is a portal with no destination. This
+        /// one is about who may see and use it, and it is only ever asked of a private portal.
+        ///
+        /// The world's own clock, the same one the "built" and "last used" times keep, so an open
+        /// lasts that many minutes of the world being played rather than of the wall clock: a
+        /// server standing empty overnight does not quietly use up somebody's fifteen minutes.
+        /// </summary>
+        internal static bool OpenToAllNow(long until) => until > 0L && Now() < until;
+
+        /// <summary>How much of an open is left, in whole seconds, or 0 once it is over.</summary>
+        internal static long OpenSecondsLeft(long until)
+        {
+            if (until <= 0L) return 0L;
+            long left = until - Now();
+            return left > 0L ? left : 0L;
+        }
+
+        /// <summary>
+        /// The longest a portal may be opened for, as the server allows. 0 means the server does
+        /// not allow it at all, which leaves private portals permanently private.
+        /// </summary>
+        internal static int MaxOpenMinutes =>
+            TgpConfig.MaximumOpenMinutes != null ? TgpConfig.MaximumOpenMinutes.Value : 0;
+
+        /// <summary>How long "Open to everyone" opens a portal for here: this player's own choice,
+        /// cut down to what the server allows. 0 when the server does not allow it.</summary>
+        internal static int OpenMinutes
+        {
+            get
+            {
+                int cap = MaxOpenMinutes;
+                if (cap <= 0) return 0;
+                int want = TgpConfig.OpenForMinutes != null ? TgpConfig.OpenForMinutes.Value : 15;
+                return want < 1 ? 1 : (want > cap ? cap : want);
+            }
+        }
+
+        /// <summary>A length of time in words, for a countdown rather than for how long ago.</summary>
+        internal static string Remaining(long seconds)
+        {
+            if (seconds <= 0L) return "no time";
+            if (seconds < 60L) return seconds == 1L ? "1 second" : seconds + " seconds";
+            long minutes = (seconds + 59L) / 60L;   // rounded up: "1 min left" until it is really gone
+            if (minutes < 60L) return minutes == 1L ? "1 min" : minutes + " min";
+            long hours = minutes / 60L;
+            long rest = minutes % 60L;
+            string h = hours == 1L ? "1 hour" : hours + " hours";
+            return rest == 0L ? h : h + " " + rest + " min";
+        }
 
         /// <summary>
         /// Whether portals may be private in this world at all. The server's rule, so a client
@@ -97,6 +156,7 @@ namespace TheGreatestPortal
         internal static bool HiddenFromMe(ZDO zdo)
         {
             if (zdo == null || !PrivateAllowed || !GetPrivate(zdo)) return false;
+            if (OpenToAllNow(GetOpenToAll(zdo))) return false;   // its owner has opened it for a while
             if (TgpConfig.ShowPrivatePortals != null && TgpConfig.ShowPrivatePortals.Value) return false;
             long me = LocalPlayerId();
             return me == 0L || GetCreator(zdo) != me;

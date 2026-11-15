@@ -16,6 +16,10 @@ namespace TheGreatestPortal
         internal static ConfigEntry<bool> AnyoneCanRenameRemote;
         internal static ConfigEntry<bool> AltarSpellingIsFatal;
         internal static ConfigEntry<bool> AllowPrivatePortals;
+        internal static ConfigEntry<int> MaximumOpenMinutes;
+
+        // ── this player's own choices ───────────────────────────────────────────────
+        internal static ConfigEntry<int> OpenForMinutes;
 
         // ── keys ────────────────────────────────────────────────────────────────────
         internal static ConfigEntry<KeyboardShortcut> TogglePinsKey;
@@ -86,12 +90,21 @@ namespace TheGreatestPortal
                 "ordinary portal again -- its mark is kept, so turning this back on restores it. " +
                 "Turn it on only once everybody is on 1.5.0 or newer: what keeps a player out of a private " +
                 "portal is the mod in their own game, and an older one knows nothing about it.");
+            MaximumOpenMinutes = mod.BindSyncedRange("Rules", "Maximum Open Minutes", 60, 0, 1440,
+                "The longest a private portal may be opened to everyone for, in minutes. Its owner opens it " +
+                "for a while so somebody can come over, and it shuts by itself with nobody to remember to " +
+                "take off a list. 0 turns that off, leaving a private portal private until its owner makes " +
+                "it public again. Does nothing while Allow Private Portals is off.");
             AltarSpellingIsFatal = mod.BindSynced("Rules", "Altar Spelling Is Fatal", false,
                 "A portal within 50 m of the sacrificial stones in the middle of the world, named \"alter\" " +
                 "(only the letters count, so spaces, digits and punctuation do not help), " +
                 "kills whoever named it. There is a word for that place and the word is altar. Off by default, " +
                 "because a server should choose to be like this on purpose. Renaming that portal from anywhere " +
                 "counts; you do not have to be standing at it.");
+
+            OpenForMinutes = mod.BindLocalRangeInt("General", "Open For Minutes", 15, 1, 1440,
+                "How long \"Open to everyone\" opens one of your private portals for. Cut down to the " +
+                "server's Maximum Open Minutes when that is shorter, so what you see offered is what you get.");
 
             TogglePinsKey = mod.BindLocal("Keys", "Toggle Portal Pins", new KeyboardShortcut(KeyCode.P),
                 "While the large map is open and you are not choosing a destination: show or hide the portal " +

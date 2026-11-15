@@ -41,23 +41,105 @@ namespace TheGreatestPortal
         }
 
         /// <summary>
-        /// Making a portal private, or public again. Only offered for your own portals: the owner
-        /// is the character that built it, and the server refuses anybody else.
+        /// Making a portal private, or public again, and letting everybody in for a while. Only
+        /// offered for your own portals: the owner is the character that built it, and the server
+        /// refuses anybody else.
         /// </summary>
         internal static void AddPrivateItem(List<KeyValuePair<string, Action>> items, PortalInfo p, Action refresh)
         {
-            if (items == null || p == null || p.Id == 0L || !p.Mine || !PortalData.PrivateAllowed) return;
+            if (items == null || p == null || p.Id == 0L || !PortalData.PrivateAllowed) return;
+            if (!p.Mine && !(p.Private && !p.OpenToAll && Cleaning)) return;
             long id = p.Id;
             bool on = p.Private;
             items.Add(new KeyValuePair<string, Action>(on ? "Make public" : "Make private", () =>
             {
                 PortalNetwork.SendPrivate(id, !on);
                 p.Private = !on;    // shown at once; the server's next portal list confirms it
+                p.OpenUntil = 0L;   // and the server ends any open along with it
                 TheGreatestPortalMod.Message(on
                     ? p.DisplayName + " is public again"
                     : p.DisplayName + " is private: only you can see or use it");
                 refresh?.Invoke();
             }));
+            if (!on) return;
+            if (p.OpenToAll)
+                items.Add(new KeyValuePair<string, Action>("Shut it now", () => Shut(p, refresh)));
+            int minutes = PortalData.OpenMinutes;
+            if (minutes > 0 && p.Mine)
+                items.Add(new KeyValuePair<string, Action>(
+                    (p.OpenToAll ? "Open for another " : "Open to everyone for ") + minutes + " min",
+                    () => Open(p, minutes, refresh)));
+        }
+
+        /// <summary>
+        /// Whether this player has asked to be shown other players' private portals.
+        ///
+        /// Only an admin is shown any, because the server decides that for itself at every send,
+        /// and only an admin's request to change one is honored. So this is enough to offer the
+        /// cleaning up that asking was for: putting somebody's portal back the way it was. The
+        /// other direction is not cleaning up after anything and is never offered.
+        /// </summary>
+        private static bool Cleaning =>
+            TgpConfig.ShowPrivatePortals != null && TgpConfig.ShowPrivatePortals.Value;
+
+        /// <summary>Letting everybody into one of your private portals for a while.</summary>
+        internal static void Open(PortalInfo p, int minutes, Action refresh)
+        {
+            if (p == null || p.Id == 0L || minutes <= 0) return;
+            PortalNetwork.SendOpen(p.Id, minutes);
+            // Shown at once and confirmed by the server's next list, like the rest of these. The
+            // time is the server's to decide, so this one is a guess until that list arrives --
+            // near enough for the padlock to change as it is clicked.
+            p.OpenUntil = PortalData.Now() + minutes * 60L;
+            TheGreatestPortalMod.Message(p.DisplayName + " is open to everyone for " + minutes + " min");
+            refresh?.Invoke();
+        }
+
+        /// <summary>Ending an open early: private again, now.</summary>
+        internal static void Shut(PortalInfo p, Action refresh)
+        {
+            if (p == null || p.Id == 0L) return;
+            PortalNetwork.SendOpen(p.Id, 0);
+            p.OpenUntil = 0L;
+            TheGreatestPortalMod.Message(p.DisplayName + " is private again");
+            refresh?.Invoke();
+        }
+
+        /// <summary>Giving up on a portal being private at all.</summary>
+        internal static void MakePublic(PortalInfo p, Action refresh)
+        {
+            if (p == null || p.Id == 0L) return;
+            PortalNetwork.SendPrivate(p.Id, false);
+            p.Private = false;
+            p.OpenUntil = 0L;
+            TheGreatestPortalMod.Message(p.DisplayName + " is public again");
+            refresh?.Invoke();
+        }
+
+        /// <summary>
+        /// The padlock a row wears, if any: shut for a portal of yours nobody else can see, and
+        /// swung open while it is standing open to everybody.
+        ///
+        /// Everyone sees the open one, not only its owner, because a portal that appeared in your
+        /// list this afternoon and is gone this evening should have said so while it was there.
+        /// Only its owner can click it; for everybody else it is a mark rather than a button.
+        /// </summary>
+        internal static UiKit.RowIcon? PrivacyIcon(PortalInfo p, Action refresh)
+        {
+            if (p == null || !PortalData.PrivateAllowed || !p.Private) return null;
+            var captured = p;
+            // A portal standing open is everybody's to see and only its owner's to shut; for
+            // the rest the padlock is a mark, not a button, so nobody is offered a click the
+            // server will refuse.
+            if (p.OpenToAll)
+                return p.Mine
+                    ? new UiKit.RowIcon(UiKit.Unlocked(), () => Shut(captured, refresh), UiKit.Gold)
+                    : new UiKit.RowIcon(UiKit.Unlocked(), null);
+            bool act = p.Mine || Cleaning;   // whose padlock this is to click
+            // A portal nobody but its owner may see only reaches anybody else as an admin's
+            // doing, so this is the owner's own list, or the one they asked to be shown.
+            return act ? new UiKit.RowIcon(UiKit.Lock(), () => MakePublic(captured, refresh), UiKit.Gold)
+                       : (UiKit.RowIcon?)null;
         }
 
         /// <summary>

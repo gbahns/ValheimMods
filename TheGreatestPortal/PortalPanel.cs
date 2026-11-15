@@ -34,6 +34,8 @@ namespace TheGreatestPortal
         private static ScrollRect _scroll;
         private static Toggle _default;
         private static Toggle _private;
+        private static Button _open;
+        private static float _nextOpenTick;
         private static Button _star;
         private static Image _starImage;
         private static bool _starHover;
@@ -120,7 +122,12 @@ namespace TheGreatestPortal
             // Private is said as well as where it leads, not instead: the owner of a private
             // portal still wants to know what it is pointing at.
             if (PortalData.PrivateAllowed && PortalData.GetPrivate(zdo))
-                head += PortalData.HiddenFromMe(zdo) ? " [Private]" : " [Private, yours]";
+            {
+                long until = PortalData.GetOpenToAll(zdo);
+                head += PortalData.OpenToAllNow(until)
+                    ? $" [Open to everyone, {PortalData.Remaining(PortalData.OpenSecondsLeft(until))} left]"
+                    : PortalData.HiddenFromMe(zdo) ? " [Private]" : " [Private, yours]";
+            }
             if (status != null) head += $" [{status}]";
             return Localization.instance.Localize($"{head}\n[<color=yellow><b>$KEY_Use</b></color>] Configure");
         }
@@ -166,6 +173,7 @@ namespace TheGreatestPortal
                 _private.interactable = offer && ownedByMe && _id != 0L;
             }
             UpdateStar();
+            UpdateOpenButton();
             _redirectAll.interactable = _id != 0L;
             UiKit.SetLabel(_redirectAll.gameObject, RedirectLabel);
             Populate();
@@ -200,6 +208,13 @@ namespace TheGreatestPortal
             {
                 _openedThisFrame = false;
                 return;
+            }
+            // The countdown on the open button, once a second rather than every frame: it is
+            // minutes it counts, and this runs for as long as the panel is up.
+            if (Time.time >= _nextOpenTick)
+            {
+                _nextOpenTick = Time.time + 1f;
+                UpdateOpenButton();
             }
             if (UiKit.ContextMenu.IsOpen)
             {
@@ -333,17 +348,15 @@ namespace TheGreatestPortal
             UiKit.RowHandle row = null;
             int index = _rows.Count;
             // The star both says whether it is a favorite and flips it, so the name need not.
-            var icons = PortalData.PrivateAllowed && p.Private && p.Mine
-                ? new[]
-                {
-                    new UiKit.RowIcon(fav ? UiKit.Star() : UiKit.StarOutline(), () => PortalMenu.ToggleFavorite(captured, Populate), fav ? UiKit.Gold : (Color?)null),
-                    // The padlock says this one is yours alone, and clicking it gives that up.
-                    new UiKit.RowIcon(UiKit.Lock(), () => MakePublic(captured), UiKit.Gold),
-                }
-                : new[]
-                {
-                    new UiKit.RowIcon(fav ? UiKit.Star() : UiKit.StarOutline(), () => PortalMenu.ToggleFavorite(captured, Populate), fav ? UiKit.Gold : (Color?)null),
-                };
+            // The padlock says this one is yours alone, or that it is standing open for a while,
+            // and clicking it does the obvious thing with that.
+            var iconList = new List<UiKit.RowIcon>(2)
+            {
+                new UiKit.RowIcon(fav ? UiKit.Star() : UiKit.StarOutline(), () => PortalMenu.ToggleFavorite(captured, Populate), fav ? UiKit.Gold : (Color?)null),
+            };
+            var padlock = PortalMenu.PrivacyIcon(captured, Populate);
+            if (padlock.HasValue) iconList.Add(padlock.Value);
+            var icons = iconList.ToArray();
             row = UiKit.Row(_listContent, p.DisplayName, dist,
                 () => Choose(captured.Id, index),
                 () => ShowRowMenu(captured, row),
@@ -355,15 +368,6 @@ namespace TheGreatestPortal
             row.SetTip(() => PortalList.TipFor(captured), _content);
             row.Refresh();
             AddRow(p.Id, row);
-        }
-
-        private static void MakePublic(PortalInfo p)
-        {
-            if (p == null || p.Id == 0L) return;
-            PortalNetwork.SendPrivate(p.Id, false);
-            p.Private = false;
-            TheGreatestPortalMod.Message(p.DisplayName + " is public again");
-            Populate();
         }
 
         /// <summary>The right-click menu on a portal row.</summary>
@@ -515,6 +519,52 @@ namespace TheGreatestPortal
             TheGreatestPortalMod.Message(on
                 ? "This portal is private: only you can see or use it"
                 : "This portal is public again");
+            UpdateOpenButton();
+        }
+
+        /// <summary>The ZDO of the portal this panel was opened at, while it is still loaded.</summary>
+        private static ZDO OwnZdo()
+        {
+            return _zdo != ZDOID.None && ZDOMan.instance != null ? ZDOMan.instance.GetZDO(_zdo) : null;
+        }
+
+        /// <summary>
+        /// Letting everybody in for a while, or shutting it again now.
+        ///
+        /// Only there for a private portal of your own, and only while the server allows an open
+        /// at all -- or while one is already running, so that a server turning the length down to
+        /// nothing does not leave somebody's portal open with no way to shut it.
+        /// </summary>
+        private static void UpdateOpenButton()
+        {
+            if (_open == null) return;
+            var zdo = OwnZdo();
+            long me = PortalData.LocalPlayerId();
+            bool mine = zdo != null && me != 0L && PortalData.GetCreator(zdo) == me;
+            long until = zdo != null ? PortalData.GetOpenToAll(zdo) : 0L;
+            bool open = PortalData.OpenToAllNow(until);
+            int minutes = PortalData.OpenMinutes;
+            bool offer = PortalData.PrivateAllowed && mine && _id != 0L
+                         && zdo != null && PortalData.GetPrivate(zdo) && (open || minutes > 0);
+            if (_open.gameObject.activeSelf != offer) _open.gameObject.SetActive(offer);
+            if (!offer) return;
+            UiKit.SetLabel(_open.gameObject, open
+                ? $"Shut it now ({PortalData.Remaining(PortalData.OpenSecondsLeft(until))} left)"
+                : $"Open to everyone for {minutes} min");
+        }
+
+        private static void ToggleOpen()
+        {
+            if (_id == 0L) return;
+            var zdo = OwnZdo();
+            bool open = zdo != null && PortalData.OpenToAllNow(PortalData.GetOpenToAll(zdo));
+            int minutes = PortalData.OpenMinutes;
+            if (!open && minutes <= 0) return;
+            PortalNetwork.SendOpen(_id, open ? 0 : minutes);
+            TheGreatestPortalMod.Message(open
+                ? "This portal is private again"
+                : $"This portal is open to everyone for {minutes} min");
+            UpdateOpenButton();
         }
 
         private static void ApplyToggles()
@@ -784,6 +834,9 @@ namespace TheGreatestPortal
             UiKit.Place(_default.GetComponent<RectTransform>(), 30f, 418f, 400f, 30f);
             _private = UiKit.SimpleToggle(content.transform, "Private", "Private (only you)", false, OnPrivateToggle);
             UiKit.Place(_private.GetComponent<RectTransform>(), 440f, 418f, 210f, 30f);
+            _open = UiKit.LinkButton(content.transform, "OpenToAll", "Open to everyone", ToggleOpen);
+            UiKit.Place(_open.GetComponent<RectTransform>(), 440f, 450f, 210f, 24f);
+            _open.gameObject.SetActive(false);
             _redirectAll = ok != null ? UiKit.CloneButton(ok, content.transform, "RedirectAll", RedirectLabel, RedirectAll)
                                       : UiKit.SimpleButton(content.transform, "RedirectAll", RedirectLabel, RedirectAll);
             UiKit.Place(_redirectAll.GetComponent<RectTransform>(), 30f, 456f, 250f, 36f);
@@ -870,6 +923,7 @@ namespace TheGreatestPortal
             if (_scroll != null) UiKit.Place(_scroll.GetComponent<RectTransform>(), 30f, 176f, w - 60f, h - 370f);
             if (_default != null) UiKit.Place(_default.GetComponent<RectTransform>(), 30f, h - 182f, 400f, 30f);
             if (_private != null) UiKit.Place(_private.GetComponent<RectTransform>(), w - 240f, h - 182f, 210f, 30f);
+            if (_open != null) UiKit.Place(_open.GetComponent<RectTransform>(), w - 240f, h - 150f, 210f, 24f);
             if (_redirectAll != null) UiKit.Place(_redirectAll.GetComponent<RectTransform>(), 30f, h - 144f, 250f, 36f);
             float by = h - 92f, bh = 44f;
             if (_pick != null) UiKit.Place(_pick.GetComponent<RectTransform>(), 30f, by, 160f, bh);

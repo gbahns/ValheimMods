@@ -417,6 +417,9 @@ namespace TheGreatestPortal
             if (p == null) return null;
             var lines = new List<string>();
             if (LastUsedId != 0L && p.Id == LastUsedId) lines.Add("The last portal you traveled through");
+            if (p.OpenToAll)
+                lines.Add((p.Mine ? "Yours, open to everyone for another " : "Open to everyone for another ")
+                          + PortalData.Remaining(p.OpenLeft));
             bool mine = false;
             foreach (var v in Visits(p))
             {

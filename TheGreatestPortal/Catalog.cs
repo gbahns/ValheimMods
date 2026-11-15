@@ -23,6 +23,17 @@ namespace TheGreatestPortal
         public string UsedLog = ""; // everyone who has been through it, newest first (packed)
         public long OwnerId;       // the character that built it (vanilla's creator), 0 = unknown
         public bool Private;       // its owner has made it theirs alone
+        public long OpenUntil;     // ... but is letting everyone in until this world second
+
+        /// <summary>Whether this private portal is open to everyone just now.</summary>
+        public bool OpenToAll => Private && PortalData.OpenToAllNow(OpenUntil);
+
+        /// <summary>How long that has left to run, in seconds.</summary>
+        public long OpenLeft => PortalData.OpenSecondsLeft(OpenUntil);
+
+        /// <summary>Whether the server should keep this portal from everybody but its owner. A
+        /// portal standing open is sent to everyone, which is the whole point of opening it.</summary>
+        public bool HiddenFromOthers => Private && !PortalData.OpenToAllNow(OpenUntil);
 
         /// <summary>Whether this portal is this character's to make private, rename from afar and
         /// so on. A portal with no owner recorded is nobody's.</summary>
@@ -90,6 +101,20 @@ namespace TheGreatestPortal
             Private = pkg.ReadBool();
         }
 
+        /// <summary>When a private portal that is standing open shuts again. An absolute world
+        /// second rather than a countdown: the world clock is the server's, shared with every
+        /// client, so one number means the same thing everywhere and does not go stale in
+        /// transit or between one list and the next.</summary>
+        public void WriteOpen(ZPackage pkg)
+        {
+            pkg.Write(OpenUntil);
+        }
+
+        public void ReadOpen(ZPackage pkg)
+        {
+            OpenUntil = pkg.ReadLong();
+        }
+
         public void ReadMore(ZPackage pkg)
         {
             BornBy = pkg.ReadString();
@@ -136,6 +161,10 @@ namespace TheGreatestPortal
         /// <summary>Version of the third block. Same bargain: a client that does not know it reads
         /// the two blocks it does know and stops, and sees every portal it is allowed to see.</summary>
         private const int Own = 3;
+
+        /// <summary>Version of the fourth block. Same bargain once more: a 1.5.0 client reads the
+        /// three it knows and stops, and sees a portal standing open as the plain portal it is.</summary>
+        private const int Open = 4;
 
         private static readonly Dictionary<long, PortalInfo> _byId = new Dictionary<long, PortalInfo>();
         private static readonly List<PortalInfo> _all = new List<PortalInfo>();
@@ -202,7 +231,11 @@ namespace TheGreatestPortal
                 {
                     for (int i = 0; i < order.Count && pkg.GetPos() < pkg.Size(); i++) order[i].ReadMore(pkg);
                     if (pkg.GetPos() < pkg.Size() && pkg.ReadInt() == Own)
+                    {
                         for (int i = 0; i < order.Count && pkg.GetPos() < pkg.Size(); i++) order[i].ReadOwner(pkg);
+                        if (pkg.GetPos() < pkg.Size() && pkg.ReadInt() == Open)
+                            for (int i = 0; i < order.Count && pkg.GetPos() < pkg.Size(); i++) order[i].ReadOpen(pkg);
+                    }
                 }
             }
             HasSnapshot = true;
@@ -223,6 +256,8 @@ namespace TheGreatestPortal
             for (int i = 0; i < infos.Count; i++) infos[i].WriteMore(pkg);
             pkg.Write(Own);
             for (int i = 0; i < infos.Count; i++) infos[i].WriteOwner(pkg);
+            pkg.Write(Open);
+            for (int i = 0; i < infos.Count; i++) infos[i].WriteOpen(pkg);
             return pkg;
         }
 

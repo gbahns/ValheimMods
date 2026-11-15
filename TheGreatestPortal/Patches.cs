@@ -175,18 +175,20 @@ namespace TheGreatestPortal
             if (player != null && player == Player.m_localPlayer)
             {
                 var zdo = PortalData.ZdoOf(__instance);
-                bool mine = !PortalData.HiddenFromMe(zdo);
-                if (mine && zdo != null)
-                {
-                    ZDOID conn = PortalData.Connection(zdo);
-                    if (conn != ZDOID.None && ZDOMan.instance != null)
-                        mine = !PortalData.HiddenFromMe(ZDOMan.instance.GetZDO(conn));
-                }
-                if (!mine)
+                ZDOID conn = zdo != null ? PortalData.Connection(zdo) : ZDOID.None;
+                ZDO far = conn != ZDOID.None && ZDOMan.instance != null ? ZDOMan.instance.GetZDO(conn) : null;
+                if (PortalData.HiddenFromMe(zdo) || PortalData.HiddenFromMe(far))
                 {
                     player.Message(MessageHud.MessageType.Center, "This portal is private");
                     return false;
                 }
+                // Arriving at somebody's portal that is only open for a while: say how long is
+                // left, because when it shuts this is no longer a way back and the walk might be
+                // a long one. From the catalog rather than the ZDO, which may not be loaded here.
+                var dest = conn != ZDOID.None ? Catalog.ByZdo(conn) : null;
+                if (dest != null && dest.OpenToAll && !dest.Mine)
+                    player.Message(MessageHud.MessageType.Center,
+                        $"{dest.DisplayName} is open for another {PortalData.Remaining(dest.OpenLeft)}");
             }
             return true;
         }

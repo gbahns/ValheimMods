@@ -650,6 +650,7 @@ namespace TheGreatestPortal
         }
 
         private static Sprite _lock;
+        private static Sprite _unlock;
 
         /// <summary>
         /// A padlock, shut: a body with a shackle over it, drawn with soft edges.
@@ -658,15 +659,33 @@ namespace TheGreatestPortal
         /// color, for the same reason the bands are: "this one is private" has to read for
         /// everybody, and it is a thing you look for rather than something to notice in passing.
         /// </summary>
-        internal static Sprite Lock()
+        internal static Sprite Lock() => Padlock(false, ref _lock);
+
+        /// <summary>
+        /// The same padlock with its shackle swung open, for a private portal standing open to
+        /// everyone for a while.
+        ///
+        /// The same drawing rather than a second one, so the two read as one thing in two states:
+        /// what a glance has to catch is the shackle lifting, which it does whether or not the
+        /// viewer can tell the gold apart from the grey.
+        /// </summary>
+        internal static Sprite Unlocked() => Padlock(true, ref _unlock);
+
+        private static Sprite Padlock(bool open, ref Sprite cache)
         {
-            if (_lock != null) return _lock;
+            if (cache != null) return cache;
             const int n = 48;
             var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
             var px = new Color32[n * n];
             // The body, and the shackle as the top half of a ring standing on it.
             const float bodyLeft = 11f, bodyRight = 37f, bodyBottom = 5f, bodyTop = 27f, bodyRound = 4f;
             const float ringX = 24f, ringY = 27f, ringOuter = 11.5f, ringInner = 6.5f;
+            // Open is the shut shackle turned about the foot of one leg, where a real one is
+            // hinged. Turning the sample point instead of the shape keeps it one drawing: the
+            // body stays where it is and only the arc swings.
+            const float tilt = 40f * Mathf.Deg2Rad;
+            float pivotX = ringX + (ringOuter + ringInner) * 0.5f, pivotY = ringY;
+            float cos = Mathf.Cos(tilt), sin = Mathf.Sin(tilt);
             for (int y = 0; y < n; y++)
                 for (int x = 0; x < n; x++)
                 {
@@ -676,8 +695,18 @@ namespace TheGreatestPortal
                         {
                             float fx = x + (sx + 0.5f) / 3f, fy = y + (sy + 0.5f) / 3f;
                             if (InRoundedBox(fx, fy, bodyLeft, bodyBottom, bodyRight, bodyTop, bodyRound)) { hit++; continue; }
-                            if (fy < ringY) continue;
-                            float dx = fx - ringX, dy = fy - ringY;
+                            float sxp = fx, syp = fy;
+                            if (open)
+                            {
+                                float ox = fx - pivotX, oy = fy - pivotY;
+                                // The sample turns one way so the shackle appears to turn the
+                                // other: clockwise about its right leg, which lifts the left one
+                                // off the body and swings it up and over.
+                                sxp = pivotX + ox * cos - oy * sin;
+                                syp = pivotY + ox * sin + oy * cos;
+                            }
+                            if (syp < ringY) continue;
+                            float dx = sxp - ringX, dy = syp - ringY;
                             float d = Mathf.Sqrt(dx * dx + dy * dy);
                             if (d <= ringOuter && d >= ringInner) hit++;
                         }
@@ -688,9 +717,9 @@ namespace TheGreatestPortal
             tex.filterMode = FilterMode.Bilinear;
             tex.wrapMode = TextureWrapMode.Clamp;
             tex.hideFlags = HideFlags.HideAndDontSave;
-            _lock = Sprite.Create(tex, new Rect(0f, 0f, n, n), new Vector2(0.5f, 0.5f), 100f);
-            _lock.hideFlags = HideFlags.HideAndDontSave;
-            return _lock;
+            cache = Sprite.Create(tex, new Rect(0f, 0f, n, n), new Vector2(0.5f, 0.5f), 100f);
+            cache.hideFlags = HideFlags.HideAndDontSave;
+            return cache;
         }
 
         /// <summary>Whether a point is inside a box whose corners are rounded.</summary>

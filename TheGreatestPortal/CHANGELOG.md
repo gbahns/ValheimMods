@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.6.0 — unreleased
+
+- **Open a private portal to everyone for a while.** Your own private portal gets an
+  **Open to everyone for 15 min** button on its panel, and the same in a row's right-click menu.
+  While it is open everybody sees it and can travel to it as usual; when the time runs out it is
+  yours alone again, with nobody to take off a list. **Shut it now** ends it early, and the
+  padlock on the row shows which it is: shut, or swung open with the time left in the tooltip.
+- How long is yours to set (**Open For Minutes**, 15 by default) up to what the server allows
+  (**Maximum Open Minutes**, 60; 0 turns opening off and leaves private portals private).
+- The world's own clock, which stands still while nobody is playing, so fifteen minutes is
+  fifteen minutes of the world being lived in.
+- Arriving at a portal that is only open for a while tells you how long is left, because when it
+  shuts it is no longer the way back.
+- A player on 1.5.0 sees an opened portal but is still refused the trip, so everyone wanting in
+  should be on 1.6.0 or newer. Nobody is locked out of a server over it.
+- Fixed: an admin who turned on **Show Private Portals** could see other players' private portals
+  but had no way to make one public again, which is the only reason that setting exists. The
+  padlock and the row menu now offer it.
+
 ## 1.5.0 — 2026-11-12
 
 - Private portals, off until a server turns them on (**Allow Private Portals**, a synced rule).

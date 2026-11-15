@@ -27,6 +27,7 @@ namespace TheGreatestPortal
         private const string RpcUsed    = "TGP_Used";     // client -> server: long from, long to
         private const string RpcPrivate = "TGP_Private";  // client -> server: long portal id, int 1 = private
         private const string RpcReveal  = "TGP_Reveal";   // client -> server: int 1 = an admin asking to see every private portal
+        private const string RpcOpen    = "TGP_Open";     // client -> server: long portal id, int minutes (0 = shut it again)
 
         private const float Interval = 2f;
 
@@ -71,6 +72,7 @@ namespace TheGreatestPortal
             rpc.Register<long, long>(RpcUsed, RPC_Used);
             rpc.Register<long, int>(RpcPrivate, RPC_Private);
             rpc.Register<int>(RpcReveal, RPC_Reveal);
+            rpc.Register<long, int>(RpcOpen, RPC_Open);
         }
 
         internal static void Reset()
@@ -126,6 +128,16 @@ namespace TheGreatestPortal
         {
             if (ZRoutedRpc.instance == null || portalId == 0L) return;
             ZRoutedRpc.instance.InvokeRoutedRPC(RpcPrivate, portalId, on ? 1 : 0);
+        }
+
+        /// <summary>
+        /// Asks the server to let everybody into one of your private portals for a while, or to
+        /// shut it again now (0 minutes). The server decides how long it really lasts.
+        /// </summary>
+        internal static void SendOpen(long portalId, int minutes)
+        {
+            if (ZRoutedRpc.instance == null || portalId == 0L) return;
+            ZRoutedRpc.instance.InvokeRoutedRPC(RpcOpen, portalId, minutes);
         }
 
         /// <summary>
@@ -269,8 +281,69 @@ namespace TheGreatestPortal
             if (PortalData.GetPrivate(zdo) == want) return;
             Own(zdo);
             zdo.Set(PortalData.PrivateHash, want);
+            // Whichever way it was switched, an open that was running is over: made public there
+            // is nothing left to open, and made private again the player has just said the
+            // opposite of what the open says.
+            if (PortalData.GetOpenToAll(zdo) != 0L) zdo.Set(PortalData.OpenToAllHash, 0L);
             ZDOMan.instance.ForceSendZDO(zdo.m_uid);
             TheGreatestPortalMod.Log.LogInfo($"[TheGreatestPortal] {PeerName(znet, sender)} made portal {portalId} {(want ? "private" : "public")}.");
+            _dirty = true;
+        }
+
+        /// <summary>
+        /// Letting everybody into a private portal for a while, or shutting it again.
+        ///
+        /// The same people as may make it private, for the same reason: it is the owner's portal,
+        /// and an admin cleaning up after one needs every way in that the owner has.
+        ///
+        /// The server writes the time rather than taking one from the client, so a client cannot
+        /// ask for a longer open than the server allows by sending a time instead of a length,
+        /// and every portal's clock is the same clock.
+        /// </summary>
+        private static void RPC_Open(long sender, long portalId, int minutes)
+        {
+            var znet = ZNet.instance;
+            if (znet == null || !znet.IsServer()) return;
+            if (!PortalData.PrivateAllowed)
+            {
+                Notice(sender, "Private portals are turned off on this server");
+                return;
+            }
+            int cap = PortalData.MaxOpenMinutes;
+            if (cap <= 0 && minutes > 0)
+            {
+                Notice(sender, "This server does not allow opening a private portal");
+                return;
+            }
+            if (!_byId.TryGetValue(portalId, out var zdo) || zdo == null)
+            {
+                Notice(sender, "That portal is not in the list yet");
+                return;
+            }
+            long who = PlayerIdOf(sender);
+            long owner = PortalData.GetCreator(zdo);
+            bool mine = who != 0L && owner != 0L && owner == who;
+            bool cleaning = _wantsAll.Contains(sender) && IsAdmin(znet, sender);
+            if (!mine && !cleaning)
+            {
+                TheGreatestPortalMod.Log.LogInfo($"[TheGreatestPortal] {PeerName(znet, sender)} asked to open a portal they do not own.");
+                Notice(sender, "Only the portal's owner can do that");
+                return;
+            }
+            if (!PortalData.GetPrivate(zdo))
+            {
+                Notice(sender, "That portal is not private, so everybody is already in it");
+                return;
+            }
+            if (minutes > cap) minutes = cap;
+            long until = minutes > 0 ? PortalData.Now() + minutes * 60L : 0L;
+            if (PortalData.GetOpenToAll(zdo) == until) return;
+            Own(zdo);
+            zdo.Set(PortalData.OpenToAllHash, until);
+            ZDOMan.instance.ForceSendZDO(zdo.m_uid);
+            TheGreatestPortalMod.Log.LogInfo(minutes > 0
+                ? $"[TheGreatestPortal] {PeerName(znet, sender)} opened portal {portalId} to everyone for {minutes} min."
+                : $"[TheGreatestPortal] {PeerName(znet, sender)} shut portal {portalId} again.");
             _dirty = true;
         }
 
@@ -630,6 +703,7 @@ namespace TheGreatestPortal
                     Prefab = prefabName,
                     OwnerId = PortalData.GetCreator(zdo),
                     Private = PortalData.GetPrivate(zdo),
+                    OpenUntil = PortalData.GetOpenToAll(zdo),
                     Born = PortalData.GetBorn(zdo),
                     UsedAt = PortalData.GetUsed(zdo),
                     UsedBy = PortalData.GetUser(zdo),
@@ -673,6 +747,10 @@ namespace TheGreatestPortal
         ///
         /// So the cost is paid only by the servers that use the feature, and then only while they
         /// do -- take the last portal out of private and the next send is a broadcast again.
+        ///
+        /// An open running out is noticed here rather than scheduled anywhere: nothing is written
+        /// when the clock passes it, but this runs every couple of seconds and asks afresh who is
+        /// hidden, so the portal leaves everybody else's next list of its own accord.
         /// </summary>
         private static void BroadcastIfChanged()
         {
@@ -680,7 +758,7 @@ namespace TheGreatestPortal
             if (znet == null) return;
             bool anyPrivate = false;
             if (PortalData.PrivateAllowed)
-                for (int i = 0; i < _infos.Count; i++) if (_infos[i].Private) { anyPrivate = true; break; }
+                for (int i = 0; i < _infos.Count; i++) if (_infos[i].HiddenFromOthers) { anyPrivate = true; break; }
             if (!anyPrivate)
             {
                 var pkg = Catalog.Pack(_infos);
@@ -716,14 +794,14 @@ namespace TheGreatestPortal
             bool filtered = false;
             if (PortalData.PrivateAllowed)
                 for (int i = 0; i < _infos.Count; i++)
-                    if (_infos[i].Private) { filtered = true; break; }
+                    if (_infos[i].HiddenFromOthers) { filtered = true; break; }
             if (filtered && !all)
             {
                 list = new List<PortalInfo>(_infos.Count);
                 for (int i = 0; i < _infos.Count; i++)
                 {
                     var p = _infos[i];
-                    if (!p.Private || (who != 0L && p.OwnerId == who)) list.Add(p);
+                    if (!p.HiddenFromOthers || (who != 0L && p.OwnerId == who)) list.Add(p);
                 }
             }
             var pkg = Catalog.Pack(list);
