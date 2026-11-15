@@ -32,12 +32,12 @@ namespace Armory
     {
         public const string ModGuid    = "GBahns.Armory";
         public const string ModName    = "Armory";
-        public const string ModVersion = "2.2.1";
+        public const string ModVersion = "2.3.0";
 
         // 2.1.0: the rack's grid is a synced setting an older client does not have, and a client
         // on a different grid than the rack's owner opens rows it cannot see.  A literal, raised
         // only when a release changes what the server and the clients have to agree on.
-        public const string MinCompatibleVersion = "2.2.0";
+        public const string MinCompatibleVersion = "2.3.0";
 
         private static ConfigSync _configSync;
 
@@ -69,6 +69,9 @@ namespace Armory
         public static ConfigEntry<RackModel> RackModel;
         public static ConfigEntry<RackDecor> RackDecor;
         public static ConfigEntry<RackWood>  RackWood;
+        // The Armoire's crown: its shape and, for the bonnet shapes, its height.
+        public static ConfigEntry<CrownCurve>  CrownCurve;
+        public static ConfigEntry<CrownHeight> CrownHeight;
 
         // The rack's storage grid.  Synced, so everyone opens the same grid; see RackSize.
         public static ConfigEntry<bool> LockConfiguration;
@@ -109,19 +112,19 @@ namespace Armory
             PauseGameWhileOpen.SettingChanged += (_, __) => ArmoryPause.Refresh();
 
             ShowSummaryText = Config.Bind(
-                section:     "UI",
+                section:     "Window",
                 key:         "Show Summary Text",
                 defaultValue: true,
                 description: "Show the textual list of items below each loadout's name (Helm:..., Chest:..., etc).");
 
             ShowIcons = Config.Bind(
-                section:     "UI",
+                section:     "Window",
                 key:         "Show Icons",
                 defaultValue: true,
                 description: "Show the row of item icons at the bottom of each loadout row.");
 
             ShowRowButtons = Config.Bind(
-                section:     "UI",
+                section:     "Window",
                 key:         "Show Row Buttons",
                 defaultValue: false,
                 description: "Show Save, Load, +, Cmp and x on every loadout row. Off puts them in a menu " +
@@ -169,31 +172,44 @@ namespace Armory
             RackWidth.SettingChanged  += (_, __) => RackSize.Apply();
             RackHeight.SettingChanged += (_, __) => RackSize.Apply();
 
+            // The five Default settings are what a rack looks like until someone picks a style for
+            // it with the Style button.
             RackModel = Config.Bind(
-                section:     "UI",
-                key:         "Rack Model",
+                section:     "Style",
+                key:         "Default Model",
                 defaultValue: Armory.RackModel.Armoire,
-                description: "How the rack is drawn. Armoire is a modeled wardrobe with a crown, arched door panels " +
-                             "and iron strap hinges; Cabinet is a plainer boarded one; Panels is the original build " +
-                             "from floor planks and shutters. Changes at once, on every rack in view that has not " +
-                             "been given its own style with the Style button.");
+                description: "Your default model, for every rack nobody has styled with the Style button; those racks " +
+                             "change with it. Armoire is a modeled wardrobe with a crown (see Default Crown Shape), " +
+                             "arched door panels and iron strap hinges; Cabinet is a plainer boarded one; Panels is " +
+                             "the original build from floor planks and shutters.");
             RackDecor = Config.Bind(
-                section:     "UI",
-                key:         "Rack Decoration",
+                section:     "Style",
+                key:         "Default Decoration",
                 defaultValue: Armory.RackDecor.None,
-                description: "What hangs on the doors of any model. Shields is a carved shield over crossed axes on " +
-                             "each door; Bronze hangs the game's bronze buckler and crossed bronze swords on one door " +
-                             "and crossed axes on the other, and Iron, Silver, Blackmetal, Carapace and Flametal the " +
-                             "same in each later metal. Changes at once, on every rack that has not been given its own.");
+                description: "Your default decoration, for every rack nobody has styled with the Style button. " +
+                             "Shields is a carved shield over crossed axes on each door; Bronze hangs the game's " +
+                             "bronze buckler and crossed bronze swords on one door and crossed axes on the other, " +
+                             "and Iron, Silver, Blackmetal, Carapace and Flametal the same in each later metal.");
             RackWood = Config.Bind(
-                section:     "UI",
-                key:         "Rack Wood",
+                section:     "Style",
+                key:         "Default Wood",
                 defaultValue: Armory.RackWood.Darkwood,
-                description: "The wood the Armoire and Cabinet are drawn in: the game's darkwood, the darkwood beam's " +
-                             "brown planks, or plain wood. Changes at once, on every rack that has not been given its own.");
+                description: "Your default wood for the Armoire and Cabinet, for every rack nobody has styled with " +
+                             "the Style button: the game's darkwood, the darkwood beam's brown planks, or plain wood.");
             RackModel.SettingChanged += (_, __) => RackVisual.RebuildAll();
             RackDecor.SettingChanged += (_, __) => RackVisual.RebuildAll();
             RackWood.SettingChanged  += (_, __) => RackVisual.RebuildAll();
+
+            // The Armoire's crown; the other models have none to shape.
+            CrownCurve = Config.Bind("Style", "Default Crown Shape", Armory.CrownCurve.Flat,
+                "Your default for the Armoire's crown, for every Armoire nobody has given its own with the Style button: " +
+                "Flat is the stepped molding; Ogee and Pointed are a bonnet top whose front rises from the shoulders to a crest, " +
+                "in an S or to a point.");
+            CrownHeight = Config.Bind("Style", "Default Crown Height", Armory.CrownHeight.Medium,
+                "Your default for a bonnet crown (Ogee or Pointed), for every Armoire nobody has given its own with the Style button: " +
+                "how tall it stands, Low (12 cm), Medium (21 cm) or High (30 cm), the shoulders and pediment scaled with it.");
+            CrownCurve.SettingChanged  += (_, __) => RackVisual.RebuildAll();
+            CrownHeight.SettingChanged += (_, __) => RackVisual.RebuildAll();
 
             if (!ModEnabled.Value)
             {

@@ -291,11 +291,13 @@ namespace Armory
             // Crafting station.
             piece.m_craftingStation = PrefabManager.Instance.GetPrefab("piece_workbench")?.GetComponent<CraftingStation>();
 
-            // Icon: load custom 256×256 from embedded resource.  If that fails, fall back
-            // to a vanilla chest icon so the entry doesn't disappear from the build menu.
-            piece.m_icon = LoadEmbeddedIcon("armory.png")
-                        ?? ObjectDB.instance.GetItemPrefab("ArmorLeatherChest")?.GetComponent<ItemDrop>()
-                                  ?.m_itemData?.m_shared?.m_icons?[0];
+            // Icon: a picture of the player's default rack (#86), else the drawn 256×256 one
+            // embedded here, else a vanilla icon so the entry doesn't disappear from the menu.
+            _drawnIcon = LoadEmbeddedIcon("armory.png")
+                      ?? ObjectDB.instance.GetItemPrefab("ArmorLeatherChest")?.GetComponent<ItemDrop>()
+                                ?.m_itemData?.m_shared?.m_icons?[0];
+            piece.m_icon = _drawnIcon;
+            RefreshIcon();
 
             // Place effects.
             var refPiece = PrefabManager.Instance.GetPrefab(BasePrefab)?.GetComponent<Piece>();
@@ -370,6 +372,18 @@ namespace Armory
             }
             table.m_pieces.Add(_clone);
             Jotunn.Logger.LogInfo("[Armory] EnsureInPieceTable: inserted armory_rack.");
+        }
+
+        private static Sprite _drawnIcon;
+
+        /// <summary>Photographs the default rack for the hammer menu; the Style settings call
+        /// this again when they change, so the icon shows what the player will build.</summary>
+        internal static void RefreshIcon()
+        {
+            var piece = _clone != null ? _clone.GetComponent<Piece>() : null;
+            if (piece == null) return;
+            var shot = ArmoryPreview.Icon(RackVisual.Defaults, 256);
+            piece.m_icon = shot != null ? shot : _drawnIcon;
         }
 
         // Load a 256×256 PNG embedded as a managed resource and return it as a Sprite.

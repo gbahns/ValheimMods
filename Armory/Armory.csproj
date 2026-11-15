@@ -25,6 +25,7 @@
     <!-- The rack's models, exported by Model\armoire.py (Blender); read at runtime by ObjModel. -->
     <EmbeddedResource Include="Model\armoire.obj" />
     <EmbeddedResource Include="Model\armoire_shields.obj" />
+    <EmbeddedResource Include="Model\armoire_curved.obj" />
   </ItemGroup>
 
   <ItemGroup>

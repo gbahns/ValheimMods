@@ -43,37 +43,40 @@ namespace Armory
                 m_nview.Register<string>("ArmoryRPC_SetData", RPC_SetData);
                 m_nview.Register<bool>("ArmoryRPC_SetPrivate", RPC_SetPrivate);
                 m_nview.Register<string>("ArmoryRPC_SetName", RPC_SetName);
-                m_nview.Register<string, string, string>("ArmoryRPC_SetStyle", RPC_SetStyle);
+                m_nview.Register<string, string, string, string, string>("ArmoryRPC_SetStyle", RPC_SetStyle);
             }
 
             // The prefab was drawn with the settings' style; a rack with its own catches up in
             // its first Update, once the ZDO is there to read.
-            _appliedModel = RackVisual.Model;
-            _appliedDecor = RackVisual.Decor;
-            _appliedWood  = RackVisual.Wood;
+            _applied = RackVisual.Defaults;
             RefreshHinges();
         }
 
         // ── Style (#77) ────────────────────────────────────────────────────────────────
         //
         // A rack can be dressed in game, from the Manage Loadouts panel, and keeps that look
-        // for everyone: the model, decoration and wood sit in the ZDO as enum names (empty =
-        // follow the Rack Model / Rack Decoration / Rack Wood settings), so a server full of
-        // racks can each look different and a reordered enum later cannot shuffle them.
+        // for everyone: the model, decoration, wood and crown sit in the ZDO as enum names
+        // (empty = follow the Default settings), so a server full of racks can each look
+        // different and a reordered enum later cannot shuffle them.
         private const string ModelKey = "armory_model";
         private const string DecorKey = "armory_decor";
         private const string WoodKey  = "armory_wood";
-        private RackModel _appliedModel;
-        private RackDecor _appliedDecor;
-        private RackWood  _appliedWood;
+        private const string CurveKey = "armory_crown_curve";
+        private const string CrownKey = "armory_crown_height";
+        private RackStyle _applied;
 
         /// <summary>The model this rack was given in game, or null when it follows the setting.</summary>
-        public RackModel? OwnModel => Parse<RackModel>(ModelKey);
-        public RackDecor? OwnDecor => Parse<RackDecor>(DecorKey);
-        public RackWood?  OwnWood  => Parse<RackWood>(WoodKey);
-        public RackModel  EffectiveModel => OwnModel ?? RackVisual.Model;
-        public RackDecor  EffectiveDecor => OwnDecor ?? RackVisual.Decor;
-        public RackWood   EffectiveWood  => OwnWood  ?? RackVisual.Wood;
+        public RackModel?   OwnModel => Parse<RackModel>(ModelKey);
+        public RackDecor?   OwnDecor => Parse<RackDecor>(DecorKey);
+        public RackWood?    OwnWood  => Parse<RackWood>(WoodKey);
+        public CrownCurve?  OwnCurve => Parse<CrownCurve>(CurveKey);
+        public CrownHeight? OwnCrown => Parse<CrownHeight>(CrownKey);
+        public RackModel    EffectiveModel => OwnModel ?? RackVisual.Model;
+        public RackDecor    EffectiveDecor => OwnDecor ?? RackVisual.Decor;
+        public RackWood     EffectiveWood  => OwnWood  ?? RackVisual.Wood;
+        /// <summary>What this rack wears: its own choices where it has them, the settings elsewhere.</summary>
+        public RackStyle EffectiveStyle => new RackStyle(EffectiveModel, EffectiveDecor, EffectiveWood,
+                                                         OwnCurve ?? RackVisual.Curve, OwnCrown ?? RackVisual.Crown);
 
         private T? Parse<T>(string key) where T : struct
         {
@@ -83,33 +86,39 @@ namespace Armory
         }
 
         /// <summary>Dresses this rack; null for any part means "follow the setting".</summary>
-        public void SetStyle(RackModel? model, RackDecor? decor, RackWood? wood)
+        public void SetStyle(RackModel? model, RackDecor? decor, RackWood? wood, CrownCurve? curve, CrownHeight? crown)
         {
             if (m_nview == null || !m_nview.IsValid()) return;
             string m = model?.ToString() ?? "", d = decor?.ToString() ?? "", w = wood?.ToString() ?? "";
-            if (m_nview.IsOwner()) { var zdo = m_nview.GetZDO(); zdo.Set(ModelKey, m); zdo.Set(DecorKey, d); zdo.Set(WoodKey, w); }
-            else                   m_nview.InvokeRPC("ArmoryRPC_SetStyle", m, d, w);
+            string c = curve?.ToString() ?? "", h = crown?.ToString() ?? "";
+            if (m_nview.IsOwner()) Store(m, d, w, c, h);
+            else                   m_nview.InvokeRPC("ArmoryRPC_SetStyle", m, d, w, c, h);
         }
 
-        private void RPC_SetStyle(long sender, string model, string decor, string wood)
+        private void RPC_SetStyle(long sender, string model, string decor, string wood, string curve, string crown)
         {
-            if (!m_nview.IsOwner()) return;
+            if (m_nview.IsOwner()) Store(model, decor, wood, curve, crown);
+        }
+
+        private void Store(string model, string decor, string wood, string curve, string crown)
+        {
             var zdo = m_nview.GetZDO();
             zdo.Set(ModelKey, model ?? "");
             zdo.Set(DecorKey, decor ?? "");
             zdo.Set(WoodKey,  wood  ?? "");
+            zdo.Set(CurveKey, curve ?? "");
+            zdo.Set(CrownKey, crown ?? "");
         }
 
         /// <summary>RackVisual says what it just drew, so Update knows when the ZDO moves away from it.</summary>
-        internal void NoteApplied(RackModel model, RackDecor decor, RackWood wood) { _appliedModel = model; _appliedDecor = decor; _appliedWood = wood; }
+        internal void NoteApplied(RackStyle style) { _applied = style; }
 
         // Redraws the rack when its style changes under us: someone restyling it on another
-        // client, the ZDO arriving after Awake, or the setting moving while the rack follows it.
+        // client, the ZDO arriving after Awake, or a setting moving while the rack follows it.
         private void ApplyStyle()
         {
             if (m_nview == null || !m_nview.IsValid()) return;
-            var model = EffectiveModel; var decor = EffectiveDecor; var wood = EffectiveWood;
-            if (model == _appliedModel && decor == _appliedDecor && wood == _appliedWood) return;
+            if (EffectiveStyle.Same(_applied)) return;
             RackVisual.Rebuild(this);
         }
 

@@ -5,8 +5,11 @@ regenerated and tuned by numbers.  Blender is only the modeler: the game never s
     & "C:\\Program Files\\Blender Foundation\\Blender 5.3\\blender.exe" -b --python Armory\\Model\\armoire.py -- Armory\\Model\\armoire.obj
 
 A second argument after the output picks a variant: "shields" puts a round shield over crossed
-axes on each door.  (Real item prefabs, hung at runtime by ItemEmblems.cs, replaced a modeled
-helm-and-sword variant that looked like what it was, a few boxes and spheres.)
+axes on each door (the loader lifts those onto any other model's doors, so no other variant
+needs them); "curved" swaps the stepped crown for a bonnet top, a hood whose front rises in an
+ogee from the shoulders to a rounded crest (issue #83).  (Real item prefabs, hung at runtime by
+ItemEmblems.cs, replaced a modeled helm-and-sword variant that looked like what it was, a few
+boxes and spheres.)
 
 The OBJ is embedded in the DLL and read by RackVisual's ObjModel at runtime, which lays the
 game's own wood textures onto it face by face; the UVs written here are ignored.  Conventions
@@ -146,7 +149,7 @@ PLINTH_TOP = FOOT + 0.12
 box("Plinth", "Body", -HW - 0.02, HW + 0.02, -HD - 0.01, HD + 0.01, FOOT, PLINTH_TOP, bevel=0.01)
 
 # ── Carcass ───────────────────────────────────────────────────────────────────────
-Z0, Z1 = PLINTH_TOP, H - 0.22                  # between plinth and crown
+Z0, Z1 = PLINTH_TOP, H - (0.36 if VARIANT == "curved" else 0.22)   # between plinth and crown
 FRAME = 0.05                                   # the face frame's thickness, at the front
 boards("SideL", "Body", -HW, -HW + T, -HD + FRAME, HD, Z0, Z1, "y")
 boards("SideR", "Body", HW - T, HW, -HD + FRAME, HD, Z0, Z1, "y")
@@ -164,9 +167,65 @@ box("FrameR", "Body", HW - STILE, HW, -HD, -HD + FRAME, Z0, Z1)
 box("FrameTop", "Body", -HW + STILE, HW - STILE, -HD, -HD + FRAME, Z1 - TOP_RAIL, Z1)
 box("FrameBottom", "Body", -HW + STILE, HW - STILE, -HD, -HD + FRAME, Z0, Z0 + BOT_RAIL)
 
-# ── Crown, three steps ────────────────────────────────────────────────────────────
-for i, (grow, gz) in enumerate(((0.03, 0.0), (0.06, 0.08), (0.09, 0.16))):
-    box(f"Crown_{i}", "Body", -HW - grow, HW + grow, -HD - grow / 2, HD + grow / 2, Z1 + gz, Z1 + gz + 0.08 if i < 2 else H, bevel=0.01)
+def bezier(p0, p1, p2, n):
+    """Points along a quadratic curve from p0 to p2 pulled toward p1, p0 excluded."""
+    out = []
+    for i in range(1, n + 1):
+        t = i / n
+        out.append(tuple((1 - t) ** 2 * a + 2 * (1 - t) * t * b + t ** 2 * c for a, b, c in zip(p0, p1, p2)))
+    return out
+
+
+def profile_solid(name, mat, profile, y0, y1, bevel=0.004, segments=1):
+    """A flat shape (x, z) extruded from y0 to y1, at the origin, un-rotated."""
+    bm = bmesh.new()
+    verts = [bm.verts.new((x, y0, z)) for x, z in profile]
+    face = bm.faces.new(verts)
+    ext = bmesh.ops.extrude_face_region(bm, geom=[face])
+    moved = [g for g in ext["geom"] if isinstance(g, bmesh.types.BMVert)]
+    bmesh.ops.translate(bm, vec=(0, y1 - y0, 0), verts=moved)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    finish(obj, name, mat, bevel, segments)
+    # The loader fans each polygon from its first vertex, which only works on convex ones;
+    # a concave outline is cut into triangles here, after the bevel.
+    obj.modifiers.new("Triangulate", "TRIANGULATE")
+    return obj
+
+
+
+# ── Crown ─────────────────────────────────────────────────────────────────────────
+
+
+def bonnet(x0, x1, zb, zs, zt, n=28):
+    """The outline (x, z) of a bonnet: flat from zb up to the shoulders at zs, then an ogee
+    rising to a rounded crest at zt over the center and falling to the other shoulder."""
+    cx, hw = (x0 + x1) / 2, (x1 - x0) / 2
+    pts = [(x0, zb), (x1, zb), (x1, zs)]
+    for i in range(1, n):
+        x = x1 - (x1 - x0) * i / n
+        s = 1 - abs(x - cx) / hw
+        pts.append((x, zs + (zt - zs) * (3 * s * s - 2 * s ** 3)))
+    pts.append((x0, zs))
+    return pts
+
+
+if VARIANT == "curved":
+    # One straight molding, a solid hood the full depth with the bonnet outline, and a
+    # pediment board in front of it a little larger, so the curve has an edge to read by.
+    box("Crown_0", "Body", -HW - 0.03, HW + 0.03, -HD - 0.015, HD + 0.015, Z1, Z1 + 0.07, bevel=0.01)
+    profile_solid("Crown_Hood", "Body", bonnet(-HW - 0.05, HW + 0.05, Z1 + 0.07, Z1 + 0.13, H - 0.02),
+                  -HD - 0.025, HD + 0.025, bevel=0.012, segments=2)
+    profile_solid("Crown_Pediment", "Body", bonnet(-HW - 0.08, HW + 0.08, Z1 + 0.07, Z1 + 0.15, H),
+                  -HD - 0.06, -HD - 0.02, bevel=0.008, segments=2)
+else:
+    # Three steps.
+    for i, (grow, gz) in enumerate(((0.03, 0.0), (0.06, 0.08), (0.09, 0.16))):
+        box(f"Crown_{i}", "Body", -HW - grow, HW + grow, -HD - grow / 2, HD + grow / 2, Z1 + gz, Z1 + gz + 0.08 if i < 2 else H, bevel=0.01)
 
 # ── Doors ─────────────────────────────────────────────────────────────────────────
 OPEN_X0, OPEN_X1 = -HW + STILE, HW - STILE     # the opening in the face frame
@@ -216,36 +275,6 @@ FACE = DY0                                                # the door's front pla
 
 def door_center_x(side):
     return side * (GAP + (HW - STILE - 2 * GAP) / 2)
-
-
-def bezier(p0, p1, p2, n):
-    """Points along a quadratic curve from p0 to p2 pulled toward p1, p0 excluded."""
-    out = []
-    for i in range(1, n + 1):
-        t = i / n
-        out.append(tuple((1 - t) ** 2 * a + 2 * (1 - t) * t * b + t ** 2 * c for a, b, c in zip(p0, p1, p2)))
-    return out
-
-
-def profile_solid(name, mat, profile, y0, y1, bevel=0.004, segments=1):
-    """A flat shape (x, z) extruded from y0 to y1, at the origin, un-rotated."""
-    bm = bmesh.new()
-    verts = [bm.verts.new((x, y0, z)) for x, z in profile]
-    face = bm.faces.new(verts)
-    ext = bmesh.ops.extrude_face_region(bm, geom=[face])
-    moved = [g for g in ext["geom"] if isinstance(g, bmesh.types.BMVert)]
-    bmesh.ops.translate(bm, vec=(0, y1 - y0, 0), verts=moved)
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    mesh = bpy.data.meshes.new(name)
-    bm.to_mesh(mesh)
-    bm.free()
-    obj = bpy.data.objects.new(name, mesh)
-    bpy.context.collection.objects.link(obj)
-    finish(obj, name, mat, bevel, segments)
-    # The loader fans each polygon from its first vertex, which only works on convex ones;
-    # a concave outline is cut into triangles here, after the bevel.
-    obj.modifiers.new("Triangulate", "TRIANGULATE")
-    return obj
 
 
 def axe(tag, mat_handle, cx, cz, tilt, length=0.76, y=FACE - 0.012):

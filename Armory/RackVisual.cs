@@ -11,7 +11,7 @@ namespace Armory
     /// <summary>Which model the rack wears.</summary>
     public enum RackModel
     {
-        Armoire,   // the Blender model in Model/armoire.py: bevels, crown, arched panels, strap hinges
+        Armoire,   // the Blender model in Model/armoire.py: bevels, arched panels, strap hinges, and a crown of the rack's CrownCurve
         Cabinet,   // the model built from boxes in this file
         Panels,    // the original: vanilla floor planks and shutters, tinted
     }
@@ -27,6 +27,34 @@ namespace Armory
         Blackmetal,  // ... the black metal shield, swords and axes
         Carapace,    // ... Mistwalkers and Jotun banes, no shield
         Flametal,    // ... Niedhoggs and the Berserkir axes, no shield
+    }
+
+    /// <summary>The Armoire's crown: the stepped one from the model, or a bonnet top whose
+    /// front rises in this outline from the shoulders to the crest (#83).</summary>
+    public enum CrownCurve
+    {
+        Flat,     // the three stepped moldings of Model/armoire.obj
+        Ogee,     // an S: concave off the shoulder, convex into the crest
+        Pointed,  // concave all the way, meeting in a point at the center
+    }
+
+    /// <summary>How tall a bonnet crown stands; Flat ignores it.</summary>
+    public enum CrownHeight { Low, Medium, High }
+
+    /// <summary>One rack's whole look: the model, what hangs on it, its wood, and the Armoire's
+    /// crown (which the other models ignore).</summary>
+    public struct RackStyle
+    {
+        public RackModel   Model;
+        public RackDecor   Decor;
+        public RackWood    Wood;
+        public CrownCurve  Curve;
+        public CrownHeight Crown;
+
+        public RackStyle(RackModel model, RackDecor decor, RackWood wood, CrownCurve curve, CrownHeight crown)
+        { Model = model; Decor = decor; Wood = wood; Curve = curve; Crown = crown; }
+
+        public bool Same(RackStyle o) => Model == o.Model && Decor == o.Decor && Wood == o.Wood && Curve == o.Curve && Crown == o.Crown;
     }
 
     /// <summary>Which of the game's woods a built model wears.</summary>
@@ -61,9 +89,16 @@ namespace Armory
         // to the Panels height.
         public const float Width = 2f, Height = 3f, Depth = 1f;
 
-        public static RackModel Model => ArmoryMod.RackModel?.Value ?? RackModel.Armoire;
-        public static RackDecor Decor => ArmoryMod.RackDecor?.Value ?? RackDecor.None;
-        public static RackWood  Wood  => ArmoryMod.RackWood?.Value  ?? RackWood.Darkwood;
+        // The settings: what a rack wears until someone gives it its own style.
+        public static RackModel   Model => ArmoryMod.RackModel?.Value   ?? RackModel.Armoire;
+        public static RackDecor   Decor => ArmoryMod.RackDecor?.Value   ?? RackDecor.None;
+        public static RackWood    Wood  => ArmoryMod.RackWood?.Value    ?? RackWood.Darkwood;
+        public static CrownCurve  Curve => ArmoryMod.CrownCurve?.Value  ?? CrownCurve.Ogee;
+        public static CrownHeight Crown => ArmoryMod.CrownHeight?.Value ?? CrownHeight.Medium;
+        public static RackStyle Defaults => new RackStyle(Model, Decor, Wood, Curve, Crown);
+
+        /// <summary>A name for the picker.</summary>
+        internal static string DisplayName(RackModel model) => model.ToString();
 
         /// <summary>A name for the picker, "Black metal" rather than Blackmetal.</summary>
         internal static string DisplayName(RackDecor decor)
@@ -102,23 +137,23 @@ namespace Armory
         internal static void Build(GameObject rack)
         {
             var own = rack.GetComponent<ArmoryRack>();
-            if (own != null) Build(rack, own.EffectiveModel, own.EffectiveDecor, own.EffectiveWood);
-            else             Build(rack, Model, Decor, Wood);
+            Build(rack, own != null ? own.EffectiveStyle : Defaults);
         }
 
         /// <summary>Redraws one standing rack and tells the game's caches and the rack itself.</summary>
         internal static void Rebuild(ArmoryRack rack)
         {
-            var model = rack.EffectiveModel; var decor = rack.EffectiveDecor; var wood = rack.EffectiveWood;
-            Build(rack.gameObject, model, decor, wood);
+            var style = rack.EffectiveStyle;
+            Build(rack.gameObject, style);
             rack.RefreshHinges();
             RefreshGameCaches(rack.gameObject);
-            rack.NoteApplied(model, decor, wood);
+            rack.NoteApplied(style);
         }
 
         /// <summary>Builds the given look under a fresh ArmoryVisual child, replacing any previous one.</summary>
-        internal static void Build(GameObject rack, RackModel model, RackDecor decor, RackWood wood)
+        internal static void Build(GameObject rack, RackStyle style)
         {
+            var model = style.Model; var decor = style.Decor; var wood = style.Wood;
             var old = rack.transform.Find(RootName);
             if (old != null) UnityEngine.Object.DestroyImmediate(old.gameObject);
 
@@ -135,9 +170,9 @@ namespace Armory
 
             switch (model)
             {
-                case RackModel.Panels:  ArmoryPieces.BuildPanelLook(root); DecoratePanels(root, decor, wood); break;
-                case RackModel.Cabinet: BuildCabinet(root, wood, decor); break;
-                default:                BuildArmoire(root, wood, decor); break;
+                case RackModel.Panels:        ArmoryPieces.BuildPanelLook(root); DecoratePanels(root, decor, wood); break;
+                case RackModel.Cabinet:       BuildCabinet(root, wood, decor); break;
+                default:                      BuildArmoire(root, wood, decor, style.Curve, style.Crown); break;
             }
         }
 
@@ -221,6 +256,8 @@ namespace Armory
                 n++;
             }
             Jotunn.Logger.LogInfo($"[Armory] Rack model {Model}, {Decor}, in {Wood}; {n} rack(s) redrawn.");
+            ArmoryStyleUI.Redraw();   // the picker's picture follows the same settings
+            ArmoryPieces.RefreshIcon(); // and so does the hammer menu's icon
         }
 
         // Private in the game; reached by reflection.
@@ -322,10 +359,13 @@ namespace Armory
             return model != null && model.Count > 0 ? model : null;
         }
 
-        private static void BuildArmoire(GameObject root, RackWood wood, RackDecor decor)
+        private static void BuildArmoire(GameObject root, RackWood wood, RackDecor decor, CrownCurve curve, CrownHeight crown)
         {
-            // The carved shields are part of the model itself, a second export of it.
-            string file = decor == RackDecor.Shields ? "armoire_shields.obj" : "armoire.obj";
+            bool curved = curve != CrownCurve.Flat;
+            // The carved shields are part of the flat-crowned armoire's second export; the
+            // bonnet-topped one gets them lifted onto its doors like any other model.
+            bool carvedIn = decor == RackDecor.Shields && !curved;
+            string file = curved ? "armoire_curved.obj" : carvedIn ? "armoire_shields.obj" : "armoire.obj";
             var model = LoadModel(file);
             if (model == null)
             {
@@ -354,23 +394,95 @@ namespace Armory
             var rightHinge = new Vector3(rightX, 0f, frontZ);
 
             var body = new MeshBuilder(regions);
+            float crownTop = 0f;
             var left = new MeshBuilder(regions);
             var right = new MeshBuilder(regions);
             foreach (var p in model)
             {
+                // The bonnet model's hood and pediment are drawn in code instead, from the rack's
+                // crown shape and height; its molding stays and gives the hood its base.
+                if (curved && (p.Object == "Crown_Hood" || p.Object == "Crown_Pediment")) continue;
+                if (curved && p.Object == "Crown_0") foreach (var q in p.Points) crownTop = Mathf.Max(crownTop, q.y);
                 if (!p.IsDoor)      body.Polygon(p.Material, p.Points, p.Shift);
                 else if (p.Side < 0) left.Polygon(p.Material, Offset(p.Points, leftHinge), p.Shift);
                 else                 right.Polygon(p.Material, Offset(p.Points, rightHinge), p.Shift);
             }
+            if (curved) BuildBonnet(body, crownTop > 0f ? crownTop : Height - 0.29f, curve, crown);
             Attach(root.transform, "ArmoryBody", Vector3.zero, body.ToMesh(), mats);
             var leftDoor  = Attach(root.transform, LeftHinge,  leftHinge,  left.ToMesh(),  mats);
             var rightDoor = Attach(root.transform, RightHinge, rightHinge, right.ToMesh(), mats);
 
-            if (decor != RackDecor.None && decor != RackDecor.Shields)
+            if (decor != RackDecor.None && !carvedIn)
             {
                 if (DoorPanel(model, -1, leftHinge,  out var c, out float w, out float h)) Decorate(leftDoor.transform,  c, w, h, -1, decor, wood);
                 if (DoorPanel(model, +1, rightHinge, out c, out w, out h))                 Decorate(rightDoor.transform, c, w, h, +1, decor, wood);
             }
+        }
+
+        // ── The bonnet ────────────────────────────────────────────────────────────────
+
+        // A solid hood the armoire's depth, its front rising from the shoulders to the crest,
+        // and a pediment board in front of it grown by the lip.
+        private static void BuildBonnet(MeshBuilder b, float baseY, CrownCurve curve, CrownHeight height)
+        {
+            float hw = Width / 2f + 0.05f, hd = Depth / 2f;
+            Shape(curve, height, out float rise, out float shoulder, out float lip);
+
+            Hood(b, baseY, hw, shoulder, rise, 0f, curve, -hd - 0.025f, hd + 0.025f, 0.2f);
+            if (lip > 0.001f)
+                Hood(b, baseY, hw + lip, shoulder + lip * 0.7f, rise, 0f, curve, hd + 0.02f, hd + 0.02f + Mathf.Max(0.02f, lip), 0.5f);
+        }
+
+        // The crown's proportions by curve and height: the crest's rise above the shoulders,
+        // the shoulders' height, and how far the pediment board outgrows the hood.
+        private static void Shape(CrownCurve curve, CrownHeight height, out float rise, out float shoulder, out float lip)
+        {
+            switch (height)
+            {
+                case CrownHeight.Low:  rise = 0.12f; shoulder = 0.04f; lip = 0.025f; break;
+                case CrownHeight.High: rise = 0.30f; shoulder = 0.08f; lip = 0.035f; break;
+                default:               rise = 0.21f; shoulder = 0.06f; lip = 0.03f;  break;
+            }
+            if (curve == CrownCurve.Pointed) { rise *= 1.15f; shoulder *= 0.75f; }   // a point wants more height and less shoulder
+        }
+
+        // The hood's outline, y above the base at each x: flat shoulders, then the curve.
+        private static float Outline(float x, float hw, float shoulder, float rise, float crest, CrownCurve curve)
+        {
+            float slope = hw * (1f - Mathf.Clamp01(crest));
+            float s = slope > 1e-4f ? Mathf.Clamp01((hw - Mathf.Abs(x)) / slope) : 1f;
+            float f;
+            switch (curve)
+            {
+                case CrownCurve.Pointed: f = s * s; break;
+                default:                 f = s * s * (3f - 2f * s); break;
+            }
+            return shoulder + rise * f;
+        }
+
+        // One outlined slab from z0 to z1: column quads for its front and back, quads along
+        // the curve on top, a floor, and its two ends.
+        private static void Hood(MeshBuilder b, float baseY, float hw, float shoulder, float rise, float crest, CrownCurve curve, float z0, float z1, float shift)
+        {
+            const int n = 40;
+            var xs = new float[n + 1]; var ys = new float[n + 1];
+            for (int i = 0; i <= n; i++)
+            {
+                xs[i] = -hw + 2f * hw * i / n;
+                ys[i] = baseY + Outline(xs[i], hw, shoulder, rise, crest, curve);
+            }
+            for (int i = 0; i < n; i++)
+            {
+                float xa = xs[i], xb = xs[i + 1], ya = ys[i], yb = ys[i + 1];
+                b.Quad(Body, new Vector3(xa, baseY, z1), new Vector3(xb, baseY, z1), new Vector3(xb, yb, z1), new Vector3(xa, ya, z1), Vector3.forward, shift);
+                b.Quad(Body, new Vector3(xa, baseY, z0), new Vector3(xb, baseY, z0), new Vector3(xb, yb, z0), new Vector3(xa, ya, z0), Vector3.back, shift);
+                var up = Vector3.Cross(Vector3.forward, new Vector3(xb - xa, yb - ya, 0f)).normalized;
+                if (up.y < 0f) up = -up;
+                b.Quad(Body, new Vector3(xa, ya, z0), new Vector3(xb, yb, z0), new Vector3(xb, yb, z1), new Vector3(xa, ya, z1), up, shift);
+            }
+            b.Quad(Body, new Vector3(-hw, baseY, z0), new Vector3(hw, baseY, z0), new Vector3(hw, baseY, z1), new Vector3(-hw, baseY, z1), Vector3.down, shift);
+            b.Quad(Body, new Vector3(-hw, baseY, z0), new Vector3(-hw, ys[0], z0), new Vector3(-hw, ys[0], z1), new Vector3(-hw, baseY, z1), Vector3.left, shift);
+            b.Quad(Body, new Vector3( hw, baseY, z0), new Vector3( hw, ys[n], z0), new Vector3( hw, ys[n], z1), new Vector3( hw, baseY, z1), Vector3.right, shift);
         }
 
         // The upper door panel's frame for a decoration: its center under the arch's spring
@@ -679,6 +791,8 @@ namespace Armory
 
             // One quad, wound to face `normal` (Unity draws the side where the vertices run
             // clockwise).
+            public void Quad(int sub, Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 normal, float shift) => Face(sub, a, b, c, d, normal, shift);
+
             private void Face(int sub, Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 normal, float shift)
             {
                 if (Vector3.Dot(Vector3.Cross(b - a, c - a), normal) < 0f) { var t = b; b = d; d = t; }

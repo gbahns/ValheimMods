@@ -63,18 +63,20 @@ The config file is created at `BepInEx/config/GBahns.Armory.cfg` on first run.
 - `Pause Game While Armory Open` (default: false) — pauses the game while the rack panel is open, the way the ESC menu does. It asks the game for the pause rather than stopping your own clock, so it works by itself when you are playing solo or hosting alone, and on a dedicated server it takes [Pause My Server](https://valheim.thunderstore.io/package/DeathMonger/PauseMyServer/) to grant it. Without that mod the request is refused on a server, which is the point — your clock stopping while the server runs on would only desync you. While the pause is in effect, a craft started from the inventory screen cannot finish until you close the rack; the craft timer counts game time.
 
 **\[Storage\]** (synced from the server)
-- `Rack Width` / `Rack Height` (default: 8 × 5) — the rack's storage grid. Every rack takes the new size, standing or not; items left outside a smaller grid are moved into it by whoever opens the rack. A grid taller than the container panel is drawn with smaller cells.
+- `Rack Width` / `Rack Height` (default: 12 × 6) — the rack's storage grid. Every rack takes the new size, standing or not; items left outside a smaller grid are moved into it by whoever opens the rack. A grid taller than the container panel is drawn with smaller cells.
 
-**\[UI\]**
-- **Style** button on the Manage Loadouts panel — picks the model, decoration and wood for that one rack from three dropdowns, with a picture of the choice and the rack redrawn as you go, and everyone sees it that way. The metal decorations appear once you have reached that metal. `Use my default` makes it follow your settings again. Whoever can manage the rack's loadouts can restyle it, within a ward.
-- `Rack Model` (default: Armoire) — Armoire is a modeled wardrobe with a crown, arched door panels and iron strap hinges; Cabinet is a plainer boarded one; Panels is the original build from floor planks and shutters. Switches at once on every rack in view.
-- `Rack Decoration` (default: None) — what hangs on the doors of any model: Shields is a carved shield over crossed axes on each door; Bronze hangs the game's bronze buckler and crossed bronze swords on one door and crossed axes on the other, and Iron, Silver, Blackmetal, Carapace and Flametal the same in each later metal.
-- `Rack Wood` (default: Darkwood) — the wood the Armoire and Cabinet are drawn in: the game's darkwood, the darkwood beam's brown planks, or plain wood.
+**\[Style\]**
+- **Style** button on the Manage Loadouts panel — picks the model, wood and decoration for that one rack, and for the Armoire its crown's shape and height, with a picture of the choice and the rack redrawn as you go, and everyone sees it that way. The metal decorations appear once you have reached that metal. `Use my default` makes it follow the Default settings again. Whoever can manage the rack's loadouts can restyle it, within a ward.
+- `Default Model` (default: Armoire), `Default Decoration` (default: None), `Default Wood` (default: Darkwood) — how every rack looks that nobody has styled with the Style button; those racks change with these, styled ones keep their own.
+  - Model: Armoire is a modeled wardrobe with a crown, arched door panels and iron strap hinges; Cabinet is a plainer boarded one; Panels is the original build from floor planks and shutters.
+  - Decoration: what hangs on the doors of any model. Shields is a carved shield over crossed axes on each door; Bronze hangs the game's bronze buckler and crossed bronze swords on one door and crossed axes on the other, and Iron, Silver, Blackmetal, Carapace and Flametal the same in each later metal.
+  - Wood: the wood the Armoire and Cabinet are drawn in, the game's darkwood, the darkwood beam's brown planks, or plain wood.
+- `Default Crown Shape` (default: Flat) / `Default Crown Height` (default: Medium) — the Armoire's crown, for every Armoire nobody has given its own: Flat is the stepped molding, Ogee and Pointed a bonnet top rising in an S or to a point, as tall as the height says, Low, Medium or High.
+
+**\[Window\]**
 - `Show Summary Text` (default: true) — show the textual list of items below each loadout's name (`Helm:..., Chest:...`, etc.).
 - `Show Icons` (default: true) — show the row of item icons at the bottom of each loadout row.
 - `Show Row Buttons` (default: false) — show Save, Load, +, Cmp and x on every row. Off puts them in a menu behind one button per row, which takes less room and lets the panel be narrower.
-
-**\[Window\]**
 - `Panel Position X` / `Panel Position Y` — auto-updated when you close the rack so the panel reopens where you last left it. Persists across game sessions.
 - `Panel Width` / `Panel Height` — auto-updated when you drag the grip in the panel's bottom-right corner. A loadout's icon groups sit on one line when they fit the width and wrap only when they don't. A height of 0 fits the panel to its loadouts.
 

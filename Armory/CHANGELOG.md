@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.3.0 — 2026-11-15
+
+**Everyone updates together:** a rack's style now carries its crown, so 2.3.0 is the floor.
+
+- The hammer menu's icon is a picture of your default rack, taken as the game starts and again when a Default setting changes (#86).
+- The Armoire's crown is a choice (#83): Flat, the stepped molding it had, or a bonnet top, a hood rising from the shoulders to a crest in an S (Ogee) or to a point (Pointed), with a pediment board tracing the curve, at a Low, Medium or High rise. Two rows in the Style picker, shown for the Armoire; `Default Crown Shape` and `Default Crown Height` are what an Armoire wears until it is given its own.
+- The `[UI]` config section is gone: the rack's look is under `[Style]` as `Default Model`, `Default Decoration` and `Default Wood`, named for what they are, the look of every rack nobody has styled with the Style button; the three Show settings for the loadout panel are under `[Window]`. All of them start from their defaults again; copy any you had changed from the old `[UI]` block, which stays in the file.
+
 ## 2.2.1 — 2026-11-14
 
 - The storage grid defaults to 12×6, 72 slots, up from 8×5. The rack is two and a half times the size of the game's wardrobe (50 slots) and was holding 40.
