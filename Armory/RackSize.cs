@@ -17,8 +17,8 @@ namespace Armory
     /// </summary>
     internal static class RackSize
     {
-        public const int DefaultWidth  = 8;
-        public const int DefaultHeight = 5;
+        public const int DefaultWidth  = 12;   // 72 slots: the rack is 2.5 times the vanilla wardrobe's volume
+        public const int DefaultHeight = 6;    // (50 slots) and still the least dense container in the game
         public const int MaxWidth  = 12;
         public const int MaxHeight = 10;
 

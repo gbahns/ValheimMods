@@ -266,8 +266,9 @@ namespace Armory
                 wnt.m_hitEffect       = refWnT.m_hitEffect;
             }
 
-            // Build requirements — Black Forest tier (Bronze Age):
-            //   8 FineWood, 4 RoundLog (core wood), 4 BronzeNails, 2 Bronze, 2 DeerHide.
+            // Build requirements — Black Forest tier (Bronze Age), priced to the piece: some
+            // 24 m² of board (about twice the game's wardrobe), a core-wood carcass, a full
+            // ingot's worth of nails, an ingot per strap hinge, and resin for the finish.
             // Anything that fails the ObjectDB lookup is silently skipped (defensive — should
             // never happen for these vanilla prefabs, but keeps the piece registerable even on
             // a hypothetical Valheim build that renames one).
@@ -280,11 +281,11 @@ namespace Armory
                 else
                     Jotunn.Logger.LogWarning($"[Armory] Recipe ingredient '{prefabName}' not found in ObjectDB — skipped.");
             }
-            AddReq("FineWood",    8);
-            AddReq("RoundLog",    4);
-            AddReq("BronzeNails", 4);
-            AddReq("Bronze",      2);
-            AddReq("DeerHide",    2);
+            AddReq("FineWood",    16);
+            AddReq("RoundLog",    8);
+            AddReq("BronzeNails", 20);
+            AddReq("Bronze",      4);
+            AddReq("Resin",       10);
             piece.m_resources = requirements.ToArray();
 
             // Crafting station.

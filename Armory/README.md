@@ -11,7 +11,7 @@ The rack is also a real storage container. Drop your alternate gear in, walk up,
 - **Named loadout slots** — save your current equipment as `"Farming"`, `"Mining"`, `"Boss"`, etc. Rename by clicking the slot name. Up to 10 slots per rack.
 - **Combined armor + hotbar** — captures helm, chest, legs, cape, belt, trinket, **and** quickbar items 1–8.
 - **Loadouts are the cells you choose** — each worn slot, hotbar key and quick slot can be in a loadout or out of it, and Load touches only what's in. A new loadout starts as armor and cape. Press **+** on a row to see every saved cell and add or remove some; the group labels add or remove a whole group. An armor set, a weapon kit and a food set load one after another to build an outfit.
-- **Storage + loadouts in one** — the rack is also a Container, 8×5 by default and configurable. Load pulls items from the rack *and* your inventory; saved gear in the rack counts as "available".
+- **Storage + loadouts in one** — the rack is also a Container, 12×6 by default and configurable. Load pulls items from the rack *and* your inventory; saved gear in the rack counts as "available".
 - **In-place swap** — when Load equips a new item, whatever was in that slot gets stored back at the exact grid position the new item came from. Nothing ends up on the action bar unless that's where it was sitting.
 - **Live status** — a green ● on the Load button means you're already wearing this loadout. Missing items show red in the summary text and red in the icon strip.
 - **Compare window** — side-by-side view of your current gear vs. the saved set, with color-coded availability.
@@ -44,11 +44,11 @@ Valheim enforces this itself, with the same rule it applies to a personal chest,
 
 | Material | Quantity |
 |---|---|
-| Fine Wood | 8 |
-| Round Log | 4 |
-| Bronze Nails | 4 |
-| Bronze | 2 |
-| Deer Hide | 2 |
+| Fine Wood | 16 |
+| Core Wood | 8 |
+| Bronze Nails | 20 |
+| Bronze | 4 |
+| Resin | 10 |
 
 Buildable at the Workbench. Black Forest tier.
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.2.1 — 2026-11-14
+
+- The storage grid defaults to 12×6, 72 slots, up from 8×5. The rack is two and a half times the size of the game's wardrobe (50 slots) and was holding 40.
+- The recipe is priced to the piece: 16 fine wood, 8 core wood, 20 bronze nails, 4 bronze and 10 resin, in place of 8, 4, 4, 2 and 2 deer hide. Racks already built are unaffected and return the new amounts when dismantled.
+
 ## 2.2.0 — 2026-11-14
 
 - **Everyone must update together.** A rack's style travels in a new message, so a server on this version turns away older clients.
