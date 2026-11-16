@@ -575,7 +575,7 @@ namespace TheGreatestMap
             var lines = new List<string>();
             if (!MapPaint.On())
             {
-                lines.Add("the painting is switched off (Player Structures Enabled, the server's): nothing is swept for, " +
+                lines.Add("the painting is switched off (Player Development Enabled, the server's): nothing is swept for, " +
                           "sampled or sent.");
                 return lines;
             }

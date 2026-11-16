@@ -338,6 +338,39 @@ namespace TheGreatestMap
             return entry;
         }
 
+        /// <summary>
+        /// Bind a setting that used to go by another name in the same section.
+        ///
+        /// <para><see cref="BindMoved"/> is the near neighbor and does not fit: it carries the old
+        /// value across, which is right for a setting that only changed address. A rename usually
+        /// comes with a change of meaning or of default, and here it comes with both -- so the old
+        /// value is deliberately dropped and everybody starts at the new default.</para>
+        ///
+        /// <para>What still has to happen is the cleanup. BepInEx keeps a line it does not
+        /// recognize and writes it back on the next save, so without this the file ends up holding
+        /// the setting twice: the live one under the new name and a dead one under the old, which
+        /// somebody will eventually find and change and then wonder why nothing happens.</para>
+        /// </summary>
+        internal ConfigEntry<T> BindRenamed<T>(string section, string oldKey, string key, T defaultValue,
+                                               string description, bool synced = false)
+        {
+            var entry = synced
+                ? BindSynced(section, key, defaultValue, description)
+                : BindLocal(section, key, defaultValue, description);
+            try
+            {
+                var orphans = HarmonyLib.AccessTools.Property(typeof(ConfigFile), "OrphanedEntries")
+                    ?.GetValue(Config) as System.Collections.IDictionary;
+                var was = new ConfigDefinition(section, oldKey);
+                if (orphans != null && orphans.Contains(was)) orphans.Remove(was);
+            }
+            catch (Exception e)
+            {
+                Log.LogWarning($"[TheGreatestMap] Could not tidy away the old \"{oldKey}\" line: {e.Message}");
+            }
+            return entry;
+        }
+
         /// <summary>Binds a client-only integer entry with an allowed range (shown as a slider by config managers).</summary>
         internal ConfigEntry<int> BindLocalRange(string section, string key, int defaultValue, int min, int max, string description)
         {
