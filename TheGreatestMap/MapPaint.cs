@@ -18,6 +18,58 @@ namespace TheGreatestMap
     }
 
     /// <summary>
+    /// How many of each kind of thing stand in one place -- one cell, or one map pixel.
+    ///
+    /// <para>A struct rather than an array so that a dictionary of these is a single block of
+    /// memory instead of one small allocation per entry; there can be hundreds of thousands of
+    /// cells, and the per-entry version of this was eleven megabytes of garbage a sweep.</para>
+    /// </summary>
+    internal struct Tally
+    {
+        public int Wood, Stone, Iron, Paved, Dirt, Farm;
+
+        public void Add(BuiltKind kind)
+        {
+            switch (kind)
+            {
+                case BuiltKind.Wood: Wood++; break;
+                case BuiltKind.Stone: Stone++; break;
+                case BuiltKind.Iron: Iron++; break;
+                case BuiltKind.Paved: Paved++; break;
+                case BuiltKind.Dirt: Dirt++; break;
+                case BuiltKind.Farm: Farm++; break;
+            }
+        }
+
+        /// <summary>
+        /// What this place is, all told.
+        ///
+        /// <para>Building beats ground outright, because a hall standing in its own paved
+        /// courtyard is a hall and the hall is the thing worth seeing from across the map.
+        /// Within a tier it is a count and not a hierarchy: the place says what most of it is
+        /// made of, so a wooden longhouse on stone footings is a wooden longhouse.</para>
+        ///
+        /// <para>Rank breaks a tie, and breaks it toward the heavier material. A dead heat
+        /// between wood and stone is a judgment call either way, and stone is the more useful
+        /// guess -- it is the rarer material, so it carries more information about what is
+        /// there.</para>
+        /// </summary>
+        public BuiltKind Winner() =>
+            Wood + Stone + Iron > 0
+                ? Most(BuiltKind.Wood, Wood, BuiltKind.Stone, Stone, BuiltKind.Iron, Iron)
+                : Most(BuiltKind.Paved, Paved, BuiltKind.Dirt, Dirt, BuiltKind.Farm, Farm);
+
+        private static BuiltKind Most(BuiltKind a, int na, BuiltKind b, int nb, BuiltKind c, int nc)
+        {
+            var best = a;
+            int most = na;
+            if (nb > most || (nb == most && MapPaint.Rank(b) > MapPaint.Rank(best))) { best = b; most = nb; }
+            if (nc > most || (nc == most && MapPaint.Rank(c) > MapPaint.Rank(best))) { best = c; most = nc; }
+            return most > 0 ? best : BuiltKind.None;
+        }
+    }
+
+    /// <summary>
     /// Player building and paved road, painted into the map itself rather than pinned on top of it.
     ///
     /// <para>A marker answers "what is here"; a shape answers "how big is it and what runs
@@ -447,17 +499,34 @@ namespace TheGreatestMap
                 bool lift = OverWater();
                 float line = WaterLine() + Lift;
 
-                var want = new Dictionary<int, BuiltKind>();
+                // What stands in each pixel, counted rather than ranked. A pixel is twelve
+                // meters across and a cell is four, so nine cells land in one and the honest
+                // question is what that square of ground is mostly made of. Taking the hardest
+                // material instead -- stone over wood, as this did -- turned a wooden longhouse
+                // gray the moment a single stone block stood anywhere inside it, and a Valheim
+                // base is wood on stone footings, so that was most pixels of most bases.
+                //
+                // Halving the cell size is what made it obvious: at eight meters a pixel held
+                // about two cells and stone had two chances to win it, at four it holds nine.
+                // The rule was always wrong, but it only started showing when the grid got finer
+                // than the thing drawing it.
+                var tally = new Dictionary<int, Tally>();
                 foreach (var kv in _cells)
                 {
                     if (!Wants(kv.Value)) continue;
                     foreach (int pixel in PixelsOf(kv.Key, size, pixelSize))
                     {
-                        // A building beats a road it stands on, and stone beats the wood beside
-                        // it, so one pixel holding several cells says the most solid thing in it.
-                        if (want.TryGetValue(pixel, out var had) && Rank(had) >= Rank(kv.Value)) continue;
-                        want[pixel] = kv.Value;
+                        tally.TryGetValue(pixel, out var counts);
+                        counts.Add(kv.Value);
+                        tally[pixel] = counts;
                     }
+                }
+
+                var want = new Dictionary<int, BuiltKind>();
+                foreach (var kv in tally)
+                {
+                    var kind = kv.Value.Winner();
+                    if (kind != BuiltKind.None) want[kv.Key] = kind;
                 }
                 want = Spread(want, size);
 
@@ -592,7 +661,7 @@ namespace TheGreatestMap
         }
 
         /// <summary>Which wins when two kinds land on one pixel. Nothing subtle: the heavier material.</summary>
-        private static int Rank(BuiltKind kind)
+        internal static int Rank(BuiltKind kind)
         {
             switch (kind)
             {
@@ -641,15 +710,10 @@ namespace TheGreatestMap
                       $"(a cell is {CellSize:0} m, so about {Mathf.Max(1f, CellSize / map.m_pixelSize):0.0} cell(s) per pixel)");
             lines.Add($"drawing: {(!On() ? "OFF (Server Shares Player Developments, the server's)" : Wanted() ? "on" : "OFF (Show Player Developments)")}, " +
                       $"buildings {(Wants(BuiltKind.Wood) ? "on" : "off")}, roads {(Wants(BuiltKind.Paved) ? "on" : "off")}");
-            int wood = 0, stone = 0, iron = 0, paved = 0;
-            foreach (var kind in _cells.Values)
-            {
-                if (kind == BuiltKind.Wood) wood++;
-                else if (kind == BuiltKind.Stone) stone++;
-                else if (kind == BuiltKind.Iron) iron++;
-                else if (kind == BuiltKind.Paved) paved++;
-            }
-            lines.Add($"cells from the server: {_cells.Count} (wood {wood}, stone {stone}, iron {iron}, paved {paved})");
+            var counted = new Tally();
+            foreach (var kind in _cells.Values) counted.Add(kind);
+            lines.Add($"cells from the server: {_cells.Count} (wood {counted.Wood}, stone {counted.Stone}, " +
+                      $"iron {counted.Iron}, paved {counted.Paved}, dirt {counted.Dirt}, farm {counted.Farm})");
             lines.Add($"map pixels painted: {_under.Count}, spread {SpreadPixels()} pixel(s) around each" +
                       (_lastPaintPixels > 0 ? $"; last repaint {_lastPaintPixels} pixel(s) in {_lastPaintMs} ms" : ""));
             FindFields();

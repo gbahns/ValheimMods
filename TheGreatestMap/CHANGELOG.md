@@ -17,6 +17,9 @@ the old road-reporting message is gone.
   Painting is now Show Player Developments -- the painting covers roads, paths and fields as well
   as buildings, and the names now say who does which half. Both start at off; the old lines are
   tidied away.
+- A cell and a map pixel are drawn as whatever they are mostly made of, instead of as the
+  hardest material standing in them -- a wooden longhouse on stone footings came out stone
+  gray. Building still wins over the ground it stands on.
 - Every color setting is a real color now, so the config manager draws a swatch and sliders
   instead of a text box. Existing colors are kept.
 - "Portal Pulse Color" says "no pulse" with a zero alpha rather than an empty value, since a

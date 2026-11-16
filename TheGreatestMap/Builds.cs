@@ -186,7 +186,13 @@ namespace TheGreatestMap
         private sealed class Sweep
         {
             public int Sector;
-            public readonly Dictionary<int, BuiltKind> Found = new Dictionary<int, BuiltKind>();
+            /// <summary>
+            /// What stands in each cell, by kind. A count and not just the winner, because a
+            /// cell holding one stone block and a dozen wooden floors is a wooden floor to
+            /// anybody looking at it -- keeping only the heaviest made every mixed building
+            /// read as the hardest thing anyone had put in it.
+            /// </summary>
+            public readonly Dictionary<int, Tally> Found = new Dictionary<int, Tally>();
             /// <summary>How many player-built pieces stand in each cell, which is what tells a hut from a torch.</summary>
             public readonly Dictionary<int, int> Density = new Dictionary<int, int>();
             public int Pieces;
@@ -268,16 +274,23 @@ namespace TheGreatestMap
                     _sweep.Density.TryGetValue(key, out int standing);
                     _sweep.Density[key] = standing + 1;
                     if (_sweep.Found.Count >= MaxCells && !_sweep.Found.ContainsKey(key)) continue;
-                    // Stone shows through wood: a stone keep with a wooden roof is a stone keep.
-                    if (_sweep.Found.TryGetValue(key, out var had) && Heavier(had, material)) continue;
-                    _sweep.Found[key] = material;
+                    _sweep.Found.TryGetValue(key, out var standingHere);
+                    standingHere.Add(material);
+                    _sweep.Found[key] = standingHere;
                 }
                 if (++looked >= SectorsPerFrame) return false;   // pick this up next frame
             }
 
             Ground.End();
+            // Each cell settles on whatever it mostly is, now that the whole world has been seen.
+            var found = new Dictionary<int, BuiltKind>();
+            foreach (var kv in _sweep.Found)
+            {
+                var kind = kv.Value.Winner();
+                if (kind != BuiltKind.None) found[kv.Key] = kind;
+            }
             var picture = buildings
-                ? Built(_sweep.Found, _sweep.Density)
+                ? Built(found, _sweep.Density)
                 : new Dictionary<int, BuiltKind>();
             int pieces = _sweep.Pieces;
             _sweep = null;
@@ -363,12 +376,6 @@ namespace TheGreatestMap
                 if (around >= least) kept[kv.Key] = kv.Value;
             }
             return kept;
-        }
-
-        private static bool Heavier(BuiltKind had, BuiltKind now)
-        {
-            int Rank(BuiltKind k) => k == BuiltKind.Stone ? 3 : k == BuiltKind.Iron ? 2 : k == BuiltKind.Wood ? 1 : 0;
-            return Rank(had) >= Rank(now);
         }
 
         /// <summary>Keep the new picture, and say whether it differs from the last one.</summary>
