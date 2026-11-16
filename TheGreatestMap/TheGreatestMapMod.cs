@@ -131,6 +131,9 @@ namespace TheGreatestMap
             // Before the settings, because binding them runs the one-time passes and those ask
             // this what has already been done.
             Progress.Load(Config);
+            // Before the first Bind: a config entry's type is fixed the moment it is bound, and
+            // BepInEx cannot bind a type it has no converter for.
+            Colors.Register();
             TgmConfig.Bind(this);
             WatchConfigFile();
             Commands.Register();

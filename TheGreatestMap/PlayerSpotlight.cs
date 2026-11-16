@@ -139,23 +139,17 @@ namespace TheGreatestMap
             if (label != null && label.activeSelf != visible) label.SetActive(visible);
         }
 
-        private static UnityEngine.Color _parsed = new UnityEngine.Color(0.4f, 0.88f, 1f, 1f);
-        private static string _colorText;
-
         /// <summary>The color to paint the player markers, and the size to draw them at now.</summary>
         private static UnityEngine.Color Color(out float scale)
         {
-            string text = TgmConfig.HighlightPlayersColor != null ? TgmConfig.HighlightPlayersColor.Value : null;
-            if (text != _colorText)
-            {
-                _colorText = text;
-                _parsed = Portals.ParseColor(text, new UnityEngine.Color(0.4f, 0.88f, 1f, 1f));
-            }
+            var color = TgmConfig.HighlightPlayersColor != null
+                ? TgmConfig.HighlightPlayersColor.Value
+                : new UnityEngine.Color(0.4f, 0.88f, 1f, 1f);
             float size = TgmConfig.HighlightPlayersSize != null ? Mathf.Clamp(TgmConfig.HighlightPlayersSize.Value, 100, 400) : 170;
             // Unscaled, so the throb carries on with the map open and the game paused.
             float breath = (Mathf.Sin(Time.unscaledTime * 4f) + 1f) * 0.5f;
             scale = size / 100f * (0.92f + 0.08f * breath);
-            return _parsed;
+            return color;
         }
     }
 }

@@ -366,8 +366,8 @@ how to tell a knarr from a longship with the labels off. Their settings live tog
 Portals get their own color, since they are the points you travel between and are worth spotting at
 a glance. By default they fade slowly between two shades of orange, which reads as a gentle pulse rather
 than a color change; set "Portal Marker Color" and
-"Portal Pulse Color" to any hex value or color name, clear the pulse color for a steady one, and
-use "Portal Pulse Seconds" for the speed.
+"Portal Pulse Color" to whatever you like -- the config manager gives you a color picker -- pull the
+pulse color's alpha to zero for a steady one, and use "Portal Pulse Seconds" for the speed.
 
 **Pause while the map is open** ("Pause While Map Open" in the Display section, off by default):
 the game pauses while the large map screen is open, the way the ESC menu does. Solo or hosting

@@ -17,6 +17,10 @@ the old road-reporting message is gone.
   Painting is now Show Player Developments -- the painting covers roads, paths and fields as well
   as buildings, and the names now say who does which half. Both start at off; the old lines are
   tidied away.
+- Every color setting is a real color now, so the config manager draws a swatch and sliders
+  instead of a text box. Existing colors are kept.
+- "Portal Pulse Color" says "no pulse" with a zero alpha rather than an empty value, since a
+  color picker cannot type an empty one.
 - New: Paint Dirt Paths, Paint Farmland, Paint Detail Meters, Dirt Path Color, Farmland Color.
 
 ## 4.9.3 — 2026-11-13

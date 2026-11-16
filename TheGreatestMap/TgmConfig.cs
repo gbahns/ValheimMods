@@ -52,7 +52,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> MarkerTooltips;
         internal static ConfigEntry<bool> MapOutStatusIcon;
         internal static ConfigEntry<bool> HighlightPlayersHidesOthers;
-        internal static ConfigEntry<string> HighlightPlayersColor;
+        internal static ConfigEntry<Color> HighlightPlayersColor;
         internal static ConfigEntry<int> HighlightPlayersSize;
         internal static ConfigEntry<bool> CustomBossMarkers;
         internal static ConfigEntry<bool> CustomHildirMarkers;
@@ -71,8 +71,8 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> ThinMarkers;
         internal static ConfigEntry<float> ThinSpacing;
         internal static ConfigEntry<int> MostMarkersDrawn;
-        internal static ConfigEntry<string> PortalColor;
-        internal static ConfigEntry<string> PortalPulseColor;
+        internal static ConfigEntry<Color> PortalColor;
+        internal static ConfigEntry<Color> PortalPulseColor;
         internal static ConfigEntry<float> PortalPulseSeconds;
         internal static ConfigEntry<string> HiddenPlaces;
         internal static ConfigEntry<string> HiddenOwnIcons;
@@ -723,12 +723,12 @@ namespace TheGreatestMap
         internal static ConfigEntry<float> BuildSweepSeconds;
         internal static ConfigEntry<int> PaintLeastPieces;
         internal static ConfigEntry<bool> ShowMapPaint;
-        internal static ConfigEntry<string> WoodColor;
-        internal static ConfigEntry<string> StoneColor;
-        internal static ConfigEntry<string> IronColor;
-        internal static ConfigEntry<string> PavedColor;
-        internal static ConfigEntry<string> DirtColor;
-        internal static ConfigEntry<string> FarmColor;
+        internal static ConfigEntry<Color> WoodColor;
+        internal static ConfigEntry<Color> StoneColor;
+        internal static ConfigEntry<Color> IronColor;
+        internal static ConfigEntry<Color> PavedColor;
+        internal static ConfigEntry<Color> DirtColor;
+        internal static ConfigEntry<Color> FarmColor;
         internal static ConfigEntry<int> PaintSpread;
         internal static ConfigEntry<int> PaintLeastInCell;
         internal static ConfigEntry<bool> PaintOverWater;
@@ -1013,8 +1013,8 @@ namespace TheGreatestMap
             HighlightPlayersHidesOthers = mod.BindLocal("Display", "Highlight Players Hides Others", true,
                 "While the players are lit up, draw nothing else at all. Off keeps the rest of the map and only grows " +
                 "and colors the player markers, which is gentler but harder to read on a crowded map.");
-            HighlightPlayersColor = mod.BindLocal("Display", "Highlight Players Color", "#66E0FF",
-                "Color of the player markers while they are lit up. A hex value such as #66E0FF, or a name such as cyan.");
+            HighlightPlayersColor = mod.BindLocal("Display", "Highlight Players Color", Colors.FromHex("#66E0FF"),
+                "Color of the player markers while they are lit up.");
             HighlightPlayersSize = mod.BindLocalRange("Display", "Highlight Players Size", 170, 100, 400,
                 "How large the player markers are drawn while lit up, as a percentage of their normal size. They also " +
                 "breathe slightly, so they read as alive rather than as another pin.");
@@ -1074,14 +1074,14 @@ namespace TheGreatestMap
             // none is. "Show Portals", under Dynamic Markers with the ships and carts, is that
             // switch. Leaving both would be two settings for one thing, and the one that sounds
             // like it only adds extras would be the one that turns them all off.
-            PortalColor = mod.BindLocal("Display", "Portal Marker Color", "#FF6600",
+            PortalColor = mod.BindLocal("Display", "Portal Marker Color", Colors.FromHex("#FF6600"),
                 "Color of portal markers, which are worth picking out of the crowd because they are how you travel. " +
-                "A hex color such as #A05BDD, or a name such as violet. The default pair is two shades of orange; " +
-                "#A05BDD with #B07CFF as the pulse is a good violet alternative.");
-            PortalPulseColor = mod.BindLocal("Display", "Portal Pulse Color", "#FF8800",
+                "The default pair is two shades of orange; #A05BDD with #B07CFF as the pulse is a good violet " +
+                "alternative.");
+            PortalPulseColor = mod.BindLocal("Display", "Portal Pulse Color", Colors.FromHex("#FF8800"),
                 "Portal markers fade back and forth between their color and this one, so they catch the eye on a busy " +
-                "map. Two shades of the same color read as a gentle pulse; two different colors are far louder. Leave " +
-                "it empty for a steady color.");
+                "map. Two shades of the same color read as a gentle pulse; two different colors are far louder. Pull " +
+                "the alpha slider to zero for a steady color instead.");
             PortalPulseSeconds = mod.BindLocal("Display", "Portal Pulse Seconds", 2f,
                 "How long one fade from the portal color to the pulse color and back takes. Lower is faster; " +
                 "0 stops the fade.");
@@ -1549,22 +1549,22 @@ namespace TheGreatestMap
                 "as the game drew it. It is drawn at the map's own resolution of about twelve meters to a pixel, " +
                 "so a path comes out wider and softer than it is; sharpening that is the part still being worked " +
                 "on.");
-            WoodColor = mod.BindRetuned(Painting, "Wood Color", "#704F2E", "#C49A6C",
-                "The color wooden building is drawn in. A hex value such as #C49A6C, or a name such as brown. " +
+            WoodColor = mod.BindRetuned(Painting, "Wood Color", Colors.FromHex("#704F2E"), Colors.FromHex("#C49A6C"),
+                "The color wooden building is drawn in. " +
                 "Hardwood and the rest of the timbers count as wood. The light warm brown of the game's own wood " +
                 "pieces: the darker brown this used to be was close enough to the map's swamp color to be mistaken " +
                 "for it.");
-            StoneColor = mod.BindLocal(Painting, "Stone Color", "#808085",
+            StoneColor = mod.BindLocal(Painting, "Stone Color", Colors.FromHex("#808085"),
                 "The color stone building is drawn in. Marble, ashstone and ancient stone count as stone.");
-            IronColor = mod.BindLocal(Painting, "Iron Color", "#555A66",
+            IronColor = mod.BindLocal(Painting, "Iron Color", Colors.FromHex("#555A66"),
                 "The color iron building is drawn in -- the reinforced pieces, which usually trace the frame of " +
                 "something large.");
-            PavedColor = mod.BindLocal(Painting, "Paved Color", "#9E998C",
+            PavedColor = mod.BindLocal(Painting, "Paved Color", Colors.FromHex("#9E998C"),
                 "The color paved road is drawn in. Building wins where a road runs under it, so a courtyard reads as " +
                 "the building it belongs to.");
-            DirtColor = mod.BindLocal(Painting, "Dirt Path Color", "#78603F",
+            DirtColor = mod.BindLocal(Painting, "Dirt Path Color", Colors.FromHex("#78603F"),
                 "The color hoed dirt path is drawn in. Paving wins where a path runs into a road.");
-            FarmColor = mod.BindLocal(Painting, "Farmland Color", "#615430",
+            FarmColor = mod.BindLocal(Painting, "Farmland Color", Colors.FromHex("#615430"),
                 "The color cultivated ground is drawn in. Both paving and dirt path win over it, so a track across a " +
                 "field reads as a track.");
             PaintSpread = mod.BindRetuned(Painting, "Paint Spread", 1, 0,

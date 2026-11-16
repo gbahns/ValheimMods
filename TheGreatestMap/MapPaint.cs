@@ -412,16 +412,18 @@ namespace TheGreatestMap
         {
             switch (kind)
             {
-                case BuiltKind.Wood:  return Portals.ParseColor(Cfg(TgmConfig.WoodColor), new Color(0.44f, 0.31f, 0.18f));
-                case BuiltKind.Stone: return Portals.ParseColor(Cfg(TgmConfig.StoneColor), new Color(0.50f, 0.50f, 0.52f));
-                case BuiltKind.Iron:  return Portals.ParseColor(Cfg(TgmConfig.IronColor), new Color(0.33f, 0.35f, 0.40f));
-                case BuiltKind.Dirt:  return Portals.ParseColor(Cfg(TgmConfig.DirtColor), new Color(0.47f, 0.38f, 0.26f));
-                case BuiltKind.Farm:  return Portals.ParseColor(Cfg(TgmConfig.FarmColor), new Color(0.38f, 0.33f, 0.19f));
-                default:              return Portals.ParseColor(Cfg(TgmConfig.PavedColor), new Color(0.62f, 0.60f, 0.55f));
+                case BuiltKind.Wood:  return Cfg(TgmConfig.WoodColor, new Color(0.44f, 0.31f, 0.18f));
+                case BuiltKind.Stone: return Cfg(TgmConfig.StoneColor, new Color(0.50f, 0.50f, 0.52f));
+                case BuiltKind.Iron:  return Cfg(TgmConfig.IronColor, new Color(0.33f, 0.35f, 0.40f));
+                case BuiltKind.Dirt:  return Cfg(TgmConfig.DirtColor, new Color(0.47f, 0.38f, 0.26f));
+                case BuiltKind.Farm:  return Cfg(TgmConfig.FarmColor, new Color(0.38f, 0.33f, 0.19f));
+                default:              return Cfg(TgmConfig.PavedColor, new Color(0.62f, 0.60f, 0.55f));
             }
         }
 
-        private static string Cfg(BepInEx.Configuration.ConfigEntry<string> entry) => entry != null ? entry.Value : null;
+        /// <summary>The fallback is for the moment before the config is bound, not for a bad value.</summary>
+        private static Color Cfg(BepInEx.Configuration.ConfigEntry<Color> entry, Color fallback) =>
+            entry != null ? entry.Value : fallback;
 
         /// <summary>
         /// Rewrite the map: every pixel we want gets its color, its forest cleared and, if it was

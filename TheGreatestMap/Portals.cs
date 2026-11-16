@@ -320,10 +320,7 @@ namespace TheGreatestMap
 
         // ── color ───────────────────────────────────────────────────────────────────
 
-        private static Color _parsedColor = new Color(1f, 0.4f, 0f, 1f); // #FF6600, the default
-        private static Color _parsedPulse = Color.clear;
-        private static string _colorText, _pulseText;
-        private static bool _pulses;
+        private static readonly Color DefaultColor = new Color(1f, 0.4f, 0f, 1f); // #FF6600
 
         /// <summary>
         /// Portal markers get their own color, because they are the points you travel between and
@@ -332,27 +329,16 @@ namespace TheGreatestMap
         /// </summary>
         private static Color CurrentColor()
         {
-            string text = TgmConfig.PortalColor != null ? TgmConfig.PortalColor.Value : null;
-            if (text != _colorText)
-            {
-                _colorText = text;
-                _parsedColor = Parse(text, new Color(1f, 0.4f, 0f, 1f));
-            }
-            string pulseText = TgmConfig.PortalPulseColor != null ? TgmConfig.PortalPulseColor.Value : null;
-            if (pulseText != _pulseText)
-            {
-                _pulseText = pulseText;
-                _pulses = !string.IsNullOrEmpty(pulseText != null ? pulseText.Trim() : null);
-                _parsedPulse = _pulses ? Parse(pulseText, _parsedColor) : _parsedColor;
-            }
+            var color = MarkerColor();
+            var pulse = TgmConfig.PortalPulseColor != null ? TgmConfig.PortalPulseColor.Value : color;
+            // A fully transparent pulse color is how the setting says "do not pulse"; it used to
+            // say it with an empty string, which a color picker has no way to type.
             float period = TgmConfig.PortalPulseSeconds != null ? TgmConfig.PortalPulseSeconds.Value : 0f;
-            if (!_pulses || period <= 0.01f) return _parsedColor;
+            if (pulse.a <= 0f || period <= 0.01f) return color;
             // Unscaled, so the fade carries on while the map is open with the game paused.
             float t = (Mathf.Sin(Time.unscaledTime * 2f * Mathf.PI / period) + 1f) * 0.5f;
-            return Color.Lerp(_parsedColor, _parsedPulse, t);
+            return Color.Lerp(color, pulse, t);
         }
-
-        internal static Color ParseColor(string text, Color fallback) => Parse(text, fallback);
 
         /// <summary>
         /// The color portal markers are drawn in, for something that wants to match them -- the
@@ -360,27 +346,8 @@ namespace TheGreatestMap
         /// The steady color rather than the pulse: a row that breathed would pull the eye away
         /// from the names, which is the opposite of what the list is for.
         /// </summary>
-        internal static Color MarkerColor()
-        {
-            string text = TgmConfig.PortalColor != null ? TgmConfig.PortalColor.Value : null;
-            if (text != _colorText)
-            {
-                _colorText = text;
-                _parsedColor = Parse(text, new Color(1f, 0.4f, 0f, 1f));
-            }
-            return _parsedColor;
-        }
-
-        private static Color Parse(string text, Color fallback)
-        {
-            if (string.IsNullOrEmpty(text)) return fallback;
-            text = text.Trim();
-            if (text.Length > 0 && text[0] != '#' && System.Text.RegularExpressions.Regex.IsMatch(text, "^[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$"))
-                text = "#" + text;
-            if (ColorUtility.TryParseHtmlString(text, out var parsed)) return parsed;
-            TheGreatestMapMod.Log.LogWarning($"[TheGreatestMap] '{text}' is not a color this understands; using the default. Try a hex value such as #B07CFF.");
-            return fallback;
-        }
+        internal static Color MarkerColor() =>
+            TgmConfig.PortalColor != null ? TgmConfig.PortalColor.Value : DefaultColor;
 
         /// <summary>
         /// Paint every portal marker, the ones on your map and the draw-only ones alike, so they
