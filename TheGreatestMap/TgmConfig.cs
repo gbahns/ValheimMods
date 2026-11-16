@@ -1490,19 +1490,13 @@ namespace TheGreatestMap
             // The switches here are the server's because they decide whether the server sweeps
             // the world and whether every client samples the ground it walks over. The colors and
             // how boldly it is drawn are nobody's business but the player looking at the map.
-            PaintEnabled = mod.BindRenamed(Painting, "Player Structures Enabled", "Server Surveys Player Developments", false,
-                "EXPERIMENTAL, and off by default. The master switch for all of this, and the only one that decides " +
-                "whether any of the work happens. On, the server surveys the whole world for where players have " +
-                "built, paved, hoed and farmed, and sends what it finds to everybody to be colored into their maps. " +
-                "Off, none of it runs: the world is not swept for pieces, its terrain records are not read, nothing " +
-                "is sent, and any map already painted is put back exactly as the game drew it. There is no separate " +
-                "switch for the sharing, because a survey nobody is told about would be work for nothing. It works, " +
-                "but how it looks is still being got right, so treat it as a preview rather than a finished " +
-                "feature. Surveys rather than tracks or records: nothing is written down anywhere, the picture is " +
-                "worked out afresh each time and sent. The server's, because every part of the work is the " +
-                "server's to do, and the settings below only matter once it is on. Being told is still not the same " +
-                "as drawing: each player has their own Show Player Developments switch, off by default too, so " +
-                "turning this on does not redraw anybody's map until they ask for it.", true);
+            PaintEnabled = mod.BindRenamed(Painting, "Player Structures Enabled", "Server Shares Player Developments", false,
+                "EXPERIMENTAL, off by default. The master switch. On, the server works out where players have " +
+                "built, paved, hoed and farmed across the whole world and sends it to everybody, to be colored " +
+                "into their maps. Off, none of it runs and any map already painted goes back to the way the game " +
+                "drew it. Players each need Show Player Developments as well, which is also off by default, so " +
+                "turning this on does not redraw anybody's map until they ask for it. The settings below only " +
+                "matter once this is on.", true);
             PaintBuildings = mod.BindSynced(Painting, "Paint Player Buildings", true,
                 "Color the ground players have built on into the map itself, wood in one color and stone in another, " +
                 "rather than putting a marker on it. A base is not a point and a marker cannot say how big it is. " +
@@ -1550,12 +1544,11 @@ namespace TheGreatestMap
                 "density, like the setting above, so the grid can change without retuning it. 1 draws every cell " +
                 "anything stands in. The server's, since the server is the one looking.");
             ShowMapPaint = mod.BindRenamed(Painting, "Show Map Painting", "Show Player Developments", false,
-                "EXPERIMENTAL, and off by default. Draw the painting on your own map, if the server is sharing any. " +
-                "Off leaves the map exactly as the game drew it. The painting goes into the map picture itself, so " +
-                "it shows on the large map, the minimap and the parchment in your hands alike, and unexplored " +
-                "ground hides it like anything else. At present it is drawn at the map's own resolution, which is " +
-                "about twelve meters to a pixel, so a path comes out wider and softer than it really is -- that is " +
-                "the part still being worked on, and the reason this is off until you ask for it.");
+                "EXPERIMENTAL, off by default. Color what the server shares into your own map -- large map, " +
+                "minimap and the parchment alike, with fog and zoom handled for free. Off leaves the map exactly " +
+                "as the game drew it. It is drawn at the map's own resolution of about twelve meters to a pixel, " +
+                "so a path comes out wider and softer than it is; sharpening that is the part still being worked " +
+                "on.");
             WoodColor = mod.BindRetuned(Painting, "Wood Color", "#704F2E", "#C49A6C",
                 "The color wooden building is drawn in. A hex value such as #C49A6C, or a name such as brown. " +
                 "Hardwood and the rest of the timbers count as wood. The light warm brown of the game's own wood " +
