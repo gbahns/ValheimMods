@@ -717,6 +717,8 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> PaintEnabled;
         internal static ConfigEntry<bool> PaintBuildings;
         internal static ConfigEntry<bool> PaintRoads;
+        internal static ConfigEntry<bool> PaintDirtPaths;
+        internal static ConfigEntry<bool> PaintFarmland;
         internal static ConfigEntry<float> BuildSweepSeconds;
         internal static ConfigEntry<int> PaintLeastPieces;
         internal static ConfigEntry<bool> ShowMapPaint;
@@ -724,6 +726,8 @@ namespace TheGreatestMap
         internal static ConfigEntry<string> StoneColor;
         internal static ConfigEntry<string> IronColor;
         internal static ConfigEntry<string> PavedColor;
+        internal static ConfigEntry<string> DirtColor;
+        internal static ConfigEntry<string> FarmColor;
         internal static ConfigEntry<int> PaintSpread;
         internal static ConfigEntry<int> PaintLeastInCell;
         internal static ConfigEntry<bool> PaintOverWater;
@@ -1499,16 +1503,22 @@ namespace TheGreatestMap
                 "are not touched, since only a player's piece carries a builder -- and tells everyone, so this is " +
                 "the server's to switch on: off, it does not do the work and nobody sees it.");
             PaintRoads = mod.BindSynced(Painting, "Paint Paved Roads", true,
-                "Color paved ground into the map, so the roads players have laid show up as roads. There is no sweep " +
-                "for these: paving is paint on the terrain, and terrain exists only where somebody is standing, so " +
-                "each client reports the paved ground it walks over and the server keeps it for everybody. A road " +
-                "appears the first time anyone uses it and stays. The server's, because it is every client that does " +
-                "the looking.");
+                "Color paved ground into the map, so the roads players have laid show up as roads. The server reads " +
+                "this out of the world's own record of every patch of ground anybody has ever shaped, so a road is " +
+                "on the map whether or not anyone has walked it since -- including the ones laid long before this " +
+                "mod was installed. The server's.");
+            PaintDirtPaths = mod.BindSynced(Painting, "Paint Dirt Paths", true,
+                "Color the ground players have flattened with a hoe, which is how most trails between places get " +
+                "made. Read the same way as paved road, from the world's record rather than from anyone walking it.");
+            PaintFarmland = mod.BindSynced(Painting, "Paint Farmland", true,
+                "Color cultivated ground into the map, so fields read as fields rather than as whatever grows on " +
+                "them. This is the ground the cultivator turned over, not the crops standing in it -- the mod does " +
+                "not mark planted crops at all.");
             BuildSweepSeconds = mod.BindSynced(Painting, "Build Sweep Seconds", 120f,
                 "Server only. How often the server walks the world for player-built pieces. This is the heaviest " +
                 "sweep the mod does -- four hundred prefabs across every sector -- and a base does not move, so it is " +
-                "spread over many frames and run rarely. Paved ground does not wait on this: a road reported by a " +
-                "player is passed on at once.");
+                "spread over many frames and run rarely. Paths and paving are read in the same pass, so this is also " +
+                "how long it can take for ground you have just hoed to reach the map.");
             PaintLeastPieces = mod.BindSynced(Painting, "Least Pieces To Draw", 6,
                 "How much building has to stand in one place before the map draws it. Everything a player raises is " +
                 "a piece, so without this the campfire somebody lit while exploring, the workbench put down to " +
@@ -1542,6 +1552,11 @@ namespace TheGreatestMap
             PavedColor = mod.BindLocal(Painting, "Paved Color", "#9E998C",
                 "The color paved road is drawn in. Building wins where a road runs under it, so a courtyard reads as " +
                 "the building it belongs to.");
+            DirtColor = mod.BindLocal(Painting, "Dirt Path Color", "#78603F",
+                "The color hoed dirt path is drawn in. Paving wins where a path runs into a road.");
+            FarmColor = mod.BindLocal(Painting, "Farmland Color", "#615430",
+                "The color cultivated ground is drawn in. Both paving and dirt path win over it, so a track across a " +
+                "field reads as a track.");
             PaintSpread = mod.BindRetuned(Painting, "Paint Spread", 1, 0,
                 "How many map pixels around each painted one are painted too. A map pixel is about ten meters, which " +
                 "is already wider than most of what is drawn on it, so each step up this multiplies what you see: 1 " +

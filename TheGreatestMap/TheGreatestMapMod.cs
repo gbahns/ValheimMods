@@ -30,7 +30,7 @@ namespace TheGreatestMap
     {
         public const string ModGuid    = "DeathMonger.TheGreatestMap";
         public const string ModName    = "The Greatest Map";
-        public const string ModVersion = "4.9.3";
+        public const string ModVersion = "4.10.0";
 
         // Oldest version whose shared-marker wire format this build still speaks. ServerSync
         // refuses peers below this, so bump it only when the format or an RPC changes, not on
@@ -88,7 +88,7 @@ namespace TheGreatestMap
         // is refused too, so a server running a build nobody else has keeps the rest of the crew
         // off it. The same rule means that between publishing a raised floor and deploying the
         // server, nobody can join at all.
-        public const string MinCompatibleVersion = "4.9.0";
+        public const string MinCompatibleVersion = "4.10.0";
 
         internal static TheGreatestMapMod Instance { get; private set; }
         internal static ManualLogSource Log { get; private set; }
@@ -193,7 +193,6 @@ namespace TheGreatestMap
             Portals.Update(); // also runs on the dedicated server, which is the source of the list
             Transports.Update(); // likewise: the sweep for ships and carts is the server's
             Builds.Update();     // and the sweep for what players built, which also paints the map
-            PavedStore.Update();
             Portals.Paint();
             MapPause.Refresh(); // also lets go of the pause when the player is gone
             PauseButton.Update();

@@ -34,7 +34,6 @@ namespace TheGreatestMap
     {
         private const string RpcCells = "TGM_Built";       // server -> everybody: the whole picture
         private const string RpcWant = "TGM_BuiltWant";    // client -> server: send it to me
-        private const string RpcPaved = "TGM_Paved";       // client -> server: paved ground I walked over
 
         private const float RequestSeconds = 10f;
 
@@ -52,29 +51,22 @@ namespace TheGreatestMap
 
         private static readonly Dictionary<int, BuiltKind> _cells = new Dictionary<int, BuiltKind>();
 
-        /// <summary>Paved cells reported by players, kept apart because the sweep does not produce them.</summary>
-        private static readonly HashSet<int> _paved = new HashSet<int>();
-
         private static bool _have;
         private static float _nextRequest;
         private static int _signature;
-        private static bool _pavedDirty;
 
         internal static int Count => _cells.Count;
-        internal static int PavedCount => _paved.Count;
 
         internal static void Reset()
         {
             _cells.Clear();
-            _paved.Clear();
             _have = false;
             _nextRequest = 0f;
             _signature = 0;
-            _pavedDirty = false;
             _kinds = null;
             _sweep = null;
             _nextSweep = 0f;
-            Roads.Reset();
+            Ground.Reset();
         }
 
         internal static void Register()
@@ -83,7 +75,6 @@ namespace TheGreatestMap
             if (rpc == null) return;
             Rpc.Register<ZPackage>(rpc, RpcCells, RPC_Cells);
             Rpc.Register(rpc, RpcWant, RPC_Want);
-            Rpc.Register<ZPackage>(rpc, RpcPaved, RPC_Paved);
         }
 
         // ── the sweep (server) ──────────────────────────────────────────────────────
@@ -216,17 +207,13 @@ namespace TheGreatestMap
                 // that every client puts its map back rather than keeping the last thing it drew.
                 if (_sweep == null && _cells.Count == 0) return false;
                 _sweep = null;
+                Ground.Reset();
                 return Rebuild(new Dictionary<int, BuiltKind>());
             }
-            if (TgmConfig.PaintBuildings != null && !TgmConfig.PaintBuildings.Value)
-            {
-                // Switched off for the server: stop sweeping, and let the one empty picture go
-                // out so clients wipe what they were drawing rather than keep a stale map.
-                if (_sweep == null && _cells.Count == _paved.Count) return false;
-                _sweep = null;
-                Rebuild(new Dictionary<int, BuiltKind>());
-                return true;
-            }
+            // Buildings can be switched off while paths stay on, so this gates the building half
+            // of the walk rather than the walk: the terrain records are the other half of the
+            // same pass and they are not the same setting.
+            bool buildings = TgmConfig.PaintBuildings == null || TgmConfig.PaintBuildings.Value;
             var kinds = Kinds();
             if (kinds.Count == 0) return false;
             var sectors = Sectors();
@@ -236,6 +223,7 @@ namespace TheGreatestMap
             {
                 if (Time.time < _nextSweep) return false;
                 _sweep = new Sweep();
+                Ground.Begin();
             }
 
             int looked = 0;
@@ -251,6 +239,10 @@ namespace TheGreatestMap
                 {
                     var zdo = list[i];
                     if (zdo == null || !zdo.IsValid()) continue;
+                    // The ground first. It is one hash comparison to rule out, the same as the
+                    // building lookup, and a terrain record is never also a piece.
+                    if (Ground.Consider(zdo)) continue;
+                    if (!buildings) continue;
                     if (!kinds.TryGetValue(zdo.GetPrefab(), out var material)) continue;
                     // The one field that tells a player's hall from the generator's ruin: every
                     // piece the world generator placed has no builder on it.
@@ -267,10 +259,15 @@ namespace TheGreatestMap
                 if (++looked >= SectorsPerFrame) return false;   // pick this up next frame
             }
 
-            var picture = Built(_sweep.Found, _sweep.Density);
+            Ground.End();
+            var picture = buildings
+                ? Built(_sweep.Found, _sweep.Density)
+                : new Dictionary<int, BuiltKind>();
             int pieces = _sweep.Pieces;
             _sweep = null;
             _nextSweep = Time.time + SweepSeconds;
+            // Ground goes in after the buildings so that a hall standing on paving stays a hall.
+            Ground.AddTo(picture, MaxCells);
             if (pieces > 0 && picture.Count >= MaxCells)
                 TheGreatestMapMod.Log.LogWarning(
                     $"[TheGreatestMap] Player building fills more than {MaxCells} cells; the map painting stops there.");
@@ -334,18 +331,12 @@ namespace TheGreatestMap
             return Rank(had) >= Rank(now);
         }
 
-        /// <summary>Fold the roads in with the buildings and see whether the whole picture moved.</summary>
-        private static bool Rebuild(Dictionary<int, BuiltKind> buildings)
+        /// <summary>Keep the new picture, and say whether it differs from the last one.</summary>
+        private static bool Rebuild(Dictionary<int, BuiltKind> picture)
         {
-            bool roads = MapPaint.On() && (TgmConfig.PaintRoads == null || TgmConfig.PaintRoads.Value);
-            if (roads)
-                foreach (int key in _paved)
-                    if (!buildings.ContainsKey(key) && buildings.Count < MaxCells) buildings[key] = BuiltKind.Paved;
-
-            int signature = Hash(buildings);
+            int signature = Hash(picture);
             _cells.Clear();
-            foreach (var kv in buildings) _cells[kv.Key] = kv.Value;
-            _pavedDirty = false;
+            foreach (var kv in picture) _cells[kv.Key] = kv.Value;
             if (signature == _signature) return false;
             _signature = signature;
             return true;
@@ -368,15 +359,6 @@ namespace TheGreatestMap
 
             if (IsServer)
             {
-                // A player reporting new road does not wait for the next sweep: the sweep is
-                // minutes apart on purpose, and a road that takes five minutes to appear after
-                // you paved it looks broken rather than thorough.
-                if (_pavedDirty && _sweep == null)
-                {
-                    var current = new Dictionary<int, BuiltKind>();
-                    foreach (var kv in _cells) if (kv.Value != BuiltKind.Paved) current[kv.Key] = kv.Value;
-                    if (Rebuild(current)) Broadcast();
-                }
                 if (StepSweep()) Broadcast();
             }
             else if (!_have && Time.time >= _nextRequest && ZRoutedRpc.instance != null)
@@ -385,7 +367,6 @@ namespace TheGreatestMap
                 ZRoutedRpc.instance.InvokeRoutedRPC(RpcWant);
             }
 
-            Roads.Update(Report);
             MapPaint.Update();
         }
 
@@ -434,46 +415,6 @@ namespace TheGreatestMap
             MapPaint.Take(cells);
         }
 
-        // ── roads coming in ─────────────────────────────────────────────────────────
-
-        /// <summary>Tell the server about paved ground walked over, or keep it if we are the server.</summary>
-        private static void Report(List<int> cells)
-        {
-            if (cells == null || cells.Count == 0) return;
-            if (IsServer) { Keep(cells); return; }
-            if (ZRoutedRpc.instance == null) return;
-            var pkg = new ZPackage();
-            pkg.Write(cells.Count);
-            foreach (int key in cells) pkg.Write(key);
-            ZRoutedRpc.instance.InvokeRoutedRPC(RpcPaved, pkg);
-        }
-
-        private static void RPC_Paved(long sender, ZPackage pkg)
-        {
-            if (!IsServer || pkg == null) return;
-            var cells = new List<int>();
-            int n = pkg.ReadInt();
-            for (int i = 0; i < n && pkg.GetPos() < pkg.Size(); i++) cells.Add(pkg.ReadInt());
-            Keep(cells);
-        }
-
-        private static void Keep(List<int> cells)
-        {
-            int added = 0;
-            foreach (int key in cells)
-                if (_paved.Count < MaxCells && _paved.Add(key)) added++;
-            if (added > 0) { _pavedDirty = true; PavedStore.Dirty = true; }
-        }
-
-        internal static HashSet<int> PavedCells => _paved;
-
-        /// <summary>Put back what was saved from a previous run of the server.</summary>
-        internal static void LoadPaved(IEnumerable<int> cells)
-        {
-            foreach (int key in cells) _paved.Add(key);
-            if (_paved.Count > 0) _pavedDirty = true;
-        }
-
         /// <summary>What the painting is being told, for tgm_paint.</summary>
         internal static List<string> Describe()
         {
@@ -485,12 +426,12 @@ namespace TheGreatestMap
                 return lines;
             }
             lines.Add(IsServer
-                ? $"server: {_paved.Count} paved cell(s) remembered, sweeping every {SweepSeconds:0} s, " +
+                ? $"server: sweeping every {SweepSeconds:0} s, " +
                   $"drawing a cell only where {LeastInCell()} piece(s) stand in it and " +
                   $"{LeastPieces()} within a cell of it" +
                   (_sweep != null ? $", one in progress ({_sweep.Pieces} player-built piece(s) in {_sweep.Found.Count} cells so far)" : "")
                 : "client: " + (_have ? "have the server's picture" : "WAITING for the server's picture"));
-            lines.AddRange(Roads.Describe());
+            if (IsServer) lines.AddRange(Ground.Describe());
             return lines;
         }
     }

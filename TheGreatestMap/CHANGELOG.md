@@ -1,5 +1,16 @@
 # Changelog
 
+## 4.10.0 — unreleased
+
+**Breaking: everyone needs this version.** The map picture carries two new kinds of ground and
+the old road-reporting message is gone.
+
+- Hoed dirt paths and farmland are drawn on the map, alongside paved road.
+- Roads and paths are read from the world's own terrain records instead of being sampled around
+  each player, so the whole world is on the map at once -- including ground laid long before the
+  mod was installed, and ground nobody has walked since.
+- New: Paint Dirt Paths, Paint Farmland, Dirt Path Color, Farmland Color.
+
 ## 4.9.3 — 2026-11-13
 
 - Label Spacing says what it really does: it decides the markers you find from now on, and

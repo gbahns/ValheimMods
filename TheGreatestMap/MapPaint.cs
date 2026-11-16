@@ -13,6 +13,8 @@ namespace TheGreatestMap
         Stone = 2,
         Iron = 3,
         Paved = 4,
+        Dirt = 5,
+        Farm = 6,
     }
 
     /// <summary>
@@ -240,7 +242,8 @@ namespace TheGreatestMap
         {
             return (Wanted() ? "1" : "0") + "|" + SpreadPixels() + "|" + (OverWater() ? "1" : "0") + "|"
                    + Show(BuiltKind.Wood) + Show(BuiltKind.Stone)
-                   + Show(BuiltKind.Iron) + Show(BuiltKind.Paved);
+                   + Show(BuiltKind.Iron) + Show(BuiltKind.Paved)
+                   + Show(BuiltKind.Dirt) + Show(BuiltKind.Farm);
         }
 
         /// <summary>How far each painted pixel is grown into its neighbors, in map pixels.</summary>
@@ -374,9 +377,13 @@ namespace TheGreatestMap
         private static bool Wants(BuiltKind kind)
         {
             if (!Wanted()) return false;
-            if (kind == BuiltKind.Paved)
-                return TgmConfig.PaintRoads == null || TgmConfig.PaintRoads.Value;
-            return TgmConfig.PaintBuildings == null || TgmConfig.PaintBuildings.Value;
+            switch (kind)
+            {
+                case BuiltKind.Paved: return TgmConfig.PaintRoads == null || TgmConfig.PaintRoads.Value;
+                case BuiltKind.Dirt: return TgmConfig.PaintDirtPaths == null || TgmConfig.PaintDirtPaths.Value;
+                case BuiltKind.Farm: return TgmConfig.PaintFarmland == null || TgmConfig.PaintFarmland.Value;
+                default: return TgmConfig.PaintBuildings == null || TgmConfig.PaintBuildings.Value;
+            }
         }
 
         internal static Color ColorFor(BuiltKind kind)
@@ -386,6 +393,8 @@ namespace TheGreatestMap
                 case BuiltKind.Wood:  return Portals.ParseColor(Cfg(TgmConfig.WoodColor), new Color(0.44f, 0.31f, 0.18f));
                 case BuiltKind.Stone: return Portals.ParseColor(Cfg(TgmConfig.StoneColor), new Color(0.50f, 0.50f, 0.52f));
                 case BuiltKind.Iron:  return Portals.ParseColor(Cfg(TgmConfig.IronColor), new Color(0.33f, 0.35f, 0.40f));
+                case BuiltKind.Dirt:  return Portals.ParseColor(Cfg(TgmConfig.DirtColor), new Color(0.47f, 0.38f, 0.26f));
+                case BuiltKind.Farm:  return Portals.ParseColor(Cfg(TgmConfig.FarmColor), new Color(0.38f, 0.33f, 0.19f));
                 default:              return Portals.ParseColor(Cfg(TgmConfig.PavedColor), new Color(0.62f, 0.60f, 0.55f));
             }
         }
@@ -435,6 +444,8 @@ namespace TheGreatestMap
                 paint[(int)BuiltKind.Stone] = ColorFor(BuiltKind.Stone);
                 paint[(int)BuiltKind.Iron] = ColorFor(BuiltKind.Iron);
                 paint[(int)BuiltKind.Paved] = ColorFor(BuiltKind.Paved);
+                paint[(int)BuiltKind.Dirt] = ColorFor(BuiltKind.Dirt);
+                paint[(int)BuiltKind.Farm] = ColorFor(BuiltKind.Farm);
 
                 int changed = 0;
                 bool colorDirty = false, maskDirty = false, heightDirty = false;
@@ -560,6 +571,8 @@ namespace TheGreatestMap
                 case BuiltKind.Iron: return 3;
                 case BuiltKind.Wood: return 2;
                 case BuiltKind.Paved: return 1;
+                case BuiltKind.Dirt: return 1;
+                case BuiltKind.Farm: return 1;
                 default: return 0;
             }
         }
