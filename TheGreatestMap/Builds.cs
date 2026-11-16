@@ -169,7 +169,14 @@ namespace TheGreatestMap
                 // left a brown rectangle wherever anybody had parked.
                 if (prefab.GetComponentInChildren<Ship>(true) != null) return;
                 if (prefab.GetComponentInChildren<Vagon>(true) != null) return;
-                found[prefab.name.GetStableHashCode()] = Paint(wear.m_materialType);
+                var kind = Paint(wear.m_materialType);
+                found[prefab.name.GetStableHashCode()] = kind;
+                // Kept by name as well, so "why is my hall gray" can be answered by looking
+                // rather than by guessing which piece carries which material. The material is
+                // set on the prefab asset, which means nothing outside a running game can read
+                // it -- not the assembly, not the source, not me.
+                if (!_named.TryGetValue(kind, out var names)) _named[kind] = names = new List<string>();
+                names.Add(prefab.name);
             }
 
             var named = _namedPrefabsField != null
@@ -574,6 +581,42 @@ namespace TheGreatestMap
             }
             _have = true;
             MapPaint.Take(cells);
+        }
+
+        private static readonly Dictionary<BuiltKind, List<string>> _named =
+            new Dictionary<BuiltKind, List<string>>();
+
+        /// <summary>
+        /// Every buildable prefab that paints as one material, for tgm_paint &lt;kind&gt;.
+        /// </summary>
+        internal static List<string> Pieces(string want)
+        {
+            var lines = new List<string>();
+            Kinds();   // the list is filled as a side effect of building the lookup
+            var kinds = new List<BuiltKind>();
+            foreach (var kv in _named)
+                if (string.IsNullOrEmpty(want) || kv.Key.ToString().ToLowerInvariant().StartsWith(want.ToLowerInvariant()))
+                    kinds.Add(kv.Key);
+            if (kinds.Count == 0)
+            {
+                lines.Add($"no building material is called \"{want}\". Try wood, stone or iron.");
+                return lines;
+            }
+            foreach (var kind in kinds)
+            {
+                var names = _named[kind];
+                names.Sort();
+                lines.Add($"{kind}: {names.Count} piece(s)");
+                // Wrapped, because the console gives one line about as much room as a sentence.
+                string row = "  ";
+                foreach (var name in names)
+                {
+                    if (row.Length + name.Length + 2 > 110) { lines.Add(row); row = "  "; }
+                    row += name + "  ";
+                }
+                if (row.Trim().Length > 0) lines.Add(row);
+            }
+            return lines;
         }
 
         /// <summary>What the painting is being told, for tgm_paint.</summary>

@@ -763,9 +763,18 @@ namespace TheGreatestMap
                     }
                 }));
 
-            new Terminal.ConsoleCommand("tgm_paint", "The Greatest Map: what is colored into the map for player building and paved roads",
+            new Terminal.ConsoleCommand("tgm_paint", "The Greatest Map: what is colored into the map for player building and paved roads. Add wood, stone or iron to list the pieces that paint as that material",
                 (Terminal.ConsoleEvent)(args =>
                 {
+                    if (args.Length > 1)
+                    {
+                        foreach (var line in Builds.Pieces(args[1]))
+                        {
+                            args.Context.AddString(line);
+                            TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_paint: " + line);
+                        }
+                        return;
+                    }
                     foreach (var line in MapPaint.Describe())
                     {
                         args.Context.AddString(line);
