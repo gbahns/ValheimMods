@@ -11,6 +11,8 @@ the old road-reporting message is gone.
   mod was installed, and ground nobody has walked since.
 - The painting is recorded at 4 meters instead of 8, so shapes follow what is really there.
 - The picture is compressed before it is sent, which is what makes the finer grid affordable.
+- Map painting is marked experimental and is now off at both ends: the server's Player
+  Structures Enabled and each player's own Show Map Painting both default to off.
 - New: Paint Dirt Paths, Paint Farmland, Paint Detail Meters, Dirt Path Color, Farmland Color.
 
 ## 4.9.3 — 2026-11-13

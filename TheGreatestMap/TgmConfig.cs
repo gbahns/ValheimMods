@@ -1491,12 +1491,14 @@ namespace TheGreatestMap
             // the world and whether every client samples the ground it walks over. The colors and
             // how boldly it is drawn are nobody's business but the player looking at the map.
             PaintEnabled = mod.BindSynced(Painting, "Player Structures Enabled", false,
-                "When enabled, draws colors on the map to represent player-built structures and roads. Off by " +
-                "default while this is still being got right. Off means off rather than hidden: the server does " +
-                "not sweep the world for pieces, no client samples the ground it walks over, nothing is sent, and " +
-                "any map already painted is put back exactly as the game drew it. The server's, because every part " +
-                "of the work is the server's to ask for -- turning it on here turns it on for everybody playing, " +
-                "and the settings below only matter once it is on.");
+                "EXPERIMENTAL, and off by default. Draws colors on the map to represent player-built structures, " +
+                "roads, paths and farmland. It works, but how it looks is still being got right, so treat it as a " +
+                "preview rather than a finished feature. Off means off rather than hidden: the server does not " +
+                "sweep the world for pieces or read its terrain records, nothing is sent, and any map already " +
+                "painted is put back exactly as the game drew it. The server's, because every part of the work is " +
+                "the server's to ask for -- turning it on here turns it on for everybody playing, and the settings " +
+                "below only matter once it is on. Each player also has their own Show Map Painting switch, which " +
+                "is off by default too, so turning this on does not redraw anybody's map until they ask for it.");
             PaintBuildings = mod.BindSynced(Painting, "Paint Player Buildings", true,
                 "Color the ground players have built on into the map itself, wood in one color and stone in another, " +
                 "rather than putting a marker on it. A base is not a point and a marker cannot say how big it is. " +
@@ -1543,10 +1545,13 @@ namespace TheGreatestMap
                 "through a cell still draws it, little enough that a corner clipped in passing does not. Read as a " +
                 "density, like the setting above, so the grid can change without retuning it. 1 draws every cell " +
                 "anything stands in. The server's, since the server is the one looking.");
-            ShowMapPaint = mod.BindLocal(Painting, "Show Map Painting", true,
-                "Draw the painting on your own map. Off leaves the map exactly as the game drew it, whatever the " +
-                "server is sharing. The painting goes into the map picture itself, so it shows on the large map, the " +
-                "minimap and the parchment in your hands alike, and unexplored ground hides it like anything else.");
+            ShowMapPaint = mod.BindLocal(Painting, "Show Map Painting", false,
+                "EXPERIMENTAL, and off by default. Draw the painting on your own map, if the server is sharing any. " +
+                "Off leaves the map exactly as the game drew it. The painting goes into the map picture itself, so " +
+                "it shows on the large map, the minimap and the parchment in your hands alike, and unexplored " +
+                "ground hides it like anything else. At present it is drawn at the map's own resolution, which is " +
+                "about twelve meters to a pixel, so a path comes out wider and softer than it really is -- that is " +
+                "the part still being worked on, and the reason this is off until you ask for it.");
             WoodColor = mod.BindRetuned(Painting, "Wood Color", "#704F2E", "#C49A6C",
                 "The color wooden building is drawn in. A hex value such as #C49A6C, or a name such as brown. " +
                 "Hardwood and the rest of the timbers count as wood. The light warm brown of the game's own wood " +

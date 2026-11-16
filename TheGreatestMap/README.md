@@ -568,11 +568,17 @@ building and paved roads are colored into the map instead — wooden building th
 of the game's wood pieces, stone gray, iron slate, paved road its own pale shade, each
 configurable under `[Map Painting]`.
 
-When enabled, draws colors on the map to represent player-built structures and roads.
-**`Player Structures Enabled` is off by default**, while this is still being got right. It lives
-under `[Map Painting]` and is the server's; until it is on nothing here happens at all — no
-sweeping, no sampling, nothing sent, and any map already painted goes back to the way the game
-drew it.
+> **This one is experimental and off at both ends.** It works, and the whole world's roads,
+> paths, farmland and building are really there — but it is drawn at the map's own resolution of
+> about twelve meters to a pixel, so a four meter path comes out wider and softer than it is.
+> Sharpening that is being worked on. Nothing is painted on anybody's map until somebody asks
+> for it twice over.
+
+**`Player Structures Enabled`** lives under `[Map Painting]` and is the server's; until it is on
+nothing here happens at all — no sweeping, no terrain records read, nothing sent, and any map
+already painted goes back to the way the game drew it. **`Show Map Painting`** is each player's
+own and is off by default as well, so a server that turns painting on does not redraw anyone's
+map until that player switches it on for themselves.
 
 It goes into the map picture the game itself draws, which means the large map, the minimap and
 the parchment in your hands all show it, with panning, zoom and fog handled for free: a base
