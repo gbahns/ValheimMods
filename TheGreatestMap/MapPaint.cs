@@ -461,13 +461,18 @@ namespace TheGreatestMap
 
                 // Worked out once rather than per pixel; a color is parsed from text every time
                 // it is asked for.
-                var paint = new Color32[5];
-                paint[(int)BuiltKind.Wood] = ColorFor(BuiltKind.Wood);
-                paint[(int)BuiltKind.Stone] = ColorFor(BuiltKind.Stone);
-                paint[(int)BuiltKind.Iron] = ColorFor(BuiltKind.Iron);
-                paint[(int)BuiltKind.Paved] = ColorFor(BuiltKind.Paved);
-                paint[(int)BuiltKind.Dirt] = ColorFor(BuiltKind.Dirt);
-                paint[(int)BuiltKind.Farm] = ColorFor(BuiltKind.Farm);
+                //
+                // The length comes from the enum and the entries are filled by walking it, because
+                // when both were written out by hand they went out of step: two kinds of ground
+                // were added, the length stayed at five, and every paint pass threw on the sixth
+                // entry before it drew a single pixel. Nothing appeared on the map at all -- not
+                // the new ground, not the buildings that had worked for months -- and the only
+                // sign of it was one line in the log. Adding a kind now cannot do that again.
+                var values = System.Enum.GetValues(typeof(BuiltKind));
+                int widest = 0;
+                foreach (BuiltKind kind in values) widest = Mathf.Max(widest, (int)kind + 1);
+                var paint = new Color32[widest];
+                foreach (BuiltKind kind in values) paint[(int)kind] = ColorFor(kind);
 
                 int changed = 0;
                 bool colorDirty = false, maskDirty = false, heightDirty = false;
