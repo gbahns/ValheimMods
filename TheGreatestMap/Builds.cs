@@ -336,6 +336,8 @@ namespace TheGreatestMap
                 ? Built(found, _sweep.Density)
                 : new Dictionary<int, BuiltKind>();
             int pieces = _sweep.Pieces;
+            _lastPieces = pieces;
+            _lastCells = picture.Count;
             _sweep = null;
             _nextSweep = Time.time + SweepSeconds;
             // Ground goes in after the buildings so that a hall standing on paving stays a hall.
@@ -503,17 +505,18 @@ namespace TheGreatestMap
             var skip = new HashSet<BuiltKind>();
             for (int attempt = 0; ; attempt++)
             {
-                var pkg = EncodeWithout(skip, out int cells, out int raw);
+                var pkg = EncodeWithout(skip, out int cells, out int raw, out byte[] flat);
                 if (pkg.Size() <= MaxBytes || attempt >= Sacrificial.Length)
                 {
-                    Announce(pkg.Size(), raw, cells, skip);
+                    Announce(pkg.Size(), raw, cells, skip, flat);
                     return pkg;
                 }
                 skip.Add(Sacrificial[attempt]);
             }
         }
 
-        private static ZPackage EncodeWithout(HashSet<BuiltKind> skip, out int cells, out int raw)
+        private static ZPackage EncodeWithout(HashSet<BuiltKind> skip, out int cells, out int raw,
+                                              out byte[] flat)
         {
             var byKind = new Dictionary<byte, List<int>>();
             foreach (var kv in _cells)
@@ -539,6 +542,7 @@ namespace TheGreatestMap
                 cells += keys.Count;
             }
             raw = inner.Size();
+            flat = inner.GetArray();
 
             var pkg = new ZPackage();
             pkg.Write(WireVersion);
@@ -547,16 +551,32 @@ namespace TheGreatestMap
         }
 
         /// <summary>Said when the picture grows, not every time it is sent.</summary>
-        private static void Announce(int size, int raw, int cells, HashSet<BuiltKind> skip)
+        private static void Announce(int size, int raw, int cells, HashSet<BuiltKind> skip, byte[] flat)
         {
             if (size <= _loudestSent && skip.Count == _lastSkipped) return;
             _loudestSent = System.Math.Max(_loudestSent, size);
             _lastSkipped = skip.Count;
             string lost = "";
             foreach (var kind in skip) lost += (lost.Length > 0 ? ", " : "") + kind;
+            // What the game's other codec would have cost. ZPackage.WriteCompressed, which is
+            // also what the markers go through, is gzip at CompressionLevel.Fastest; sitting
+            // unused beside it in the same class is Compress2, which is Brotli at Optimal.
+            // Delta-encoded sorted keys are long runs of small repeating values, which is the
+            // case the two differ most on -- and how much they differ decides whether a finer
+            // grid fits in a message. Measured on the real picture rather than guessed at, and
+            // only on the rare send that logs, because Optimal is not free.
+            string other = "";
+            try
+            {
+                int brotli = Utils.Compress2(flat).Length;
+                other = $" (the same bytes under the game's other codec, Brotli: {brotli / 1024} KB, " +
+                        $"{(size > 0 ? (float)brotli / size : 1f):0.00}x)";
+            }
+            catch (System.Exception) { }
+
             TheGreatestMapMod.Log.LogInfo(
                 $"[TheGreatestMap] Map picture: {cells} cell(s) at {MapPaint.CellSize:0.#} m, " +
-                $"{raw / 1024} KB packed down to {size / 1024} KB." +
+                $"{raw / 1024} KB packed down to {size / 1024} KB{other}." +
                 (lost.Length > 0
                     ? $" Over the {MaxBytes / 1024} KB a message may take, so this leaves out: {lost}. " +
                       "Raise Paint Detail Meters for a coarser grid that fits more of the world."
@@ -621,6 +641,14 @@ namespace TheGreatestMap
 
         private static readonly Dictionary<BuiltKind, List<string>> _named =
             new Dictionary<BuiltKind, List<string>>();
+
+        /// <summary>
+        /// What the last finished sweep found. Kept because the ratio of pieces to cells is the
+        /// number every question about how finely to record the world turns on, and it was being
+        /// counted and then dropped.
+        /// </summary>
+        private static int _lastPieces;
+        private static int _lastCells;
 
         /// <summary>Pieces that count toward there being a building but not toward what it is made of.</summary>
         private static readonly HashSet<int> _fixtures = new HashSet<int>();
@@ -700,6 +728,10 @@ namespace TheGreatestMap
                   $"drawing a cell only where {LeastInCell()} piece(s) stand in it and " +
                   $"{LeastPieces()} within a cell of it" +
                   (_sweep != null ? $", one in progress ({_sweep.Pieces} player-built piece(s) in {_sweep.Found.Count} cells so far)" : "")
+                  + (_lastPieces > 0
+                      ? $"; last sweep: {_lastPieces} player-built piece(s) became {_lastCells} cell(s) " +
+                        $"at {MapPaint.CellSize:0.#} m, {(_lastCells > 0 ? (float)_lastPieces / _lastCells : 0f):0.00} piece(s) a cell"
+                      : "")
                 : "client: " + (_have ? "have the server's picture" : "WAITING for the server's picture"));
             if (IsServer) lines.AddRange(Ground.Describe());
             return lines;
