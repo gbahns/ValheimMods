@@ -569,10 +569,15 @@ of the game's wood pieces, stone gray, iron slate, black marble near-black, pave
 pale shade, each configurable under `[Colors]`.
 
 > **This one is experimental and off at both ends.** It works, and the whole world's roads,
-> paths, farmland and building are really there — but it is drawn at the map's own resolution of
-> about twelve meters to a pixel, so a four meter path comes out wider and softer than it is.
-> Sharpening that is being worked on. Nothing is painted on anybody's map until somebody asks
-> for it twice over.
+> paths, farmland and building are really there. On the large map it is drawn sharp, at about a
+> meter to a pixel, with buildings outlined; the minimap and the parchment map still use the
+> map's own twelve meters to a pixel, so a four meter path comes out wider and softer there than
+> it is. Nothing is painted on anybody's map until somebody asks for it twice over.
+
+**`Draw Outlines`** strokes a hard line around the edge of each building and straightens the
+steps the recording grid leaves behind, so a wall looks like a wall rather than a column of
+squares. Large map only, and only when you are zoomed in far enough for the line to be a line.
+Turn it off to see the plain coloring underneath.
 
 **`Server Shares Player Developments`** lives under `[Map Painting]` and is the server's; until it is on
 nothing here happens at all — no sweeping, no terrain records read, nothing sent, and any map

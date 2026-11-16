@@ -727,6 +727,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<Color> StoneColor;
         internal static ConfigEntry<Color> IronColor;
         internal static ConfigEntry<Color> MarbleColor;
+        internal static ConfigEntry<bool> PaintOutlines;
         internal static ConfigEntry<Color> PavedColor;
         internal static ConfigEntry<Color> DirtColor;
         internal static ConfigEntry<Color> FarmColor;
@@ -1527,6 +1528,10 @@ namespace TheGreatestMap
                 "Color cultivated ground into the map, so fields read as fields rather than as whatever grows on " +
                 "them. This is the ground the cultivator turned over, not the crops standing in it -- the mod does " +
                 "not mark planted crops at all.");
+            PaintOutlines = mod.BindLocal(Painting, "Draw Outlines", true,
+                "Draw a hard line around the edge of each building, road and field instead of leaving it as a " +
+                "block of color. Straightens the steps the grid leaves behind, so a wall looks like a wall. " +
+                "Turn it off to see the plain coloring underneath.");
             PaintDetailMeters = mod.BindSynced(Painting, "Paint Detail Meters", 4f,
                 "Server only. How fine the painting is recorded, in meters. Smaller draws a truer shape -- a two " +
                 "meter path comes out two meters wide rather than filling whatever square it touched -- and costs " +

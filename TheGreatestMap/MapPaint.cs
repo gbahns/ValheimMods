@@ -159,6 +159,17 @@ namespace TheGreatestMap
             return (cx << 16) | (cz & 0xFFFF);
         }
 
+        /// <summary>
+        /// The cell indices a key stands for. Same reason Neighbor is here: how two cell numbers
+        /// pack into one int is this file's business, and a tracer that needs the corners of a
+        /// cell should not have to know it.
+        /// </summary>
+        internal static void Cell(int key, out int cx, out int cz)
+        {
+            cx = (key >> 16) - CellBias;
+            cz = (key & 0xFFFF) - CellBias;
+        }
+
         internal static Vector3 Center(int key)
         {
             int cx = (key >> 16) - CellBias;
@@ -272,6 +283,13 @@ namespace TheGreatestMap
         /// </summary>
         private static int _cellsHash;
 
+        /// <summary>
+        /// Changes when the picture does, and not when a color does. The outlines depend on
+        /// where things are and not on what color they are drawn in, so they are kept across a
+        /// color change that the fill has to repaint for.
+        /// </summary>
+        internal static int CellsHash => _cellsHash;
+
         internal static void Update()
         {
             var map = Minimap.instance;
@@ -340,7 +358,8 @@ namespace TheGreatestMap
 
         private static string ColorSignature()
         {
-            return (Wanted() ? "1" : "0") + "|" + SpreadPixels() + "|" + (OverWater() ? "1" : "0") + "|"
+            return (Wanted() ? "1" : "0") + "|" + SpreadPixels() + "|" + (OverWater() ? "1" : "0")
+                   + "|" + (Outlined() ? "1" : "0") + "|"
                    + Show(BuiltKind.Wood) + Show(BuiltKind.Stone)
                    + Show(BuiltKind.Iron) + Show(BuiltKind.Marble) + Show(BuiltKind.Paved)
                    + Show(BuiltKind.Dirt) + Show(BuiltKind.Farm);
@@ -474,6 +493,10 @@ namespace TheGreatestMap
         internal static bool Wanted() =>
             On() && (TgmConfig.ShowMapPaint == null || TgmConfig.ShowMapPaint.Value);
 
+        /// <summary>Are the edges drawn as lines, or is the fill left to speak for itself?</summary>
+        internal static bool Outlined() =>
+            TgmConfig.PaintOutlines == null || TgmConfig.PaintOutlines.Value;
+
         internal static bool Wants(BuiltKind kind)
         {
             if (!Wanted()) return false;
@@ -498,6 +521,30 @@ namespace TheGreatestMap
                 case BuiltKind.Farm:  return Cfg(TgmConfig.FarmColor, new Color(0.38f, 0.33f, 0.19f));
                 default:              return Cfg(TgmConfig.PavedColor, new Color(0.62f, 0.60f, 0.55f));
             }
+        }
+
+        /// <summary>
+        /// The color to stroke an outline of something filled in <paramref name="fill"/>.
+        ///
+        /// <para>Derived rather than configured, because it is not a choice anybody wants to
+        /// make: an outline is the fill in shadow, and ten colors in the config are already more
+        /// than enough without ten more beside them for their edges.</para>
+        ///
+        /// <para>Darker than the fill, except where the fill is already nearly black -- black
+        /// marble -- and a darker line would be invisible against it. There the edge goes the
+        /// other way and is lighter, which is what a line drawn in chalk rather than ink does
+        /// and reads the same way round.</para>
+        /// </summary>
+        internal static Color Ink(Color fill)
+        {
+            float light = fill.r * 0.299f + fill.g * 0.587f + fill.b * 0.114f;
+            var ink = light > 0.22f
+                ? new Color(fill.r * 0.34f, fill.g * 0.34f, fill.b * 0.34f, fill.a)
+                : Color.Lerp(fill, new Color(0.62f, 0.60f, 0.56f, fill.a), 0.55f);
+            // An edge at the fill's own transparency disappears along with it; the point of the
+            // edge is that it is the part you can still see.
+            ink.a = Mathf.Max(fill.a, 0.85f);
+            return ink;
         }
 
         /// <summary>The fallback is for the moment before the config is bound, not for a bad value.</summary>

@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.11.0 — unreleased
+
+- EXPERIMENTAL. Player buildings are drawn with a hard outline instead of as a block of color:
+  the grid's steps are straightened into walls, so a hall looks drawn rather than pixelated. New:
+  Draw Outlines.
+
 ## 4.10.0 — 2026-11-16
 
 **Breaking: everyone needs this version.** The map picture carries two new kinds of ground and

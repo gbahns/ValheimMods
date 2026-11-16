@@ -237,6 +237,24 @@ namespace TheGreatestMap
             float wide = Mathf.Max(1f, cell / worldAcross * Size);
             float tall = Mathf.Max(1f, cell / worldUp * Size);
 
+            // World meters to buffer pixels, worked out once rather than per cell: Minimap's own
+            // WorldToMapPoint folded into the window transform, so a point costs a multiply and
+            // an add. The fill still goes the long way round because it needs the map-space
+            // coordinate for the fog bit anyway; the outlines, which there are far more of, do
+            // not.
+            float perMeterX = Size / worldAcross;
+            float perMeterY = Size / worldUp;
+            float offsetX = (0.5f - view.xMin) / view.width * Size;
+            float offsetY = (0.5f - view.yMin) / view.height * Size;
+
+            // How thick a wall is drawn, and whether it is drawn at all. Zoomed out far enough
+            // that a cell is a few pixels, an outline around everything is a dark smear rather
+            // than a building, and the fill says more on its own. So the outlines fade out by
+            // not being drawn, at the zoom where they stop being lines.
+            float nib = Mathf.Clamp(wide * 0.14f, 1.5f, 5f);
+            bool outlines = wide >= 3f && MapPaint.Outlined();
+            if (outlines) MapOutline.Trace(cells, MapPaint.CellsHash);
+
             var previous = RenderTexture.active;
             RenderTexture.active = _rt;
             GL.PushMatrix();
@@ -260,18 +278,8 @@ namespace TheGreatestMap
                     float mx = (at.x / metersPerMapPixel + size * 0.5f) / size;
                     float my = (at.z / metersPerMapPixel + size * 0.5f) / size;
 
-                    // Unexplored ground hides what is on it, the same as the game's own fog. Done
-                    // by not drawing rather than by masking afterwards: it is one bit to read and
-                    // it saves the quad.
-                    if (explored != null)
-                    {
-                        int px = Mathf.Clamp((int)(mx * size), 0, size - 1);
-                        int py = Mathf.Clamp((int)(my * size), 0, size - 1);
-                        int bit = py * size + px;
-                        bool seen = bit < explored.Length && explored[bit];
-                        if (!seen && shared != null && bit < shared.Length) seen = shared[bit];
-                        if (!seen) continue;
-                    }
+                    if (explored != null && !Seen(explored, shared, size, at.x, at.z, metersPerMapPixel))
+                        continue;
 
                     float u = (mx - view.xMin) / view.width;
                     float v = (my - view.yMin) / view.height;
@@ -285,11 +293,71 @@ namespace TheGreatestMap
                     GL.Vertex3(x1, y1, 0f);
                     GL.Vertex3(x0, y1, 0f);
                 }
+
+                // The wall over the wash, in the same pass as the fill it belongs to, so that a
+                // stone hall standing in a wooden courtyard covers the courtyard's edge the way
+                // it covers its color. Drawing every fill and then every outline would put wood
+                // ink on top of stone.
+                if (!outlines) continue;
+                var walls = MapOutline.Of(kind);
+                if (walls == null) continue;
+                GL.Color(MapPaint.Ink(color));
+                float half = nib * 0.5f;
+                for (int i = 0; i < walls.Count; i++)
+                {
+                    var wall = walls[i];
+                    float sx0 = wall.X0 * cell * perMeterX + offsetX;
+                    float sy0 = wall.Z0 * cell * perMeterY + offsetY;
+                    float sx1 = wall.X1 * cell * perMeterX + offsetX;
+                    float sy1 = wall.Z1 * cell * perMeterY + offsetY;
+                    if (sx0 < -nib && sx1 < -nib) continue;
+                    if (sy0 < -nib && sy1 < -nib) continue;
+                    if (sx0 > Size + nib && sx1 > Size + nib) continue;
+                    if (sy0 > Size + nib && sy1 > Size + nib) continue;
+
+                    // Fogged per wall rather than per loop: a building half inside what you have
+                    // uncovered should come to an end where your knowledge does, which is what
+                    // the fill already does a cell at a time.
+                    if (explored != null && !Seen(explored, shared, size,
+                            (wall.X0 + wall.X1) * 0.5f * cell, (wall.Z0 + wall.Z1) * 0.5f * cell,
+                            metersPerMapPixel))
+                        continue;
+
+                    float dx = sx1 - sx0, dy = sy1 - sy0;
+                    float len = Mathf.Sqrt(dx * dx + dy * dy);
+                    if (len < 0.001f) continue;
+                    // Extended half a nib past each end, which squares off the corner where the
+                    // next wall starts -- a cheap miter, and at this width an exact one would
+                    // look no different.
+                    float ex = dx / len * half, ey = dy / len * half;
+                    float nx = -ey, ny = ex;
+                    sx0 -= ex; sy0 -= ey; sx1 += ex; sy1 += ey;
+                    GL.Vertex3(sx0 + nx, sy0 + ny, 0f);
+                    GL.Vertex3(sx1 + nx, sy1 + ny, 0f);
+                    GL.Vertex3(sx1 - nx, sy1 - ny, 0f);
+                    GL.Vertex3(sx0 - nx, sy0 - ny, 0f);
+                }
             }
 
             GL.End();
             GL.PopMatrix();
             RenderTexture.active = previous;
+        }
+
+        /// <summary>
+        /// Has this player uncovered this piece of world, by walking it or by being told about
+        /// it? Unexplored ground hides what is on it, the same as the game's own fog, and that
+        /// is done here by not drawing rather than by masking afterwards: it is one bit to read
+        /// and it saves the quad.
+        /// </summary>
+        private static bool Seen(BitArray explored, BitArray shared, int size,
+                                 float worldX, float worldZ, float metersPerMapPixel)
+        {
+            int px = Mathf.Clamp((int)(worldX / metersPerMapPixel + size * 0.5f), 0, size - 1);
+            int py = Mathf.Clamp((int)(worldZ / metersPerMapPixel + size * 0.5f), 0, size - 1);
+            int bit = py * size + px;
+            if (bit < explored.Length && explored[bit]) return true;
+            return shared != null && bit < shared.Length && shared[bit];
         }
 
         /// <summary>
@@ -311,7 +379,9 @@ namespace TheGreatestMap
                 : _rt == null
                     ? "sharp large map: not built yet (it is built when the large map first opens)"
                     : $"sharp large map: {Size} px over the window, " +
-                      $"{(_layer != null && _layer.enabled ? "showing" : "hidden")}");
+                      $"{(_layer != null && _layer.enabled ? "showing" : "hidden")}, " +
+                      $"{MapOutline.Count} straightened wall(s)" +
+                      (MapPaint.Outlined() ? "" : " (outlines switched off)"));
             return lines;
         }
     }
