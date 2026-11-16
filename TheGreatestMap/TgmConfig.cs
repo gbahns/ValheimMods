@@ -719,6 +719,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> PaintRoads;
         internal static ConfigEntry<bool> PaintDirtPaths;
         internal static ConfigEntry<bool> PaintFarmland;
+        internal static ConfigEntry<float> PaintDetailMeters;
         internal static ConfigEntry<float> BuildSweepSeconds;
         internal static ConfigEntry<int> PaintLeastPieces;
         internal static ConfigEntry<bool> ShowMapPaint;
@@ -1514,6 +1515,12 @@ namespace TheGreatestMap
                 "Color cultivated ground into the map, so fields read as fields rather than as whatever grows on " +
                 "them. This is the ground the cultivator turned over, not the crops standing in it -- the mod does " +
                 "not mark planted crops at all.");
+            PaintDetailMeters = mod.BindSynced(Painting, "Paint Detail Meters", 4f,
+                "Server only. How fine the painting is recorded, in meters. Smaller draws a truer shape -- a two " +
+                "meter path comes out two meters wide rather than filling whatever square it touched -- and costs " +
+                "more to send: the picture goes to every player whenever it changes, and there is a ceiling on how " +
+                "large one message may be. Past that ceiling the server drops farmland, then dirt paths, and says " +
+                "so in its log. Raise this if your world is large enough to hit it.");
             BuildSweepSeconds = mod.BindSynced(Painting, "Build Sweep Seconds", 120f,
                 "Server only. How often the server walks the world for player-built pieces. This is the heaviest " +
                 "sweep the mod does -- four hundred prefabs across every sector -- and a base does not move, so it is " +

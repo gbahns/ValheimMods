@@ -9,7 +9,9 @@ the old road-reporting message is gone.
 - Roads and paths are read from the world's own terrain records instead of being sampled around
   each player, so the whole world is on the map at once -- including ground laid long before the
   mod was installed, and ground nobody has walked since.
-- New: Paint Dirt Paths, Paint Farmland, Dirt Path Color, Farmland Color.
+- The painting is recorded at 4 meters instead of 8, so shapes follow what is really there.
+- The picture is compressed before it is sent, which is what makes the finer grid affordable.
+- New: Paint Dirt Paths, Paint Farmland, Paint Detail Meters, Dirt Path Color, Farmland Color.
 
 ## 4.9.3 — 2026-11-13
 

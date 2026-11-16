@@ -54,11 +54,33 @@ namespace TheGreatestMap
     internal static class MapPaint
     {
         /// <summary>
-        /// How large a piece of world one recorded cell is, in meters. Smaller than a map pixel
-        /// on purpose: the cell grid is what travels over the wire and what the server keeps, and
-        /// it should not have to be rebuilt the day the game ships a finer map.
+        /// How large a piece of world one recorded cell is, in meters.
+        ///
+        /// <para>The server decides this and says so in the picture it sends, rather than both
+        /// ends reading it out of a setting. They have to agree exactly -- a client drawing a
+        /// server's keys on a different grid draws the world in the wrong place and at the wrong
+        /// size -- and a number that travels with the thing it describes cannot drift out of step
+        /// with it the way two copies of a setting can.</para>
         /// </summary>
-        internal const float CellSize = 8f;
+        internal static float CellSize { get; private set; } = DefaultCellSize;
+
+        internal const float DefaultCellSize = 4f;
+
+        /// <summary>
+        /// Change the grid. Everything already drawn was drawn on the old one, so it comes off
+        /// the map before anything is drawn on the new one.
+        /// </summary>
+        internal static void UseCellSize(float meters)
+        {
+            // A meter is the floor the key packing can take: a cell index has sixteen bits and
+            // the world is twenty kilometers across, which at a meter a cell is as much as fits.
+            meters = Mathf.Clamp(meters, 1f, 16f);
+            if (Mathf.Approximately(meters, CellSize)) return;
+            CellSize = meters;
+            _cells.Clear();
+            Forget();
+            _dirty = true;
+        }
 
         /// <summary>Offset that keeps a cell index positive, so two of them pack into one int.</summary>
         private const int CellBias = 16384;

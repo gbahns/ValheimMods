@@ -43,7 +43,19 @@ namespace TheGreatestMap
         /// solid building, far past any real world, and five bytes each is a 150 KB message sent
         /// only when something changes.
         /// </summary>
-        private const int MaxCells = 30000;
+        private const int MaxCells = 400000;
+
+        /// <summary>
+        /// What one picture may take on the wire, once compressed.
+        ///
+        /// <para>Well under the half megabyte that is fatal to a Steam connection -- a message
+        /// that size is refused forever and stalls the send queue behind it -- and under it by
+        /// enough that a world which grows between two sweeps cannot cross the line. This, and
+        /// not the cell count, is the real limit: how many cells fit depends entirely on how
+        /// they are arranged, and a hundred thousand cells of one tidy road compress to less
+        /// than ten thousand scattered ones.</para>
+        /// </summary>
+        private const int MaxBytes = 200 * 1024;
 
         private static bool IsServer => ZNet.instance != null && ZNet.instance.IsServer();
 
@@ -222,6 +234,10 @@ namespace TheGreatestMap
             if (_sweep == null)
             {
                 if (Time.time < _nextSweep) return false;
+                // Before the first key is computed, never during: a sweep is one grid throughout.
+                MapPaint.UseCellSize(TgmConfig.PaintDetailMeters != null
+                    ? TgmConfig.PaintDetailMeters.Value
+                    : MapPaint.DefaultCellSize);
                 _sweep = new Sweep();
                 Ground.Begin();
             }
@@ -379,15 +395,102 @@ namespace TheGreatestMap
         private static void Send(long target)
         {
             if (ZRoutedRpc.instance == null) return;
-            var pkg = new ZPackage();
-            pkg.Write(_cells.Count);
+            ZRoutedRpc.instance.InvokeRoutedRPC(target, RpcCells, Encode());
+        }
+
+        private const int WireVersion = 1;
+
+        /// <summary>
+        /// What gets dropped first when the picture will not fit, worst first. Buildings are not
+        /// on the list: they are the smallest part of the picture and the part a map is for.
+        /// </summary>
+        private static readonly BuiltKind[] Sacrificial =
+            { BuiltKind.Farm, BuiltKind.Dirt, BuiltKind.Paved };
+
+        /// <summary>
+        /// The whole picture, small enough to send.
+        ///
+        /// <para>A cell used to go out as five loose bytes, which on the grid this now draws
+        /// would be a megabyte for a developed world. Three things make it fit, and they
+        /// compound. The cells are grouped by what is on them, so the kind is written once per
+        /// group rather than once per cell. Within a group the keys are sorted and written as
+        /// the step from the one before, and since building and road are runs of neighboring
+        /// cells those steps are nearly all small numbers whose top bytes are zero. Then the lot
+        /// is deflated, which is what turns all those zeros into nothing. Paint is contiguous by
+        /// nature, so this is the shape the data was always in -- it was only ever written in a
+        /// form that hid it.</para>
+        ///
+        /// <para>If it still will not fit, whole kinds come off rather than an arbitrary tail:
+        /// losing every field leaves a map that is honest about what it shows, and losing a
+        /// scattering of cells from everything leaves roads full of holes.</para>
+        /// </summary>
+        private static ZPackage Encode()
+        {
+            var skip = new HashSet<BuiltKind>();
+            for (int attempt = 0; ; attempt++)
+            {
+                var pkg = EncodeWithout(skip, out int cells, out int raw);
+                if (pkg.Size() <= MaxBytes || attempt >= Sacrificial.Length)
+                {
+                    Announce(pkg.Size(), raw, cells, skip);
+                    return pkg;
+                }
+                skip.Add(Sacrificial[attempt]);
+            }
+        }
+
+        private static ZPackage EncodeWithout(HashSet<BuiltKind> skip, out int cells, out int raw)
+        {
+            var byKind = new Dictionary<byte, List<int>>();
             foreach (var kv in _cells)
             {
-                pkg.Write(kv.Key);
-                pkg.Write((byte)kv.Value);
+                if (skip.Contains(kv.Value)) continue;
+                if (!byKind.TryGetValue((byte)kv.Value, out var keys))
+                    byKind[(byte)kv.Value] = keys = new List<int>();
+                keys.Add(kv.Key);
             }
-            ZRoutedRpc.instance.InvokeRoutedRPC(target, RpcCells, pkg);
+
+            var inner = new ZPackage();
+            inner.Write(MapPaint.CellSize);
+            inner.Write(byKind.Count);
+            cells = 0;
+            foreach (var kv in byKind)
+            {
+                var keys = kv.Value;
+                keys.Sort();
+                inner.Write(kv.Key);
+                inner.Write(keys.Count);
+                int last = 0;
+                for (int i = 0; i < keys.Count; i++) { inner.Write(keys[i] - last); last = keys[i]; }
+                cells += keys.Count;
+            }
+            raw = inner.Size();
+
+            var pkg = new ZPackage();
+            pkg.Write(WireVersion);
+            pkg.WriteCompressed(inner);
+            return pkg;
         }
+
+        /// <summary>Said when the picture grows, not every time it is sent.</summary>
+        private static void Announce(int size, int raw, int cells, HashSet<BuiltKind> skip)
+        {
+            if (size <= _loudestSent && skip.Count == _lastSkipped) return;
+            _loudestSent = System.Math.Max(_loudestSent, size);
+            _lastSkipped = skip.Count;
+            string lost = "";
+            foreach (var kind in skip) lost += (lost.Length > 0 ? ", " : "") + kind;
+            TheGreatestMapMod.Log.LogInfo(
+                $"[TheGreatestMap] Map picture: {cells} cell(s) at {MapPaint.CellSize:0.#} m, " +
+                $"{raw / 1024} KB packed down to {size / 1024} KB." +
+                (lost.Length > 0
+                    ? $" Over the {MaxBytes / 1024} KB a message may take, so this leaves out: {lost}. " +
+                      "Raise Paint Detail Meters for a coarser grid that fits more of the world."
+                    : ""));
+        }
+
+        private static int _loudestSent;
+        private static int _lastSkipped = -1;
 
         /// <summary>A client asking gets the last picture rather than a sweep of its own.</summary>
         private static void RPC_Want(long sender)
@@ -405,11 +508,38 @@ namespace TheGreatestMap
             // world that package is the largest thing this mod sends.
             if (IsServer) return;
             var cells = new Dictionary<int, BuiltKind>();
-            int n = pkg.ReadInt();
-            for (int i = 0; i < n && pkg.GetPos() < pkg.Size(); i++)
+            try
             {
-                int key = pkg.ReadInt();
-                cells[key] = (BuiltKind)pkg.ReadByte();
+                int version = pkg.ReadInt();
+                if (version != WireVersion)
+                {
+                    TheGreatestMapMod.Log.LogWarning(
+                        "[TheGreatestMap] The server sent a map picture written in a way this version does not " +
+                        "read (" + version + "); nothing is painted. Markers are not affected.");
+                    return;
+                }
+                var inner = pkg.ReadCompressedPackage();
+                // The grid first: every key after it means nothing without it.
+                MapPaint.UseCellSize(inner.ReadSingle());
+                int kinds = inner.ReadInt();
+                for (int k = 0; k < kinds && inner.GetPos() < inner.Size(); k++)
+                {
+                    var kind = (BuiltKind)inner.ReadByte();
+                    int n = inner.ReadInt();
+                    int last = 0;
+                    for (int i = 0; i < n && inner.GetPos() < inner.Size(); i++)
+                    {
+                        last += inner.ReadInt();
+                        cells[last] = kind;
+                    }
+                }
+            }
+            catch (System.Exception e)
+            {
+                TheGreatestMapMod.Log.LogWarning(
+                    "[TheGreatestMap] The server's map picture would not be read (" + e.Message +
+                    "); nothing is painted. Markers are not affected.");
+                return;
             }
             _have = true;
             MapPaint.Take(cells);
