@@ -637,7 +637,7 @@ namespace TheGreatestMap
             if (map == null) { lines.Add("No map yet."); return lines; }
             lines.Add($"map texture {map.m_textureSize} px across, {map.m_pixelSize:0.#} m per pixel " +
                       $"(a cell is {CellSize:0} m, so about {Mathf.Max(1f, CellSize / map.m_pixelSize):0.0} cell(s) per pixel)");
-            lines.Add($"drawing: {(!On() ? "OFF (Share Player Developments, the server's)" : Wanted() ? "on" : "OFF (Show Player Developments)")}, " +
+            lines.Add($"drawing: {(!On() ? "OFF (Server Surveys Player Developments, the server's)" : Wanted() ? "on" : "OFF (Show Player Developments)")}, " +
                       $"buildings {(Wants(BuiltKind.Wood) ? "on" : "off")}, roads {(Wants(BuiltKind.Paved) ? "on" : "off")}");
             int wood = 0, stone = 0, iron = 0, paved = 0;
             foreach (var kind in _cells.Values)

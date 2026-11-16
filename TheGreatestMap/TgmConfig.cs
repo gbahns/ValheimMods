@@ -1490,17 +1490,19 @@ namespace TheGreatestMap
             // The switches here are the server's because they decide whether the server sweeps
             // the world and whether every client samples the ground it walks over. The colors and
             // how boldly it is drawn are nobody's business but the player looking at the map.
-            PaintEnabled = mod.BindRenamed(Painting, "Player Structures Enabled", "Share Player Developments", false,
-                "EXPERIMENTAL, and off by default. Have the server work out where players have built, paved, hoed " +
-                "and farmed across the whole world, and send that picture to everybody, to be colored into their " +
-                "maps. It works, but how it looks is still being got right, so treat it as a preview rather than a " +
-                "finished feature. Off means off rather than hidden: the world is not swept for pieces, its terrain " +
-                "records are not read, nothing is sent, and any map already painted is put back exactly as the " +
-                "game drew it. Nothing is written down anywhere -- the picture is worked out afresh and shared, " +
-                "which is why this says share rather than record. The server's, because every part of the work is " +
-                "the server's to do, and the settings below only matter once it is on. Sharing a picture is not " +
-                "the same as drawing it: each player has their own Show Player Developments switch, off by default " +
-                "too, so turning this on does not redraw anybody's map until they ask for it.", true);
+            PaintEnabled = mod.BindRenamed(Painting, "Player Structures Enabled", "Server Surveys Player Developments", false,
+                "EXPERIMENTAL, and off by default. The master switch for all of this, and the only one that decides " +
+                "whether any of the work happens. On, the server surveys the whole world for where players have " +
+                "built, paved, hoed and farmed, and sends what it finds to everybody to be colored into their maps. " +
+                "Off, none of it runs: the world is not swept for pieces, its terrain records are not read, nothing " +
+                "is sent, and any map already painted is put back exactly as the game drew it. There is no separate " +
+                "switch for the sharing, because a survey nobody is told about would be work for nothing. It works, " +
+                "but how it looks is still being got right, so treat it as a preview rather than a finished " +
+                "feature. Surveys rather than tracks or records: nothing is written down anywhere, the picture is " +
+                "worked out afresh each time and sent. The server's, because every part of the work is the " +
+                "server's to do, and the settings below only matter once it is on. Being told is still not the same " +
+                "as drawing: each player has their own Show Player Developments switch, off by default too, so " +
+                "turning this on does not redraw anybody's map until they ask for it.", true);
             PaintBuildings = mod.BindSynced(Painting, "Paint Player Buildings", true,
                 "Color the ground players have built on into the map itself, wood in one color and stone in another, " +
                 "rather than putting a marker on it. A base is not a point and a marker cannot say how big it is. " +
