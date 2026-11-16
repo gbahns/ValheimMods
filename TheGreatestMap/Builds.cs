@@ -176,7 +176,28 @@ namespace TheGreatestMap
                 if (prefab.GetComponentInChildren<Ship>(true) != null) return;
                 if (prefab.GetComponentInChildren<Vagon>(true) != null) return;
                 var kind = Paint(wear.m_materialType);
-                found[prefab.name.GetStableHashCode()] = kind;
+                int hash = prefab.name.GetStableHashCode();
+                found[hash] = kind;
+
+                // A forge, a hearth, an oven, a kiln, a smelter, a cooking station: things that
+                // stand in a building rather than being one. They are made of whatever they are
+                // made of -- the forge is iron, the hearth is stone -- and that material is about
+                // the fixture and says nothing about the hall around it. Letting them vote is
+                // what drew a wooden longhouse as a stone one and then as an iron one, which is
+                // how they came to be noticed at all.
+                //
+                // They still count toward how much is standing here, because a room full of
+                // stations is a room: the test for whether there is a building is a different
+                // question from what the building is made of, and these answer the first and not
+                // the second.
+                //
+                // By component rather than by a list of names, so it covers a modded station
+                // nobody here has heard of.
+                if (prefab.GetComponentInChildren<CraftingStation>(true) != null
+                    || prefab.GetComponentInChildren<StationExtension>(true) != null
+                    || prefab.GetComponentInChildren<Smelter>(true) != null
+                    || prefab.GetComponentInChildren<Fireplace>(true) != null)
+                    _fixtures.Add(hash);
                 // Kept by name as well, so "why is my hall gray" can be answered by looking
                 // rather than by guessing which piece carries which material. The material is
                 // set on the prefab asset, which means nothing outside a running game can read
@@ -192,7 +213,9 @@ namespace TheGreatestMap
             if (scene.m_prefabs != null) foreach (var prefab in scene.m_prefabs) Consider(prefab);
 
             _kinds = found;
-            TheGreatestMapMod.Log.LogInfo($"[TheGreatestMap] {found.Count} buildable prefab(s) recognized for map painting.");
+            TheGreatestMapMod.Log.LogInfo(
+                $"[TheGreatestMap] {found.Count} buildable prefab(s) recognized for map painting, " +
+                $"of which {_fixtures.Count} are fixtures that count toward a building without coloring it.");
             return _kinds;
         }
 
@@ -286,6 +309,8 @@ namespace TheGreatestMap
                     int key = MapPaint.Key(zdo.GetPosition());
                     _sweep.Density.TryGetValue(key, out int standing);
                     _sweep.Density[key] = standing + 1;
+                    // Counted above, not voted below.
+                    if (_fixtures.Contains(zdo.GetPrefab())) continue;
                     if (_sweep.Found.Count >= MaxCells && !_sweep.Found.ContainsKey(key)) continue;
                     _sweep.Found.TryGetValue(key, out var standingHere);
                     standingHere.Add(material);
@@ -592,6 +617,9 @@ namespace TheGreatestMap
         private static readonly Dictionary<BuiltKind, List<string>> _named =
             new Dictionary<BuiltKind, List<string>>();
 
+        /// <summary>Pieces that count toward there being a building but not toward what it is made of.</summary>
+        private static readonly HashSet<int> _fixtures = new HashSet<int>();
+
         /// <summary>
         /// Every buildable prefab that paints as one material, for tgm_paint &lt;kind&gt;.
         /// </summary>
@@ -612,7 +640,10 @@ namespace TheGreatestMap
             {
                 var names = _named[kind];
                 names.Sort();
-                lines.Add($"{kind}: {names.Count} piece(s)");
+                int fixtures = 0;
+                foreach (var name in names) if (_fixtures.Contains(name.GetStableHashCode())) fixtures++;
+                lines.Add($"{kind}: {names.Count} piece(s)" +
+                          (fixtures > 0 ? $", of which {fixtures} are fixtures and do not color anything" : ""));
                 // Wrapped, because the console gives one line about as much room as a sentence.
                 string row = "  ";
                 foreach (var name in names)

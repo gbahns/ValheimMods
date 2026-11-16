@@ -22,6 +22,8 @@ the old road-reporting message is gone.
   instead of twelve. The minimap is unchanged.
 - Every color setting now lives in one [Colors] section instead of being filed with the thing
   it colors, so they sit together in the config manager. Your existing colors move with them.
+- Forges, hearths, ovens, kilns, smelters and cooking stations no longer decide what a
+  building is made of. They still count toward there being a building there.
 - Black marble is drawn in its own near-black color instead of as stone. New: Black Marble
   Color.
 - A cell and a map pixel are drawn as whatever they are mostly made of, instead of as the
