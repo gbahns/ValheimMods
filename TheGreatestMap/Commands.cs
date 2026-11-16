@@ -785,6 +785,11 @@ namespace TheGreatestMap
                         args.Context.AddString(line);
                         TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_paint: " + line);
                     }
+                    foreach (var line in MapHighRes.Describe())
+                    {
+                        args.Context.AddString(line);
+                        TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_paint: " + line);
+                    }
                 }));
 
             new Terminal.ConsoleCommand("tgm_mapui", "Measure the large map's own layout: how much screen it uses and how its parts are anchored (also written to the log)",

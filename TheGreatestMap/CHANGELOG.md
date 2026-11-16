@@ -17,6 +17,9 @@ the old road-reporting message is gone.
   Painting is now Show Player Developments -- the painting covers roads, paths and fields as well
   as buildings, and the names now say who does which half. Both start at off; the old lines are
   tidied away.
+- The large map draws the painting sharply. It is drawn over the part of the world you are
+  looking at rather than over the whole of it, which is about a meter to a pixel zoomed in
+  instead of twelve. The minimap is unchanged.
 - Black marble is drawn in its own near-black color instead of as stone. New: Black Marble
   Color.
 - A cell and a map pixel are drawn as whatever they are mostly made of, instead of as the

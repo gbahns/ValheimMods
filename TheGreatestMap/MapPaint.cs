@@ -221,6 +221,7 @@ namespace TheGreatestMap
         /// </summary>
         private static void Forget()
         {
+            MapHighRes.Forget();
             _under.Clear();
             _underMask.Clear();
             _underHeight.Clear();
@@ -254,10 +255,22 @@ namespace TheGreatestMap
                 if (same) return false;
             }
             _cells.Clear();
-            foreach (var kv in cells) _cells[kv.Key] = kv.Value;
+            int hash = cells.Count;
+            foreach (var kv in cells) { _cells[kv.Key] = kv.Value; hash ^= kv.Key * 31 + (int)kv.Value; }
+            _cellsHash = hash;
             _dirty = true;
             return true;
         }
+
+        /// <summary>
+        /// A fingerprint of the cells, kept rather than recomputed.
+        ///
+        /// <para>The sharp layer is asked every frame whether anything changed, and walking every
+        /// cell to answer would be tens of thousands of dictionary steps a frame for an answer
+        /// that is almost always no. The cells only change when a picture arrives, so that is
+        /// where this is worked out.</para>
+        /// </summary>
+        private static int _cellsHash;
 
         internal static void Update()
         {
@@ -293,6 +306,11 @@ namespace TheGreatestMap
             string colors = ColorSignature();
             if (colors != _lastColors) { _lastColors = colors; _dirty = true; }
 
+            // The sharp layer is asked every frame and answers in one comparison unless the
+            // large map is open; it is not gated on _dirty because it also has to follow the
+            // view, which moves without anything about the picture changing.
+            MapHighRes.Update(map, _cells, Signature(colors));
+
             if (!_dirty || Time.unscaledTime < _nextApply) return;
             _dirty = false;
             _nextApply = Time.unscaledTime + Settle;
@@ -315,6 +333,10 @@ namespace TheGreatestMap
             catch (System.Exception) { return false; }
             return false;
         }
+
+        /// <summary>Cells and colors together, so either changing redraws the sharp layer.</summary>
+        private static int Signature(string colors) =>
+            (colors != null ? colors.GetHashCode() : 0) * 31 + _cellsHash;
 
         private static string ColorSignature()
         {
@@ -452,7 +474,7 @@ namespace TheGreatestMap
         private static bool Wanted() =>
             On() && (TgmConfig.ShowMapPaint == null || TgmConfig.ShowMapPaint.Value);
 
-        private static bool Wants(BuiltKind kind)
+        internal static bool Wants(BuiltKind kind)
         {
             if (!Wanted()) return false;
             switch (kind)
