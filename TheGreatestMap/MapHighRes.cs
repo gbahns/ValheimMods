@@ -183,6 +183,12 @@ namespace TheGreatestMap
                 _layer.texture = _rt;
                 // Never in the way of a click, a drag or a pin placement.
                 _layer.raycastTarget = false;
+                // Behind everything else under the map image, because Unity draws a canvas in
+                // hierarchy order and a child added last is a child drawn last. Markers are what
+                // the map is for and they have to stay on top of the painting -- and this is the
+                // answer whether they are siblings of the map image or children of it, which is
+                // worth not having to know.
+                rect.SetAsFirstSibling();
             }
             _layer.texture = _rt;
             return true;
