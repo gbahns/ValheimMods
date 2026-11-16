@@ -128,16 +128,22 @@ namespace TheGreatestMap
         }
 
         /// <summary>
-        /// Nine materials in the game, three colors on the map. Marble, ash and ancient stone are
-        /// stone to anyone looking at a map, and the two extra woods are wood; drawing nine
-        /// shades of two colors would be detail nobody could read at a pixel per shed.
+        /// Nine materials in the game, four colors on the map. Ash and ancient stone are stone to
+        /// anyone looking at a map and the extra woods are wood, because drawing nine shades of
+        /// two colors would be detail nobody could read at a pixel per shed.
+        ///
+        /// <para>Black marble is the exception and gets its own, because it does not look like
+        /// stone to anyone who has seen it: it is the one material you cannot have until the
+        /// Mistlands, so a black hall on the map says when it was built and not only what of.
+        /// </para>
         /// </summary>
         private static BuiltKind Paint(WearNTear.MaterialType material)
         {
             switch (material)
             {
-                case WearNTear.MaterialType.Stone:
                 case WearNTear.MaterialType.Marble:
+                    return BuiltKind.Marble;
+                case WearNTear.MaterialType.Stone:
                 case WearNTear.MaterialType.Ashstone:
                 case WearNTear.MaterialType.Ancient:
                     return BuiltKind.Stone;

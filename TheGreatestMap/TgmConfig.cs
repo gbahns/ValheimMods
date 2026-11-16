@@ -726,6 +726,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<Color> WoodColor;
         internal static ConfigEntry<Color> StoneColor;
         internal static ConfigEntry<Color> IronColor;
+        internal static ConfigEntry<Color> MarbleColor;
         internal static ConfigEntry<Color> PavedColor;
         internal static ConfigEntry<Color> DirtColor;
         internal static ConfigEntry<Color> FarmColor;
@@ -1559,6 +1560,10 @@ namespace TheGreatestMap
             IronColor = mod.BindLocal(Painting, "Iron Color", Colors.FromHex("#555A66"),
                 "The color iron building is drawn in -- the reinforced pieces, which usually trace the frame of " +
                 "something large.");
+            MarbleColor = mod.BindLocal(Painting, "Black Marble Color", Colors.FromHex("#121218"),
+                "The color black marble building is drawn in. Not quite true black, so that a hall still reads as a " +
+                "hall against dark water or a night map rather than as a hole in it; set it blacker if you would " +
+                "rather it did.");
             PavedColor = mod.BindLocal(Painting, "Paved Color", Colors.FromHex("#9E998C"),
                 "The color paved road is drawn in. Building wins where a road runs under it, so a courtyard reads as " +
                 "the building it belongs to.");

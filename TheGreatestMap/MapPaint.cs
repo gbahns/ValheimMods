@@ -15,6 +15,7 @@ namespace TheGreatestMap
         Paved = 4,
         Dirt = 5,
         Farm = 6,
+        Marble = 7,
     }
 
     /// <summary>
@@ -26,7 +27,7 @@ namespace TheGreatestMap
     /// </summary>
     internal struct Tally
     {
-        public int Wood, Stone, Iron, Paved, Dirt, Farm;
+        public int Wood, Stone, Iron, Marble, Paved, Dirt, Farm;
 
         public void Add(BuiltKind kind)
         {
@@ -35,6 +36,7 @@ namespace TheGreatestMap
                 case BuiltKind.Wood: Wood++; break;
                 case BuiltKind.Stone: Stone++; break;
                 case BuiltKind.Iron: Iron++; break;
+                case BuiltKind.Marble: Marble++; break;
                 case BuiltKind.Paved: Paved++; break;
                 case BuiltKind.Dirt: Dirt++; break;
                 case BuiltKind.Farm: Farm++; break;
@@ -55,16 +57,18 @@ namespace TheGreatestMap
         /// there.</para>
         /// </summary>
         public BuiltKind Winner() =>
-            Wood + Stone + Iron > 0
-                ? Most(BuiltKind.Wood, Wood, BuiltKind.Stone, Stone, BuiltKind.Iron, Iron)
-                : Most(BuiltKind.Paved, Paved, BuiltKind.Dirt, Dirt, BuiltKind.Farm, Farm);
+            Wood + Stone + Iron + Marble > 0
+                ? Most(BuiltKind.Wood, Wood, BuiltKind.Stone, Stone, BuiltKind.Iron, Iron, BuiltKind.Marble, Marble)
+                : Most(BuiltKind.Paved, Paved, BuiltKind.Dirt, Dirt, BuiltKind.Farm, Farm, BuiltKind.None, 0);
 
-        private static BuiltKind Most(BuiltKind a, int na, BuiltKind b, int nb, BuiltKind c, int nc)
+        private static BuiltKind Most(BuiltKind a, int na, BuiltKind b, int nb, BuiltKind c, int nc,
+                                      BuiltKind d, int nd)
         {
             var best = a;
             int most = na;
             if (nb > most || (nb == most && MapPaint.Rank(b) > MapPaint.Rank(best))) { best = b; most = nb; }
             if (nc > most || (nc == most && MapPaint.Rank(c) > MapPaint.Rank(best))) { best = c; most = nc; }
+            if (nd > most || (nd == most && MapPaint.Rank(d) > MapPaint.Rank(best))) { best = d; most = nd; }
             return most > 0 ? best : BuiltKind.None;
         }
     }
@@ -316,7 +320,7 @@ namespace TheGreatestMap
         {
             return (Wanted() ? "1" : "0") + "|" + SpreadPixels() + "|" + (OverWater() ? "1" : "0") + "|"
                    + Show(BuiltKind.Wood) + Show(BuiltKind.Stone)
-                   + Show(BuiltKind.Iron) + Show(BuiltKind.Paved)
+                   + Show(BuiltKind.Iron) + Show(BuiltKind.Marble) + Show(BuiltKind.Paved)
                    + Show(BuiltKind.Dirt) + Show(BuiltKind.Farm);
         }
 
@@ -467,6 +471,7 @@ namespace TheGreatestMap
                 case BuiltKind.Wood:  return Cfg(TgmConfig.WoodColor, new Color(0.44f, 0.31f, 0.18f));
                 case BuiltKind.Stone: return Cfg(TgmConfig.StoneColor, new Color(0.50f, 0.50f, 0.52f));
                 case BuiltKind.Iron:  return Cfg(TgmConfig.IronColor, new Color(0.33f, 0.35f, 0.40f));
+                case BuiltKind.Marble: return Cfg(TgmConfig.MarbleColor, new Color(0.07f, 0.07f, 0.09f));
                 case BuiltKind.Dirt:  return Cfg(TgmConfig.DirtColor, new Color(0.47f, 0.38f, 0.26f));
                 case BuiltKind.Farm:  return Cfg(TgmConfig.FarmColor, new Color(0.38f, 0.33f, 0.19f));
                 default:              return Cfg(TgmConfig.PavedColor, new Color(0.62f, 0.60f, 0.55f));
@@ -665,6 +670,9 @@ namespace TheGreatestMap
         {
             switch (kind)
             {
+                // Marble above stone, because it is the rarer material and a tie between them
+                // says more if it is drawn as the one you see less often.
+                case BuiltKind.Marble: return 5;
                 case BuiltKind.Stone: return 4;
                 case BuiltKind.Iron: return 3;
                 case BuiltKind.Wood: return 2;
@@ -713,7 +721,8 @@ namespace TheGreatestMap
             var counted = new Tally();
             foreach (var kind in _cells.Values) counted.Add(kind);
             lines.Add($"cells from the server: {_cells.Count} (wood {counted.Wood}, stone {counted.Stone}, " +
-                      $"iron {counted.Iron}, paved {counted.Paved}, dirt {counted.Dirt}, farm {counted.Farm})");
+                      $"iron {counted.Iron}, marble {counted.Marble}, paved {counted.Paved}, " +
+                      $"dirt {counted.Dirt}, farm {counted.Farm})");
             lines.Add($"map pixels painted: {_under.Count}, spread {SpreadPixels()} pixel(s) around each" +
                       (_lastPaintPixels > 0 ? $"; last repaint {_lastPaintPixels} pixel(s) in {_lastPaintMs} ms" : ""));
             FindFields();

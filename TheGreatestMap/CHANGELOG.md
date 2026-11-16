@@ -17,6 +17,8 @@ the old road-reporting message is gone.
   Painting is now Show Player Developments -- the painting covers roads, paths and fields as well
   as buildings, and the names now say who does which half. Both start at off; the old lines are
   tidied away.
+- Black marble is drawn in its own near-black color instead of as stone. New: Black Marble
+  Color.
 - A cell and a map pixel are drawn as whatever they are mostly made of, instead of as the
   hardest material standing in them -- a wooden longhouse on stone footings came out stone
   gray. Building still wins over the ground it stands on.
