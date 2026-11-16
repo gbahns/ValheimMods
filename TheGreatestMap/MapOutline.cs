@@ -57,17 +57,23 @@ namespace TheGreatestMap
         private const float Tolerance = 0.75f;
 
         /// <summary>
-        /// Regions smaller than this get the fill and no outline. A stroke around a lone cell is
-        /// a little black box, and a scattering of them reads as noise next to the building they
-        /// are scattered around; the fill still shows they are there.
+        /// Regions smaller than this get the fill and no outline, in square meters. A stroke
+        /// around a lone cell is a little black box, and a scattering of them reads as noise
+        /// next to the building they are scattered around; the fill still shows they are there.
+        ///
+        /// <para>In meters and not in cells, which is what it used to be. A limit counted in
+        /// cells is a different limit at every grid size: four cells was a sixty-four meter
+        /// building at four meters a cell and a four meter one at a meter, so the same setting
+        /// hid a cabin at one size and outlined every crate at the next.</para>
         /// </summary>
-        private const float LeastCells = 4f;
+        private const float LeastMeters = 12f;
 
         /// <summary>
         /// A loop longer than this is not a building, and straightening it would cost more than
-        /// the outline is worth.
+        /// the outline is worth. A perimeter is counted in cells, so a base that used to come to
+        /// two thousand corners at four meters comes to eight thousand at one.
         /// </summary>
-        private const int MostCorners = 8000;
+        private const int MostCorners = 40000;
 
         private static readonly Dictionary<BuiltKind, List<Stroke>> _strokes =
             new Dictionary<BuiltKind, List<Stroke>>();
@@ -94,13 +100,13 @@ namespace TheGreatestMap
         /// Trace, if the picture has changed since the last time. Called from the drawing, which
         /// is throttled already; the comparison is what makes calling it there cheap.
         /// </summary>
-        internal static void Trace(Dictionary<int, BuiltKind> cells, int hash)
+        internal static void Trace(Dictionary<BuiltKind, List<int>> byKind, int hash)
         {
             if (hash == _tracedHash && Mathf.Approximately(_tracedCell, MapPaint.CellSize)) return;
             _tracedHash = hash;
             _tracedCell = MapPaint.CellSize;
             _strokes.Clear();
-            if (cells == null || cells.Count == 0) return;
+            if (byKind == null || byKind.Count == 0) return;
 
             var mine = new HashSet<int>();
             foreach (BuiltKind kind in System.Enum.GetValues(typeof(BuiltKind)))
@@ -111,9 +117,9 @@ namespace TheGreatestMap
                 // that touch at a corner touch at a corner, so it comes apart into a row of
                 // little outlined boxes, which is worse than the plain color it replaced.
                 if (kind == BuiltKind.None || !Solid(kind)) continue;
+                if (!byKind.TryGetValue(kind, out var keys) || keys.Count == 0) continue;
                 mine.Clear();
-                foreach (var kv in cells) if (kv.Value == kind) mine.Add(kv.Key);
-                if (mine.Count == 0) continue;
+                for (int i = 0; i < keys.Count; i++) mine.Add(keys[i]);
 
                 var found = new List<Stroke>();
                 Walk(mine, found);
@@ -190,7 +196,8 @@ namespace TheGreatestMap
                 var b = loop[(i + 1) % loop.Count];
                 twice += a.x * b.y - b.x * a.y;
             }
-            if (Mathf.Abs(twice) * 0.5f < LeastCells) return;
+            float cell = Mathf.Max(0.0001f, MapPaint.CellSize);
+            if (Mathf.Abs(twice) * 0.5f * cell * cell < LeastMeters) return;
 
             var simple = Tidy(Straighten(loop));
             if (simple.Count < 3) return;

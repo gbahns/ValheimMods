@@ -732,7 +732,6 @@ namespace TheGreatestMap
         internal static ConfigEntry<Color> DirtColor;
         internal static ConfigEntry<Color> FarmColor;
         internal static ConfigEntry<int> PaintSpread;
-        internal static ConfigEntry<int> PaintLeastInCell;
         internal static ConfigEntry<bool> PaintOverWater;
         internal static ConfigEntry<int> StopWaitingAfter;
         internal static ConfigEntry<bool> ShowTransportLabels;
@@ -1532,12 +1531,14 @@ namespace TheGreatestMap
                 "Draw a hard line around the edge of each building, road and field instead of leaving it as a " +
                 "block of color. Straightens the steps the grid leaves behind, so a wall looks like a wall. " +
                 "Turn it off to see the plain coloring underneath.");
-            PaintDetailMeters = mod.BindSynced(Painting, "Paint Detail Meters", 4f,
+            PaintDetailMeters = mod.BindSynced(Painting, "Paint Detail Meters", 1f,
                 "Server only. How fine the painting is recorded, in meters. Smaller draws a truer shape -- a two " +
                 "meter path comes out two meters wide rather than filling whatever square it touched -- and costs " +
                 "more to send: the picture goes to every player whenever it changes, and there is a ceiling on how " +
                 "large one message may be. Past that ceiling the server drops farmland, then dirt paths, and says " +
-                "so in its log. Raise this if your world is large enough to hit it.");
+                "so in its log. Raise this if your world is large enough to hit it. One meter is the size of the " +
+                "smallest floor piece, and the map is drawn from the shape of each piece rather than from a point " +
+                "in it, so going finer than this sharpens where a wall sits rather than what is there.");
             BuildSweepSeconds = mod.BindSynced(Painting, "Build Sweep Seconds", 120f,
                 "Server only. How often the server walks the world for player-built pieces. This is the heaviest " +
                 "sweep the mod does -- four hundred prefabs across every sector -- and a base does not move, so it is " +
@@ -1547,19 +1548,10 @@ namespace TheGreatestMap
                 "How much building has to stand in one place before the map draws it. Everything a player raises is " +
                 "a piece, so without this the campfire somebody lit while exploring, the workbench put down to " +
                 "repair a hammer and the lone torch on a hilltop all came out as buildings in the middle of " +
-                "nowhere. A cell is drawn when this many pieces stand within a cell of it, so a hut counts and a " +
-                "torch does not, and a wall running off the side of a base is not chopped off where the pieces thin " +
-                "out. The number is read as a density rather than a flat count, so changing Paint Detail Meters " +
-                "does not quietly retune it. 1 draws everything. The server's, since the server is the one " +
-                "looking.");
-            PaintLeastInCell = mod.BindSynced(Painting, "Least Pieces In One Cell", 3,
-                "How much building has to stand in a cell itself before that cell is drawn, as against the " +
-                "neighborhood test above. A road clips the corner of the cells to either side of it with a piece " +
-                "or two, which painted those cells whole and gave a straight road ragged edges wandering in and out " +
-                "by a cell. Three is about one square meter of floor in nine: enough that a road or a wall passing " +
-                "through a cell still draws it, little enough that a corner clipped in passing does not. Read as a " +
-                "density, like the setting above, so the grid can change without retuning it. 1 draws every cell " +
-                "anything stands in. The server's, since the server is the one looking.");
+                "nowhere. A cell is drawn when this many pieces stand within twelve meters of it, so a hut counts " +
+                "and a torch does not, and a wall running off the side of a base is not chopped off where the " +
+                "pieces thin out. Counted over a distance rather than over cells, so Paint Detail Meters can change " +
+                "without retuning it. 1 draws everything. The server's, since the server is the one looking.");
             ShowMapPaint = mod.BindRenamed(Painting, "Show Map Painting", "Show Player Developments", false,
                 "EXPERIMENTAL, off by default. Color what the server shares into your own map -- large map, " +
                 "minimap and the parchment alike, with fog and zoom handled for free. Off leaves the map exactly " +

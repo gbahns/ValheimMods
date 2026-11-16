@@ -234,8 +234,12 @@ namespace TheGreatestMap
             /// read as the hardest thing anyone had put in it.
             /// </summary>
             public readonly Dictionary<int, Tally> Found = new Dictionary<int, Tally>();
-            /// <summary>How many player-built pieces stand in each cell, which is what tells a hut from a torch.</summary>
-            public readonly Dictionary<int, int> Density = new Dictionary<int, int>();
+            /// <summary>
+            /// How many player-built pieces stand in each support square, which is what tells a
+            /// hut from a torch. Counted over a fixed distance rather than over cells, so that
+            /// recording the world more finely does not quietly loosen the test.
+            /// </summary>
+            public readonly Dictionary<int, int> Support = new Dictionary<int, int>();
             public int Pieces;
         }
 
@@ -248,6 +252,9 @@ namespace TheGreatestMap
 
         private static Sweep _sweep;
         private static float _nextSweep;
+
+        /// <summary>The cells one piece stands on. Reused: this runs once per ZDO in the world.</summary>
+        private static readonly List<int> _stamp = new List<int>(16);
 
         private static float SweepSeconds =>
             TgmConfig.BuildSweepSeconds != null ? Mathf.Max(10f, TgmConfig.BuildSweepSeconds.Value) : 120f;
@@ -311,15 +318,31 @@ namespace TheGreatestMap
                     // piece the world generator placed has no builder on it.
                     if (zdo.GetLong(ZDOVars.s_creator, 0L) == 0L) continue;
                     _sweep.Pieces++;
-                    int key = MapPaint.Key(zdo.GetPosition());
-                    _sweep.Density.TryGetValue(key, out int standing);
-                    _sweep.Density[key] = standing + 1;
+                    var where = zdo.GetPosition();
+                    // Support is counted once for the piece, in the one square it stands in,
+                    // because it answers "how much is built around here" -- a question about
+                    // the world, which must not change its answer when the grid changes.
+                    int block = MapPaint.Block(where);
+                    _sweep.Support.TryGetValue(block, out int standing);
+                    _sweep.Support[block] = standing + 1;
                     // Counted above, not voted below.
                     if (_fixtures.Contains(zdo.GetPrefab())) continue;
-                    if (_sweep.Found.Count >= MaxCells && !_sweep.Found.ContainsKey(key)) continue;
-                    _sweep.Found.TryGetValue(key, out var standingHere);
-                    standingHere.Add(material);
-                    _sweep.Found[key] = standingHere;
+
+                    // Every cell the piece stands on, rather than the one its center point
+                    // happens to fall in. A prefab nobody could measure keeps the old rule.
+                    if (Footprints.Stamp(zdo.GetPrefab(), where, zdo.GetRotation(), _stamp) == 0)
+                    {
+                        _stamp.Clear();
+                        _stamp.Add(MapPaint.Key(where));
+                    }
+                    for (int s = 0; s < _stamp.Count; s++)
+                    {
+                        int key = _stamp[s];
+                        if (_sweep.Found.Count >= MaxCells && !_sweep.Found.ContainsKey(key)) continue;
+                        _sweep.Found.TryGetValue(key, out var standingHere);
+                        standingHere.Add(material);
+                        _sweep.Found[key] = standingHere;
+                    }
                 }
                 if (++looked >= SectorsPerFrame) return false;   // pick this up next frame
             }
@@ -333,7 +356,7 @@ namespace TheGreatestMap
                 if (kind != BuiltKind.None) found[kv.Key] = kind;
             }
             var picture = buildings
-                ? Built(found, _sweep.Density)
+                ? Built(found, _sweep.Support)
                 : new Dictionary<int, BuiltKind>();
             int pieces = _sweep.Pieces;
             _lastPieces = pieces;
@@ -364,20 +387,13 @@ namespace TheGreatestMap
         /// also what they always were; they were only ever written down as counts because the
         /// grid happened to be fixed at the time.</para>
         /// </summary>
-        private const float TunedAtCellSize = 8f;
 
-        private static int ForGrid(int atTunedSize)
-        {
-            float side = MapPaint.CellSize / TunedAtCellSize;
-            return Mathf.Max(1, Mathf.RoundToInt(atTunedSize * side * side));
-        }
-
+        /// <summary>
+        /// How many player-built pieces have to stand near a cell before it is drawn, counted
+        /// over a fixed distance and so meaning the same thing at every grid size.
+        /// </summary>
         private static int LeastPieces() =>
-            ForGrid(TgmConfig.PaintLeastPieces != null ? Mathf.Max(1, TgmConfig.PaintLeastPieces.Value) : 6);
-
-        /// <summary>How much has to stand in the cell itself, as against its neighborhood.</summary>
-        private static int LeastInCell() =>
-            ForGrid(TgmConfig.PaintLeastInCell != null ? Mathf.Max(1, TgmConfig.PaintLeastInCell.Value) : 3);
+            TgmConfig.PaintLeastPieces != null ? Mathf.Max(1, TgmConfig.PaintLeastPieces.Value) : 6;
 
         /// <summary>
         /// Throw away the cells that hold a thing rather than a place.
@@ -404,19 +420,27 @@ namespace TheGreatestMap
         /// one or two. That is the difference this measures, and it is the difference between a
         /// drawn edge that follows what was built and one that wanders.</para>
         /// </summary>
-        private static Dictionary<int, BuiltKind> Built(Dictionary<int, BuiltKind> found, Dictionary<int, int> density)
+        /// <summary>
+        /// Drop the cells that are not part of anything, now that the whole world has been seen.
+        ///
+        /// <para>There used to be a second test -- how many pieces stood in the cell itself --
+        /// and footprints retire it. A cell is now marked because a piece is standing on it, so
+        /// asking again how many centers landed in it would throw away the edge of every
+        /// building: the cells a wall covers and no piece is centered on are exactly the ones
+        /// that make the outline right.</para>
+        /// </summary>
+        private static Dictionary<int, BuiltKind> Built(Dictionary<int, BuiltKind> found, Dictionary<int, int> support)
         {
             int least = LeastPieces();
-            int here = LeastInCell();
-            if (least <= 1 && here <= 1) return found;
+            if (least <= 1) return found;
             var kept = new Dictionary<int, BuiltKind>();
             foreach (var kv in found)
             {
-                if (here > 1 && (!density.TryGetValue(kv.Key, out int mine) || mine < here)) continue;
+                var at = MapPaint.Center(kv.Key);
                 int around = 0;
                 for (int dz = -1; dz <= 1 && around < least; dz++)
                     for (int dx = -1; dx <= 1 && around < least; dx++)
-                        if (density.TryGetValue(MapPaint.Neighbor(kv.Key, dx, dz), out int standing))
+                        if (support.TryGetValue(MapPaint.BlockNear(at, dx, dz), out int standing))
                             around += standing;
                 if (around >= least) kept[kv.Key] = kv.Value;
             }
@@ -725,8 +749,8 @@ namespace TheGreatestMap
             }
             lines.Add(IsServer
                 ? $"server: sweeping every {SweepSeconds:0} s, " +
-                  $"drawing a cell only where {LeastInCell()} piece(s) stand in it and " +
-                  $"{LeastPieces()} within a cell of it" +
+                  $"drawing a cell only where a piece stands on it and {LeastPieces()} piece(s) " +
+                  $"stand within {MapPaint.SupportMeters:0} m of it; {Footprints.Measured} prefab(s) measured" +
                   (_sweep != null ? $", one in progress ({_sweep.Pieces} player-built piece(s) in {_sweep.Found.Count} cells so far)" : "")
                   + (_lastPieces > 0
                       ? $"; last sweep: {_lastPieces} player-built piece(s) became {_lastCells} cell(s) " +

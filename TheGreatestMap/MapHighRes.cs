@@ -220,6 +220,34 @@ namespace TheGreatestMap
         /// Paint the window. Ground first and buildings over it, in the order they should cover
         /// one another, which is what a painter does instead of ranking.
         /// </summary>
+        /// <summary>Quads sent before the buffer is closed and reopened.</summary>
+        private const int BatchQuads = 8192;
+
+        private static readonly Dictionary<BuiltKind, List<int>> _byKind =
+            new Dictionary<BuiltKind, List<int>>();
+
+        private static int _sortedHash = int.MinValue;
+
+        /// <summary>
+        /// The cells of each kind, as a list. Rebuilt only when the server's picture changes,
+        /// and the lists are reused rather than reallocated, because this is the one place the
+        /// whole table is touched and it is touched on the drawing path.
+        /// </summary>
+        private static Dictionary<BuiltKind, List<int>> Sorted(Dictionary<int, BuiltKind> cells, int hash)
+        {
+            if (hash == _sortedHash) return _byKind;
+            _sortedHash = hash;
+            foreach (var kv in _byKind) kv.Value.Clear();
+            if (cells != null)
+                foreach (var kv in cells)
+                {
+                    if (!_byKind.TryGetValue(kv.Value, out var list))
+                        _byKind[kv.Value] = list = new List<int>();
+                    list.Add(kv.Key);
+                }
+            return _byKind;
+        }
+
         private static void Draw(Minimap map, Dictionary<int, BuiltKind> cells, Rect view)
         {
             int size = map.m_textureSize;
@@ -253,7 +281,14 @@ namespace TheGreatestMap
             // not being drawn, at the zoom where they stop being lines.
             float nib = Mathf.Clamp(wide * 0.14f, 1.5f, 5f);
             bool outlines = wide >= 3f && MapPaint.Outlined();
-            if (outlines) MapOutline.Trace(cells, MapPaint.CellsHash);
+
+            // Sorted by kind once per picture rather than walked once per kind per redraw.
+            // The fill used to read the whole table for each of the seven kinds, which cost
+            // nothing at three thousand cells and is most of a frame at fifty thousand -- and
+            // this runs while the map is being dragged, which is the path that has stalled a
+            // client into timeouts before.
+            var byKind = Sorted(cells, MapPaint.CellsHash);
+            if (outlines) MapOutline.Trace(byKind, MapPaint.CellsHash);
 
             var previous = RenderTexture.active;
             RenderTexture.active = _rt;
@@ -263,15 +298,22 @@ namespace TheGreatestMap
             _flat.SetPass(0);
             GL.Begin(GL.QUADS);
 
+            // Immediate mode keeps everything between Begin and End in one buffer, and at a
+            // meter a cell a developed world is tens of thousands of quads rather than the few
+            // thousand this was written for. Closing and reopening costs a draw call and takes
+            // the question away; the color has to be set again afterwards, because Begin does
+            // not carry it over.
+            int batched = 0;
+
             foreach (var kind in Order)
             {
                 if (!MapPaint.Wants(kind)) continue;
+                if (!byKind.TryGetValue(kind, out var mine)) continue;
                 var color = MapPaint.ColorFor(kind);
                 GL.Color(color);
-                foreach (var kv in cells)
+                for (int c = 0; c < mine.Count; c++)
                 {
-                    if (kv.Value != kind) continue;
-                    var at = MapPaint.Center(kv.Key);
+                    var at = MapPaint.Center(mine[c]);
 
                     // World to the map's own normalized space -- Minimap's WorldToMapPoint, which
                     // is four lines and private, so it is four lines here instead of a lookup.
@@ -292,6 +334,13 @@ namespace TheGreatestMap
                     GL.Vertex3(x1, y0, 0f);
                     GL.Vertex3(x1, y1, 0f);
                     GL.Vertex3(x0, y1, 0f);
+                    if (++batched >= BatchQuads)
+                    {
+                        GL.End();
+                        GL.Begin(GL.QUADS);
+                        GL.Color(color);
+                        batched = 0;
+                    }
                 }
 
                 // The wall over the wash, in the same pass as the fill it belongs to, so that a
@@ -301,7 +350,8 @@ namespace TheGreatestMap
                 if (!outlines) continue;
                 var walls = MapOutline.Of(kind);
                 if (walls == null) continue;
-                GL.Color(MapPaint.Ink(color));
+                var ink = MapPaint.Ink(color);
+                GL.Color(ink);
                 float half = nib * 0.5f;
                 for (int i = 0; i < walls.Count; i++)
                 {
@@ -336,6 +386,13 @@ namespace TheGreatestMap
                     GL.Vertex3(sx1 + nx, sy1 + ny, 0f);
                     GL.Vertex3(sx1 - nx, sy1 - ny, 0f);
                     GL.Vertex3(sx0 - nx, sy0 - ny, 0f);
+                    if (++batched >= BatchQuads)
+                    {
+                        GL.End();
+                        GL.Begin(GL.QUADS);
+                        GL.Color(ink);
+                        batched = 0;
+                    }
                 }
             }
 

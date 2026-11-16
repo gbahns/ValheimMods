@@ -120,7 +120,14 @@ namespace TheGreatestMap
         /// </summary>
         internal static float CellSize { get; private set; } = DefaultCellSize;
 
-        internal const float DefaultCellSize = 4f;
+        /// <summary>
+        /// A meter, which is both the smallest floor piece and the smallest the cell key can
+        /// hold. Two sixteen bit axes biased by 16384 reach about sixteen kilometers either way
+        /// at a meter a cell, against a world that stops at ten and a half; at half a meter the
+        /// far corners of the world would wrap into the near ones, so going finer than this
+        /// means widening the key first. UseCellSize clamps to it.
+        /// </summary>
+        internal const float DefaultCellSize = 1f;
 
         /// <summary>
         /// Change the grid. Everything already drawn was drawn on the old one, so it comes off
@@ -147,6 +154,33 @@ namespace TheGreatestMap
             int cz = Mathf.FloorToInt(world.z / CellSize) + CellBias;
             return (cx << 16) | (cz & 0xFFFF);
         }
+
+        /// <summary>The key of a cell named by its own indices rather than by a point in it.</summary>
+        internal static int KeyOf(int cx, int cz) =>
+            ((cx + CellBias) << 16) | ((cz + CellBias) & 0xFFFF);
+
+        /// <summary>
+        /// The side of the squares the noise gate counts pieces in.
+        ///
+        /// <para>Fixed, and deliberately not the cell size. Whether a patch of world is a
+        /// building or somebody's dropped torch is a fact about the world, so the window it is
+        /// judged over has to be a distance and not a number of cells -- a gate measured in
+        /// cells asks a different question at every grid size, and below three meters it asked
+        /// nothing at all, because both thresholds rounded down to one and the filter switched
+        /// itself off exactly where a fine grid most needs it.</para>
+        /// </summary>
+        internal const float SupportMeters = 12f;
+
+        internal static int Block(Vector3 world) =>
+            BlockOf(Mathf.FloorToInt(world.x / SupportMeters), Mathf.FloorToInt(world.z / SupportMeters));
+
+        /// <summary>The support square dx, dz squares from the one this point is in.</summary>
+        internal static int BlockNear(Vector3 world, int dx, int dz) =>
+            BlockOf(Mathf.FloorToInt(world.x / SupportMeters) + dx,
+                    Mathf.FloorToInt(world.z / SupportMeters) + dz);
+
+        private static int BlockOf(int bx, int bz) =>
+            ((bx + CellBias) << 16) | ((bz + CellBias) & 0xFFFF);
 
         /// <summary>
         /// The key of the cell dx, dz cells away. Here rather than at the caller because the way

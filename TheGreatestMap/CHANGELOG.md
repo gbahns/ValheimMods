@@ -5,6 +5,12 @@
 - EXPERIMENTAL. Player buildings are drawn with a hard outline instead of as a block of color:
   the grid's steps are straightened into walls, so a hall looks drawn rather than pixelated. New:
   Draw Outlines.
+- EXPERIMENTAL. The map is drawn from the shape of each piece rather than from a point in it, so
+  a building covers the ground it actually stands on.
+- EXPERIMENTAL. Paint Detail Meters now defaults to 1 instead of 4, which the change above makes
+  usable.
+- Least Pieces To Draw is counted over twelve meters rather than over cells, so changing Paint
+  Detail Meters no longer retunes it. Removed: Least Pieces In One Cell.
 
 ## 4.10.0 — 2026-11-16
 
