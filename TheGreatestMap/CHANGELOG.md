@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.10.0 — unreleased
+## 4.10.0 — 2026-11-16
 
 **Breaking: everyone needs this version.** The map picture carries two new kinds of ground and
 the old road-reporting message is gone.
