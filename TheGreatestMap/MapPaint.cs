@@ -471,7 +471,7 @@ namespace TheGreatestMap
             TgmConfig.PaintEnabled != null && TgmConfig.PaintEnabled.Value;
 
         /// <summary>Is any of this to be drawn on this player's map at all?</summary>
-        private static bool Wanted() =>
+        internal static bool Wanted() =>
             On() && (TgmConfig.ShowMapPaint == null || TgmConfig.ShowMapPaint.Value);
 
         internal static bool Wants(BuiltKind kind)

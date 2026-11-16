@@ -81,6 +81,16 @@ namespace TheGreatestMap
             }
         }
 
+        /// <summary>Give the buffer back; it is rebuilt on demand if it is wanted again.</summary>
+        private static void Release()
+        {
+            if (_rt == null) return;
+            _rt.Release();
+            Object.Destroy(_rt);
+            _rt = null;
+            _drawnFor = new Rect(-999f, -999f, 0f, 0f);
+        }
+
         /// <summary>Thrown away when the map is rebuilt, which happens on every login.</summary>
         internal static void Forget()
         {
@@ -96,11 +106,23 @@ namespace TheGreatestMap
         internal static void Update(Minimap map, Dictionary<int, BuiltKind> cells, int signature)
         {
             if (_failed) return;
-            bool wanted = map != null && map.m_mode == Minimap.MapMode.Large
-                          && cells != null && cells.Count > 0;
-            if (!wanted)
+
+            // Two different questions, and they free different things. Switched off -- by the
+            // server, by this player, or because there is nothing to draw -- gives the buffer
+            // back, because sixteen megabytes of video memory for a feature somebody is not
+            // using is sixteen megabytes too many, and the default is not using it. Merely
+            // closing the map only hides the layer: the map is opened and closed constantly and
+            // releasing a render texture each time would be thrashing, not thrift.
+            bool on = map != null && MapPaint.Wanted() && cells != null && cells.Count > 0;
+            if (!on)
             {
-                if (_layer != null && _layer.enabled) _layer.enabled = false;
+                if (_layer != null) _layer.enabled = false;
+                Release();
+                return;
+            }
+            if (map.m_mode != Minimap.MapMode.Large)
+            {
+                if (_layer != null) _layer.enabled = false;
                 return;
             }
 
