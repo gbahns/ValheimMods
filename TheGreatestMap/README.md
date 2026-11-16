@@ -566,7 +566,7 @@ listing prints.
 Markers say *what is here*. They cannot say how big it is, or what runs between. So player
 building and paved roads are colored into the map instead — wooden building the light warm brown
 of the game's wood pieces, stone gray, iron slate, black marble near-black, paved road its own
-pale shade, each configurable under `[Map Painting]`.
+pale shade, each configurable under `[Colors]`.
 
 > **This one is experimental and off at both ends.** It works, and the whole world's roads,
 > paths, farmland and building are really there — but it is drawn at the map's own resolution of

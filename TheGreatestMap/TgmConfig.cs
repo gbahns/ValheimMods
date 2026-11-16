@@ -760,6 +760,17 @@ namespace TheGreatestMap
         /// </summary>
         private const string Painting = "Map Painting";
 
+        /// <summary>
+        /// Every color, in one place.
+        ///
+        /// <para>They were filed with the thing each one colors, which reads well in a config
+        /// file and badly in a config manager: the colors are the settings somebody actually
+        /// sits and fiddles with, and they were scattered down two sections among switches and
+        /// thresholds. A color is also the one kind of setting you choose by comparing it with
+        /// the others, which you cannot do when they are a screen apart.</para>
+        /// </summary>
+        private const string Palette = "Colors";
+
         private static string LiveShowNote(string label)
         {
             string one = label.ToLowerInvariant().TrimEnd('s');
@@ -1014,7 +1025,7 @@ namespace TheGreatestMap
             HighlightPlayersHidesOthers = mod.BindLocal("Display", "Highlight Players Hides Others", true,
                 "While the players are lit up, draw nothing else at all. Off keeps the rest of the map and only grows " +
                 "and colors the player markers, which is gentler but harder to read on a crowded map.");
-            HighlightPlayersColor = mod.BindLocal("Display", "Highlight Players Color", Colors.FromHex("#66E0FF"),
+            HighlightPlayersColor = mod.BindMoved("Display", Palette, "Highlight Players Color", Colors.FromHex("#66E0FF"),
                 "Color of the player markers while they are lit up.");
             HighlightPlayersSize = mod.BindLocalRange("Display", "Highlight Players Size", 170, 100, 400,
                 "How large the player markers are drawn while lit up, as a percentage of their normal size. They also " +
@@ -1075,11 +1086,11 @@ namespace TheGreatestMap
             // none is. "Show Portals", under Dynamic Markers with the ships and carts, is that
             // switch. Leaving both would be two settings for one thing, and the one that sounds
             // like it only adds extras would be the one that turns them all off.
-            PortalColor = mod.BindLocal("Display", "Portal Marker Color", Colors.FromHex("#FF6600"),
+            PortalColor = mod.BindMoved("Display", Palette, "Portal Marker Color", Colors.FromHex("#FF6600"),
                 "Color of portal markers, which are worth picking out of the crowd because they are how you travel. " +
                 "The default pair is two shades of orange; #A05BDD with #B07CFF as the pulse is a good violet " +
                 "alternative.");
-            PortalPulseColor = mod.BindLocal("Display", "Portal Pulse Color", Colors.FromHex("#FF8800"),
+            PortalPulseColor = mod.BindMoved("Display", Palette, "Portal Pulse Color", Colors.FromHex("#FF8800"),
                 "Portal markers fade back and forth between their color and this one, so they catch the eye on a busy " +
                 "map. Two shades of the same color read as a gentle pulse; two different colors are far louder. Pull " +
                 "the alpha slider to zero for a steady color instead.");
@@ -1550,26 +1561,26 @@ namespace TheGreatestMap
                 "as the game drew it. It is drawn at the map's own resolution of about twelve meters to a pixel, " +
                 "so a path comes out wider and softer than it is; sharpening that is the part still being worked " +
                 "on.");
-            WoodColor = mod.BindRetuned(Painting, "Wood Color", Colors.FromHex("#704F2E"), Colors.FromHex("#C49A6C"),
+            WoodColor = mod.Retune(mod.BindMoved(Painting, Palette, "Wood Color", Colors.FromHex("#C49A6C"),
                 "The color wooden building is drawn in. " +
                 "Hardwood and the rest of the timbers count as wood. The light warm brown of the game's own wood " +
                 "pieces: the darker brown this used to be was close enough to the map's swamp color to be mistaken " +
-                "for it.");
-            StoneColor = mod.BindLocal(Painting, "Stone Color", Colors.FromHex("#808085"),
+                "for it."), Colors.FromHex("#704F2E"), Colors.FromHex("#C49A6C"));
+            StoneColor = mod.BindMoved(Painting, Palette, "Stone Color", Colors.FromHex("#808085"),
                 "The color stone building is drawn in. Marble, ashstone and ancient stone count as stone.");
-            IronColor = mod.BindLocal(Painting, "Iron Color", Colors.FromHex("#555A66"),
+            IronColor = mod.BindMoved(Painting, Palette, "Iron Color", Colors.FromHex("#555A66"),
                 "The color iron building is drawn in -- the reinforced pieces, which usually trace the frame of " +
                 "something large.");
-            MarbleColor = mod.BindLocal(Painting, "Black Marble Color", Colors.FromHex("#121218"),
+            MarbleColor = mod.BindLocal(Palette, "Black Marble Color", Colors.FromHex("#121218"),
                 "The color black marble building is drawn in. Not quite true black, so that a hall still reads as a " +
                 "hall against dark water or a night map rather than as a hole in it; set it blacker if you would " +
                 "rather it did.");
-            PavedColor = mod.BindLocal(Painting, "Paved Color", Colors.FromHex("#9E998C"),
+            PavedColor = mod.BindMoved(Painting, Palette, "Paved Color", Colors.FromHex("#9E998C"),
                 "The color paved road is drawn in. Building wins where a road runs under it, so a courtyard reads as " +
                 "the building it belongs to.");
-            DirtColor = mod.BindLocal(Painting, "Dirt Path Color", Colors.FromHex("#78603F"),
+            DirtColor = mod.BindMoved(Painting, Palette, "Dirt Path Color", Colors.FromHex("#78603F"),
                 "The color hoed dirt path is drawn in. Paving wins where a path runs into a road.");
-            FarmColor = mod.BindLocal(Painting, "Farmland Color", Colors.FromHex("#615430"),
+            FarmColor = mod.BindMoved(Painting, Palette, "Farmland Color", Colors.FromHex("#615430"),
                 "The color cultivated ground is drawn in. Both paving and dirt path win over it, so a track across a " +
                 "field reads as a track.");
             PaintSpread = mod.BindRetuned(Painting, "Paint Spread", 1, 0,

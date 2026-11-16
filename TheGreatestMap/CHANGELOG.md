@@ -20,6 +20,8 @@ the old road-reporting message is gone.
 - The large map draws the painting sharply. It is drawn over the part of the world you are
   looking at rather than over the whole of it, which is about a meter to a pixel zoomed in
   instead of twelve. The minimap is unchanged.
+- Every color setting now lives in one [Colors] section instead of being filed with the thing
+  it colors, so they sit together in the config manager. Your existing colors move with them.
 - Black marble is drawn in its own near-black color instead of as stone. New: Black Marble
   Color.
 - A cell and a map pixel are drawn as whatever they are mostly made of, instead of as the

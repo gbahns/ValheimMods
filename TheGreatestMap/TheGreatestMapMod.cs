@@ -298,10 +298,25 @@ namespace TheGreatestMap
             var entry = synced
                 ? BindSynced(section, key, defaultValue, description)
                 : BindLocal(section, key, defaultValue, description);
+            return Retune(entry, oldDefault, defaultValue);
+        }
+
+        /// <summary>
+        /// The retune on its own, for a setting that has also moved.
+        ///
+        /// <para>BindMoved and BindRetuned each do one thing to a setting and a setting can need
+        /// both, so the part that can be shared is. Order matters and is the caller's to get
+        /// right: carry the old value across first, then decide whether it was a choice or a
+        /// leftover default, because doing it the other way round retunes a value that has not
+        /// arrived yet.</para>
+        /// </summary>
+        internal ConfigEntry<T> Retune<T>(ConfigEntry<T> entry, T oldDefault, T defaultValue)
+        {
             if (!Equals(entry.Value, oldDefault) || Equals(oldDefault, defaultValue)) return entry;
             entry.Value = defaultValue;
-            Log.LogInfo($"[TheGreatestMap] \"{key}\" has a better default than it used to, so yours is now " +
-                        $"{defaultValue} instead of {oldDefault}. Set it yourself if you preferred the old one.");
+            Log.LogInfo($"[TheGreatestMap] \"{entry.Definition.Key}\" has a better default than it used to, so " +
+                        $"yours is now {defaultValue} instead of {oldDefault}. Set it yourself if you preferred " +
+                        "the old one.");
             return entry;
         }
 
