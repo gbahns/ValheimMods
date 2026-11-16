@@ -176,6 +176,15 @@ namespace TheGreatestMap
                 if (prefab.GetComponentInChildren<Ship>(true) != null) return;
                 if (prefab.GetComponentInChildren<Vagon>(true) != null) return;
                 var kind = Paint(wear.m_materialType);
+                // The one place a name is read instead of a component, and it is read because
+                // the material is wrong rather than because the material is missing: the
+                // reinforced black marble pieces and the two carved heads are tagged iron, for
+                // the iron in them. Nobody looking at a black marble hall sees iron. A map draws
+                // what a thing looks like, so appearance wins over what it is held together
+                // with, and three pieces behind one prefix is a cheaper exception than a wrong
+                // color on every dvergr build.
+                if (prefab.name.StartsWith("blackmarble", System.StringComparison.OrdinalIgnoreCase))
+                    kind = BuiltKind.Marble;
                 int hash = prefab.name.GetStableHashCode();
                 found[hash] = kind;
 
@@ -193,11 +202,7 @@ namespace TheGreatestMap
                 //
                 // By component rather than by a list of names, so it covers a modded station
                 // nobody here has heard of.
-                if (prefab.GetComponentInChildren<CraftingStation>(true) != null
-                    || prefab.GetComponentInChildren<StationExtension>(true) != null
-                    || prefab.GetComponentInChildren<Smelter>(true) != null
-                    || prefab.GetComponentInChildren<Fireplace>(true) != null)
-                    _fixtures.Add(hash);
+                if (IsFixture(prefab)) _fixtures.Add(hash);
                 // Kept by name as well, so "why is my hall gray" can be answered by looking
                 // rather than by guessing which piece carries which material. The material is
                 // set on the prefab asset, which means nothing outside a running game can read
@@ -619,6 +624,30 @@ namespace TheGreatestMap
 
         /// <summary>Pieces that count toward there being a building but not toward what it is made of.</summary>
         private static readonly HashSet<int> _fixtures = new HashSet<int>();
+
+        /// <summary>
+        /// Is this something that stands in a building rather than something that is one?
+        ///
+        /// <para>The first pass at this asked for four components and caught nothing, because
+        /// the pieces doing the damage were chests. A black metal chest is iron, and a base has
+        /// several; that was most of an iron building appearing in a hall with no iron in it.
+        /// Cooking stations and incinerators are their own components too, neither of them the
+        /// crafting station they resemble.</para>
+        ///
+        /// <para>Components rather than prefab names, so a modded chest or oven is covered
+        /// without anybody adding it to anything.</para>
+        /// </summary>
+        private static bool IsFixture(GameObject prefab) =>
+            prefab.GetComponentInChildren<CraftingStation>(true) != null
+            || prefab.GetComponentInChildren<StationExtension>(true) != null
+            || prefab.GetComponentInChildren<Smelter>(true) != null
+            || prefab.GetComponentInChildren<Fireplace>(true) != null
+            || prefab.GetComponentInChildren<Container>(true) != null
+            || prefab.GetComponentInChildren<CookingStation>(true) != null
+            || prefab.GetComponentInChildren<Incinerator>(true) != null
+            || prefab.GetComponentInChildren<Fermenter>(true) != null
+            || prefab.GetComponentInChildren<Beehive>(true) != null
+            || prefab.GetComponentInChildren<ItemStand>(true) != null;
 
         /// <summary>
         /// Every buildable prefab that paints as one material, for tgm_paint &lt;kind&gt;.
