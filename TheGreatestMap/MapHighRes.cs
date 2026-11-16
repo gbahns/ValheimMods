@@ -275,12 +275,18 @@ namespace TheGreatestMap
             float offsetX = (0.5f - view.xMin) / view.width * Size;
             float offsetY = (0.5f - view.yMin) / view.height * Size;
 
-            // How thick a wall is drawn, and whether it is drawn at all. Zoomed out far enough
-            // that a cell is a few pixels, an outline around everything is a dark smear rather
-            // than a building, and the fill says more on its own. So the outlines fade out by
-            // not being drawn, at the zoom where they stop being lines.
-            float nib = Mathf.Clamp(wide * 0.14f, 1.5f, 5f);
-            bool outlines = wide >= 3f && MapPaint.Outlined();
+            // How thick a wall is drawn, and whether it is drawn at all. Zoomed out far enough,
+            // an outline around everything is a dark smear rather than a building, and the fill
+            // says more on its own; so the outlines fade out by not being drawn, at the zoom
+            // where they stop being lines.
+            //
+            // Measured in pixels per meter and not in pixels per cell, which is what it was.
+            // Tying it to the cell meant that recording the world four times more finely asked
+            // for four times the zoom before a single wall would appear -- going to a meter a
+            // cell switched the outlines off everywhere, which is the one change they existed
+            // for. How much zoom it takes to draw a wall is a question about the wall.
+            float nib = Mathf.Clamp(perMeterX * 0.56f, 1.5f, 5f);
+            bool outlines = perMeterX >= 0.75f && MapPaint.Outlined();
 
             // Sorted by kind once per picture rather than walked once per kind per redraw.
             // The fill used to read the whole table for each of the seven kinds, which cost

@@ -287,11 +287,15 @@ namespace TheGreatestMap
 
             if (_sweep == null)
             {
-                if (Time.time < _nextSweep) return false;
-                // Before the first key is computed, never during: a sweep is one grid throughout.
-                MapPaint.UseCellSize(TgmConfig.PaintDetailMeters != null
+                float want = TgmConfig.PaintDetailMeters != null
                     ? TgmConfig.PaintDetailMeters.Value
-                    : MapPaint.DefaultCellSize);
+                    : MapPaint.DefaultCellSize;
+                // Waiting out the sweep interval to find out whether a change to the grid did
+                // anything reads as the setting being broken, so changing it sweeps now rather
+                // than in two minutes.
+                if (!MapPaint.WouldRegrid(want) && Time.time < _nextSweep) return false;
+                // Before the first key is computed, never during: a sweep is one grid throughout.
+                MapPaint.UseCellSize(want);
                 _sweep = new Sweep();
                 Ground.Begin();
             }

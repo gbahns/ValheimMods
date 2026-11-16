@@ -133,11 +133,21 @@ namespace TheGreatestMap
         /// Change the grid. Everything already drawn was drawn on the old one, so it comes off
         /// the map before anything is drawn on the new one.
         /// </summary>
+        /// <summary>
+        /// A meter is the floor the key packing can take: a cell index has sixteen bits and the
+        /// world is twenty kilometers across, which at a meter a cell is as much as fits.
+        /// </summary>
+        internal const float CellFloor = 1f;
+
+        internal const float CellCeiling = 16f;
+
+        /// <summary>Whether asking for this size would actually change the grid.</summary>
+        internal static bool WouldRegrid(float meters) =>
+            !Mathf.Approximately(Mathf.Clamp(meters, CellFloor, CellCeiling), CellSize);
+
         internal static void UseCellSize(float meters)
         {
-            // A meter is the floor the key packing can take: a cell index has sixteen bits and
-            // the world is twenty kilometers across, which at a meter a cell is as much as fits.
-            meters = Mathf.Clamp(meters, 1f, 16f);
+            meters = Mathf.Clamp(meters, CellFloor, CellCeiling);
             if (Mathf.Approximately(meters, CellSize)) return;
             CellSize = meters;
             _cells.Clear();
