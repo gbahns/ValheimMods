@@ -1530,18 +1530,19 @@ namespace TheGreatestMap
                 "How much building has to stand in one place before the map draws it. Everything a player raises is " +
                 "a piece, so without this the campfire somebody lit while exploring, the workbench put down to " +
                 "repair a hammer and the lone torch on a hilltop all came out as buildings in the middle of " +
-                "nowhere. A cell is drawn when this many pieces stand within a cell of it -- about twenty-four " +
-                "meters square, which is a small house -- so a hut counts and a torch does not, and a wall running " +
-                "off the side of a base is not chopped off where the pieces thin out. 1 draws everything, as it " +
-                "used to. The server's, since the server is the one looking.");
+                "nowhere. A cell is drawn when this many pieces stand within a cell of it, so a hut counts and a " +
+                "torch does not, and a wall running off the side of a base is not chopped off where the pieces thin " +
+                "out. The number is read as a density rather than a flat count, so changing Paint Detail Meters " +
+                "does not quietly retune it. 1 draws everything. The server's, since the server is the one " +
+                "looking.");
             PaintLeastInCell = mod.BindSynced(Painting, "Least Pieces In One Cell", 3,
                 "How much building has to stand in a cell itself before that cell is drawn, as against the " +
-                "neighborhood test above. A cell is eight meters square and a four meter road clips the corner of " +
-                "the cells to either side of it with a piece or two, which painted those cells whole and gave a " +
-                "straight road ragged edges wandering in and out by eight meters. Three is about one square meter " +
-                "of floor in nine: enough that a road or a wall passing through a cell still draws it, little " +
-                "enough that a corner clipped in passing does not. 1 draws every cell anything stands in, as it " +
-                "used to. The server's, since the server is the one looking.");
+                "neighborhood test above. A road clips the corner of the cells to either side of it with a piece " +
+                "or two, which painted those cells whole and gave a straight road ragged edges wandering in and out " +
+                "by a cell. Three is about one square meter of floor in nine: enough that a road or a wall passing " +
+                "through a cell still draws it, little enough that a corner clipped in passing does not. Read as a " +
+                "density, like the setting above, so the grid can change without retuning it. 1 draws every cell " +
+                "anything stands in. The server's, since the server is the one looking.");
             ShowMapPaint = mod.BindLocal(Painting, "Show Map Painting", true,
                 "Draw the painting on your own map. Off leaves the map exactly as the game drew it, whatever the " +
                 "server is sharing. The painting goes into the map picture itself, so it shows on the large map, the " +

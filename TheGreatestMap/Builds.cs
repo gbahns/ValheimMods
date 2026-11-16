@@ -290,12 +290,36 @@ namespace TheGreatestMap
             return Rebuild(picture);
         }
 
+        /// <summary>
+        /// The grid these two thresholds were chosen on.
+        ///
+        /// <para>Both are counts of pieces standing in a fixed number of cells, so neither means
+        /// anything until a cell means an area: three pieces in an eight meter cell is one piece
+        /// per twenty-one square meters, and the same three in a four meter cell is four times
+        /// that. Halving the grid therefore quadrupled both thresholds without anybody changing
+        /// a setting, and what that drops first is the thin things -- a single wall, a narrow
+        /// jetty, a walkway two meters across -- which is precisely what the neighborhood test
+        /// was written to keep.</para>
+        ///
+        /// <para>Scaling by area here means the number keeps meaning what it meant when somebody
+        /// chose it, whatever the grid does afterwards. Reading the thresholds as densities is
+        /// also what they always were; they were only ever written down as counts because the
+        /// grid happened to be fixed at the time.</para>
+        /// </summary>
+        private const float TunedAtCellSize = 8f;
+
+        private static int ForGrid(int atTunedSize)
+        {
+            float side = MapPaint.CellSize / TunedAtCellSize;
+            return Mathf.Max(1, Mathf.RoundToInt(atTunedSize * side * side));
+        }
+
         private static int LeastPieces() =>
-            TgmConfig.PaintLeastPieces != null ? Mathf.Max(1, TgmConfig.PaintLeastPieces.Value) : 6;
+            ForGrid(TgmConfig.PaintLeastPieces != null ? Mathf.Max(1, TgmConfig.PaintLeastPieces.Value) : 6);
 
         /// <summary>How much has to stand in the cell itself, as against its neighborhood.</summary>
         private static int LeastInCell() =>
-            TgmConfig.PaintLeastInCell != null ? Mathf.Max(1, TgmConfig.PaintLeastInCell.Value) : 3;
+            ForGrid(TgmConfig.PaintLeastInCell != null ? Mathf.Max(1, TgmConfig.PaintLeastInCell.Value) : 3);
 
         /// <summary>
         /// Throw away the cells that hold a thing rather than a place.
