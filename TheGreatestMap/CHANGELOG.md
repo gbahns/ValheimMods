@@ -11,11 +11,12 @@ the old road-reporting message is gone.
   mod was installed, and ground nobody has walked since.
 - The painting is recorded at 4 meters instead of 8, so shapes follow what is really there.
 - The picture is compressed before it is sent, which is what makes the finer grid affordable.
-- Map painting is marked experimental and is now off at both ends: the server's Player
-  Development Enabled and each player's own Show Player Development both default to off.
-- Renamed: Player Structures Enabled is now Player Development Enabled, and Show Map Painting is
-  now Show Player Development, because the painting covers roads, paths and fields as well as
-  buildings. Both start at off; the old lines are tidied away.
+- Map painting is marked experimental and is now off at both ends: the server's Share Player
+  Developments and each player's own Show Player Developments both default to off.
+- Renamed: Player Structures Enabled is now Share Player Developments, and Show Map Painting is
+  now Show Player Developments -- the painting covers roads, paths and fields as well as
+  buildings, and the two switches share and show rather than both being "enabled". Both start at
+  off; the old lines are tidied away.
 - New: Paint Dirt Paths, Paint Farmland, Paint Detail Meters, Dirt Path Color, Farmland Color.
 
 ## 4.9.3 — 2026-11-13

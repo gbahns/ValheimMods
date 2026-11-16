@@ -574,9 +574,9 @@ configurable under `[Map Painting]`.
 > Sharpening that is being worked on. Nothing is painted on anybody's map until somebody asks
 > for it twice over.
 
-**`Player Development Enabled`** lives under `[Map Painting]` and is the server's; until it is on
+**`Share Player Developments`** lives under `[Map Painting]` and is the server's; until it is on
 nothing here happens at all — no sweeping, no terrain records read, nothing sent, and any map
-already painted goes back to the way the game drew it. **`Show Player Development`** is each player's
+already painted goes back to the way the game drew it. **`Show Player Developments`** is each player's
 own and is off by default as well, so a server that turns painting on does not redraw anyone's
 map until that player switches it on for themselves.
 
