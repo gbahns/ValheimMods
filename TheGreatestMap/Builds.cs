@@ -362,6 +362,11 @@ namespace TheGreatestMap
             }
 
             Ground.End();
+            // Everything from here to the end of the method runs in one frame -- the walk above
+            // is spread over as many as it needs, and this is not -- so it is the part that
+            // shows up as a stutter on everybody's screen at once. Measured rather than
+            // assumed, because the first thing asked about a stall is how long it was.
+            var settling = System.Diagnostics.Stopwatch.StartNew();
             // Each cell settles on whatever it mostly is, now that the whole world has been seen.
             var found = new Dictionary<int, BuiltKind>();
             foreach (var kv in _sweep.Found)
@@ -378,14 +383,18 @@ namespace TheGreatestMap
                 var kind = kv.Value.Winner();
                 if (kind != BuiltKind.None) found[kv.Key] = kind;
             }
+            // Worked out before anything asks, and before the sweep is let go of. This used
+            // to be asked a cell at a time -- nine lookups each, for every building cell and
+            // then again for every patch of ground -- which is a count of the squares answered
+            // once per cell instead of once per square. At four meters that was fifty thousand
+            // lookups and nobody noticed; at half a meter it is nine hundred thousand, in the
+            // one frame that already does all the rest of this.
+            int leastPieces = LeastPieces();
+            var supporting = Supporting(_sweep.Support, leastPieces);
             var picture = buildings
-                ? Built(found, _sweep.Support)
+                ? Built(found, supporting)
                 : new Dictionary<int, BuiltKind>();
             int pieces = _sweep.Pieces;
-            // Taken before the sweep is let go of, not after. This read it back off _sweep on
-            // the line below the one that nulls it, which threw every sweep and left the map
-            // with nothing painted at all.
-            var counted = _sweep.Support;
             _lastPieces = pieces;
             _lastCells = picture.Count;
             _sweep = null;
@@ -393,12 +402,13 @@ namespace TheGreatestMap
             // Ground goes in after the buildings so that a hall standing on paving stays a hall.
             // The ground gets the building count too, so that shaped ground inside a base is
             // drawn and the same shaping out on a hillside is not.
-            int leastPieces = LeastPieces();
-            Ground.AddTo(picture, MaxCells, key => Supported(key, counted, leastPieces));
+            Ground.AddTo(picture, MaxCells, key => Supported(key, supporting));
             if (pieces > 0 && picture.Count >= MaxCells)
                 TheGreatestMapMod.Log.LogWarning(
                     $"[TheGreatestMap] Player building fills more than {MaxCells} cells; the map painting stops there.");
-            return Rebuild(picture);
+            bool changed = Rebuild(picture);
+            Settled(settling, picture.Count);
+            return changed;
         }
 
         /// <summary>
@@ -459,31 +469,72 @@ namespace TheGreatestMap
         /// building: the cells a wall covers and no piece is centered on are exactly the ones
         /// that make the outline right.</para>
         /// </summary>
-        private static Dictionary<int, BuiltKind> Built(Dictionary<int, BuiltKind> found, Dictionary<int, int> support)
+        private static Dictionary<int, BuiltKind> Built(Dictionary<int, BuiltKind> found, HashSet<int> supporting)
         {
-            int least = LeastPieces();
-            if (least <= 1) return found;
+            if (supporting == null) return found;
             var kept = new Dictionary<int, BuiltKind>();
             foreach (var kv in found)
-                if (Supported(kv.Key, support, least)) kept[kv.Key] = kv.Value;
+                if (Supported(kv.Key, supporting)) kept[kv.Key] = kv.Value;
             return kept;
         }
 
         /// <summary>
-        /// Is there enough building around this cell to call it part of somebody's base? The
-        /// test that tells a hut from a torch, asked of the ground as well now.
+        /// Every twelve meter square with enough building standing in or beside it to call what
+        /// is there part of somebody's base -- the test that tells a hut from a torch.
+        ///
+        /// <para>Spread rather than gathered. The question is about a square and not about a
+        /// cell, so asking it once per square and remembering the answer costs the same whether
+        /// a square holds nine cells or five hundred and seventy-six, which is the difference
+        /// between four meters and half a meter. A world's worth of building is a few thousand
+        /// squares; the cells standing on them are hundreds of thousands.</para>
+        ///
+        /// <para>Null when the setting is 1, which draws everything: then there is nothing to
+        /// ask and no set worth building.</para>
         /// </summary>
-        private static bool Supported(int key, Dictionary<int, int> support, int least)
+        private static HashSet<int> Supporting(Dictionary<int, int> support, int least)
         {
-            if (least <= 1) return true;
-            var at = MapPaint.Center(key);
-            int around = 0;
-            for (int dz = -1; dz <= 1 && around < least; dz++)
-                for (int dx = -1; dx <= 1 && around < least; dx++)
-                    if (support.TryGetValue(MapPaint.BlockNear(at, dx, dz), out int standing))
-                        around += standing;
-            return around >= least;
+            if (least <= 1 || support == null) return null;
+            var reach = new Dictionary<int, int>(support.Count * 2);
+            foreach (var kv in support)
+            {
+                MapPaint.BlockCell(kv.Key, out int bx, out int bz);
+                for (int dz = -1; dz <= 1; dz++)
+                    for (int dx = -1; dx <= 1; dx++)
+                    {
+                        int near = MapPaint.BlockAt(bx + dx, bz + dz);
+                        reach.TryGetValue(near, out int standing);
+                        reach[near] = standing + kv.Value;
+                    }
+            }
+            var kept = new HashSet<int>();
+            foreach (var kv in reach)
+                if (kv.Value >= least) kept.Add(kv.Key);
+            return kept;
         }
+
+        /// <summary>
+        /// Is there enough building around this cell to call it part of somebody's base? One
+        /// lookup, because <see cref="Supporting"/> has already counted.
+        /// </summary>
+        private static bool Supported(int key, HashSet<int> supporting) =>
+            supporting == null || supporting.Contains(MapPaint.Block(MapPaint.Center(key)));
+
+        /// <summary>
+        /// Say how long the one unspread frame of the sweep took, when it took long enough to
+        /// be felt. Quiet otherwise: this runs every couple of minutes forever.
+        /// </summary>
+        private static void Settled(System.Diagnostics.Stopwatch clock, int cells)
+        {
+            clock.Stop();
+            if (clock.ElapsedMilliseconds < LoudMillis) return;
+            TheGreatestMapMod.Log.LogWarning(
+                $"[TheGreatestMap] Settling the map picture took {clock.ElapsedMilliseconds} ms in one frame " +
+                $"for {cells} cell(s) at {MapPaint.CellSize:0.##} m. Everyone on the server feels this as a " +
+                "stutter; raise Paint Detail Meters or Build Sweep Seconds if it is happening often.");
+        }
+
+        /// <summary>Long enough in one frame that somebody saw it.</summary>
+        private const int LoudMillis = 120;
 
         /// <summary>Keep the new picture, and say whether it differs from the last one.</summary>
         private static bool Rebuild(Dictionary<int, BuiltKind> picture)
@@ -627,14 +678,24 @@ namespace TheGreatestMap
             // case the two differ most on -- and how much they differ decides whether a finer
             // grid fits in a message. Measured on the real picture rather than guessed at, and
             // only on the rare send that logs, because Optimal is not free.
+            // Once per grid, not once per growth. Optimal over a third of a megabyte is
+            // hundreds of milliseconds, and it was running inside the same unspread frame as
+            // everything else here every time the picture reached a new high -- which at half
+            // a meter, where the picture is never the same twice, is most sweeps. The answer
+            // does not change between two pictures of the same world at the same grid, so
+            // measuring it twice buys nothing and costs the stutter it was measuring.
             string other = "";
-            try
+            if (!Mathf.Approximately(_brotliFor, MapPaint.CellSize))
             {
-                int brotli = Utils.Compress2(flat).Length;
-                other = $" (the same bytes under the game's other codec, Brotli: {brotli / 1024} KB, " +
-                        $"{(size > 0 ? (float)brotli / size : 1f):0.00}x)";
+                _brotliFor = MapPaint.CellSize;
+                try
+                {
+                    int brotli = Utils.Compress2(flat).Length;
+                    other = $" (the same bytes under the game's other codec, Brotli: {brotli / 1024} KB, " +
+                            $"{(size > 0 ? (float)brotli / size : 1f):0.00}x)";
+                }
+                catch (System.Exception) { }
             }
-            catch (System.Exception) { }
 
             TheGreatestMapMod.Log.LogInfo(
                 $"[TheGreatestMap] Map picture: {cells} cell(s) at {MapPaint.CellSize:0.#} m, " +
@@ -647,6 +708,7 @@ namespace TheGreatestMap
 
         private static int _loudestSent;
         private static int _lastSkipped = -1;
+        private static float _brotliFor = float.NaN;
 
         /// <summary>A client asking gets the last picture rather than a sweep of its own.</summary>
         private static void RPC_Want(long sender)

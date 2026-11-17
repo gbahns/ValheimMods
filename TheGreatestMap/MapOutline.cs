@@ -136,9 +136,31 @@ namespace TheGreatestMap
         /// Holes fall out of the same walk as the outsides do, which is why there is no separate
         /// pass for them and no flood fill anywhere here.</para>
         /// </summary>
+        /// <summary>
+        /// The edges leaving one lattice corner, in two slots rather than a list.
+        ///
+        /// <para>Two is all there can ever be. An edge of a cell starts at one of that cell's
+        /// four corners, a different one for each of its four sides, so any one cell offers a
+        /// given corner at most one way out; and of the four cells meeting at a corner, the
+        /// pairs that could each offer one are mutually exclusive -- one wants a cell filled
+        /// that the other wants empty. What is left is the diagonal pinch, two cells touching
+        /// at that corner and nothing else, which gives exactly two.</para>
+        ///
+        /// <para>It was a List per corner, allocated one at a time. On a developed base at half
+        /// a meter that is on the order of a hundred thousand small allocations in the single
+        /// frame that traces the picture, which is a collection pause rather than merely
+        /// work.</para>
+        /// </summary>
+        private struct Ends
+        {
+            public long A;
+            public long B;
+            public int N;
+        }
+
         private static void Walk(HashSet<int> mine, List<Stroke> into)
         {
-            var outgoing = new Dictionary<long, List<long>>();
+            var outgoing = new Dictionary<long, Ends>();
             foreach (int key in mine)
             {
                 MapPaint.Cell(key, out int cx, out int cz);
@@ -160,10 +182,11 @@ namespace TheGreatestMap
                 long at = start;
                 while (loop.Count <= MostCorners)
                 {
-                    if (!outgoing.TryGetValue(at, out var next) || next.Count == 0) break;
-                    long to = next[next.Count - 1];
-                    next.RemoveAt(next.Count - 1);
-                    if (next.Count == 0) outgoing.Remove(at);
+                    if (!outgoing.TryGetValue(at, out var next) || next.N == 0) break;
+                    long to = next.N == 2 ? next.B : next.A;
+                    next.N--;
+                    if (next.N == 0) outgoing.Remove(at);
+                    else outgoing[at] = next;
                     loop.Add(Corner(at));
                     at = to;
                     if (at == start) break;
@@ -172,11 +195,16 @@ namespace TheGreatestMap
             }
         }
 
-        private static void Edge(Dictionary<long, List<long>> outgoing, int x0, int z0, int x1, int z1)
+        private static void Edge(Dictionary<long, Ends> outgoing, int x0, int z0, int x1, int z1)
         {
             long from = Pack(x0, z0);
-            if (!outgoing.TryGetValue(from, out var ends)) outgoing[from] = ends = new List<long>(1);
-            ends.Add(Pack(x1, z1));
+            outgoing.TryGetValue(from, out var ends);
+            long to = Pack(x1, z1);
+            if (ends.N == 0) ends.A = to;
+            else if (ends.N == 1) ends.B = to;
+            else return;            // unreachable; see Ends for why there is never a third
+            ends.N++;
+            outgoing[from] = ends;
         }
 
         private static long Pack(int x, int z) => ((long)x << 32) | (uint)z;

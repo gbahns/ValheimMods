@@ -215,6 +215,20 @@ namespace TheGreatestMap
             BlockOf(Mathf.FloorToInt(world.x / SupportMeters) + dx,
                     Mathf.FloorToInt(world.z / SupportMeters) + dz);
 
+        /// <summary>A support square named by its own indices rather than by a point in it.</summary>
+        internal static int BlockAt(int bx, int bz) => BlockOf(bx, bz);
+
+        /// <summary>
+        /// The indices a support square's key stands for, which is what lets the support count
+        /// be spread over neighbors once rather than gathered from them once per cell.
+        /// </summary>
+        internal static void BlockCell(int key, out int bx, out int bz)
+        {
+            // The low half is biased positive before it is masked, so it reads back unsigned.
+            bx = (key >> 16) - CellBias;
+            bz = (key & 0xFFFF) - CellBias;
+        }
+
         private static int BlockOf(int bx, int bz) =>
             ((bx + CellBias) << 16) | ((bz + CellBias) & 0xFFFF);
 

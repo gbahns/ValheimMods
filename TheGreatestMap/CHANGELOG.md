@@ -1,5 +1,15 @@
 # Changelog
 
+## 4.11.1 — unreleased
+
+- The server settles the map picture far faster: whether a spot is part of somebody's base is
+  worked out once per twelve-meter square instead of nine times for every cell.
+- The drawing reads only the cells near the window, instead of every cell in the world on every
+  redraw.
+- Tracing outlines no longer allocates a list for every corner it walks.
+- The log's codec comparison is measured once per grid rather than every time the picture grows.
+- A settle slow enough to be felt now says so in the log, with the number.
+
 ## 4.11.0 — 2026-11-16
 
 **Everyone has to update together: a cell is recorded differently, so an old client and a new

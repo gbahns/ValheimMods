@@ -380,7 +380,44 @@ namespace TheGreatestMap
         private static readonly Dictionary<BuiltKind, List<int>> _byKind =
             new Dictionary<BuiltKind, List<int>>();
 
+        /// <summary>
+        /// How much world one square of the drawing index covers.
+        ///
+        /// <para>Small enough that a minimap window touches a handful of them and large enough
+        /// that a zoomed out map does not ask after millions. Thirty-two meters is about a
+        /// fifth of what the minimap shows.</para>
+        /// </summary>
+        private const float BlockMeters = 32f;
+
+        /// <summary>
+        /// The most squares worth asking after one at a time. Past this the window covers more
+        /// of the world than the picture has cells in it, and reading the whole list -- which
+        /// is what this always did -- is the cheaper of the two.
+        /// </summary>
+        private const int MostBlocks = 8192;
+
+        /// <summary>
+        /// The cells of each kind again, this time gathered into squares of world, so that
+        /// drawing a window reads the cells in that window rather than all of them.
+        /// </summary>
+        private static readonly Dictionary<BuiltKind, Dictionary<int, List<int>>> _blocked =
+            new Dictionary<BuiltKind, Dictionary<int, List<int>>>();
+
+        /// <summary>The squares the current window touches; reused, never reallocated.</summary>
+        private static readonly List<List<int>> _slices = new List<List<int>>();
+
+        private static int BlockKey(int bx, int bz) => (bx << 16) | (bz & 0xFFFF);
+
+        private static int BlockOfCell(int key)
+        {
+            MapPaint.Cell(key, out int cx, out int cz);
+            float cell = MapPaint.CellSize;
+            return BlockKey(Mathf.FloorToInt(cx * cell / BlockMeters),
+                            Mathf.FloorToInt(cz * cell / BlockMeters));
+        }
+
         private static int _sortedHash = int.MinValue;
+        private static float _sortedCell = -1f;
 
         /// <summary>
         /// The cells of each kind, as a list. Rebuilt only when the server's picture changes,
@@ -389,15 +426,28 @@ namespace TheGreatestMap
         /// </summary>
         private static Dictionary<BuiltKind, List<int>> Sorted(Dictionary<int, BuiltKind> cells, int hash)
         {
-            if (hash == _sortedHash) return _byKind;
+            // The grid as well as the picture: a cell key means a different piece of world
+            // at a different cell size, so the squares it was filed under stop being true even
+            // if every key is the same.
+            if (hash == _sortedHash && Mathf.Approximately(_sortedCell, MapPaint.CellSize)) return _byKind;
             _sortedHash = hash;
+            _sortedCell = MapPaint.CellSize;
             foreach (var kv in _byKind) kv.Value.Clear();
+            foreach (var kv in _blocked)
+                foreach (var square in kv.Value) square.Value.Clear();
             if (cells != null)
                 foreach (var kv in cells)
                 {
                     if (!_byKind.TryGetValue(kv.Value, out var list))
                         _byKind[kv.Value] = list = new List<int>();
                     list.Add(kv.Key);
+
+                    if (!_blocked.TryGetValue(kv.Value, out var squares))
+                        _blocked[kv.Value] = squares = new Dictionary<int, List<int>>();
+                    int square2 = BlockOfCell(kv.Key);
+                    if (!squares.TryGetValue(square2, out var here))
+                        squares[square2] = here = new List<int>();
+                    here.Add(kv.Key);
                 }
             return _byKind;
         }
@@ -450,6 +500,23 @@ namespace TheGreatestMap
             var byKind = Sorted(cells, MapPaint.CellsHash);
             if (outlines) MapOutline.Trace(byKind, MapPaint.CellsHash);
 
+            // The squares of world this window touches, worked out once. The fill read every
+            // cell of every kind on every redraw and threw away the ones off screen, which
+            // costs nothing at five thousand cells and is most of a frame at a hundred
+            // thousand -- and it runs while the minimap pans, which is the path that has
+            // stalled a client into timeouts and disconnects before.
+            //
+            // Half the window plus the five percent the cull allows past its edge.
+            float reachX = view.width * 0.55f * size * metersPerMapPixel;
+            float reachZ = view.height * 0.55f * size * metersPerMapPixel;
+            float midX = (view.center.x - 0.5f) * size * metersPerMapPixel;
+            float midZ = (view.center.y - 0.5f) * size * metersPerMapPixel;
+            int bx0 = Mathf.FloorToInt((midX - reachX) / BlockMeters);
+            int bx1 = Mathf.FloorToInt((midX + reachX) / BlockMeters);
+            int bz0 = Mathf.FloorToInt((midZ - reachZ) / BlockMeters);
+            int bz1 = Mathf.FloorToInt((midZ + reachZ) / BlockMeters);
+            bool byBlock = (long)(bx1 - bx0 + 1) * (bz1 - bz0 + 1) <= MostBlocks;
+
             var previous = RenderTexture.active;
             RenderTexture.active = _rt;
             GL.PushMatrix();
@@ -472,35 +539,54 @@ namespace TheGreatestMap
                 var authored = MapPaint.ColorFor(kind);
                 var color = Shade(authored);
                 GL.Color(color);
-                for (int c = 0; c < mine.Count; c++)
+                _slices.Clear();
+                if (byBlock && _blocked.TryGetValue(kind, out var squares))
                 {
-                    var at = MapPaint.Center(mine[c]);
+                    for (int bz = bz0; bz <= bz1; bz++)
+                        for (int bx = bx0; bx <= bx1; bx++)
+                            if (squares.TryGetValue(BlockKey(bx, bz), out var near) && near.Count > 0)
+                                _slices.Add(near);
+                }
+                else _slices.Add(mine);
 
-                    // World to the map's own normalized space -- Minimap's WorldToMapPoint, which
-                    // is four lines and private, so it is four lines here instead of a lookup.
-                    float mx = (at.x / metersPerMapPixel + size * 0.5f) / size;
-                    float my = (at.z / metersPerMapPixel + size * 0.5f) / size;
-
-                    if (explored != null && !Seen(explored, shared, size, at.x, at.z, metersPerMapPixel))
-                        continue;
-
-                    float u = (mx - view.xMin) / view.width;
-                    float v = (my - view.yMin) / view.height;
-                    if (u < -0.05f || u > 1.05f || v < -0.05f || v > 1.05f) continue;   // off screen
-
-                    float x = u * Size, y = v * Size;
-                    float x0 = x - wide * 0.5f, x1 = x + wide * 0.5f;
-                    float y0 = y - tall * 0.5f, y1 = y + tall * 0.5f;
-                    GL.Vertex3(x0, y0, 0f);
-                    GL.Vertex3(x1, y0, 0f);
-                    GL.Vertex3(x1, y1, 0f);
-                    GL.Vertex3(x0, y1, 0f);
-                    if (++batched >= BatchQuads)
+                for (int s = 0; s < _slices.Count; s++)
+                {
+                    var slice = _slices[s];
+                    for (int c = 0; c < slice.Count; c++)
                     {
-                        GL.End();
-                        GL.Begin(GL.QUADS);
-                        GL.Color(color);
-                        batched = 0;
+                        var at = MapPaint.Center(slice[c]);
+
+                        // World to the map's own normalized space -- Minimap's WorldToMapPoint,
+                        // which is four lines and private, so it is four lines here instead of
+                        // a lookup.
+                        float mx = (at.x / metersPerMapPixel + size * 0.5f) / size;
+                        float my = (at.z / metersPerMapPixel + size * 0.5f) / size;
+
+                        float u = (mx - view.xMin) / view.width;
+                        float v = (my - view.yMin) / view.height;
+                        if (u < -0.05f || u > 1.05f || v < -0.05f || v > 1.05f) continue;   // off screen
+
+                        // Asked after the screen test and not before it. Whether a cell has
+                        // been uncovered is a read of the fog texture, and asking it of cells
+                        // nowhere near the window was most of the work on a picture that is
+                        // mostly somewhere else.
+                        if (explored != null && !Seen(explored, shared, size, at.x, at.z, metersPerMapPixel))
+                            continue;
+
+                        float x = u * Size, y = v * Size;
+                        float x0 = x - wide * 0.5f, x1 = x + wide * 0.5f;
+                        float y0 = y - tall * 0.5f, y1 = y + tall * 0.5f;
+                        GL.Vertex3(x0, y0, 0f);
+                        GL.Vertex3(x1, y0, 0f);
+                        GL.Vertex3(x1, y1, 0f);
+                        GL.Vertex3(x0, y1, 0f);
+                        if (++batched >= BatchQuads)
+                        {
+                            GL.End();
+                            GL.Begin(GL.QUADS);
+                            GL.Color(color);
+                            batched = 0;
+                        }
                     }
                 }
 
