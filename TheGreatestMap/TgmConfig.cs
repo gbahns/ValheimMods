@@ -722,6 +722,8 @@ namespace TheGreatestMap
         internal static ConfigEntry<float> PaintDetailMeters;
         internal static ConfigEntry<float> BuildSweepSeconds;
         internal static ConfigEntry<int> PaintLeastPieces;
+        internal static ConfigEntry<bool> PaintShapedGround;
+        internal static ConfigEntry<float> PaintShapedLeastMeters;
         internal static ConfigEntry<bool> ShowMapPaint;
         internal static ConfigEntry<Color> WoodColor;
         internal static ConfigEntry<Color> StoneColor;
@@ -1544,6 +1546,18 @@ namespace TheGreatestMap
                 "sweep the mod does -- four hundred prefabs across every sector -- and a base does not move, so it is " +
                 "spread over many frames and run rarely. Paths and paving are read in the same pass, so this is also " +
                 "how long it can take for ground you have just hoed to reach the map.");
+            PaintShapedGround = mod.BindSynced(Painting, "Paint Shaped Ground", false,
+                "Whether ground you dug, leveled or raised is drawn as well as ground you deliberately made a " +
+                "path of. The game paints dirt under its own earthworks, so with this on every mining scrape, " +
+                "every leveled building site and every stray pickaxe swing comes out on the map as though it " +
+                "were a road. Off, only the hoe's path and paved road are drawn, which is where somebody chose " +
+                "to put a route. Turn it on if your earth walls and terraces are landmarks worth seeing. The " +
+                "server's, since the server is the one looking.");
+            PaintShapedLeastMeters = mod.BindSynced(Painting, "Shaped Ground Least Meters", 1f,
+                "Only read when Paint Shaped Ground is on. How far the ground has to have moved before it is " +
+                "worth drawing. An extra swing while mining moves it a few centimeters and an earth wall moves " +
+                "it meters, so this keeps the wall and drops the slip. 0 draws every point the ground was " +
+                "touched at all.");
             PaintLeastPieces = mod.BindSynced(Painting, "Least Pieces To Draw", 6,
                 "How much building has to stand in one place before the map draws it. Everything a player raises is " +
                 "a piece, so without this the campfire somebody lit while exploring, the workbench put down to " +

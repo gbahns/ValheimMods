@@ -11,6 +11,9 @@
   usable.
 - Least Pieces To Draw is counted over twelve meters rather than over cells, so changing Paint
   Detail Meters no longer retunes it. Removed: Least Pieces In One Cell.
+- Ground you dug, leveled or raised is no longer drawn as though it were a road: only the hoe's
+  path and paved road are. New: Paint Shaped Ground, Shaped Ground Least Meters.
+- Changing Paint Detail Meters takes effect at once instead of at the next sweep.
 
 ## 4.10.0 — 2026-11-16
 
