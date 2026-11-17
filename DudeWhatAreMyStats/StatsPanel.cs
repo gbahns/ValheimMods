@@ -22,14 +22,14 @@ namespace DudeWhatAreMyStats
         private const float HeaderHeight = 26f;
         private const float ListTop = 152f;
 
-        private enum Tab { Scoreboard, Details }
+        private enum Tab { Scoreboard, Details, World }
 
         // ── widgets ─────────────────────────────────────────────────────────────────
         private static GameObject _root;
         private static RectTransform _content;
         private static TextMeshProUGUI _title;
         private static TextMeshProUGUI _subtitle;
-        private static Button _tabScore, _tabDetails, _refreshButton, _closeButton;
+        private static Button _tabScore, _tabDetails, _tabWorld, _refreshButton, _closeButton;
         private static Button _expandAll, _collapseAll;
         private static Button _prevPlayer, _nextPlayer;
         private static TextMeshProUGUI _detailWho;
@@ -206,6 +206,12 @@ namespace DudeWhatAreMyStats
         /// </summary>
         internal static void OnRosterRebuilt() => _dirty = true;
 
+        /// <summary>The server sent the world's kill ledger. Only the World tab shows it.</summary>
+        internal static void OnWorldChanged()
+        {
+            if (_tab == Tab.World) _dirty = true;
+        }
+
         // ── per-frame ───────────────────────────────────────────────────────────────
 
         internal static void Update()
@@ -241,7 +247,11 @@ namespace DudeWhatAreMyStats
                 Close();
                 return;
             }
-            if (ZInput.GetKeyDown(KeyCode.Tab)) { SetTab(_tab == Tab.Scoreboard ? Tab.Details : Tab.Scoreboard); return; }
+            if (ZInput.GetKeyDown(KeyCode.Tab))
+            {
+                SetTab(_tab == Tab.Scoreboard ? Tab.Details : _tab == Tab.Details ? Tab.World : Tab.Scoreboard);
+                return;
+            }
             if (_tab == Tab.Details)
             {
                 if (ZInput.GetKeyDown(KeyCode.LeftArrow)) { StepPlayer(-1); return; }
@@ -267,6 +277,7 @@ namespace DudeWhatAreMyStats
             UiKit.ClearChildren(_listContent);
 
             if (_tab == Tab.Scoreboard) PopulateScoreboard();
+            else if (_tab == Tab.World) PopulateWorld();
             else PopulateDetails();
 
             UpdateChrome();
@@ -519,6 +530,118 @@ namespace DudeWhatAreMyStats
                 });
         }
 
+        /// <summary>
+        /// What the whole group has killed, in two halves that are honest about being different
+        /// kinds of answer.
+        ///
+        /// The counted half is exact and short: one row per death, recorded by the one machine that
+        /// owned the creature, so a troll three people brought down is one troll. It only goes back
+        /// to the day the mod was installed, because nothing in Valheim records what a world has
+        /// killed and there is nothing to import.
+        ///
+        /// The estimated half covers everything, and is a range rather than a number. Adding up
+        /// everyone's own tallies counts a shared kill once per person; taking the biggest single
+        /// tally counts it once but loses every kill the others made alone. The truth is between
+        /// the two, and each end is exact in the case the other is worst at, so both are shown.
+        /// </summary>
+        private static void PopulateWorld()
+        {
+            // The ask throttles itself, so this is simply "while anyone is looking at it".
+            StatsNetwork.AskWorld();
+
+            var counted = WorldView.Rows;
+            int kills = WorldView.TotalKills();
+
+            Section("Counted exactly", () =>
+            {
+                if (!WorldView.Answered)
+                {
+                    UiKit.Row(_listContent,
+                              "Nothing counted. The server either does not run this mod or has world kills switched off.",
+                              "", null, null, 17f, UiKit.Dim);
+                    return;
+                }
+                string since = WorldView.StartedUtc > 0L
+                    ? new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                          .AddSeconds(WorldView.StartedUtc).ToLocalTime().ToString("d MMM yyyy")
+                    : "this mod was installed";
+                UiKit.Row(_listContent, "Counting since", since, null, null, 17f, UiKit.Dim);
+                UiKit.Row(_listContent, "Creatures killed", StatGroups.Count(kills), null, null);
+                int shared = WorldView.TotalShared();
+                if (kills > 0)
+                    UiKit.Row(_listContent, "Killed together", StatGroups.Count(shared), null, null,
+                              middle: (100f * shared / kills).ToString("0") + "% of them");
+                int starred = WorldView.TotalStarred();
+                if (starred > 0) UiKit.Row(_listContent, "Carrying stars", StatGroups.Count(starred), null, null);
+                int tame = WorldView.TotalTame();
+                if (tame > 0) UiKit.Row(_listContent, "Pets killed", StatGroups.Count(tame), null, null);
+                UiKit.Row(_listContent, "Species", StatGroups.Count(counted.Count), null, null);
+                if (kills == 0)
+                    UiKit.Row(_listContent,
+                              "Nothing has died yet with this counting. Everything below is the estimate.",
+                              "", null, null, 17f, UiKit.Dim);
+            });
+
+            if (counted.Count > 0)
+                Section("Creatures killed in this world", () =>
+                {
+                    foreach (var row in counted)
+                    {
+                        // The middle column carries what makes one row different from another of
+                        // the same size: stars met, and whether it took more than one of you.
+                        string note = "";
+                        if (row.BestLevel >= 2) note = "best " + new string('*', row.BestLevel - 1);
+                        if (row.Shared > 0)
+                            note += (note.Length > 0 ? ", " : "") + row.Shared + " together";
+                        if (row.Tame > 0)
+                            note += (note.Length > 0 ? ", " : "") + row.Tame + " tame";
+                        UiKit.Row(_listContent, CreatureName(row.Key), StatGroups.Count(row.Kills),
+                                  null, null, middle: note);
+                    }
+                });
+
+            // ── and the history, which can only ever be a range ─────────────────────
+            var estimate = WorldEstimate.From(_roster, out bool partial);
+            WorldEstimate.Totals(estimate, out float least, out float most);
+
+            Section("All time, estimated", () =>
+            {
+                // The range goes in the middle column rather than the right one, which is sized
+                // for a single figure and would clip "1,234 – 5,678".
+                UiKit.Row(_listContent, "Creatures killed", "", null, null,
+                          middle: least >= most ? StatGroups.Count(most)
+                                                : StatGroups.Count(least) + " – " + StatGroups.Count(most));
+                UiKit.Row(_listContent, "From", StatGroups.Count(_roster.Count) + " character(s)", null, null, 17f, UiKit.Dim);
+                UiKit.Row(_listContent,
+                          "A range because Valheim credits a shared kill to everyone who hit the creature. The low " +
+                          "end counts each kill once and so misses what people killed apart; the high end adds " +
+                          "everyone up and so counts a shared kill twice.",
+                          "", null, null, 15f, UiKit.Dim);
+                UiKit.Row(_listContent,
+                          "These are lifetime totals and follow the character rather than the world, so anyone who " +
+                          "has played elsewhere brings those kills with them.",
+                          "", null, null, 15f, UiKit.Dim);
+                if (partial)
+                    UiKit.Row(_listContent,
+                              "Somebody on the board is offline, and the server keeps only their top " +
+                              StatsStore.StoredCreatures + " species, so this is short rather than long.",
+                              "", null, null, 15f, UiKit.Dim);
+            });
+
+            if (estimate.Count > 0)
+                Section("All time by creature", () =>
+                {
+                    foreach (var row in estimate)
+                        UiKit.Row(_listContent, CreatureName(row.Key),
+                                  row.Players > 1 ? row.Players + " of you" : "", null, null,
+                                  middle: row.Exact ? StatGroups.Count(row.Most)
+                                                    : StatGroups.Count(row.Least) + " – " + StatGroups.Count(row.Most));
+                });
+
+            if (estimate.Count == 0 && counted.Count == 0)
+                UiKit.Row(_listContent, "Nothing to show yet.", "", null, null, 17f, UiKit.Dim);
+        }
+
         /// <summary>A collapsible section header plus its rows, remembering the fold between sessions.</summary>
         private static void Section(string title, Action body)
         {
@@ -618,6 +741,9 @@ namespace DudeWhatAreMyStats
         {
             if (_tab != tab) _scrollReset = true;
             _tab = tab;
+            // Asked for on arrival rather than kept up to date in the background: the ledger is
+            // only ever looked at here, and the ask throttles itself.
+            if (tab == Tab.World) StatsNetwork.AskWorld();
             if (tab == Tab.Details && _detailPlayer == 0L)
             {
                 var local = Current();
@@ -648,11 +774,14 @@ namespace DudeWhatAreMyStats
             }
             if (_tabScore != null) UiKit.SetLabel(_tabScore.gameObject, _tab == Tab.Scoreboard ? "<b>Scoreboard</b>" : "Scoreboard");
             if (_tabDetails != null) UiKit.SetLabel(_tabDetails.gameObject, _tab == Tab.Details ? "<b>Details</b>" : "Details");
+            if (_tabWorld != null) UiKit.SetLabel(_tabWorld.gameObject, _tab == Tab.World ? "<b>World</b>" : "World");
 
             bool details = _tab == Tab.Details;
-            if (_headerRow != null) _headerRow.gameObject.SetActive(!details);
-            if (_expandAll != null) _expandAll.gameObject.SetActive(details);
-            if (_collapseAll != null) _collapseAll.gameObject.SetActive(details);
+            bool board = _tab == Tab.Scoreboard;
+            bool folds = !board;   // both the details and the world tab are made of foldable sections
+            if (_headerRow != null) _headerRow.gameObject.SetActive(board);
+            if (_expandAll != null) _expandAll.gameObject.SetActive(folds);
+            if (_collapseAll != null) _collapseAll.gameObject.SetActive(folds);
             if (_prevPlayer != null) _prevPlayer.gameObject.SetActive(details && _roster.Count > 1);
             if (_nextPlayer != null) _nextPlayer.gameObject.SetActive(details && _roster.Count > 1);
             if (_detailWho != null)
@@ -662,7 +791,7 @@ namespace DudeWhatAreMyStats
                 _detailWho.text = snap == null ? "" : snap.Name + (snap.IsLocal ? "  (you)" : snap.Online ? "" : "  (offline)");
             }
 
-            if (!details)
+            if (board)
             {
                 var sorted = SortColumn();
                 bool desc = DwamsConfig.SortDescending == null || DwamsConfig.SortDescending.Value;
@@ -757,6 +886,7 @@ namespace DudeWhatAreMyStats
 
             _tabScore = MakeButton(template, content.transform, "TabScoreboard", "Scoreboard", () => SetTab(Tab.Scoreboard));
             _tabDetails = MakeButton(template, content.transform, "TabDetails", "Details", () => SetTab(Tab.Details));
+            _tabWorld = MakeButton(template, content.transform, "TabWorld", "World", () => SetTab(Tab.World));
             _refreshButton = MakeButton(template, content.transform, "Refresh", "Refresh", () => { StatsNetwork.RequestNow(); _dirty = true; });
             _closeButton = MakeButton(template, content.transform, "Close", "Close", Close);
 
@@ -777,6 +907,10 @@ namespace DudeWhatAreMyStats
                 _collapsed.Add("Kill difficulty");
                 _collapsed.Add("Boss fights");
                 _collapsed.Add("Kills by weapon");
+                _collapsed.Add("Counted exactly");
+                _collapsed.Add("Creatures killed in this world");
+                _collapsed.Add("All time, estimated");
+                _collapsed.Add("All time by creature");
                 foreach (var s in StatGroups.Order) _collapsed.Add(s);
                 SaveCollapsed();
                 _dirty = true;
@@ -871,6 +1005,7 @@ namespace DudeWhatAreMyStats
             float tabY = 76f, tabH = 34f;
             if (_tabScore != null) UiKit.Place(_tabScore.GetComponent<RectTransform>(), 30f, tabY, 140f, tabH);
             if (_tabDetails != null) UiKit.Place(_tabDetails.GetComponent<RectTransform>(), 178f, tabY, 140f, tabH);
+            if (_tabWorld != null) UiKit.Place(_tabWorld.GetComponent<RectTransform>(), 326f, tabY, 140f, tabH);
             if (_refreshButton != null) UiKit.Place(_refreshButton.GetComponent<RectTransform>(), w - 290f, tabY, 120f, tabH);
             if (_closeButton != null) UiKit.Place(_closeButton.GetComponent<RectTransform>(), w - 160f, tabY, 120f, tabH);
 

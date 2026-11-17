@@ -18,6 +18,9 @@ namespace DudeWhatAreMyStats
             // Server only; a client's call is a no-op. Loading here rather than on the first push
             // means the file is read once per world, before anyone can ask for it.
             StatsStore.Load();
+            // Server only as well, and for the same reason: read once per world, before anybody
+            // can ask for it or report a kill into it.
+            WorldKills.Load();
             // This character's own record of what has killed it, and a clean ledger for the first
             // fight of the session.
             DeathWatch.Reset();
@@ -40,6 +43,7 @@ namespace DudeWhatAreMyStats
             // than whatever the timer last caught. Best effort: the connection may already be gone.
             StatsNetwork.PushLocal(force: true);
             StatsStore.Unload();
+            WorldKills.Unload();
             StatsNetwork.Reset();
             DeathWatch.Reset();
             DeathLog.Unload();

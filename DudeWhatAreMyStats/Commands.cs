@@ -49,6 +49,12 @@ namespace DudeWhatAreMyStats
                     args.Context?.AddString(Creatures(args.Length > 1 ? args[1] : null));
                 }));
 
+            new Terminal.ConsoleCommand("dwams_world", "Dude What Are My Stats: what the whole group has killed in this world",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    args.Context?.AddString(World());
+                }));
+
             new Terminal.ConsoleCommand("dwams_status", "Dude What Are My Stats: what the scoreboard currently knows",
                 (Terminal.ConsoleEvent)(args =>
                 {
@@ -86,6 +92,13 @@ namespace DudeWhatAreMyStats
                         sb.AppendLine(StatsStore.Loaded
                             ? $"this game is the server: {StatsStore.Count} character(s) in {StatsStore.Path}"
                             : "this game is the server, but the store is off or has no world yet");
+                    if (WorldKills.Loaded)
+                        sb.AppendLine($"world kills (we keep them): {WorldKills.Species} species, " +
+                                      $"{WorldKills.TotalKills()} kill(s) in {WorldKills.Path}");
+                    else
+                        sb.AppendLine(WorldView.Answered
+                            ? $"world kills: {WorldView.Rows.Count} species, {WorldView.TotalKills()} kill(s) from the server"
+                            : "world kills: no answer yet (the server may not run this mod, or has them off)");
                     foreach (var snap in StatsNetwork.Roster())
                     {
                         string age = snap.LastSeenText;
@@ -95,6 +108,67 @@ namespace DudeWhatAreMyStats
                     }
                     args.Context?.AddString(sb.ToString().TrimEnd());
                 }));
+        }
+
+        /// <summary>
+        /// What the whole group has killed, both the exact count and the range the history can be
+        /// squeezed for. The two are different kinds of answer and are printed as such.
+        /// </summary>
+        private static string World()
+        {
+            var sb = new StringBuilder();
+            StatsNetwork.AskWorld(now: true);
+
+            if (!WorldView.Answered)
+            {
+                sb.AppendLine("Counted exactly: nothing. The server either does not run this mod or has " +
+                              "Record World Kills off. (Just asked it; try again in a moment.)");
+            }
+            else
+            {
+                int kills = WorldView.TotalKills();
+                string since = WorldView.StartedUtc > 0L
+                    ? new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                          .AddSeconds(WorldView.StartedUtc).ToLocalTime().ToString("d MMM yyyy")
+                    : "unknown";
+                sb.AppendLine($"Counted exactly since {since}: {kills} kill(s) of {WorldView.Rows.Count} species, " +
+                              $"{WorldView.TotalShared()} of them shared, {WorldView.TotalTame()} pet(s). " +
+                              "Each death counted once, on the machine that owned the creature.");
+                foreach (var row in WorldView.Rows)
+                {
+                    if (row.Kills <= 0 && row.Tame <= 0) continue;
+                    sb.AppendLine($"  {CreatureLabel(row.Key)}: {row.Kills}" +
+                                  (row.Shared > 0 ? $", {row.Shared} together" : "") +
+                                  (row.Starred > 0 ? $", {row.Starred} starred (best {row.BestLevel - 1}*)" : "") +
+                                  (row.Tame > 0 ? $", {row.Tame} tame" : ""));
+                }
+            }
+
+            var roster = StatsNetwork.Roster();
+            var estimate = WorldEstimate.From(roster, out bool partial);
+            WorldEstimate.Totals(estimate, out float least, out float most);
+            sb.AppendLine();
+            sb.AppendLine($"All time, from {roster.Count} character(s): between {least:0} and {most:0} creature(s). " +
+                          "A range because Valheim credits a shared kill to everyone who hit it, so the low end " +
+                          "misses solo kills and the high end counts shared ones twice." +
+                          (partial ? " Somebody is offline and the server keeps only their top species, so this is short." : ""));
+            foreach (var row in estimate)
+                sb.AppendLine($"  {CreatureLabel(row.Key)}: " +
+                              (row.Exact ? row.Most.ToString("0") : $"{row.Least:0} - {row.Most:0}"));
+            return sb.ToString().TrimEnd();
+        }
+
+        /// <summary>"$enemy_greydwarf" as a player would read it, for the console's plain text.</summary>
+        private static string CreatureLabel(string key)
+        {
+            if (string.IsNullOrEmpty(key)) return "(unknown)";
+            if (key.StartsWith("$", StringComparison.Ordinal) && Localization.instance != null)
+            {
+                string localized = Localization.instance.Localize(key);
+                if (!string.IsNullOrEmpty(localized) && localized != key && !localized.StartsWith("[", StringComparison.Ordinal))
+                    return localized;
+            }
+            return key.TrimStart('$');
         }
 
         /// <summary>

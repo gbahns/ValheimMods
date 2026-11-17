@@ -51,6 +51,7 @@ namespace DudeWhatAreMyStats
 
         // ── what you killed ────────────────────────────────────────────────────────
         internal static ConfigEntry<bool> RecordKills;
+        internal static ConfigEntry<bool> RecordWorldKills;
         internal static ConfigEntry<string> AssumeTameShare;
         internal static ConfigEntry<bool> KillsColumnHostileOnly;
         internal static ConfigEntry<string> TreatCreaturesAs;
@@ -162,6 +163,15 @@ namespace DudeWhatAreMyStats
                 "This notes the pet and the stars as kills happen. The client that owns the creature is the one " +
                 "holding those details, so it tells everyone who damaged it, exactly as the game already does when " +
                 "it credits the kill. Off records nothing new; what is already recorded is kept.");
+            RecordWorldKills = mod.BindLocal("Kills", "Record World Kills", true,
+                "Count what the whole group has killed in this world, on the World tab. Valheim credits a kill to " +
+                "every player who hit the creature, so adding up the scoreboard counts a troll three people brought " +
+                "down as three trolls; this counts the death itself instead, once, on the one machine that owned " +
+                "the creature, so there is no double-counting to undo. The tally is kept by the server, one file " +
+                "per world, and starts from the day the mod was installed -- the game records nowhere what a world " +
+                "has killed before that, so an older world's history is shown as a range worked out from everyone's " +
+                "own totals. Both the server and the player who owns the creature need this on for a kill to be " +
+                "counted; a server without the mod simply has no tally and the tab says so.");
             AssumeTameShare = mod.BindLocal("Kills", "Assume Tame Share", "Boar:100, Wolf:100",
                 "What to assume about kills made before this mod was recording them, as a list of species and the " +
                 "percentage of those to count as pets rather than wild animals. The game kept no record either way, " +

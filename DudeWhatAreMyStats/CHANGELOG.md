@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- **A World tab: what the whole group has killed, counted once.** Valheim credits a shared kill to
+  everyone who hit the creature, so adding up the scoreboard turns one troll into three. This
+  counts the death instead, on the one machine that owned the creature, so there is no
+  double-counting to undo.
+- The count starts the day you install it, because nothing in Valheim records what a world has
+  killed. For everything before that the tab shows a range worked out from everyone's own totals,
+  and says why it is a range.
+- The server keeps the tally, one file per world. A server without the mod simply has none, and
+  the tab says so.
+- `dwams_world` prints the same thing in the console. New setting: *Record World Kills*.
+
 ## 0.14.0 — 2026-11-16
 
 - **Every creature you have killed is listed, not the top fifteen.** Asked for. *Top Creature

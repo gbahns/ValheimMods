@@ -7,6 +7,8 @@
 - The **Scoreboard** tab ranks everyone who runs this mod, online now or not. Click a column to sort by it.
 - The **Details** tab breaks one player's stats into sections, with their skills and the creatures
   they have killed most.
+- The **World** tab counts what the group has killed between them, once per creature — not the
+  scoreboard added up, which counts a shared kill once per person.
 - The **kill count knows what it killed**: your own pets and the deer and the fish are counted
   apart from the things that were actually trying to kill you.
 - It **records what kills you** -- which creature, what it was holding, and everyone else who was
@@ -187,7 +189,28 @@ offline: they are shown from the server's record of them, and the server keeps o
 character's top 20 species, because its whole store travels to you in a single message. The list
 says so when that is what you are looking at.
 
-Left and Right arrows step through the players. Tab switches between the two views.
+Left and Right arrows step through the players. Tab cycles through the three views.
+
+## The world tab
+
+What everyone has killed between them, which is **not** the scoreboard added up. Valheim credits a
+kill to every player who hit the creature, so three people who bring down a troll together each get
+a troll, and adding the columns says the world lost three. This counts the death instead: the one
+machine that owned the creature reports it once, and no overlap is ever created to be removed
+later.
+
+Because nothing in Valheim records what a world has killed, the exact count starts the day you
+install the mod, and the tab dates it. For everything before that it shows a **range** per species,
+from everyone's own lifetime tallies. The low end is the biggest single tally — the group cannot
+have killed fewer, and it is the right answer for a boss everyone fought together. The high end is
+all the tallies added up — the group cannot have killed more, and it is the right answer for the
+greydwarves nobody shared. Both ends are shown rather than averaged into a number that would be
+wrong invisibly. Those totals follow the character rather than the world, so somebody who has
+played elsewhere brings those kills with them.
+
+The server keeps the tally, one small file per world beside the stats store. A server without the
+mod has none, and the tab says so instead of showing a zero. Turn it off under *Record World
+Kills*.
 
 ## The player list
 
@@ -297,6 +320,7 @@ the keep window runs out.
 | `dwams_refresh` | Ask everyone online, and the server, for stats again. |
 | `dwams_creatures` | How every creature in your world is classified. Add a word to filter, or `all` for everything. |
 | `dwams_deaths` | What has killed you, and the last few deaths in full. Add a number for one of them. |
+| `dwams_world` | What the whole group has killed in this world, counted and estimated. |
 | `dwams_status` | Print the scoreboard, and say whether the server is keeping records. |
 
 ## Configuration
@@ -329,6 +353,8 @@ Count* to leave the game exactly as it ships.
   the game kept no record to read.
 - Seeing players who are not online needs the mod on the server too. Without it the board shows
   only whoever is online to answer for themselves.
+- World kill counts need the mod on the server, and on the machine that owned the creature. A kill
+  made next to a player who does not run it is not counted.
 - The server records what each player's own game tells it about itself, the same as the live
   answers, so it is a scoreboard among friends rather than an audited one.
 - A character is only remembered once they have played with the mod installed on both ends, so the

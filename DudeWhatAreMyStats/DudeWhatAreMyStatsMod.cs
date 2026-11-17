@@ -66,6 +66,9 @@ namespace DudeWhatAreMyStats
             UiKit.ObserveFocus();   // every frame, before any key is read, so the typing check's tail holds
             StatsNetwork.Update();
             StatsStore.Update();
+            // Both halves: a client flushes the deaths it owned, a server writes the ledger. Above
+            // the local-player check with the rest, since a dedicated server has no character.
+            WorldKills.Update();
             DeathLog.Update();
             KillLog.Update();
             FightLog.Update();

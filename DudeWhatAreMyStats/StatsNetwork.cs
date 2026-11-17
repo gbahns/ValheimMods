@@ -29,9 +29,15 @@ namespace DudeWhatAreMyStats
         private const string RpcForget   = "DWAMS_Forget";     // client -> server, "take me off the board"
         private const string RpcKill     = "DWAMS_Kill";       // creature's owner -> each player it credits
         private const string RpcFight    = "DWAMS_Fight";      // creature's owner -> each player that hurt it
+        private const string RpcWorldAdd = "DWAMS_WorldAdd";   // creature's owner -> server, deaths it saw
+        private const string RpcAskWorld = "DWAMS_AskWorld";   // client -> server, no payload yet
+        private const string RpcWorld    = "DWAMS_World";      // server -> client, the whole ledger
 
         /// <summary>Bumped when the many-snapshots message changes shape.</summary>
         private const int AllSchema = 1;
+
+        /// <summary>Bumped when either world-kill message changes shape ahead of its row block.</summary>
+        private const int WorldSchema = 1;
 
         /// <summary>After a request goes out, judge who is online by the previous round for this long.</summary>
         private const float SettleSeconds = 3f;
@@ -41,6 +47,13 @@ namespace DudeWhatAreMyStats
 
         /// <summary>Least time the server will serve the same player the whole roster again.</summary>
         private const float ServeCooldown = 10f;
+
+        /// <summary>
+        /// Least time between asking the server what the world has killed. Shorter than the roster
+        /// ask because the ledger does change while you watch it, and far smaller: a few thousand
+        /// bytes of species rows against every character the server remembers.
+        /// </summary>
+        private const float WorldAskSeconds = 20f;
 
         private static readonly Dictionary<long, Snapshot> _remote = new Dictionary<long, Snapshot>();
         private static readonly Dictionary<long, Snapshot> _stored = new Dictionary<long, Snapshot>();
@@ -53,6 +66,8 @@ namespace DudeWhatAreMyStats
         private static bool _serverAnswered;
         private static bool _forgetSent;
         private static readonly Dictionary<long, float> _servedAt = new Dictionary<long, float>();
+        private static readonly Dictionary<long, float> _worldServedAt = new Dictionary<long, float>();
+        private static float _nextWorldAskAt;
 
         /// <summary>
         /// What version each other player last answered in, where it is not ours.
@@ -194,6 +209,9 @@ namespace DudeWhatAreMyStats
                 rpc.Register<ZPackage>(RpcForget, RPC_Forget);
                 rpc.Register<ZPackage>(RpcKill, RPC_Kill);
                 rpc.Register<ZPackage>(RpcFight, RPC_Fight);
+                rpc.Register<ZPackage>(RpcWorldAdd, RPC_WorldAdd);
+                rpc.Register<ZPackage>(RpcAskWorld, RPC_AskWorld);
+                rpc.Register<ZPackage>(RpcWorld, RPC_World);
                 DudeWhatAreMyStatsMod.Log.LogInfo("[DudeWhatAreMyStats] Stats RPCs registered.");
             }
             catch (Exception e)
@@ -219,6 +237,9 @@ namespace DudeWhatAreMyStats
             _serverAnswered = false;
             _forgetSent = false;
             _servedAt.Clear();
+            _worldServedAt.Clear();
+            _nextWorldAskAt = 0f;
+            WorldView.Clear();
             _otherVersions.Clear();
             _storedUnreadable = 0;
             _storedSchema = 0;
@@ -229,6 +250,11 @@ namespace DudeWhatAreMyStats
         {
             Register();
             PushTick();
+            // Asked for before anybody looks at it, and only until it answers: a client that owns
+            // a creature needs to know whether there is a ledger to report the death to, and the
+            // alternative is reporting into the void and writing a line in an unmodded server's
+            // log every few seconds of every fight.
+            if (!WorldView.Answered && WorldKills.Recording && !WorldKills.IsServer) AskWorld();
             if (!StatsPanel.IsOpen) return;
             float every = DwamsConfig.RefreshSeconds != null ? DwamsConfig.RefreshSeconds.Value : 10f;
             if (every <= 0f) return;
@@ -264,6 +290,7 @@ namespace DudeWhatAreMyStats
         {
             _nextServerAskAt = 0f;
             Request();
+            AskWorld(now: true);
         }
 
         /// <summary>Someone asked for our stats. Dedicated servers have no character and stay quiet.</summary>
@@ -476,6 +503,107 @@ namespace DudeWhatAreMyStats
             catch (Exception e)
             {
                 DudeWhatAreMyStatsMod.Log.LogWarning($"[DudeWhatAreMyStats] Could not read a fight report: {e.Message}");
+            }
+        }
+
+        // ── the world's own kill ledger ─────────────────────────────────────────────
+
+        /// <summary>
+        /// Reports deaths this game owned to whoever keeps the ledger. Batched by the caller, so a
+        /// fight that kills a dozen things is one message of a few hundred bytes.
+        /// </summary>
+        internal static void SendWorldKills(List<WorldKillRow> rows)
+        {
+            if (rows == null || rows.Count == 0) return;
+            try
+            {
+                var rpc = ZRoutedRpc.instance;
+                if (rpc == null || ZNet.instance == null) return;
+                var pkg = new ZPackage();
+                pkg.Write(WorldSchema);
+                WorldKills.Write(pkg, rows, 0L);
+                rpc.InvokeRoutedRPC(RpcWorldAdd, pkg);
+            }
+            catch (Exception e)
+            {
+                DudeWhatAreMyStatsMod.Log.LogWarning($"[DudeWhatAreMyStats] Could not report world kills: {e.Message}");
+            }
+        }
+
+        /// <summary>
+        /// A client reporting creatures that died under its ownership. Server only.
+        ///
+        /// Same trust as every other message here: a client that wanted to could claim the world
+        /// killed a thousand trolls. It costs a wrong number on a scoreboard among friends.
+        /// </summary>
+        private static void RPC_WorldAdd(long sender, ZPackage pkg)
+        {
+            try
+            {
+                if (!WorldKills.Loaded || pkg == null) return;
+                pkg.SetPos(0);
+                int schema = pkg.ReadInt();
+                if (schema < WorldSchema) return;
+                var rows = WorldKills.Read(pkg, out long _);
+                foreach (var row in rows) WorldKills.Take(row);
+            }
+            catch (Exception e)
+            {
+                DudeWhatAreMyStatsMod.Log.LogWarning($"[DudeWhatAreMyStats] Could not record reported world kills: {e.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Asks the server what the world has killed. Silently unanswered by a server without the
+        /// mod, exactly like the stored roster, and the panel says so rather than showing a zero.
+        /// </summary>
+        internal static void AskWorld(bool now = false)
+        {
+            var rpc = ZRoutedRpc.instance;
+            if (rpc == null || ZNet.instance == null) return;
+            if (!now && Time.unscaledTime < _nextWorldAskAt) return;
+            _nextWorldAskAt = Time.unscaledTime + WorldAskSeconds;
+            rpc.InvokeRoutedRPC(RpcAskWorld, new ZPackage());
+        }
+
+        /// <summary>A client wants the ledger. Server only.</summary>
+        private static void RPC_AskWorld(long sender, ZPackage pkg)
+        {
+            try
+            {
+                if (!WorldKills.Loaded) return;
+                // The client throttles itself and its Refresh button deliberately skips that, so
+                // the floor lives here too.
+                float now = Time.unscaledTime;
+                if (_worldServedAt.TryGetValue(sender, out float last) && now - last < ServeCooldown) return;
+                _worldServedAt[sender] = now;
+                var outPkg = new ZPackage();
+                outPkg.Write(WorldSchema);
+                WorldKills.Write(outPkg, WorldKills.All(), WorldKills.StartedUtc);
+                ZRoutedRpc.instance?.InvokeRoutedRPC(sender, RpcWorld, outPkg);
+            }
+            catch (Exception e)
+            {
+                DudeWhatAreMyStatsMod.Log.LogWarning($"[DudeWhatAreMyStats] Could not send the world kill ledger: {e.Message}");
+            }
+        }
+
+        /// <summary>The server sent the ledger. This replaces whatever we held before.</summary>
+        private static void RPC_World(long sender, ZPackage pkg)
+        {
+            try
+            {
+                if (pkg == null) return;
+                pkg.SetPos(0);
+                int schema = pkg.ReadInt();
+                if (schema < WorldSchema) return;
+                var rows = WorldKills.Read(pkg, out long started);
+                WorldView.Accept(rows, started);
+                StatsPanel.OnWorldChanged();
+            }
+            catch (Exception e)
+            {
+                DudeWhatAreMyStatsMod.Log.LogWarning($"[DudeWhatAreMyStats] Could not read the world kill ledger: {e.Message}");
             }
         }
 
