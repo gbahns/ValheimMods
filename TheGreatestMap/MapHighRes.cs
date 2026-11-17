@@ -326,6 +326,23 @@ namespace TheGreatestMap
         /// Paint the window. Ground first and buildings over it, in the order they should cover
         /// one another, which is what a painter does instead of ranking.
         /// </summary>
+        /// <summary>
+        /// A color as this buffer wants it, rather than as it was written down.
+        ///
+        /// <para>The game renders in linear color and the buffer is written through
+        /// Hidden/Internal-Colored, which hands a vertex color to the hardware untouched. So a
+        /// color picked in the config -- which is sRGB, like every color anybody ever types --
+        /// was being stored as though it already were linear and came back lighter and flatter
+        /// for it: the default wood, a medium brown, drew as pale tan.</para>
+        ///
+        /// <para>It hid until the twelve meter painting was switched off, because that goes
+        /// through Texture2D.SetPixel, which does the conversion itself. Until then a correctly
+        /// colored wash sat underneath the washed-out one and the eye took the brighter of the
+        /// two for the paint.</para>
+        /// </summary>
+        private static Color Shade(Color authored) =>
+            QualitySettings.activeColorSpace == ColorSpace.Linear ? authored.linear : authored;
+
         /// <summary>Quads sent before the buffer is closed and reopened.</summary>
         private const int BatchQuads = 8192;
 
@@ -421,7 +438,8 @@ namespace TheGreatestMap
             {
                 if (!MapPaint.Wants(kind)) continue;
                 if (!byKind.TryGetValue(kind, out var mine)) continue;
-                var color = MapPaint.ColorFor(kind);
+                var authored = MapPaint.ColorFor(kind);
+                var color = Shade(authored);
                 GL.Color(color);
                 for (int c = 0; c < mine.Count; c++)
                 {
@@ -462,7 +480,10 @@ namespace TheGreatestMap
                 if (!outlines) continue;
                 var walls = MapOutline.Of(kind);
                 if (walls == null) continue;
-                var ink = MapPaint.Ink(color);
+                // Worked out from the color somebody chose rather than from the converted
+                // one: Ink judges how light a fill is so it can go darker or lighter than it,
+                // and that judgement is about how the color looks, not how it is stored.
+                var ink = Shade(MapPaint.Ink(authored));
                 GL.Color(ink);
                 float half = nib * 0.5f;
                 for (int i = 0; i < walls.Count; i++)
