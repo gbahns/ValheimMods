@@ -792,6 +792,21 @@ namespace TheGreatestMap
                     }
                 }));
 
+            new Terminal.ConsoleCommand("tgm_ground", "The Greatest Map: why the ground you are standing on is drawn the way it is -- what the world's terrain record says there, and what the painting rule made of it (also written to the log)",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    if (Player.m_localPlayer == null)
+                    {
+                        args.Context.AddString("tgm_ground: you have to be in the world to ask about the ground.");
+                        return;
+                    }
+                    foreach (var line in Ground.Explain(Player.m_localPlayer.transform.position))
+                    {
+                        args.Context.AddString(line);
+                        TheGreatestMapMod.Log.LogInfo("[TheGreatestMap] tgm_ground: " + line);
+                    }
+                }));
+
             new Terminal.ConsoleCommand("tgm_mapui", "Measure the large map's own layout: how much screen it uses and how its parts are anchored (also written to the log)",
                 (Terminal.ConsoleEvent)(args =>
                 {

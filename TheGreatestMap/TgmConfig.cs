@@ -1526,7 +1526,10 @@ namespace TheGreatestMap
                 "mod was installed. The server's.");
             PaintDirtPaths = mod.BindSynced(Painting, "Paint Dirt Paths", true,
                 "Color the ground players have flattened with a hoe, which is how most trails between places get " +
-                "made. Read the same way as paved road, from the world's record rather than from anyone walking it.");
+                "made. Read the same way as paved road, from the world's record rather than from anyone walking it. " +
+                "This covers a leveled yard as well as a path: both are ground somebody deliberately made flat. " +
+                "Ground that went somewhere instead -- up into a wall, down into a pit -- is the other two " +
+                "settings.");
             PaintFarmland = mod.BindSynced(Painting, "Paint Farmland", true,
                 "Color cultivated ground into the map, so fields read as fields rather than as whatever grows on " +
                 "them. This is the ground the cultivator turned over, not the crops standing in it -- the mod does " +
@@ -1568,10 +1571,10 @@ namespace TheGreatestMap
                 "were a road. A moat around a base is the exception. The server's, since the server is the one " +
                 "looking.");
             PaintShapedLeastMeters = mod.BindSynced(Painting, "Shaped Ground Least Meters", 1f,
-                "Only read when Paint Raised Ground or Paint Dug Ground is on. How far the ground has to have " +
-                "moved before it is worth drawing. An extra swing while mining moves it a few centimeters and " +
-                "an earth wall moves it meters, so this keeps the wall and drops the slip. 0 draws every point " +
-                "the ground was touched at all.");
+                "How far the ground has to have moved before it counts as an earthwork rather than as ground " +
+                "somebody leveled. Below this it is drawn as a dirt path; above it, it is a wall or a hole and " +
+                "only shows if Paint Raised Ground or Paint Dug Ground says so. Raise it if mining scrapes are " +
+                "coming out as yards, lower it if a shallow terrace is.");
             PaintLeastPieces = mod.BindSynced(Painting, "Least Pieces To Draw", 6,
                 "How much building has to stand in one place before the map draws it. Everything a player raises is " +
                 "a piece, so without this the campfire somebody lit while exploring, the workbench put down to " +
@@ -1611,8 +1614,11 @@ namespace TheGreatestMap
             PavedColor = mod.BindMoved(Painting, Palette, "Paved Color", Colors.FromHex("#9E998C"),
                 "The color paved road is drawn in. Building wins where a road runs under it, so a courtyard reads as " +
                 "the building it belongs to.");
-            DirtColor = mod.BindMoved(Painting, Palette, "Dirt Path Color", Colors.FromHex("#78603F"),
-                "The color hoed dirt path is drawn in. Paving wins where a path runs into a road.");
+            DirtColor = mod.Retune(mod.BindMoved(Painting, Palette, "Dirt Path Color", Colors.FromHex("#AB8042"),
+                "The color hoed dirt path and leveled ground are drawn in. Measured off the ground in the game " +
+                "rather than picked, so a yard on the map is the color of the yard you are standing in. Paving " +
+                "wins where a path runs into a road."),
+                Colors.FromHex("#78603F"), Colors.FromHex("#AB8042"));
             FarmColor = mod.Retune(mod.BindMoved(Painting, Palette, "Farmland Color", Colors.FromHex("#4A3520"),
                 "The color cultivated ground is drawn in. A dark brown, the color of turned earth. Both paving and " +
                 "dirt path win over it, so a track across a field reads as a track."),

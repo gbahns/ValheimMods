@@ -240,6 +240,15 @@ namespace TheGreatestMap
             /// recording the world more finely does not quietly loosen the test.
             /// </summary>
             public readonly Dictionary<int, int> Support = new Dictionary<int, int>();
+            /// <summary>
+            /// The same, for the fixtures, kept apart so they can color ground without voting
+            /// on a building. A forge standing in a hall must not make the hall iron -- that is
+            /// what this split is for -- but twenty-three beehives standing in a yard with no
+            /// building anywhere near them are the only thing there is to draw, and leaving
+            /// them out of both halves drew nothing at all. So they are asked last and only
+            /// about cells nothing else reached.
+            /// </summary>
+            public readonly Dictionary<int, Tally> Fixtures = new Dictionary<int, Tally>();
             public int Pieces;
         }
 
@@ -329,8 +338,9 @@ namespace TheGreatestMap
                     int block = MapPaint.Block(where);
                     _sweep.Support.TryGetValue(block, out int standing);
                     _sweep.Support[block] = standing + 1;
-                    // Counted above, not voted below.
-                    if (_fixtures.Contains(zdo.GetPrefab())) continue;
+                    // Counted above, and set aside rather than dropped: a fixture colors
+                    // the ground it stands on when nothing else does, and never otherwise.
+                    var into = _fixtures.Contains(zdo.GetPrefab()) ? _sweep.Fixtures : _sweep.Found;
 
                     // Every cell the piece stands on, rather than the one its center point
                     // happens to fall in. A prefab nobody could measure keeps the old rule.
@@ -342,10 +352,10 @@ namespace TheGreatestMap
                     for (int s = 0; s < _stamp.Count; s++)
                     {
                         int key = _stamp[s];
-                        if (_sweep.Found.Count >= MaxCells && !_sweep.Found.ContainsKey(key)) continue;
-                        _sweep.Found.TryGetValue(key, out var standingHere);
+                        if (into.Count >= MaxCells && !into.ContainsKey(key)) continue;
+                        into.TryGetValue(key, out var standingHere);
                         standingHere.Add(material);
-                        _sweep.Found[key] = standingHere;
+                        into[key] = standingHere;
                     }
                 }
                 if (++looked >= SectorsPerFrame) return false;   // pick this up next frame
@@ -359,16 +369,32 @@ namespace TheGreatestMap
                 var kind = kv.Value.Winner();
                 if (kind != BuiltKind.None) found[kv.Key] = kind;
             }
+            // Then the fixtures, for ground nothing else claimed. The support test still has
+            // to pass, so a chest left in a forest is no more a building than it was; a yard
+            // full of hives is.
+            foreach (var kv in _sweep.Fixtures)
+            {
+                if (found.ContainsKey(kv.Key) || found.Count >= MaxCells) continue;
+                var kind = kv.Value.Winner();
+                if (kind != BuiltKind.None) found[kv.Key] = kind;
+            }
             var picture = buildings
                 ? Built(found, _sweep.Support)
                 : new Dictionary<int, BuiltKind>();
             int pieces = _sweep.Pieces;
+            // Taken before the sweep is let go of, not after. This read it back off _sweep on
+            // the line below the one that nulls it, which threw every sweep and left the map
+            // with nothing painted at all.
+            var counted = _sweep.Support;
             _lastPieces = pieces;
             _lastCells = picture.Count;
             _sweep = null;
             _nextSweep = Time.time + SweepSeconds;
             // Ground goes in after the buildings so that a hall standing on paving stays a hall.
-            Ground.AddTo(picture, MaxCells);
+            // The ground gets the building count too, so that shaped ground inside a base is
+            // drawn and the same shaping out on a hillside is not.
+            int leastPieces = LeastPieces();
+            Ground.AddTo(picture, MaxCells, key => Supported(key, counted, leastPieces));
             if (pieces > 0 && picture.Count >= MaxCells)
                 TheGreatestMapMod.Log.LogWarning(
                     $"[TheGreatestMap] Player building fills more than {MaxCells} cells; the map painting stops there.");
@@ -439,16 +465,24 @@ namespace TheGreatestMap
             if (least <= 1) return found;
             var kept = new Dictionary<int, BuiltKind>();
             foreach (var kv in found)
-            {
-                var at = MapPaint.Center(kv.Key);
-                int around = 0;
-                for (int dz = -1; dz <= 1 && around < least; dz++)
-                    for (int dx = -1; dx <= 1 && around < least; dx++)
-                        if (support.TryGetValue(MapPaint.BlockNear(at, dx, dz), out int standing))
-                            around += standing;
-                if (around >= least) kept[kv.Key] = kv.Value;
-            }
+                if (Supported(kv.Key, support, least)) kept[kv.Key] = kv.Value;
             return kept;
+        }
+
+        /// <summary>
+        /// Is there enough building around this cell to call it part of somebody's base? The
+        /// test that tells a hut from a torch, asked of the ground as well now.
+        /// </summary>
+        private static bool Supported(int key, Dictionary<int, int> support, int least)
+        {
+            if (least <= 1) return true;
+            var at = MapPaint.Center(key);
+            int around = 0;
+            for (int dz = -1; dz <= 1 && around < least; dz++)
+                for (int dx = -1; dx <= 1 && around < least; dx++)
+                    if (support.TryGetValue(MapPaint.BlockNear(at, dx, dz), out int standing))
+                        around += standing;
+            return around >= least;
         }
 
         /// <summary>Keep the new picture, and say whether it differs from the last one.</summary>

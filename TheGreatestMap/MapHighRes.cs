@@ -30,6 +30,12 @@ namespace TheGreatestMap
     /// entirely unless the large map is open -- during ordinary play nothing here runs at
     /// all.</para>
     ///
+    /// <para>Throttling a redraw is not the same as letting the drawing lag, and the difference
+    /// is the whole of whether this looks like part of the map. Both maps are drawn to a window
+    /// wider than they show and the image is panned across it every frame, which costs a rect;
+    /// a redraw is only owed when the view reaches the edge of what was drawn, and until it
+    /// lands the drawing moves with the map rather than waiting for it.</para>
+    ///
     /// <para>It is an overlay and not a replacement for the map texture, which is what keeps it
     /// out of a fight. Valheim's map shader samples four textures of its own and reads its UVs
     /// from a rect the game rewrites every frame; substituting one of those textures means
@@ -44,12 +50,6 @@ namespace TheGreatestMap
         /// resolution only until it passes what the screen can show, which this already has.
         /// </summary>
         private const int Size = 2048;
-
-        /// <summary>
-        /// How far the view must slide before it is worth redrawing, as a fraction of the window.
-        /// Nothing moves less than a pixel's worth and gets a repaint for it.
-        /// </summary>
-        private const float Moved = 0.002f;
 
         /// <summary>The most often a redraw may happen, however hard the map is being dragged.</summary>
         private const float EverySeconds = 0.08f;
@@ -67,6 +67,26 @@ namespace TheGreatestMap
 
         /// <summary>How close the view may come to the drawn window's edge before redrawing.</summary>
         private const float SmallSlack = 0.08f;
+
+        /// <summary>
+        /// How much wider than the large map the window is drawn.
+        ///
+        /// <para>The large map used to be drawn for exactly what it showed, which meant the
+        /// drawing could only move when it was redrawn -- and a redraw is throttled, so dragging
+        /// the map slid the vanilla painting out from under a layer that stayed where it was
+        /// until the next one landed. A tenth of a second of the drawing lagging the map is the
+        /// whole of the illusion gone: it reads as a sticker on top rather than part of the
+        /// map.</para>
+        ///
+        /// <para>So the large map is panned across a wider window, the same as the minimap: the
+        /// image is re-aimed every frame, which is free, and the redraw underneath only has to
+        /// keep up with the edge of the window coming into view. The padding is small because
+        /// the buffer is a fixed size and every bit of it spent on margin is resolution the
+        /// drawing does not get -- twelve percent buys about a twentieth of the view at each
+        /// edge, which at the throttle is a drag of half a screen a second with nothing
+        /// missing, and costs about a tenth of the sharpness this exists for.</para>
+        /// </summary>
+        private const float LargePad = 1.12f;
 
         private static RenderTexture _rt;
         private static RawImage _layer;
@@ -134,28 +154,38 @@ namespace TheGreatestMap
             return new Rect(r.center.x - w * 0.5f, r.center.y - h * 0.5f, w, h);
         }
 
-        /// <summary>Where one rect sits inside another, as the fractions an image wants.</summary>
+        /// <summary>
+        /// Where one rect sits inside another, as the fractions an image wants.
+        ///
+        /// <para>Kept inside the buffer. A drag faster than the redraw can follow would
+        /// otherwise ask for texels past the edge, and the buffer clamps rather than ending, so
+        /// whatever happened to be on that last row would be smeared off across the map in
+        /// streaks. Holding at the edge instead costs a moment of the drawing lagging again --
+        /// bounded by the margin, and only while the drag is outrunning the throttle -- which
+        /// is the smaller of the two wrongs by a long way.</para>
+        /// </summary>
         private static Rect Within(Rect seen, Rect window)
         {
             if (window.width <= 0.0000001f || window.height <= 0.0000001f)
                 return new Rect(0f, 0f, 1f, 1f);
-            return new Rect((seen.x - window.x) / window.width,
-                            (seen.y - window.y) / window.height,
-                            seen.width / window.width,
-                            seen.height / window.height);
+            float w = seen.width / window.width;
+            float h = seen.height / window.height;
+            return new Rect(Mathf.Clamp((seen.x - window.x) / window.width, 0f, Mathf.Max(0f, 1f - w)),
+                            Mathf.Clamp((seen.y - window.y) / window.height, 0f, Mathf.Max(0f, 1f - h)),
+                            w, h);
         }
 
         /// <summary>
-        /// Whether what the minimap shows is still comfortably inside what was drawn, at the
-        /// zoom it was drawn for. A changed zoom fails the last test and redraws.
+        /// Whether what the map shows is still inside what was drawn, at the zoom it was drawn
+        /// for. A changed zoom fails the last test and redraws.
         /// </summary>
-        private static bool Holds(Rect window, Rect seen)
+        private static bool Holds(Rect window, Rect seen, float pad, float slack)
         {
-            return seen.xMin >= window.xMin + window.width * SmallSlack
-                   && seen.xMax <= window.xMax - window.width * SmallSlack
-                   && seen.yMin >= window.yMin + window.height * SmallSlack
-                   && seen.yMax <= window.yMax - window.height * SmallSlack
-                   && Mathf.Abs(seen.width * SmallPad - window.width) < window.width * 0.05f;
+            return seen.xMin >= window.xMin + window.width * slack
+                   && seen.xMax <= window.xMax - window.width * slack
+                   && seen.yMin >= window.yMin + window.height * slack
+                   && seen.yMax <= window.yMax - window.height * slack
+                   && Mathf.Abs(seen.width * pad - window.width) < window.width * 0.05f;
         }
 
         /// <summary>
@@ -196,21 +226,22 @@ namespace TheGreatestMap
                     if (_small != null) _small.enabled = false;
                     _layer.enabled = true;
 
-                    // The large map is drawn for exactly what it shows, so the image takes the
-                    // whole buffer and the window is the view.
-                    _layer.uvRect = new Rect(0f, 0f, 1f, 1f);
+                    // Drawn to a window a little wider than the map shows and panned across it,
+                    // so that dragging moves the drawing in the same frame as the map rather
+                    // than at the next redraw. Below the slack there is no margin to spare: the
+                    // padding is thin, and the view leaving the drawn window at all is the
+                    // moment a redraw is worth its cost.
                     var view = map.m_mapImageLarge.uvRect;
-                    bool slid = Mathf.Abs(view.x - _drawnFor.x) > Moved * Mathf.Max(view.width, 0.0001f)
-                                || Mathf.Abs(view.y - _drawnFor.y) > Moved * Mathf.Max(view.height, 0.0001f)
-                                || !Mathf.Approximately(view.width, _drawnFor.width)
-                                || !Mathf.Approximately(view.height, _drawnFor.height);
-                    if (!slid && signature == _drawnSignature) return;
-                    if (Time.unscaledTime < _nextDraw) return;
-
-                    _nextDraw = Time.unscaledTime + EverySeconds;
-                    _drawnFor = view;
-                    _drawnSignature = signature;
-                    Draw(map, cells, view);
+                    bool steady = Holds(_drawnFor, view, LargePad, 0f) && signature == _drawnSignature;
+                    if (!steady && Time.unscaledTime >= _nextDraw)
+                    {
+                        _nextDraw = Time.unscaledTime + EverySeconds;
+                        _drawnFor = Pad(view, LargePad);
+                        _drawnSignature = signature;
+                        Draw(map, cells, _drawnFor);
+                    }
+                    // Set every frame and free; the drawing underneath it is what is throttled.
+                    _layer.uvRect = Within(view, _drawnFor);
                     return;
                 }
 
@@ -221,7 +252,7 @@ namespace TheGreatestMap
                 // takes whatever part of the buffer is currently under the minimap. This is set
                 // every frame and costs nothing; the drawing underneath it is what is rare.
                 var seen = map.m_mapImageSmall.uvRect;
-                bool held = Holds(_drawnFor, seen) && signature == _drawnSignature;
+                bool held = Holds(_drawnFor, seen, SmallPad, SmallSlack) && signature == _drawnSignature;
                 if (!held && Time.unscaledTime >= _nextDraw)
                 {
                     _nextDraw = Time.unscaledTime + EverySeconds;

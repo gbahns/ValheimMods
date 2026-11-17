@@ -394,15 +394,31 @@ namespace TheGreatestMap
             string colors = ColorSignature();
             if (colors != _lastColors) { _lastColors = colors; _dirty = true; }
 
-            // The sharp layer is asked every frame and answers in one comparison unless the
-            // large map is open; it is not gated on _dirty because it also has to follow the
-            // view, which moves without anything about the picture changing.
-            MapHighRes.Update(map, _cells, Signature(colors));
-
             if (!_dirty || Time.unscaledTime < _nextApply) return;
             _dirty = false;
             _nextApply = Time.unscaledTime + Settle;
             Paint(map, tex);
+        }
+
+        /// <summary>
+        /// Aim the sharp layer at where the map is now.
+        ///
+        /// <para>Asked every frame, and it answers in one comparison unless a map is open. It is
+        /// not gated on anything having changed, because it also has to follow the view, which
+        /// moves without the picture changing at all.</para>
+        ///
+        /// <para>This runs from LateUpdate and not from the sweep above it, because the game
+        /// sets the map image's uv rect from Minimap.Update and the order of two components'
+        /// Update is whatever Unity settled on. Read from our own Update it was last frame's
+        /// view as often as not, and the layer trailed the map by a frame on top of everything
+        /// else. The colors come from what the sweep worked out earlier in the same frame
+        /// rather than being built again here.</para>
+        /// </summary>
+        internal static void FollowView()
+        {
+            var map = Minimap.instance;
+            if (map == null) return;
+            MapHighRes.Update(map, _cells, Signature(_lastColors));
         }
 
         /// <summary>Is what we last wrote still there?</summary>

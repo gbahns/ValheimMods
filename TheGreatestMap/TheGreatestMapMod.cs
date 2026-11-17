@@ -238,6 +238,9 @@ namespace TheGreatestMap
         {
             if (!ModEnabled.Value) return;
             MinimapClip.Update();
+            // After Minimap.Update has moved the map, so the sharp layer is aimed at where the
+            // map is this frame rather than where it was last one.
+            MapPaint.FollowView();
         }
 
         private void OnDestroy()

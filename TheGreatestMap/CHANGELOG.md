@@ -1,12 +1,29 @@
 # Changelog
 
-## 4.11.0 — unreleased
+## 4.11.0 — 2026-11-16
 
 **Everyone has to update together: a cell is recorded differently, so an old client and a new
 server draw each other's maps wrong.**
 
 - Paint Detail Meters can go down to 0.5, and says so in the log instead of silently ignoring a
   smaller number.
+- The player-building drawing keeps up with the map instead of trailing it by a tenth of a
+  second when you drag.
+- Ground you leveled is drawn as dirt instead of left green. Only ground that actually went
+  somewhere -- up into a wall, down into a pit -- is held back by Paint Raised Ground and Paint
+  Dug Ground now, and a hole judges the ground it is in rather than everything within five
+  meters of it.
+- Shaped ground inside a base is drawn whatever Paint Raised Ground and Paint Dug Ground say:
+  a yard leveled into a slope has real fill in it, and what is built around it is a better
+  question than how far the ground moved. The same shaping out on a hillside is still left out.
+- Fainter paint counts. The map used to need the ground half painted before it would draw it,
+  which cut a meter or two off the edge of every worked patch.
+- Dirt is drawn in the color of the dirt in the game, measured off it rather than picked. Your
+  own Dirt Path Color is kept if you set one.
+- Beehives, smelters, chests and other fixtures color the ground they stand on when no building
+  does, so a yard full of hives is on the map.
+- New command: tgm_ground, which says what the world's terrain record holds under your feet and
+  why the map drew it that way.
 
 - EXPERIMENTAL. Player buildings are drawn with a hard outline instead of as a block of color:
   the grid's steps are straightened into walls, so a hall looks drawn rather than pixelated. New:
