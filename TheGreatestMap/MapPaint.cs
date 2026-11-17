@@ -428,7 +428,8 @@ namespace TheGreatestMap
 
         private static string ColorSignature()
         {
-            return (Wanted() ? "1" : "0") + "|" + SpreadPixels() + "|" + (OverWater() ? "1" : "0")
+            return (Wanted() ? "1" : "0") + "|" + (Coarse() ? "1" : "0")
+                   + "|" + SpreadPixels() + "|" + (OverWater() ? "1" : "0")
                    + "|" + (Outlined() ? "1" : "0") + "|"
                    + Show(BuiltKind.Wood) + Show(BuiltKind.Stone)
                    + Show(BuiltKind.Iron) + Show(BuiltKind.Marble) + Show(BuiltKind.Paved)
@@ -563,11 +564,31 @@ namespace TheGreatestMap
         internal static bool Wanted() =>
             On() && (TgmConfig.ShowMapPaint == null || TgmConfig.ShowMapPaint.Value);
 
-        /// <summary>Are the edges drawn as lines, or is the fill left to speak for itself?</summary>
         /// <summary>Whether the minimap gets the sharp layer as well as the large map.</summary>
         internal static bool SharpMinimap() =>
             TgmConfig.PaintSharpMinimap == null || TgmConfig.PaintSharpMinimap.Value;
 
+        /// <summary>
+        /// Whether the game's own map texture is painted as well as the sharp layer.
+        ///
+        /// <para>It was the only painting there was, and now it is the blurred copy underneath
+        /// the real one: twelve meters to a pixel, smoothed by the shader that samples it, so
+        /// it shows as a soft halo a few meters wide around everything the sharp layer draws
+        /// crisply. The texture holds the biome colors too, so it cannot simply be told not to
+        /// smooth.</para>
+        ///
+        /// <para>Nothing asks it to be there when both maps are drawn sharp -- the large map
+        /// shader and the small map shader are the only two things in the game that read it.
+        /// Two things here still can: the pocket map, which is a held object showing the whole
+        /// world at once and so cannot use a window, and the sharp layer itself having given
+        /// up, in which case this is the fallback it falls back to.</para>
+        /// </summary>
+        internal static bool Coarse() =>
+            (TgmConfig.ShowMapInHands != null && TgmConfig.ShowMapInHands.Value)
+            || !MapHighRes.Covering
+            || !SharpMinimap();
+
+        /// <summary>Are the edges drawn as lines, or is the fill left to speak for itself?</summary>
         internal static bool Outlined() =>
             TgmConfig.PaintOutlines == null || TgmConfig.PaintOutlines.Value;
 
@@ -659,8 +680,10 @@ namespace TheGreatestMap
                 // The rule was always wrong, but it only started showing when the grid got finer
                 // than the thing drawing it.
                 var tally = new Dictionary<int, Tally>();
+                bool coarse = Coarse();
                 foreach (var kv in _cells)
                 {
+                    if (!coarse) break;
                     if (!Wants(kv.Value)) continue;
                     foreach (int pixel in PixelsOf(kv.Key, size, pixelSize))
                     {
@@ -866,7 +889,13 @@ namespace TheGreatestMap
             lines.Add($"cells from the server: {_cells.Count} (wood {counted.Wood}, stone {counted.Stone}, " +
                       $"iron {counted.Iron}, marble {counted.Marble}, paved {counted.Paved}, " +
                       $"dirt {counted.Dirt}, farm {counted.Farm})");
-            lines.Add($"map pixels painted: {_under.Count}, spread {SpreadPixels()} pixel(s) around each" +
+            lines.Add((Coarse()
+                          ? "the game's own 12 m map texture is painted too, for " +
+                            (!MapHighRes.Covering ? "the sharp layer having given up"
+                             : !SharpMinimap() ? "the minimap, which is not drawn sharp"
+                             : "the pocket map") + "; "
+                          : "the game's own 12 m map texture is left alone, so there is no blur under the sharp layer; ") +
+                      $"map pixels painted: {_under.Count}, spread {SpreadPixels()} pixel(s) around each" +
                       (_lastPaintPixels > 0 ? $"; last repaint {_lastPaintPixels} pixel(s) in {_lastPaintMs} ms" : ""));
             FindFields();
             lines.Add("forest cleared under the paint: " +

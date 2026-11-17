@@ -20,6 +20,8 @@ server draw each other's maps wrong.**
 - Ground you dug, leveled or raised is no longer drawn as though it were a road: only the hoe's
   path and paved road are. New: Paint Shaped Ground, Shaped Ground Least Meters.
 - EXPERIMENTAL. The minimap is drawn sharp too, not just the large map. New: Sharp Minimap.
+- The soft halo around painted buildings is gone: the game's own map texture is no longer painted
+  underneath the sharp layer, unless something still needs it.
 - Changing Paint Detail Meters takes effect at once instead of at the next sweep.
 
 ## 4.10.0 — 2026-11-16

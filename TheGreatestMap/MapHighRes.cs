@@ -77,6 +77,12 @@ namespace TheGreatestMap
         private static float _nextDraw;
         private static bool _failed;
 
+        /// <summary>
+        /// Whether the sharp layer is drawing at all. Asked by the twelve meter painting, which
+        /// is the fallback: if this has given up, that is all there is.
+        /// </summary>
+        internal static bool Covering => !_failed;
+
         private static readonly FieldInfoCache Explored = new FieldInfoCache("m_explored");
         private static readonly FieldInfoCache ExploredOthers = new FieldInfoCache("m_exploredOthers");
 
