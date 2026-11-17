@@ -29,7 +29,6 @@ namespace DudeWhatAreMyStats
         internal static ConfigEntry<string> PanelSize;
         internal static ConfigEntry<string> PanelPosition;
         internal static ConfigEntry<int> ListScrollRows;
-        internal static ConfigEntry<int> TopCreatureCount;
 
         // ── the always-on player list ───────────────────────────────────────────────
         internal static ConfigEntry<bool> ShowPlayerList;
@@ -130,9 +129,6 @@ namespace DudeWhatAreMyStats
                 "title. Set to 0,0 to put it back in the middle.");
             ListScrollRows = mod.BindLocalRangeInt("Display", "List Scroll Rows", 4, 1, 20,
                 "How many rows a list moves per notch of the mouse wheel.");
-            TopCreatureCount = mod.BindLocalRangeInt("Display", "Top Creature Count", 15, 0, 100,
-                "How many creatures to list in the Details tab's Creatures killed section, most killed first. 0 hides it.");
-
             ShowPlayerList = mod.BindLocal("Player List", "Show Player List", false,
                 "Keep a small list of players and how many times each has died on screen all the time, most deaths " +
                 "first. It stays up over the map and the inventory, and steps aside only when the game hides its own " +

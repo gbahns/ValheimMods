@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.14.0 — 2026-11-16
+
+- **Every creature you have killed is listed, not the top fifteen.** Asked for. *Top Creature
+  Count* is gone: changing its default would have reached nobody, since BepInEx had already written
+  15 into every config file. Fold the section away by its header if the full list is too long.
+- A player who is offline still shows the server's top 20, because the server's whole store travels
+  in one message, and the list now says so rather than looking short.
+
 ## 0.13.0
 
 - **Who did what in a fight.** When a boss dies -- or anything that lasted 15 seconds and had 200

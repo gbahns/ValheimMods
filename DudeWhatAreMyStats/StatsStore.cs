@@ -139,6 +139,12 @@ namespace DudeWhatAreMyStats
             // storing one would add a fresh row per login and collapse to a single shared row on
             // reload. Valheim always assigns a profile id, so this should never actually fire.
             if (snap.ProfileId == 0L) return;
+            // The creature table is the one part of a snapshot that grows without limit, and the
+            // whole store goes to a client in a single routed RPC. A live snapshot carries every
+            // species; the kept copy carries the top few, so the bulk message stays where it has
+            // always been however many characters the store holds.
+            if (snap.Creatures.Count > StoredCreatures)
+                snap.Creatures.RemoveRange(StoredCreatures, snap.Creatures.Count - StoredCreatures);
             snap.LastSeenUtc = Snapshot.NowUtc();
             snap.FromStore = true;
             snap.Online = false;
@@ -170,6 +176,14 @@ namespace DudeWhatAreMyStats
             list.Sort((a, b) => b.LastSeenUtc.CompareTo(a.LastSeenUtc));
             return list;
         }
+
+        /// <summary>
+        /// How many species to keep per character. Measured rather than guessed: a stored snapshot
+        /// is about 1,620 bytes with fifteen of them, and a species row costs roughly twenty-three,
+        /// so even a full store of 200 characters stays near a third of a megabyte -- and a send
+        /// over the limit is refused permanently and stalls that peer's whole queue.
+        /// </summary>
+        internal const int StoredCreatures = 20;
 
         /// <summary>Drops the least recently seen characters once the store is over its limit.</summary>
         private static void Cap()

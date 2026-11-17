@@ -180,6 +180,13 @@ Gathering, Creatures, Forsaken powers, Other, and Creatures killed. Times read a
 distances as `4.2 km`, everything else as a count. Stats still at zero are hidden unless you turn
 on *Show Zero Stats*.
 
+*Creatures killed* lists **every** species that character has killed, most killed first -- sixty to
+ninety rows for a character who has been at it a while. Fold the section away by clicking its
+header if that is more than you want; the panel remembers. The one exception is a player who is
+offline: they are shown from the server's record of them, and the server keeps only each
+character's top 20 species, because its whole store travels to you in a single message. The list
+says so when that is what you are looking at.
+
 Left and Right arrows step through the players. Tab switches between the two views.
 
 ## The player list
@@ -296,7 +303,7 @@ the keep window runs out.
 
 `BepInEx/config/DeathMonger.DudeWhatAreMyStats.cfg`, or press F1 in game if you have a
 configuration manager. Notable settings: the open key, *Pause While Open*, *Ask Other Players*,
-*Refresh Seconds*, *Show Offline Players*, *Push Minutes*, *Show Zero Stats*, *Top Creature Count*
+*Refresh Seconds*, *Show Offline Players*, *Push Minutes*, *Show Zero Stats*
 and *Fix Treasure Discovery Count*, the `[Kills]` section for the kill breakdown and
 *Show Tame And Critter Columns*, the `[Fights]` section for the damage reports, the `[Deaths]`
 section for the death record, the `[Player List]`

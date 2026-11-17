@@ -71,11 +71,14 @@ namespace DudeWhatAreMyStats
                 // m_enemyStats is indexed by KillModifiers; slot 0 is the total across all of them.
                 if (raw.m_enemyStats != null && raw.m_enemyStats.Length > 0 && raw.m_enemyStats[0] != null)
                 {
+                    // Every species, not a top fifteen. A mature character has killed sixty to
+                    // ninety of them and a row costs about twenty-three bytes, so a whole table is
+                    // a couple of kilobytes -- nothing for a message carrying one character. The
+                    // server's stored copy is trimmed instead, in StatsStore.Put, because the whole
+                    // store travels to a client in one message and that one has a hard ceiling.
                     foreach (var kv in raw.m_enemyStats[0])
                         if (kv.Value > 0f) snap.Creatures.Add(kv);
                     snap.Creatures.Sort((a, b) => b.Value.CompareTo(a.Value));
-                    int keep = DwamsConfig.TopCreatureCount != null ? DwamsConfig.TopCreatureCount.Value : 15;
-                    if (keep >= 0 && snap.Creatures.Count > keep) snap.Creatures.RemoveRange(keep, snap.Creatures.Count - keep);
                 }
             }
 

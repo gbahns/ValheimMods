@@ -412,12 +412,18 @@ namespace DudeWhatAreMyStats
                 });
             }
 
-            int topCreatures = DwamsConfig.TopCreatureCount != null ? DwamsConfig.TopCreatureCount.Value : 15;
-            if (topCreatures > 0 && snap.Creatures.Count > 0)
+            if (snap.Creatures.Count > 0)
                 Section("Creatures killed", () =>
                 {
                     foreach (var kv in snap.Creatures)
                         UiKit.Row(_listContent, CreatureName(kv.Key), StatGroups.Count(kv.Value), null, null);
+                    // Anyone offline is shown from the server's record of them, and the server keeps
+                    // a short list on purpose: its whole store travels in one message. Saying so
+                    // beats a list that looks like the player simply killed less.
+                    if (!snap.IsLocal && !snap.Online && snap.Creatures.Count >= StatsStore.StoredCreatures)
+                        UiKit.Row(_listContent,
+                                  "Offline, so the server's top " + StatsStore.StoredCreatures + " only", "",
+                                  null, null, labelColor: UiKit.Dim);
                 });
 
             if (snap.KillTypes != null)
