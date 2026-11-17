@@ -65,6 +65,49 @@ namespace TheGreatestMap
         /// </summary>
         private const float Nudge = 0.0001f;
 
+        /// <summary>
+        /// How far from a worked point its paint is still that point's doing, in grid steps,
+        /// which are a meter.
+        ///
+        /// <para>A terrain op paints a wider circle than it moves. Swing at the ground beside a
+        /// tin vein and the dirt reaches a couple of meters while the height only changes where
+        /// the blow landed, so the rim of every scrape carries paint and no modified flag -- and
+        /// a test that asked each point about itself called that rim somebody's path and drew
+        /// the outline of every hole anybody had ever dug.</para>
+        ///
+        /// <para>Two meters covers the ops that do this. The cost is that a hoed path running
+        /// within two meters of an earthwork is read as part of it, which is a trade worth
+        /// making: that path has an earthwork next to it either way.</para>
+        /// </summary>
+        private const int Reach = 2;
+
+        /// <summary>
+        /// The most the ground moved anywhere near this point, and whether it moved at all.
+        /// Looking around rather than underfoot is the whole of the difference between a path
+        /// and the rim of a hole.
+        /// </summary>
+        private static float Near(bool[] worked, float[] moved, int i, int pitch, out bool any)
+        {
+            int x = i % pitch, y = i / pitch;
+            float most = 0f;
+            any = false;
+            for (int dy = -Reach; dy <= Reach; dy++)
+            {
+                int ny = y + dy;
+                if (ny < 0 || ny >= pitch) continue;
+                for (int dx = -Reach; dx <= Reach; dx++)
+                {
+                    int nx = x + dx;
+                    if (nx < 0 || nx >= pitch) continue;
+                    int at = ny * pitch + nx;
+                    if (!worked[at]) continue;
+                    any = true;
+                    if (moved[at] > most) most = moved[at];
+                }
+            }
+            return most;
+        }
+
         private static int _parsed;
         private static int _skipped;
         private static int _failed;
@@ -297,18 +340,15 @@ namespace TheGreatestMap
                     if (kind == BuiltKind.None) continue;
                     // Paving and farmland are only ever laid on purpose, so they are never asked
                     // this. Dirt is the one paint the game puts down on its own behalf.
-                    if (kind == BuiltKind.Dirt && worked != null && worked[i])
+                    if (kind == BuiltKind.Dirt && worked != null)
                     {
-                        if (!shaped || moved[i] < least)
+                        float near = Near(worked, moved, i, pitch, out bool any);
+                        if (any)
                         {
-                            _shapedHere++;
-                            continue;
+                            if (!shaped || near < least) { _shapedHere++; continue; }
+                            _keptHere++;
                         }
-                        _keptHere++;
-                    }
-                    else if (kind == BuiltKind.Dirt)
-                    {
-                        _walkedHere++;
+                        else _walkedHere++;
                     }
                     int x = i % pitch, y = i / pitch;
                     var at = new Vector3(origin.x + (x - half) * scale, origin.y,
