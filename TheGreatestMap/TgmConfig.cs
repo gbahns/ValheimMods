@@ -1540,7 +1540,8 @@ namespace TheGreatestMap
                 "large one message may be. Past that ceiling the server drops farmland, then dirt paths, and says " +
                 "so in its log. Raise this if your world is large enough to hit it. One meter is the size of the " +
                 "smallest floor piece, and the map is drawn from the shape of each piece rather than from a point " +
-                "in it, so going finer than this sharpens where a wall sits rather than what is there.");
+                "in it, so going finer than that sharpens where a wall sits rather than what is there. Half a " +
+                "meter is as fine as it goes, and costs four times as many cells as one.");
             BuildSweepSeconds = mod.BindSynced(Painting, "Build Sweep Seconds", 120f,
                 "Server only. How often the server walks the world for player-built pieces. This is the heaviest " +
                 "sweep the mod does -- four hundred prefabs across every sector -- and a base does not move, so it is " +

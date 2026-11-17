@@ -2,6 +2,12 @@
 
 ## 4.11.0 — unreleased
 
+**Everyone has to update together: a cell is recorded differently, so an old client and a new
+server draw each other's maps wrong.**
+
+- Paint Detail Meters can go down to 0.5, and says so in the log instead of silently ignoring a
+  smaller number.
+
 - EXPERIMENTAL. Player buildings are drawn with a hard outline instead of as a block of color:
   the grid's steps are straightened into walls, so a hall looks drawn rather than pixelated. New:
   Draw Outlines.

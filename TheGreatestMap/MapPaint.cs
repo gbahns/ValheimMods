@@ -121,11 +121,9 @@ namespace TheGreatestMap
         internal static float CellSize { get; private set; } = DefaultCellSize;
 
         /// <summary>
-        /// A meter, which is both the smallest floor piece and the smallest the cell key can
-        /// hold. Two sixteen bit axes biased by 16384 reach about sixteen kilometers either way
-        /// at a meter a cell, against a world that stops at ten and a half; at half a meter the
-        /// far corners of the world would wrap into the near ones, so going finer than this
-        /// means widening the key first. UseCellSize clamps to it.
+        /// A meter, which is the smallest floor piece. Not the smallest the key can hold --
+        /// that is CellFloor, half a meter -- because a meter is where the eye stops being able
+        /// to tell, and the cost is four times the cells for each halving.
         /// </summary>
         internal const float DefaultCellSize = 1f;
 
@@ -134,10 +132,12 @@ namespace TheGreatestMap
         /// the map before anything is drawn on the new one.
         /// </summary>
         /// <summary>
-        /// A meter is the floor the key packing can take: a cell index has sixteen bits and the
-        /// world is twenty kilometers across, which at a meter a cell is as much as fits.
+        /// Half a meter is the floor the key packing can take. A cell index is a signed sixteen
+        /// bit number, so it reaches 32768 cells either way: 16 km at half a meter against a
+        /// world that stops at 10.5, and 8 km at a quarter, which the world would run off the
+        /// end of. Going finer than this means a wider key, not a smaller number here.
         /// </summary>
-        internal const float CellFloor = 1f;
+        internal const float CellFloor = 0.5f;
 
         internal const float CellCeiling = 16f;
 
@@ -147,7 +147,17 @@ namespace TheGreatestMap
 
         internal static void UseCellSize(float meters)
         {
+            float asked = meters;
             meters = Mathf.Clamp(meters, CellFloor, CellCeiling);
+            // Asking for a size that cannot be had used to do nothing and say nothing, which
+            // reads as the setting being ignored rather than as a limit being hit.
+            if (!Mathf.Approximately(asked, meters) && !Mathf.Approximately(asked, _complained))
+            {
+                _complained = asked;
+                TheGreatestMapMod.Log.LogWarning(
+                    $"[TheGreatestMap] Paint Detail Meters is {asked:0.###}, which is outside " +
+                    $"{CellFloor:0.##} to {CellCeiling:0.#} m; recording at {meters:0.##} m instead.");
+            }
             if (Mathf.Approximately(meters, CellSize)) return;
             CellSize = meters;
             _cells.Clear();
@@ -155,19 +165,35 @@ namespace TheGreatestMap
             _dirty = true;
         }
 
-        /// <summary>Offset that keeps a cell index positive, so two of them pack into one int.</summary>
+        private static float _complained = float.NaN;
+
+        /// <summary>Offset that keeps a support square index positive, so two pack into one int.</summary>
         private const int CellBias = 16384;
 
         internal static int Key(Vector3 world)
         {
-            int cx = Mathf.FloorToInt(world.x / CellSize) + CellBias;
-            int cz = Mathf.FloorToInt(world.z / CellSize) + CellBias;
-            return (cx << 16) | (cz & 0xFFFF);
+            return Pack(Mathf.FloorToInt(world.x / CellSize), Mathf.FloorToInt(world.z / CellSize));
         }
 
         /// <summary>The key of a cell named by its own indices rather than by a point in it.</summary>
         internal static int KeyOf(int cx, int cz) =>
-            ((cx + CellBias) << 16) | ((cz + CellBias) & 0xFFFF);
+            Pack(cx, cz);
+
+        /// <summary>
+        /// Two cell indices in one int, each a plain signed sixteen bit number.
+        ///
+        /// <para>This used to add a bias to keep both positive, and the bias was the thing
+        /// holding the grid back. The high half is recovered with an arithmetic shift, so it
+        /// only survives the round trip while it reads as a positive sixteen bit number -- and
+        /// a biased index did that for only half of its range, giving the east-west axis
+        /// plus or minus 16384 cells against the north-south axis's 49151. Signed, both axes
+        /// get the full plus or minus 32768, which is what lets a cell be half a meter in a
+        /// world that stops at ten and a half kilometers.</para>
+        /// </summary>
+        private static int Pack(int cx, int cz) => (cx << 16) | (cz & 0xFFFF);
+
+        /// <summary>The low half, read back as the signed number it was written as.</summary>
+        private static int Low(int key) => (short)(key & 0xFFFF);
 
         /// <summary>
         /// The side of the squares the noise gate counts pieces in.
@@ -199,8 +225,8 @@ namespace TheGreatestMap
         internal static int Neighbor(int key, int dx, int dz)
         {
             int cx = (key >> 16) + dx;
-            int cz = (key & 0xFFFF) + dz;
-            return (cx << 16) | (cz & 0xFFFF);
+            int cz = Low(key) + dz;
+            return Pack(cx, cz);
         }
 
         /// <summary>
@@ -210,14 +236,14 @@ namespace TheGreatestMap
         /// </summary>
         internal static void Cell(int key, out int cx, out int cz)
         {
-            cx = (key >> 16) - CellBias;
-            cz = (key & 0xFFFF) - CellBias;
+            cx = key >> 16;
+            cz = Low(key);
         }
 
         internal static Vector3 Center(int key)
         {
-            int cx = (key >> 16) - CellBias;
-            int cz = (key & 0xFFFF) - CellBias;
+            int cx = key >> 16;
+            int cz = Low(key);
             return new Vector3((cx + 0.5f) * CellSize, 0f, (cz + 0.5f) * CellSize);
         }
 
