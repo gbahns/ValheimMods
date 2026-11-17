@@ -610,12 +610,12 @@ namespace TheGreatestMap
         {
             switch (kind)
             {
-                case BuiltKind.Wood:  return Cfg(TgmConfig.WoodColor, new Color(0.44f, 0.31f, 0.18f));
+                case BuiltKind.Wood:  return Cfg(TgmConfig.WoodColor, new Color(0.541f, 0.333f, 0.141f));
                 case BuiltKind.Stone: return Cfg(TgmConfig.StoneColor, new Color(0.50f, 0.50f, 0.52f));
                 case BuiltKind.Iron:  return Cfg(TgmConfig.IronColor, new Color(0.33f, 0.35f, 0.40f));
                 case BuiltKind.Marble: return Cfg(TgmConfig.MarbleColor, new Color(0.07f, 0.07f, 0.09f));
                 case BuiltKind.Dirt:  return Cfg(TgmConfig.DirtColor, new Color(0.47f, 0.38f, 0.26f));
-                case BuiltKind.Farm:  return Cfg(TgmConfig.FarmColor, new Color(0.38f, 0.33f, 0.19f));
+                case BuiltKind.Farm:  return Cfg(TgmConfig.FarmColor, new Color(0.290f, 0.208f, 0.125f));
                 default:              return Cfg(TgmConfig.PavedColor, new Color(0.62f, 0.60f, 0.55f));
             }
         }

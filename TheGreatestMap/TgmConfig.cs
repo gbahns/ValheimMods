@@ -1586,11 +1586,19 @@ namespace TheGreatestMap
                 "as the game drew it. It is drawn at the map's own resolution of about twelve meters to a pixel, " +
                 "so a path comes out wider and softer than it is; sharpening that is the part still being worked " +
                 "on.");
-            WoodColor = mod.Retune(mod.BindMoved(Painting, Palette, "Wood Color", Colors.FromHex("#C49A6C"),
+            // Dark again, and this is the third value rather than a return to the first. The
+            // original #704F2E was abandoned for reading as swamp, and that is a warning about
+            // muted browns rather than about dark ones: the map's terrain is all low saturation,
+            // so a color is mistaken for ground when it is washed out, not when it is deep. This
+            // one is darker than the tan it replaces and far more saturated than anything the
+            // terrain is painted in. Two retunes because there are two old defaults to carry.
+            WoodColor = mod.Retune(mod.Retune(
+                mod.BindMoved(Painting, Palette, "Wood Color", Colors.FromHex("#8A5524"),
                 "The color wooden building is drawn in. " +
-                "Hardwood and the rest of the timbers count as wood. The light warm brown of the game's own wood " +
-                "pieces: the darker brown this used to be was close enough to the map's swamp color to be mistaken " +
-                "for it."), Colors.FromHex("#704F2E"), Colors.FromHex("#C49A6C"));
+                "Hardwood and the rest of the timbers count as wood. A deep saturated brown: it reads as something " +
+                "somebody built rather than as ground, which a paler or greyer brown does not."),
+                Colors.FromHex("#704F2E"), Colors.FromHex("#8A5524")),
+                Colors.FromHex("#C49A6C"), Colors.FromHex("#8A5524"));
             StoneColor = mod.BindMoved(Painting, Palette, "Stone Color", Colors.FromHex("#808085"),
                 "The color stone building is drawn in. Marble, ashstone and ancient stone count as stone.");
             IronColor = mod.BindMoved(Painting, Palette, "Iron Color", Colors.FromHex("#555A66"),
@@ -1605,9 +1613,10 @@ namespace TheGreatestMap
                 "the building it belongs to.");
             DirtColor = mod.BindMoved(Painting, Palette, "Dirt Path Color", Colors.FromHex("#78603F"),
                 "The color hoed dirt path is drawn in. Paving wins where a path runs into a road.");
-            FarmColor = mod.BindMoved(Painting, Palette, "Farmland Color", Colors.FromHex("#615430"),
-                "The color cultivated ground is drawn in. Both paving and dirt path win over it, so a track across a " +
-                "field reads as a track.");
+            FarmColor = mod.Retune(mod.BindMoved(Painting, Palette, "Farmland Color", Colors.FromHex("#4A3520"),
+                "The color cultivated ground is drawn in. A dark brown, the color of turned earth. Both paving and " +
+                "dirt path win over it, so a track across a field reads as a track."),
+                Colors.FromHex("#615430"), Colors.FromHex("#4A3520"));
             PaintSpread = mod.BindRetuned(Painting, "Paint Spread", 1, 0,
                 "How many map pixels around each painted one are painted too. A map pixel is about ten meters, which " +
                 "is already wider than most of what is drawn on it, so each step up this multiplies what you see: 1 " +

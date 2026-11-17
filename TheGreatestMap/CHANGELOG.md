@@ -22,6 +22,8 @@ server draw each other's maps wrong.**
   earth wall can be drawn without every mining scrape coming with it. New: Paint Raised Ground,
   Paint Dug Ground, Shaped Ground Least Meters.
 - EXPERIMENTAL. The minimap is drawn sharp too, not just the large map. New: Sharp Minimap.
+- Wooden building is a deeper brown and cultivated ground a darker one. Yours change with them
+  unless you picked your own.
 - Painted colors match the ones you picked. The sharp layer drew them lighter and flatter
   than the config showed.
 - Ground is drawn as a surface rather than a half-empty lattice below a meter a cell.
