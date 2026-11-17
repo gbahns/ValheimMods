@@ -49,6 +49,10 @@ namespace TheGreatestMap
             public Dictionary<int, BuiltKind> Cells;
             /// <summary>Dirt points left out because the ground there was worked, not walked.</summary>
             public int Shaped;
+            /// <summary>Dirt points on worked ground that moved far enough to draw anyway.</summary>
+            public int Kept;
+            /// <summary>Dirt points the ground was never moved under: somebody's path.</summary>
+            public int Walked;
         }
 
         private static readonly Dictionary<ZDOID, Record> _records = new Dictionary<ZDOID, Record>();
@@ -66,8 +70,16 @@ namespace TheGreatestMap
         private static bool _readShaped;
         private static float _readLeast = -1f;
 
-        /// <summary>What the parse just now left out, handed to the record it belongs to.</summary>
+        /// <summary>
+        /// What the parse just now counted, handed to the record it belongs to. Three numbers
+        /// because two of them would not say which way a wrong answer was wrong: dirt the
+        /// ground was never moved under is the only kind that reads as somebody's path, and if
+        /// that number is implausibly large then the test is letting earthworks through rather
+        /// than the world really being full of trails.
+        /// </summary>
         private static int _shapedHere;
+        private static int _keptHere;
+        private static int _walkedHere;
 
         /// <summary>
         /// Whether ground somebody dug, leveled or raised is drawn at all, as against ground
@@ -129,6 +141,8 @@ namespace TheGreatestMap
                 Revision = zdo.DataRevision,
                 Cells = cells,
                 Shaped = _shapedHere,
+                Kept = _keptHere,
+                Walked = _walkedHere,
             };
             _parsed++;
             return true;
@@ -229,18 +243,27 @@ namespace TheGreatestMap
                 // the ground as well. So a dirt point whose ground never moved is somebody
                 // deciding where to walk, and one whose ground did move is the scar of the work.
                 int heights = pkg.ReadInt();
+                // Two separate facts, and reading them as one let the fringe through. The record
+                // stores a flag per point and only then the deltas, so a point can be flagged as
+                // worked with both deltas at zero -- which is what the rim of a leveling or
+                // smoothing op looks like, considered and not actually moved. Those points still
+                // take dirt paint, so judging by the delta alone called every one of them a path
+                // and drew a thin wandering line around everything anybody had dug.
+                bool[] worked = heights > 0 ? new bool[heights] : null;
                 float[] moved = heights > 0 ? new float[heights] : null;
                 for (int i = 0; i < heights; i++)
                     if (pkg.ReadBool())
                     {
                         float level = pkg.ReadSingle(), smooth = pkg.ReadSingle();
+                        worked[i] = true;
                         // Negative for a pit and positive for a wall, and both are shaping.
                         moved[i] = Mathf.Abs(level) + Mathf.Abs(smooth);
                     }
 
                 int painted = pkg.ReadInt();
                 // Same grid, point for point -- but only believe that if the counts agree.
-                if (heights != painted) moved = null;
+                // TerrainComp sizes every one of these (width + 1) squared, so they do.
+                if (heights != painted) { worked = null; moved = null; }
                 if (painted <= 0) return new Dictionary<int, BuiltKind>();
 
                 // The grid is square and one point wider than the zone, so its side comes out of
@@ -257,6 +280,8 @@ namespace TheGreatestMap
                 bool shaped = Shaped();
                 float least = ShapedLeast();
                 _shapedHere = 0;
+                _keptHere = 0;
+                _walkedHere = 0;
                 for (int i = 0; i < painted; i++)
                 {
                     if (!pkg.ReadBool()) continue;
@@ -266,11 +291,18 @@ namespace TheGreatestMap
                     if (kind == BuiltKind.None) continue;
                     // Paving and farmland are only ever laid on purpose, so they are never asked
                     // this. Dirt is the one paint the game puts down on its own behalf.
-                    if (kind == BuiltKind.Dirt && moved != null && moved[i] > 0f
-                        && (!shaped || moved[i] < least))
+                    if (kind == BuiltKind.Dirt && worked != null && worked[i])
                     {
-                        _shapedHere++;
-                        continue;
+                        if (!shaped || moved[i] < least)
+                        {
+                            _shapedHere++;
+                            continue;
+                        }
+                        _keptHere++;
+                    }
+                    else if (kind == BuiltKind.Dirt)
+                    {
+                        _walkedHere++;
                     }
                     int x = i % pitch, y = i / pitch;
                     var at = new Vector3(origin.x + (x - half) * scale, origin.y,
@@ -324,11 +356,13 @@ namespace TheGreatestMap
         internal static List<string> Describe()
         {
             var lines = new List<string>();
-            int cells = 0, shaped = 0;
+            int cells = 0, shaped = 0, kept = 0, walked = 0;
             foreach (var record in _records.Values)
             {
                 cells += record.Cells.Count;
                 shaped += record.Shaped;
+                kept += record.Kept;
+                walked += record.Walked;
             }
             lines.Add($"ground: {_records.Count} terrain record(s) known, {cells} painted cell(s); " +
                       $"last pass parsed {_parsed} and skipped {_skipped} unchanged" +
@@ -338,7 +372,7 @@ namespace TheGreatestMap
                       ", farmland " + OnOff(TgmConfig.PaintFarmland) +
                       ", shaped ground " + OnOff(TgmConfig.PaintShapedGround) +
                       (Shaped() ? $" over {ShapedLeast():0.##} m" : "") +
-                      $"; {shaped} dirt point(s) left out as worked rather than walked");
+                      $"; dirt points: {walked} walked, {shaped} left out as worked, {kept} worked but kept");
             return lines;
         }
 
