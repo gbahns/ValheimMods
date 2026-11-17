@@ -82,15 +82,23 @@ namespace TheGreatestMap
         private const int Reach = 2;
 
         /// <summary>
-        /// The most the ground moved anywhere near this point, and whether it moved at all.
-        /// Looking around rather than underfoot is the whole of the difference between a path
-        /// and the rim of a hole.
+        /// How far the ground rose and how far it fell anywhere near this point, and whether it
+        /// was touched at all. Looking around rather than underfoot is the difference between a
+        /// path and the rim of a hole; keeping the two directions apart is the difference
+        /// between an earth wall and a mining scrape.
+        ///
+        /// <para>Both are reported rather than whichever is larger, because levelling a slope
+        /// does both at once -- it fills the low side and cuts the high one -- so a patch can
+        /// honestly be a rise and a dig together, and which of those the player cares about is
+        /// theirs to say.</para>
         /// </summary>
-        private static float Near(bool[] worked, float[] moved, int i, int pitch, out bool any)
+        private static void Near(bool[] worked, float[] moved, int i, int pitch,
+                                 out bool any, out float up, out float down)
         {
             int x = i % pitch, y = i / pitch;
-            float most = 0f;
             any = false;
+            up = 0f;
+            down = 0f;
             for (int dy = -Reach; dy <= Reach; dy++)
             {
                 int ny = y + dy;
@@ -102,10 +110,11 @@ namespace TheGreatestMap
                     int at = ny * pitch + nx;
                     if (!worked[at]) continue;
                     any = true;
-                    if (moved[at] > most) most = moved[at];
+                    float by = moved[at];
+                    if (by > up) up = by;
+                    if (-by > down) down = -by;
                 }
             }
-            return most;
         }
 
         private static int _parsed;
@@ -115,7 +124,8 @@ namespace TheGreatestMap
         // The parse now depends on two settings, and the records are cached against the zone's
         // revision -- which does not change when a setting does. Without this, switching shaped
         // ground on would show nothing until somebody happened to dig in every zone.
-        private static bool _readShaped;
+        private static bool _readRaised;
+        private static bool _readDug;
         private static float _readLeast = -1f;
 
         /// <summary>
@@ -129,12 +139,13 @@ namespace TheGreatestMap
         private static int _keptHere;
         private static int _walkedHere;
 
-        /// <summary>
-        /// Whether ground somebody dug, leveled or raised is drawn at all, as against ground
-        /// somebody deliberately made a path of.
-        /// </summary>
-        private static bool Shaped() =>
-            TgmConfig.PaintShapedGround != null && TgmConfig.PaintShapedGround.Value;
+        /// <summary>Whether ground somebody built up -- a terrace, an earth wall -- is drawn.</summary>
+        private static bool Raised() =>
+            TgmConfig.PaintRaisedGround != null && TgmConfig.PaintRaisedGround.Value;
+
+        /// <summary>Whether ground somebody cut away -- a pit, a mining scrape -- is drawn.</summary>
+        private static bool Dug() =>
+            TgmConfig.PaintDugGround != null && TgmConfig.PaintDugGround.Value;
 
         /// <summary>How far the ground has to have moved before that counts as shaping it.</summary>
         private static float ShapedLeast() =>
@@ -157,9 +168,11 @@ namespace TheGreatestMap
             _seen.Clear();
             _parsed = 0;
             _skipped = 0;
-            if (_readShaped != Shaped() || !Mathf.Approximately(_readLeast, ShapedLeast()))
+            if (_readRaised != Raised() || _readDug != Dug()
+                || !Mathf.Approximately(_readLeast, ShapedLeast()))
             {
-                _readShaped = Shaped();
+                _readRaised = Raised();
+                _readDug = Dug();
                 _readLeast = ShapedLeast();
                 _records.Clear();
             }
@@ -304,8 +317,11 @@ namespace TheGreatestMap
                     {
                         float level = pkg.ReadSingle(), smooth = pkg.ReadSingle();
                         worked[i] = true;
-                        // Negative for a pit and positive for a wall, and both are shaping.
-                        moved[i] = Mathf.Abs(level) + Mathf.Abs(smooth);
+                        // Kept signed. TerrainComp accumulates m_levelDelta the way the ground
+                        // actually went -- up for a wall or a terrace, down for a pit or a
+                        // mining scrape -- and throwing that away threw away the one thing that
+                        // tells the two apart. m_smoothDelta rides along at a meter either way.
+                        moved[i] = level + smooth;
                     }
 
                 int painted = pkg.ReadInt();
@@ -326,7 +342,8 @@ namespace TheGreatestMap
 
                 float cell = Mathf.Max(0.0001f, MapPaint.CellSize);
                 var cells = new Dictionary<int, BuiltKind>();
-                bool shaped = Shaped();
+                bool raised = Raised();
+                bool dug = Dug();
                 float least = ShapedLeast();
                 _shapedHere = 0;
                 _keptHere = 0;
@@ -342,10 +359,14 @@ namespace TheGreatestMap
                     // this. Dirt is the one paint the game puts down on its own behalf.
                     if (kind == BuiltKind.Dirt && worked != null)
                     {
-                        float near = Near(worked, moved, i, pitch, out bool any);
+                        Near(worked, moved, i, pitch, out bool any, out float up, out float down);
                         if (any)
                         {
-                            if (!shaped || near < least) { _shapedHere++; continue; }
+                            if (!((raised && up >= least) || (dug && down >= least)))
+                            {
+                                _shapedHere++;
+                                continue;
+                            }
                             _keptHere++;
                         }
                         else _walkedHere++;
@@ -432,8 +453,9 @@ namespace TheGreatestMap
             lines.Add("  paved " + OnOff(TgmConfig.PaintRoads) +
                       ", dirt paths " + OnOff(TgmConfig.PaintDirtPaths) +
                       ", farmland " + OnOff(TgmConfig.PaintFarmland) +
-                      ", shaped ground " + OnOff(TgmConfig.PaintShapedGround) +
-                      (Shaped() ? $" over {ShapedLeast():0.##} m" : "") +
+                      ", raised ground " + OnOff(TgmConfig.PaintRaisedGround) +
+                      ", dug ground " + OnOff(TgmConfig.PaintDugGround) +
+                      (Raised() || Dug() ? $" over {ShapedLeast():0.##} m" : "") +
                       $"; dirt points: {walked} walked, {shaped} left out as worked, {kept} worked but kept");
             return lines;
         }

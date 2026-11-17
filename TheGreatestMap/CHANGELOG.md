@@ -18,7 +18,9 @@ server draw each other's maps wrong.**
 - Least Pieces To Draw is counted over twelve meters rather than over cells, so changing Paint
   Detail Meters no longer retunes it. Removed: Least Pieces In One Cell.
 - Ground you dug, leveled or raised is no longer drawn as though it were a road: only the hoe's
-  path and paved road are. New: Paint Shaped Ground, Shaped Ground Least Meters.
+  path and paved road are. Ground you built up and ground you cut away are told apart, so an
+  earth wall can be drawn without every mining scrape coming with it. New: Paint Raised Ground,
+  Paint Dug Ground, Shaped Ground Least Meters.
 - EXPERIMENTAL. The minimap is drawn sharp too, not just the large map. New: Sharp Minimap.
 - Painted colors match the ones you picked. The sharp layer drew them lighter and flatter
   than the config showed.
