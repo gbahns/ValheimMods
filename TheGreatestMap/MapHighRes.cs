@@ -54,8 +54,23 @@ namespace TheGreatestMap
         /// <summary>The most often a redraw may happen, however hard the map is being dragged.</summary>
         private const float EverySeconds = 0.08f;
 
+        /// <summary>
+        /// How much wider than the minimap the window is drawn.
+        ///
+        /// <para>The minimap slides a little every step, and redrawing on every step is the one
+        /// thing this must not do -- walking is not an occasion. So it is drawn to a window
+        /// twice the width the minimap shows and the image is panned across what is already
+        /// there; a redraw happens only when the edge of the drawn window comes into view,
+        /// which on a two hundred meter minimap is every fifty meters walked.</para>
+        /// </summary>
+        private const float SmallPad = 2f;
+
+        /// <summary>How close the view may come to the drawn window's edge before redrawing.</summary>
+        private const float SmallSlack = 0.08f;
+
         private static RenderTexture _rt;
         private static RawImage _layer;
+        private static RawImage _small;
         private static Material _flat;
         private static Rect _drawnFor = new Rect(-999f, -999f, 0f, 0f);
         private static int _drawnSignature;
@@ -95,8 +110,46 @@ namespace TheGreatestMap
         internal static void Forget()
         {
             _layer = null;
+            _small = null;
             _drawnFor = new Rect(-999f, -999f, 0f, 0f);
             _drawnSignature = 0;
+        }
+
+        private static void Hide()
+        {
+            if (_layer != null) _layer.enabled = false;
+            if (_small != null) _small.enabled = false;
+        }
+
+        /// <summary>The same rect, grown about its own center.</summary>
+        private static Rect Pad(Rect r, float by)
+        {
+            float w = r.width * by, h = r.height * by;
+            return new Rect(r.center.x - w * 0.5f, r.center.y - h * 0.5f, w, h);
+        }
+
+        /// <summary>Where one rect sits inside another, as the fractions an image wants.</summary>
+        private static Rect Within(Rect seen, Rect window)
+        {
+            if (window.width <= 0.0000001f || window.height <= 0.0000001f)
+                return new Rect(0f, 0f, 1f, 1f);
+            return new Rect((seen.x - window.x) / window.width,
+                            (seen.y - window.y) / window.height,
+                            seen.width / window.width,
+                            seen.height / window.height);
+        }
+
+        /// <summary>
+        /// Whether what the minimap shows is still comfortably inside what was drawn, at the
+        /// zoom it was drawn for. A changed zoom fails the last test and redraws.
+        /// </summary>
+        private static bool Holds(Rect window, Rect seen)
+        {
+            return seen.xMin >= window.xMin + window.width * SmallSlack
+                   && seen.xMax <= window.xMax - window.width * SmallSlack
+                   && seen.yMin >= window.yMin + window.height * SmallSlack
+                   && seen.yMax <= window.yMax - window.height * SmallSlack
+                   && Mathf.Abs(seen.width * SmallPad - window.width) < window.width * 0.05f;
         }
 
         /// <summary>
@@ -120,29 +173,57 @@ namespace TheGreatestMap
                 Release();
                 return;
             }
-            if (map.m_mode != Minimap.MapMode.Large)
+            bool large = map.m_mode == Minimap.MapMode.Large;
+            bool small = map.m_mode == Minimap.MapMode.Small && MapPaint.SharpMinimap();
+            if (!large && !small)
             {
-                if (_layer != null) _layer.enabled = false;
+                Hide();
                 return;
             }
 
             try
             {
                 if (!Ready(map)) return;
-                _layer.enabled = true;
 
-                var view = map.m_mapImageLarge.uvRect;
-                bool slid = Mathf.Abs(view.x - _drawnFor.x) > Moved * Mathf.Max(view.width, 0.0001f)
-                            || Mathf.Abs(view.y - _drawnFor.y) > Moved * Mathf.Max(view.height, 0.0001f)
-                            || !Mathf.Approximately(view.width, _drawnFor.width)
-                            || !Mathf.Approximately(view.height, _drawnFor.height);
-                if (!slid && signature == _drawnSignature) return;
-                if (Time.unscaledTime < _nextDraw) return;
+                if (large)
+                {
+                    if (_small != null) _small.enabled = false;
+                    _layer.enabled = true;
 
-                _nextDraw = Time.unscaledTime + EverySeconds;
-                _drawnFor = view;
-                _drawnSignature = signature;
-                Draw(map, cells, view);
+                    // The large map is drawn for exactly what it shows, so the image takes the
+                    // whole buffer and the window is the view.
+                    _layer.uvRect = new Rect(0f, 0f, 1f, 1f);
+                    var view = map.m_mapImageLarge.uvRect;
+                    bool slid = Mathf.Abs(view.x - _drawnFor.x) > Moved * Mathf.Max(view.width, 0.0001f)
+                                || Mathf.Abs(view.y - _drawnFor.y) > Moved * Mathf.Max(view.height, 0.0001f)
+                                || !Mathf.Approximately(view.width, _drawnFor.width)
+                                || !Mathf.Approximately(view.height, _drawnFor.height);
+                    if (!slid && signature == _drawnSignature) return;
+                    if (Time.unscaledTime < _nextDraw) return;
+
+                    _nextDraw = Time.unscaledTime + EverySeconds;
+                    _drawnFor = view;
+                    _drawnSignature = signature;
+                    Draw(map, cells, view);
+                    return;
+                }
+
+                if (_layer != null) _layer.enabled = false;
+                _small.enabled = true;
+
+                // The minimap is drawn wider than it shows and panned across, so the image
+                // takes whatever part of the buffer is currently under the minimap. This is set
+                // every frame and costs nothing; the drawing underneath it is what is rare.
+                var seen = map.m_mapImageSmall.uvRect;
+                bool held = Holds(_drawnFor, seen) && signature == _drawnSignature;
+                if (!held && Time.unscaledTime >= _nextDraw)
+                {
+                    _nextDraw = Time.unscaledTime + EverySeconds;
+                    _drawnFor = Pad(seen, SmallPad);
+                    _drawnSignature = signature;
+                    Draw(map, cells, _drawnFor);
+                }
+                _small.uvRect = Within(seen, _drawnFor);
             }
             catch (System.Exception e)
             {
@@ -150,11 +231,11 @@ namespace TheGreatestMap
                 TheGreatestMapMod.Log.LogWarning(
                     "[TheGreatestMap] The sharp map layer could not be drawn (" + e.Message +
                     "), so the large map keeps the ordinary painting. Nothing else is affected.");
-                if (_layer != null) _layer.enabled = false;
+                Hide();
             }
         }
 
-        /// <summary>Build the buffer and the image it is shown through, once.</summary>
+        /// <summary>Build the buffer and the images it is shown through, once.</summary>
         private static bool Ready(Minimap map)
         {
             if (map.m_mapImageLarge == null) return false;
@@ -213,6 +294,25 @@ namespace TheGreatestMap
                 rect.SetAsFirstSibling();
             }
             _layer.texture = _rt;
+
+            // One buffer for both maps. Valheim never shows the minimap and the large map at
+            // the same time, so a second sixteen megabyte render texture would be sixteen
+            // megabytes that is always idle; what the two need separately is an image each,
+            // which costs nothing, and a window each, which is a rect.
+            if (map.m_mapImageSmall != null && (_small == null || _small.gameObject == null))
+            {
+                var host = new GameObject("TGM_SharpMinimap", typeof(RectTransform));
+                var rect = host.GetComponent<RectTransform>();
+                rect.SetParent(map.m_mapImageSmall.transform, false);
+                rect.anchorMin = Vector2.zero;
+                rect.anchorMax = Vector2.one;
+                rect.offsetMin = Vector2.zero;
+                rect.offsetMax = Vector2.zero;
+                _small = host.AddComponent<RawImage>();
+                _small.raycastTarget = false;
+                rect.SetAsFirstSibling();
+            }
+            if (_small != null) _small.texture = _rt;
             return true;
         }
 

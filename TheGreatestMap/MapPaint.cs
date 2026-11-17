@@ -564,6 +564,10 @@ namespace TheGreatestMap
             On() && (TgmConfig.ShowMapPaint == null || TgmConfig.ShowMapPaint.Value);
 
         /// <summary>Are the edges drawn as lines, or is the fill left to speak for itself?</summary>
+        /// <summary>Whether the minimap gets the sharp layer as well as the large map.</summary>
+        internal static bool SharpMinimap() =>
+            TgmConfig.PaintSharpMinimap == null || TgmConfig.PaintSharpMinimap.Value;
+
         internal static bool Outlined() =>
             TgmConfig.PaintOutlines == null || TgmConfig.PaintOutlines.Value;
 

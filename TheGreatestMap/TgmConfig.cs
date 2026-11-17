@@ -730,6 +730,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<Color> IronColor;
         internal static ConfigEntry<Color> MarbleColor;
         internal static ConfigEntry<bool> PaintOutlines;
+        internal static ConfigEntry<bool> PaintSharpMinimap;
         internal static ConfigEntry<Color> PavedColor;
         internal static ConfigEntry<Color> DirtColor;
         internal static ConfigEntry<Color> FarmColor;
@@ -1529,6 +1530,13 @@ namespace TheGreatestMap
                 "Color cultivated ground into the map, so fields read as fields rather than as whatever grows on " +
                 "them. This is the ground the cultivator turned over, not the crops standing in it -- the mod does " +
                 "not mark planted crops at all.");
+            PaintSharpMinimap = mod.BindLocal(Painting, "Sharp Minimap", true,
+                "Draw the painting on the minimap at the resolution of what you are looking at, the way the " +
+                "large map does, instead of at the map's own twelve meters to a pixel. The minimap shows a " +
+                "small enough patch of world that twelve meters a pixel is a blur, so this is most of the " +
+                "difference between a path and a smear. It is drawn to a window wider than the minimap shows " +
+                "and panned across, so walking does not redraw it. Turn it off if you would rather spend " +
+                "nothing at all on the minimap.");
             PaintOutlines = mod.BindLocal(Painting, "Draw Outlines", true,
                 "Draw a hard line around the edge of each building, road and field instead of leaving it as a " +
                 "block of color. Straightens the steps the grid leaves behind, so a wall looks like a wall. " +

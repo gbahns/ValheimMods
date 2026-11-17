@@ -19,6 +19,7 @@ server draw each other's maps wrong.**
   Detail Meters no longer retunes it. Removed: Least Pieces In One Cell.
 - Ground you dug, leveled or raised is no longer drawn as though it were a road: only the hoe's
   path and paved road are. New: Paint Shaped Ground, Shaped Ground Least Meters.
+- EXPERIMENTAL. The minimap is drawn sharp too, not just the large map. New: Sharp Minimap.
 - Changing Paint Detail Meters takes effect at once instead of at the next sweep.
 
 ## 4.10.0 — 2026-11-16
