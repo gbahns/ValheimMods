@@ -579,14 +579,16 @@ namespace TheGreatestMap
         ///
         /// <para>Nothing asks it to be there when both maps are drawn sharp -- the large map
         /// shader and the small map shader are the only two things in the game that read it.
-        /// Two things here still can: the pocket map, which is a held object showing the whole
-        /// world at once and so cannot use a window, and the sharp layer itself having given
-        /// up, in which case this is the fallback it falls back to.</para>
+        /// What is left is the two ways the sharp layer might not be covering a map somebody is
+        /// looking at: it gave up, or the minimap was told not to use it. Then this is what
+        /// they fall back to, and a blur beats nothing.</para>
+        ///
+        /// <para>The pocket map hands this texture to the held object's material and is not one
+        /// of them. It is the thing players record and share updates with rather than a map
+        /// anybody reads the world off, so what its surface looks like is not worth a halo
+        /// around every building on both of the maps that are.</para>
         /// </summary>
-        internal static bool Coarse() =>
-            (TgmConfig.ShowMapInHands != null && TgmConfig.ShowMapInHands.Value)
-            || !MapHighRes.Covering
-            || !SharpMinimap();
+        internal static bool Coarse() => !MapHighRes.Covering || !SharpMinimap();
 
         /// <summary>Are the edges drawn as lines, or is the fill left to speak for itself?</summary>
         internal static bool Outlined() =>
@@ -892,8 +894,7 @@ namespace TheGreatestMap
             lines.Add((Coarse()
                           ? "the game's own 12 m map texture is painted too, for " +
                             (!MapHighRes.Covering ? "the sharp layer having given up"
-                             : !SharpMinimap() ? "the minimap, which is not drawn sharp"
-                             : "the pocket map") + "; "
+                             : "the minimap, which is not drawn sharp") + "; "
                           : "the game's own 12 m map texture is left alone, so there is no blur under the sharp layer; ") +
                       $"map pixels painted: {_under.Count}, spread {SpreadPixels()} pixel(s) around each" +
                       (_lastPaintPixels > 0 ? $"; last repaint {_lastPaintPixels} pixel(s) in {_lastPaintMs} ms" : ""));
