@@ -60,6 +60,11 @@ namespace TheGreatestMap
         /// <summary>Zones seen in the pass now running, so vanished ones can be dropped after it.</summary>
         private static readonly HashSet<ZDOID> _seen = new HashSet<ZDOID>();
 
+        /// <summary>
+        /// Keeps a patch that ends exactly on a cell boundary from claiming the cell beyond it.
+        /// </summary>
+        private const float Nudge = 0.0001f;
+
         private static int _parsed;
         private static int _skipped;
         private static int _failed;
@@ -276,6 +281,7 @@ namespace TheGreatestMap
                 int half = pitch / 2;                       // WorldToVertexMask's (m_width + 1) / 2
                 var origin = zdo.GetPosition();
 
+                float cell = Mathf.Max(0.0001f, MapPaint.CellSize);
                 var cells = new Dictionary<int, BuiltKind>();
                 bool shaped = Shaped();
                 float least = ShapedLeast();
@@ -307,11 +313,27 @@ namespace TheGreatestMap
                     int x = i % pitch, y = i / pitch;
                     var at = new Vector3(origin.x + (x - half) * scale, origin.y,
                                          origin.z + (y - half) * scale);
-                    int key = MapPaint.Key(at);
-                    // Paved beats dirt beats farmland where a cell holds more than one, so a
-                    // road laid across a field reads as a road.
-                    if (cells.TryGetValue(key, out var had) && Rank(had) >= Rank(kind)) continue;
-                    cells[key] = kind;
+
+                    // The patch this point speaks for, not the one cell it falls in. The game
+                    // records paint on a grid of its own, a meter apart, and writing each
+                    // sample to a single cell was fine while a cell was four meters and is a
+                    // lattice of dots at half a meter: every other cell in both directions is
+                    // one nobody sampled. The same mistake the pieces used to make, in the
+                    // other half of the picture.
+                    float half2 = scale * 0.5f;
+                    int kx0 = Mathf.FloorToInt((at.x - half2) / cell);
+                    int kx1 = Mathf.FloorToInt((at.x + half2 - Nudge) / cell);
+                    int kz0 = Mathf.FloorToInt((at.z - half2) / cell);
+                    int kz1 = Mathf.FloorToInt((at.z + half2 - Nudge) / cell);
+                    for (int kz = kz0; kz <= kz1; kz++)
+                        for (int kx = kx0; kx <= kx1; kx++)
+                        {
+                            int key = MapPaint.KeyOf(kx, kz);
+                            // Paved beats dirt beats farmland where a cell holds more than one,
+                            // so a road laid across a field reads as a road.
+                            if (cells.TryGetValue(key, out var had) && Rank(had) >= Rank(kind)) continue;
+                            cells[key] = kind;
+                        }
                 }
                 return cells;
             }
