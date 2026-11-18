@@ -219,6 +219,15 @@ namespace TheGreatestMap
             public bool Here;
             public float Up, Down;
             public string Verdict = "the record does not cover that point";
+
+            /// <summary>How far this point is from the one that was asked about, in meters.</summary>
+            public float Distance;
+
+            /// <summary>Where this point is, for the one found rather than the one asked for.</summary>
+            public float X, Z;
+
+            /// <summary>How far apart the game's paint samples are here.</summary>
+            public float Step;
         }
 
         /// <summary>
@@ -247,10 +256,13 @@ namespace TheGreatestMap
             }
 
             var probe = new Probe();
+            var near = new Probe();
             _probe = probe;
+            _near = near;
+            _nearBest = float.MaxValue;
             _probeAt = at;
             try { Read(zdo); }
-            finally { _probe = null; }
+            finally { _probe = null; _near = null; }
 
             lines.Add($"ground at {at.x:0.#}, {at.z:0.#} (zone record {comp.transform.position.x:0.#}, " +
                       $"{comp.transform.position.z:0.#}):");
@@ -268,10 +280,48 @@ namespace TheGreatestMap
                       $" up {probe.Up:0.##} m, down {probe.Down:0.##} m" +
                       $" (earthwork over {ShapedLeast():0.##} m)");
             lines.Add("  " + probe.Verdict);
+
+            // The point underfoot is not always the point being asked about. The game keeps its
+            // paint on a grid, and the map colors the whole patch each sample speaks for, so a
+            // speck on the map a meter across can come from one sample that nobody is standing
+            // exactly on. Reading the vertex underfoot then answers truthfully about a vertex
+            // nobody painted, which is how this command came to say "nothing is painted here"
+            // to somebody standing on a painted speck.
+            if (!probe.Painted)
+            {
+                if (near.Reached)
+                {
+                    lines.Add($"  the nearest painted point is {near.Distance:0.##} m away at " +
+                              $"{near.X:0.#}, {near.Z:0.#} (samples are {probe.Step:0.##} m apart), and that " +
+                              "is what the speck you are looking at is drawn from:");
+                    lines.Add($"    paint r {near.R:0.##} g {near.G:0.##} b {near.B:0.##} a {near.A:0.##}" +
+                              $" -> {(near.Kind == BuiltKind.None ? "no kind" : near.Kind.ToString().ToLowerInvariant())}");
+                    lines.Add($"    ground touched within {Reach} m of it: {(near.Worked ? "yes" : "no")}" +
+                              (near.Here ? "; worked there, and moved" : $"; splatter, so judged by the work within {EarthworkReach} m:") +
+                              $" up {near.Up:0.##} m, down {near.Down:0.##} m");
+                    lines.Add("    " + near.Verdict);
+                }
+                else
+                {
+                    lines.Add("  and nothing at all is painted in this zone's record, so whatever you are " +
+                              "looking at on the map is not ground paint. Try tgm_paint, which answers for " +
+                              "player building.");
+                }
+            }
             return lines;
         }
 
         private static Probe _probe;
+
+        /// <summary>
+        /// The nearest painted sample to the point asked about, filled as the parse goes past.
+        ///
+        /// <para>Kept beside the exact answer rather than instead of it: "there is no paint
+        /// under your feet, and the paint making that speck is eight tenths of a meter away"
+        /// are two facts and the second one is useless without the first.</para>
+        /// </summary>
+        private static Probe _near;
+        private static float _nearBest;
         private static Vector3 _probeAt;
 
         internal static void Reset()
@@ -500,12 +550,15 @@ namespace TheGreatestMap
                 // arithmetic the loop below does in reverse, which is Heightmap's own
                 // WorldToVertexMask.
                 int probeAt = -1;
+                int probePx = 0, probePy = 0;
                 if (_probe != null)
                 {
-                    int px = Mathf.RoundToInt((_probeAt.x - origin.x) / scale) + half;
-                    int py = Mathf.RoundToInt((_probeAt.z - origin.z) / scale) + half;
-                    if (px >= 0 && py >= 0 && px < pitch && py < pitch) probeAt = py * pitch + px;
+                    probePx = Mathf.RoundToInt((_probeAt.x - origin.x) / scale) + half;
+                    probePy = Mathf.RoundToInt((_probeAt.z - origin.z) / scale) + half;
+                    if (probePx >= 0 && probePy >= 0 && probePx < pitch && probePy < pitch)
+                        probeAt = probePy * pitch + probePx;
                     _probe.Index = probeAt;
+                    _probe.Step = scale;
                 }
 
                 float cell = Mathf.Max(0.0001f, MapPaint.CellSize);
@@ -521,25 +574,44 @@ namespace TheGreatestMap
                 _flatHere = 0;
                 for (int i = 0; i < painted; i++)
                 {
-                    bool asked = i == probeAt;
+                    var target = _probe != null && i == probeAt ? _probe : null;
+                    bool asked = target != null;
                     if (!pkg.ReadBool())
                     {
-                        if (asked) Say(worked, moved, i, pitch, false, 0f, 0f, 0f, 0f, BuiltKind.None,
+                        if (asked) Say(target, worked, moved, i, pitch, false, 0f, 0f, 0f, 0f, BuiltKind.None,
                                        "nothing is painted here, so there is nothing for the map to color.");
                         continue;
                     }
+                    // Painted, and not the vertex asked about: a candidate for the nearest
+                    // painted point to it. Overwritten whenever a nearer one turns up, so what
+                    // is left at the end of the parse is the nearest in the zone.
+                    if (_near != null && !asked)
+                    {
+                        int sx = i % pitch, sy = i / pitch;
+                        float dx = (sx - probePx) * scale, dz = (sy - probePy) * scale;
+                        float away = dx * dx + dz * dz;
+                        if (away < _nearBest)
+                        {
+                            _nearBest = away;
+                            target = _near;
+                            target.Distance = Mathf.Sqrt(away);
+                            target.X = origin.x + (sx - half) * scale;
+                            target.Z = origin.z + (sy - half) * scale;
+                        }
+                    }
+                    asked = target != null;
                     float r = pkg.ReadSingle(), g = pkg.ReadSingle(), b = pkg.ReadSingle();
                     float alpha = pkg.ReadSingle();          // cleared vegetation, not ground
                     bool earthwork = false;
                     var kind = KindOf(r, g, b);
                     if (kind == BuiltKind.None)
                     {
-                        if (asked) Say(worked, moved, i, pitch, true, r, g, b, alpha, kind,
+                        if (asked) Say(target, worked, moved, i, pitch, true, r, g, b, alpha, kind,
                                        "painted, but no channel is both over a quarter and clearly the " +
                                        "highest, so this is not dirt, farmland or paving -- too faint to call.");
                         continue;
                     }
-                    if (asked) Say(worked, moved, i, pitch, true, r, g, b, alpha, kind,
+                    if (asked) Say(target, worked, moved, i, pitch, true, r, g, b, alpha, kind,
                                    Wanted(kind)
                                        ? kind.ToString().ToLowerInvariant() + ", and that kind is switched on."
                                        : kind.ToString().ToLowerInvariant() + ", but that kind is switched off.");
@@ -565,18 +637,18 @@ namespace TheGreatestMap
                         if (!any)
                         {
                             _walkedHere++;
-                            if (asked) _probe.Verdict = "dirt the ground was never moved under: a path, drawn.";
+                            if (asked) target.Verdict = "dirt the ground was never moved under: a path, drawn.";
                         }
                         else if (flat)
                         {
                             _flatHere++;
-                            if (asked) _probe.Verdict = "dirt on ground somebody worked at and left level: a " +
+                            if (asked) target.Verdict = "dirt on ground somebody worked at and left level: a " +
                                                         "yard, drawn as a dirt path.";
                         }
                         else if ((raised && up >= least) || (dug && down >= least))
                         {
                             _keptHere++;
-                            if (asked) _probe.Verdict = "dirt on an earthwork, and the setting for that kind of " +
+                            if (asked) target.Verdict = "dirt on an earthwork, and the setting for that kind of " +
                                                         "earthwork is on, so it is drawn.";
                         }
                         else
@@ -584,7 +656,7 @@ namespace TheGreatestMap
                             _shapedHere++;
                             earthwork = true;
                             if (asked)
-                                _probe.Verdict = "dirt on an earthwork -- the ground " +
+                                target.Verdict = "dirt on an earthwork -- the ground " +
                                     (up >= least ? $"rose {up:0.##} m" : $"fell {down:0.##} m") +
                                     " nearby -- and " + (up >= least ? "Paint Raised Ground" : "Paint Dug Ground") +
                                     " is off. It is still drawn if somebody has built within " +
@@ -630,22 +702,22 @@ namespace TheGreatestMap
             }
         }
 
-        /// <summary>Fill in what the probe asked about, from inside the parse that knows it.</summary>
-        private static void Say(bool[] worked, float[] moved, int i, int pitch, bool painted,
+        /// <summary>Fill in what a probe asked about, from inside the parse that knows it.</summary>
+        private static void Say(Probe into, bool[] worked, float[] moved, int i, int pitch, bool painted,
                                 float r, float g, float b, float a, BuiltKind kind, string verdict)
         {
-            if (_probe == null) return;
-            _probe.Reached = true;
-            _probe.Painted = painted;
-            _probe.R = r; _probe.G = g; _probe.B = b; _probe.A = a;
-            _probe.Kind = kind;
-            _probe.Verdict = verdict;
+            if (into == null) return;
+            into.Reached = true;
+            into.Painted = painted;
+            into.R = r; into.G = g; into.B = b; into.A = a;
+            into.Kind = kind;
+            into.Verdict = verdict;
             if (worked == null) return;
             var near = Look(worked, moved, i, pitch);
-            _probe.Worked = near.Touched;
-            _probe.Here = near.Here;
-            _probe.Up = near.Here ? near.Up : near.WideUp;
-            _probe.Down = near.Here ? near.Down : near.WideDown;
+            into.Worked = near.Touched;
+            into.Here = near.Here;
+            into.Up = near.Here ? near.Up : near.WideUp;
+            into.Down = near.Here ? near.Down : near.WideDown;
         }
 
         /// <summary>
