@@ -366,7 +366,7 @@ namespace TheGreatestMap
             // is spread over as many as it needs, and this is not -- so it is the part that
             // shows up as a stutter on everybody's screen at once. Measured rather than
             // assumed, because the first thing asked about a stall is how long it was.
-            var settling = System.Diagnostics.Stopwatch.StartNew();
+            _settling = System.Diagnostics.Stopwatch.StartNew();
             // Each cell settles on whatever it mostly is, now that the whole world has been seen.
             var found = new Dictionary<int, BuiltKind>();
             foreach (var kv in _sweep.Found)
@@ -406,9 +406,8 @@ namespace TheGreatestMap
             if (pieces > 0 && picture.Count >= MaxCells)
                 TheGreatestMapMod.Log.LogWarning(
                     $"[TheGreatestMap] Player building fills more than {MaxCells} cells; the map painting stops there.");
-            bool changed = Rebuild(picture);
-            Settled(settling, picture.Count);
-            return changed;
+            _settledCells = picture.Count;
+            return Rebuild(picture);
         }
 
         /// <summary>
@@ -522,16 +521,32 @@ namespace TheGreatestMap
         /// <summary>
         /// Say how long the one unspread frame of the sweep took, when it took long enough to
         /// be felt. Quiet otherwise: this runs every couple of minutes forever.
+        ///
+        /// <para>Stopped after the sending and not before it. The first version of this stopped
+        /// where the sweep hands the picture over, which left out encoding and compressing it
+        /// -- two hundred thousand writes and most of a megabyte through gzip, in the same
+        /// frame -- and so reported nothing at all on a sweep the server felt for well over a
+        /// second. A measurement that stops short of the expensive part is worse than none,
+        /// because it reads as an answer.</para>
         /// </summary>
-        private static void Settled(System.Diagnostics.Stopwatch clock, int cells)
+        private static void Settled()
         {
+            var clock = _settling;
+            _settling = null;
+            if (clock == null) return;
             clock.Stop();
             if (clock.ElapsedMilliseconds < LoudMillis) return;
             TheGreatestMapMod.Log.LogWarning(
-                $"[TheGreatestMap] Settling the map picture took {clock.ElapsedMilliseconds} ms in one frame " +
-                $"for {cells} cell(s) at {MapPaint.CellSize:0.##} m. Everyone on the server feels this as a " +
-                "stutter; raise Paint Detail Meters or Build Sweep Seconds if it is happening often.");
+                $"[TheGreatestMap] Settling and sending the map picture took {clock.ElapsedMilliseconds} ms in " +
+                $"one frame for {_settledCells} cell(s) at {MapPaint.CellSize:0.##} m. Everyone on the server " +
+                "feels this as a stutter; raise Paint Detail Meters or Build Sweep Seconds if it keeps happening.");
         }
+
+        /// <summary>Drop a clock left running by a sweep that ended without sending anything.</summary>
+        private static void Forget() => _settling = null;
+
+        private static System.Diagnostics.Stopwatch _settling;
+        private static int _settledCells;
 
         /// <summary>Long enough in one frame that somebody saw it.</summary>
         private const int LoudMillis = 120;
@@ -544,6 +559,7 @@ namespace TheGreatestMap
             foreach (var kv in picture) _cells[kv.Key] = kv.Value;
             if (signature == _signature) return false;
             _signature = signature;
+            _encoded = null;
             return true;
         }
 
@@ -564,7 +580,8 @@ namespace TheGreatestMap
 
             if (IsServer)
             {
-                if (StepSweep()) Broadcast();
+                if (StepSweep()) { Broadcast(); Settled(); }
+                else Forget();
             }
             else if (!_have && Time.time >= _nextRequest && ZRoutedRpc.instance != null)
             {
@@ -584,8 +601,20 @@ namespace TheGreatestMap
         private static void Send(long target)
         {
             if (ZRoutedRpc.instance == null) return;
-            ZRoutedRpc.instance.InvokeRoutedRPC(target, RpcCells, Encode());
+            // Kept until the picture changes. Encoding is the expensive half of a sweep at a
+            // fine grid, and it was being done again from nothing for every single player who
+            // joined -- the same bytes, worked out once per arrival, on the frame somebody is
+            // loading in. The grid is in the comparison because it is written into the bytes.
+            if (_encoded == null || !Mathf.Approximately(_encodedCell, MapPaint.CellSize))
+            {
+                _encoded = Encode().GetArray();
+                _encodedCell = MapPaint.CellSize;
+            }
+            ZRoutedRpc.instance.InvokeRoutedRPC(target, RpcCells, new ZPackage(_encoded));
         }
+
+        private static byte[] _encoded;
+        private static float _encodedCell = float.NaN;
 
         private const int WireVersion = 1;
 

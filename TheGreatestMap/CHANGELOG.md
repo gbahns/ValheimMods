@@ -8,7 +8,9 @@
   redraw.
 - Tracing outlines no longer allocates a list for every corner it walks.
 - The log's codec comparison is measured once per grid rather than every time the picture grows.
-- A settle slow enough to be felt now says so in the log, with the number.
+- A player joining no longer makes the server encode the whole picture again from nothing.
+- A settle slow enough to be felt now says so in the log, with the number, counting the
+  sending as well.
 
 ## 4.11.0 — 2026-11-16
 
