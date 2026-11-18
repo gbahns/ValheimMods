@@ -5,6 +5,8 @@
 - New: Varied Ground Shades. Paths, roads and fields are drawn in shades that wander from
   place to place, so ground reads as ground instead of as a sticker. Set it to 0 for the
   flat color it was.
+- Dirt paths and leveled ground are drawn darker, so ground sits under the buildings on it
+  rather than outshining them. Set Dirt Path Color back to AB8042 for the old tan.
 - tgm_ground now reports the nearest painted point when there is none exactly underfoot,
   which is most times you stand on a speck and ask about it.
 - The server settles the map picture far faster: whether a spot is part of somebody's base is

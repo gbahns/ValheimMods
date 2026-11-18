@@ -1624,11 +1624,21 @@ namespace TheGreatestMap
             PavedColor = mod.BindMoved(Painting, Palette, "Paved Color", Colors.FromHex("#9E998C"),
                 "The color paved road is drawn in. Building wins where a road runs under it, so a courtyard reads as " +
                 "the building it belongs to.");
-            DirtColor = mod.Retune(mod.BindMoved(Painting, Palette, "Dirt Path Color", Colors.FromHex("#AB8042"),
-                "The color hoed dirt path and leveled ground are drawn in. Measured off the ground in the game " +
-                "rather than picked, so a yard on the map is the color of the yard you are standing in. Paving " +
-                "wins where a path runs into a road."),
-                Colors.FromHex("#78603F"), Colors.FromHex("#AB8042"));
+            // Darker and less saturated than the ground it stands for, deliberately, and this
+            // is the third value. #78603F gave way to #AB8042 because that one was measured off
+            // real dirt -- and measuring was the mistake. Sampled from a screenshot, a wooden
+            // floor is #B2878E and the dirt beside it #C9A471: the dirt is the brighter of the
+            // two, so a palette faithful to the materials draws somebody's hall darker than the
+            // yard around it. A map is a diagram and not a photograph. The ground belongs under
+            // the things standing on it, which puts dirt below wood whatever the real thing does.
+            DirtColor = mod.Retune(mod.Retune(
+                mod.BindMoved(Painting, Palette, "Dirt Path Color", Colors.FromHex("#5E4A30"),
+                "The color hoed dirt path and leveled ground are drawn in. Darker and less saturated than real " +
+                "dirt, on purpose: ground on a map wants to sit under the buildings standing on it, and the real " +
+                "thing is lighter than a wooden floor rather than darker. Paving wins where a path runs into a " +
+                "road."),
+                Colors.FromHex("#78603F"), Colors.FromHex("#5E4A30")),
+                Colors.FromHex("#AB8042"), Colors.FromHex("#5E4A30"));
             FarmColor = mod.Retune(mod.BindMoved(Painting, Palette, "Farmland Color", Colors.FromHex("#4A3520"),
                 "The color cultivated ground is drawn in. A dark brown, the color of turned earth. Both paving and " +
                 "dirt path win over it, so a track across a field reads as a track."),
