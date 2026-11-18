@@ -1220,6 +1220,12 @@ namespace TheGreatestMap
                     "sync; asking for more does not write a label onto a marker that has none, because a marker whose " +
                     "label you rubbed out yourself looks exactly like one that never had one. Hovering a marker names " +
                     "it whatever this says.");
+                // Nests labeled every single marker, because the kind reached the enum after the
+                // switch that decides this and fell through to a catch-all that labels. A fixed
+                // default cannot reach anybody who has already run a version with the bug: their
+                // config holds the 0 it wrote for them. This can.
+                if (cat == Category.DrakeNest)
+                    LabelSpacing[cat] = mod.Retune(LabelSpacing[cat], 0f, -1f);
                 LookDistance[cat] = mod.BindLocal("Recording", label + " Look Distance", Categories.DefaultLookDistance(cat),
                     "How far away " + label.ToLowerInvariant() + " can be and still count as seen when you look straight at them " +
                     "with clear line of sight. Interacting, or having them under the crosshair within reach, always counts.");

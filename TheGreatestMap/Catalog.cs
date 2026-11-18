@@ -593,7 +593,18 @@ namespace TheGreatestMap
                 // catch-all, which labels, so every nest and bone pile came out with its own
                 // name drawn beside it.
                 case Category.Spawner:
+                // And again, for the same reason, with the same result: the drake and volture
+                // nests were added to the enum later still and nobody came back here. The
+                // comment above was written while looking at exactly this -- "every nest and
+                // bone pile came out with its own name" -- and only the bone piles were fixed.
+                case Category.DrakeNest:
                 case Category.Structure: return -1f; // the house icon says it all
+                // Everything not named above, which is the live kinds: a ship, a cart, a player,
+                // a sighting and a Hildir errand all want their name drawn, and traders and
+                // portals share one icon between several things so the name is the only thing
+                // telling them apart. That is why this stays 0 rather than being flipped to the
+                // safer answer -- but it does mean a newly RECORDED kind must be added to the
+                // list above when it is added to the enum, or it arrives labeling everything.
                 default:                 return 0f;  // traders (three share the coin icon), portals (the tag)
             }
         }

@@ -7,6 +7,9 @@
   flat color it was.
 - Dirt paths and leveled ground are drawn darker, so ground sits under the buildings on it
   rather than outshining them. Set Dirt Path Color back to AB8042 for the old tan.
+- Drake and volture nests are recorded as the icon alone, like every other found thing.
+  They had been writing their name beside every marker. Existing ones lose the label at the
+  next sync; set Nests Label Spacing back to 0 if you want it.
 - Recording no longer writes to the F5 console. It still goes to the HUD and the log; the
   console is for answers to things you typed, and recording scrolled them away.
 - tgm_ground now reports the nearest painted point when there is none exactly underfoot,
