@@ -374,6 +374,51 @@ namespace TheGreatestMap
         private static Color Shade(Color authored) =>
             QualitySettings.activeColorSpace == ColorSpace.Linear ? authored.linear : authored;
 
+        /// <summary>
+        /// How far the shade of one patch of ground wanders from the color it was given, as a
+        /// fraction, and nothing when the setting is off.
+        /// </summary>
+        private static float Variation() =>
+            TgmConfig.PaintGroundVariation == null
+                ? 0f : Mathf.Clamp01(TgmConfig.PaintGroundVariation.Value);
+
+        /// <summary>Ground, as opposed to something somebody built out of a material.</summary>
+        private static bool IsGround(BuiltKind kind) =>
+            kind == BuiltKind.Dirt || kind == BuiltKind.Paved || kind == BuiltKind.Farm;
+
+        /// <summary>The coarse patchiness, in meters, and the grain laid over it.</summary>
+        private const float PatchMeters = 6f;
+        private const float GrainMeters = 1.5f;
+
+        /// <summary>
+        /// A number from 0 to 1 that belongs to this patch of world and never changes.
+        ///
+        /// <para>Two lattices rather than one. A single coarse lattice is a checkerboard of
+        /// flat squares and a single fine one is static; a broad patchiness with a grain over
+        /// it is what ground actually looks like from above. Taken from the world position and
+        /// not from the cell, so the pattern stays put when the map is zoomed, when the detail
+        /// setting changes, and from one player's screen to another's -- a mottle that moved
+        /// would read as the map flickering rather than as ground.</para>
+        /// </summary>
+        private static float Mottle(float x, float z)
+        {
+            float broad = Hashed(Mathf.FloorToInt(x / PatchMeters), Mathf.FloorToInt(z / PatchMeters));
+            float grain = Hashed(Mathf.FloorToInt(x / GrainMeters), Mathf.FloorToInt(z / GrainMeters));
+            return broad * 0.65f + grain * 0.35f;
+        }
+
+        private static float Hashed(int x, int z)
+        {
+            unchecked
+            {
+                int h = (x * 73856093) ^ (z * 19349663);
+                h ^= h >> 13;
+                h *= 1274126177;
+                h ^= h >> 16;
+                return ((h >> 8) & 0xFFFF) / 65535f;
+            }
+        }
+
         /// <summary>Quads sent before the buffer is closed and reopened.</summary>
         private const int BatchQuads = 8192;
 
@@ -556,6 +601,10 @@ namespace TheGreatestMap
                 var authored = MapPaint.ColorFor(kind);
                 var color = Shade(authored);
                 GL.Color(color);
+                // Ground only, and only when it is asked for: the per-cell color below costs a
+                // call a quad, which is worth paying for ground and not for a wall.
+                float vary = IsGround(kind) ? Variation() : 0f;
+                bool mottled = vary > 0f;
                 _slices.Clear();
                 if (byBlock && _blocked.TryGetValue(kind, out var squares))
                 {
@@ -589,6 +638,17 @@ namespace TheGreatestMap
                         // mostly somewhere else.
                         if (explored != null && !Seen(explored, shared, size, at.x, at.z, metersPerMapPixel))
                             continue;
+
+                        if (mottled)
+                        {
+                            // Scaled in the color the player typed and converted afterwards,
+                            // because a shade darker is something the eye judges in sRGB; doing
+                            // it after the conversion would darken the midtones twice.
+                            float k = 1f + (Mottle(at.x, at.z) - 0.5f) * 2f * vary;
+                            GL.Color(Shade(new Color(Mathf.Clamp01(authored.r * k),
+                                                     Mathf.Clamp01(authored.g * k),
+                                                     Mathf.Clamp01(authored.b * k), authored.a)));
+                        }
 
                         float x = u * Size, y = v * Size;
                         float x0 = x - wide * 0.5f, x1 = x + wide * 0.5f;

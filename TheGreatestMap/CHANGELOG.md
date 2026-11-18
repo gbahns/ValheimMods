@@ -2,6 +2,11 @@
 
 ## 4.11.1 — unreleased
 
+- New: Varied Ground Shades. Paths, roads and fields are drawn in shades that wander from
+  place to place, so ground reads as ground instead of as a sticker. Set it to 0 for the
+  flat color it was.
+- tgm_ground now reports the nearest painted point when there is none exactly underfoot,
+  which is most times you stand on a speck and ask about it.
 - The server settles the map picture far faster: whether a spot is part of somebody's base is
   worked out once per twelve-meter square instead of nine times for every cell.
 - The drawing reads only the cells near the window, instead of every cell in the world on every
