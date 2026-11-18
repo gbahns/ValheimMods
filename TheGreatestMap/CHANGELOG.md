@@ -7,6 +7,9 @@
   flat color it was.
 - Dirt paths and leveled ground are drawn darker, so ground sits under the buildings on it
   rather than outshining them. Set Dirt Path Color back to AB8042 for the old tan.
+- Zooming the map out is much lighter: a pixel the painting has already covered is not
+  covered again, where before four hundred cells could be drawn onto the same one.
+- A redraw slow enough to feel now says so in the log, with what it drew.
 - Drake and volture nests are recorded as the icon alone, like every other found thing.
   They had been writing their name beside every marker. Existing ones lose the label at the
   next sync; set Nests Label Spacing back to 0 if you want it.

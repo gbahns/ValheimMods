@@ -463,6 +463,22 @@ namespace TheGreatestMap
         /// <summary>Long enough in one frame that the player saw it.</summary>
         private const int ReindexLoudMillis = 60;
 
+        /// <summary>The same, for one redraw of the layer. Lower, because zooming asks for
+        /// a dozen of these a second and they land one after another.</summary>
+        private const int DrawLoudMillis = 40;
+
+        /// <summary>
+        /// Buffer pixels already covered by the kind being drawn.
+        ///
+        /// <para>Only used when a cell has shrunk below a pixel, which is most of the way out:
+        /// at the whole world in a two thousand pixel buffer a pixel is ten meters, a cell is
+        /// half of one, and four hundred of them stack on the same pixel. Every one of those
+        /// was a fog lookup, a color and four vertices, for a pixel that was already the right
+        /// color after the first. Keeping the first and dropping the rest draws the same
+        /// picture -- the question a pixel answers is whether anything is there.</para>
+        /// </summary>
+        private static readonly HashSet<int> _pixels = new HashSet<int>();
+
         /// <summary>
         /// The cells of each kind again, this time gathered into squares of world, so that
         /// drawing a window reads the cells in that window rather than all of them.
@@ -525,6 +541,13 @@ namespace TheGreatestMap
             float metersPerMapPixel = map.m_pixelSize;
             if (size <= 0 || metersPerMapPixel <= 0f || view.width <= 0f || view.height <= 0f) return;
 
+            // Zooming fails the steady test every frame, so this runs as often as the throttle
+            // allows for as long as somebody is turning the wheel. It is the one path where the
+            // window index gives up and the whole world is walked, so it is the one worth a
+            // clock on it.
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            int looked = 0, filled = 0;
+
             var explored = Explored.Of(map);
             var shared = ExploredOthers.Of(map);
 
@@ -533,8 +556,14 @@ namespace TheGreatestMap
             float cell = MapPaint.CellSize;
             float worldAcross = view.width * size * metersPerMapPixel;
             float worldUp = view.height * size * metersPerMapPixel;
-            float wide = Mathf.Max(1f, cell / worldAcross * Size);
-            float tall = Mathf.Max(1f, cell / worldUp * Size);
+            float trueWide = cell / worldAcross * Size;
+            float trueTall = cell / worldUp * Size;
+            float wide = Mathf.Max(1f, trueWide);
+            float tall = Mathf.Max(1f, trueTall);
+            // Below a pixel the clamp above is doing the drawing, not the geometry, and every
+            // cell past the first on a pixel is wasted. Above a pixel each cell lands somewhere
+            // of its own and the test would only cost.
+            bool crowded = trueWide < 1f || trueTall < 1f;
 
             // World meters to buffer pixels, worked out once rather than per cell: Minimap's own
             // WorldToMapPoint folded into the window transform, so a point costs a multiply and
@@ -624,6 +653,10 @@ namespace TheGreatestMap
                 // call a quad, which is worth paying for ground and not for a wall.
                 float vary = IsGround(kind) ? Variation() : 0f;
                 bool mottled = vary > 0f;
+                // Per kind, not per draw: the kinds are drawn in order and a later one covers
+                // an earlier one, so a road having claimed a pixel must not stop a hall from
+                // claiming it too.
+                if (crowded) _pixels.Clear();
                 _slices.Clear();
                 if (byBlock && _blocked.TryGetValue(kind, out var squares))
                 {
@@ -650,6 +683,15 @@ namespace TheGreatestMap
                         float u = (mx - view.xMin) / view.width;
                         float v = (my - view.yMin) / view.height;
                         if (u < -0.05f || u > 1.05f || v < -0.05f || v > 1.05f) continue;   // off screen
+                        looked++;
+
+                        // Before the fog read and before the color, because both are per cell
+                        // and this is what decides whether there is a cell worth asking about.
+                        // Packed with room for the five percent of slack the cull allows on
+                        // either side, which can put a pixel a little outside the buffer.
+                        if (crowded && !_pixels.Add(((Mathf.FloorToInt(u * Size) + 256) << 12)
+                                                    | (Mathf.FloorToInt(v * Size) + 256)))
+                            continue;
 
                         // Asked after the screen test and not before it. Whether a cell has
                         // been uncovered is a read of the fog texture, and asking it of cells
@@ -680,6 +722,7 @@ namespace TheGreatestMap
                         GL.Vertex3(x1, y0, 0f);
                         GL.Vertex3(x1, y1, 0f);
                         GL.Vertex3(x0, y1, 0f);
+                        filled++;
                         if (++batched >= BatchQuads)
                         {
                             GL.End();
@@ -749,6 +792,15 @@ namespace TheGreatestMap
             GL.End();
             GL.PopMatrix();
             RenderTexture.active = previous;
+
+            clock.Stop();
+            if (clock.ElapsedMilliseconds >= DrawLoudMillis)
+                TheGreatestMapMod.Log.LogWarning(
+                    $"[TheGreatestMap] Drawing the map layer took {clock.ElapsedMilliseconds} ms: {filled} quad(s) " +
+                    $"from {looked} on-screen cell(s) of {cells.Count} at {MapPaint.CellSize:0.##} m, " +
+                    (byBlock ? "window only" : "the whole world, the window being too large to index") +
+                    (crowded ? $", crowded ({trueWide:0.##} px a cell)" : "") +
+                    ". Zooming asks for a dozen of these a second, so this is felt as the map being heavy.");
         }
 
         /// <summary>
