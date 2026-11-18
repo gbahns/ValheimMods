@@ -402,10 +402,29 @@ namespace TheGreatestMap
         /// </summary>
         private static float Mottle(float x, float z)
         {
-            float broad = Hashed(Mathf.FloorToInt(x / PatchMeters), Mathf.FloorToInt(z / PatchMeters));
-            float grain = Hashed(Mathf.FloorToInt(x / GrainMeters), Mathf.FloorToInt(z / GrainMeters));
-            return broad * 0.65f + grain * 0.35f;
+            return Field(x, z, PatchMeters) * 0.65f + Field(x, z, GrainMeters) * 0.35f;
         }
+
+        /// <summary>
+        /// One lattice, read between its corners rather than at the nearest one.
+        ///
+        /// <para>Taking the corner outright is a grid of flat squares, and a grid of flat
+        /// squares is the one thing ground never looks like -- it reads as the drawing having
+        /// a resolution, which is exactly the impression the mottling exists to remove. Four
+        /// corners and a smoothstep between them costs three more hashes and comes out as
+        /// patches with edges that wander.</para>
+        /// </summary>
+        private static float Field(float x, float z, float meters)
+        {
+            float fx = x / meters, fz = z / meters;
+            int x0 = Mathf.FloorToInt(fx), z0 = Mathf.FloorToInt(fz);
+            float tx = Smooth(fx - x0), tz = Smooth(fz - z0);
+            float near = Mathf.Lerp(Hashed(x0, z0), Hashed(x0 + 1, z0), tx);
+            float far = Mathf.Lerp(Hashed(x0, z0 + 1), Hashed(x0 + 1, z0 + 1), tx);
+            return Mathf.Lerp(near, far, tz);
+        }
+
+        private static float Smooth(float t) => t * t * (3f - 2f * t);
 
         private static float Hashed(int x, int z)
         {
@@ -644,7 +663,11 @@ namespace TheGreatestMap
                             // Scaled in the color the player typed and converted afterwards,
                             // because a shade darker is something the eye judges in sRGB; doing
                             // it after the conversion would darken the midtones twice.
-                            float k = 1f + (Mottle(at.x, at.z) - 0.5f) * 2f * vary;
+                            // Widened, because interpolating pulls a lattice's values in
+                            // toward the middle: the same setting would otherwise mean a far
+                            // gentler mottling than it did when every square took a corner
+                            // value outright.
+                            float k = 1f + Mathf.Clamp((Mottle(at.x, at.z) - 0.5f) * 3.2f, -1f, 1f) * vary;
                             GL.Color(Shade(new Color(Mathf.Clamp01(authored.r * k),
                                                      Mathf.Clamp01(authored.g * k),
                                                      Mathf.Clamp01(authored.b * k), authored.a)));
