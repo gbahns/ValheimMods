@@ -11,6 +11,11 @@
 - A player joining no longer makes the server encode the whole picture again from nothing.
 - A settle slow enough to be felt now says so in the log, with the number, counting the
   sending as well.
+- A cartography table that has not changed since your last visit is no longer unpacked and
+  read again; it was most of a quarter second, once a minute, to find nothing.
+- Reading a picture from the server no longer copies it into a second table of the same
+  cells.
+- Reading and sorting a picture now say so in the log when either is slow enough to feel.
 
 ## 4.11.0 — 2026-11-16
 

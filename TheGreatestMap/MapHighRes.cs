@@ -396,6 +396,9 @@ namespace TheGreatestMap
         /// </summary>
         private const int MostBlocks = 8192;
 
+        /// <summary>Long enough in one frame that the player saw it.</summary>
+        private const int ReindexLoudMillis = 60;
+
         /// <summary>
         /// The cells of each kind again, this time gathered into squares of world, so that
         /// drawing a window reads the cells in that window rather than all of them.
@@ -497,8 +500,22 @@ namespace TheGreatestMap
             // nothing at three thousand cells and is most of a frame at fifty thousand -- and
             // this runs while the map is being dragged, which is the path that has stalled a
             // client into timeouts before.
+            // Timed together, because together is how they are felt: both skip their work
+            // unless the picture changed, so the frame that follows a new picture is the one
+            // holding a re-index of every cell and a trace of every boundary at once, on top of
+            // the fill below. Always started rather than only when the work is expected -- a
+            // stopwatch costs nothing against a redraw, and the case worth catching is the one
+            // nobody predicted.
+            var reindex = System.Diagnostics.Stopwatch.StartNew();
             var byKind = Sorted(cells, MapPaint.CellsHash);
             if (outlines) MapOutline.Trace(byKind, MapPaint.CellsHash);
+            reindex.Stop();
+            if (reindex.ElapsedMilliseconds >= ReindexLoudMillis)
+                TheGreatestMapMod.Log.LogWarning(
+                    $"[TheGreatestMap] Sorting the map picture for drawing took {reindex.ElapsedMilliseconds} ms " +
+                    $"in one frame for {cells.Count} cell(s) at {MapPaint.CellSize:0.##} m" +
+                    (outlines ? ", outlines included" : "") + ". Raise Paint Detail Meters, or turn Draw " +
+                    "Outlines off, if it keeps happening.");
 
             // The squares of world this window touches, worked out once. The fill read every
             // cell of every kind on every redraw and threw away the ones off screen, which

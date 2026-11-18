@@ -754,6 +754,11 @@ namespace TheGreatestMap
             // package would be the same answer for the cost of parsing it -- and on a developed
             // world that package is the largest thing this mod sends.
             if (IsServer) return;
+            // Reading the picture is the client's half of the sweep, and until now nothing
+            // measured it: a server that settles in eighty milliseconds can still hand every
+            // client a frame it cannot afford, and the only report of that was somebody saying
+            // the game felt rough. See the warning below for what is being counted.
+            var clock = System.Diagnostics.Stopwatch.StartNew();
             var cells = new Dictionary<int, BuiltKind>();
             try
             {
@@ -789,8 +794,20 @@ namespace TheGreatestMap
                 return;
             }
             _have = true;
-            MapPaint.Take(cells);
+            int count = cells.Count;
+            bool changed = MapPaint.Adopt(cells);
+            clock.Stop();
+            if (changed && clock.ElapsedMilliseconds >= ReadLoudMillis)
+                TheGreatestMapMod.Log.LogWarning(
+                    $"[TheGreatestMap] Reading the server's map picture took {clock.ElapsedMilliseconds} ms in " +
+                    $"one frame for {count} cell(s) at {MapPaint.CellSize:0.##} m. That is unpacking and " +
+                    "decoding only; re-indexing it for drawing is counted separately. Raise Paint Detail " +
+                    "Meters if it keeps happening.");
         }
+
+        /// <summary>Long enough in one frame that the player saw it. Lower than the server's:
+        /// a client has sixteen milliseconds to spend and a headless server has thirty-three.</summary>
+        private const int ReadLoudMillis = 60;
 
         private static readonly Dictionary<BuiltKind, List<string>> _named =
             new Dictionary<BuiltKind, List<string>>();

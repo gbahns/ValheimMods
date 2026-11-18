@@ -265,7 +265,9 @@ namespace TheGreatestMap
         /// What stands on each cell. Replaced wholesale by the server's picture; nothing here is
         /// saved on the client, because the server is the one that knows the whole world.
         /// </summary>
-        private static readonly Dictionary<int, BuiltKind> _cells = new Dictionary<int, BuiltKind>();
+        // Not readonly: a picture off the wire is adopted rather than copied, which replaces
+        // this outright. See Adopt.
+        private static Dictionary<int, BuiltKind> _cells = new Dictionary<int, BuiltKind>();
 
         /// <summary>Every map pixel we have changed, and the color it had before we touched it.</summary>
         private static readonly Dictionary<int, Color32> _under = new Dictionary<int, Color32>();
@@ -338,23 +340,64 @@ namespace TheGreatestMap
             _nextApply = 0f;
         }
 
-        /// <summary>The server's picture of the world, whole. Returns true if it differs from what we had.</summary>
+        /// <summary>
+        /// The server's picture of the world, whole, copied in. Returns true if it differs from
+        /// what we had.
+        ///
+        /// <para>For the host, which hands over the live dictionary its own sweep keeps and
+        /// clears. See <see cref="Adopt"/> for the one that arrives over the wire.</para>
+        /// </summary>
         internal static bool Take(Dictionary<int, BuiltKind> cells)
         {
             if (cells == null) return false;
-            if (cells.Count == _cells.Count)
-            {
-                bool same = true;
-                foreach (var kv in cells)
-                    if (!_cells.TryGetValue(kv.Key, out var had) || had != kv.Value) { same = false; break; }
-                if (same) return false;
-            }
+            int hash = Fingerprint(cells);
+            if (hash == _cellsHash && cells.Count == _cells.Count) return false;
             _cells.Clear();
-            int hash = cells.Count;
-            foreach (var kv in cells) { _cells[kv.Key] = kv.Value; hash ^= kv.Key * 31 + (int)kv.Value; }
+            foreach (var kv in cells) _cells[kv.Key] = kv.Value;
             _cellsHash = hash;
             _dirty = true;
             return true;
+        }
+
+        /// <summary>
+        /// The same, for a picture nobody else is holding: the dictionary is kept rather than
+        /// copied into another one.
+        ///
+        /// <para>The picture off the wire is built fresh for every message and then thrown away.
+        /// Copying it cost a clear and two hundred thousand inserts on the frame it landed --
+        /// on top of the two hundred thousand reads that had just built it -- to arrive at the
+        /// same cells in a different dictionary.</para>
+        ///
+        /// <para>Never for the host. There the sweep's own dictionary is what comes in and the
+        /// next sweep clears it, so adopting it would leave the painting holding a bucket
+        /// somebody else empties.</para>
+        /// </summary>
+        internal static bool Adopt(Dictionary<int, BuiltKind> cells)
+        {
+            if (cells == null) return false;
+            int hash = Fingerprint(cells);
+            if (hash == _cellsHash && cells.Count == _cells.Count) return false;
+            _cells = cells;
+            _cellsHash = hash;
+            _dirty = true;
+            return true;
+        }
+
+        /// <summary>
+        /// A number standing for the whole picture, worked out in one pass over the new cells.
+        ///
+        /// <para>Compared against the last one instead of walking the old picture cell by cell,
+        /// which was a second two hundred thousand lookups to answer a question the server has
+        /// usually already answered by choosing to send at all. Two fingerprints agreeing is not
+        /// proof the pictures match, but the server decides whether to send on exactly this kind
+        /// of comparison, and the price of a collision here is one update ignored until the next
+        /// change rather than anything wrong on the map.</para>
+        /// </summary>
+        private static int Fingerprint(Dictionary<int, BuiltKind> cells)
+        {
+            int hash = cells.Count;
+            foreach (var kv in cells) hash ^= kv.Key * 31 + (int)kv.Value;
+            return hash;
         }
 
         /// <summary>
