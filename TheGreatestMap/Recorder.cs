@@ -84,7 +84,7 @@ namespace TheGreatestMap
                     if (found.Cleared)
                     {
                         if (ClientPins.MarkCleared(found.Icon, dedupeAt, dedupeRadius))
-                            TheGreatestMapMod.Message($"Cleared: {found.Name}");
+                            TheGreatestMapMod.Message($"Cleared: {found.Name}", console: false);
                         DiscoveryLedger.MarkRecorded(found.Key);
                         continue;
                     }
@@ -105,14 +105,25 @@ namespace TheGreatestMap
                     isChecked: found.Cleared || Searched.WasSearched(found.Key));
                 if (written == null) continue;
                 DiscoveryLedger.MarkRecorded(found.Key);
-                TheGreatestMapMod.Message((found.Cleared ? "Recorded, cleared: " : "Recorded: ") + found.Name);
+                TheGreatestMapMod.Message((found.Cleared ? "Recorded, cleared: " : "Recorded: ") + found.Name,
+                                          console: false);
             }
         }
 
+        /// <summary>
+        /// Say something about one find, once.
+        ///
+        /// <para>The HUD and the log, never the console. The console goes to whoever typed a
+        /// command and is worth the room for an answer they are waiting on; recording happens
+        /// by itself, forever, as somebody walks, and a hundred lines of "already marked
+        /// within 1 m" scroll the thing they were reading off the top. The rule for anything
+        /// added here: if a player did not ask for it this second, it does not go to the
+        /// console.</para>
+        /// </summary>
         private static void Announce(Found found, string text)
         {
             if (!_announced.Add(found.Key)) return;
-            TheGreatestMapMod.Message(text);
+            TheGreatestMapMod.Message(text, console: false);
         }
 
         // ── writing needs a steady hand ──────────────────────────────────────────────

@@ -7,6 +7,8 @@
   flat color it was.
 - Dirt paths and leveled ground are drawn darker, so ground sits under the buildings on it
   rather than outshining them. Set Dirt Path Color back to AB8042 for the old tan.
+- Recording no longer writes to the F5 console. It still goes to the HUD and the log; the
+  console is for answers to things you typed, and recording scrolled them away.
 - tgm_ground now reports the nearest painted point when there is none exactly underfoot,
   which is most times you stand on a speck and ask about it.
 - The server settles the map picture far faster: whether a spot is part of somebody's base is

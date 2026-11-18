@@ -37,7 +37,8 @@ namespace TheGreatestMap
             if (best == null) return;
             ClientPins.RemoveStale(best.Key);
             ClientPins.Restyle();
-            TheGreatestMapMod.Message($"{found.Name} taken down; its marker is gone.");
+            // HUD and log only: this fires every time anybody takes a piece down.
+            TheGreatestMapMod.Message($"{found.Name} taken down; its marker is gone.", console: false);
         }
     }
 
