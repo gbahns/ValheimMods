@@ -1546,14 +1546,15 @@ namespace TheGreatestMap
                 "Draw a hard line around the edge of each building, road and field instead of leaving it as a " +
                 "block of color. Straightens the steps the grid leaves behind, so a wall looks like a wall. " +
                 "Turn it off to see the plain coloring underneath.");
-            PaintGroundVariation = mod.BindLocal(Painting, "Varied Ground Shades", 0.35f,
+            PaintGroundVariation = mod.BindLocal(Painting, "Varied Ground Shades", 0.2f,
                 "How much the shade of paths, roads and fields wanders from place to place, so that ground " +
                 "reads as ground rather than as a sticker laid over the map. The game's own map does this -- " +
                 "meadows are a dozen greens and not one -- and a single flat brown is most of what makes a " +
                 "painted yard look pasted on. The pattern is fixed to the world, so it does not crawl when you " +
                 "pan or zoom, and it is the same for everybody. 0 is one flat color, 0.35 is a gentle mottling, " +
                 "and 1 is as varied as it goes. Buildings are left alone: a hall is made of something, and " +
-                "dappling it only looks like dirt.");
+                "dappling it only looks like dirt. The default is measured rather than chosen: real " +
+                "ground in the game wanders about a seventh either side of its own brightness.");
             PaintDetailMeters = mod.BindSynced(Painting, "Paint Detail Meters", 1f,
                 "Server only. How fine the painting is recorded, in meters. Smaller draws a truer shape -- a two " +
                 "meter path comes out two meters wide rather than filling whatever square it touched -- and costs " +
