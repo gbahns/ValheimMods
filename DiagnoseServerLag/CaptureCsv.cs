@@ -31,7 +31,8 @@ namespace DiagnoseServerLag
             "cpu_ms_per_sec,cpu_measured,gc0,gc1,gc2,collections,heap_bytes,working_set_bytes," +
             "owned_ai,nearby_ai,feed_ms,owned_objects,nearby_objects,unowned_objects,unowned_ai," +
             "system_cpu_pct,nearby_pieces,loading,free_memory_mb,terrain_zones,terrain_bytes," +
-            "gpu_ms,cpu_main_ms,cpu_render_ms,main_cpu_ms_sec,settings_rev";
+            "gpu_ms,cpu_main_ms,cpu_render_ms,main_cpu_ms_sec,settings_rev," +
+            "biome,pos_x,pos_z";
 
         internal static readonly string[] Columns = Header.Split(',');
 
@@ -52,6 +53,46 @@ namespace DiagnoseServerLag
         /// <summary>
         /// Free text fit for the end of a '#' metadata line: no line breaks, commas allowed.
         /// </summary>
+        /// <summary>
+        /// A '# span' line: when a run of samples starts and ends, and how many seconds it holds.
+        ///
+        /// Every capture used to state what was ASKED for and nothing about what it got. Those
+        /// differ constantly - a client that joined twenty minutes ago answers a sixty-minute
+        /// request with twenty minutes, and the file looked the same either way. Worse, three
+        /// captures taken within an hour of each other overlapped by 44 minutes and nothing in any
+        /// of them said so, which is an easy way to read one evening's data as three samples.
+        ///
+        /// first and last are the real extremes of the rows below, not the request.
+        /// </summary>
+        internal static string SpanLine(string label, long firstTicks, long lastTicks, int rows)
+        {
+            if (firstTicks <= 0 || lastTicks <= 0) return null;
+            int covered = (int)((lastTicks - firstTicks) / System.TimeSpan.TicksPerSecond) + 1;
+            return "# span," + (string.IsNullOrEmpty(label) ? "" : MetaLabel(label) + ",")
+                 + Iso(firstTicks) + "," + Iso(lastTicks) + "," + covered + "s," + rows + " rows";
+        }
+
+        /// <summary>Heightmap.Biome as its name, or "" for none.</summary>
+        internal static string BiomeName(int biome)
+        {
+            if (biome == 0) return "";
+            switch (biome)
+            {
+                case 1: return "Meadows";
+                case 2: return "Swamp";
+                case 4: return "Mountain";
+                case 8: return "BlackForest";
+                case 16: return "Plains";
+                case 32: return "AshLands";
+                case 64: return "DeepNorth";
+                case 256: return "Ocean";
+                case 512: return "Mistlands";
+                // Heightmap.Biome is [Flags] and a boundary can carry two. The number is kept
+                // rather than guessed at, since a reader can still tell what it means.
+                default: return "biome" + biome.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+        }
+
         internal static string MetaText(string s)
         {
             if (string.IsNullOrEmpty(s)) return "";
@@ -123,6 +164,11 @@ namespace DiagnoseServerLag
                 s.CpuRenderMs >= 0f ? s.CpuRenderMs.ToString("0.00", c) : "",
                 s.MainCpuMsPerSec >= 0f ? s.MainCpuMsPerSec.ToString("0.0", c) : "",
                 s.SettingsRev.ToString(c),
+                // The name, not the flag value: a reader should not have to know that 32 is the
+                // Ashlands. Blank where there is no player to ask, which is every server row.
+                BiomeName(s.Biome),
+                s.Biome != 0 ? s.PosX.ToString(c) : "",
+                s.Biome != 0 ? s.PosZ.ToString(c) : "",
             });
 
         internal static string Iso(long ticks) =>

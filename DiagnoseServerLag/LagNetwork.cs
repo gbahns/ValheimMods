@@ -62,6 +62,7 @@ namespace DiagnoseServerLag
         private const string RpcCaptureAll = "DSL_CaptureAll";         // server -> every client: send your window
         private const string RpcClientSeries = "DSL_ClientSeries";     // client -> server, its window
         private const string RpcClientLeft = "DSL_ClientLeft";         // client -> server, its window on the way out
+        private const string RpcSession = "DSL_Session";               // client -> server, arm or disarm session capture
         private const string RpcEcho = "DSL_Echo";                     // client -> an object owner
         private const string RpcEchoReply = "DSL_EchoReply";           // that owner -> back
 
@@ -149,6 +150,7 @@ namespace DiagnoseServerLag
                 rpc.Register<ZPackage>(RpcCaptureAll, RPC_CaptureAll);
                 rpc.Register<ZPackage>(RpcClientSeries, RPC_ClientSeries);
                 rpc.Register<ZPackage>(RpcClientLeft, RPC_ClientLeft);
+                rpc.Register<ZPackage>(RpcSession, RPC_Session);
                 rpc.Register<ZPackage>(RpcEcho, RPC_Echo);
                 rpc.Register<ZPackage>(RpcEchoReply, RPC_EchoReply);
                 DiagnoseServerLagMod.Log.LogInfo("[DiagnoseServerLag] Diagnostic RPCs registered.");
@@ -174,6 +176,7 @@ namespace DiagnoseServerLag
             _echoSentAt.Clear();
             _echoTarget.Clear();
             _parked.Clear();
+            _autoAsked = false;
         }
 
         internal static void Update()
@@ -181,6 +184,8 @@ namespace DiagnoseServerLag
             Register();
             if (ZNet.instance == null) return;
             UpdateGather();
+            UpdateSession();
+            MaybeAskSession();
 
             // Hosting: the server half is this process, so there is nothing to ask and no delay
             // between the two halves of the diagnosis.
@@ -801,6 +806,275 @@ namespace DiagnoseServerLag
         /// <summary>How long the server waits for clients before answering with what it has.</summary>
         private const float GatherSeconds = 8f;
 
+        /// <summary>
+        /// Session capture: the server takes a group capture on its own, every so often and once
+        /// more when the last player leaves.
+        ///
+        /// Armed from a client with "dsl_bench start" and then forgotten about. The point is that
+        /// it lives on the server, so it outlives the person who asked for it - the capture that
+        /// matters most covers the end of the evening, and whoever wanted it has usually logged
+        /// off by then. A client cannot take that capture for the same reason: a client that has
+        /// quit takes no captures.
+        ///
+        /// Each automatic capture starts where the previous one ended rather than going back a
+        /// fixed hour, so an evening becomes a series of files that abut instead of a pile that
+        /// overlap. Three captures taken by hand on 2026-11-16 shared 44 of their 60 minutes.
+        ///
+        /// Off unless asked for, and it disarms itself after the final capture. This writes
+        /// megabyte files onto somebody's server; it is not a thing to switch on by default on a
+        /// machine whose owner never asked for it.
+        /// </summary>
+        /// <summary>
+        /// This capture was the server's own idea, so there is nobody to send it to.
+        ///
+        /// Without this a session capture on a DEDICATED server takes the client-delivery path:
+        /// Player.m_localPlayer is null there, so the "hosting, the admin is here" branch is
+        /// false, and the result gets addressed to ZDOMan.GetSessionID() - the server itself.
+        /// Routed RPCs to your own id are handled locally rather than sent, so nothing would go
+        /// out on the wire, but the server would still compress a multi-megabyte CSV and hand it
+        /// to itself once an hour for no reader at all. The file is already on disk by then.
+        /// </summary>
+        private static bool _gatherSelf;
+
+        private static bool _sessionArmed;
+        private static int _sessionEverySeconds;
+        private static float _sessionNextAt;
+        private static string _sessionArmedBy;
+        private static bool _sawPlayers;
+        private static float _finalCaptureAt;
+
+        /// <summary>
+        /// Armed by configuration rather than by a person, which changes two things: the final
+        /// capture does not disarm it, so the next evening is recorded as well, and a repeated
+        /// request leaves the clock alone instead of pushing the next capture an interval away.
+        /// </summary>
+        private static bool _sessionAuto;
+
+        /// <summary>
+        /// Automatic arming has had its turn for this run of the server. Set when it arms, and
+        /// also when anybody stops the session, so that dsl_bench stop is not undone a frame
+        /// later by the setting that started it.
+        /// </summary>
+        private static bool _autoArmed;
+
+        /// <summary>Client side: we have already asked this server. Cleared on leaving a world.</summary>
+        private static bool _autoAsked;
+
+        /// <summary>Is a session capture running, and what would it say about itself?</summary>
+        internal static string SessionStatus()
+        {
+            if (!_sessionArmed) return "Session capture is off.";
+            float left = _sessionNextAt - Time.unscaledTime;
+            return "Session capture is on (started by " + _sessionArmedBy + "): every " +
+                   (_sessionEverySeconds / 60) + " min, next in about " +
+                   (Math.Max(0f, left) / 60f).ToString("0.#") +
+                   " min, and once more when the last player leaves.";
+        }
+
+        /// <summary>Server side: arm or disarm, and log it so it is not a mystery afterwards.</summary>
+        internal static string SetSession(bool on, int minutes, string who, bool auto = false)
+        {
+            if (!Sampler.IsServerHere) return "Only the server can run a session capture.";
+            if (!on)
+            {
+                bool was = _sessionArmed;
+                _sessionArmed = false;
+                _sessionAuto = false;
+                _autoArmed = true;              // an explicit stop outranks the setting
+                _finalCaptureAt = 0f;
+                DiagnoseServerLagMod.Log.LogInfo("[DiagnoseServerLag] session capture stopped by " + who + ".");
+                return was ? "Session capture stopped." : "Session capture was not running.";
+            }
+            // Several clients can each ask on joining. Without this, every join would move the
+            // next capture a full interval into the future, and a server that people trickle into
+            // over an hour would never reach one.
+            if (auto && _sessionArmed) return SessionStatus();
+
+            _sessionEverySeconds = Mathf.Clamp(minutes, 1, 180) * 60;
+            _sessionArmed = true;
+            _sessionAuto = auto;
+            _sessionArmedBy = string.IsNullOrEmpty(who) ? "someone" : who;
+            _sessionNextAt = Time.unscaledTime + _sessionEverySeconds;
+            _finalCaptureAt = 0f;
+            _sawPlayers = CountPlayers() > 0;
+            DiagnoseServerLagMod.Log.LogInfo(
+                "[DiagnoseServerLag] session capture started by " + _sessionArmedBy + ": every " +
+                (_sessionEverySeconds / 60) + " min, and once more when the last player leaves.");
+            return SessionStatus();
+        }
+
+        private static int CountPlayers()
+        {
+            var znet = ZNet.instance;
+            if (znet == null) return 0;
+            int n = 0;
+            foreach (var peer in znet.GetConnectedPeers()) if (peer != null && peer.IsReady()) n++;
+            return n;
+        }
+
+        /// <summary>
+        /// Server or host side: arm the session capture because the configuration says to, once
+        /// per run of the server. Once, because the alternative is that dsl_bench stop lasts a
+        /// single frame.
+        /// </summary>
+        private static void MaybeAutoArm()
+        {
+            if (_autoArmed || _sessionArmed) return;
+            if (DslConfig.SessionCapture == null || !DslConfig.SessionCapture.Value) return;
+            _autoArmed = true;
+            SetSession(true, DslConfig.SessionCaptureMinutes.Value, "the configuration on this machine", auto: true);
+        }
+
+        /// <summary>
+        /// Client side: ask the server to arm a session capture, once per world we join.
+        ///
+        /// This is the half that matters for a server somebody else configures: the setting lives
+        /// on the machine of whoever wants the captures, and the server only has to be running
+        /// this mod. Waits for Module, because a server without the mod cannot answer and asking
+        /// it would be a routed RPC into the dark.
+        /// </summary>
+        private static void MaybeAskSession()
+        {
+            if (_autoAsked || Sampler.IsServerHere) return;
+            if (DslConfig.SessionCapture == null || !DslConfig.SessionCapture.Value) return;
+            if (Module != ServerModule.Present) return;
+            _autoAsked = true;
+            AskSession(true, DslConfig.SessionCaptureMinutes.Value, auto: true);
+            DiagnoseServerLagMod.Log.LogInfo(
+                "[DiagnoseServerLag] Session Capture is on here, so the server was asked for a session capture every " +
+                DslConfig.SessionCaptureMinutes.Value + " min. It answers in the console, and ignores the request if one is already running.");
+        }
+
+        /// <summary>
+        /// Server side: the session capture's clock.
+        ///
+        /// Runs before the once-a-second early return further down Update, because that return is
+        /// there to throttle report building and this is not that.
+        /// </summary>
+        private static void UpdateSession()
+        {
+            if (!Sampler.IsServerHere) return;
+            MaybeAutoArm();
+            if (!_sessionArmed) return;
+            if (_gathering) return;                      // one capture at a time
+
+            int players = CountPlayers();
+            if (players > 0)
+            {
+                _sawPlayers = true;
+                _finalCaptureAt = 0f;
+            }
+            else if (_sawPlayers && _finalCaptureAt == 0f)
+            {
+                // Not immediately. A player's farewell window is sent inside their own shutdown
+                // and lands after the peer has already gone, so capturing the instant the count
+                // hits zero captures the server talking to itself about nobody.
+                _finalCaptureAt = Time.unscaledTime + 10f;
+                DiagnoseServerLagMod.Log.LogInfo(
+                    "[DiagnoseServerLag] last player left; taking the session's final capture in 10s.");
+            }
+
+            // An empty server measures nothing worth a file, and a configured session capture
+            // can sit armed through the small hours. So the periodic clock only runs while
+            // somebody is connected; while nobody is, it is pushed along so that the first
+            // capture after a join covers play rather than an empty night.
+            if (players == 0)
+            {
+                if (Time.unscaledTime >= _sessionNextAt) _sessionNextAt = Time.unscaledTime + _sessionEverySeconds;
+            }
+
+            bool due = players > 0 && Time.unscaledTime >= _sessionNextAt;
+            bool final = _finalCaptureAt > 0f && Time.unscaledTime >= _finalCaptureAt;
+            if (!due && !final) return;
+
+            BeginGather(ZDOMan.GetSessionID(), AutoWindowSeconds(), self: true);
+            _sessionNextAt = Time.unscaledTime + _sessionEverySeconds;
+            if (final)
+            {
+                _sawPlayers = false;
+                _finalCaptureAt = 0f;
+                if (_sessionAuto)
+                {
+                    // Configured rather than asked for, so there is nobody to ask again. Stays
+                    // armed and idle, and the next evening records itself the same way.
+                    DiagnoseServerLagMod.Log.LogInfo(
+                        "[DiagnoseServerLag] session capture took its final capture; still armed for the next players.");
+                }
+                else
+                {
+                    _sessionArmed = false;
+                    DiagnoseServerLagMod.Log.LogInfo(
+                        "[DiagnoseServerLag] session capture finished; it will not run again until asked.");
+                }
+            }
+        }
+
+        /// <summary>
+        /// How far back an automatic capture reaches: to the end of the previous one, so the files
+        /// abut rather than overlap, clamped to what the ring still holds.
+        /// </summary>
+        private static int AutoWindowSeconds()
+        {
+            int max = Sampler.History.Capacity;
+            long since = GroupReport.LastCaptureEndTicks;
+            if (since <= 0) return Math.Min(max, _sessionEverySeconds);
+            int gap = (int)((DateTime.UtcNow.Ticks - since) / TimeSpan.TicksPerSecond);
+            return Mathf.Clamp(gap, 60, max);
+        }
+
+        /// <summary>Server side: a client asked to start or stop the session capture.</summary>
+        private static void RPC_Session(long sender, ZPackage pkg)
+        {
+            try
+            {
+                if (!Sampler.IsServerHere || pkg == null) return;
+                bool on = pkg.ReadBool();
+                int minutes = pkg.ReadInt();
+                // Absent from a client older than this field, and reading past the end throws.
+                bool auto = false;
+                try { auto = pkg.ReadBool(); } catch { }
+                // A negative interval is a question, not an instruction. Without this, asking for
+                // the status would arm the session - Mathf.Clamp turns -1 into one minute - and a
+                // read-only command would have quietly started capturing every sixty seconds.
+                string reply = minutes < 0
+                    ? SessionStatus()
+                    : SetSession(on, minutes, NameOfPeer(sender) + (auto ? "'s configuration" : ""), auto);
+                ZRoutedRpc.instance?.InvokeRoutedRPC(sender, RpcCaptureResult, Wrap(reply));
+            }
+            catch (Exception e)
+            {
+                DiagnoseServerLagMod.Log.LogWarning(
+                    "[DiagnoseServerLag] Could not change the session capture: " + e.Message);
+            }
+        }
+
+        /// <summary>Client side: ask the server to start or stop a session capture.</summary>
+        internal static void AskSession(bool on, int minutes, bool auto = false)
+        {
+            var rpc = ZRoutedRpc.instance;
+            if (rpc == null) return;
+            var pkg = new ZPackage();
+            pkg.Write(on);
+            pkg.Write(minutes);
+            // Appended after the two fields older servers read, so one of those stops at the
+            // minutes and treats the request as somebody typing the command - which it nearly is.
+            pkg.Write(auto);
+            rpc.InvokeRoutedRPC(RpcSession, pkg);
+        }
+
+        /// <summary>A connected peer's character name, for the log.</summary>
+        private static string NameOfPeer(long uid)
+        {
+            try
+            {
+                var znet = ZNet.instance;
+                if (znet == null) return uid.ToString();
+                var peer = znet.GetPeer(uid);
+                return peer != null && !string.IsNullOrEmpty(peer.m_playerName) ? peer.m_playerName : uid.ToString();
+            }
+            catch { return uid.ToString(); }
+        }
+
         private static readonly List<ClientSeries> _gathered = new List<ClientSeries>();
         private static long _gatherFor;            // the admin waiting for the answer
         private static int _gatherSeconds;
@@ -844,11 +1118,29 @@ namespace DiagnoseServerLag
         private const int MaxParked = 16;
 
         /// <summary>
-        /// The ceiling on a farewell push, well under Steam's 512 KiB - see SendCsvBytes for what
+        /// The ceiling on a farewell push.
+        ///
+        /// Was 256 KiB, chosen against Steam's 512 KiB per-message limit, and that was the wrong
+        /// limit to measure against. The message is not refused - it is accepted into Steam's send
+        /// buffer and then thrown away unsent, because ZSteamSocket.Close calls Flush, sleeps
+        /// exactly 100 ms, and then calls CloseConnection with bEnableLinger false, which discards
+        /// whatever reliable data is still queued.
+        ///
+        /// That is not a theory. On 2026-11-16 a client logged "sent the server 3600s of history
+        /// (236 KB) on the way out" and then "send queue size:0" with no send failure, so the
+        /// bytes left Valheim cleanly; the server logged nothing at all, and a capture taken
+        /// afterwards was missing every player who had gone. Three players left that evening and
+        /// not one window survived. The feature had never worked.
+        ///
+        /// So the real ceiling is whatever clears the wire in a tenth of a second, which is tens
+        /// of kilobytes and not hundreds. Farewell Minutes keeps the window small at the source;
+        /// this is the backstop that halves it further if a particular machine still will not fit.
+        ///
+        /// See SendCsvBytes for what
         /// happens to a socket handed more than it can send. The routed RPC wraps this again, and
         /// the margin is free.
         /// </summary>
-        private const int MaxFarewell = 256 * 1024;
+        private const int MaxFarewell = 32 * 1024;
 
         /// <summary>
         /// Client side: hand the server this session's window on the way out, so a capture taken
@@ -877,7 +1169,8 @@ namespace DiagnoseServerLag
                 if (!DslConfig.ShareMyPerformance.Value) return;
                 if (Sampler.History.Count == 0) return;
 
-                int seconds = Sampler.History.Capacity;
+                int seconds = Math.Min(Sampler.History.Capacity,
+                                       Math.Max(60, DslConfig.FarewellMinutes.Value * 60));
                 ZPackage pkg = null;
                 int sent = 0;
                 // Halving rather than one guess: the ring can be configured to three hours, and
@@ -920,12 +1213,32 @@ namespace DiagnoseServerLag
         {
             try
             {
-                if (!Sampler.IsServerHere) return;
+                // Logged before anything can go wrong with it. Every return below used to be
+                // silent, so a farewell that arrived and failed looked exactly like one that never
+                // arrived - which is how this feature stayed broken without anybody noticing: the
+                // client said it had sent, the server said nothing, and there was no way to tell
+                // "lost on the wire" from "rejected here".
+                DiagnoseServerLagMod.Log.LogInfo(
+                    "[DiagnoseServerLag] a departing client's window arrived (" + (pkg?.Size() ?? 0) + " bytes).");
+
+                if (!Sampler.IsServerHere)
+                {
+                    DiagnoseServerLagMod.Log.LogInfo(
+                        "[DiagnoseServerLag] ignoring it: this machine is not the server.");
+                    return;
+                }
                 // Unpacked once here to check it is readable and to learn how far it reaches,
                 // then kept as bytes. A message that cannot be read is better refused now than
                 // held until a capture tries to use it.
                 var series = ClientSeries.Unpack(pkg);
-                if (series == null || series.Samples.Count == 0) return;
+                if (series == null || series.Samples.Count == 0)
+                {
+                    DiagnoseServerLagMod.Log.LogWarning(
+                        "[DiagnoseServerLag] a departing client's window could not be read" +
+                        (series == null ? " (it did not unpack)." : " (it held no samples).") +
+                        " Nothing parked, so a capture taken now will not include them.");
+                    return;
+                }
 
                 if (!_parked.ContainsKey(sender) && _parked.Count >= MaxParked)
                 {
@@ -994,7 +1307,7 @@ namespace DiagnoseServerLag
         }
 
         /// <summary>Server side: ask every connected client for the same window, then answer.</summary>
-        private static void BeginGather(long asker, int seconds)
+        private static void BeginGather(long asker, int seconds, bool self = false)
         {
             var znet = ZNet.instance;
             var rpc = ZRoutedRpc.instance;
@@ -1002,6 +1315,7 @@ namespace DiagnoseServerLag
 
             _gathered.Clear();
             _gatherFor = asker;
+            _gatherSelf = self;
             _gatherSeconds = seconds;
             _gatherDeadline = Time.unscaledTime + GatherSeconds;
             _gathering = true;
@@ -1054,7 +1368,13 @@ namespace DiagnoseServerLag
                 DiagnoseServerLagMod.Log.LogError($"[DiagnoseServerLag] Group capture failed: {e}");
             }
 
-            if (Sampler.IsServerHere && Player.m_localPlayer != null && _gatherFor == ZDOMan.GetSessionID())
+            if (_gatherSelf)
+            {
+                // Nobody asked; the session clock did. The report is in the log and the CSV is on
+                // disk, which is the whole point of capturing with no one here to read it.
+                _gatherSelf = false;
+            }
+            else if (Sampler.IsServerHere && Player.m_localPlayer != null && _gatherFor == ZDOMan.GetSessionID())
             {
                 Print(text);                                  // hosting: the admin is here, and so is the file
             }

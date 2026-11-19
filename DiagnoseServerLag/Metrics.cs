@@ -134,6 +134,27 @@ namespace DiagnoseServerLag
         internal long TerrainBytes;
 
         /// <summary>
+        /// Where this machine's player was standing: the biome as Heightmap.Biome's flag value,
+        /// and the position rounded to whole metres.
+        ///
+        /// Added because a capture could say what a second cost and never where it happened. On
+        /// 2026-11-16 the group reported lag "in the Ashlands" and settling it meant scraping
+        /// "Force generating hmap (x, y, z)" out of one client's own log and matching timestamps
+        /// against this file - to answer a question this file should answer by itself. Worse, the
+        /// first reading of that capture blamed a 6,000-piece count on something the players had
+        /// built, when it was the Ashlands' own fortress ruins; a biome column would have made the
+        /// mistake impossible rather than merely detectable.
+        ///
+        /// Nothing is looked up to fill these. Player.GetCurrentBiome returns a field the game
+        /// already maintains, so this costs one property read per second.
+        ///
+        /// Zero on a dedicated server, which has no player and therefore no place.
+        /// </summary>
+        internal int Biome;
+        internal int PosX;
+        internal int PosZ;
+
+        /// <summary>
         /// The world was streaming in or out during this second, so its stalls are the cost of
         /// loading rather than a fault. Counted and reported, never hidden - a machine that takes
         /// fifteen seconds to load an area has a real problem - but kept out of the figure the
@@ -256,6 +277,9 @@ namespace DiagnoseServerLag
             pkg.Write(s.CpuRenderMs);
             pkg.Write(s.MainCpuMsPerSec);
             pkg.Write(s.SettingsRev);
+            pkg.Write(s.Biome);
+            pkg.Write(s.PosX);
+            pkg.Write(s.PosZ);
         }
 
         internal static Sample Read(ZPackage pkg, int layout)
@@ -351,6 +375,9 @@ namespace DiagnoseServerLag
                 s.CpuRenderMs = pkg.ReadSingle();
                 s.MainCpuMsPerSec = pkg.ReadSingle();
                 s.SettingsRev = pkg.ReadInt();
+                s.Biome = pkg.ReadInt();
+                s.PosX = pkg.ReadInt();
+                s.PosZ = pkg.ReadInt();
             }
             catch { }
             return s;

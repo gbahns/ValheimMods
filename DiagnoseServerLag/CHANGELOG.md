@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.10.23 - 2026-11-18
+
+- **Fixed: the window a client hands over when it logs out never arrived.** It was sent, accepted,
+  and then discarded unsent, because the game gives a closing connection 100 ms and drops whatever
+  is left. Captures taken after somebody left were silently missing them. The window is now small
+  enough to clear the wire, set by `Farewell Minutes` (default 10), and the server logs what it
+  received instead of failing in silence.
+- **`dsl_bench start` leaves the server capturing for the rest of the session** - every N minutes
+  and once more when the last player logs off, so the end of an evening gets recorded without
+  anybody still being there to ask. `dsl_bench stop` and `dsl_bench status` do the obvious things.
+- **`Session Capture` (off by default) starts one without being asked** - on a server when the
+  world comes up, or on a client when you join, so a session records itself without anyone
+  remembering to. `Session Capture Minutes` (60) sets the interval and is what `dsl_bench start`
+  now uses when you do not name one.
+- **Captures record where each second happened**: new `biome`, `pos_x` and `pos_z` columns.
+- **`dsl_nearby` lists what is loaded around you by prefab**, so a piece count can be read as what
+  it is made of rather than guessed at.
+- **Captures say what they actually cover.** New `# span` lines per machine, `# requested`, and
+  `# follows` naming the previous capture of the session.
+- **A capture with no window named now starts where the last one ended**, so an evening's files
+  abut instead of overlapping. `Capture Since Last Capture` turns it off; `Default Capture Minutes`
+  sets the fallback.
+- **The shared-stall verdict accounts for where everyone was standing.** Stalling is mostly a
+  property of dense ground, and a group stands in the same dense ground at the same time, so the
+  old model read that as a shared cause. It no longer does.
+- `dsl_hotspots` finally mentions `mods` in its own help text.
+
 ## 0.10.22 - 2026-11-11
 
 - **A saved capture now records what each machine is and how it was set up.** The hardware and

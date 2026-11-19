@@ -40,6 +40,11 @@ namespace DiagnoseServerLag
         internal static ConfigEntry<int> WindowSeconds;
         internal static ConfigEntry<int> BaselineSeconds;
         internal static ConfigEntry<int> HistoryMinutes;
+        internal static ConfigEntry<int> DefaultCaptureMinutes;
+        internal static ConfigEntry<int> FarewellMinutes;
+        internal static ConfigEntry<bool> CaptureSinceLast;
+        internal static ConfigEntry<bool> SessionCapture;
+        internal static ConfigEntry<int> SessionCaptureMinutes;
 
         // ── how often the server is asked ───────────────────────────────────────────
         internal static ConfigEntry<float> WatchSeconds;
@@ -165,6 +170,40 @@ namespace DiagnoseServerLag
                 "is not automatically better: the summary reports medians over whatever is in the window, so a " +
                 "window covering ten minutes of work and ten of standing still describes neither. Match the " +
                 "capture to the activity. Takes effect on restart.");
+
+            FarewellMinutes = mod.BindRangeInt("Measurement", "Farewell Minutes", 10, 1, 60,
+                "How many minutes of history to hand the server when you log out, so a capture taken after " +
+                "you have gone still includes you. Small on purpose: the game gives a closing connection " +
+                "about a tenth of a second and then discards whatever has not gone out, so a large window " +
+                "is not a longer record, it is no record at all. Raise it only if departed players are " +
+                "arriving with less history than you need and they are on a fast connection.");
+
+            DefaultCaptureMinutes = mod.BindRangeInt("Measurement", "Default Capture Minutes", 2, 1, 180,
+                "How many minutes dsl_bench captures when you do not say. Naming a window still wins, and " +
+                "History Minutes is still the ceiling - asking for more than is kept captures everything " +
+                "there is. Raise this if you habitually want the whole session rather than the last couple " +
+                "of minutes.");
+
+            CaptureSinceLast = mod.Bind("Measurement", "Capture Since Last Capture", true,
+                "With no window named, start from where the previous capture of this session ended instead " +
+                "of going back the full default. Two captures twenty minutes apart then cover twenty " +
+                "minutes and forty, not the same hour twice. The first capture of a session, and any " +
+                "capture where you name a window, are unaffected.");
+
+            SessionCapture = mod.Bind("Measurement", "Session Capture", false,
+                "Capture the whole session without anybody asking: one capture every Session Capture Minutes " +
+                "while people are playing, and one more when the last player leaves. Set on a server or a " +
+                "host it arms itself when the world comes up. Set on a client it asks the server to arm one " +
+                "when you join, which is how to get session captures out of a server whose own configuration " +
+                "you cannot edit. Either way dsl_bench stop ends it until the server restarts, so stopping it " +
+                "by hand stays stopped.");
+
+            SessionCaptureMinutes = mod.BindRangeInt("Measurement", "Session Capture Minutes", 60, 1, 180,
+                "How long between automatic session captures, and what dsl_bench start uses when you do not " +
+                "name a number. History Minutes is the ceiling on what one capture can hold, so an interval " +
+                "longer than that leaves unrecorded gaps between the files. An empty server takes no " +
+                "periodic captures at all - there is nothing to measure - so the clock only runs while " +
+                "somebody is connected.");
 
             WatchSeconds = mod.BindRange("Measurement", "Watch Seconds", 1f, 0.5f, 30f,
                 "How often to ask the server for its numbers while the report is open. Once a second keeps " +

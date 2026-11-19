@@ -16,6 +16,25 @@ namespace DiagnoseServerLag
     /// </summary>
     internal static class Commands
     {
+        /// <summary>
+        /// The previous local capture of this session: "<file>,<ISO time its rows end>", and the
+        /// tick that time represents.
+        ///
+        /// Two jobs. It becomes the next capture's '# follows' line, so a session's files form a
+        /// readable chain; and with Capture Since Last Capture on it is where the next unnamed
+        /// window starts, so repeated captures stop re-covering the same minutes. Cleared by
+        /// Sampler.Reset along with the history, because a new session is a new chain.
+        /// </summary>
+        private static string _previousLocalCapture;
+        internal static long LastLocalCaptureEndTicks { get; private set; }
+
+        /// <summary>Forget the capture chain. Called when the history it indexes is thrown away.</summary>
+        internal static void ResetCaptureChain()
+        {
+            _previousLocalCapture = null;
+            LastLocalCaptureEndTicks = 0;
+        }
+
         internal static void Register()
         {
             new Terminal.ConsoleCommand("dsl", "Diagnose Server Lag: open or close the lag report",
@@ -110,6 +129,49 @@ namespace DiagnoseServerLag
             // mod to ask. Merged that way, the single command is never the weaker option.
             Terminal.ConsoleEvent bench = args =>
             {
+                // "start" hands the job to the server instead of taking one capture here.
+                //
+                // Worth the extra word on the command because the thing you most want captured is
+                // the end of the session, and you are not there for it: people log off one at a
+                // time and whoever would have typed dsl_bench has usually gone first. A server
+                // that takes its own captures, and one more when the last player leaves, covers
+                // the whole evening without anybody remembering to.
+                string verb = args.Length > 1 ? args[1].ToLowerInvariant() : "";
+                if (verb == "start" || verb == "stop" || verb == "status")
+                {
+                    if (LagNetwork.Module == ServerModule.Absent && !Sampler.IsServerHere)
+                    {
+                        args.Context?.AddString("The server is not running this mod, so it cannot take captures on its own.");
+                        return;
+                    }
+                    // Session Capture Minutes, not Default Capture Minutes: how often to capture
+                    // and how much to capture are different questions, and the old code answered
+                    // the first with the second - so a two-minute default window, which is a
+                    // sensible window, also meant capturing every two minutes, which is not.
+                    int every = DslConfig.SessionCaptureMinutes.Value;
+                    if (args.Length > 2 && int.TryParse(args[2], out int m) && m > 0) every = m;
+
+                    if (Sampler.IsServerHere)
+                    {
+                        // Hosting: no round trip, and the answer is already here.
+                        args.Context?.AddString(verb == "status"
+                            ? LagNetwork.SessionStatus()
+                            : LagNetwork.SetSession(verb == "start", every, "this machine"));
+                        return;
+                    }
+                    if (verb == "status")
+                    {
+                        args.Context?.AddString("Asked the server; its answer prints here when it arrives.");
+                        LagNetwork.AskSession(true, -1);     // -1 asks without changing anything
+                        return;
+                    }
+                    LagNetwork.AskSession(verb == "start", every);
+                    args.Context?.AddString(verb == "start"
+                        ? $"Asked the server to capture every {every} min and once more when the last player leaves."
+                        : "Asked the server to stop its session capture.");
+                    return;
+                }
+
                 int seconds;
                 bool localOnly;
                 if (!ParseWindow(args, out seconds, out localOnly)) return;
@@ -132,7 +194,16 @@ namespace DiagnoseServerLag
                 args.Context?.AddString("Also asked the server for a group capture; its reply prints here when it arrives.");
             };
 
-            new Terminal.ConsoleCommand("dsl_bench", "Diagnose Server Lag: capture the last N minutes (default 2). 30 is half an hour, 90s a tight window, 'local' skips asking the server", bench);
+            new Terminal.ConsoleCommand("dsl_bench", "Diagnose Server Lag: capture the last N minutes. 30 is half an hour, 90s a tight window, 'local' skips asking the server, 'start [minutes]' leaves the server capturing all session and 'stop' ends it", bench);
+
+            new Terminal.ConsoleCommand("dsl_nearby",
+                "Diagnose Server Lag: what is loaded around you, counted by prefab (a number after it shows more kinds)",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    int top = 15;
+                    if (args.Length > 1 && int.TryParse(args[1], out int n) && n > 0) top = Mathf.Min(n, 200);
+                    args.Context?.AddString(Nearby.Describe(top));
+                }));
 
             new Terminal.ConsoleCommand("dsl_cpu", "Diagnose Server Lag: what this process is costing the machine",
                 (Terminal.ConsoleEvent)(args =>
@@ -156,7 +227,7 @@ namespace DiagnoseServerLag
             // the loss is spread across every frame rather than concentrated in a tail (so not GC
             // pauses), and that ZDO count, heap, travel and every graphics setting are correlates
             // that fail as causes.
-            new Terminal.ConsoleCommand("dsl_hotspots", "Diagnose Server Lag: time the main thread per method ('on', 'off', 'reset', 'patches', 'drill Type.Method', or nothing to read it)",
+            new Terminal.ConsoleCommand("dsl_hotspots", "Diagnose Server Lag: time the main thread per method ('on', 'off', 'reset', 'patches', 'mods', 'drill Type.Method', or nothing to read it)",
                 (Terminal.ConsoleEvent)(args =>
                 {
                     string what = args.Length > 1 ? args[1].ToLowerInvariant() : "";
@@ -271,8 +342,23 @@ namespace DiagnoseServerLag
         {
             int maxSeconds = Sampler.History.Capacity;
             int maxMinutes = maxSeconds / 60;
-            seconds = 120;
             localOnly = false;
+
+            // With nothing named: start where the last capture of this session ended, so two
+            // captures twenty minutes apart cover twenty minutes and forty rather than the same
+            // hour twice. Three captures inside one evening overlapped by 44 of their 60 minutes
+            // on 2026-11-16, and nothing about the files said so.
+            //
+            // Clamped to what is kept, because the ring is the real limit, and floored at a few
+            // seconds so a capture typed twice in a row still returns something readable.
+            seconds = Mathf.Clamp(DslConfig.DefaultCaptureMinutes.Value * 60, 5, maxSeconds);
+            long sinceTicks = LastLocalCaptureEndTicks;
+            if (sinceTicks == 0 && Sampler.IsServerHere) sinceTicks = GroupReport.LastCaptureEndTicks;
+            if (DslConfig.CaptureSinceLast.Value && sinceTicks > 0)
+            {
+                int gap = (int)((DateTime.UtcNow.Ticks - sinceTicks) / TimeSpan.TicksPerSecond);
+                if (gap >= 5) seconds = Mathf.Clamp(gap, 5, maxSeconds);
+            }
 
             for (int i = 1; i < args.Length; i++)
             {
@@ -530,6 +616,25 @@ namespace DiagnoseServerLag
                 if (hw.Length > 0) sb.AppendLine($"# hardware,{hw}");
                 string gfx = CaptureCsv.MetaText(GraphicsConfig.Describe());
                 if (gfx.Length > 0) sb.AppendLine($"# settings,{gfx}");
+
+                // What this file covers, as against what was asked for. '# seconds' above is the
+                // row count, which is not the same thing once a gap appears, and nothing recorded
+                // the wall-clock extremes at all.
+                long first = 0, lastTick = 0;
+                foreach (var sm in window)
+                {
+                    if (first == 0 || sm.UtcTicks < first) first = sm.UtcTicks;
+                    if (sm.UtcTicks > lastTick) lastTick = sm.UtcTicks;
+                }
+                string span = CaptureCsv.SpanLine(null, first, lastTick, window.Count);
+                if (span != null) sb.AppendLine(span);
+                if (!string.IsNullOrEmpty(_previousLocalCapture))
+                    sb.AppendLine($"# follows,{CaptureCsv.MetaText(_previousLocalCapture)}");
+                if (lastTick > 0)
+                {
+                    LastLocalCaptureEndTicks = lastTick;
+                    _previousLocalCapture = Path.GetFileName(path) + "," + CaptureCsv.Iso(lastTick);
+                }
                 sb.AppendLine("#");
 
                 // The same columns the group capture writes - see CaptureCsv for why there is only

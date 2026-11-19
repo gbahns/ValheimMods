@@ -105,7 +105,18 @@ namespace DiagnoseServerLag
 
         private static bool IsPiece(ZDO zdo)
         {
-            int hash = zdo.GetPrefab();
+            return IsPieceHash(zdo.GetPrefab());
+        }
+
+        /// <summary>
+        /// Does this prefab carry a Piece component? Cached, because the answer never changes.
+        ///
+        /// Shared with dsl_nearby so the two always agree on what nearby_pieces counts. They must:
+        /// the list exists to explain the number, and a list built from a different test would
+        /// explain a number nobody recorded.
+        /// </summary>
+        internal static bool IsPieceHash(int hash)
+        {
             if (_isPiece.TryGetValue(hash, out bool known)) return known;
             bool piece = false;
             try
@@ -284,6 +295,8 @@ namespace DiagnoseServerLag
             _bucketMaxMs = 0f;
             _bucketFrames = 0;
             _bucketStalls = 0;
+            // The capture chain indexes the history that was just thrown away, so it goes too.
+            Commands.ResetCaptureChain();
         }
 
         /// <summary>Call once per frame from the plugin's Update.</summary>
@@ -439,6 +452,10 @@ namespace DiagnoseServerLag
             // means something on a frame-capped server, where tick time is constant by
             // construction and says nothing about how much room is left.
             Machine.Fill(ref s, now);
+
+            // Where this was measured. Last, because it is the cheapest thing here and the one
+            // most likely to be wanted when reading the row back months later.
+            FillPlace(ref s);
 
             History.Add(s);
         }
@@ -661,6 +678,28 @@ namespace DiagnoseServerLag
         /// than the few hundred in BaseAI.Instances, which is why it reads the ZDO keys directly
         /// and touches no components: no GetComponent, no allocation, one dictionary pass.
         /// </summary>
+        /// <summary>
+        /// The biome and position of this machine's player.
+        ///
+        /// GetCurrentBiome returns Character.m_currentBiome, a field the game keeps up to date on
+        /// its own - this does not call Heightmap.FindBiome, which does real work and would be the
+        /// wrong thing to run every second in a diagnostic. A dedicated server has no local player
+        /// and is left at zero, which reads back as no biome rather than as Meadows.
+        /// </summary>
+        private static void FillPlace(ref Sample s)
+        {
+            try
+            {
+                var who = Player.m_localPlayer;
+                if (who == null) return;
+                s.Biome = (int)who.GetCurrentBiome();
+                var p = who.transform.position;
+                s.PosX = Mathf.RoundToInt(p.x);
+                s.PosZ = Mathf.RoundToInt(p.z);
+            }
+            catch { }
+        }
+
         private static void CountOwnedObjects(ref Sample s)
         {
             try

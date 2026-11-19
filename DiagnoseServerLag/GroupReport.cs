@@ -34,6 +34,23 @@ namespace DiagnoseServerLag
         /// </summary>
         private const int BuiltUpFloor = 1000;
 
+        /// <summary>
+        /// The previous group capture of this server run: "<file>,<ISO time its rows end>".
+        ///
+        /// Written into the next capture as a '# follows' line so a session's files form a chain
+        /// that can be read back in order, and so an overlap between two of them is stated rather
+        /// than discovered. Deliberately not a merge: a merged file would be a new format with its
+        /// own bugs, while a chain costs one line and loses nothing - the reader stitches on
+        /// machine and timestamp, which is what anybody analysing several captures does anyway.
+        ///
+        /// Not persisted. A server restart starts a new chain, which is correct: the thing being
+        /// chained is one run.
+        /// </summary>
+        private static string _previousCapture;
+
+        /// <summary>Where the newest capture's rows end, so the next one can start there.</summary>
+        internal static long LastCaptureEndTicks { get; private set; }
+
         internal static string Build(int seconds, List<ClientSeries> clients, int expected, out string csvPath, out string csvText)
         {
             csvPath = null;
@@ -127,7 +144,7 @@ namespace DiagnoseServerLag
             string ownership = Ownership(clients);
             if (ownership != null) { sb.AppendLine(); sb.AppendLine(ownership); }
 
-            csvPath = WriteCsv(window, clients, out csvText);
+            csvPath = WriteCsv(window, clients, seconds, out csvText);
             return sb.ToString().TrimEnd();
         }
 
@@ -443,15 +460,89 @@ namespace DiagnoseServerLag
 
             // Expected, were the machines unrelated: the chance that two or more stall in the same
             // second, which is one minus the chance none does minus the chance exactly one does.
-            double noneP = 1.0;
-            foreach (string who in names) noneP *= 1.0 - rate[who];
-            double exactlyOne = 0.0;
-            bool certain = false;
-            foreach (string who in names) if (rate[who] >= 1.0) certain = true;
-            if (!certain)
+            //
+            // Computed twice. The flat model gives every machine one rate for the whole capture;
+            // the place-aware one gives it a rate for dense ground and another for open, and uses
+            // whichever matches where it actually stood that second.
+            //
+            // The difference is not a refinement, it is the whole answer. Stalling is overwhelmingly
+            // a property of where you are standing - one capture had a client stalling in 27% of its
+            // seconds in built-up ground and 4% outside it - and a group plays together, so they are
+            // in the same dense place at the same time. A model that ignores that attributes the
+            // resulting pile-up to a shared cause. On 2026-11-16 the flat model called four-machine
+            // seconds 4.6x chance, which reads as the server; conditioning on where everyone stood
+            // put two-machine and three-machine seconds at 1.0x and left nothing to explain.
+            //
+            // Dense is split at each machine's own median piece count rather than a fixed number,
+            // because bases differ by an order of magnitude. A machine that never moved has a
+            // meaningless split, and that is harmless: both its rates come out alike and the model
+            // collapses back to the flat one for that machine.
+            var median = new Dictionary<string, int>();
+            var spread = new Dictionary<string, bool>();
+            foreach (var kv in pieces)
+            {
+                var all = new List<int>(kv.Value.Values);
+                if (all.Count == 0) continue;
+                all.Sort();
+                median[kv.Key] = all[all.Count / 2];
+                // Only worth splitting when the machine saw both kinds of ground at all.
+                spread[kv.Key] = all[all.Count - 1] >= BuiltUpFloor && all[all.Count - 1] > all[0] * 2;
+            }
+            bool Dense(string who, long second)
+            {
+                if (!spread.TryGetValue(who, out bool worth) || !worth) return false;
+                if (!pieces.TryGetValue(who, out var pm) || !pm.TryGetValue(second, out int built)) return false;
+                return built > median[who];
+            }
+
+            var denseHits = new Dictionary<string, int>();
+            var denseSecs = new Dictionary<string, int>();
+            var openHits = new Dictionary<string, int>();
+            var openSecs = new Dictionary<string, int>();
+            foreach (string who in names) { denseHits[who] = 0; denseSecs[who] = 0; openHits[who] = 0; openSecs[who] = 0; }
+            foreach (long sec in common)
                 foreach (string who in names)
-                    exactlyOne += noneP * rate[who] / (1.0 - rate[who]);
-            double expected = n * Math.Max(0.0, 1.0 - noneP - exactlyOne);
+                {
+                    bool stall = stalled.TryGetValue(who, out var t0) && t0.Contains(sec);
+                    if (Dense(who, sec)) { denseSecs[who]++; if (stall) denseHits[who]++; }
+                    else { openSecs[who]++; if (stall) openHits[who]++; }
+                }
+            double RateAt(string who, long second)
+            {
+                if (Dense(who, second))
+                    return denseSecs[who] > 0 ? (double)denseHits[who] / denseSecs[who] : rate[who];
+                return openSecs[who] > 0 ? (double)openHits[who] / openSecs[who] : rate[who];
+            }
+
+            // Two or more, per second, from each machine's rate for the ground it was on.
+            // Written as an O(k^2) pass over a handful of machines rather than with a division,
+            // so a machine that stalled in every second of its bucket cannot divide by zero.
+            double TwoOrMore(List<double> ps)
+            {
+                double none = 1.0;
+                foreach (double q in ps) none *= 1.0 - q;
+                double one = 0.0;
+                for (int i = 0; i < ps.Count; i++)
+                {
+                    double term = ps[i];
+                    for (int j = 0; j < ps.Count; j++) if (j != i) term *= 1.0 - ps[j];
+                    one += term;
+                }
+                return Math.Max(0.0, 1.0 - none - one);
+            }
+
+            double expected = 0.0;
+            var row = new List<double>(names.Count);
+            foreach (long sec in common)
+            {
+                row.Clear();
+                foreach (string who in names) row.Add(RateAt(who, sec));
+                expected += TwoOrMore(row);
+            }
+
+            var flatRow = new List<double>(names.Count);
+            foreach (string who in names) flatRow.Add(rate[who]);
+            double expectedFlat = n * TwoOrMore(flatRow);
 
             var sb = new StringBuilder();
             sb.AppendLine($"Compared over {n} second(s) that every machine reported.");
@@ -459,7 +550,12 @@ namespace DiagnoseServerLag
                 sb.AppendLine($"  {who,-16} stalled in {hits[who],4} of them ({rate[who] * 100:0.0}%)");
             sb.AppendLine();
             sb.AppendLine($"TOGETHER: {togetherAt.Count} second(s) with two or more machines stalling; " +
-                          $"unrelated machines at these rates would give about {expected:0}.");
+                          $"unrelated machines standing where these ones stood would give about {expected:0}.");
+            // Said only when it changes the reading, because the point of the line is the warning:
+            // the simpler sum would have blamed something shared for people being in one place.
+            if (expectedFlat >= 0.5 && (expected >= expectedFlat * 1.3 || expectedFlat >= expected * 1.3))
+                sb.AppendLine($"  (Ignoring where they stood it would be about {expectedFlat:0} - " +
+                              "the difference is the group being in the same dense place at once.)");
 
             if (togetherAt.Count > 0)
             {
@@ -597,7 +693,7 @@ namespace DiagnoseServerLag
         /// whoever asked for the capture. On a dedicated server "here" is a filesystem the person
         /// who typed the command cannot reach, which is the whole reason the text travels.
         /// </summary>
-        private static string WriteCsv(List<Sample> window, List<ClientSeries> clients, out string csvText)
+        private static string WriteCsv(List<Sample> window, List<ClientSeries> clients, int requestedSeconds, out string csvText)
         {
             csvText = null;
             try
@@ -607,6 +703,7 @@ namespace DiagnoseServerLag
                 string path = Path.Combine(dir, $"group-{DateTime.Now:yyyyMMdd-HHmmss}.csv");
                 var c = CultureInfo.InvariantCulture;
                 var sb = new StringBuilder();
+                string previousCapture = _previousCapture;
                 sb.AppendLine($"# mod,{DiagnoseServerLagMod.ModVersion}");
                 sb.AppendLine($"# captured,{DateTime.Now:yyyy-MM-dd HH:mm:ss}");
                 sb.AppendLine($"# machines,{clients.Count + 1}");
@@ -632,6 +729,50 @@ namespace DiagnoseServerLag
                     if (hw.Length > 0) sb.AppendLine($"# hardware,{name},{hw}");
                     if (gfx.Length > 0) sb.AppendLine($"# settings,{name},{gfx}");
                 }
+
+                // What this file actually covers, machine by machine.
+                //
+                // The request is recorded too, because the gap between the two is information: a
+                // client who joined after the window opened answers with everything it has, and
+                // that is not a fault to hide. Without these lines a reader has to parse every row
+                // to learn what they are holding, which is exactly how one evening's three
+                // overlapping captures got read as three independent samples.
+                sb.AppendLine($"# requested,{requestedSeconds}s");
+                long first = 0, last = 0;
+                foreach (var s in window)
+                {
+                    if (first == 0 || s.UtcTicks < first) first = s.UtcTicks;
+                    if (s.UtcTicks > last) last = s.UtcTicks;
+                }
+                string svSpan = CaptureCsv.SpanLine("server", first, last, window.Count);
+                if (svSpan != null) sb.AppendLine(svSpan);
+                foreach (var cl in clients)
+                {
+                    long f = 0, l = 0; int n = 0;
+                    if (cl.Full)
+                    {
+                        foreach (var s in cl.Samples)
+                        {
+                            if (f == 0 || s.UtcTicks < f) f = s.UtcTicks;
+                            if (s.UtcTicks > l) l = s.UtcTicks;
+                            n++;
+                        }
+                    }
+                    else
+                    {
+                        foreach (var sec in cl.Seconds)
+                        {
+                            if (f == 0 || sec.UtcTicks < f) f = sec.UtcTicks;
+                            if (sec.UtcTicks > l) l = sec.UtcTicks;
+                            n++;
+                        }
+                    }
+                    string sp = CaptureCsv.SpanLine(cl.Name, f, l, n);
+                    if (sp != null) sb.AppendLine(sp + (cl.LeftAtUtcTicks != 0 ? ",departed" : ""));
+                }
+                if (!string.IsNullOrEmpty(previousCapture))
+                    sb.AppendLine($"# follows,{CaptureCsv.MetaText(previousCapture)}");
+
                 sb.AppendLine("#");
                 sb.AppendLine(CaptureCsv.Header);
 
@@ -660,6 +801,26 @@ namespace DiagnoseServerLag
 
                 csvText = sb.ToString();
                 File.WriteAllText(path, csvText);
+
+                // Remember where this one ends, so the next capture can start there instead of
+                // covering the same ground again, and can name this file as the one it follows.
+                long end = last;
+                foreach (var cl in clients)
+                {
+                    if (cl.Full)
+                    {
+                        foreach (var sm in cl.Samples) if (sm.UtcTicks > end) end = sm.UtcTicks;
+                    }
+                    else
+                    {
+                        foreach (var sec in cl.Seconds) if (sec.UtcTicks > end) end = sec.UtcTicks;
+                    }
+                }
+                if (end > 0)
+                {
+                    LastCaptureEndTicks = end;
+                    _previousCapture = Path.GetFileName(path) + "," + CaptureCsv.Iso(end);
+                }
                 return path;
             }
             catch (Exception e)

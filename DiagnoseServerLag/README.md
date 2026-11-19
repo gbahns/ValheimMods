@@ -90,12 +90,19 @@ server      33.3 ms  412669 obj
 | `dsl_why` | Print the verdict and its evidence as text |
 | `dsl_now` | The last second measured on this machine |
 | `dsl_server` | What the server last reported about itself, including the per-player table |
-| `dsl_bench [minutes]` | Capture the last N minutes (default 2) on **this machine**, ask the server for the group capture, and write a CSV |
+| `dsl_bench [minutes]` | Capture the last N minutes on **this machine**, ask the server for the group capture, and write a CSV. With no window it starts where your last capture ended |
 | `dsl_bench 90s` | The same over a tight window, in seconds, for one freeze you just felt |
 | `dsl_bench 30 local` | This machine only - skip asking the server |
+| `dsl_bench start [minutes]` | Leave the **server** capturing for the rest of the session, and once more when the last player logs off |
+| `dsl_bench stop` / `status` | End that, or ask what it is doing |
+| `dsl_nearby [kinds]` | What is loaded around you, counted by prefab - pieces listed apart from everything else |
 | `dsl_cpu` | What this process is costing the machine, and how much headroom is left |
 | `dsl_dump` | Write every measured second to a CSV under `BepInEx/config/DiagnoseServerLag/` |
 | `dsl_reset` | Forget the history and rebuild the baseline |
+
+`dsl_bench start` exists because the capture worth having is usually the one covering the end of the evening, and by then whoever would have typed `dsl_bench` has logged off. The server keeps capturing on its own, each file picking up where the last one ended, and takes a final one shortly after the last player leaves. It stops itself there; nothing runs on a server whose admin did not ask for it.
+
+Turn **Session Capture** on and you never have to type it. Set on a server or a host it arms itself when the world comes up; set on a client it asks the server when you join, which is how to get session captures out of a server whose configuration you cannot edit. It is off by default, an empty server takes no periodic captures, and `dsl_bench stop` still ends it until the server restarts.
 
 A Valheim dedicated server has no console to type into — it reads nothing from stdin — so every command here runs on a **client**. To measure the server itself, an admin runs `dsl_bench`, which asks the server to capture itself and prints its reply in your console alongside the local capture.
 
@@ -115,7 +122,9 @@ ALONE: stalls nobody else had, which are local to that machine.
 
 Stalls in the **same wall-clock second** on two or more machines are one shared event — the server, or the path everyone crosses. The same stalls at different seconds are separate local problems. The numbers look identical; only the alignment separates them.
 
-A `group-<timestamp>.csv` is written on the server, one row per machine per second. Its `#` header names every machine and the graphics settings it was running, so a capture kept for weeks can still say what produced it.
+A `group-<timestamp>.csv` is written on the server, one row per machine per second. Its `#` header names every machine and the graphics settings it was running, so a capture kept for weeks can still say what produced it, and `# span` lines say what each machine actually covered - which is rarely the window that was asked for, since people join at different times. `# follows` names the previous capture of the session, so a long evening's files read back in order.
+
+Each row also carries the `biome` and the position it was measured at. Without them a capture can say what a second cost and not where it happened, which is a question somebody always asks afterwards.
 
 Each client decides whether to answer via **Share My Performance** (default on). It sends frame times, stalls, CPU share and collection counts — performance numbers only. Clients that do not answer are counted and named, so a partial picture is never mistaken for a complete one.
 
@@ -155,6 +164,11 @@ It prints a summary and writes `BepInEx/config/DiagnoseServerLag/lag-<role>-<tim
 The ones worth knowing about:
 
 - **History Minutes** (60) — how much per-second history to keep, and so the largest window `dsl_bench` will accept. Up to 180. Longer is not automatically better: the summary reports medians over the whole window, so match the capture to the activity rather than maximizing it.
+- **Default Capture Minutes** (2) — how far back `dsl_bench` reaches when you do not say.
+- **Session Capture** (off) — capture the whole session without being asked: every interval while people play, and once more when the last leaves.
+- **Session Capture Minutes** (60) — the interval, and what `dsl_bench start` uses when you do not name one.
+- **Capture Since Last Capture** (on) — with no window named, start where the previous capture ended, so repeated captures stop re-covering the same minutes.
+- **Farewell Minutes** (10) — how much history to hand the server on the way out. Small on purpose: a closing connection gets about a tenth of a second, so a large window is no record at all.
 - **Stall Milliseconds** (100) — a frame longer than this counts as a stall.
 - **Window Seconds** (10) — how many recent seconds the verdict is made from.
 - **Baseline Seconds** (60) — how much history counts as "normal for this server".
