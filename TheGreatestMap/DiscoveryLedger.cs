@@ -6,13 +6,16 @@ using UnityEngine;
 namespace TheGreatestMap
 {
     /// <summary>
-    /// What the player has actually found, and when. Three honest signals, nothing else:
+    /// What the player has actually found, and when. Four honest signals, nothing else:
     ///  1. interacted with it (picked, mined, read, used, opened);
     ///  2. it was under the crosshair within vanilla interaction range;
     ///  3. they looked straight at it with clear line of sight for a moment, within the
     ///     sighting distance for that kind of thing (a tower counts from further away than a
-    ///     dandelion).
-    /// No proximity radar: an object behind a tree or below the ground is never "found".
+    ///     dandelion);
+    ///  4. the wishbone they are wearing is pinging about it, which is the game itself saying
+    ///     the thing is there -- the one signal nobody has to infer.
+    /// No proximity radar: an object behind a tree or below the ground is never "found", unless
+    /// the game has just told the player it is there, which is what the wishbone is for.
     /// Finds are forgotten after the memory window and are saved with the character so a
     /// relog inside the window does not lose them.
     /// </summary>
@@ -55,6 +58,11 @@ namespace TheGreatestMap
             if (hover != null && Catalog.TryClassify(hover, out var hovered))
                 MarkFound(hovered);
 
+            // Before the camera is asked for. The wishbone needs no view of anything -- it
+            // is the one find that works with your back turned and your head underwater --
+            // and a frame with no camera yet must not cost it.
+            Wishbone(player);
+
             var cam = GameCamera.instance;
             if (cam == null) return;
             int n = Physics.RaycastNonAlloc(cam.transform.position, cam.transform.forward, _hits,
@@ -85,6 +93,60 @@ namespace TheGreatestMap
             if (place.Key != _placeKey) { _placeKey = place.Key; _placeSince = Time.time; }
             if (Time.time - _placeSince >= TgmConfig.LookDwell.Value) MarkFound(place);
         }
+
+        /// <summary>
+        /// What the wishbone is pinging about, taken from the game rather than from where the
+        /// player happens to be standing.
+        ///
+        /// <para>Everything else in this ledger has to work out what was found, because looking
+        /// at something is a guess about intent. This one does not: a wishbone is SE_Finder, and
+        /// SE_Finder works by asking Beacon for the nearest beacon in range -- so the game is
+        /// already holding the object, and the only honest thing to do is ask for the same list.
+        /// Beacon.FindBeaconsInRange is public and static, so there is nothing to patch and
+        /// nothing private to reach for. The beacon's own GameObject is the buried thing, which
+        /// means the ordinary classifier names it, pictures it and files it by kind exactly as
+        /// it would a vein somebody looked straight at.</para>
+        ///
+        /// <para>It fits "found, not detected" better than anything else here. This is not the
+        /// mod sweeping the world for what it can see; it is the game ringing a bell in the
+        /// player's ear to tell them something is under their feet. That is a find, and the
+        /// marker goes at the thing rather than at the player, so there is no standing in the
+        /// middle of the ping trying to judge the center of it.</para>
+        ///
+        /// <para>Everything downstream is unchanged: a switched-off kind is still refused, a
+        /// Tier.Never group is still refused, and the find still waits for the map to come out
+        /// before it is written. Being told where a thing is does not make it written down.</para>
+        /// </summary>
+        private static void Wishbone(Player player)
+        {
+            if (TgmConfig.RecordWishbone == null || !TgmConfig.RecordWishbone.Value) return;
+            var seman = player.GetSEMan();
+            if (seman == null) return;
+            // Asked by type rather than by name hash. There is no SEMan.s_statusEffect for this
+            // one to borrow, and a hardcoded hash of "Wishbone" is a guess about an asset name
+            // that would fail silently the day it changed -- while anything that is an SE_Finder
+            // is a finder whatever it is called, this mod's, a mod of somebody else's, or a
+            // future one of the game's own.
+            var effects = seman.GetStatusEffects();
+            bool finding = false;
+            for (int i = 0; effects != null && i < effects.Count && !finding; i++)
+                finding = effects[i] is SE_Finder;
+            if (!finding) return;
+
+            _beacons.Clear();
+            Beacon.FindBeaconsInRange(player.transform.position, _beacons);
+            for (int i = 0; i < _beacons.Count; i++)
+            {
+                var beacon = _beacons[i];
+                if (beacon == null) continue;
+                if (Catalog.TryClassify(beacon.gameObject, out var found)) MarkFound(found);
+            }
+            _beacons.Clear();
+        }
+
+        // Reused rather than made each scan: this runs five times a second for as long as the
+        // wishbone is worn, and the list is nearly always empty or holds one thing.
+        private static readonly List<Beacon> _beacons = new List<Beacon>();
 
         private static bool IsPlayerCollider(Collider collider, Player player)
         {

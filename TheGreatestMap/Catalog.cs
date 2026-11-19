@@ -269,6 +269,31 @@ namespace TheGreatestMap
             c == Category.Ship || c == Category.Cart || c == Category.Portal;
 
         /// <summary>
+        /// A kind a player may write down by hand.
+        ///
+        /// <para>Nearly everything, and that is the point: what this mod records is what a player
+        /// found, but what a player writes down is their own business, and the two rules were
+        /// tangled together for a long time. Refusing to let somebody place a trader because
+        /// nothing records traders was a rule about recording leaking into a rule about
+        /// writing.</para>
+        ///
+        /// <para>Only the two that move are refused. A hand-written ship or cart is a note about
+        /// where a thing WAS, drawn beside a live marker that keeps moving while the written one
+        /// does not: a marker guaranteed to become a lie, which is the same reason neither is
+        /// recorded.</para>
+        ///
+        /// <para>A portal is in <see cref="IsLive"/> with them and is not refused here, which is
+        /// the whole difference between the two tests. Portals are live because the server holds
+        /// the authoritative list and a stored marker would need correcting forever -- but "there
+        /// is a portal over there" is exactly as good a thing to write down for somebody who has
+        /// not been as "the trader is over there", and one placed by hand is nobody's copy of
+        /// anything. It is drawn in the portal color like the rest, styling filing it by
+        /// kind.</para>
+        /// </summary>
+        internal static bool PlaceableByHand(Category c) =>
+            c != Category.Ship && c != Category.Cart;
+
+        /// <summary>
         /// A kind the game puts on the map by itself, the moment you find one. Recording our own
         /// on top is a second pin saying the same thing in a different picture, so nothing here
         /// records these -- but they stay in the marker list, because "where is the nearest
@@ -882,6 +907,7 @@ namespace TheGreatestMap
         internal static void Invalidate()
         {
             _built = false;
+            _groupRows = null;
             _iconBySource.Clear();
             CrossedOff.Forget();
             // Which of the world's locations are altars and which are traders comes out of the
@@ -1384,6 +1410,15 @@ namespace TheGreatestMap
             public string Why;
             /// <summary>How many catalog entries it gathers, which is how plural the label is.</summary>
             public int Entries;
+            /// <summary>One prefab of this group: what its picture is resolved from.</summary>
+            public string Prefab;
+            /// <summary>
+            /// The picture this group draws. Without it a row offering to place a silver vein by
+            /// hand wore the Ore kind's pickaxe, which is the picture chosen to mean "mining,
+            /// rather than one metal" -- so every such row looked the same, and placing from one
+            /// of them could only ever say "ore".
+            /// </summary>
+            public string Icon;
         }
 
         /// <summary>
@@ -1394,16 +1429,27 @@ namespace TheGreatestMap
         internal static List<GroupRow> Groups()
         {
             if (!_built) Rebuild();
+            if (_groupRows != null) return _groupRows;
             var rows = new List<GroupRow>();
             var seen = new Dictionary<string, GroupRow>(StringComparer.OrdinalIgnoreCase);
             foreach (var table in new[] { _byPrefab, _builtInByPrefab })
-                foreach (var kv in table) Gather(rows, seen, kv.Value);
+                foreach (var kv in table) Gather(rows, seen, kv.Key, kv.Value);
             foreach (var table in new[] { _byPrefix, _builtInByPrefix })
-                foreach (var kv in table) Gather(rows, seen, kv.Value);
+                foreach (var kv in table) Gather(rows, seen, kv.Key, kv.Value);
+            // Held, because the marker list asks for this once per kind on every refresh and
+            // resolving a picture now reaches into the loaded world for it. Dropped by
+            // Invalidate, with everything else the catalog works out.
+            //
+            // And only once the world is up: before ZNetScene exists every picture resolves to
+            // its kind's fallback, and a list cached then would wear those fallbacks for the
+            // rest of the session.
+            if (ZNetScene.instance != null) _groupRows = rows;
             return rows;
         }
 
-        private static void Gather(List<GroupRow> rows, Dictionary<string, GroupRow> seen, Entry e)
+        private static List<GroupRow> _groupRows;
+
+        private static void Gather(List<GroupRow> rows, Dictionary<string, GroupRow> seen, string prefab, Entry e)
         {
             if (e == null || string.IsNullOrEmpty(e.Group)) return;
             string key = e.Cat + "/" + e.Group;
@@ -1416,9 +1462,26 @@ namespace TheGreatestMap
                 Tier = e.Tier,
                 Why = group == null ? null : group.Why,
                 Entries = 1,
+                Prefab = prefab,
+                // The first entry of the group answers for all of them. A group whose entries
+                // wanted different pictures would read as two rows everywhere else in this mod,
+                // picture being what a marker is identified by, so it would be two groups.
+                Icon = GroupIcon(prefab, e),
             };
             seen[key] = made;
             rows.Add(made);
+        }
+
+        /// <summary>
+        /// The picture a group draws, resolved the way the legend resolves it, and never allowed
+        /// to throw: this runs for every group in the catalog to build one list of rows, and a
+        /// prefab the loaded world has never heard of must not cost the other two hundred rows.
+        /// </summary>
+        private static string GroupIcon(string prefab, Entry e)
+        {
+            if (string.IsNullOrEmpty(prefab)) return null;
+            try { string from; return ResolveLegendIcon(prefab, e, out from); }
+            catch (System.Exception) { return null; }
         }
 
         /// <summary>One catalog line, with the icon it will actually draw and where that came from.</summary>

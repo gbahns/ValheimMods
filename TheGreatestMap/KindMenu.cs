@@ -953,14 +953,40 @@ namespace TheGreatestMap
         {
             var list = new List<Catalog.GroupRow>();
             if (TgmConfig.ShowNotRecording == null || !TgmConfig.ShowNotRecording.Value) return list;
+            List<Focus.TypeCount> found = null;
+            if (_types != null) _types.TryGetValue(kind, out found);
             foreach (var row in Catalog.Groups())
             {
                 if (row.Cat != kind || row.Tier == Tier.Never) continue;
-                if (Tiers.Recording(row.Label)) continue;
+                // A group being recorded is listed too, so long as nothing of it is on the map
+                // yet. That row is the one somebody wants: the Silver row before their first
+                // silver vein, to write one down by hand from what the wishbone or a friend
+                // told them. Once a vein has been recorded the type row above says it better,
+                // with a count, so this one steps aside.
+                if (Tiers.Recording(row.Label) && Met(found, row.Icon)) continue;
                 list.Add(row);
             }
             list.Sort((a, b) => string.Compare(a.Label, b.Label, StringComparison.CurrentCultureIgnoreCase));
             return list;
+        }
+
+        /// <summary>
+        /// Whether a type row already stands for this group's picture.
+        ///
+        /// <para>By picture and not by name, because that is what a type row is: the eleven
+        /// kinds of Black Forest stonework all draw the house pin and share one row between
+        /// them, so once any of them is on the map all eleven have been "met" as far as this
+        /// list is concerned -- and placing any of them by hand would make the same marker
+        /// anyway. An unresolved picture counts as met, so a group whose prefab this game does
+        /// not have cannot add a row nobody can use.</para>
+        /// </summary>
+        private static bool Met(List<Focus.TypeCount> found, string icon)
+        {
+            if (string.IsNullOrEmpty(icon)) return true;
+            if (found == null) return false;
+            foreach (var t in found)
+                if (IconRegistry.SameKey(t.Icon, icon)) return true;
+            return false;
         }
 
         /// <summary>
@@ -1061,13 +1087,16 @@ namespace TheGreatestMap
                     // is a perfectly good thing to write down for somebody who has not met him,
                     // and refusing to let a player place one was a rule about recording leaking
                     // into a rule about writing.
-                    Categories.IsLive(k)
+                    // Only the two that move are refused. See Categories.PlaceableByHand --
+                    // the portal used to be refused with them, for being live rather than for
+                    // being a bad thing to write down, which are different complaints.
+                    !Categories.PlaceableByHand(k)
                         ? (Action)null
                         : () => {
                             // Pressing it again puts the arming away, which is what a button that
                             // stays lit has to mean -- there was no way to stop placing short of
                             // closing the map.
-                            if (ManualPlace.Armed.HasValue && ManualPlace.Armed.Value == k)
+                            if (ManualPlace.IsArmed(k, null))
                             {
                                 ManualPlace.Cancel();
                                 Refresh();
@@ -1288,7 +1317,7 @@ namespace TheGreatestMap
                 // to keep it is the row already about people.
                 onPlace: () =>
                 {
-                    if (ManualPlace.Armed.HasValue && ManualPlace.Armed.Value == Category.Player)
+                    if (ManualPlace.IsArmed(Category.Player, null))
                     {
                         ManualPlace.Cancel();
                         Refresh();
@@ -1386,7 +1415,7 @@ namespace TheGreatestMap
                 // there" is a good thing to write down for somebody who has not met him.
                 onPlace: () =>
                 {
-                    if (ManualPlace.Armed.HasValue && ManualPlace.Armed.Value == k)
+                    if (ManualPlace.IsArmed(k, null))
                     {
                         ManualPlace.Cancel();
                         Refresh();
@@ -2127,8 +2156,11 @@ namespace TheGreatestMap
                     // A row for one of the map's own pin types has no kind to arm and passes its
                     // own answer: vanilla's selected icon, which is a different question asked of
                     // a different place.
-                    Func<bool> armed = placeLit ?? (() => placeKind.HasValue && ManualPlace.Armed.HasValue
-                                             && ManualPlace.Armed.Value == placeKind.Value);
+                    // The kind's own picture, not merely its kind: a type row armed under this
+                    // kind must not light the kind row above it as well. A row that arms a type
+                    // passes its own answer.
+                    Func<bool> armed = placeLit ?? (() => placeKind.HasValue
+                                             && ManualPlace.IsArmed(placeKind.Value, null));
                     group.Add(RowButton(row, "+", 15f, right, RowHeight - 8f, onPlace,
                         lit: armed,
                         tipTopic: "Place Manually",
@@ -2728,12 +2760,23 @@ namespace TheGreatestMap
         private static void QuietRow(Minimap map, float y, Catalog.GroupRow group)
         {
             string label = group.Label;
-            string why = string.IsNullOrEmpty(group.Why)
-                ? "Not recorded. Switch it on to start writing markers for these."
-                : group.Why + (group.Tier == Tier.Off
-                    ? " Off until asked for; switch it on to start writing markers for these."
-                    : " Switched off by you; switch it on to start again.");
-            SwitchRow(map, _content, 0f, y, TypeIndent, Catalog.FallbackIcon(group.Cat), label,
+            string why = Tiers.Recording(label)
+                // Recorded, and none found yet: a different row with a different point to it.
+                // The switch still says what it says, but nobody opened this one to turn
+                // recording off -- they opened it to reach the + on a thing they have not met.
+                ? (string.IsNullOrEmpty(group.Why) ? "" : group.Why + " ")
+                  + "Recording these; none found yet. The + writes one down by hand."
+                : string.IsNullOrEmpty(group.Why)
+                    ? "Not recorded. Switch it on to start writing markers for these, or use the + to write one down by hand."
+                    : group.Why + (group.Tier == Tier.Off
+                        ? " Off until asked for; switch it on to start writing markers for these, or use the + for just this one."
+                        : " Switched off by you; switch it on to start again, or use the + for just this one.");
+            var k = group.Cat;
+            // Its own picture rather than the kind's fallback. Twelve dim rows under Ore all
+            // wearing the same pickaxe said nothing about which was which, and the one thing a
+            // player is reading these rows for is what they are.
+            string icon = string.IsNullOrEmpty(group.Icon) ? Catalog.FallbackIcon(group.Cat) : group.Icon;
+            SwitchRow(map, _content, 0f, y, TypeIndent, icon, label,
                 () =>
                 {
                     bool on = !Tiers.Recording(label);
@@ -2742,6 +2785,20 @@ namespace TheGreatestMap
                 },
                 () => Tiers.Recording(label),
                 caption: () => label,
+                // Placing one by hand is a separate question from recording them, and the answer
+                // is yes either way. For a group switched off it is the escape hatch -- no, do
+                // not mark all 850 heaps of stonework, but this one had a chest in it. For a
+                // group switched on with nothing found yet it is the only way to reach the row
+                // at all, which is the whole reason those rows are now listed.
+                onPlace: Categories.PlaceableByHand(group.Cat)
+                    ? (Action)(() =>
+                    {
+                        if (ManualPlace.IsArmed(k, icon)) { ManualPlace.Cancel(); Refresh(); return; }
+                        if (!ManualPlace.Arm(map, k, icon)) return;
+                        if (Pinned) Refresh(); else Close();
+                    })
+                    : null,
+                placeLit: () => ManualPlace.IsArmed(k, icon),
                 tip: why);
         }
 
@@ -2850,6 +2907,24 @@ namespace TheGreatestMap
                     ? AllShown && IsShown(kind) && !TgmConfig.IsBiomeHidden(kind, where)
                     : t.Place ? PlaceLit(kind, t) : AllShown && IsShown(kind) && !TgmConfig.IsIconHidden(t.Icon),
                 caption: () => TypeLabel(t),
+                // The row a player actually means. Arming a kind places the kind's own picture,
+                // which for Ore is a pickaxe meaning "mining, rather than one metal" -- so until
+                // this button existed there was no way to write down "silver here" or "scrap
+                // pile here" by hand, only "ore here". The picture is the whole of the message:
+                // placed with the silver ore icon, the marker lands in this very row.
+                //
+                // Useful well beyond tidiness. A silver vein under a meter of snow has no
+                // collider to put a crosshair on, so recording cannot find it and only a hand
+                // can write it down -- which is the case that asked for this.
+                onPlace: Categories.PlaceableByHand(kind)
+                    ? (Action)(() =>
+                    {
+                        if (ManualPlace.IsArmed(kind, t.Icon)) { ManualPlace.Cancel(); Refresh(); return; }
+                        if (!ManualPlace.Arm(map, kind, t.Icon)) return;
+                        if (Pinned) Refresh(); else Close();
+                    })
+                    : null,
+                placeLit: () => ManualPlace.IsArmed(kind, t.Icon),
                 onOnly: () => { if (byBiome) Focus.SetBiome(kind, where); else Focus.SetIcon(t.Icon); },
                 onLocate: () => { if (byBiome) Locate.Biome(kind, where, t.Label); else Locate.Icon(t.Icon, t.Label); },
                 onlyLit: () => byBiome

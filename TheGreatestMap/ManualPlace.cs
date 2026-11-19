@@ -28,6 +28,32 @@ namespace TheGreatestMap
 
         internal static Category? Armed => _armed != null ? _armed.Kind : (Category?)null;
 
+        /// <summary>
+        /// Whether this exact row is the armed one: a kind, and the picture it will place.
+        ///
+        /// <para>The kind alone stopped being the answer when type rows got a "+" of their own.
+        /// Arming silver and arming ore are both arming Ore, and a row lit by kind would light
+        /// every type row under it -- four buttons claiming to be the one that is armed, which
+        /// is three lies. A null icon asks about the kind's own picture, which is what a kind
+        /// row places.</para>
+        /// </summary>
+        internal static bool IsArmed(Category kind, string icon)
+        {
+            if (_armed == null || _armed.Kind != kind) return false;
+            return IconRegistry.SameKey(_armed.Icon, IconFor(kind, icon));
+        }
+
+        /// <summary>
+        /// The picture a placement will wear: the type's own where a type row asked, and
+        /// otherwise the kind's, which is the picture chosen to stand for the whole kind.
+        /// </summary>
+        private static string IconFor(Category kind, string icon)
+        {
+            if (!string.IsNullOrEmpty(icon)) return icon;
+            return TgmConfig.CategoryIcon.TryGetValue(kind, out var cfg) && !string.IsNullOrEmpty(cfg.Value)
+                ? cfg.Value
+                : Categories.DefaultIcon(kind);
+        }
 
         internal static void Cancel() => Disarm(Minimap.instance);
 
@@ -80,12 +106,27 @@ namespace TheGreatestMap
             if (map.m_mode != Minimap.MapMode.Large) Disarm(map);
         }
 
-        internal static bool Arm(Minimap map, Category kind)
+        internal static bool Arm(Minimap map, Category kind) => Arm(map, kind, null);
+
+        /// <summary>
+        /// Arm a kind, and within it a type: the next marker placed by hand wears this picture.
+        ///
+        /// <para>The picture is the whole of it, and that is not a shortcut. A marker placed by
+        /// hand is identified by what it looks like -- the marker list files it by picture, and
+        /// Focus.TypeLabel reads its name back out of the catalog from the kind and the picture
+        /// together. So handing a placement the silver ore icon is what makes it a silver
+        /// marker: it lands in the Silver row, under Ore, named Silver, beside the veins that
+        /// were recorded by being looked at. Nothing else has to be carried for that to happen,
+        /// and nothing else should be, since a second source of truth about what a marker is
+        /// would be a second thing to disagree.</para>
+        ///
+        /// <para>A null icon means the kind's own, which is what a kind row arms and says
+        /// nothing narrower than the kind.</para>
+        /// </summary>
+        internal static bool Arm(Minimap map, Category kind, string icon)
         {
             if (map == null) return false;
-            string icon = TgmConfig.CategoryIcon.TryGetValue(kind, out var cfg) && !string.IsNullOrEmpty(cfg.Value)
-                ? cfg.Value
-                : Categories.DefaultIcon(kind);
+            icon = IconFor(kind, icon);
             // Nothing to swap here any more: every icon key resolves to a pin type of this
             // mod's own, vanilla pictures included. A key that named one of the game's own types
             // used to produce a pin the game would not let a player place -- drawn, named, and

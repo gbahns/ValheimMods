@@ -702,6 +702,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> StructuresIncludeUnlisted;
         internal static ConfigEntry<string> RecordingExceptions;
         internal static ConfigEntry<bool> ShowNotRecording;
+        internal static ConfigEntry<bool> RecordWishbone;
         internal static ConfigEntry<string> StructuresExcludePrefixes;
         internal static ConfigEntry<bool> RecordInBase;
         internal static ConfigEntry<bool> ForgetTilledCrops;
@@ -1196,6 +1197,12 @@ namespace TheGreatestMap
             LookDwell = mod.BindLocal("Recording", "Look Dwell", 0.75f,
                 "Seconds you must keep looking at something for it to count as found. Things under the crosshair within " +
                 "interaction range, and anything you interact with, count immediately.");
+
+            RecordWishbone = mod.BindLocal("Recording", "Record What The Wishbone Finds", true,
+                "While a wishbone is worn, write down whatever it is pinging about -- buried treasure, a silver vein " +
+                "under the snow -- at the spot itself, without digging it up. Nothing is invented: the game tells the " +
+                "wishbone exactly which thing it has found, and this asks it the same question. Kinds you have switched " +
+                "off stay off, and a thing already marked is still only marked once.");
 
             foreach (var cat in Categories.All)
             {

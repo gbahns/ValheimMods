@@ -55,6 +55,11 @@ lives on your machine and everything works without a dedicated server.
 1. Play normally. Things you look at, hover over or interact with are remembered as *found*. Looking counts only with clear line of sight and within a sighting distance that depends on the thing: plants 20 m, ore 40 m, buildings and dungeon entrances 80 m. Your character remembers a find for 30 minutes (seeing it again restarts the clock), and the memory is saved with the character.
 
    Places too big to aim at — Fuling villages, tar pits, camps, dungeon entrances, boss altars — are found by looking in their direction rather than by putting the crosshair on them, since the crosshair lands on grass or sky or a passing goblin. The same rules hold: it must be in front of you, within its sighting distance measured to its edge, and not behind a hill. Only the landscape blocks the view, so a tree at the edge of a village or something standing in it makes no difference. `tgm_look` says which places it can see and why the others do not count.
+   **A wishbone counts as looking.** While you are wearing one, whatever it is pinging about is
+   found where it stands -- buried treasure, a silver vein under the snow -- without digging it up
+   or standing in the middle of the ping guessing at the center. Nothing is invented: the game
+   tells the wishbone exactly which thing it has found, and this asks it the same question.
+   "Record What The Wishbone Finds" turns it off.
 2. Take the map out and it writes down everything found recently, wherever you are now. Set "Record Range" if you'd rather only record what is near you.
    You cannot write while something is hitting you ("Cannot Write Under Attack", on, for five seconds after the last blow). Enemies merely being nearby are no obstacle, unlike resting, so you can stand your ground and write if you choose. "Cannot Write While" optionally asks you to hold still too: Never, Running or Moving.
 3. Every plant gets its own icon (marker spacing 1 m for plants, 5 m for ore and portals, 20 m for locations), so a clump of four dandelions shows four dandelion icons. Only traders and portals get a text label by default; everything else relies on its icon. Each kind's label rule is configurable: never, always, or one label per so many meters. A short message tells you when something was skipped because a marker is already there; the find stays pending and is written if that marker goes away.
@@ -171,7 +176,15 @@ of it. They close on a click away, and go with the list.
 The small buttons at the end of a row -- place by hand, only, ping, and the count of the ones you
 have crossed off -- are drawn on the row the pointer is resting on, and any one of them that is
 already doing something is drawn wherever it is, so an armed kind, a filtered one, or one hiding
-its crossed-off markers goes on saying so. Each button answers for itself: a lit one does not
+its crossed-off markers goes on saying so.
+
+**"+" places one by hand**, and it is on every row, not only the kind: press it on Silver and the
+next marker you place is a silver vein, in the silver picture, in the Silver row beside the ones
+you mined. That is what it is for -- a vein under a meter of snow has nothing to put a crosshair
+on, so no amount of looking will record it and only a hand can write it down. The arming lasts
+while the map is open, so eight veins take eight double-clicks and one press. Everything can be
+placed except ships and carts, which move, and a marker written where one of those was would be
+wrong by the next tide. Each button answers for itself: a lit one does not
 bring its neighbors out with it, or hiding everything crossed off would fill the list with
 buttons.
 
@@ -426,10 +439,13 @@ markers already on your map stay where they are, or choose **Stop recording and 
 `<group>`** to be rid of those as well -- the count is on the label, markers you have labeled are
 left alone, and `tgm_undo` puts them back. For a group this mod does not record at all, such as
 standing stones, erasing the ones an older version wrote is all there is to offer, and the item
-says so. Hide them from the marker list instead if you only want them out of sight. To start recording something, tick **Show what you are not recording** in the
-marker list's gear menu, which adds a dim row for every group nothing is being written for, and
-press the one you want. Turning a group on also fills in any of its places you have walked past
-recently, so changing your mind costs nothing.
+says so. Hide them from the marker list instead if you only want them out of sight. To start recording something, tick **Show everything it can mark** in the marker list's gear menu,
+which adds a dim row for every group that is not on your map, and press the one you want. Turning a
+group on also fills in any of its places you have walked past recently, so changing your mind costs
+nothing. Two sorts of group appear: the ones nothing is being written for, and the ones that are
+being recorded but that you have not found yet -- the second so there is a Silver row to press "+"
+on before your first silver vein, and so the list can say what this mod is watching for as well as
+what it has seen.
 
 ### Never recorded
 
