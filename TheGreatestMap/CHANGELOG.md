@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.11.1 — unreleased
+## 4.11.1 — 2026-11-18
 
 - New: Varied Ground Shades. Paths, roads and fields are drawn in shades that wander from
   place to place, so ground reads as ground instead of as a sticker. Set it to 0 for the
