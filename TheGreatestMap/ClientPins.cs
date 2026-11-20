@@ -1635,22 +1635,38 @@ namespace TheGreatestMap
             var want = new Dictionary<string, List<Vector3>>(StringComparer.Ordinal);
             foreach (var shared in Store.Pins.Values)
             {
-                // "pin:" only. A "like:" marker always had a number of this mod's own, so no copy
-                // of one can be wearing a vanilla number -- and looking for one would mean
-                // hunting the game's own pins by position and name.
-                string icon = IconRegistry.Normalize(IconOf(shared));
-                if (icon == null || !icon.StartsWith("pin:")) continue;
-                if (!IconRegistry.BorrowedVanillaType(icon, out int type)) continue;
                 string name = !string.IsNullOrEmpty(shared.Name)
                     ? shared.Name
                     : (Focus.TypeLabel(shared) ?? "");
-                string key = type + "|" + name;
-                if (!want.TryGetValue(key, out var spots)) want[key] = spots = new List<Vector3>();
-                spots.Add(shared.Pos);
+
+                // Every marker, whatever it wears, may have left a copy wearing the plain dot.
+                //
+                // Not because the dot was ever chosen: Minimap.AddPin rewrites a type past the
+                // end of m_visibleIconTypes to Icon3 and keeps the name, so for as long as this
+                // mod's range was out of that array's reach -- see IconRegistry.EnsureArrays --
+                // every copy the character file handed back came in wearing the dot. The number
+                // that said whose it was is the one thing the game threw away, which is why the
+                // sweep that reads the number walks straight past them, and why deleting one by
+                // hand brings it back at the next login.
+                //
+                // So they are recognized the only way left: a saved pin wearing the dot,
+                // standing on a record of this mod's, under exactly the name this mod would have
+                // written for it. On one map that was 16,198 of them, two to a marker, against
+                // not one dot that was anybody's own.
+                Expect(want, (int)Minimap.PinType.Icon3, name, shared.Pos);
+
+                // And the copies that wear a vanilla picture because the marker does. A "like:"
+                // marker always had a number of this mod's own, so no copy of one can be wearing
+                // a vanilla number -- and looking for one would mean hunting the game's own pins
+                // by position and name.
+                string icon = IconRegistry.Normalize(IconOf(shared));
+                if (icon == null || !icon.StartsWith("pin:")) continue;
+                if (!IconRegistry.BorrowedVanillaType(icon, out int type)) continue;
+                if (type != (int)Minimap.PinType.Icon3) Expect(want, type, name, shared.Pos);
             }
             if (want.Count == 0) return;
 
-            int n = 0;
+            int n = 0, dots = 0;
             var ours = DrawnByUs();
             foreach (var pin in new List<Minimap.PinData>(Access.Pins(Map)))
             {
@@ -1665,15 +1681,25 @@ namespace TheGreatestMap
                 foreach (var spot in spots)
                     if (Utils.DistanceXZ(spot, pin.m_pos) < 1f) { onAMarker = true; break; }
                 if (!onAMarker) continue;
+                if (pin.m_type == Minimap.PinType.Icon3) dots++;
                 Map.RemovePin(pin);
                 n++;
             }
             if (n > 0)
                 TheGreatestMapMod.Log.LogInfo(
                     $"[TheGreatestMap] Took {n} copy(ies) of this mod's markers off the map that an older version " +
-                    "left in the character file wearing one of the game's own pin pictures. Each was standing on " +
-                    "the marker it was a copy of, under the same name, and nothing here could tell it from a pin " +
-                    "you had placed by hand. The markers themselves are untouched.");
+                    "left in the character file wearing one of the game's own pin pictures" +
+                    (dots > 0 ? $", {dots} of them the plain dot the game puts on a marker it cannot place" : "") +
+                    ". Each was standing on the marker it was a copy of, under the same name, and nothing here " +
+                    "could tell it from a pin you had placed by hand. The markers themselves are untouched.");
+        }
+
+        /// <summary>One more place a copy of this marker could be standing, under this name.</summary>
+        private static void Expect(Dictionary<string, List<Vector3>> want, int type, string name, Vector3 pos)
+        {
+            string key = type + "|" + name;
+            if (!want.TryGetValue(key, out var spots)) want[key] = spots = new List<Vector3>();
+            spots.Add(pos);
         }
 
         /// <summary>

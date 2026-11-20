@@ -6,6 +6,8 @@
   mod that reshapes the minimap this way is matched, not just that one.
 - Fixed: markers this mod's older versions left in the character file came back as plain dots
   with their labels still on, instead of being tidied away, on the first map of each session.
+- Those dots are now swept as well, by the marker each one stands on. One map was carrying two
+  per marker, 16,198 in all, and they came back however often you deleted them.
 - Every portal marker wears the game's own build-menu render of that portal, so the wood one and
   the stone one tell themselves apart and a modded portal looks like itself. Renders are left
   unpainted -- the portal color is a multiply and would smudge the picture away.
