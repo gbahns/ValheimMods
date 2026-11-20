@@ -336,7 +336,8 @@ namespace TheGreatestPortal
             if (pin == null || pin.m_uiElement == null) { if (on) HideGlow(); return; }
             Color color = tint ?? Access.PortalPinColor();
             pin.m_uiElement.localScale = on ? Vector3.one * HoverScale : Vector3.one;
-            if (pin.m_iconElement != null) pin.m_iconElement.color = color;
+            if (pin.m_iconElement != null)
+                pin.m_iconElement.color = PortalPins.Tintable(pin) ? color : Color.white;
             if (on) ShowGlow(map, pin, color); else HideGlow();
             var namePin = pin.m_NamePinData;
             if (namePin == null || namePin.PinNameGameObject == null) return;

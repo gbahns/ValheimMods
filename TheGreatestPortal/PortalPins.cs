@@ -5,9 +5,9 @@ using UnityEngine;
 namespace TheGreatestPortal
 {
     /// <summary>
-    /// Portal pins on the large map. They use a pin type of their own, with vanilla's portal icon,
-    /// so they never mix with player-placed portal pins, cannot be deleted or checked by vanilla
-    /// clicks (they are not saved pins), and are unaffected by the icon filter buttons.
+    /// Portal pins on the large map. They use pin types of their own, so they never mix with
+    /// player-placed portal pins, cannot be deleted or checked by vanilla clicks (they are not
+    /// saved pins), and are unaffected by the icon filter buttons.
     ///
     /// The number is 1000, and it is a reservation rather than a guess. This was 150, chosen as
     /// "clear of TheGreatestMap's 100+ range" - but that mod does not use a fixed range. It hands
@@ -19,27 +19,36 @@ namespace TheGreatestPortal
     /// one number both mods agree on. Nothing is saved with a type in it, on either side, so the
     /// change needs no migration.
     ///
-    /// 1001 is the same reservation for the stone portal, which gets a picture of its own: both
-    /// are above the floor TheGreatestMap will not allocate at, so neither can be taken from
-    /// under us by a map that has seen a lot of kinds of thing.
+    /// 1000 is the floor rather than the whole of it: one type is handed out per portal prefab,
+    /// counting up from there, because a portal is drawn with the game's own build-menu picture
+    /// of that very prefab and vanilla draws one picture per type. A stone portal and a wood one
+    /// therefore tell themselves apart without a word, a modded portal looks like itself, and
+    /// nothing here has to know any of their names. Everything from 1000 up is ours:
+    /// TheGreatestMap refuses to allocate at or above it.
     /// </summary>
     internal static class PortalPins
     {
-        internal const int PinTypeValue = 1000;
+        internal const int PinTypeBase = 1000;
+
+        /// <summary>One pin type per portal prefab, in the order the prefabs were first seen.</summary>
+        private static readonly Dictionary<string, int> _typeFor = new Dictionary<string, int>(StringComparer.Ordinal);
 
         /// <summary>
-        /// Portals that carry anything through, ore included -- the stone ones. Drawn with their
-        /// own picture, because "can I bring the copper" is the question a portal on a map is
-        /// asked, and a second pin type is the only way vanilla will draw two icons at once.
+        /// The types whose picture is one of the game's own renders rather than a flat silhouette.
         ///
-        /// Keyed on what the portal does rather than which prefab it is: the catalog already
-        /// carries the prefab's TeleportWorld.m_allowAllItems for every portal, on every client,
-        /// so this costs nothing on the wire -- and a modded portal that takes ore sorts itself
-        /// without being named here.
+        /// <para>A render must not be tinted. Painting a pin means multiplying a color over it,
+        /// and the portal color is #FF6600 by default -- no blue in it at all -- so laying that
+        /// over a render leaves an orange smudge where the picture was. A silhouette is flat
+        /// white precisely so a color can be laid over it; a render already is the picture, and
+        /// the hovered portal still says so by growing and lighting its halo.</para>
         /// </summary>
-        internal const int StonePinTypeValue = 1001;
+        private static readonly HashSet<int> _rendered = new HashSet<int>();
 
-        private static Sprite _sprite;
+        /// <summary>The map the types were registered against; a new one registers them again.</summary>
+        private static Minimap _registeredOn;
+
+        /// <summary>Counted once: Enum.GetValues allocates, and EnsureArrays runs from UpdatePins.</summary>
+        private static readonly int VanillaTypeCount = Enum.GetValues(typeof(Minimap.PinType)).Length;
         private static readonly Dictionary<long, Minimap.PinData> _pins = new Dictionary<long, Minimap.PinData>();
         private static readonly Dictionary<Minimap.PinData, long> _ids = new Dictionary<Minimap.PinData, long>();
 
@@ -49,59 +58,119 @@ namespace TheGreatestPortal
 
         internal static int Count => _pins.Count;
 
-        internal static bool IsOurs(Minimap.PinData pin) =>
-            pin != null && ((int)pin.m_type == PinTypeValue || (int)pin.m_type == StonePinTypeValue);
+        internal static bool IsOurs(Minimap.PinData pin) => pin != null && (int)pin.m_type >= PinTypeBase;
 
-        /// <summary>Which of the two pictures a portal wears.</summary>
-        private static int TypeFor(PortalInfo p) => p.AllowAllItems ? StonePinTypeValue : PinTypeValue;
-
-        /// <summary>A new Minimap instance (world load): register the icon and grow the visibility array.</summary>
+        /// <summary>A new Minimap instance (world load): start the types over against it.</summary>
         internal static void OnMinimapStart(Minimap map)
         {
             _pins.Clear();
             _ids.Clear();
-            Register(map);
+            Forget(map);
         }
 
-        private static void Register(Minimap map)
+        /// <summary>
+        /// Drop every registered type, because the map they were registered on has gone. The
+        /// pictures live in that map's own icon list and do not outlive it.
+        /// </summary>
+        private static void Forget(Minimap map)
         {
-            if (map == null) return;
-            _sprite = null;
-            foreach (var data in map.m_icons)
-                if (data.m_name == Minimap.PinType.Icon4) { _sprite = data.m_icon; break; }
-            if (_sprite == null)
-            {
-                TheGreatestPortalMod.Log.LogWarning("[TheGreatestPortal] No portal icon found on the minimap; portal pins will use the plain dot.");
-                foreach (var data in map.m_icons)
-                    if (data.m_name == Minimap.PinType.Icon3) { _sprite = data.m_icon; break; }
-            }
-            // TheGreatestMap draws the stone one if it is installed, so the two mods mark a
-            // portal the same way; without it we draw our own.
-            var stone = Access.StonePortalIcon() ?? UiKit.StonePortal();
-            map.m_icons.RemoveAll(x => (int)x.m_name == PinTypeValue || (int)x.m_name == StonePinTypeValue);
-            map.m_icons.Add(new Minimap.SpriteData { m_name = (Minimap.PinType)PinTypeValue, m_icon = _sprite });
-            map.m_icons.Add(new Minimap.SpriteData { m_name = (Minimap.PinType)StonePinTypeValue, m_icon = stone });
+            _typeFor.Clear();
+            _rendered.Clear();
+            _registeredOn = map;
+        }
+
+        /// <summary>
+        /// The pin type carrying this portal's picture, allocating one the first time its prefab
+        /// is seen.
+        ///
+        /// <para>Done as portals arrive rather than up front, because the picture comes from the
+        /// prefab, and which prefabs are out there is the catalog's word -- which reaches a
+        /// client well after its map exists.</para>
+        /// </summary>
+        private static int TypeFor(Minimap map, PortalInfo p)
+        {
+            // A catalog too old to name the prefab still separates the two vanilla kinds, which
+            // is what the picture told apart before it told prefabs apart.
+            string key = !string.IsNullOrEmpty(p.Prefab) ? p.Prefab : (p.AllowAllItems ? "\0stone" : "\0wood");
+            if (_typeFor.TryGetValue(key, out int had)) return had;
+
+            int type = PinTypeBase + _typeFor.Count;
+            _typeFor[key] = type;
+            var icon = IconFor(p, out bool rendered);
+            if (rendered) _rendered.Add(type);
+            map.m_icons.RemoveAll(x => (int)x.m_name == type);
+            map.m_icons.Add(new Minimap.SpriteData { m_name = (Minimap.PinType)type, m_icon = icon });
             EnsureArrays(map);
+            return type;
+        }
+
+        /// <summary>
+        /// The picture for a portal, best answer first.
+        ///
+        /// <para>The game's own build-menu render of that very prefab wins: it is what the thing
+        /// looks like, the player clicked it once already to build the portal, and it separates
+        /// stone from wood without anything here naming either. Failing that -- a portal nobody
+        /// can build has no build picture -- TheGreatestMap's picture for an ore-carrying portal,
+        /// so the two mods still agree about a portal the game will not draw; then this mod's own
+        /// trilithon, which at least says "ore" where vanilla's portal glyph would say only
+        /// "portal"; and for an ordinary portal that glyph, which is exactly right.</para>
+        /// </summary>
+        private static Sprite IconFor(PortalInfo p, out bool rendered)
+        {
+            rendered = false;
+            var render = PieceIcon(p.Prefab);
+            if (render != null) { rendered = true; return render; }
+            if (p.AllowAllItems)
+                return Access.StonePortalIcon() ?? UiKit.StonePortal();
+            var glyph = VanillaIcon(Minimap.PinType.Icon4) ?? VanillaIcon(Minimap.PinType.Icon3);
+            if (glyph == null)
+                TheGreatestPortalMod.Log.LogWarning(
+                    $"[TheGreatestPortal] No picture found for portal prefab '{p.Prefab}'; its marker will be blank.");
+            return glyph;
+        }
+
+        /// <summary>The build menu's own picture of a prefab, or null if it is not a buildable piece.</summary>
+        private static Sprite PieceIcon(string prefab)
+        {
+            if (string.IsNullOrEmpty(prefab)) return null;
+            try
+            {
+                var scene = ZNetScene.instance;
+                var go = scene != null ? scene.GetPrefab(prefab) : null;
+                var piece = go != null ? go.GetComponent<Piece>() : null;
+                return piece != null ? piece.m_icon : null;
+            }
+            catch (Exception e)
+            {
+                TheGreatestPortalMod.Log.LogWarning($"[TheGreatestPortal] Could not read the build picture for '{prefab}': {e.Message}");
+                return null;
+            }
+        }
+
+        private static Sprite VanillaIcon(Minimap.PinType type)
+        {
+            var map = Minimap.instance;
+            if (map == null || map.m_icons == null) return null;
+            foreach (var data in map.m_icons)
+                if (data.m_name == type) return data.m_icon;
+            return null;
         }
 
         /// <summary>Grow Minimap's per-type visibility array so vanilla can index our type. Never shrinks it.</summary>
         internal static void EnsureArrays(Minimap map)
         {
             if (map == null) return;
-            int need = Math.Max(StonePinTypeValue + 1, Enum.GetValues(typeof(Minimap.PinType)).Length);
-            var old = Access.VisibleIconTypes(map);
-            if (old != null && old.Length >= need)
+            int need = Math.Max(PinTypeBase + _typeFor.Count, VanillaTypeCount);
+            var arr = Access.VisibleIconTypes(map);
+            if (arr == null || arr.Length < need)
             {
-                old[PinTypeValue] = true;
-                old[StonePinTypeValue] = true;
-                return;
+                var grown = new bool[need];
+                for (int i = 0; i < grown.Length; i++)
+                    grown[i] = arr == null || i >= arr.Length || arr[i];
+                Access.VisibleIconTypes(map) = grown;
+                arr = grown;
             }
-            var arr = new bool[need];
-            for (int i = 0; i < arr.Length; i++)
-                arr[i] = old == null || i >= old.Length || old[i];
-            arr[PinTypeValue] = true;
-            arr[StonePinTypeValue] = true;
-            Access.VisibleIconTypes(map) = arr;
+            foreach (int type in _typeFor.Values) arr[type] = true;
         }
 
         /// <summary>
@@ -118,11 +187,10 @@ namespace TheGreatestPortal
         {
             var map = Minimap.instance;
             if (map == null) return;
+            // A map this has not registered against holds none of our pictures, whether that is
+            // a world load Start did not reach or another mod having built the map.
+            if (!ReferenceEquals(_registeredOn, map)) Forget(map);
             EnsureArrays(map);
-            int haveIcons = 0;
-            foreach (var data in map.m_icons)
-                if ((int)data.m_name == PinTypeValue || (int)data.m_name == StonePinTypeValue) haveIcons++;
-            if (haveIcons < 2) Register(map);
 
             bool changed = false;
             _live.Clear();
@@ -130,11 +198,11 @@ namespace TheGreatestPortal
             {
                 _live.Add(p.Id);
                 string text = label(p);
-                int want = TypeFor(p);
+                int want = TypeFor(map, p);
                 // A pin's type is fixed once vanilla has built it, so a portal that has somehow
-                // changed kind is rebuilt rather than retexted. It cannot in practice -- a portal
-                // is the prefab it was built as -- but the catalog is the server's word, not an
-                // assumption this has to make.
+                // changed prefab is rebuilt rather than retexted. It cannot in practice -- a
+                // portal is the thing it was built as -- but the catalog is the server's word,
+                // not an assumption this has to make.
                 if (_pins.TryGetValue(p.Id, out var existing) && existing != null
                     && (int)existing.m_type == want && Retext(existing, text))
                 {
@@ -222,8 +290,17 @@ namespace TheGreatestPortal
             foreach (var kv in _pins)
             {
                 var icon = kv.Value.m_iconElement;
-                if (icon != null && icon.color != color) icon.color = color;
+                if (icon == null) continue;
+                var want = Tintable(kv.Value) ? color : Color.white;
+                if (icon.color != want) icon.color = want;
             }
         }
+
+        /// <summary>
+        /// Whether a pin's picture takes a color laid over it: a flat silhouette does, one of the
+        /// game's own renders does not. See <see cref="_rendered"/> for why that matters.
+        /// </summary>
+        internal static bool Tintable(Minimap.PinData pin) =>
+            pin != null && !_rendered.Contains((int)pin.m_type);
     }
 }

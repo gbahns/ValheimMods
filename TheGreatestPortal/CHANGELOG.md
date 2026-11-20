@@ -2,10 +2,12 @@
 
 ## 1.7.0 — unreleased
 
-- Stone portals get their own marker on the map, so a glance says which portals will take your
-  ore. Any portal that carries everything is drawn that way, not only the game's stone one.
-- With TheGreatestMap installed the picture comes from there, so a stone portal looks the same
-  whichever of the two is marking the map.
+- Every portal is marked with the game's own picture of it -- the one from the build menu -- so
+  a stone portal, a wood one and any modded portal each look like themselves on the map, and a
+  glance says which of them will take your ore.
+- Portal markers keep those pictures' own colors instead of being painted with the portal color,
+  which would leave an orange smudge where the picture was. The portal under the pointer still
+  grows and lights up in that color.
 
 ## 1.6.0 — 2026-11-15
 

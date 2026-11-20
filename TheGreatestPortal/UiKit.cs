@@ -740,9 +740,13 @@ namespace TheGreatestPortal
         ///
         /// Squared and heavy against the game's own rounded portal arch, because the two sit side
         /// by side on one map and the whole job of the second one is to not be the first at a
-        /// glance. Drawn here only for a game without TheGreatestMap in it: with that mod the
-        /// picture comes from there, so a portal looks the same whichever of the two is drawing
-        /// the markers.
+        /// glance.
+        ///
+        /// Rarely seen, and meant to be: a portal is marked with the game's own build-menu
+        /// picture of it, which is better than anything drawn here. This is for an ore-carrying
+        /// portal nobody can build and so has no such picture, on a game without TheGreatestMap
+        /// to ask -- at which point vanilla's portal glyph is the only thing left, and it would
+        /// hide the one fact worth knowing.
         /// </summary>
         internal static Sprite StonePortal()
         {
