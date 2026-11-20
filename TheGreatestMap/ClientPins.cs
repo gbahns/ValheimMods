@@ -1934,7 +1934,20 @@ namespace TheGreatestMap
                 bool faded = shared.Checked || pin.m_checked;
                 if (faded) _fadedPins.Add(pin);
                 MarkChecked(pin, faded);
-                if (kind == Category.Portal) { _portalPins.Add(pin); continue; }
+                if (kind == Category.Portal)
+                {
+                    // A portal wearing the game's own render of itself keeps its colors, for the
+                    // same reason the campfire below does: the portal color is a multiply, and
+                    // #FF6600 over a blue-lit stone render leaves an orange smudge where the
+                    // picture was. Only the plain pin sprites go in the painted list.
+                    if (IconRegistry.IsBuildPicture(shared.Icon))
+                    {
+                        if (pin.m_iconElement != null)
+                            pin.m_iconElement.color = faded ? Faded(Color.white) : Color.white;
+                    }
+                    else _portalPins.Add(pin);
+                    continue;
+                }
                 if (pin.m_iconElement == null || !shared.Auto) { if (faded && pin.m_iconElement != null) pin.m_iconElement.color = Faded(pin.m_iconElement.color); continue; }
                 // A campfire wears its own build-menu picture, which is already the color of fire,
                 // so it keeps its colors. Should it fall back to vanilla's white fire pin, that

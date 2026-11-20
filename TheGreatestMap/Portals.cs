@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
@@ -35,8 +36,17 @@ namespace TheGreatestMap
         {
             public Vector3 Pos;
             public string Name = "";
-            /// <summary>Whether this one will take ore through, which is the question a portal is asked.</summary>
-            public bool Stone;
+            /// <summary>
+            /// Which portal it is, by prefab name.
+            ///
+            /// <para>This was a bool -- "does it take ore" -- for exactly one unreleased
+            /// version. The prefab name answers that question and several better ones: a portal
+            /// can wear the game's own render of itself, a modded portal looks like itself with
+            /// nothing here naming it, and TheGreatestPortal keys on the same thing, so the two
+            /// mods cannot disagree about a portal they are both looking at. Empty when the
+            /// server is older than 4.13.0, or has a portal this client does not have.</para>
+            /// </summary>
+            public string Prefab = "";
         }
 
         private static readonly List<Live> _live = new List<Live>();
@@ -100,29 +110,35 @@ namespace TheGreatestMap
                 {
                     Pos = zdo.GetPosition(),
                     Name = zdo.GetString(ZDOVars.s_tag, "") ?? "",
-                    Stone = CarriesEverything(zdo),
+                    Prefab = PrefabName(zdo),
                 });
             }
             return list;
         }
 
-        /// <summary>
-        /// Whether this portal takes everything through, read off the prefab rather than from its
-        /// name.
-        ///
-        /// <para>m_allowAllItems is the question a portal on a map is actually asked -- "can I
-        /// bring the copper" -- and asking it this way means a modded ore portal sorts itself
-        /// without this mod having heard of it. A name test would have had to list them.</para>
-        ///
-        /// <para>Public on TeleportWorld, so nothing is publicized and nothing is reflected.
-        /// TheGreatestPortal keys on the same field, which is what keeps the two mods agreeing
-        /// about a given portal rather than merely agreeing about the picture.</para>
-        /// </summary>
-        private static bool CarriesEverything(ZDO zdo)
+        /// <summary>Which portal this is, by prefab name, or empty if the world cannot say.</summary>
+        private static string PrefabName(ZDO zdo)
         {
             var scene = ZNetScene.instance;
-            if (scene == null || zdo == null) return false;
+            if (scene == null || zdo == null) return "";
             var prefab = scene.GetPrefab(zdo.GetPrefab());
+            return prefab != null ? prefab.name : "";
+        }
+
+        /// <summary>
+        /// Whether this portal takes everything through: the fallback picture's question, now
+        /// that the picture itself comes from the prefab.
+        ///
+        /// <para>m_allowAllItems is the question a portal on a map is actually asked -- "can I
+        /// bring the copper" -- so a modded ore portal with no build render still falls back to
+        /// the ore picture rather than the plain one, without this mod having heard of it. Public
+        /// on TeleportWorld, so nothing is publicized and nothing is reflected.</para>
+        /// </summary>
+        internal static bool CarriesEverything(string prefabName)
+        {
+            var scene = ZNetScene.instance;
+            if (scene == null || string.IsNullOrEmpty(prefabName)) return false;
+            var prefab = scene.GetPrefab(prefabName);
             if (prefab == null) return false;
             var teleport = prefab.GetComponent<TeleportWorld>();
             return teleport != null && teleport.m_allowAllItems;
@@ -133,7 +149,7 @@ namespace TheGreatestMap
             var sb = new System.Text.StringBuilder();
             foreach (var p in list)
                 sb.Append(Mathf.RoundToInt(p.Pos.x)).Append(',').Append(Mathf.RoundToInt(p.Pos.z))
-                  .Append('=').Append(p.Name).Append(p.Stone ? "*" : "").Append(';');
+                  .Append('=').Append(p.Name).Append('/').Append(p.Prefab).Append(';');
             return sb.ToString();
         }
 
@@ -148,13 +164,13 @@ namespace TheGreatestMap
                 pkg.Write(p.Name ?? "");
             }
             // After every record, not a third field inside each one. A reader is a cursor walking
-            // the bytes in order, so a flag written between two records moves everything after it
-            // and an older client would read a portal's position out of the middle of a name --
-            // not a missing feature but a scrambled list. Written past the end, an older client
-            // reads the count it understands, stops, and never looks at these; it draws every
-            // portal as a plain one, which is exactly what it did before. See the DWAMS rule:
-            // read every version you ever wrote, enforce none of them.
-            foreach (var p in list) pkg.Write(p.Stone);
+            // the bytes in order, so a field written between two records moves everything after
+            // it and an older client would read a portal's position out of the middle of a name
+            // -- not a missing feature but a scrambled list. Written past the end, an older
+            // client reads the count it understands, stops, and never looks at these; it draws
+            // every portal with the plain picture, which is exactly what it did before. See the
+            // DWAMS rule: read every version you ever wrote, enforce none of them.
+            foreach (var p in list) pkg.Write(p.Prefab ?? "");
             ZRoutedRpc.instance.InvokeRoutedRPC(target, RpcList, pkg);
         }
 
@@ -177,10 +193,10 @@ namespace TheGreatestMap
                 string name = pkg.ReadString();
                 _live.Add(new Live { Pos = pos, Name = name });
             }
-            // The flags, if this server is new enough to have sent any. A server that is not
-            // leaves them false and every portal draws as a plain one, which is the honest
-            // answer: that server never told us otherwise.
-            for (int i = 0; i < n && pkg.GetPos() < pkg.Size(); i++) _live[i].Stone = pkg.ReadBool();
+            // Which portal each one is, if this server is new enough to have said. One that is
+            // not leaves them empty and every portal draws with the plain picture, which is the
+            // honest answer: that server never told us otherwise.
+            for (int i = 0; i < n && pkg.GetPos() < pkg.Size(); i++) _live[i].Prefab = pkg.ReadString();
             _haveList = true;
             _redrawWanted = true;
             Reconcile();
@@ -276,14 +292,41 @@ namespace TheGreatestMap
             return !PortalPickerOpen();
         }
 
-        /// <summary>The picture for a portal of this sort, as the player may have reset it.</summary>
-        internal static string IconKey(bool stone)
+        /// <summary>
+        /// The picture for one portal: the game's own render of it where there is one.
+        ///
+        /// <para>A portal is a thing the player built and has looked at from the build menu a
+        /// hundred times, so the build menu's render of it is the one picture that needs no
+        /// explaining -- and it tells the wood and the stone one apart by itself, without any
+        /// rule about which is which. A modded portal looks like itself for free.</para>
+        ///
+        /// <para>The configured pictures are the fallback, for a portal nobody can build and
+        /// which therefore has no render: those are sorted by whether they take ore through,
+        /// which is the only thing worth knowing about a portal you cannot picture.</para>
+        /// </summary>
+        internal static string IconKey(string prefabName)
+        {
+            if (!string.IsNullOrEmpty(prefabName) && HasBuildPicture(prefabName)) return "piece:" + prefabName;
+            return Fallback(CarriesEverything(prefabName));
+        }
+
+        /// <summary>The configured picture for a portal with no render of its own.</summary>
+        internal static string Fallback(bool stone)
         {
             if (stone)
                 return TgmConfig.StonePortalIcon != null && !string.IsNullOrEmpty(TgmConfig.StonePortalIcon.Value)
                     ? TgmConfig.StonePortalIcon.Value : StoneIconDefault;
             return TgmConfig.CategoryIcon.TryGetValue(Category.Portal, out var icon) && !string.IsNullOrEmpty(icon.Value)
                 ? icon.Value : Categories.DefaultIcon(Category.Portal);
+        }
+
+        private static bool HasBuildPicture(string prefabName)
+        {
+            var scene = ZNetScene.instance;
+            if (scene == null) return false;
+            var prefab = scene.GetPrefab(prefabName);
+            var piece = prefab != null ? prefab.GetComponent<Piece>() : null;
+            return piece != null && piece.m_icon != null;
         }
 
         /// <summary>
@@ -300,7 +343,7 @@ namespace TheGreatestMap
         /// <para>Called by reflection, by name, from a mod this one does not reference. Keep the
         /// name and the shape: static, no arguments, a Sprite or null.</para>
         /// </summary>
-        internal static Sprite StoneIcon() => IconRegistry.Resolve(Minimap.instance, IconKey(true));
+        internal static Sprite StoneIcon() => IconRegistry.Resolve(Minimap.instance, Fallback(true));
 
         internal const string StoneIconDefault = "drawn:stoneportal";
 
@@ -314,15 +357,16 @@ namespace TheGreatestMap
             _drawnWanted = DrawingWanted();
             if (!_drawnWanted) return;
 
-            // Both worked out once rather than per portal: a base with six portals would
-            // otherwise ask the config and the registry six times for the same answer.
-            string plainKey = IconKey(false), stoneKey = IconKey(true);
-            int plainType = IconRegistry.TypeFor(plainKey), stoneType = IconRegistry.TypeFor(stoneKey);
+            _unpainted.Clear();
+            _portalIcons.Clear();
+            _portalIcons.Add(Fallback(false));
+            _portalIcons.Add(Fallback(true));
+            foreach (var p in _live) _portalIcons.Add(IconKey(p.Prefab));
             foreach (var p in _live)
             {
-                string iconKey = p.Stone ? stoneKey : plainKey;
-                int type = p.Stone ? stoneType : plainType;
-                if (AlreadyMarked(p.Pos, plainKey, stoneKey)) continue;
+                string iconKey = IconKey(p.Prefab);
+                int type = IconRegistry.TypeFor(iconKey);
+                if (AlreadyMarked(p.Pos)) continue;
                 // m_save false: never written to the profile, never shared, gone when the setting is.
                 //
                 // The name is withheld at birth when labels are off, because that is the only
@@ -336,6 +380,10 @@ namespace TheGreatestMap
                 if (pin == null) continue;
                 pin.m_name = name;
                 _drawn.Add(pin);
+                // A render arrives in its own colors and its own light. Painting is a multiply,
+                // so the portal color would take the picture away; remembered here so Paint
+                // leaves it be.
+                if (IconRegistry.IsBuildPicture(iconKey)) _unpainted.Add(pin);
             }
             BringToFront();
         }
@@ -372,27 +420,34 @@ namespace TheGreatestMap
         /// the pocket map next came out. A marker somebody placed by hand carries no kind, so
         /// those are matched by the portal icon instead.
         /// </summary>
-        private static bool AlreadyMarked(Vector3 pos, string plainKey, string stoneKey)
+        private static bool AlreadyMarked(Vector3 pos)
         {
             foreach (var pin in ClientPins.All)
             {
                 if (Geo.FlatDistance(pin.Pos, pos) > MatchRadius) continue;
                 if (ClientPins.KindOf(pin) == Category.Portal) return true;
-                // Either portal picture. Somebody who wrote down "portal here" by hand has said
-                // what they meant to say whichever of the two they reached for, and drawing a
-                // live pin on top of their note because they picked the other one would be this
-                // mod arguing with the player about what a portal looks like.
+                // Any portal picture. Somebody who wrote down "portal here" by hand has said
+                // what they meant to say whichever picture they reached for, and drawing a live
+                // pin on top of their note because they picked a different one would be this mod
+                // arguing with the player about what a portal looks like.
                 if (pin.Auto) continue;
                 string worn = ClientPins.IconOf(pin);
-                if (IconRegistry.SameKey(worn, plainKey) || IconRegistry.SameKey(worn, stoneKey)) return true;
+                foreach (var key in _portalIcons)
+                    if (IconRegistry.SameKey(worn, key)) return true;
             }
             return false;
         }
+
+        // The pictures portals are wearing right now, for recognizing a hand-written note about
+        // one, and the live pins that must not be painted.
+        private static readonly HashSet<string> _portalIcons = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private static readonly HashSet<Minimap.PinData> _unpainted = new HashSet<Minimap.PinData>();
 
         /// <summary>The map data was rebuilt under us (world load, table read): our pins are gone.</summary>
         internal static void OnPinsCleared()
         {
             _drawn.Clear();
+            _unpainted.Clear();
             _drawnWanted = false;
             _redrawWanted = true;
         }
@@ -440,7 +495,8 @@ namespace TheGreatestMap
             var color = CurrentColor();
             ClientPins.TintPortals(color);
             foreach (var pin in _drawn)
-                if (pin != null && pin.m_iconElement != null) pin.m_iconElement.color = color;
+                if (pin != null && pin.m_iconElement != null && !_unpainted.Contains(pin))
+                    pin.m_iconElement.color = color;
         }
 
         /// <summary>
@@ -460,17 +516,20 @@ namespace TheGreatestMap
                 $"picker open: {PortalPickerOpen()}",
                 $"drawing extra pins: wanted {DrawingWanted()}, currently drawn {_drawn.Count}",
             };
-            int stone = 0;
-            foreach (var p in _live) if (p.Stone) stone++;
-            lines.Add($"portals that take everything through: {stone} of {_live.Count} " +
-                      $"(drawn as {IconKey(true)}; the rest as {IconKey(false)})" +
-                      (_haveList && stone == 0 ? " -- a server older than 4.13.0 never says, so all of them read as plain" : ""));
+            int named = 0;
+            foreach (var p in _live) if (!string.IsNullOrEmpty(p.Prefab)) named++;
+            lines.Add($"portals the server named: {named} of {_live.Count}" +
+                      (_haveList && named == 0 && _live.Count > 0
+                          ? " -- a server older than 4.13.0 never says, so all of them wear " + Fallback(false)
+                          : "") +
+                      $"; unpainted renders drawn: {_unpainted.Count}");
+            lines.Add($"fallback pictures: {Fallback(false)} plain, {Fallback(true)} for ore-carrying");
             var live = Nearest(near);
             lines.Add(live != null
-                ? $"nearest portal in the list: '{live.Name}'{(live.Stone ? " (takes everything)" : "")} {Geo.FlatDistance(live.Pos, near):0.#} m away"
+                ? $"nearest portal in the list: '{live.Name}' [{(string.IsNullOrEmpty(live.Prefab) ? "unnamed" : live.Prefab)}" +
+                  $" -> {IconKey(live.Prefab)}] {Geo.FlatDistance(live.Pos, near):0.#} m away"
                 : "no portal in the list within 4 m of you");
-            lines.Add($"a portal marker within 4 m: {AlreadyMarked(near, IconKey(false), IconKey(true))} " +
-                      "(one there means no extra pin is drawn)");
+            lines.Add($"a portal marker within 4 m: {AlreadyMarked(near)} (one there means no extra pin is drawn)");
             return lines;
         }
 

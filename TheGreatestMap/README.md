@@ -178,10 +178,12 @@ have crossed off -- are drawn on the row the pointer is resting on, and any one 
 already doing something is drawn wherever it is, so an armed kind, a filtered one, or one hiding
 its crossed-off markers goes on saying so.
 
-**Portals that take everything through** -- the stone portal, and any modded portal that
-allows ore -- are drawn with a squared stone arch instead of the ordinary portal picture, so you
-can tell at a glance which one will carry the copper home. The "Stone Portals" icon setting
-changes it, and setting it to the same value as "Portals" stops the two being told apart.
+**Each portal wears the game's own picture of itself** -- the build menu's render of a wood
+portal, a stone portal or a modded one -- so you can tell at a glance which one will carry the
+copper home, without this mod having to explain which is which. Those renders are left in their
+own colors rather than painted the portal color, because painting a picture of a thing takes the
+picture away. A portal nobody can build has no render, and falls back to the "Portals" or
+"Stone Portals" icon settings depending on whether it takes ore through.
 
 **"+" places one by hand**, and it is on every row, not only the kind: press it on Silver and the
 next marker you place is a silver vein, in the silver picture, in the Silver row beside the ones

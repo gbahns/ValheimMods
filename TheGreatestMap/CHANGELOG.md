@@ -5,11 +5,13 @@
 - With RoundMinimap, the buildings drawn on the minimap no longer spill outside the circle. Any
   mod that reshapes the minimap this way is matched, not just that one.
 
-- Portals that take ore and metal through are drawn with their own picture, a squared stone
-  arch, so you can see which one carries the copper home. New: Stone Portals, under Icons --
-  set it to the same as Portals to stop telling them apart.
-- TheGreatestPortal 1.7.0 draws the same picture, so a stone portal looks the same with either
-  mod, both, or neither.
+- Every portal marker wears the game's own build-menu render of that portal, so the wood one and
+  the stone one tell themselves apart and a modded portal looks like itself. Renders are left
+  unpainted -- the portal color is a multiply and would smudge the picture away.
+- New: Stone Portals, under Icons. The fallback for an ore-carrying portal nobody can build, and
+  so has no render; it is a stone arch this mod draws.
+- TheGreatestPortal 1.7.0 reads the same renders, so a portal looks the same with either mod,
+  both, or neither.
 
 ## 4.12.0 — unreleased
 

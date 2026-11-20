@@ -1284,10 +1284,11 @@ namespace TheGreatestMap
             // Portal switch, and only the picture differs -- so making it a category to give it
             // a picture would have split one idea in two everywhere else to settle one line.
             StonePortalIcon = mod.BindLocal("Icons", "Stone Portals", Portals.StoneIconDefault,
-                "The picture for portals that will take ore and metal through: the stone portal, and any modded " +
-                "portal that allows everything. Drawn apart from ordinary portals so you can see at a glance which " +
-                "one carries the copper home. Set it to the same value as Portals to stop telling them apart. " +
-                "Takes the same forms as the other icons, plus drawn:stoneportal for the one this mod draws itself.");
+                "Fallback picture for a portal that takes ore and metal through but that nobody can build, and so " +
+                "has no picture of its own. Ordinary portals wear the game's own build-menu render of themselves, " +
+                "which tells the wood and the stone one apart without being asked, so this is only reached by a " +
+                "modded portal with no render. Takes the same forms as the other icons, plus drawn:stoneportal for " +
+                "the stone arch this mod draws itself.");
             StonePortalIcon.SettingChanged += (_, __) => Portals.Redraw();
 
             OrderTheCatalogOnce();

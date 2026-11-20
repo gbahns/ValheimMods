@@ -702,6 +702,22 @@ namespace TheGreatestMap
             catch (Exception) { return null; }
         }
 
+        /// <summary>
+        /// The game's own render of a building piece: a picture of the thing, in its own colors
+        /// and its own light.
+        ///
+        /// <para>Worth asking about separately from every other key because painting one ruins
+        /// it. A tint is a multiply, so a blue-lit stone render under an orange wash arrives as
+        /// an orange smudge with the picture gone -- and the picture was the entire reason for
+        /// choosing it. The campfire has kept its colors for this reason since it was given the
+        /// fire pit's render; this is that rule with a name.</para>
+        /// </summary>
+        internal static bool IsBuildPicture(string iconKey)
+        {
+            string key = Normalize(iconKey);
+            return key != null && key.StartsWith("piece:");
+        }
+
         /// <summary>A vanilla pin sprite: white, so it takes whatever color it is given.</summary>
         internal static bool IsVanillaPin(string iconKey)
         {
