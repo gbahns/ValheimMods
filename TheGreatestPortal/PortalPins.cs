@@ -18,10 +18,26 @@ namespace TheGreatestPortal
     /// already somewhere. TheGreatestMap now refuses to allocate at or above 1000, so this is the
     /// one number both mods agree on. Nothing is saved with a type in it, on either side, so the
     /// change needs no migration.
+    ///
+    /// 1001 is the same reservation for the stone portal, which gets a picture of its own: both
+    /// are above the floor TheGreatestMap will not allocate at, so neither can be taken from
+    /// under us by a map that has seen a lot of kinds of thing.
     /// </summary>
     internal static class PortalPins
     {
         internal const int PinTypeValue = 1000;
+
+        /// <summary>
+        /// Portals that carry anything through, ore included -- the stone ones. Drawn with their
+        /// own picture, because "can I bring the copper" is the question a portal on a map is
+        /// asked, and a second pin type is the only way vanilla will draw two icons at once.
+        ///
+        /// Keyed on what the portal does rather than which prefab it is: the catalog already
+        /// carries the prefab's TeleportWorld.m_allowAllItems for every portal, on every client,
+        /// so this costs nothing on the wire -- and a modded portal that takes ore sorts itself
+        /// without being named here.
+        /// </summary>
+        internal const int StonePinTypeValue = 1001;
 
         private static Sprite _sprite;
         private static readonly Dictionary<long, Minimap.PinData> _pins = new Dictionary<long, Minimap.PinData>();
@@ -33,7 +49,11 @@ namespace TheGreatestPortal
 
         internal static int Count => _pins.Count;
 
-        internal static bool IsOurs(Minimap.PinData pin) => pin != null && (int)pin.m_type == PinTypeValue;
+        internal static bool IsOurs(Minimap.PinData pin) =>
+            pin != null && ((int)pin.m_type == PinTypeValue || (int)pin.m_type == StonePinTypeValue);
+
+        /// <summary>Which of the two pictures a portal wears.</summary>
+        private static int TypeFor(PortalInfo p) => p.AllowAllItems ? StonePinTypeValue : PinTypeValue;
 
         /// <summary>A new Minimap instance (world load): register the icon and grow the visibility array.</summary>
         internal static void OnMinimapStart(Minimap map)
@@ -55,8 +75,12 @@ namespace TheGreatestPortal
                 foreach (var data in map.m_icons)
                     if (data.m_name == Minimap.PinType.Icon3) { _sprite = data.m_icon; break; }
             }
-            map.m_icons.RemoveAll(x => (int)x.m_name == PinTypeValue);
+            // TheGreatestMap draws the stone one if it is installed, so the two mods mark a
+            // portal the same way; without it we draw our own.
+            var stone = Access.StonePortalIcon() ?? UiKit.StonePortal();
+            map.m_icons.RemoveAll(x => (int)x.m_name == PinTypeValue || (int)x.m_name == StonePinTypeValue);
             map.m_icons.Add(new Minimap.SpriteData { m_name = (Minimap.PinType)PinTypeValue, m_icon = _sprite });
+            map.m_icons.Add(new Minimap.SpriteData { m_name = (Minimap.PinType)StonePinTypeValue, m_icon = stone });
             EnsureArrays(map);
         }
 
@@ -64,17 +88,19 @@ namespace TheGreatestPortal
         internal static void EnsureArrays(Minimap map)
         {
             if (map == null) return;
-            int need = Math.Max(PinTypeValue + 1, Enum.GetValues(typeof(Minimap.PinType)).Length);
+            int need = Math.Max(StonePinTypeValue + 1, Enum.GetValues(typeof(Minimap.PinType)).Length);
             var old = Access.VisibleIconTypes(map);
             if (old != null && old.Length >= need)
             {
                 old[PinTypeValue] = true;
+                old[StonePinTypeValue] = true;
                 return;
             }
             var arr = new bool[need];
             for (int i = 0; i < arr.Length; i++)
                 arr[i] = old == null || i >= old.Length || old[i];
             arr[PinTypeValue] = true;
+            arr[StonePinTypeValue] = true;
             Access.VisibleIconTypes(map) = arr;
         }
 
@@ -93,9 +119,10 @@ namespace TheGreatestPortal
             var map = Minimap.instance;
             if (map == null) return;
             EnsureArrays(map);
-            bool haveIcon = false;
-            foreach (var data in map.m_icons) if ((int)data.m_name == PinTypeValue) { haveIcon = true; break; }
-            if (!haveIcon) Register(map);
+            int haveIcons = 0;
+            foreach (var data in map.m_icons)
+                if ((int)data.m_name == PinTypeValue || (int)data.m_name == StonePinTypeValue) haveIcons++;
+            if (haveIcons < 2) Register(map);
 
             bool changed = false;
             _live.Clear();
@@ -103,14 +130,20 @@ namespace TheGreatestPortal
             {
                 _live.Add(p.Id);
                 string text = label(p);
-                if (_pins.TryGetValue(p.Id, out var existing) && existing != null && Retext(existing, text))
+                int want = TypeFor(p);
+                // A pin's type is fixed once vanilla has built it, so a portal that has somehow
+                // changed kind is rebuilt rather than retexted. It cannot in practice -- a portal
+                // is the prefab it was built as -- but the catalog is the server's word, not an
+                // assumption this has to make.
+                if (_pins.TryGetValue(p.Id, out var existing) && existing != null
+                    && (int)existing.m_type == want && Retext(existing, text))
                 {
                     // Position and name are all a pin carries that a catalog update can change.
                     if (existing.m_pos != p.Pos) { existing.m_pos = p.Pos; changed = true; }
                     continue;
                 }
                 if (existing != null) { map.RemovePin(existing); _ids.Remove(existing); _pins.Remove(p.Id); }
-                var pin = map.AddPin(p.Pos, (Minimap.PinType)PinTypeValue, text, save: false, isChecked: false, 0L);
+                var pin = map.AddPin(p.Pos, (Minimap.PinType)want, text, save: false, isChecked: false, 0L);
                 if (pin == null) continue;
                 _pins[p.Id] = pin;
                 _ids[pin] = p.Id;

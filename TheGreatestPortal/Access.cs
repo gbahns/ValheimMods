@@ -93,6 +93,30 @@ namespace TheGreatestPortal
         }
 
         /// <summary>
+        /// The picture TheGreatestMap draws an ore-carrying portal with, so the two mods mark a
+        /// stone portal the same way and a player moving between the ordinary map and this mod's
+        /// own sees one convention rather than two.
+        ///
+        /// Asked for afresh each time rather than cached, because that mod builds its pictures
+        /// once the map exists and this can be called before it has. Null is the ordinary answer
+        /// on a game without it, and the caller draws its own instead.
+        /// </summary>
+        internal static Sprite StonePortalIcon()
+        {
+            var type = AccessTools.TypeByName("TheGreatestMap.Portals");
+            if (type == null) return null;
+            var method = AccessTools.Method(type, "StoneIcon");
+            if (method == null || method.ReturnType != typeof(Sprite) || method.GetParameters().Length != 0)
+                return null;
+            try { return method.Invoke(null, null) as Sprite; }
+            catch (Exception e)
+            {
+                TheGreatestPortalMod.Log.LogWarning($"[TheGreatestPortal] Could not read TheGreatestMap's stone portal icon; drawing our own: {e.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
         /// Says what this mod's own killing should read as, for TheObituaries. Valheim records
         /// only the blow, so a death dealt by a mod carries no cause at all and would otherwise be
         /// announced with the blank line kept for deaths nothing is known about. Found by name,

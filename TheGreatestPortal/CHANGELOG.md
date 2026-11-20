@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.7.0 — unreleased
+
+- Stone portals get their own marker on the map, so a glance says which portals will take your
+  ore. Any portal that carries everything is drawn that way, not only the game's stone one.
+- With TheGreatestMap installed the picture comes from there, so a stone portal looks the same
+  whichever of the two is marking the map.
+
 ## 1.6.0 — 2026-11-15
 
 - **Open a private portal to everyone for a while.** Your own private portal gets an

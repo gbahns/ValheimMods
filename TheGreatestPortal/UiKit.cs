@@ -732,6 +732,56 @@ namespace TheGreatestPortal
             return dx * dx + dy * dy <= radius * radius;
         }
 
+        private static Sprite _stonePortal;
+
+        /// <summary>
+        /// A trilithon -- two uprights carrying a lintel -- for the portal that takes everything
+        /// through, ore included.
+        ///
+        /// Squared and heavy against the game's own rounded portal arch, because the two sit side
+        /// by side on one map and the whole job of the second one is to not be the first at a
+        /// glance. Drawn here only for a game without TheGreatestMap in it: with that mod the
+        /// picture comes from there, so a portal looks the same whichever of the two is drawing
+        /// the markers.
+        /// </summary>
+        internal static Sprite StonePortal()
+        {
+            if (_stonePortal != null) return _stonePortal;
+            const int n = 48;
+            // A gap of twelve between the uprights: narrower reads as a solid block at pin size,
+            // wider stops reading as a doorway at all.
+            const float round = 1.5f;
+            const float lintelLeft = 6f, lintelRight = 42f, lintelBottom = 34f, lintelTop = 43f;
+            const float legBottom = 4f, legTop = 34f;
+            const float leftLegLeft = 8f, leftLegRight = 18f;
+            const float rightLegLeft = 30f, rightLegRight = 40f;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    int hit = 0;
+                    for (int sy = 0; sy < 3; sy++)
+                        for (int sx = 0; sx < 3; sx++)
+                        {
+                            float fx = x + (sx + 0.5f) / 3f, fy = y + (sy + 0.5f) / 3f;
+                            if (InRoundedBox(fx, fy, lintelLeft, lintelBottom, lintelRight, lintelTop, round)
+                             || InRoundedBox(fx, fy, leftLegLeft, legBottom, leftLegRight, legTop, round)
+                             || InRoundedBox(fx, fy, rightLegLeft, legBottom, rightLegRight, legTop, round))
+                                hit++;
+                        }
+                    px[y * n + x] = new Color32(255, 255, 255, (byte)(hit * 255 / 9));
+                }
+            tex.SetPixels32(px);
+            tex.Apply(false, true);
+            tex.filterMode = FilterMode.Bilinear;
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.hideFlags = HideFlags.HideAndDontSave;
+            _stonePortal = Sprite.Create(tex, new Rect(0f, 0f, n, n), new Vector2(0.5f, 0.5f), 100f);
+            _stonePortal.hideFlags = HideFlags.HideAndDontSave;
+            return _stonePortal;
+        }
+
         private static Sprite _bandsRight;
         private static Sprite _bandsLeft;
 
