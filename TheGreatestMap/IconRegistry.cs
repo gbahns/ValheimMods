@@ -34,8 +34,6 @@ namespace TheGreatestMap
         private static readonly List<string> _keys = new List<string>();
         private static bool _warnedFull;
 
-        internal static int MaxType => Base + _keys.Count - 1;
-
         /// <summary>"Dandelion" → "item:Dandelion"; "pin:boss" → "pin:boss"; blank → null.</summary>
         internal static string Normalize(string key)
         {
@@ -726,11 +724,36 @@ namespace TheGreatestMap
             return key != null && (key.StartsWith("pin:") || key.StartsWith("like:"));
         }
 
-        /// <summary>Grow Minimap's per-type visibility array so vanilla can index our types.</summary>
+        /// <summary>
+        /// Grow Minimap's per-type visibility array so vanilla can index our types -- the whole
+        /// range this mod may ever allocate, not merely the part it has allocated so far.
+        ///
+        /// <para><b>Reserving the range rather than growing into it.</b> Minimap.AddPin tests a
+        /// type against this array's length and, for anything past the end, logs a warning and
+        /// quietly rewrites the type to Icon3 -- keeping the name. So an out-of-range marker is
+        /// not a marker that fails to appear. It appears as a plain dot, in the right place,
+        /// with its label still on it, and nothing afterwards can tell it from a dot the player
+        /// put there: <see cref="PinTypes.IsCustom"/> reads the type, and the type is gone.</para>
+        ///
+        /// <para>Growing as types were allocated left one window where that could happen, and it
+        /// was the worst possible one. Vanilla's Start builds this array at the length of its own
+        /// enum, and the key list is empty on the first map of a session, so there was a stretch
+        /// of exactly nothing reserved. Vanilla then loads the character's saved pins from
+        /// Update, before this mod has drawn anything, and any marker an older version left in
+        /// that file arrived during the stretch -- which is precisely what
+        /// <see cref="ClientPins.DropProfileLeftovers"/> is there to sweep up, and precisely
+        /// what it could no longer recognize once the type had been rewritten. The leftovers it
+        /// exists to remove became permanent plain dots instead.</para>
+        ///
+        /// <para>It never showed because TheGreatestPortal grows the same array to its own
+        /// reserved floor in its own Start hook, which covered this mod's range on the way past.
+        /// A thousand bools is a kilobyte, once, so depending on another mod's generosity was
+        /// the expensive option.</para>
+        /// </summary>
         internal static void EnsureArrays(Minimap map)
         {
             if (map == null) return;
-            int need = Math.Max(MaxType + 1, Enum.GetValues(typeof(Minimap.PinType)).Length);
+            int need = Math.Max(ReservedFloor, Enum.GetValues(typeof(Minimap.PinType)).Length);
             var old = Access.VisibleIconTypes(map);
             if (old != null && old.Length >= need) return;
             var arr = new bool[need];
