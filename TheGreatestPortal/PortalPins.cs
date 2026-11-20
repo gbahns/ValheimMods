@@ -66,6 +66,9 @@ namespace TheGreatestPortal
             _pins.Clear();
             _ids.Clear();
             Forget(map);
+            // Before anything is added to this map, and that is the whole point of doing it here
+            // -- see EnsureArrays.
+            EnsureArrays(map);
         }
 
         /// <summary>
@@ -156,7 +159,20 @@ namespace TheGreatestPortal
             return null;
         }
 
-        /// <summary>Grow Minimap's per-type visibility array so vanilla can index our type. Never shrinks it.</summary>
+        /// <summary>
+        /// Grow Minimap's per-type visibility array so vanilla can index our types. Never shrinks
+        /// it.
+        ///
+        /// <para><b>It has to reach 1000 before a single pin is added to this map, even though we
+        /// have no types yet.</b> AddPin checks the type against this array's length and, rather
+        /// than refusing, quietly demotes anything past the end to Icon3 and keeps the name -- so
+        /// an array that is too short does not drop a marker, it turns it into a plain dot with a
+        /// label still attached. Nothing says which mod's pin that was. Our own base is 1000, so
+        /// a length of 1000 is the floor we need regardless; that it also covers everything any
+        /// other mod allocates below our reservation is the reason the first growth happens at
+        /// Minimap.Start, ahead of the saved map data arriving, rather than when our first portal
+        /// shows up.</para>
+        /// </summary>
         internal static void EnsureArrays(Minimap map)
         {
             if (map == null) return;
