@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.13.0 — unreleased
+
+- Portals that take ore and metal through are drawn with their own picture, a squared stone
+  arch, so you can see which one carries the copper home. New: Stone Portals, under Icons --
+  set it to the same as Portals to stop telling them apart.
+- TheGreatestPortal 1.7.0 draws the same picture, so a stone portal looks the same with either
+  mod, both, or neither.
+
 ## 4.12.0 — unreleased
 
 - The "+" that places a marker by hand is now on every row, not just the kind. Press it on Silver

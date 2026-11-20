@@ -178,6 +178,11 @@ have crossed off -- are drawn on the row the pointer is resting on, and any one 
 already doing something is drawn wherever it is, so an armed kind, a filtered one, or one hiding
 its crossed-off markers goes on saying so.
 
+**Portals that take everything through** -- the stone portal, and any modded portal that
+allows ore -- are drawn with a squared stone arch instead of the ordinary portal picture, so you
+can tell at a glance which one will carry the copper home. The "Stone Portals" icon setting
+changes it, and setting it to the same value as "Portals" stops the two being told apart.
+
 **"+" places one by hand**, and it is on every row, not only the kind: press it on Silver and the
 next marker you place is a silver vein, in the silver picture, in the Silver row beside the ones
 you mined. That is what it is for -- a vein under a meter of snow has nothing to put a crosshair

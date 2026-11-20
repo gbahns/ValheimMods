@@ -35,6 +35,8 @@ namespace TheGreatestMap
         {
             public Vector3 Pos;
             public string Name = "";
+            /// <summary>Whether this one will take ore through, which is the question a portal is asked.</summary>
+            public bool Stone;
         }
 
         private static readonly List<Live> _live = new List<Live>();
@@ -94,16 +96,44 @@ namespace TheGreatestMap
             foreach (var zdo in zdoMan.GetPortalList())
             {
                 if (zdo == null || !zdo.IsValid()) continue;
-                list.Add(new Live { Pos = zdo.GetPosition(), Name = zdo.GetString(ZDOVars.s_tag, "") ?? "" });
+                list.Add(new Live
+                {
+                    Pos = zdo.GetPosition(),
+                    Name = zdo.GetString(ZDOVars.s_tag, "") ?? "",
+                    Stone = CarriesEverything(zdo),
+                });
             }
             return list;
+        }
+
+        /// <summary>
+        /// Whether this portal takes everything through, read off the prefab rather than from its
+        /// name.
+        ///
+        /// <para>m_allowAllItems is the question a portal on a map is actually asked -- "can I
+        /// bring the copper" -- and asking it this way means a modded ore portal sorts itself
+        /// without this mod having heard of it. A name test would have had to list them.</para>
+        ///
+        /// <para>Public on TeleportWorld, so nothing is publicized and nothing is reflected.
+        /// TheGreatestPortal keys on the same field, which is what keeps the two mods agreeing
+        /// about a given portal rather than merely agreeing about the picture.</para>
+        /// </summary>
+        private static bool CarriesEverything(ZDO zdo)
+        {
+            var scene = ZNetScene.instance;
+            if (scene == null || zdo == null) return false;
+            var prefab = scene.GetPrefab(zdo.GetPrefab());
+            if (prefab == null) return false;
+            var teleport = prefab.GetComponent<TeleportWorld>();
+            return teleport != null && teleport.m_allowAllItems;
         }
 
         private static string Signature(List<Live> list)
         {
             var sb = new System.Text.StringBuilder();
             foreach (var p in list)
-                sb.Append(Mathf.RoundToInt(p.Pos.x)).Append(',').Append(Mathf.RoundToInt(p.Pos.z)).Append('=').Append(p.Name).Append(';');
+                sb.Append(Mathf.RoundToInt(p.Pos.x)).Append(',').Append(Mathf.RoundToInt(p.Pos.z))
+                  .Append('=').Append(p.Name).Append(p.Stone ? "*" : "").Append(';');
             return sb.ToString();
         }
 
@@ -117,6 +147,14 @@ namespace TheGreatestMap
                 pkg.Write(p.Pos);
                 pkg.Write(p.Name ?? "");
             }
+            // After every record, not a third field inside each one. A reader is a cursor walking
+            // the bytes in order, so a flag written between two records moves everything after it
+            // and an older client would read a portal's position out of the middle of a name --
+            // not a missing feature but a scrambled list. Written past the end, an older client
+            // reads the count it understands, stops, and never looks at these; it draws every
+            // portal as a plain one, which is exactly what it did before. See the DWAMS rule:
+            // read every version you ever wrote, enforce none of them.
+            foreach (var p in list) pkg.Write(p.Stone);
             ZRoutedRpc.instance.InvokeRoutedRPC(target, RpcList, pkg);
         }
 
@@ -139,6 +177,10 @@ namespace TheGreatestMap
                 string name = pkg.ReadString();
                 _live.Add(new Live { Pos = pos, Name = name });
             }
+            // The flags, if this server is new enough to have sent any. A server that is not
+            // leaves them false and every portal draws as a plain one, which is the honest
+            // answer: that server never told us otherwise.
+            for (int i = 0; i < n && pkg.GetPos() < pkg.Size(); i++) _live[i].Stone = pkg.ReadBool();
             _haveList = true;
             _redrawWanted = true;
             Reconcile();
@@ -234,6 +276,34 @@ namespace TheGreatestMap
             return !PortalPickerOpen();
         }
 
+        /// <summary>The picture for a portal of this sort, as the player may have reset it.</summary>
+        internal static string IconKey(bool stone)
+        {
+            if (stone)
+                return TgmConfig.StonePortalIcon != null && !string.IsNullOrEmpty(TgmConfig.StonePortalIcon.Value)
+                    ? TgmConfig.StonePortalIcon.Value : StoneIconDefault;
+            return TgmConfig.CategoryIcon.TryGetValue(Category.Portal, out var icon) && !string.IsNullOrEmpty(icon.Value)
+                ? icon.Value : Categories.DefaultIcon(Category.Portal);
+        }
+
+        /// <summary>
+        /// The picture an ore-carrying portal wears, for TheGreatestPortal to draw the same one.
+        ///
+        /// <para>That mod marks portals itself whenever its own map is up, and this mod's portal
+        /// pins stand down while it is -- so for any given player exactly one of the two is
+        /// drawing. Two different glyphs would mean a stone portal looked like one thing on one
+        /// map and another thing on the other, which is the sort of inconsistency nobody can
+        /// debug from the inside. It reads this afresh every time rather than caching, so being
+        /// asked before the pictures exist costs nothing but a null and an honest fallback to
+        /// its own glyph.</para>
+        ///
+        /// <para>Called by reflection, by name, from a mod this one does not reference. Keep the
+        /// name and the shape: static, no arguments, a Sprite or null.</para>
+        /// </summary>
+        internal static Sprite StoneIcon() => IconRegistry.Resolve(Minimap.instance, IconKey(true));
+
+        internal const string StoneIconDefault = "drawn:stoneportal";
+
         internal static void Redraw()
         {
             _redrawWanted = false;
@@ -244,12 +314,15 @@ namespace TheGreatestMap
             _drawnWanted = DrawingWanted();
             if (!_drawnWanted) return;
 
-            string iconKey = TgmConfig.CategoryIcon.TryGetValue(Category.Portal, out var icon)
-                ? icon.Value : Categories.DefaultIcon(Category.Portal);
-            int type = IconRegistry.TypeFor(iconKey);
+            // Both worked out once rather than per portal: a base with six portals would
+            // otherwise ask the config and the registry six times for the same answer.
+            string plainKey = IconKey(false), stoneKey = IconKey(true);
+            int plainType = IconRegistry.TypeFor(plainKey), stoneType = IconRegistry.TypeFor(stoneKey);
             foreach (var p in _live)
             {
-                if (AlreadyMarked(p.Pos, iconKey)) continue;
+                string iconKey = p.Stone ? stoneKey : plainKey;
+                int type = p.Stone ? stoneType : plainType;
+                if (AlreadyMarked(p.Pos, plainKey, stoneKey)) continue;
                 // m_save false: never written to the profile, never shared, gone when the setting is.
                 //
                 // The name is withheld at birth when labels are off, because that is the only
@@ -299,13 +372,19 @@ namespace TheGreatestMap
         /// the pocket map next came out. A marker somebody placed by hand carries no kind, so
         /// those are matched by the portal icon instead.
         /// </summary>
-        private static bool AlreadyMarked(Vector3 pos, string iconKey)
+        private static bool AlreadyMarked(Vector3 pos, string plainKey, string stoneKey)
         {
             foreach (var pin in ClientPins.All)
             {
                 if (Geo.FlatDistance(pin.Pos, pos) > MatchRadius) continue;
                 if (ClientPins.KindOf(pin) == Category.Portal) return true;
-                if (!pin.Auto && IconRegistry.SameKey(ClientPins.IconOf(pin), iconKey)) return true;
+                // Either portal picture. Somebody who wrote down "portal here" by hand has said
+                // what they meant to say whichever of the two they reached for, and drawing a
+                // live pin on top of their note because they picked the other one would be this
+                // mod arguing with the player about what a portal looks like.
+                if (pin.Auto) continue;
+                string worn = ClientPins.IconOf(pin);
+                if (IconRegistry.SameKey(worn, plainKey) || IconRegistry.SameKey(worn, stoneKey)) return true;
             }
             return false;
         }
@@ -381,13 +460,17 @@ namespace TheGreatestMap
                 $"picker open: {PortalPickerOpen()}",
                 $"drawing extra pins: wanted {DrawingWanted()}, currently drawn {_drawn.Count}",
             };
+            int stone = 0;
+            foreach (var p in _live) if (p.Stone) stone++;
+            lines.Add($"portals that take everything through: {stone} of {_live.Count} " +
+                      $"(drawn as {IconKey(true)}; the rest as {IconKey(false)})" +
+                      (_haveList && stone == 0 ? " -- a server older than 4.13.0 never says, so all of them read as plain" : ""));
             var live = Nearest(near);
             lines.Add(live != null
-                ? $"nearest portal in the list: '{live.Name}' {Geo.FlatDistance(live.Pos, near):0.#} m away"
+                ? $"nearest portal in the list: '{live.Name}'{(live.Stone ? " (takes everything)" : "")} {Geo.FlatDistance(live.Pos, near):0.#} m away"
                 : "no portal in the list within 4 m of you");
-            string iconKey = TgmConfig.CategoryIcon.TryGetValue(Category.Portal, out var pinIcon)
-                ? pinIcon.Value : Categories.DefaultIcon(Category.Portal);
-            lines.Add($"a portal marker within 4 m: {AlreadyMarked(near, iconKey)} (one there means no extra pin is drawn)");
+            lines.Add($"a portal marker within 4 m: {AlreadyMarked(near, IconKey(false), IconKey(true))} " +
+                      "(one there means no extra pin is drawn)");
             return lines;
         }
 

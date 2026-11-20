@@ -699,6 +699,8 @@ namespace TheGreatestMap
         internal static readonly Dictionary<Category, ConfigEntry<bool>> ShowOnMinimap = new Dictionary<Category, ConfigEntry<bool>>();
         internal static readonly Dictionary<Category, ConfigEntry<string>> CategoryPrefabs = new Dictionary<Category, ConfigEntry<string>>();
         internal static readonly Dictionary<Category, ConfigEntry<string>> CategoryIcon = new Dictionary<Category, ConfigEntry<string>>();
+        /// <summary>The second portal picture. Not a category: stone portals are portals.</summary>
+        internal static ConfigEntry<string> StonePortalIcon;
         internal static ConfigEntry<bool> StructuresIncludeUnlisted;
         internal static ConfigEntry<string> RecordingExceptions;
         internal static ConfigEntry<bool> ShowNotRecording;
@@ -1277,6 +1279,17 @@ namespace TheGreatestMap
                     "an item prefab name (its inventory icon is used), piece:<prefab> (a building piece's build-menu picture) " +
                     "or pin:<VanillaPinType> such as pin:Icon0, pin:Memorial, pin:Boss.");
             }
+            // Beside the kinds in the Icons section, though it is not a kind of its own. A
+            // stone portal is a portal -- it belongs to the Portal row, the Portal color and the
+            // Portal switch, and only the picture differs -- so making it a category to give it
+            // a picture would have split one idea in two everywhere else to settle one line.
+            StonePortalIcon = mod.BindLocal("Icons", "Stone Portals", Portals.StoneIconDefault,
+                "The picture for portals that will take ore and metal through: the stone portal, and any modded " +
+                "portal that allows everything. Drawn apart from ordinary portals so you can see at a glance which " +
+                "one carries the copper home. Set it to the same value as Portals to stop telling them apart. " +
+                "Takes the same forms as the other icons, plus drawn:stoneportal for the one this mod draws itself.");
+            StonePortalIcon.SettingChanged += (_, __) => Portals.Redraw();
+
             OrderTheCatalogOnce();
             FixShippedIconsOnce();
 

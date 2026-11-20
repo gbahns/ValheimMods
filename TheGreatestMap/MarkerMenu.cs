@@ -328,6 +328,7 @@ namespace TheGreatestMap
                 case "herbs":     made = Herbs(); break;
                 case "dungeons":  made = Dungeons(); break;
                 case "spawners":  made = Spawners(); break;
+                case "stoneportal": made = StonePortal(); break;
             }
             _drawn[name] = made;
             return made;
@@ -655,6 +656,48 @@ namespace TheGreatestMap
         }
 
         /// <summary>The last few lines every one of these drawn marks ends with.</summary>
+        /// <summary>
+        /// A trilithon: two squared uprights under an overhanging lintel. The portal that takes
+        /// the ore through.
+        ///
+        /// <para>Deliberately blocky, because the entire job of a second portal picture is to
+        /// not be the first one at a glance. Vanilla's portal pin is a rounded arch, so this one
+        /// is built out of straight edges and right angles and a square doorway -- a difference
+        /// that still reads when the thing is eight pixels across and half behind a tree.</para>
+        ///
+        /// <para>Nothing inside the shape can carry meaning: portal markers are painted a single
+        /// color every frame, so this arrives on the map as a silhouette whatever it is drawn
+        /// in. The gray is for the marker list, which draws an icon as it is.</para>
+        ///
+        /// <para>The same silhouette TheGreatestPortal falls back to when this mod is not
+        /// installed, and the one it borrows through <c>Portals.StoneIcon</c> when it is -- so
+        /// the shape means the same thing with either mod, both, or neither.</para>
+        /// </summary>
+        private static Sprite StonePortal()
+        {
+            const int n = 64;
+            var rock = new Color(0.58f, 0.56f, 0.52f);
+            var left = new Rect(n * 0.17f, n * 0.11f, n * 0.20f, n * 0.57f);
+            var right = new Rect(n * 0.63f, n * 0.11f, n * 0.20f, n * 0.57f);
+            var lintel = new Rect(n * 0.09f, n * 0.68f, n * 0.82f, n * 0.21f);
+
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    int hits = 0;
+                    for (int sy = 0; sy < 3; sy++)
+                        for (int sx = 0; sx < 3; sx++)
+                        {
+                            var p = new Vector2(x + (sx + 0.5f) / 3f, y + (sy + 0.5f) / 3f);
+                            if (left.Contains(p) || right.Contains(p) || lintel.Contains(p)) hits++;
+                        }
+                    if (hits > 0) px[y * n + x] = new Color(rock.r, rock.g, rock.b, hits / 9f);
+                }
+            return Bake(tex, px, n);
+        }
+
         private static Sprite Bake(Texture2D tex, Color32[] px, int n)
         {
             tex.SetPixels32(px);
