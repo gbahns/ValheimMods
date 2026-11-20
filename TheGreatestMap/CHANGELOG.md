@@ -13,11 +13,9 @@
 - The "+" that places a marker by hand is now on every row, not just the kind. Press it on Silver
   and the next marker you place is a silver vein, in the silver picture -- before you have mined
   one, or dug it up at all.
-- The marker list can show every group this mod knows, including the ones it is recording that you
-  have not found yet, so there is a row to place from. The gear menu's "Show what you are not
-  recording" is now "Show everything it can mark".
-- Those dim rows wear their own picture instead of the kind's, so twelve of them under Ore no
-  longer all look like a pickaxe.
+- The dim rows in the marker list wear their own picture instead of the kind's, so the ones under
+  Ore no longer all look like a pickaxe, and each has a "+" to write down just the one you are
+  standing at.
 - Portals can be placed by hand. They were refused for being drawn live from the server, which was
   never a reason not to write down that there is one over there.
 - New: Record What The Wishbone Finds, on. Whatever your wishbone is pinging about is written down

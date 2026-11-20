@@ -189,7 +189,11 @@ you mined. That is what it is for -- a vein under a meter of snow has nothing to
 on, so no amount of looking will record it and only a hand can write it down. The arming lasts
 while the map is open, so eight veins take eight double-clicks and one press. Everything can be
 placed except ships and carts, which move, and a marker written where one of those was would be
-wrong by the next tide. Each button answers for itself: a lit one does not
+wrong by the next tide.
+
+A row exists once you have met the thing, so marking a deposit of a kind you have never seen means
+pressing the "+" on the kind itself and getting its picture -- a pickaxe for ore. The list is built
+from your map, and it does not name things you have not found. Each button answers for itself: a lit one does not
 bring its neighbors out with it, or hiding everything crossed off would fill the list with
 buttons.
 
@@ -444,13 +448,11 @@ markers already on your map stay where they are, or choose **Stop recording and 
 `<group>`** to be rid of those as well -- the count is on the label, markers you have labeled are
 left alone, and `tgm_undo` puts them back. For a group this mod does not record at all, such as
 standing stones, erasing the ones an older version wrote is all there is to offer, and the item
-says so. Hide them from the marker list instead if you only want them out of sight. To start recording something, tick **Show everything it can mark** in the marker list's gear menu,
-which adds a dim row for every group that is not on your map, and press the one you want. Turning a
+says so. Hide them from the marker list instead if you only want them out of sight. To start recording something, tick **Show what you are not recording** in the
+marker list's gear menu, which adds a dim row for every group nothing is being written for, and
+press the one you want, or press its "+" to write down just the one you are standing at. Turning a
 group on also fills in any of its places you have walked past recently, so changing your mind costs
-nothing. Two sorts of group appear: the ones nothing is being written for, and the ones that are
-being recorded but that you have not found yet -- the second so there is a Silver row to press "+"
-on before your first silver vein, and so the list can say what this mod is watching for as well as
-what it has seen.
+nothing.
 
 ### Never recorded
 

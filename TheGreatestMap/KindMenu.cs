@@ -953,41 +953,29 @@ namespace TheGreatestMap
         {
             var list = new List<Catalog.GroupRow>();
             if (TgmConfig.ShowNotRecording == null || !TgmConfig.ShowNotRecording.Value) return list;
-            List<Focus.TypeCount> found = null;
-            if (_types != null) _types.TryGetValue(kind, out found);
             foreach (var row in Catalog.Groups())
             {
                 if (row.Cat != kind || row.Tier == Tier.Never) continue;
-                // A group being recorded is listed too, so long as nothing of it is on the map
-                // yet. That row is the one somebody wants: the Silver row before their first
-                // silver vein, to write one down by hand from what the wishbone or a friend
-                // told them. Once a vein has been recorded the type row above says it better,
-                // with a count, so this one steps aside.
-                if (Tiers.Recording(row.Label) && Met(found, row.Icon)) continue;
+                // Only the groups nothing is being recorded for.
+                //
+                // A group that IS being recorded and has nothing on the map yet was briefly
+                // listed here too, to give a Silver row to place from before the first silver
+                // vein. That was the wrong answer to the right question. Marking a specific
+                // deposit you know about needs the row for a deposit you have met, and you have
+                // met it -- the type row is already there the moment one vein is recorded, which
+                // is exactly when somebody wants to write down the next one by hand. What the
+                // extra rows actually did was name every group in the catalog to anybody who
+                // ticked the gear option: silver, flametal, infested mines and all seven bosses,
+                // to a character who had killed nothing. The list is built from the map on
+                // purpose. A thing you have never met has no row, and the kind's own + places it
+                // with the kind's picture, which is what a pickaxe is for.
+                if (Tiers.Recording(row.Label)) continue;
                 list.Add(row);
             }
             list.Sort((a, b) => string.Compare(a.Label, b.Label, StringComparison.CurrentCultureIgnoreCase));
             return list;
         }
 
-        /// <summary>
-        /// Whether a type row already stands for this group's picture.
-        ///
-        /// <para>By picture and not by name, because that is what a type row is: the eleven
-        /// kinds of Black Forest stonework all draw the house pin and share one row between
-        /// them, so once any of them is on the map all eleven have been "met" as far as this
-        /// list is concerned -- and placing any of them by hand would make the same marker
-        /// anyway. An unresolved picture counts as met, so a group whose prefab this game does
-        /// not have cannot add a row nobody can use.</para>
-        /// </summary>
-        private static bool Met(List<Focus.TypeCount> found, string icon)
-        {
-            if (string.IsNullOrEmpty(icon)) return true;
-            if (found == null) return false;
-            foreach (var t in found)
-                if (IconRegistry.SameKey(t.Icon, icon)) return true;
-            return false;
-        }
 
         /// <summary>
         /// The places the game marks itself, as type rows under their own kind.
@@ -2760,17 +2748,11 @@ namespace TheGreatestMap
         private static void QuietRow(Minimap map, float y, Catalog.GroupRow group)
         {
             string label = group.Label;
-            string why = Tiers.Recording(label)
-                // Recorded, and none found yet: a different row with a different point to it.
-                // The switch still says what it says, but nobody opened this one to turn
-                // recording off -- they opened it to reach the + on a thing they have not met.
-                ? (string.IsNullOrEmpty(group.Why) ? "" : group.Why + " ")
-                  + "Recording these; none found yet. The + writes one down by hand."
-                : string.IsNullOrEmpty(group.Why)
-                    ? "Not recorded. Switch it on to start writing markers for these, or use the + to write one down by hand."
-                    : group.Why + (group.Tier == Tier.Off
-                        ? " Off until asked for; switch it on to start writing markers for these, or use the + for just this one."
-                        : " Switched off by you; switch it on to start again, or use the + for just this one.");
+            string why = string.IsNullOrEmpty(group.Why)
+                ? "Not recorded. Switch it on to start writing markers for these, or use the + to write one down by hand."
+                : group.Why + (group.Tier == Tier.Off
+                    ? " Off until asked for; switch it on to start writing markers for these, or use the + for just this one."
+                    : " Switched off by you; switch it on to start again, or use the + for just this one.");
             var k = group.Cat;
             // Its own picture rather than the kind's fallback. Twelve dim rows under Ore all
             // wearing the same pickaxe said nothing about which was which, and the one thing a

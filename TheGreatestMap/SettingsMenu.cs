@@ -84,13 +84,12 @@ namespace TheGreatestMap
                 "have to find once, so those are worth folding away; what you cannot plant you have to go out and " +
                 "gather again, which is what a map is for. Ore is a row of its own either way.");
 
-            y = Switch(y, () => TgmConfig.ShowNotRecording, "Show everything it can mark",
-                "Add a row for each group of things this mod knows about that is not on your map -- the Black " +
-                "Forest ruins and the volture nests it is not recording, and the silver and the crypts it is " +
-                "recording but you have not found yet. So you can see what they are, switch any of them on, and " +
-                "place one by hand with the + before you have ever met one. The rows sit under the kind they " +
-                "belong to and are dim, like everything else in here that is not on your map. Turning one on also " +
-                "fills in the ones you have walked past recently, so changing your mind costs nothing.");
+            y = Switch(y, () => TgmConfig.ShowNotRecording, "Show what you are not recording",
+                "Add a row for each group of things this mod knows about and is not writing markers for -- the " +
+                "Black Forest ruins, the swamp's buildings, the volture nests -- so you can see what they are and " +
+                "switch any of them on, or place one by hand with the +. The rows sit under the kind they belong " +
+                "to and are dim, like everything else in here that is not on your map. Turning one on also fills " +
+                "in the ones you have walked past recently, so changing your mind costs nothing.");
 
             y = Heading("The Map's Own Buttons", y);
             y = Switch(y, () => TgmConfig.HideVanillaControls, "Hide vanilla controls",
