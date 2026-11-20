@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UI;
@@ -349,8 +350,87 @@ namespace TheGreatestMap
                 _small.raycastTarget = false;
                 rect.SetAsFirstSibling();
             }
-            if (_small != null) _small.texture = _rt;
+            if (_small != null)
+            {
+                _small.texture = _rt;
+                MatchShapeOf(_small, map.m_mapImageSmall);
+            }
             return true;
+        }
+
+        /// <summary>
+        /// Reshape this layer the way the minimap itself has been reshaped.
+        ///
+        /// <para>RoundMinimap makes the minimap a circle with a BaseMeshEffect, which rewrites
+        /// the mesh of the one graphic it is attached to -- and it attaches it to the minimap
+        /// image. This layer is a child of that image, and a child is a graphic of its own with
+        /// a mesh of its own, so it kept its corners: the buildings drew outside the circle.
+        /// Nothing was wrong with the painting. It was a square picture behind a round window
+        /// with no glass in the corners.</para>
+        ///
+        /// <para>So whatever reshapes the minimap is asked to reshape this as well, found by
+        /// base type rather than by mod name: anything that rounds, crops or bevels the minimap
+        /// this way is matched without this mod having heard of it, and a minimap nobody has
+        /// touched has no such component and costs an empty array.</para>
+        ///
+        /// <para>Only members the effect declares itself are copied -- its own public surface,
+        /// which for a circle is a radius, an angle and a segment count -- and never anything
+        /// inherited from the component it is built on, where "enabled" and "name" live. A
+        /// future effect that keeps its settings private instead gets its defaults, which for a
+        /// shape means the largest one that fits: cropped a little generously rather than not
+        /// at all.</para>
+        ///
+        /// <para>Runs every time the layer is handed its texture, which is safe because these
+        /// setters compare before they dirty anything. A copy made once at birth would go stale
+        /// the moment somebody dragged the radius slider.</para>
+        /// </summary>
+        private static void MatchShapeOf(Graphic layer, Graphic shaped)
+        {
+            if (layer == null || shaped == null) return;
+            var effects = shaped.GetComponents<BaseMeshEffect>();
+            for (int i = 0; effects != null && i < effects.Length; i++)
+            {
+                var effect = effects[i];
+                if (effect == null) continue;
+                var type = effect.GetType();
+                var mine = layer.GetComponent(type) as BaseMeshEffect;
+                if (mine == null)
+                {
+                    try { mine = layer.gameObject.AddComponent(type) as BaseMeshEffect; }
+                    catch (System.Exception e)
+                    {
+                        TheGreatestMapMod.Log.LogWarning(
+                            $"[TheGreatestMap] The minimap is reshaped by {type.Name}, which could not be applied " +
+                            $"to the building layer ({e.Message}); it will draw square on a shaped minimap.");
+                        continue;
+                    }
+                    if (mine == null) continue;
+                    TheGreatestMapMod.Log.LogInfo(
+                        $"[TheGreatestMap] The minimap is reshaped by {type.Name}; the building layer wears the " +
+                        "same shape so it does not draw outside it.");
+                }
+                CopyDeclared(effect, mine, type);
+            }
+        }
+
+        /// <summary>Its own settings, copied across: what it declares, never what it inherits.</summary>
+        private static void CopyDeclared(object from, object to, System.Type type)
+        {
+            const BindingFlags Own = BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly;
+            for (var t = type; t != null && t != typeof(BaseMeshEffect); t = t.BaseType)
+            {
+                foreach (var prop in t.GetProperties(Own))
+                {
+                    if (!prop.CanRead || !prop.CanWrite || prop.GetIndexParameters().Length > 0) continue;
+                    try { prop.SetValue(to, prop.GetValue(from, null), null); }
+                    catch (System.Exception) { }
+                }
+                foreach (var field in t.GetFields(Own))
+                {
+                    try { field.SetValue(to, field.GetValue(from)); }
+                    catch (System.Exception) { }
+                }
+            }
         }
 
         /// <summary>

@@ -2,6 +2,9 @@
 
 ## 4.13.0 — unreleased
 
+- With RoundMinimap, the buildings drawn on the minimap no longer spill outside the circle. Any
+  mod that reshapes the minimap this way is matched, not just that one.
+
 - Portals that take ore and metal through are drawn with their own picture, a squared stone
   arch, so you can see which one carries the copper home. New: Stone Portals, under Icons --
   set it to the same as Portals to stop telling them apart.
