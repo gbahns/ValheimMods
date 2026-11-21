@@ -98,6 +98,9 @@ namespace TheGreatestMap
         private static float _nextDraw;
         private static bool _failed;
 
+        /// <summary>The shapes this layer wears because the minimap was wearing them.</summary>
+        private static readonly List<BaseMeshEffect> _shapers = new List<BaseMeshEffect>();
+
         /// <summary>
         /// Whether the sharp layer is drawing at all. Asked by the twelve meter painting, which
         /// is the fallback: if this has given up, that is all there is.
@@ -138,6 +141,7 @@ namespace TheGreatestMap
         {
             _layer = null;
             _small = null;
+            _shapers.Clear();
             _drawnFor = new Rect(-999f, -999f, 0f, 0f);
             _drawnSignature = 0;
         }
@@ -382,12 +386,33 @@ namespace TheGreatestMap
         ///
         /// <para>Runs every time the layer is handed its texture, which is safe because these
         /// setters compare before they dirty anything. A copy made once at birth would go stale
-        /// the moment somebody dragged the radius slider.</para>
+        /// the moment somebody dragged the radius slider. It is also what notices a shape being
+        /// taken off: Round Minimap destroys its own effect the moment the setting is switched
+        /// off mid-session, and a copy nobody removed would leave the buildings drawn in a
+        /// circle on a square minimap -- the original complaint, inside out. Only a shape put
+        /// on here is ever taken off, so a component somebody else added to this layer stays
+        /// where they put it.</para>
         /// </summary>
         private static void MatchShapeOf(Graphic layer, Graphic shaped)
         {
             if (layer == null || shaped == null) return;
             var effects = shaped.GetComponents<BaseMeshEffect>();
+
+            for (int i = _shapers.Count - 1; i >= 0; i--)
+            {
+                var worn = _shapers[i];
+                if (worn == null) { _shapers.RemoveAt(i); continue; }
+                var kind = worn.GetType();
+                if (Wears(effects, kind)) continue;
+                _shapers.RemoveAt(i);
+                Object.Destroy(worn);
+                // The mesh was built to the old shape and nothing else will ask for another.
+                layer.SetVerticesDirty();
+                TheGreatestMapMod.Log.LogInfo(
+                    $"[TheGreatestMap] The minimap is no longer reshaped by {kind.Name}, so the building layer " +
+                    "is square again, the same as the minimap.");
+            }
+
             for (int i = 0; effects != null && i < effects.Length; i++)
             {
                 var effect = effects[i];
@@ -409,8 +434,17 @@ namespace TheGreatestMap
                         $"[TheGreatestMap] The minimap is reshaped by {type.Name}; the building layer wears the " +
                         "same shape so it does not draw outside it.");
                 }
+                if (!_shapers.Contains(mine)) _shapers.Add(mine);
                 CopyDeclared(effect, mine, type);
             }
+        }
+
+        /// <summary>Whether the minimap is still wearing a shape of this kind.</summary>
+        private static bool Wears(BaseMeshEffect[] effects, System.Type kind)
+        {
+            for (int i = 0; effects != null && i < effects.Length; i++)
+                if (effects[i] != null && effects[i].GetType() == kind) return true;
+            return false;
         }
 
         /// <summary>Its own settings, copied across: what it declares, never what it inherits.</summary>

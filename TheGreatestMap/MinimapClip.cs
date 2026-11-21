@@ -37,7 +37,7 @@ namespace TheGreatestMap
             var root = map.m_pinRootSmall;
             if (root == null) { ShowAgain(); return; }
             var size = root.rect.size;
-            float radius = Mathf.Min(size.x, size.y) * 0.5f;
+            float radius = Mathf.Min(size.x, size.y) * 0.5f * CircleFraction(map);
             if (radius <= 1f) { ShowAgain(); return; }
             var middle = size * 0.5f;
 
@@ -71,6 +71,7 @@ namespace TheGreatestMap
         }
 
         private static System.Reflection.PropertyInfo _applied;
+        private static System.Reflection.PropertyInfo _radius;
         private static bool _probed;
 
         /// <summary>
@@ -84,11 +85,43 @@ namespace TheGreatestMap
             {
                 _probed = true;
                 var type = HarmonyLib.AccessTools.TypeByName("RoundMinimap.MinimapShape");
-                if (type != null) _applied = HarmonyLib.AccessTools.Property(type, "IsApplied");
+                if (type != null)
+                {
+                    _applied = HarmonyLib.AccessTools.Property(type, "IsApplied");
+                    _radius = HarmonyLib.AccessTools.Property(type, "Radius");
+                }
             }
             if (_applied == null) return false;
             try { return (bool)_applied.GetValue(null); }
             catch (System.Exception) { return false; }
+        }
+
+        /// <summary>
+        /// How much of the minimap the circle covers, as a fraction of the largest one that
+        /// would fit, and all of it when there is nothing to ask.
+        ///
+        /// <para>Round Minimap has a scale setting, and under one the circle is smaller than the
+        /// minimap it sits in: a marker between the rim and the corner is then outside the
+        /// circle while being comfortably inside the square, which is the whole problem again on
+        /// a smaller radius. So the radius it worked out is read rather than assumed, and the rim
+        /// markers are clipped to is the rim that is drawn.</para>
+        ///
+        /// <para>Taken as a fraction and not as a length, because the two are measured against
+        /// different rects -- the radius against the map image, the markers against the pin root.
+        /// The game makes those the same size and Round Minimap resizes them together, so the
+        /// length would work today; the fraction goes on working if that ever stops being
+        /// true.</para>
+        /// </summary>
+        private static float CircleFraction(Minimap map)
+        {
+            if (_radius == null || map.m_mapImageSmall == null) return 1f;
+            float drawn;
+            try { drawn = (float)_radius.GetValue(null); }
+            catch (System.Exception) { return 1f; }
+            var image = map.m_mapImageSmall.rectTransform.rect.size;
+            float most = Mathf.Min(image.x, image.y) * 0.5f;
+            if (drawn <= 0f || most <= 1f) return 1f;
+            return Mathf.Clamp01(drawn / most);
         }
 
         /// <summary>Give back everything we put out, and forget it: ours to undo, nobody else's.</summary>
