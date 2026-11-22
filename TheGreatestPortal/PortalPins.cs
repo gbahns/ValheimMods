@@ -30,17 +30,30 @@ namespace TheGreatestPortal
     {
         internal const int PinTypeBase = 1000;
 
+        /// <summary>What one kind of portal is drawn as: its pin type and the picture on it.</summary>
+        private struct Look
+        {
+            public int Type;
+            public Sprite Icon;
+            /// <summary>The picture is a build render we chose ourselves, with nobody to ask.</summary>
+            public bool Rendered;
+            public bool Ore;
+        }
+
         /// <summary>One pin type per portal prefab, in the order the prefabs were first seen.</summary>
-        private static readonly Dictionary<string, int> _typeFor = new Dictionary<string, int>(StringComparer.Ordinal);
+        private static readonly Dictionary<string, Look> _looks = new Dictionary<string, Look>(StringComparer.Ordinal);
+
+        /// <summary>Keys lifted out of _looks so the dictionary can be written to while walking it.</summary>
+        private static readonly List<string> _keyScratch = new List<string>();
 
         /// <summary>
-        /// The types whose picture is one of the game's own renders rather than a flat silhouette.
+        /// The types wearing a render we picked ourselves, which must not be painted: multiplying
+        /// #FF6600 over a picture of a portal leaves an orange smudge where the picture was.
         ///
-        /// <para>A render must not be tinted. Painting a pin means multiplying a color over it,
-        /// and the portal color is #FF6600 by default -- no blue in it at all -- so laying that
-        /// over a render leaves an orange smudge where the picture was. A silhouette is flat
-        /// white precisely so a color can be laid over it; a render already is the picture, and
-        /// the hovered portal still says so by growing and lighting its halo.</para>
+        /// <para>Only consulted when TheGreatestMap cannot be asked -- it is not installed, or is
+        /// older than the seam. That mod answers this question inside the color it hands back,
+        /// and answers it better: a render gets a neutral brightness pulse rather than being left
+        /// flat white, so the picture survives and still breathes.</para>
         /// </summary>
         private static readonly HashSet<int> _rendered = new HashSet<int>();
 
@@ -77,7 +90,7 @@ namespace TheGreatestPortal
         /// </summary>
         private static void Forget(Minimap map)
         {
-            _typeFor.Clear();
+            _looks.Clear();
             _rendered.Clear();
             _registeredOn = map;
         }
@@ -92,43 +105,101 @@ namespace TheGreatestPortal
         /// </summary>
         private static int TypeFor(Minimap map, PortalInfo p)
         {
-            // A catalog too old to name the prefab still separates the two vanilla kinds, which
-            // is what the picture told apart before it told prefabs apart.
-            string key = !string.IsNullOrEmpty(p.Prefab) ? p.Prefab : (p.AllowAllItems ? "\0stone" : "\0wood");
-            if (_typeFor.TryGetValue(key, out int had)) return had;
+            string key = KeyFor(p);
+            if (_looks.TryGetValue(key, out var had)) return had.Type;
 
-            int type = PinTypeBase + _typeFor.Count;
-            _typeFor[key] = type;
-            var icon = IconFor(p, out bool rendered);
-            if (rendered) _rendered.Add(type);
-            map.m_icons.RemoveAll(x => (int)x.m_name == type);
-            map.m_icons.Add(new Minimap.SpriteData { m_name = (Minimap.PinType)type, m_icon = icon });
+            var look = new Look { Type = PinTypeBase + _looks.Count, Ore = p.AllowAllItems };
+            look.Icon = IconFor(p.Prefab, look.Ore, out look.Rendered);
+            _looks[key] = look;
+            if (look.Rendered) _rendered.Add(look.Type);
+            Apply(map, look);
             EnsureArrays(map);
-            return type;
+            return look.Type;
+        }
+
+        /// <summary>
+        /// A catalog too old to name the prefab still separates the two vanilla kinds, which is
+        /// what the picture told apart before it told prefabs apart. The marker on those two is a
+        /// character no prefab name can contain.
+        /// </summary>
+        private static string KeyFor(PortalInfo p) =>
+            !string.IsNullOrEmpty(p.Prefab) ? p.Prefab : (p.AllowAllItems ? "\0stone" : "\0wood");
+
+        private static string PrefabOf(string key) => key.Length > 0 && key[0] == '\0' ? "" : key;
+
+        private static void Apply(Minimap map, Look look)
+        {
+            map.m_icons.RemoveAll(x => (int)x.m_name == look.Type);
+            map.m_icons.Add(new Minimap.SpriteData { m_name = (Minimap.PinType)look.Type, m_icon = look.Icon });
+        }
+
+        /// <summary>
+        /// Follow TheGreatestMap when the look of a portal changes under us.
+        ///
+        /// <para>Its Portal Marker Style is a setting, and a setting moves while the game is
+        /// running. The picture is read once when a pin type is handed out, so without this a
+        /// player would change that setting, reopen the picker, and see the old pictures until
+        /// the next world load. Runs when the pins are built rather than per frame -- which
+        /// includes every time the picker opens, and that is when a settings change is seen.</para>
+        /// </summary>
+        private static void Restyle(Minimap map)
+        {
+            if (_looks.Count == 0) return;
+            _keyScratch.Clear();
+            foreach (var key in _looks.Keys) _keyScratch.Add(key);
+            foreach (var key in _keyScratch)
+            {
+                var look = _looks[key];
+                var icon = IconFor(PrefabOf(key), look.Ore, out bool rendered);
+                if (icon == null || ReferenceEquals(icon, look.Icon)) continue;
+                look.Icon = icon;
+                look.Rendered = rendered;
+                _looks[key] = look;
+                if (rendered) _rendered.Add(look.Type); else _rendered.Remove(look.Type);
+                Apply(map, look);
+                // Vanilla reads the picture out of the pin, not out of the icon list, once the
+                // pin exists -- so the ones already drawn are told directly rather than rebuilt.
+                foreach (var kv in _pins)
+                {
+                    var pin = kv.Value;
+                    if (pin == null || (int)pin.m_type != look.Type) continue;
+                    pin.m_icon = icon;
+                    if (pin.m_iconElement != null) pin.m_iconElement.sprite = icon;
+                }
+            }
         }
 
         /// <summary>
         /// The picture for a portal, best answer first.
         ///
-        /// <para>The game's own build-menu render of that very prefab wins: it is what the thing
+        /// <para>TheGreatestMap's answer wins outright, because what a portal looks like is that
+        /// mod's to decide and a player has a setting for it there. Its markers stand down while
+        /// this mod's picker is up, so the handoff happens live on one screen: if the two
+        /// disagreed, portals would change shape as a list opened, which reads as a bug rather
+        /// than as two mods.</para>
+        ///
+        /// <para>Everything after it is for a game without that mod, or with one too old to ask.
+        /// The game's own build-menu render of the prefab comes first -- it is what the thing
         /// looks like, the player clicked it once already to build the portal, and it separates
         /// stone from wood without anything here naming either. Failing that -- a portal nobody
-        /// can build has no build picture -- TheGreatestMap's picture for an ore-carrying portal,
-        /// so the two mods still agree about a portal the game will not draw; then this mod's own
-        /// trilithon, which at least says "ore" where vanilla's portal glyph would say only
-        /// "portal"; and for an ordinary portal that glyph, which is exactly right.</para>
+        /// can build has no build picture -- the older stone-only seam, so half an agreement
+        /// survives; then this mod's own trilithon, which at least says "ore" where vanilla's
+        /// portal glyph would say only "portal"; and for an ordinary portal that glyph, which is
+        /// exactly right.</para>
         /// </summary>
-        private static Sprite IconFor(PortalInfo p, out bool rendered)
+        private static Sprite IconFor(string prefab, bool ore, out bool rendered)
         {
             rendered = false;
-            var render = PieceIcon(p.Prefab);
+            var theirs = Access.PortalIcon(prefab);
+            if (theirs != null) return theirs;
+            var render = PieceIcon(prefab);
             if (render != null) { rendered = true; return render; }
-            if (p.AllowAllItems)
+            if (ore)
                 return Access.StonePortalIcon() ?? UiKit.StonePortal();
             var glyph = VanillaIcon(Minimap.PinType.Icon4) ?? VanillaIcon(Minimap.PinType.Icon3);
             if (glyph == null)
                 TheGreatestPortalMod.Log.LogWarning(
-                    $"[TheGreatestPortal] No picture found for portal prefab '{p.Prefab}'; its marker will be blank.");
+                    $"[TheGreatestPortal] No picture found for portal prefab '{prefab}'; its marker will be blank.");
             return glyph;
         }
 
@@ -176,7 +247,7 @@ namespace TheGreatestPortal
         internal static void EnsureArrays(Minimap map)
         {
             if (map == null) return;
-            int need = Math.Max(PinTypeBase + _typeFor.Count, VanillaTypeCount);
+            int need = Math.Max(PinTypeBase + _looks.Count, VanillaTypeCount);
             var arr = Access.VisibleIconTypes(map);
             if (arr == null || arr.Length < need)
             {
@@ -186,7 +257,7 @@ namespace TheGreatestPortal
                 Access.VisibleIconTypes(map) = grown;
                 arr = grown;
             }
-            foreach (int type in _typeFor.Values) arr[type] = true;
+            foreach (var look in _looks.Values) arr[look.Type] = true;
         }
 
         /// <summary>
@@ -207,6 +278,7 @@ namespace TheGreatestPortal
             // a world load Start did not reach or another mod having built the map.
             if (!ReferenceEquals(_registeredOn, map)) Forget(map);
             EnsureArrays(map);
+            Restyle(map);
 
             bool changed = false;
             _live.Clear();
@@ -301,22 +373,37 @@ namespace TheGreatestPortal
         /// lights it up, it does not change what color that portal is. Vanilla repaints its
         /// markers white whenever it lays the map out again, so this runs each frame.
         /// </summary>
-        internal static void Tint(Color color)
+        internal static void Tint()
         {
             foreach (var kv in _pins)
             {
                 var icon = kv.Value.m_iconElement;
                 if (icon == null) continue;
-                var want = Tintable(kv.Value) ? color : Color.white;
+                var want = ColorFor(kv.Key, kv.Value);
                 if (icon.color != want) icon.color = want;
             }
         }
 
+        internal static Color ColorFor(long id) => ColorFor(id, PinFor(id));
+
         /// <summary>
-        /// Whether a pin's picture takes a color laid over it: a flat silhouette does, one of the
-        /// game's own renders does not. See <see cref="_rendered"/> for why that matters.
+        /// What color this one portal's marker is painted.
+        ///
+        /// <para>TheGreatestMap's answer, per portal, because there is no single answer any more:
+        /// an ore-carrying portal has a color of its own there, and a picture of a portal is not
+        /// painted a hue at all but breathed in brightness. Reading one color for every portal is
+        /// how a portal came to be blue on that map and orange on this one.</para>
+        ///
+        /// <para>Without that mod to ask, the old rule: the color it used to give for everything
+        /// -- white, when it is not installed at all -- and flat white over a render, which is
+        /// the best that can be done without its brightness pulse.</para>
         /// </summary>
-        internal static bool Tintable(Minimap.PinData pin) =>
-            pin != null && !_rendered.Contains((int)pin.m_type);
+        private static Color ColorFor(long id, Minimap.PinData pin)
+        {
+            var p = Catalog.Get(id);
+            var theirs = p != null ? Access.PortalColor(p.Prefab) : null;
+            if (theirs.HasValue) return theirs.Value;
+            return pin != null && _rendered.Contains((int)pin.m_type) ? Color.white : Access.PortalPinColor();
+        }
     }
 }

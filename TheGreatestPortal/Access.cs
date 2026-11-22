@@ -59,6 +59,10 @@ namespace TheGreatestPortal
 
         private static Func<Color> _tgmPortalColor;
         private static bool _probedTgm;
+        private static Func<string, Sprite> _tgmPortalIcon;
+        private static bool _probedPortalIcon;
+        private static Func<string, Color> _tgmPortalColorFor;
+        private static bool _probedPortalColorFor;
         private static Action<string> _claimObituary;
         private static bool _probedObituaries;
 
@@ -93,6 +97,64 @@ namespace TheGreatestPortal
         }
 
         /// <summary>
+        /// The picture TheGreatestMap draws this portal with, or null if it is not installed or
+        /// is too old to answer.
+        ///
+        /// <para>That mod owns what a portal looks like, and this mod asks rather than decides.
+        /// It has a setting with four answers in it -- plain colored pins, the game's own render,
+        /// and two weights of the color traced around that render -- and its own portal markers
+        /// stand down while this mod's picker is open. So if the two disagreed, one portal would
+        /// change appearance as the picker opened and closed, which reads as a bug rather than as
+        /// two mods. Asked afresh every time the pins are built: the setting moves while the game
+        /// is running.</para>
+        /// </summary>
+        internal static Sprite PortalIcon(string prefab)
+        {
+            if (!_probedPortalIcon)
+            {
+                _probedPortalIcon = true;
+                var type = AccessTools.TypeByName("TheGreatestMap.Portals");
+                var method = type != null ? AccessTools.Method(type, "PortalIcon", new[] { typeof(string) }) : null;
+                if (method != null && method.ReturnType == typeof(Sprite))
+                {
+                    try { _tgmPortalIcon = AccessTools.MethodDelegate<Func<string, Sprite>>(method); }
+                    catch (Exception e) { TheGreatestPortalMod.Log.LogWarning($"[TheGreatestPortal] Could not read TheGreatestMap's portal pictures; drawing our own: {e.Message}"); }
+                }
+            }
+            if (_tgmPortalIcon == null) return null;
+            try { return _tgmPortalIcon(prefab ?? ""); }
+            catch { _tgmPortalIcon = null; return null; }
+        }
+
+        /// <summary>
+        /// The color TheGreatestMap paints that picture, for this one portal, or null if it
+        /// cannot say.
+        ///
+        /// <para>Per portal rather than one color for the lot, because there is no single answer
+        /// any more: an ore-carrying portal has its own color, and a picture of a portal is not
+        /// painted at all but breathed in brightness, since painting a picture takes the picture
+        /// away. Reading one color for everything is how a portal came to be blue on one map and
+        /// orange on the other. Asked once a frame per portal, which that mod is built for.</para>
+        /// </summary>
+        internal static Color? PortalColor(string prefab)
+        {
+            if (!_probedPortalColorFor)
+            {
+                _probedPortalColorFor = true;
+                var type = AccessTools.TypeByName("TheGreatestMap.Portals");
+                var method = type != null ? AccessTools.Method(type, "PortalColor", new[] { typeof(string) }) : null;
+                if (method != null && method.ReturnType == typeof(Color))
+                {
+                    try { _tgmPortalColorFor = AccessTools.MethodDelegate<Func<string, Color>>(method); }
+                    catch (Exception e) { TheGreatestPortalMod.Log.LogWarning($"[TheGreatestPortal] Could not read TheGreatestMap's portal colors; using our own: {e.Message}"); }
+                }
+            }
+            if (_tgmPortalColorFor == null) return null;
+            try { return _tgmPortalColorFor(prefab ?? ""); }
+            catch { _tgmPortalColorFor = null; return null; }
+        }
+
+        /// <summary>
         /// The picture TheGreatestMap draws an ore-carrying portal with, so the two mods mark a
         /// stone portal the same way and a player moving between the ordinary map and this mod's
         /// own sees one convention rather than two.
@@ -100,6 +162,10 @@ namespace TheGreatestPortal
         /// Asked for afresh each time rather than cached, because that mod builds its pictures
         /// once the map exists and this can be called before it has. Null is the ordinary answer
         /// on a game without it, and the caller draws its own instead.
+        ///
+        /// Superseded by <see cref="PortalIcon"/>, which answers for any portal rather than this
+        /// one kind. Kept because a TheGreatestMap from before that seam existed still answers
+        /// this one, and half an agreement is better than none.
         /// </summary>
         internal static Sprite StonePortalIcon()
         {

@@ -306,9 +306,8 @@ namespace TheGreatestPortal
             }
             // Vanilla repaints the pins whenever it feels like it, so both the portal color and
             // the highlight are reapplied every frame.
-            var color = Access.PortalPinColor();
-            PortalPins.Tint(color);
-            if (_hoverId != 0L) Decorate(map, _hoverId, true, color);
+            PortalPins.Tint();
+            if (_hoverId != 0L) Decorate(map, _hoverId, true);
             else HideGlow();
         }
 
@@ -334,10 +333,9 @@ namespace TheGreatestPortal
             if (id == 0L || map == null) return;
             var pin = PortalPins.PinFor(id);
             if (pin == null || pin.m_uiElement == null) { if (on) HideGlow(); return; }
-            Color color = tint ?? Access.PortalPinColor();
+            Color color = tint ?? PortalPins.ColorFor(id);
             pin.m_uiElement.localScale = on ? Vector3.one * HoverScale : Vector3.one;
-            if (pin.m_iconElement != null)
-                pin.m_iconElement.color = PortalPins.Tintable(pin) ? color : Color.white;
+            if (pin.m_iconElement != null) pin.m_iconElement.color = color;
             if (on) ShowGlow(map, pin, color); else HideGlow();
             var namePin = pin.m_NamePinData;
             if (namePin == null || namePin.PinNameGameObject == null) return;
@@ -617,7 +615,7 @@ namespace TheGreatestPortal
                 Access.PinUpdateRequired(map) = true;
             }
             // Vanilla paints its markers white whenever it lays the map out again, so every frame.
-            PortalPins.Tint(Access.PortalPinColor());
+            PortalPins.Tint();
         }
 
         private static void PlainPinsDown()

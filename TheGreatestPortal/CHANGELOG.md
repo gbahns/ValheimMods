@@ -2,12 +2,10 @@
 
 ## 1.7.0 — unreleased
 
-- Every portal is marked with the game's own picture of it -- the one from the build menu -- so
-  a stone portal, a wood one and any modded portal each look like themselves on the map, and a
-  glance says which of them will take your ore.
-- Portal markers keep those pictures' own colors instead of being painted with the portal color,
-  which would leave an orange smudge where the picture was. The portal under the pointer still
-  grows and lights up in that color.
+- Portal markers follow TheGreatestMap's Portal Marker Style, so a portal keeps its look as the
+  portal map opens and closes instead of changing shape.
+- Without that mod, each portal is marked with the game's own picture of it, so a stone portal
+  and a wood one tell themselves apart.
 
 ## 1.6.0 — 2026-11-15
 
