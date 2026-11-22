@@ -202,7 +202,7 @@ new features:
 
 test:
 * I think everything in the tree should be in a category, e.g. Dynamic Markers for ships, carts, portals, and players
-* Sightings needs a major upgrade.  what we really need is the ability to place any icon, not just serpent icons.  need to think about this.  for starters, any icons already covered by auto-markers don't need to be available under Sightings.
+* Sightings needs a major upgrade.  what we really need is the ability to place any icon, not just serpent icons.  need to think about this.  for starters, any icons already covered by auto-markers don't need to be available under Sightings. (first step: #92, a picture per thing — the fish, both serpents, bear, vile and gjall.)
 * when pinging the location of markers make it draw them in front so it's easy to see them wave; their z-order can return to what it was before after; or if it's easier to just leave the z-order that behavior could make sense because then the player will still see whatever they were interested in most recently.  I don't know how the z-order is currently determined or if it's easy to control it.
 * the vanilla markers should be covered in the list.  in fact, I can envision getting rid of the vanilla marker interface altogether in favor of the vanilla marker functionality being integrated into the TGM menu (this can be optional).
 * when crossed-off markers are hidden how about keeping the "137 done" button hidden until hover just like the other buttons on the row?
