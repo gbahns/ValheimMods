@@ -1301,9 +1301,9 @@ namespace TheGreatestMap
             // Portal switch, and only the picture differs -- so making it a category to give it
             // a picture would have split one idea in two everywhere else to settle one line.
             StonePortalIcon = mod.BindLocal("Icons", "Stone Portals", Portals.StoneIconDefault,
-                "The picture for portals that take ore and metal through. With Portal Marker Style set to " +
-                "ColoredPins this is what every one of them wears; on the picture settings it is the fallback for a " +
-                "modded portal nobody can build, which therefore has no render of its own. Takes the same forms as " +
+                "The picture for an ore-carrying portal that nobody can build, and so has no build-menu render " +
+                "of its own -- a modded one. Anything you can build wears its own render, and on ColoredPins every " +
+                "portal wears the plain pin, so this is only ever reached by that one case. Takes the same forms as " +
                 "the other icons, plus drawn:stoneportal for the stone arch this mod draws itself.");
             StonePortalIcon.SettingChanged += (_, __) => Portals.Redraw();
 

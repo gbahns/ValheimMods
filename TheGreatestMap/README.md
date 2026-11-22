@@ -181,7 +181,7 @@ its crossed-off markers goes on saying so.
 **Portal markers are drawn the way you ask**, with "Portal Marker Style" under Display:
 
 - **ColoredPins** -- the plain portal pin in the portal color. Loud across a whole map, and says
-  nothing about which portal it is. Ore-carrying portals get their own color and their own shape.
+  nothing about which portal it is. Ore-carrying portals wear the same pin in their own color.
 - **Pictures** -- the build menu's own render of that portal, so a wood portal, a stone portal and
   a modded one each look like themselves without this mod explaining which is which. Quieter,
   because a picture of a thing cannot also be a flat color.

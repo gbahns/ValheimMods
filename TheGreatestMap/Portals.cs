@@ -365,7 +365,10 @@ namespace TheGreatestMap
             bool pictured = !string.IsNullOrEmpty(prefabName) && HasBuildPicture(prefabName);
             switch (Look)
             {
-                case PortalLook.ColoredPins: return Fallback(stone);
+                // One picture, two colors. Somebody asking for plain pins is asking not to
+                // be shown pictures, and this mod's drawn stone arch is a picture; what tells an
+                // ore-carrying portal apart here is Stone Portal Marker Color.
+                case PortalLook.ColoredPins: return PlainPin();
                 case PortalLook.Pictures: return pictured ? "piece:" + prefabName : Fallback(stone);
                 default: return pictured ? "glow:" + Style(Look) + ":" + prefabName : Fallback(stone);
             }
@@ -407,6 +410,12 @@ namespace TheGreatestMap
             if (stone)
                 return TgmConfig.StonePortalIcon != null && !string.IsNullOrEmpty(TgmConfig.StonePortalIcon.Value)
                     ? TgmConfig.StonePortalIcon.Value : StoneIconDefault;
+            return PlainPin();
+        }
+
+        /// <summary>The ordinary portal pin, whatever the Portals icon setting says it is.</summary>
+        private static string PlainPin()
+        {
             return TgmConfig.CategoryIcon.TryGetValue(Category.Portal, out var icon) && !string.IsNullOrEmpty(icon.Value)
                 ? icon.Value : Categories.DefaultIcon(Category.Portal);
         }
