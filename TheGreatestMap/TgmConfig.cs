@@ -1100,9 +1100,10 @@ namespace TheGreatestMap
                 "Color of portal markers, which are worth picking out of the crowd because they are how you travel. " +
                 "The default pair is two shades of orange; #A05BDD with #B07CFF as the pulse is a good violet " +
                 "alternative.");
-            PortalLook = mod.BindLocal("Display", "Portal Marker Style", TheGreatestMap.PortalLook.OutlinedIcons,
+            PortalLook = mod.BindLocal("Display", "Portal Marker Style", TheGreatestMap.PortalLook.ColoredPins,
                 "How the portal markers drawn from the server's list are drawn. ColoredPins is the plain portal pin " +
-                "in the portal color, which is loud and says nothing about which portal it is. Icons is the game's " +
+                "in the portal color, which is loud and says nothing about which portal it is, and is the " +
+                "default. Icons is the game's " +
                 "own build-menu render of that portal, which tells the wood one from the stone one and a modded one " +
                 "from both, and is quiet on a busy map because a picture of a thing cannot also be a flat color. The " +
                 "last two put the render and the color together: OutlinedIcons traces the color around the render's " +

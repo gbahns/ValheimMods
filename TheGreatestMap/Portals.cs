@@ -370,7 +370,7 @@ namespace TheGreatestMap
 
         /// <summary>What the player asked portal markers to look like.</summary>
         internal static PortalLook Look =>
-            TgmConfig.PortalLook != null ? TgmConfig.PortalLook.Value : PortalLook.OutlinedIcons;
+            TgmConfig.PortalLook != null ? TgmConfig.PortalLook.Value : PortalLook.ColoredPins;
 
         /// <summary>Which way of dressing a render this look asks for.</summary>
         private static string Style(PortalLook look)

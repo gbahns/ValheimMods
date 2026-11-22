@@ -20,8 +20,8 @@
 - Those dots are now swept as well, by the marker each one stands on. One map was carrying two
   per marker, 16,198 in all, and they came back however often you deleted them.
 - New: Portal Marker Style, under Display. ColoredPins is the plain portal pin in the portal
-  color, Icons is the game's own build-menu render of that portal so the wood one and the stone
-  one tell themselves apart, and OutlinedIcons (the default) and BoldOutlinedIcons trace the
+  color and is the default, Icons is the game's own build-menu render of that portal so the wood
+  one and the stone one tell themselves apart, and OutlinedIcons and BoldOutlinedIcons trace the
   portal color around the render's own outline, thin or thick, which thickens it and colors it at
   once.
 - New: Stone Portal Marker Color. Portals that take ore and metal through are drawn in their own
