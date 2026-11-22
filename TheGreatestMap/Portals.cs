@@ -85,6 +85,8 @@ namespace TheGreatestMap
 
         /// <summary>The two colors as they stood, to tell a recolor from a change of look.</summary>
         private static string _lastColors;
+
+        private static int _lookEpoch;
         private static bool _drawnWanted;
         private static bool _reconcileWanted;
 
@@ -305,6 +307,7 @@ namespace TheGreatestMap
                 // render. Somebody comparing the looks pays that on every step through the list.
                 if (recolored) IconRegistry.Rebake("glow:");
                 if (!first) _redrawWanted = true;
+                _lookEpoch++;
             }
             if (_redrawWanted || DrawingWanted() != _drawnWanted) Redraw();
         }
@@ -501,6 +504,24 @@ namespace TheGreatestMap
             if (IconRegistry.CarriesItsOwnColor(IconKey(prefabName))) return PicturePulse();
             return CarriesEverything(prefabName) ? StonePulse() : CurrentColor();
         }
+
+        /// <summary>
+        /// A number that changes whenever the answer <see cref="PortalIcon"/> gives would change
+        /// -- a different Portal Marker Style, or either portal color moved.
+        ///
+        /// <para><b>Why this is a signal and not something to poll for.</b> An outlined picture
+        /// is baked here, once per picture and color, and when a color moves the old one is
+        /// destroyed so that dragging a color picker does not leave a texture behind on every
+        /// frame of the drag. A mod holding that sprite is then holding a destroyed object, and
+        /// draws nothing at all until it asks again. Watching this costs an int a frame and
+        /// closes that gap to one frame; asking only when a panel opens leaves a portal blank
+        /// for as long as the panel stays open.</para>
+        ///
+        /// <para>Called by reflection, by name, from a mod this one does not reference. Keep the
+        /// name and the shape: static, no arguments, an int. Compare it against the last one you
+        /// saw -- it only promises to differ, never to count anything in particular.</para>
+        /// </summary>
+        internal static int LookEpoch() => _lookEpoch;
 
         internal static void Redraw()
         {
