@@ -60,6 +60,10 @@ namespace TheGreatestPortal
         /// <summary>The map the types were registered against; a new one registers them again.</summary>
         private static Minimap _registeredOn;
 
+        /// <summary>The last look TheGreatestMap reported, to notice it changing under us.</summary>
+        private static int _lookEpoch;
+        private static bool _haveEpoch;
+
         /// <summary>Counted once: Enum.GetValues allocates, and EnsureArrays runs from UpdatePins.</summary>
         private static readonly int VanillaTypeCount = Enum.GetValues(typeof(Minimap.PinType)).Length;
         private static readonly Dictionary<long, Minimap.PinData> _pins = new Dictionary<long, Minimap.PinData>();
@@ -92,6 +96,7 @@ namespace TheGreatestPortal
         {
             _looks.Clear();
             _rendered.Clear();
+            _haveEpoch = false;
             _registeredOn = map;
         }
 
@@ -142,6 +147,22 @@ namespace TheGreatestPortal
         /// the next world load. Runs when the pins are built rather than per frame -- which
         /// includes every time the picker opens, and that is when a settings change is seen.</para>
         /// </summary>
+        /// <summary>
+        /// Ask TheGreatestMap whether the look has moved, and follow it if so. An int compared
+        /// per frame, against a sprite resolve per prefab, so this is cheaper than doing it when
+        /// the pins are built -- and it closes the window where an outlined picture has been
+        /// destroyed under us to a single frame rather than to however long the map stays open.
+        /// </summary>
+        private static void FollowLook(Minimap map)
+        {
+            var epoch = Access.LookEpoch();
+            if (!epoch.HasValue) return;
+            if (_haveEpoch && epoch.Value == _lookEpoch) return;
+            _haveEpoch = true;
+            _lookEpoch = epoch.Value;
+            Restyle(map);
+        }
+
         private static void Restyle(Minimap map)
         {
             if (_looks.Count == 0) return;
@@ -151,7 +172,10 @@ namespace TheGreatestPortal
             {
                 var look = _looks[key];
                 var icon = IconFor(PrefabOf(key), look.Ore, out bool rendered);
-                if (icon == null || ReferenceEquals(icon, look.Icon)) continue;
+                // Unity's == is what catches a sprite that has been destroyed out from under us,
+                // which ReferenceEquals cannot: the object is still there, it just draws nothing.
+                bool dead = look.Icon == null;
+                if (icon == null || (!dead && ReferenceEquals(icon, look.Icon))) continue;
                 look.Icon = icon;
                 look.Rendered = rendered;
                 _looks[key] = look;
@@ -375,6 +399,8 @@ namespace TheGreatestPortal
         /// </summary>
         internal static void Tint()
         {
+            var map = Minimap.instance;
+            if (map != null) FollowLook(map);
             foreach (var kv in _pins)
             {
                 var icon = kv.Value.m_iconElement;

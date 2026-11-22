@@ -63,6 +63,8 @@ namespace TheGreatestPortal
         private static bool _probedPortalIcon;
         private static Func<string, Color> _tgmPortalColorFor;
         private static bool _probedPortalColorFor;
+        private static Func<int> _tgmLookEpoch;
+        private static bool _probedLookEpoch;
         private static Action<string> _claimObituary;
         private static bool _probedObituaries;
 
@@ -124,6 +126,40 @@ namespace TheGreatestPortal
             if (_tgmPortalIcon == null) return null;
             try { return _tgmPortalIcon(prefab ?? ""); }
             catch { _tgmPortalIcon = null; return null; }
+        }
+
+        /// <summary>
+        /// A number from TheGreatestMap that changes whenever the picture it would give us
+        /// changes, or null if it cannot say. Compared, never counted: it promises only to
+        /// differ.
+        ///
+        /// <para>Worth asking every frame rather than when the pins are next built, because the
+        /// pictures with the portal color traced around them are baked there, and moving a color
+        /// destroys the old sprite and its texture rather than leaking one per frame of a drag.
+        /// We are holding those sprites. So nudging a color picker with the portal map open does
+        /// not leave our pins looking stale -- it leaves them drawing nothing at all, for as long
+        /// as the map stays open, which is exactly as long as a player would be nudging it.</para>
+        ///
+        /// <para>No such method means a mod old enough to bake nothing and destroy nothing, so
+        /// absence reads as "never changes" and the check made when the pins are built is enough
+        /// on its own.</para>
+        /// </summary>
+        internal static int? LookEpoch()
+        {
+            if (!_probedLookEpoch)
+            {
+                _probedLookEpoch = true;
+                var type = AccessTools.TypeByName("TheGreatestMap.Portals");
+                var method = type != null ? AccessTools.Method(type, "LookEpoch") : null;
+                if (method != null && method.ReturnType == typeof(int) && method.GetParameters().Length == 0)
+                {
+                    try { _tgmLookEpoch = AccessTools.MethodDelegate<Func<int>>(method); }
+                    catch (Exception e) { TheGreatestPortalMod.Log.LogWarning($"[TheGreatestPortal] Could not read TheGreatestMap's marker style signal; following it only as the pins are built: {e.Message}"); }
+                }
+            }
+            if (_tgmLookEpoch == null) return null;
+            try { return _tgmLookEpoch(); }
+            catch { _tgmLookEpoch = null; return null; }
         }
 
         /// <summary>
