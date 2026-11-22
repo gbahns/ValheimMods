@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.13.0 — unreleased
+## 4.12.0 — unreleased
 
 - With RoundMinimap, the buildings drawn on the minimap no longer spill outside the circle, and
   they turn with it when it turns. Any mod that reshapes the minimap this way is matched, not just
@@ -26,9 +26,6 @@
   so has no render; it is a stone arch this mod draws.
 - TheGreatestPortal 1.7.0 reads the same renders, so a portal looks the same with either mod,
   both, or neither.
-
-## 4.12.0 — unreleased
-
 - The "+" that places a marker by hand is now on every row, not just the kind. Press it on Silver
   and the next marker you place is a silver vein, in the silver picture -- before you have mined
   one, or dug it up at all.

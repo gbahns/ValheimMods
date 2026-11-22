@@ -44,7 +44,7 @@ namespace TheGreatestMap
             /// can wear the game's own render of itself, a modded portal looks like itself with
             /// nothing here naming it, and TheGreatestPortal keys on the same thing, so the two
             /// mods cannot disagree about a portal they are both looking at. Empty when the
-            /// server is older than 4.13.0, or has a portal this client does not have.</para>
+            /// server is older than 4.12.0, or has a portal this client does not have.</para>
             /// </summary>
             public string Prefab = "";
         }
@@ -520,7 +520,7 @@ namespace TheGreatestMap
             foreach (var p in _live) if (!string.IsNullOrEmpty(p.Prefab)) named++;
             lines.Add($"portals the server named: {named} of {_live.Count}" +
                       (_haveList && named == 0 && _live.Count > 0
-                          ? " -- a server older than 4.13.0 never says, so all of them wear " + Fallback(false)
+                          ? " -- a server older than 4.12.0 never says, so all of them wear " + Fallback(false)
                           : "") +
                       $"; unpainted renders drawn: {_unpainted.Count}");
             lines.Add($"fallback pictures: {Fallback(false)} plain, {Fallback(true)} for ore-carrying");
