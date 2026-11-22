@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.7.0 — unreleased
+## 1.7.0 — 2026-11-22
 
 - Portal markers follow TheGreatestMap's Portal Marker Style, so a portal keeps its look as the
   portal map opens and closes instead of changing shape.
