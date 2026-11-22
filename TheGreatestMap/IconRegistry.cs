@@ -631,10 +631,16 @@ namespace TheGreatestMap
             // the readback fails, which is better than no picture at all.
             if (key.StartsWith("glow:"))
             {
-                string prefab = key.Substring(5);
+                // "glow:<style>:<prefab>". The style is part of the key so that two ways of
+                // dressing the same render are two pictures, cached apart and swapped by picking
+                // a different one rather than by rebuilding anything.
+                string rest = key.Substring(5);
+                int colon = rest.IndexOf(':');
+                string style = colon > 0 ? rest.Substring(0, colon) : "halo";
+                string prefab = colon > 0 ? rest.Substring(colon + 1) : rest;
                 var under = Resolve(map, "piece:" + prefab);
                 if (under == null) return null;
-                var made = MenuKit.Halo(under, Portals.GlowColor(prefab));
+                var made = MenuKit.Decorate(under, Portals.GlowColor(prefab), style);
                 if (made == null) return under;
                 // Kept so a rebake can throw the old one away. The picture underneath is the
                 // game's own asset and must never be destroyed; only what was baked here.
@@ -734,7 +740,7 @@ namespace TheGreatestMap
         /// <summary>
         /// Whether this picture arrives with colors of its own, which a marker's paint must leave
         /// alone. True of a build render and of a render on a baked halo: painting either is a
-        /// multiply and would take the picture away. See <see cref="MenuKit.Halo"/>.
+        /// multiply and would take the picture away. See <see cref="MenuKit.Decorate"/>.
         /// </summary>
         internal static bool CarriesItsOwnColor(string iconKey)
         {

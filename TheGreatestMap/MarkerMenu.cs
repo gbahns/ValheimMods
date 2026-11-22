@@ -699,8 +699,10 @@ namespace TheGreatestMap
         }
 
         /// <summary>
-        /// A picture on a colored halo: the game's own render of a thing, sitting on a soft disc
-        /// of the color that says what sort of thing it is.
+        /// A picture dressed in a color: the game's own render of a thing, carrying the color
+        /// that says what sort of thing it is. The style says how -- "halo" a soft glow behind
+        /// it, "disc" a coin under it, "ring" a band around it, "edge" a contour traced around
+        /// the render's own outline, "edgehalo" that contour over a glow.
         ///
         /// <para><b>Why this exists at all.</b> A marker is one Image, and painting it is a
         /// multiply, so a render cannot be colored without the color eating the picture --
@@ -714,14 +716,14 @@ namespace TheGreatestMap
         /// is read back through a RenderTexture rather than with GetPixels, because a
         /// build-menu icon is an ordinary game asset and game assets are not readable.</para>
         /// </summary>
-        internal static Sprite Halo(Sprite picture, Color color)
+        internal static Sprite Decorate(Sprite picture, Color color, string style)
         {
             if (picture == null) return null;
             const int n = 128;
-            // How much of the frame the picture itself fills, leaving the rest to the halo. Most
-            // of it: the pictures worth haloing are tall narrow things -- a portal is an arch --
-            // so the halo still shows either side of one without the picture having to be shrunk
-            // to make room. 0.76 here was a quarter off every picture for a margin that the
+            // How much of the frame the picture itself fills, leaving the rest to the dressing.
+            // Most of it: the pictures worth dressing are tall narrow things -- a portal is an
+            // arch -- so the color still shows either side of one without the picture having to
+            // be shrunk to make room. 0.76 here was a quarter off every picture for a margin the
             // artwork already had, and it was why a portal on the map read thinner than the same
             // portal in tgm_items.
             const float fill = 0.88f;
@@ -729,40 +731,121 @@ namespace TheGreatestMap
             if (read == null) return null;
             try
             {
-                var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
-                var px = new Color32[n * n];
                 float half = n * 0.5f;
+                // The picture, scaled into this square with the weight the resampling took off
+                // it put back. Held as an array rather than composited straight out, because the
+                // outlined styles have to look at a pixel's neighbors to know where the edge is.
+                var pic = new Color[n * n];
                 for (int y = 0; y < n; y++)
                     for (int x = 0; x < n; x++)
                     {
-                        float dx = (x + 0.5f - half) / half, dy = (y + 0.5f - half) / half;
-                        float r = Mathf.Sqrt(dx * dx + dy * dy);
-                        // Flat through the middle and soft to nothing at the rim: a halo, not a
-                        // disc with an edge, so it reads as light behind the thing rather than as
-                        // a coin the thing is standing on.
-                        float t = Mathf.Clamp01((r - 0.34f) / 0.66f);
-                        float halo = color.a * (1f - t * t * (3f - 2f * t));
-                        var over = Inside(read, n, (x + 0.5f - half) / fill + half, (y + 0.5f - half) / fill + half);
+                        var over = Inside(read, n, (x + 0.5f - half) / fill + half,
+                                                   (y + 0.5f - half) / fill + half);
                         // What a resample costs a thin line. A stroke a pixel or two wide is
                         // mostly edge, and every edge pixel comes back at part alpha -- off the
                         // card into this square, and again sampling this square into the marker's
                         // box. Each pass spreads the same ink over more pixels, so the line goes
-                        // pale, and pale over a lit halo reads as thinner still. The curve lifts
-                        // the partial alphas and leaves the solid ones alone (1 to any power is
-                        // 1), so the stroke keeps its own shape and gets its weight back.
+                        // pale, and pale over a lit background reads as thinner still. The curve
+                        // lifts the partial alphas and leaves the solid ones alone (1 to any
+                        // power is 1), so the stroke keeps its shape and gets its weight back.
                         over.a = Mathf.Pow(over.a, 0.65f);
-                        float a = over.a + halo * (1f - over.a);
-                        px[y * n + x] = a <= 0.0001f
+                        pic[y * n + x] = over;
+                    }
+
+                bool outlined = style == "edge" || style == "edgehalo";
+                var ink = outlined ? Spread(pic, n, 7f) : null;
+
+                var px = new Color32[n * n];
+                for (int y = 0; y < n; y++)
+                    for (int x = 0; x < n; x++)
+                    {
+                        int i = y * n + x;
+                        float dx = (x + 0.5f - half) / half, dy = (y + 0.5f - half) / half;
+                        float back = Behind(style, Mathf.Sqrt(dx * dx + dy * dy)) * color.a;
+                        // The contour and whatever is behind it are the same color, so stacking
+                        // them is only ever a question of how opaque the result is.
+                        if (ink != null) { float edge = ink[i] * color.a; back = edge + back * (1f - edge); }
+                        var over = pic[i];
+                        float a = over.a + back * (1f - over.a);
+                        px[i] = a <= 0.0001f
                             ? new Color(0f, 0f, 0f, 0f)
                             : new Color(
-                                (over.r * over.a + color.r * halo * (1f - over.a)) / a,
-                                (over.g * over.a + color.g * halo * (1f - over.a)) / a,
-                                (over.b * over.a + color.b * halo * (1f - over.a)) / a,
+                                (over.r * over.a + color.r * back * (1f - over.a)) / a,
+                                (over.g * over.a + color.g * back * (1f - over.a)) / a,
+                                (over.b * over.a + color.b * back * (1f - over.a)) / a,
                                 a);
                     }
-                return Bake(tex, px, n);
+                return Bake(new Texture2D(n, n, TextureFormat.RGBA32, false), px, n);
             }
             finally { UnityEngine.Object.Destroy(read); }
+        }
+
+        /// <summary>
+        /// How opaque the color behind the picture is at this distance from the middle, where 1
+        /// is the edge of the frame. One shape per style; "edge" has nothing behind it at all.
+        /// </summary>
+        private static float Behind(string style, float r)
+        {
+            switch (style)
+            {
+                // A coin the picture stands on. The most color of any of these, and the most
+                // likely to fight the picture for it.
+                case "disc":
+                    return 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.86f, 0.99f, r));
+                // Color that never touches the picture: a band around the outside, leaving the
+                // render exactly as the game drew it.
+                case "ring":
+                    return Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.60f, 0.74f, r))
+                         * (1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.88f, 0.99f, r)));
+                case "edge":
+                    return 0f;
+                // Flat through the middle and soft to nothing at the rim: light behind the thing
+                // rather than a coin it is standing on.
+                default:
+                    float t = Mathf.Clamp01((r - 0.34f) / 0.66f);
+                    return 1f - t * t * (3f - 2f * t);
+            }
+        }
+
+        /// <summary>
+        /// How much ink lies within <paramref name="reach"/> pixels of each point, fading with
+        /// distance: the picture's own shape grown outward, which is what a contour traced
+        /// around it is.
+        ///
+        /// <para>Done at the baked size and not the drawn one, so seven pixels here is under two
+        /// by the time the marker is on the map -- enough to carry color and to stop a thin
+        /// stroke disappearing, without turning the render into a blob.</para>
+        /// </summary>
+        private static float[] Spread(Color[] pic, int n, float reach)
+        {
+            var ink = new float[n * n];
+            int k = Mathf.CeilToInt(reach);
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    float most = 0f;
+                    for (int dy = -k; dy <= k; dy++)
+                    {
+                        int sy = y + dy;
+                        if (sy < 0 || sy >= n) continue;
+                        for (int dx = -k; dx <= k; dx++)
+                        {
+                            int sx = x + dx;
+                            if (sx < 0 || sx >= n) continue;
+                            float a = pic[sy * n + sx].a;
+                            // Nothing this far out can beat what is already held, and the
+                            // distance is the expensive part, so it is only worked out for the
+                            // pixels that could still win.
+                            if (a <= most) continue;
+                            float d = Mathf.Sqrt(dx * dx + dy * dy);
+                            if (d > reach) continue;
+                            float reached = a * (1f - d / (reach + 1f));
+                            if (reached > most) most = reached;
+                        }
+                    }
+                    ink[y * n + x] = most;
+                }
+            return ink;
         }
 
         /// <summary>The picture at this point, or nothing where the point is off it.</summary>

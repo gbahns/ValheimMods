@@ -1100,14 +1100,16 @@ namespace TheGreatestMap
                 "Color of portal markers, which are worth picking out of the crowd because they are how you travel. " +
                 "The default pair is two shades of orange; #A05BDD with #B07CFF as the pulse is a good violet " +
                 "alternative.");
-            PortalLook = mod.BindLocal("Display", "Portal Markers Look Like", TheGreatestMap.PortalLook.Both,
+            PortalLook = mod.BindLocal("Display", "Portal Markers Look Like", TheGreatestMap.PortalLook.PictureOnHalo,
                 "How the portal markers drawn from the server's list are drawn. ColoredPins is the plain portal pin " +
                 "in the portal color, which is loud and says nothing about which portal it is. Pictures is the game's " +
                 "own build-menu render of that portal, which tells the wood one from the stone one and a modded one " +
-                "from both, and is quiet on a busy map because a picture of a thing cannot also be a flat color. " +
-                "Both puts the picture on a halo in the portal color, which is the pin's loudness with the picture's " +
-                "meaning. Whichever you pick, a portal nobody can build has no render and falls back to the Portals " +
-                "and Stone Portals icon settings.");
+                "from both, and is quiet on a busy map because a picture of a thing cannot also be a flat color. The " +
+                "rest put the render and the color together and differ only in where the color goes: PictureOnHalo " +
+                "is a soft glow behind it, PictureOnDisc a solid coin under it, PictureInRing a band around it with " +
+                "the render left alone, OutlinedPicture the color traced around the render's own outline, and " +
+                "OutlinedOnHalo that outline over a glow. Whichever you pick, a portal nobody can build has no render " +
+                "and falls back to the Portals and Stone Portals icon settings.");
             StonePortalColor = mod.BindMoved("Display", Palette, "Stone Portal Marker Color", Colors.FromHex("#00B4FF"),
                 "Color of the markers for portals that take ore and metal through, so the one that carries the copper " +
                 "home is not the same color as the six that do not. Far from the portal color on purpose -- these are " +

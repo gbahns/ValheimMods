@@ -23,9 +23,12 @@ namespace TheGreatestMap
     /// "only what someone saw" rule off, which is why it is a setting.
     /// </summary>
     /// <summary>
-    /// How a portal marker is drawn. Three answers to one question -- is this marker for finding
-    /// a portal, or for telling two portals apart -- and the player's map is theirs to answer it
+    /// How a portal marker is drawn. Answers to one question -- is this marker for finding a
+    /// portal, or for telling two portals apart -- and the player's map is theirs to answer it
     /// on. See the Portal Markers Look Like setting.
+    ///
+    /// <para>The five that carry a picture differ only in where the color goes, which is a thing
+    /// to be looked at rather than argued about: they are here to be compared on a real map.</para>
     /// </summary>
     internal enum PortalLook
     {
@@ -35,8 +38,20 @@ namespace TheGreatestMap
         /// <summary>The game's own render of that portal, in its own colors. Says which, quietly.</summary>
         Pictures,
 
-        /// <summary>The render on a halo of the portal color: the pin's loudness, the render's meaning.</summary>
-        Both,
+        /// <summary>The render on a soft glow of the portal color.</summary>
+        PictureOnHalo,
+
+        /// <summary>The render on a solid coin of the portal color.</summary>
+        PictureOnDisc,
+
+        /// <summary>The render untouched, inside a band of the portal color.</summary>
+        PictureInRing,
+
+        /// <summary>The render with the portal color traced around its own outline.</summary>
+        OutlinedPicture,
+
+        /// <summary>That contour over a glow: the most color a picture can carry.</summary>
+        OutlinedOnHalo,
     }
 
     internal static class Portals
@@ -76,6 +91,9 @@ namespace TheGreatestMap
 
         /// <summary>The look and the two colors as they stood, to notice any of them moving.</summary>
         private static string _lastLook;
+
+        /// <summary>The two colors as they stood, to tell a recolor from a change of look.</summary>
+        private static string _lastColors;
         private static bool _drawnWanted;
         private static bool _reconcileWanted;
 
@@ -248,16 +266,21 @@ namespace TheGreatestMap
             // in the config has to be baked again -- and a different look means different
             // pictures altogether. Watched here rather than through SettingChanged, which can
             // arrive on the thread that reads the config file.
-            string look = Look + "|" + MarkerColor() + "|" + StoneColor();
+            string colors = MarkerColor() + "|" + StoneColor();
+            string look = Look + "|" + colors;
             if (look != _lastLook)
             {
                 bool first = _lastLook == null;
+                bool recolored = !first && colors != _lastColors;
                 _lastLook = look;
-                if (!first)
-                {
-                    IconRegistry.Rebake("glow:");
-                    _redrawWanted = true;
-                }
+                _lastColors = colors;
+                // Only a color change makes a baked picture wrong. Picking a different look asks
+                // for different pictures under different keys, which are baked the first time
+                // they are wanted -- so rebaking here would redo nothing but the ones being left
+                // behind, and the dearest of those traces a contour around every pixel of a
+                // render. Somebody comparing the looks pays that on every step through the list.
+                if (recolored) IconRegistry.Rebake("glow:");
+                if (!first) _redrawWanted = true;
             }
             if (_redrawWanted || DrawingWanted() != _drawnWanted) Redraw();
         }
@@ -346,14 +369,27 @@ namespace TheGreatestMap
             switch (Look)
             {
                 case PortalLook.ColoredPins: return Fallback(stone);
-                case PortalLook.Both: return pictured ? "glow:" + prefabName : Fallback(stone);
-                default: return pictured ? "piece:" + prefabName : Fallback(stone);
+                case PortalLook.Pictures: return pictured ? "piece:" + prefabName : Fallback(stone);
+                default: return pictured ? "glow:" + Style(Look) + ":" + prefabName : Fallback(stone);
             }
         }
 
         /// <summary>What the player asked portal markers to look like.</summary>
         internal static PortalLook Look =>
-            TgmConfig.PortalLook != null ? TgmConfig.PortalLook.Value : PortalLook.Both;
+            TgmConfig.PortalLook != null ? TgmConfig.PortalLook.Value : PortalLook.PictureOnHalo;
+
+        /// <summary>Which way of dressing a render this look asks for.</summary>
+        private static string Style(PortalLook look)
+        {
+            switch (look)
+            {
+                case PortalLook.PictureOnDisc: return "disc";
+                case PortalLook.PictureInRing: return "ring";
+                case PortalLook.OutlinedPicture: return "edge";
+                case PortalLook.OutlinedOnHalo: return "edgehalo";
+                default: return "halo";
+            }
+        }
 
         /// <summary>
         /// The color baked behind one portal's picture: its own, by whether it takes ore through.
