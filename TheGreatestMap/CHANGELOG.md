@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.12.0 — unreleased
+## 4.12.0 — 2026-11-22
 
 **Everyone needs this version to play together.**
 
