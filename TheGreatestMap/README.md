@@ -182,12 +182,12 @@ its crossed-off markers goes on saying so.
 
 - **ColoredPins** -- the plain portal pin in the portal color. Loud across a whole map, and says
   nothing about which portal it is. Ore-carrying portals wear the same pin in their own color.
-- **Pictures** -- the build menu's own render of that portal, so a wood portal, a stone portal and
+- **Icons** -- the build menu's own render of that portal, so a wood portal, a stone portal and
   a modded one each look like themselves without this mod explaining which is which. Quieter,
   because a picture of a thing cannot also be a flat color.
-- **OutlinedPicture** (the default) and **OutlinedPictureBold** -- the render with the portal
-  color traced around its own outline, thin or thick. A portal is an arch and an arch is mostly
-  thin line, so this thickens it and colors it at once.
+- **OutlinedIcons** (the default) and **BoldOutlinedIcons** -- the render with the portal color
+  traced around its own outline, thin or thick. A portal is an arch and an arch is mostly thin
+  line, so this thickens it and colors it at once.
 A render is never painted, because painting a picture of a thing takes the picture away; it
 breathes in brightness instead of color. Portals that take ore and metal through are drawn in
 "Stone Portal Marker Color" so you can see at a glance which one carries the copper home. A portal

@@ -36,13 +36,13 @@ namespace TheGreatestMap
         ColoredPins,
 
         /// <summary>The game's own render of that portal, in its own colors. Says which, quietly.</summary>
-        Pictures,
+        Icons,
 
         /// <summary>The render with the portal color traced around its own outline.</summary>
-        OutlinedPicture,
+        OutlinedIcons,
 
         /// <summary>The same contour, thicker.</summary>
-        OutlinedPictureBold,
+        BoldOutlinedIcons,
     }
 
     internal static class Portals
@@ -363,21 +363,21 @@ namespace TheGreatestMap
                 // be shown pictures, and this mod's drawn stone arch is a picture; what tells an
                 // ore-carrying portal apart here is Stone Portal Marker Color.
                 case PortalLook.ColoredPins: return PlainPin();
-                case PortalLook.Pictures: return pictured ? "piece:" + prefabName : Fallback(stone);
+                case PortalLook.Icons: return pictured ? "piece:" + prefabName : Fallback(stone);
                 default: return pictured ? "glow:" + Style(Look) + ":" + prefabName : Fallback(stone);
             }
         }
 
         /// <summary>What the player asked portal markers to look like.</summary>
         internal static PortalLook Look =>
-            TgmConfig.PortalLook != null ? TgmConfig.PortalLook.Value : PortalLook.OutlinedPicture;
+            TgmConfig.PortalLook != null ? TgmConfig.PortalLook.Value : PortalLook.OutlinedIcons;
 
         /// <summary>Which way of dressing a render this look asks for.</summary>
         private static string Style(PortalLook look)
         {
             switch (look)
             {
-                case PortalLook.OutlinedPictureBold: return "edgebold";
+                case PortalLook.BoldOutlinedIcons: return "edgebold";
                 default: return "edge";
             }
         }
