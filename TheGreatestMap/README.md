@@ -188,10 +188,6 @@ its crossed-off markers goes on saying so.
 - **OutlinedPicture** (the default) and **OutlinedPictureBold** -- the render with the portal
   color traced around its own outline, thin or thick. A portal is an arch and an arch is mostly
   thin line, so this thickens it and colors it at once.
-- **HaloAroundPicture** -- a soft glow of the portal color laid around the render, with the
-  render's shape cut out of it and a gap left clear. The doorway stays empty, so the frame still
-  has the map to read against.
-
 A render is never painted, because painting a picture of a thing takes the picture away; it
 breathes in brightness instead of color. Portals that take ore and metal through are drawn in
 "Stone Portal Marker Color" so you can see at a glance which one carries the copper home. A portal

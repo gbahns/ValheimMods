@@ -699,10 +699,9 @@ namespace TheGreatestMap
         }
 
         /// <summary>
-        /// A picture dressed in a color: the game's own render of a thing, carrying the color
-        /// that says what sort of thing it is. The style says how -- "edge" and "edgebold" trace
-        /// a contour around the render's own outline, "haloaround" lays a glow around it with the
-        /// render's shape cut out and a gap left clear.
+        /// A picture dressed in a color: the game's own render of a thing, with the color that
+        /// says what sort of thing it is traced around its own outline. "edge" and "edgebold" are
+        /// the same contour at two thicknesses.
         ///
         /// <para><b>Why this exists at all.</b> A marker is one Image, and painting it is a
         /// multiply, so a render cannot be colored without the color eating the picture --
@@ -720,21 +719,20 @@ namespace TheGreatestMap
         {
             if (picture == null) return null;
             const int n = 128;
-            // How much of the frame the picture itself fills, leaving the rest to the dressing.
-            // Most of it: the pictures worth dressing are tall narrow things -- a portal is an
-            // arch -- so the color still shows either side of one without the picture having to
-            // be shrunk to make room. 0.76 here was a quarter off every picture for a margin the
-            // artwork already had, and it was why a portal on the map read thinner than the same
-            // portal in tgm_items.
+            // How much of the frame the picture itself fills, leaving the rest to the contour.
+            // Most of it: a portal is an arch, so there is room either side of one without the
+            // picture having to be shrunk to make it. 0.76 here was a quarter off every picture
+            // for a margin the artwork already had, and it was why a portal on the map read
+            // thinner than the same portal in tgm_items.
             const float fill = 0.88f;
             var read = ReadBack(picture, n);
             if (read == null) return null;
             try
             {
                 float half = n * 0.5f;
-                // The picture, scaled into this square with the weight the resampling took off
-                // it put back. Held as arrays rather than composited straight out, because every
-                // style but the plainest has to look at a pixel's neighbors to find the outline.
+                // The picture, scaled into this square with the weight the resampling took off it
+                // put back. Held as arrays rather than composited straight out, because the
+                // contour has to look at a pixel's neighbors to know where the outline is.
                 var pic = new Color[n * n];
                 var alpha = new float[n * n];
                 for (int y = 0; y < n; y++)
@@ -746,121 +744,35 @@ namespace TheGreatestMap
                         // mostly edge, and every edge pixel comes back at part alpha -- off the
                         // card into this square, and again sampling this square into the marker's
                         // box. Each pass spreads the same ink over more pixels, so the line goes
-                        // pale, and pale over a lit background reads as thinner still. The curve
-                        // lifts the partial alphas and leaves the solid ones alone (1 to any
-                        // power is 1), so the stroke keeps its shape and gets its weight back.
+                        // pale, and a pale line is a line that is not there. The curve lifts the
+                        // partial alphas and leaves the solid ones alone (1 to any power is 1),
+                        // so the stroke keeps its shape and gets its weight back.
                         over.a = Mathf.Pow(over.a, 0.65f);
                         pic[y * n + x] = over;
                         alpha[y * n + x] = over.a;
                     }
 
-                // A contour traced around the picture's own outline, which both thickens a thin
-                // line and gives it the color, or the room the color must keep away from.
-                float reach = style == "edgebold" ? 13f : 7f;
-                var ink = style == "edge" || style == "edgebold" ? Spread(alpha, n, reach) : null;
-                var clear = ink == null ? Clear(alpha, n, 11f) : null;
+                // The render's own outline, grown outward and filled with the color: the one
+                // place the color can go that thickens the picture instead of competing with it.
+                var ink = Spread(alpha, n, style == "edgebold" ? 13f : 7f);
 
                 var px = new Color32[n * n];
-                for (int y = 0; y < n; y++)
-                    for (int x = 0; x < n; x++)
-                    {
-                        int i = y * n + x;
-                        float dx = (x + 0.5f - half) / half, dy = (y + 0.5f - half) / half;
-                        float back = Behind(style, Mathf.Sqrt(dx * dx + dy * dy)) * color.a;
-                        if (clear != null) back *= clear[i];
-                        // The contour and whatever is behind it are the same color, so stacking
-                        // them is only ever a question of how opaque the result is.
-                        if (ink != null) { float edge = ink[i] * color.a; back = edge + back * (1f - edge); }
-                        var over = pic[i];
-                        float a = over.a + back * (1f - over.a);
-                        px[i] = a <= 0.0001f
-                            ? new Color(0f, 0f, 0f, 0f)
-                            : new Color(
-                                (over.r * over.a + color.r * back * (1f - over.a)) / a,
-                                (over.g * over.a + color.g * back * (1f - over.a)) / a,
-                                (over.b * over.a + color.b * back * (1f - over.a)) / a,
-                                a);
-                    }
+                for (int i = 0; i < n * n; i++)
+                {
+                    var over = pic[i];
+                    float back = ink[i] * color.a;
+                    float a = over.a + back * (1f - over.a);
+                    px[i] = a <= 0.0001f
+                        ? new Color(0f, 0f, 0f, 0f)
+                        : new Color(
+                            (over.r * over.a + color.r * back * (1f - over.a)) / a,
+                            (over.g * over.a + color.g * back * (1f - over.a)) / a,
+                            (over.b * over.a + color.b * back * (1f - over.a)) / a,
+                            a);
+                }
                 return Bake(new Texture2D(n, n, TextureFormat.RGBA32, false), px, n);
             }
             finally { UnityEngine.Object.Destroy(read); }
-        }
-
-        /// <summary>
-        /// How opaque the color behind the picture is at this distance from the middle, where 1
-        /// is the edge of the frame. The outlined styles have nothing behind them at all.
-        /// </summary>
-        private static float Behind(string style, float r)
-        {
-            switch (style)
-            {
-                case "edge":
-                case "edgebold":
-                    return 0f;
-                // Flat through the middle and soft to nothing at the rim: light around the thing
-                // rather than a coin it is standing on.
-                default:
-                    float t = Mathf.Clamp01((r - 0.34f) / 0.66f);
-                    return 1f - t * t * (3f - 2f * t);
-            }
-        }
-
-        /// <summary>
-        /// Where the color is allowed to go: outside the picture's outline, and not within
-        /// <paramref name="gap"/> pixels of it. One where the color may be drawn in full, zero
-        /// where it may not, and a soft ramp between.
-        ///
-        /// <para><b>Outside the outline, not merely off the ink.</b> A portal is an arch, and the
-        /// doorway is empty in the render -- so color laid down everywhere the picture is
-        /// transparent fills that doorway with a solid blob, and a thin wooden frame with color
-        /// behind it and color inside it has nothing left to read against. What has to be kept
-        /// clear is the whole shape, holes included, which is why this floods in from the frame's
-        /// border rather than testing each pixel's own alpha: anything the flood cannot reach is
-        /// either the picture or enclosed by it.</para>
-        /// </summary>
-        private static float[] Clear(float[] alpha, int n, float gap)
-        {
-            // Sealed first. Parts of a thin frame come back from the resample at very low alpha,
-            // and a flood that slips through one of those pinholes fills the doorway after all,
-            // which is the one thing this exists to stop.
-            var sealedInk = Spread(alpha, n, 2f);
-            var open = new bool[n * n];
-            var stack = new int[n * n];
-            int top = 0;
-            for (int i = 0; i < n; i++)
-            {
-                Reach(stack, ref top, open, sealedInk, n, i, 0);
-                Reach(stack, ref top, open, sealedInk, n, i, n - 1);
-                Reach(stack, ref top, open, sealedInk, n, 0, i);
-                Reach(stack, ref top, open, sealedInk, n, n - 1, i);
-            }
-            while (top > 0)
-            {
-                int i = stack[--top];
-                int x = i % n, y = i / n;
-                if (x > 0) Reach(stack, ref top, open, sealedInk, n, x - 1, y);
-                if (x < n - 1) Reach(stack, ref top, open, sealedInk, n, x + 1, y);
-                if (y > 0) Reach(stack, ref top, open, sealedInk, n, x, y - 1);
-                if (y < n - 1) Reach(stack, ref top, open, sealedInk, n, x, y + 1);
-            }
-            var shut = new float[n * n];
-            for (int i = 0; i < n * n; i++) shut[i] = open[i] ? 0f : 1f;
-            var near = Spread(shut, n, gap);
-            var clear = new float[n * n];
-            // Near is one against the shape and falls off with distance, so reading it backwards
-            // gives the gap: nothing close in, full color once far enough out, soft between.
-            for (int i = 0; i < n * n; i++)
-                clear[i] = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.55f, 0.05f, near[i]));
-            return clear;
-        }
-
-        /// <summary>Marks a pixel the flood can stand on, and queues it, if it is clear and new.</summary>
-        private static void Reach(int[] stack, ref int top, bool[] open, float[] ink, int n, int x, int y)
-        {
-            int i = y * n + x;
-            if (open[i] || ink[i] > 0.05f) return;
-            open[i] = true;
-            stack[top++] = i;
         }
 
         /// <summary>
