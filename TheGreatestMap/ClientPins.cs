@@ -31,6 +31,9 @@ namespace TheGreatestMap
         // passes rather than made each time: this runs on every layout of the map, which on the
         // minimap is every step the player takes.
         private static readonly List<Drawn> _shown = new List<Drawn>();
+
+        /// <summary>The markers thinning held back at the last layout, so one can be asked why.</summary>
+        private static readonly HashSet<PinKey> _thinned = new HashSet<PinKey>();
         private static bool _applyingRemote;
 
         internal static bool InTableRead;
@@ -389,6 +392,10 @@ namespace TheGreatestMap
             try { if (Access.Pins(Map).Contains(pinData)) Map.RemovePin(pinData); }
             finally { _applyingRemote = false; }
             EnsurePin(pin);
+            // Shown at once, whatever is switched off, the same courtesy a recorded marker gets:
+            // putting something on the map and not being shown it reads as the placing having
+            // failed, and the player's next move is to place it again.
+            Reveals.Add(pin.Key);
             // Ask for a redraw, or the marker keeps the size and color the game gave it until
             // something else happens to dirty the layout -- a click, a pan -- which looked like
             // the marker not being accepted until you clicked away.
@@ -1867,6 +1874,7 @@ namespace TheGreatestMap
             // what costs -- scale, fade, label, sprite, about 1.7 us a marker -- so doing it only
             // for survivors is worth something on its own, quite apart from the canvas.
             _shown.Clear();
+            _thinned.Clear();
             foreach (var kv in _idByPin)
             {
                 var pin = kv.Key;
@@ -1935,6 +1943,19 @@ namespace TheGreatestMap
                 // this one" rather than "not just now".
                 if (hidden && !hideEverything && !hiddenByHand && Locate.On && Locate.Matches(shared))
                 { hidden = false; asked = true; }
+                // Never thinned: a marker a person chose to put down is the opposite of the thing
+                // thinning is for. Thinning exists to quiet repetition -- the fortieth raspberry
+                // bush in one meadow, recorded because somebody walked past it -- and it decides
+                // which of two markers in a patch survives by a hash of the key, nothing else. A
+                // marker placed by hand put into that contest lost it on a coin toss against the
+                // recorded veins around it, and with the limit at eight hundred against eight
+                // thousand markers the patches are wide and it lost nearly every time.
+                //
+                // Which read as the placing not working, in the most misleading way available:
+                // the marker was there while the name box was open, because the pin the game puts
+                // down is not ours to thin, and went the moment it became ours. Nothing said so,
+                // tgm_list reported no reason found, and placing it again did the same thing.
+                if (!hidden && shared.HandPlaced) asked = true;
                 if (hidden) { SetMarkerActive(pin, false); continue; }
                 _shown.Add(new Drawn { Pin = pin, Shared = shared, Kind = kind, Always = asked });
             }
@@ -1944,7 +1965,7 @@ namespace TheGreatestMap
                 var pin = _shown[i].Pin;
                 var shared = _shown[i].Shared;
                 var kind = _shown[i].Kind;
-                if (_shown[i].Held) { SetMarkerActive(pin, false); continue; }
+                if (_shown[i].Held) { _thinned.Add(_shown[i].Shared.Key); SetMarkerActive(pin, false); continue; }
                 SetMarkerActive(pin, true);
                 float scale = ScaleOf(shared);
                 pin.m_uiElement.localScale = new Vector3(scale, scale, 1f);
@@ -2061,6 +2082,14 @@ namespace TheGreatestMap
             }
             if (CrossedOff.IsHidden(shared)) return "it is crossed off and that kind of crossed-off marker is hidden";
             if (Focus.On && !Focus.Shows(shared)) return $"the map is showing only {Focus.What()}";
+            // Thinning, which is not a switch on this marker at all but a contest with its
+            // neighbors, and so was the one way of hiding a marker this list could not name. It
+            // answered "no reason found -- which is itself worth reporting" instead, accusing the
+            // mod of a bug for doing exactly what it was configured to do.
+            if (_thinned.Contains(shared.Key))
+                return "another marker of its kind is already drawn in the same patch of ground and " +
+                       "\"Thin Overlapping Markers\" is on -- raise \"Most Markers Drawn\", lower " +
+                       "\"Marker Spacing On Screen\", or stand within \"Show Hidden Markers Within\" of it";
             // Asked only of a marker whose icon exists and is switched off, so every way of
             // hiding one has been tried by the time this is reached. If it answers, the pass that
             // hid the marker and the list above disagree about why, which is a bug in this mod

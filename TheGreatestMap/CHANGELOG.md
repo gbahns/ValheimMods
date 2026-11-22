@@ -7,6 +7,11 @@
   that one, and the layer goes back to square the moment the round minimap is switched off.
 - Markers are kept inside the circle that is drawn rather than the largest one that would fit, so
   a circle scale under one no longer leaves markers out on the HUD.
+- Fixed: a marker placed by hand vanished when you clicked away from its name box on a crowded
+  map. It was being thinned as a repeat of the recorded markers around it; a marker you place by
+  hand is never thinned now, and shows the moment you place it.
+- tgm_list says when a marker is not drawn because it was thinned, instead of reporting that no
+  reason could be found.
 - Fixed: markers this mod's older versions left in the character file came back as plain dots
   with their labels still on, instead of being tidied away, on the first map of each session.
 - Those dots are now swept as well, by the marker each one stands on. One map was carrying two
