@@ -172,8 +172,14 @@ namespace TheGreatestPortal
             {
                 var look = _looks[key];
                 var icon = IconFor(PrefabOf(key), look.Ore, out bool rendered);
-                // Unity's == is what catches a sprite that has been destroyed out from under us,
-                // which ReferenceEquals cannot: the object is still there, it just draws nothing.
+                // Inert as things stand, and kept deliberately. TheGreatestMap's rebake always
+                // hands back a new object, and its one path that returns an existing one returns
+                // a game asset it would never destroy -- so this does not fire today, and it is
+                // not evidence that sprites are recycled over there, because they are not. It
+                // stays because the resolver is on the far side of a reflection seam neither mod
+                // compiles against, and because Unity's == is the only thing that would catch a
+                // destroyed sprite: ReferenceEquals sees a live C# reference and says nothing has
+                // changed, while the object draws nothing.
                 bool dead = look.Icon == null;
                 if (icon == null || (!dead && ReferenceEquals(icon, look.Icon))) continue;
                 look.Icon = icon;

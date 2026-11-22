@@ -140,6 +140,11 @@ namespace TheGreatestPortal
         /// not leave our pins looking stale -- it leaves them drawing nothing at all, for as long
         /// as the map stays open, which is exactly as long as a player would be nudging it.</para>
         ///
+        /// <para>That mod bumps this after it has baked the replacements, never before, so a
+        /// number that has changed always means the new pictures already exist. The only gap
+        /// left is the ordinary one of having read it earlier in the same frame than it was
+        /// bumped.</para>
+        ///
         /// <para>No such method means a mod old enough to bake nothing and destroy nothing, so
         /// absence reads as "never changes" and the check made when the pins are built is enough
         /// on its own.</para>
