@@ -88,7 +88,7 @@ namespace TheGreatestMap
         // is refused too, so a server running a build nobody else has keeps the rest of the crew
         // off it. The same rule means that between publishing a raised floor and deploying the
         // server, nobody can join at all.
-        public const string MinCompatibleVersion = "4.11.0";
+        public const string MinCompatibleVersion = "4.12.0";
 
         internal static TheGreatestMapMod Instance { get; private set; }
         internal static ManualLogSource Log { get; private set; }

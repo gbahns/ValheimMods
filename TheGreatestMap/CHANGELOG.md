@@ -2,6 +2,8 @@
 
 ## 4.12.0 — unreleased
 
+**Everyone needs this version to play together.**
+
 - With RoundMinimap, the buildings drawn on the minimap no longer spill outside the circle, and
   they turn with it when it turns. Any mod that reshapes the minimap this way is matched, not just
   that one, and the layer goes back to square the moment the round minimap is switched off.
