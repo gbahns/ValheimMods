@@ -307,6 +307,10 @@ namespace TheGreatestMap
                 // render. Somebody comparing the looks pays that on every step through the list.
                 if (recolored) IconRegistry.Rebake("glow:");
                 if (!first) _redrawWanted = true;
+                // Last, and it has to stay last. Another mod watches this number to know its
+                // sprites were replaced under it, so a bump before the rebake would send it to
+                // fetch pictures that have been destroyed and not yet built again -- which is
+                // the very thing the number exists to prevent. See LookEpoch.
                 _lookEpoch++;
             }
             if (_redrawWanted || DrawingWanted() != _drawnWanted) Redraw();
