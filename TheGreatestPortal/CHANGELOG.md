@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.1 — unreleased
+
+- The search box on the portal map no longer opens holding the text of the last sign you edited.
+
 ## 1.7.0 — 2026-11-22
 
 - Portal markers follow TheGreatestMap's Portal Marker Style, so a portal keeps its look as the

@@ -1394,6 +1394,15 @@ namespace TheGreatestPortal
             field.onSubmit.RemoveAllListeners();
             field.onEndEdit.RemoveAllListeners();
             field.onValueChanged.RemoveAllListeners();
+            // Start empty. These boxes are copies of the game's own prompt field (see
+            // CloneInputField), and Instantiate copies the text it happens to be holding -- the
+            // last sign, cart or tame anybody named, because vanilla leaves that text in the field
+            // when it hides the prompt. The portal map's search box is rebuilt on every open, so it
+            // arrived carrying a sign's text every time, with the list unfiltered behind it because
+            // nothing had typed anything (issue #88, reported by ShadowTox on 1.6.0). Cleared here,
+            // where the copy is made, rather than at each open: the listeners are attached below, so
+            // this cannot be mistaken for a search the player typed.
+            field.text = "";
             field.lineType = TMP_InputField.LineType.SingleLine;
             field.characterLimit = charLimit;
             field.restoreOriginalTextOnEscape = false;
