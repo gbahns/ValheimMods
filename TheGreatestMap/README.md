@@ -178,15 +178,19 @@ have crossed off -- are drawn on the row the pointer is resting on, and any one 
 already doing something is drawn wherever it is, so an armed kind, a filtered one, or one hiding
 its crossed-off markers goes on saying so.
 
-**Portal markers are drawn the way you ask**, with "Portal Markers Look Like" under Display:
+**Portal markers are drawn the way you ask**, with "Portal Marker Style" under Display:
 
 - **ColoredPins** -- the plain portal pin in the portal color. Loud across a whole map, and says
   nothing about which portal it is. Ore-carrying portals get their own color and their own shape.
 - **Pictures** -- the build menu's own render of that portal, so a wood portal, a stone portal and
   a modded one each look like themselves without this mod explaining which is which. Quieter,
   because a picture of a thing cannot also be a flat color.
-- **Both** (the default) -- the render on a halo of the portal color: the pin's loudness with the
-  picture's meaning.
+- **OutlinedPicture** (the default) and **OutlinedPictureBold** -- the render with the portal
+  color traced around its own outline, thin or thick. A portal is an arch and an arch is mostly
+  thin line, so this thickens it and colors it at once.
+- **HaloAroundPicture** and **DiscAroundPicture** -- a soft glow or a solid coin of the portal
+  color laid around the render, with the render's shape cut out of it and a gap left clear. The
+  doorway stays empty, so the frame still has the map to read against.
 
 A render is never painted, because painting a picture of a thing takes the picture away; it
 breathes in brightness instead of color. Portals that take ore and metal through are drawn in

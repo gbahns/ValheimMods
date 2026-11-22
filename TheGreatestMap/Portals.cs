@@ -25,9 +25,9 @@ namespace TheGreatestMap
     /// <summary>
     /// How a portal marker is drawn. Answers to one question -- is this marker for finding a
     /// portal, or for telling two portals apart -- and the player's map is theirs to answer it
-    /// on. See the Portal Markers Look Like setting.
+    /// on. See the Portal Marker Style setting.
     ///
-    /// <para>The five that carry a picture differ only in where the color goes, which is a thing
+    /// <para>The four that carry a picture differ only in where the color goes, which is a thing
     /// to be looked at rather than argued about: they are here to be compared on a real map.</para>
     /// </summary>
     internal enum PortalLook
@@ -38,20 +38,17 @@ namespace TheGreatestMap
         /// <summary>The game's own render of that portal, in its own colors. Says which, quietly.</summary>
         Pictures,
 
-        /// <summary>The render on a soft glow of the portal color.</summary>
-        PictureOnHalo,
-
-        /// <summary>The render on a solid coin of the portal color.</summary>
-        PictureOnDisc,
-
-        /// <summary>The render untouched, inside a band of the portal color.</summary>
-        PictureInRing,
-
         /// <summary>The render with the portal color traced around its own outline.</summary>
         OutlinedPicture,
 
-        /// <summary>That contour over a glow: the most color a picture can carry.</summary>
-        OutlinedOnHalo,
+        /// <summary>The same contour, thicker.</summary>
+        OutlinedPictureBold,
+
+        /// <summary>A glow of the portal color around the render, cut to its shape, gap between.</summary>
+        HaloAroundPicture,
+
+        /// <summary>A coin of the portal color with the render's shape cut out of it.</summary>
+        DiscAroundPicture,
     }
 
     internal static class Portals
@@ -376,18 +373,17 @@ namespace TheGreatestMap
 
         /// <summary>What the player asked portal markers to look like.</summary>
         internal static PortalLook Look =>
-            TgmConfig.PortalLook != null ? TgmConfig.PortalLook.Value : PortalLook.PictureOnHalo;
+            TgmConfig.PortalLook != null ? TgmConfig.PortalLook.Value : PortalLook.OutlinedPicture;
 
         /// <summary>Which way of dressing a render this look asks for.</summary>
         private static string Style(PortalLook look)
         {
             switch (look)
             {
-                case PortalLook.PictureOnDisc: return "disc";
-                case PortalLook.PictureInRing: return "ring";
                 case PortalLook.OutlinedPicture: return "edge";
-                case PortalLook.OutlinedOnHalo: return "edgehalo";
-                default: return "halo";
+                case PortalLook.OutlinedPictureBold: return "edgebold";
+                case PortalLook.DiscAroundPicture: return "discaround";
+                default: return "haloaround";
             }
         }
 

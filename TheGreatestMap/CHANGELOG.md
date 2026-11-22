@@ -19,10 +19,12 @@
   with their labels still on, instead of being tidied away, on the first map of each session.
 - Those dots are now swept as well, by the marker each one stands on. One map was carrying two
   per marker, 16,198 in all, and they came back however often you deleted them.
-- New: Portal Markers Look Like, under Display. ColoredPins is the plain portal pin in the portal
+- New: Portal Marker Style, under Display. ColoredPins is the plain portal pin in the portal
   color, Pictures is the game's own build-menu render of that portal so the wood one and the stone
-  one tell themselves apart, and Both puts the render on a halo of the portal color. Both is the
-  default.
+  one tell themselves apart, and the rest put the color around the render without covering it:
+  OutlinedPicture (the default) and OutlinedPictureBold trace it around the render's outline,
+  HaloAroundPicture and DiscAroundPicture lay a glow or a coin around it with the render's shape
+  cut out.
 - New: Stone Portal Marker Color. Portals that take ore and metal through are drawn in their own
   color, so the one that carries the copper home is not the color of the six that do not.
 - A portal marker wearing a picture breathes in brightness rather than color, because painting a
