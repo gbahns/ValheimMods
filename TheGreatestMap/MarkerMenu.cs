@@ -718,8 +718,13 @@ namespace TheGreatestMap
         {
             if (picture == null) return null;
             const int n = 128;
-            // How much of the frame the picture itself fills, leaving the rest to the halo.
-            const float fill = 0.76f;
+            // How much of the frame the picture itself fills, leaving the rest to the halo. Most
+            // of it: the pictures worth haloing are tall narrow things -- a portal is an arch --
+            // so the halo still shows either side of one without the picture having to be shrunk
+            // to make room. 0.76 here was a quarter off every picture for a margin that the
+            // artwork already had, and it was why a portal on the map read thinner than the same
+            // portal in tgm_items.
+            const float fill = 0.88f;
             var read = ReadBack(picture, n);
             if (read == null) return null;
             try
@@ -738,6 +743,14 @@ namespace TheGreatestMap
                         float t = Mathf.Clamp01((r - 0.34f) / 0.66f);
                         float halo = color.a * (1f - t * t * (3f - 2f * t));
                         var over = Inside(read, n, (x + 0.5f - half) / fill + half, (y + 0.5f - half) / fill + half);
+                        // What a resample costs a thin line. A stroke a pixel or two wide is
+                        // mostly edge, and every edge pixel comes back at part alpha -- off the
+                        // card into this square, and again sampling this square into the marker's
+                        // box. Each pass spreads the same ink over more pixels, so the line goes
+                        // pale, and pale over a lit halo reads as thinner still. The curve lifts
+                        // the partial alphas and leaves the solid ones alone (1 to any power is
+                        // 1), so the stroke keeps its own shape and gets its weight back.
+                        over.a = Mathf.Pow(over.a, 0.65f);
                         float a = over.a + halo * (1f - over.a);
                         px[y * n + x] = a <= 0.0001f
                             ? new Color(0f, 0f, 0f, 0f)
