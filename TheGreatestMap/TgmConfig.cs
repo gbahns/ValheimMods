@@ -1107,9 +1107,9 @@ namespace TheGreatestMap
                 "from both, and is quiet on a busy map because a picture of a thing cannot also be a flat color. The " +
                 "rest put the render and the color together and differ only in where the color goes: " +
                 "OutlinedPicture traces the color around the render's own outline, OutlinedPictureBold traces it " +
-                "thicker, HaloAroundPicture lays a soft glow around the render with its shape cut out and a gap left " +
-                "clear, and DiscAroundPicture does the same with a solid coin. Whichever you pick, a portal nobody " +
-                "can build has no render and falls back to the Portals and Stone Portals icon settings.");
+                "thicker, and HaloAroundPicture lays a soft glow around the render with its shape cut out and a gap " +
+                "left clear. Whichever you pick, a portal nobody can build has no render and falls back to the " +
+                "Portals and Stone Portals icon settings.");
             StonePortalColor = mod.BindMoved("Display", Palette, "Stone Portal Marker Color", Colors.FromHex("#00B4FF"),
                 "Color of the markers for portals that take ore and metal through, so the one that carries the copper " +
                 "home is not the same color as the six that do not. Far from the portal color on purpose -- these are " +

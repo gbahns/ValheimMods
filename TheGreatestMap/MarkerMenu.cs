@@ -701,8 +701,8 @@ namespace TheGreatestMap
         /// <summary>
         /// A picture dressed in a color: the game's own render of a thing, carrying the color
         /// that says what sort of thing it is. The style says how -- "edge" and "edgebold" trace
-        /// a contour around the render's own outline, "haloaround" and "discaround" lay a glow
-        /// or a coin around it with the render's shape cut out and a gap left clear.
+        /// a contour around the render's own outline, "haloaround" lays a glow around it with the
+        /// render's shape cut out and a gap left clear.
         ///
         /// <para><b>Why this exists at all.</b> A marker is one Image, and painting it is a
         /// multiply, so a render cannot be colored without the color eating the picture --
@@ -794,9 +794,6 @@ namespace TheGreatestMap
         {
             switch (style)
             {
-                // A coin the picture is cut out of.
-                case "discaround":
-                    return 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.86f, 0.99f, r));
                 case "edge":
                 case "edgebold":
                     return 0f;

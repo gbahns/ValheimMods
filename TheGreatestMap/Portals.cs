@@ -27,7 +27,7 @@ namespace TheGreatestMap
     /// portal, or for telling two portals apart -- and the player's map is theirs to answer it
     /// on. See the Portal Marker Style setting.
     ///
-    /// <para>The four that carry a picture differ only in where the color goes, which is a thing
+    /// <para>The three that carry a picture differ only in where the color goes, which is a thing
     /// to be looked at rather than argued about: they are here to be compared on a real map.</para>
     /// </summary>
     internal enum PortalLook
@@ -46,9 +46,6 @@ namespace TheGreatestMap
 
         /// <summary>A glow of the portal color around the render, cut to its shape, gap between.</summary>
         HaloAroundPicture,
-
-        /// <summary>A coin of the portal color with the render's shape cut out of it.</summary>
-        DiscAroundPicture,
     }
 
     internal static class Portals
@@ -385,7 +382,6 @@ namespace TheGreatestMap
             {
                 case PortalLook.OutlinedPicture: return "edge";
                 case PortalLook.OutlinedPictureBold: return "edgebold";
-                case PortalLook.DiscAroundPicture: return "discaround";
                 default: return "haloaround";
             }
         }
