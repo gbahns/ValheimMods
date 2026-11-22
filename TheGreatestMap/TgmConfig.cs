@@ -72,8 +72,10 @@ namespace TheGreatestMap
         internal static ConfigEntry<float> ThinSpacing;
         internal static ConfigEntry<int> MostMarkersDrawn;
         internal static ConfigEntry<Color> PortalColor;
+        internal static ConfigEntry<Color> StonePortalColor;
         internal static ConfigEntry<Color> PortalPulseColor;
         internal static ConfigEntry<float> PortalPulseSeconds;
+        internal static ConfigEntry<PortalLook> PortalLook;
         internal static ConfigEntry<string> HiddenPlaces;
         internal static ConfigEntry<string> HiddenOwnIcons;
         internal static ConfigEntry<string> HiddenBiomes;
@@ -1098,6 +1100,19 @@ namespace TheGreatestMap
                 "Color of portal markers, which are worth picking out of the crowd because they are how you travel. " +
                 "The default pair is two shades of orange; #A05BDD with #B07CFF as the pulse is a good violet " +
                 "alternative.");
+            PortalLook = mod.BindLocal("Display", "Portal Markers Look Like", TheGreatestMap.PortalLook.Both,
+                "How the portal markers drawn from the server's list are drawn. ColoredPins is the plain portal pin " +
+                "in the portal color, which is loud and says nothing about which portal it is. Pictures is the game's " +
+                "own build-menu render of that portal, which tells the wood one from the stone one and a modded one " +
+                "from both, and is quiet on a busy map because a picture of a thing cannot also be a flat color. " +
+                "Both puts the picture on a halo in the portal color, which is the pin's loudness with the picture's " +
+                "meaning. Whichever you pick, a portal nobody can build has no render and falls back to the Portals " +
+                "and Stone Portals icon settings.");
+            StonePortalColor = mod.BindMoved("Display", Palette, "Stone Portal Marker Color", Colors.FromHex("#00B4FF"),
+                "Color of the markers for portals that take ore and metal through, so the one that carries the copper " +
+                "home is not the same color as the six that do not. Far from the portal color on purpose -- these are " +
+                "told apart at a glance from across the map or not at all. Set it to the same value as Portal Marker " +
+                "Color to stop telling them apart by color.");
             PortalPulseColor = mod.BindMoved("Display", Palette, "Portal Pulse Color", Colors.FromHex("#FF8800"),
                 "Portal markers fade back and forth between their color and this one, so they catch the eye on a busy " +
                 "map. Two shades of the same color read as a gentle pulse; two different colors are far louder. Pull " +
@@ -1284,11 +1299,10 @@ namespace TheGreatestMap
             // Portal switch, and only the picture differs -- so making it a category to give it
             // a picture would have split one idea in two everywhere else to settle one line.
             StonePortalIcon = mod.BindLocal("Icons", "Stone Portals", Portals.StoneIconDefault,
-                "Fallback picture for a portal that takes ore and metal through but that nobody can build, and so " +
-                "has no picture of its own. Ordinary portals wear the game's own build-menu render of themselves, " +
-                "which tells the wood and the stone one apart without being asked, so this is only reached by a " +
-                "modded portal with no render. Takes the same forms as the other icons, plus drawn:stoneportal for " +
-                "the stone arch this mod draws itself.");
+                "The picture for portals that take ore and metal through. With Portal Markers Look Like set to " +
+                "ColoredPins this is what every one of them wears; on the picture settings it is the fallback for a " +
+                "modded portal nobody can build, which therefore has no render of its own. Takes the same forms as " +
+                "the other icons, plus drawn:stoneportal for the stone arch this mod draws itself.");
             StonePortalIcon.SettingChanged += (_, __) => Portals.Redraw();
 
             OrderTheCatalogOnce();

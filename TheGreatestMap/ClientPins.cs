@@ -2006,7 +2006,7 @@ namespace TheGreatestMap
                     // same reason the campfire below does: the portal color is a multiply, and
                     // #FF6600 over a blue-lit stone render leaves an orange smudge where the
                     // picture was. Only the plain pin sprites go in the painted list.
-                    if (IconRegistry.IsBuildPicture(shared.Icon))
+                    if (IconRegistry.CarriesItsOwnColor(shared.Icon))
                     {
                         if (pin.m_iconElement != null)
                             pin.m_iconElement.color = faded ? Faded(Color.white) : Color.white;

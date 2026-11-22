@@ -22,6 +22,23 @@ namespace TheGreatestMap
     /// The correction runs whoever built the portal. The extra drawing is what turns the honest
     /// "only what someone saw" rule off, which is why it is a setting.
     /// </summary>
+    /// <summary>
+    /// How a portal marker is drawn. Three answers to one question -- is this marker for finding
+    /// a portal, or for telling two portals apart -- and the player's map is theirs to answer it
+    /// on. See the Portal Markers Look Like setting.
+    /// </summary>
+    internal enum PortalLook
+    {
+        /// <summary>The plain portal pin, painted the portal color. Loud, and says nothing more.</summary>
+        ColoredPins,
+
+        /// <summary>The game's own render of that portal, in its own colors. Says which, quietly.</summary>
+        Pictures,
+
+        /// <summary>The render on a halo of the portal color: the pin's loudness, the render's meaning.</summary>
+        Both,
+    }
+
     internal static class Portals
     {
         private const string RpcList = "TGM_Portals";      // server -> everybody: every portal now
@@ -56,6 +73,9 @@ namespace TheGreatestMap
         private static float _nextScan;
         private static float _nextRequest;
         private static bool _redrawWanted;
+
+        /// <summary>The look and the two colors as they stood, to notice any of them moving.</summary>
+        private static string _lastLook;
         private static bool _drawnWanted;
         private static bool _reconcileWanted;
 
@@ -224,6 +244,21 @@ namespace TheGreatestMap
             }
 
             if (_reconcileWanted && PersonalMap.Loaded) Reconcile();
+            // A halo is baked in the color the setting held when it was baked, so a color moved
+            // in the config has to be baked again -- and a different look means different
+            // pictures altogether. Watched here rather than through SettingChanged, which can
+            // arrive on the thread that reads the config file.
+            string look = Look + "|" + MarkerColor() + "|" + StoneColor();
+            if (look != _lastLook)
+            {
+                bool first = _lastLook == null;
+                _lastLook = look;
+                if (!first)
+                {
+                    IconRegistry.Rebake("glow:");
+                    _redrawWanted = true;
+                }
+            }
             if (_redrawWanted || DrawingWanted() != _drawnWanted) Redraw();
         }
 
@@ -306,9 +341,33 @@ namespace TheGreatestMap
         /// </summary>
         internal static string IconKey(string prefabName)
         {
-            if (!string.IsNullOrEmpty(prefabName) && HasBuildPicture(prefabName)) return "piece:" + prefabName;
-            return Fallback(CarriesEverything(prefabName));
+            bool stone = CarriesEverything(prefabName);
+            bool pictured = !string.IsNullOrEmpty(prefabName) && HasBuildPicture(prefabName);
+            switch (Look)
+            {
+                case PortalLook.ColoredPins: return Fallback(stone);
+                case PortalLook.Both: return pictured ? "glow:" + prefabName : Fallback(stone);
+                default: return pictured ? "piece:" + prefabName : Fallback(stone);
+            }
         }
+
+        /// <summary>What the player asked portal markers to look like.</summary>
+        internal static PortalLook Look =>
+            TgmConfig.PortalLook != null ? TgmConfig.PortalLook.Value : PortalLook.Both;
+
+        /// <summary>
+        /// The color baked behind one portal's picture: its own, by whether it takes ore through.
+        /// The steady color rather than the pulse -- a baked halo cannot breathe, and what does
+        /// the breathing in the picture modes is the brightness of the whole icon.
+        /// </summary>
+        internal static Color GlowColor(string prefabName) =>
+            CarriesEverything(prefabName) ? StoneColor() : MarkerColor();
+
+        /// <summary>The color for a portal that takes ore and metal through.</summary>
+        internal static Color StoneColor() =>
+            TgmConfig.StonePortalColor != null ? TgmConfig.StonePortalColor.Value : DefaultStoneColor;
+
+        private static readonly Color DefaultStoneColor = new Color(0f, 0.706f, 1f, 1f); // #00B4FF
 
         /// <summary>The configured picture for a portal with no render of its own.</summary>
         internal static string Fallback(bool stone)
@@ -358,6 +417,7 @@ namespace TheGreatestMap
             if (!_drawnWanted) return;
 
             _unpainted.Clear();
+            _drawnStone.Clear();
             _portalIcons.Clear();
             _portalIcons.Add(Fallback(false));
             _portalIcons.Add(Fallback(true));
@@ -383,7 +443,8 @@ namespace TheGreatestMap
                 // A render arrives in its own colors and its own light. Painting is a multiply,
                 // so the portal color would take the picture away; remembered here so Paint
                 // leaves it be.
-                if (IconRegistry.IsBuildPicture(iconKey)) _unpainted.Add(pin);
+                if (IconRegistry.CarriesItsOwnColor(iconKey)) _unpainted.Add(pin);
+                if (CarriesEverything(p.Prefab)) _drawnStone.Add(pin);
             }
             BringToFront();
         }
@@ -443,11 +504,15 @@ namespace TheGreatestMap
         private static readonly HashSet<string> _portalIcons = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private static readonly HashSet<Minimap.PinData> _unpainted = new HashSet<Minimap.PinData>();
 
+        /// <summary>The drawn pins for portals that take ore through, which wear their own color.</summary>
+        private static readonly HashSet<Minimap.PinData> _drawnStone = new HashSet<Minimap.PinData>();
+
         /// <summary>The map data was rebuilt under us (world load, table read): our pins are gone.</summary>
         internal static void OnPinsCleared()
         {
             _drawn.Clear();
             _unpainted.Clear();
+            _drawnStone.Clear();
             _drawnWanted = false;
             _redrawWanted = true;
         }
@@ -465,13 +530,50 @@ namespace TheGreatestMap
         {
             var color = MarkerColor();
             var pulse = TgmConfig.PortalPulseColor != null ? TgmConfig.PortalPulseColor.Value : color;
+            return Color.Lerp(color, pulse, Pulse());
+        }
+
+        /// <summary>
+        /// Where in the breath we are: 0 at the marker's own color, 1 at the pulse color, and 0
+        /// throughout when the player has asked for no pulse.
+        /// </summary>
+        private static float Pulse()
+        {
             // A fully transparent pulse color is how the setting says "do not pulse"; it used to
             // say it with an empty string, which a color picker has no way to type.
+            var pulse = TgmConfig.PortalPulseColor != null ? TgmConfig.PortalPulseColor.Value : new Color(0f, 0f, 0f, 0f);
             float period = TgmConfig.PortalPulseSeconds != null ? TgmConfig.PortalPulseSeconds.Value : 0f;
-            if (pulse.a <= 0f || period <= 0.01f) return color;
+            if (pulse.a <= 0f || period <= 0.01f) return 0f;
             // Unscaled, so the fade carries on while the map is open with the game paused.
-            float t = (Mathf.Sin(Time.unscaledTime * 2f * Mathf.PI / period) + 1f) * 0.5f;
-            return Color.Lerp(color, pulse, t);
+            return (Mathf.Sin(Time.unscaledTime * 2f * Mathf.PI / period) + 1f) * 0.5f;
+        }
+
+        /// <summary>
+        /// The ore-carrying color, breathing. There is no second pulse color to configure and
+        /// there should not be: the pair that reads as a pulse is two shades of one color, which
+        /// is a thing to work out rather than to ask for, and the config already asks for plenty.
+        /// </summary>
+        private static Color StonePulse()
+        {
+            var color = StoneColor();
+            var lighter = Color.Lerp(color, Color.white, 0.22f);
+            lighter.a = color.a;
+            return Color.Lerp(color, lighter, Pulse());
+        }
+
+        /// <summary>
+        /// A picture breathing rather than a color: the whole icon dimmed and brought back.
+        ///
+        /// <para>Paint is a multiply, so a render cannot be pulsed in color -- a multiply can
+        /// only darken, and anything but white takes the picture's own colors with it. Pulsing
+        /// how dark it is costs the picture nothing and still catches the eye, which is what the
+        /// pulse is for.</para>
+        /// </summary>
+        private static Color PicturePulse()
+        {
+            const float dim = 0.74f;
+            float t = Pulse() * (1f - dim);
+            return new Color(1f - t, 1f - t, 1f - t, 1f);
         }
 
         /// <summary>
@@ -494,9 +596,16 @@ namespace TheGreatestMap
             if (Minimap.instance == null) return;
             var color = CurrentColor();
             ClientPins.TintPortals(color);
+            var stone = StonePulse();
+            var picture = PicturePulse();
             foreach (var pin in _drawn)
-                if (pin != null && pin.m_iconElement != null && !_unpainted.Contains(pin))
-                    pin.m_iconElement.color = color;
+            {
+                if (pin == null || pin.m_iconElement == null) continue;
+                // A picture keeps its own colors and breathes in brightness instead; a plain pin
+                // is painted the color of the sort of portal it is.
+                pin.m_iconElement.color = _unpainted.Contains(pin) ? picture
+                    : _drawnStone.Contains(pin) ? stone : color;
+            }
         }
 
         /// <summary>
@@ -524,6 +633,8 @@ namespace TheGreatestMap
                           : "") +
                       $"; unpainted renders drawn: {_unpainted.Count}");
             lines.Add($"fallback pictures: {Fallback(false)} plain, {Fallback(true)} for ore-carrying");
+            lines.Add($"look: {Look}; colors {Colors.ToHex(MarkerColor())} plain, {Colors.ToHex(StoneColor())} " +
+                      $"ore-carrying; {_drawnStone.Count} of {_drawn.Count} drawn pins are ore-carrying");
             var live = Nearest(near);
             lines.Add(live != null
                 ? $"nearest portal in the list: '{live.Name}' [{(string.IsNullOrEmpty(live.Prefab) ? "unnamed" : live.Prefab)}" +

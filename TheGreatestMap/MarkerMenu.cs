@@ -698,6 +698,112 @@ namespace TheGreatestMap
             return Bake(tex, px, n);
         }
 
+        /// <summary>
+        /// A picture on a colored halo: the game's own render of a thing, sitting on a soft disc
+        /// of the color that says what sort of thing it is.
+        ///
+        /// <para><b>Why this exists at all.</b> A marker is one Image, and painting it is a
+        /// multiply, so a render cannot be colored without the color eating the picture --
+        /// #FF6600 over a blue-lit stone portal leaves an orange smudge where the portal was.
+        /// The color therefore has to be somewhere the multiply never reaches, which means in the
+        /// sprite, behind the picture, baked once. A second UI element per pin would have been
+        /// the obvious answer and is the wrong one: pins are destroyed and rebuilt as the map
+        /// pans, so that cost lands on the layout pass, which is the hottest thing here.</para>
+        ///
+        /// <para>Built once per picture and color, so the per-frame cost is nothing. The picture
+        /// is read back through a RenderTexture rather than with GetPixels, because a
+        /// build-menu icon is an ordinary game asset and game assets are not readable.</para>
+        /// </summary>
+        internal static Sprite Halo(Sprite picture, Color color)
+        {
+            if (picture == null) return null;
+            const int n = 128;
+            // How much of the frame the picture itself fills, leaving the rest to the halo.
+            const float fill = 0.76f;
+            var read = ReadBack(picture, n);
+            if (read == null) return null;
+            try
+            {
+                var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+                var px = new Color32[n * n];
+                float half = n * 0.5f;
+                for (int y = 0; y < n; y++)
+                    for (int x = 0; x < n; x++)
+                    {
+                        float dx = (x + 0.5f - half) / half, dy = (y + 0.5f - half) / half;
+                        float r = Mathf.Sqrt(dx * dx + dy * dy);
+                        // Flat through the middle and soft to nothing at the rim: a halo, not a
+                        // disc with an edge, so it reads as light behind the thing rather than as
+                        // a coin the thing is standing on.
+                        float t = Mathf.Clamp01((r - 0.34f) / 0.66f);
+                        float halo = color.a * (1f - t * t * (3f - 2f * t));
+                        var over = Inside(read, n, (x + 0.5f - half) / fill + half, (y + 0.5f - half) / fill + half);
+                        float a = over.a + halo * (1f - over.a);
+                        px[y * n + x] = a <= 0.0001f
+                            ? new Color(0f, 0f, 0f, 0f)
+                            : new Color(
+                                (over.r * over.a + color.r * halo * (1f - over.a)) / a,
+                                (over.g * over.a + color.g * halo * (1f - over.a)) / a,
+                                (over.b * over.a + color.b * halo * (1f - over.a)) / a,
+                                a);
+                    }
+                return Bake(tex, px, n);
+            }
+            finally { UnityEngine.Object.Destroy(read); }
+        }
+
+        /// <summary>The picture at this point, or nothing where the point is off it.</summary>
+        private static Color Inside(Texture2D tex, int n, float x, float y)
+        {
+            if (x < 0f || y < 0f || x >= n || y >= n) return new Color(0f, 0f, 0f, 0f);
+            return tex.GetPixelBilinear(x / n, y / n);
+        }
+
+        /// <summary>
+        /// A sprite's own pixels, however the game shipped it.
+        ///
+        /// <para>Texture2D.GetPixels needs a texture imported as readable and a game's art is
+        /// not, so the picture is drawn into a RenderTexture and read back off the GPU -- the
+        /// same move Armory makes to read a mesh the game will not hand over. The blit takes the
+        /// sprite's own rect out of whatever atlas it lives in.</para>
+        ///
+        /// <para>sRGB on the way through, because both ends are sRGB: the game's icon is, and so
+        /// is the RGBA32 texture this bakes into. Letting it travel as linear is how a color
+        /// written straight into a linear buffer comes back washed out, which this mod has paid
+        /// for once already.</para>
+        /// </summary>
+        private static Texture2D ReadBack(Sprite sprite, int n)
+        {
+            var src = sprite.texture;
+            if (src == null) return null;
+            var rt = RenderTexture.GetTemporary(n, n, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            var was = RenderTexture.active;
+            try
+            {
+                var rect = sprite.textureRect;
+                var scale = new Vector2(rect.width / src.width, rect.height / src.height);
+                var offset = new Vector2(rect.x / src.width, rect.y / src.height);
+                Graphics.Blit(src, rt, scale, offset);
+                RenderTexture.active = rt;
+                var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave };
+                tex.ReadPixels(new Rect(0f, 0f, n, n), 0, 0);
+                tex.Apply(false, false);
+                return tex;
+            }
+            catch (System.Exception e)
+            {
+                TheGreatestMapMod.Log.LogWarning(
+                    "[TheGreatestMap] Could not read a picture back off the card (" + e.Message +
+                    "), so that marker wears the picture on its own with no halo behind it.");
+                return null;
+            }
+            finally
+            {
+                RenderTexture.active = was;
+                RenderTexture.ReleaseTemporary(rt);
+            }
+        }
+
         private static Sprite Bake(Texture2D tex, Color32[] px, int n)
         {
             tex.SetPixels32(px);

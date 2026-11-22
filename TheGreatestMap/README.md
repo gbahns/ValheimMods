@@ -178,12 +178,21 @@ have crossed off -- are drawn on the row the pointer is resting on, and any one 
 already doing something is drawn wherever it is, so an armed kind, a filtered one, or one hiding
 its crossed-off markers goes on saying so.
 
-**Each portal wears the game's own picture of itself** -- the build menu's render of a wood
-portal, a stone portal or a modded one -- so you can tell at a glance which one will carry the
-copper home, without this mod having to explain which is which. Those renders are left in their
-own colors rather than painted the portal color, because painting a picture of a thing takes the
-picture away. A portal nobody can build has no render, and falls back to the "Portals" or
-"Stone Portals" icon settings depending on whether it takes ore through.
+**Portal markers are drawn the way you ask**, with "Portal Markers Look Like" under Display:
+
+- **ColoredPins** -- the plain portal pin in the portal color. Loud across a whole map, and says
+  nothing about which portal it is. Ore-carrying portals get their own color and their own shape.
+- **Pictures** -- the build menu's own render of that portal, so a wood portal, a stone portal and
+  a modded one each look like themselves without this mod explaining which is which. Quieter,
+  because a picture of a thing cannot also be a flat color.
+- **Both** (the default) -- the render on a halo of the portal color: the pin's loudness with the
+  picture's meaning.
+
+A render is never painted, because painting a picture of a thing takes the picture away; it
+breathes in brightness instead of color. Portals that take ore and metal through are drawn in
+"Stone Portal Marker Color" so you can see at a glance which one carries the copper home. A portal
+nobody can build has no render, and falls back to the "Portals" or "Stone Portals" icon settings
+depending on whether it takes ore through.
 
 **"+" places one by hand**, and it is on every row, not only the kind: press it on Silver and the
 next marker you place is a silver vein, in the silver picture, in the Silver row beside the ones

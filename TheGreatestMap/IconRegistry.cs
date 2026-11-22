@@ -31,6 +31,9 @@ namespace TheGreatestMap
         internal const string FallbackKey = "pin:Icon3";
 
         private static readonly Dictionary<string, int> _typeByKey = new Dictionary<string, int>();
+
+        /// <summary>The pictures baked here, as opposed to the game's, so they can be freed.</summary>
+        private static readonly Dictionary<string, Sprite> _baked = new Dictionary<string, Sprite>();
         private static readonly List<string> _keys = new List<string>();
         private static bool _warnedFull;
 
@@ -45,6 +48,10 @@ namespace TheGreatestMap
             if (key.StartsWith("like:", StringComparison.OrdinalIgnoreCase)) return "like:" + key.Substring(5).Trim();
             if (key.StartsWith("piece:", StringComparison.OrdinalIgnoreCase)) return "piece:" + key.Substring(6).Trim();
             if (key.StartsWith("drawn:", StringComparison.OrdinalIgnoreCase)) return "drawn:" + key.Substring(6).Trim();
+            // A build piece's render on a halo of the color its kind is drawn in. Its own prefix
+            // rather than a flag on "piece:", because it is a different picture and so needs a
+            // pin type of its own -- one sprite per type is the whole of what m_icons is.
+            if (key.StartsWith("glow:", StringComparison.OrdinalIgnoreCase)) return "glow:" + key.Substring(5).Trim();
             // A location's own map picture, which is what the game draws for the landmarks it
             // marks: the one place a row can borrow a picture the player is already reading.
             if (key.StartsWith("loc:", StringComparison.OrdinalIgnoreCase)) return "loc:" + key.Substring(4).Trim();
@@ -620,6 +627,20 @@ namespace TheGreatestMap
                 var piece = PieceOf(key.Substring(6));
                 return piece != null ? piece.m_icon : null;
             }
+            // The same render with its kind's color behind it. Falls back to the bare render if
+            // the readback fails, which is better than no picture at all.
+            if (key.StartsWith("glow:"))
+            {
+                string prefab = key.Substring(5);
+                var under = Resolve(map, "piece:" + prefab);
+                if (under == null) return null;
+                var made = MenuKit.Halo(under, Portals.GlowColor(prefab));
+                if (made == null) return under;
+                // Kept so a rebake can throw the old one away. The picture underneath is the
+                // game's own asset and must never be destroyed; only what was baked here.
+                _baked[key] = made;
+                return made;
+            }
             // One of this mod's own pictures, for a kind the game has no single picture of.
             if (key.StartsWith("drawn:")) return MenuKit.Drawn(key.Substring(6));
             // The picture the game draws for one of the world's locations. Not every location has
@@ -710,6 +731,48 @@ namespace TheGreatestMap
         /// choosing it. The campfire has kept its colors for this reason since it was given the
         /// fire pit's render; this is that rule with a name.</para>
         /// </summary>
+        /// <summary>
+        /// Whether this picture arrives with colors of its own, which a marker's paint must leave
+        /// alone. True of a build render and of a render on a baked halo: painting either is a
+        /// multiply and would take the picture away. See <see cref="MenuKit.Halo"/>.
+        /// </summary>
+        internal static bool CarriesItsOwnColor(string iconKey)
+        {
+            string key = Normalize(iconKey);
+            return key != null && (key.StartsWith("piece:") || key.StartsWith("glow:"));
+        }
+
+        /// <summary>
+        /// Resolve and register every icon whose key starts with this again, for when what the
+        /// picture is made of has changed rather than which picture it is -- a halo is baked in
+        /// the color of the setting as it stood, so moving that setting means baking it again.
+        /// Keeps the pin type, so nothing that is already drawn has to be rebuilt.
+        /// </summary>
+        internal static void Rebake(string prefix)
+        {
+            var map = Minimap.instance;
+            if (map == null || string.IsNullOrEmpty(prefix)) return;
+            for (int i = 0; i < _keys.Count; i++)
+            {
+                if (!_keys[i].StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+                // The old one goes, or a player dragging a color picker leaves a texture behind
+                // on every frame of the drag. Only ever one this mod baked: a sprite the game
+                // shipped is not ours to destroy, which is the whole reason _baked exists rather
+                // than a hideFlags test.
+                if (_baked.TryGetValue(_keys[i], out var old))
+                {
+                    _baked.Remove(_keys[i]);
+                    if (old != null)
+                    {
+                        var tex = old.texture;
+                        UnityEngine.Object.Destroy(old);
+                        if (tex != null) UnityEngine.Object.Destroy(tex);
+                    }
+                }
+                Register(map, _keys[i], Base + i);
+            }
+        }
+
         internal static bool IsBuildPicture(string iconKey)
         {
             string key = Normalize(iconKey);
