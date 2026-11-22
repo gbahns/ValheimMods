@@ -32,8 +32,8 @@
   picture of a thing takes the picture away.
 - New: Stone Portals, under Icons. The picture for an ore-carrying portal nobody can build, and so
   has no render; it is a stone arch this mod draws.
-- TheGreatestPortal 1.7.0 reads the same renders, so a portal looks the same with either mod,
-  both, or neither.
+- TheGreatestPortal 1.7.0 draws portals the way this mod is set to draw them, style and colors
+  both, so a portal looks the same with either mod, both, or neither.
 - The "+" that places a marker by hand is now on every row, not just the kind. Press it on Silver
   and the next marker you place is a silver vein, in the silver picture -- before you have mined
   one, or dug it up at all.

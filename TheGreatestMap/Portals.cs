@@ -163,14 +163,47 @@ namespace TheGreatestMap
         /// the ore picture rather than the plain one, without this mod having heard of it. Public
         /// on TeleportWorld, so nothing is publicized and nothing is reflected.</para>
         /// </summary>
-        internal static bool CarriesEverything(string prefabName)
+        internal static bool CarriesEverything(string prefabName) => Classify(prefabName).Ore;
+
+        /// <summary>
+        /// What a portal prefab is: whether it takes ore and metal through, and whether the game
+        /// has a build-menu render of it.
+        /// </summary>
+        private struct Kind
         {
+            public bool Ore;
+            public bool Pictured;
+        }
+
+        /// <summary>Settled once per prefab. Neither answer changes, and both need the scene.</summary>
+        private static readonly Dictionary<string, Kind> _kinds = new Dictionary<string, Kind>();
+
+        /// <summary>
+        /// What this portal prefab is, looked up in the scene the first time and remembered.
+        ///
+        /// <para>Remembered because another mod asks this of every portal it draws, once a frame,
+        /// through <see cref="PortalColor"/> -- and a GetPrefab and two GetComponents per portal
+        /// per frame is the sort of thing that turns into a measurement nobody can explain. The
+        /// answer is not written down until the scene can give one, or the first question of a
+        /// session would settle every portal as nothing and go on saying so.</para>
+        /// </summary>
+        private static Kind Classify(string prefabName)
+        {
+            if (string.IsNullOrEmpty(prefabName)) return default(Kind);
+            if (_kinds.TryGetValue(prefabName, out var known)) return known;
             var scene = ZNetScene.instance;
-            if (scene == null || string.IsNullOrEmpty(prefabName)) return false;
+            if (scene == null) return default(Kind);
             var prefab = scene.GetPrefab(prefabName);
-            if (prefab == null) return false;
+            if (prefab == null) return default(Kind);
             var teleport = prefab.GetComponent<TeleportWorld>();
-            return teleport != null && teleport.m_allowAllItems;
+            var piece = prefab.GetComponent<Piece>();
+            var kind = new Kind
+            {
+                Ore = teleport != null && teleport.m_allowAllItems,
+                Pictured = piece != null && piece.m_icon != null,
+            };
+            _kinds[prefabName] = kind;
+            return kind;
         }
 
         private static string Signature(List<Live> list)
@@ -412,14 +445,7 @@ namespace TheGreatestMap
                 ? icon.Value : Categories.DefaultIcon(Category.Portal);
         }
 
-        private static bool HasBuildPicture(string prefabName)
-        {
-            var scene = ZNetScene.instance;
-            if (scene == null) return false;
-            var prefab = scene.GetPrefab(prefabName);
-            var piece = prefab != null ? prefab.GetComponent<Piece>() : null;
-            return piece != null && piece.m_icon != null;
-        }
+        private static bool HasBuildPicture(string prefabName) => Classify(prefabName).Pictured;
 
         /// <summary>
         /// The picture an ore-carrying portal wears, for TheGreatestPortal to draw the same one.
@@ -438,6 +464,43 @@ namespace TheGreatestMap
         internal static Sprite StoneIcon() => IconRegistry.Resolve(Minimap.instance, Fallback(true));
 
         internal const string StoneIconDefault = "drawn:stoneportal";
+
+        /// <summary>
+        /// The picture this mod would draw for a portal of this kind, for TheGreatestPortal to
+        /// draw the same one.
+        ///
+        /// <para>The general form of <see cref="StoneIcon"/>, which answers this about one
+        /// portal out of all of them. That was enough while the two mods agreed that every
+        /// buildable portal wears its own render. They stopped agreeing the moment Portal Marker
+        /// Style gained an answer that draws plain pins instead -- and because this mod's portal
+        /// pins stand down while that mod's picker is up, the disagreement shows as one portal
+        /// changing appearance as the picker opens and closes, which reads as a bug rather than
+        /// as two mods. Asking here means one setting governs both.</para>
+        ///
+        /// <para>Called by reflection, by name, from a mod this one does not reference. Keep the
+        /// name and the shape: static, one string, a Sprite or null.</para>
+        /// </summary>
+        internal static Sprite PortalIcon(string prefabName) =>
+            IconRegistry.Resolve(Minimap.instance, IconKey(prefabName));
+
+        /// <summary>
+        /// The color this mod paints that picture, pulse and all.
+        ///
+        /// <para>Per portal, because there is no single answer any more. An ore-carrying portal
+        /// is drawn in its own color, and a picture is not painted at all -- it breathes in
+        /// brightness, because painting a picture of a thing takes the picture away. Another mod
+        /// reading one <see cref="CurrentColor"/> for everything is how a portal came to be blue
+        /// on one map and orange on the other.</para>
+        ///
+        /// <para>Called by reflection, by name, from a mod this one does not reference. Keep the
+        /// name and the shape: static, one string, a Color. Asked once a frame per portal, so it
+        /// does no scene lookups of its own -- see <see cref="Classify"/>.</para>
+        /// </summary>
+        internal static Color PortalColor(string prefabName)
+        {
+            if (IconRegistry.CarriesItsOwnColor(IconKey(prefabName))) return PicturePulse();
+            return CarriesEverything(prefabName) ? StonePulse() : CurrentColor();
+        }
 
         internal static void Redraw()
         {
