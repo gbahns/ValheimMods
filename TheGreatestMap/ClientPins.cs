@@ -93,12 +93,31 @@ namespace TheGreatestMap
             string fromCatalog = shared.HandPlaced ? null : Catalog.IconFor(shared.Source);
             if (!string.IsNullOrEmpty(fromCatalog)) return fromCatalog;
             var kind = KindOf(shared);
-            // The kind answers for two sorts of marker: one placed by hand, which never claimed
-            // to be anything more than its kind, and one of a kind the catalog does not divide at
-            // all. A portal is a portal and a runestone is a runestone -- there is no list of
-            // types for either, so the kind's own icon is the whole answer and these follow it
-            // without ever needing to be told what they are.
-            if (kind.HasValue && (!shared.Auto || !Categories.UsesPrefabList(kind.Value))
+            // A marker placed by hand wears the picture it was placed with, and that picture is
+            // the whole of what it is: the marker list files it by picture, the switch that hides
+            // it is the picture's switch, and Focus.TypeLabel reads its name back out of the
+            // catalog from the kind and the picture together. Arming silver under Ore and getting
+            // a marker drawn as the Ore pickaxe is not a cosmetic slip -- it files the marker
+            // under the pickaxe as well, where the Silver row cannot touch it, which is the
+            // place-by-hand button on a type row not working at all.
+            //
+            // The kind used to answer here, and it was right while a kind row was the only thing
+            // that could be armed: such a marker had never claimed to be anything narrower. Type
+            // rows got a "+" of their own in 4.12.0 and that stopped being true.
+            //
+            // The picture a kind row arms is the kind's, resolved when it is armed, so those
+            // markers look the same either way -- they simply stop following a later change to
+            // the kind's icon setting. Which is the better of the two: a marker travels to the
+            // rest of the crew, their setting is not yours, and a picture re-read from each
+            // reader's config is one marker looking like a different thing to every person
+            // holding the map.
+            if (shared.HandPlaced && !string.IsNullOrEmpty(shared.Icon))
+                return IconRegistry.Normalize(shared.Icon) ?? shared.Icon;
+            // The kind still answers for a marker of a kind the catalog does not divide at all. A
+            // portal is a portal and a runestone is a runestone -- there is no list of types for
+            // either, so the kind's own icon is the whole answer and these follow it without ever
+            // needing to be told what they are.
+            if (kind.HasValue && !Categories.UsesPrefabList(kind.Value)
                 && TgmConfig.CategoryIcon.TryGetValue(kind.Value, out var cfg)
                 && !string.IsNullOrEmpty(cfg.Value))
                 return IconRegistry.Normalize(cfg.Value) ?? shared.Icon;

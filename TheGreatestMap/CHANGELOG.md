@@ -10,6 +10,9 @@
 - Fixed: a marker placed by hand vanished when you clicked away from its name box on a crowded
   map. It was being thinned as a repeat of the recorded markers around it; a marker you place by
   hand is never thinned now, and shows the moment you place it.
+- Fixed: placing silver by hand drew the Ore pickaxe instead of silver once the name box closed.
+  A marker you place keeps the picture you placed it with, which is also the row it files under
+  and the switch that hides it.
 - tgm_list says when a marker is not drawn because it was thinned, instead of reporting that no
   reason could be found.
 - Fixed: markers this mod's older versions left in the character file came back as plain dots
