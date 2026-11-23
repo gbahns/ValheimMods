@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.11.0 — unreleased
+## 2.11.0 — 2026-11-23
 
 - The inventory panel can group its categories under section headers: Combat, Materials, Food, Plants, Tools, Special and Misc (#44). Turn them on with `Section Headers` under `Panel UI` or `/isections` in chat. Click a section header to flash every container holding anything in it; the Table style only takes its row order from them.
 - `/i food`, `/i combat` and the other section names filter the panel to the whole section, so food includes mead and raw meat.
