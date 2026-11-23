@@ -33,7 +33,6 @@ namespace TheGreatestMap
             if (store == null) return;
             Store = Adopt(store);
             Loaded = true;
-            IsNew = false;
             SendEverything();
         }
         internal static bool Loaded { get; private set; }
@@ -140,14 +139,10 @@ namespace TheGreatestMap
             _inFlightAll = false;
             _inFlightSpots = false;
         }
-        /// <summary>True when this character has never had a map for this world: it receives the shared map once on spawn.</summary>
-        internal static bool IsNew { get; private set; }
-
         internal static void Reset()
         {
             Store = Adopt(new MapStore());
             Loaded = false;
-            IsNew = false;
             _pending.Clear();
             _inFlight.Clear();
             _pendingAll = _inFlightAll = false;
@@ -188,7 +183,6 @@ namespace TheGreatestMap
         {
             Store = Adopt(new MapStore());
             Loaded = true;
-            IsNew = false;
             _pending.Clear();
             _inFlight.Clear();
             _pendingSpots = _inFlightSpots = _inFlightAll = false;
@@ -198,7 +192,10 @@ namespace TheGreatestMap
             // since you last answered" has no meaning until it has answered once.
             SendEverything();
             if (player == null || player.m_customData == null) return;
-            if (!player.m_customData.TryGetValue(Key, out var data) || string.IsNullOrEmpty(data)) { IsNew = true; return; }
+            // No map for this world on this character. Nothing more to do: it starts empty, the
+            // same as the explored area does, and fills as they walk or as they merge with a
+            // cartography table.
+            if (!player.m_customData.TryGetValue(Key, out var data) || string.IsNullOrEmpty(data)) return;
             try
             {
                 var stored = Utils.Decompress(Convert.FromBase64String(data));

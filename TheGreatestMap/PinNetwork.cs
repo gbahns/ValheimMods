@@ -473,12 +473,22 @@ namespace TheGreatestMap
     {
         private static void Postfix(Player __instance)
         {
-            // In Instant mode catch up with the shared map right away. In Table mode the map
-            // travels like exploration and waits for a cartography table, except the very first
-            // time a character enters a world, when it receives the shared map once so it does
-            // not start blank.
+            // In Instant mode catch up with the shared map right away, which is what that mode
+            // is for. In Table mode nothing happens here: the map travels like exploration and
+            // waits for a cartography table or for another player.
+            //
+            // It used to make an exception for a character with no map for this world yet,
+            // "so it does not start blank" -- which was the behavior from before Table mode
+            // existed, kept alive inside the check that was meant to end it. A character
+            // arriving somewhere for the first time is supposed to start blank: that is what
+            // vanilla does, nobody is surprised by it, and a player who has not found the
+            // cartography table does not yet know there is a map to be had. Seeding them
+            // instead handed over the whole shared map before they had walked anywhere, which
+            // is the one thing Table mode promises not to do -- and it was not even limited to
+            // new characters, since what it tested was whether THIS WORLD had a map saved on
+            // them. A veteran arriving on a server got the same treatment.
             if (__instance != Player.m_localPlayer) return;
-            if (SyncEngine.Instant || PersonalMap.IsNew) SyncEngine.SyncWithServer(announceNothing: false);
+            if (SyncEngine.Instant) SyncEngine.SyncWithServer(announceNothing: false);
         }
     }
 
