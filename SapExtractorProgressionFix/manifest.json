@@ -1,0 +1,7 @@
+{
+    "name": "SapExtractorProgressionFix",
+    "version_number": "0.1.0",
+    "website_url": "https://github.com/gbahns/ValheimMods/tree/main/SapExtractorProgressionFix",
+    "description": "Sap extractors now fill up for the whole time you were away, instead of losing it when you walk back in.",
+    "dependencies": ["denikson-BepInExPack_Valheim-5.4.2350"]
+}
