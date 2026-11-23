@@ -136,14 +136,36 @@ namespace TheGreatestMap
             _drawnFor = new Rect(-999f, -999f, 0f, 0f);
         }
 
-        /// <summary>Thrown away when the map is rebuilt, which happens on every login.</summary>
+        /// <summary>
+        /// Let go of the layers. Called when everything believed about the map is wrong -- on a
+        /// login, and also when the game rewrites its own map texture, which it does during a
+        /// world load.
+        ///
+        /// <para>They are taken down rather than merely dropped. On a login they are dead
+        /// already and this is nothing; the rest of the time they are live children of the map
+        /// images, which outlive this, so forgetting one leaves an enabled image on the minimap
+        /// that nothing holds a reference to any more. The next pass builds a fresh one beside
+        /// it, and the orphan -- drawn after it, being the older sibling -- is what the player
+        /// sees. A layer with no texture is not an empty layer: Unity draws a RawImage without
+        /// one in the built-in white, so the minimap becomes a white square that nothing left
+        /// in this mod can reach to switch off.</para>
+        /// </summary>
         internal static void Forget()
         {
-            _layer = null;
-            _small = null;
+            Discard(ref _layer);
+            Discard(ref _small);
             _shapers.Clear();
             _drawnFor = new Rect(-999f, -999f, 0f, 0f);
             _drawnSignature = 0;
+        }
+
+        /// <summary>Take a layer down, if it is still standing, and let go of it.</summary>
+        private static void Discard(ref RawImage image)
+        {
+            // The shape-copies live on this object and go with it, which is what _shapers being
+            // cleared alongside means.
+            if (image != null && image.gameObject != null) Object.Destroy(image.gameObject);
+            image = null;
         }
 
         private static void Hide()
@@ -210,7 +232,13 @@ namespace TheGreatestMap
             bool on = map != null && MapPaint.Wanted() && cells != null && cells.Count > 0;
             if (!on)
             {
-                if (_layer != null) _layer.enabled = false;
+                // Both layers, before the buffer goes. This used to hide only the large map's,
+                // and the minimap's stayed on showing a texture that had just been destroyed --
+                // which Unity draws as the built-in white, so switching Show Player Developments
+                // off turned the minimap into a white square instead of giving it back. It
+                // stayed white until the setting went back on, because every path that could
+                // have hidden it is below this return.
+                Hide();
                 Release();
                 return;
             }

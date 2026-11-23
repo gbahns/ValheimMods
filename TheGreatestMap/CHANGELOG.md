@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.13.1 — unreleased
+
+- Fixed: with Show Player Developments on, the minimap could turn into a solid white square and
+  stay that way, hiding the map underneath while the markers kept drawing on top.
+
 ## 4.13.0 — 2026-11-22
 
 - Sightings has a row for each thing you might have seen, instead of one serpent: every fish in
