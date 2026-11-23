@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.7.1 — unreleased
+## 1.7.1 — 2026-11-22
 
 - The search box on the portal map no longer opens holding the text of the last sign you edited.
 
