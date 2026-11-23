@@ -78,6 +78,11 @@ namespace TheGreatestMap
             new Quarry("Troll", "TrophyForestTroll", "Troll"),
             new Quarry("FallenValkyrie", "TrophyFallenValkyrie", "Fallen valkyrie"),
             new Quarry("SeekerBrute", "TrophySeekerBrute", "Seeker soldier"),
+            new Quarry("Lox", "TrophyLox", "Lox"),
+            new Quarry("StoneGolem", "TrophySGolem", "Stone golem"),
+            new Quarry("Abomination", "TrophyAbomination", "Abomination"),
+            new Quarry("Asksvin", "TrophyAsksvin", "Asksvin"),
+            new Quarry("Morgen", "TrophyMorgen", "Morgen"),
         };
 
         private static readonly List<Offer> None = new List<Offer>();

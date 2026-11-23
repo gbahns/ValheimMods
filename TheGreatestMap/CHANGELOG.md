@@ -3,8 +3,9 @@
 ## 4.14.0 — unreleased
 
 - Sightings is now two kinds with a switch each: Fish, and Big Game. Big Game offers the serpent,
-  bonemaw serpent, bear, vile, gjall, deer, troll, fallen valkyrie and seeker soldier. Sightings
-  you have already placed move to whichever of the two their picture belongs to.
+  bonemaw serpent, bear, vile, gjall, deer, troll, fallen valkyrie, seeker soldier, lox, stone
+  golem, abomination, asksvin and morgen. Sightings you have already placed move to whichever of
+  the two their picture belongs to.
 - Rows under them are named after the creature rather than after its trophy: Serpent, not Serpent
   trophy.
 - Right-clicking a row in the marker list does what its "+" does: the next marker you place by
