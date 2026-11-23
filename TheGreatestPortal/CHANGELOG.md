@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.8.0 — unreleased
+
+- "Open to everyone" is a checkbox beside the portal's other settings instead of a text button, and unticks itself when the time runs out.
+- Right-click it to choose how long, up to what the server allows.
+
 ## 1.7.1 — 2026-11-22
 
 - The search box on the portal map no longer opens holding the text of the last sign you edited.

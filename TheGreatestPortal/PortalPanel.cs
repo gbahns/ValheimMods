@@ -34,7 +34,7 @@ namespace TheGreatestPortal
         private static ScrollRect _scroll;
         private static Toggle _default;
         private static Toggle _private;
-        private static Button _open;
+        private static Toggle _open;
         private static float _nextOpenTick;
         private static Button _star;
         private static Image _starImage;
@@ -173,7 +173,7 @@ namespace TheGreatestPortal
                 _private.interactable = offer && ownedByMe && _id != 0L;
             }
             UpdateStar();
-            UpdateOpenButton();
+            UpdateOpenToggle();
             _redirectAll.interactable = _id != 0L;
             UiKit.SetLabel(_redirectAll.gameObject, RedirectLabel);
             Populate();
@@ -209,12 +209,12 @@ namespace TheGreatestPortal
                 _openedThisFrame = false;
                 return;
             }
-            // The countdown on the open button, once a second rather than every frame: it is
+            // The countdown on the open checkbox, once a second rather than every frame: it is
             // minutes it counts, and this runs for as long as the panel is up.
             if (Time.time >= _nextOpenTick)
             {
                 _nextOpenTick = Time.time + 1f;
-                UpdateOpenButton();
+                UpdateOpenToggle();
             }
             if (UiKit.ContextMenu.IsOpen)
             {
@@ -519,7 +519,7 @@ namespace TheGreatestPortal
             TheGreatestPortalMod.Message(on
                 ? "This portal is private: only you can see or use it"
                 : "This portal is public again");
-            UpdateOpenButton();
+            UpdateOpenToggle();
         }
 
         /// <summary>The ZDO of the portal this panel was opened at, while it is still loaded.</summary>
@@ -535,7 +535,7 @@ namespace TheGreatestPortal
         /// at all -- or while one is already running, so that a server turning the length down to
         /// nothing does not leave somebody's portal open with no way to shut it.
         /// </summary>
-        private static void UpdateOpenButton()
+        private static void UpdateOpenToggle()
         {
             if (_open == null) return;
             var zdo = OwnZdo();
@@ -548,23 +548,77 @@ namespace TheGreatestPortal
                          && zdo != null && PortalData.GetPrivate(zdo) && (open || minutes > 0);
             if (_open.gameObject.activeSelf != offer) _open.gameObject.SetActive(offer);
             if (!offer) return;
+            // Without notifying: this runs on a tick, and a tick must not look like the player
+            // reaching for the box.
+            UiKit.SetToggle(_open, open);
             UiKit.SetLabel(_open.gameObject, open
-                ? $"Shut it now ({PortalData.Remaining(PortalData.OpenSecondsLeft(until))} left)"
+                ? $"Open to everyone ({PortalData.Remaining(PortalData.OpenSecondsLeft(until))} left)"
                 : $"Open to everyone for {minutes} min");
         }
 
-        private static void ToggleOpen()
+        private static void OnOpenToggle(bool want)
         {
             if (_id == 0L) return;
             var zdo = OwnZdo();
             bool open = zdo != null && PortalData.OpenToAllNow(PortalData.GetOpenToAll(zdo));
+            if (want == open) return;
             int minutes = PortalData.OpenMinutes;
-            if (!open && minutes <= 0) return;
-            PortalNetwork.SendOpen(_id, open ? 0 : minutes);
-            TheGreatestPortalMod.Message(open
-                ? "This portal is private again"
-                : $"This portal is open to everyone for {minutes} min");
-            UpdateOpenButton();
+            if (want && minutes <= 0)
+            {
+                // The server stopped allowing it between the panel opening and the box being
+                // ticked. Put the box back rather than sending something that would be refused.
+                UiKit.SetToggle(_open, false);
+                return;
+            }
+            PortalNetwork.SendOpen(_id, want ? minutes : 0);
+            TheGreatestPortalMod.Message(want
+                ? $"This portal is open to everyone for {minutes} min"
+                : "This portal is private again");
+            UpdateOpenToggle();
+        }
+
+        /// <summary>
+        /// How long ticking the box opens a portal for. The lengths offered stop at what the server
+        /// allows, so nothing here can be chosen that the server would then cut down -- which is
+        /// the whole of the answer to "let me pick the time, capped by the server".
+        ///
+        /// <para>It sets the same Open For Minutes this player's config file holds, so the choice is
+        /// remembered for next time and for the row menu as well. A portal that is already open is
+        /// reopened at the new length, because the alternative is a number that visibly disagrees
+        /// with the countdown beside it until the portal shuts.</para>
+        /// </summary>
+        private static void OpenDurationMenu()
+        {
+            if (TgpConfig.OpenForMinutes == null || _open == null || !_open.gameObject.activeSelf) return;
+            int cap = PortalData.MaxOpenMinutes;
+            if (cap <= 0) return;
+            var choices = new List<int>();
+            foreach (int m in new[] { 5, 15, 30, 60, 120, 240, 480 })
+                if (m < cap) choices.Add(m);
+            choices.Add(cap);
+            var items = new List<KeyValuePair<string, Action>>();
+            foreach (int m in choices)
+            {
+                int pick = m;
+                items.Add(new KeyValuePair<string, Action>(
+                    pick + " min" + (pick == cap ? " (all this server allows)" : ""),
+                    () => SetOpenMinutes(pick)));
+            }
+            UiKit.ContextMenu.Show(_content, ZInput.pointerPosition, items);
+        }
+
+        private static void SetOpenMinutes(int minutes)
+        {
+            if (TgpConfig.OpenForMinutes == null) return;
+            TgpConfig.OpenForMinutes.Value = minutes;
+            var zdo = OwnZdo();
+            if (_id != 0L && zdo != null && PortalData.OpenToAllNow(PortalData.GetOpenToAll(zdo)))
+            {
+                int now = PortalData.OpenMinutes;
+                PortalNetwork.SendOpen(_id, now);
+                TheGreatestPortalMod.Message($"This portal is open to everyone for {now} min");
+            }
+            UpdateOpenToggle();
         }
 
         private static void ApplyToggles()
@@ -834,8 +888,20 @@ namespace TheGreatestPortal
             UiKit.Place(_default.GetComponent<RectTransform>(), 30f, 418f, 400f, 30f);
             _private = UiKit.SimpleToggle(content.transform, "Private", "Private (only you)", false, OnPrivateToggle);
             UiKit.Place(_private.GetComponent<RectTransform>(), 440f, 418f, 210f, 30f);
-            _open = UiKit.LinkButton(content.transform, "OpenToAll", "Open to everyone", ToggleOpen);
-            UiKit.Place(_open.GetComponent<RectTransform>(), 440f, 450f, 210f, 24f);
+            // A checkbox, in the column and the style of Private above it, because it is the same
+            // kind of thing: a state the portal is in, not an errand to run. It was the one control
+            // in this panel drawn as a small text link -- the style meant for "Expand all" -- which
+            // is what it looked like (issue #75, reported by ShadowTox). Being timed suits a box
+            // that unticks itself when the time runs out, which it does on the countdown tick.
+            _open = UiKit.SimpleToggle(content.transform, "OpenToAll", "Open to everyone", false, OnOpenToggle);
+            UiKit.Place(_open.GetComponent<RectTransform>(), 440f, 450f, 210f, 30f);
+            var openHover = _open.gameObject.AddComponent<UiKit.Hover>();
+            openHover.OnRightClick = OpenDurationMenu;
+            openHover.OnHoverChanged = over =>
+            {
+                if (over) UiKit.ShowTip(_content, "Right-click to choose how long");
+                else UiKit.HideTip();
+            };
             _open.gameObject.SetActive(false);
             _redirectAll = ok != null ? UiKit.CloneButton(ok, content.transform, "RedirectAll", RedirectLabel, RedirectAll)
                                       : UiKit.SimpleButton(content.transform, "RedirectAll", RedirectLabel, RedirectAll);
@@ -923,7 +989,7 @@ namespace TheGreatestPortal
             if (_scroll != null) UiKit.Place(_scroll.GetComponent<RectTransform>(), 30f, 176f, w - 60f, h - 370f);
             if (_default != null) UiKit.Place(_default.GetComponent<RectTransform>(), 30f, h - 182f, 400f, 30f);
             if (_private != null) UiKit.Place(_private.GetComponent<RectTransform>(), w - 240f, h - 182f, 210f, 30f);
-            if (_open != null) UiKit.Place(_open.GetComponent<RectTransform>(), w - 240f, h - 150f, 210f, 24f);
+            if (_open != null) UiKit.Place(_open.GetComponent<RectTransform>(), w - 240f, h - 150f, 210f, 30f);
             if (_redirectAll != null) UiKit.Place(_redirectAll.GetComponent<RectTransform>(), 30f, h - 144f, 250f, 36f);
             float by = h - 92f, bh = 44f;
             if (_pick != null) UiKit.Place(_pick.GetComponent<RectTransform>(), 30f, by, 160f, bh);
