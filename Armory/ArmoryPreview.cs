@@ -73,7 +73,7 @@ namespace Armory
         /// the edges come out soft and the game's shaders' alpha, whatever they write, does
         /// not matter.  Null if anything fails; the caller keeps its old icon.
         /// </summary>
-        internal static Sprite Icon(RackStyle style, int size)
+        internal static Sprite Icon(RackStyle style, int size, float scale = 1f)
         {
             GameObject rig = null; RenderTexture rt = null;
             var prevActive = RenderTexture.active;
@@ -82,7 +82,7 @@ namespace Armory
                 rig = BuildRig(out var camera);
                 var subject = new GameObject("ArmoryIconRack");
                 subject.transform.SetParent(rig.transform, false);
-                RackVisual.Build(subject, style);
+                RackVisual.Build(subject, style, scale);   // the small rack photographs small, in the same frame
 
                 rt = new RenderTexture(size, size, 24) { name = "ArmoryIcon", antiAliasing = 4 };
                 camera.targetTexture = rt;
@@ -108,7 +108,7 @@ namespace Armory
                 var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { name = "ArmoryIcon" };
                 tex.SetPixels32(icon);
                 tex.Apply();
-                SavePng(tex);
+                SavePng(tex, scale < 1f ? "build_icon_small.png" : "build_icon.png");
                 return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
             }
             catch (Exception e)
@@ -139,10 +139,10 @@ namespace Armory
             return tex;
         }
 
-        // The icon as a file, BepInEx/config/Armory/build_icon.png, so it can be looked at
-        // without opening the hammer.  ImageConversion is reached by reflection, like the
-        // embedded icon's loader in ArmoryPieces: referencing the module does not build.
-        private static void SavePng(Texture2D tex)
+        // The icon as a file under BepInEx/config/Armory/, so it can be looked at without
+        // opening the hammer.  ImageConversion is reached by reflection, like the embedded
+        // icon's loader in ArmoryPieces: referencing the module does not build.
+        private static void SavePng(Texture2D tex, string fileName)
         {
             try
             {
@@ -151,7 +151,7 @@ namespace Armory
                 if (!(m?.Invoke(null, new object[] { tex }) is byte[] bytes)) return;
                 var dir = Path.Combine(BepInEx.Paths.ConfigPath, "Armory");
                 Directory.CreateDirectory(dir);
-                File.WriteAllBytes(Path.Combine(dir, "build_icon.png"), bytes);
+                File.WriteAllBytes(Path.Combine(dir, fileName), bytes);
             }
             catch (Exception e) { Jotunn.Logger.LogDebug($"[Armory] Icon not saved: {e.Message}"); }
         }

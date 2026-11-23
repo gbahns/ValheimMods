@@ -10,22 +10,65 @@ using UnityEngine;
 namespace Armory
 {
     /// <summary>
-    /// Registers the Armory Rack as a buildable Hammer piece.
+    /// Registers the Armory Rack and the Small Armory Rack (#84) as buildable Hammer pieces.
     /// Phase 1 (OnVanillaPrefabsAvailable): clone piece_chest_blackmetal, strip Container, attach
     /// ArmoryRack, hide the chest and draw the rack's own look (RackVisual).
     /// Phase 2 (OnPiecesRegistered): set requirements, WearNTear, icon, and register with Jotunn.
     /// </summary>
     internal static class ArmoryPieces
     {
-        private const string PieceName  = "armory_rack";
         private const string BasePrefab = "piece_chest_blackmetal";
         private const string PieceTable = "_HammerPieceTable";
         private const string Category   = "Furniture";
 
-        private static GameObject _clone;
+        private struct Ingredient
+        {
+            public string Item; public int Amount;
+            public Ingredient(string item, int amount) { Item = item; Amount = amount; }
+        }
 
-        /// <summary>The rack prefab, once Phase 1 has cloned it; null before.</summary>
-        internal static GameObject Prefab => _clone;
+        /// <summary>One buildable piece: what it is called, how big, what it costs.</summary>
+        private sealed class Kind
+        {
+            public string       PrefabName;    // the ZNetScene name; the world's ZDOs hold its hash
+            public string       NameKey;       // "$..." for the Piece and its Container
+            public string       DescKey;
+            public string       DisplayName;   // for Jotunn's PieceConfig
+            public bool         Small;
+            public Ingredient[] Recipe;
+            public GameObject   Clone;         // once Phase 1 has run
+        }
+
+        // Black Forest tier (Bronze Age), priced to the piece: some 24 m² of board (about twice
+        // the game's wardrobe), a core-wood carcass, a full ingot's worth of nails, an ingot per
+        // strap hinge, and resin for the finish.  The small rack is two thirds of it.
+        private static readonly Kind Standard = new Kind
+        {
+            PrefabName = "armory_rack", NameKey = "$armory_rack_name", DescKey = "$armory_rack_desc",
+            DisplayName = "Armory Rack", Small = false,
+            Recipe = new[] { new Ingredient("FineWood", 16), new Ingredient("RoundLog", 8), new Ingredient("BronzeNails", 20),
+                             new Ingredient("Bronze", 4), new Ingredient("Resin", 10) },
+        };
+        private static readonly Kind SmallKind = new Kind
+        {
+            PrefabName = "armory_rack_small", NameKey = "$armory_rack_small_name", DescKey = "$armory_rack_small_desc",
+            DisplayName = "Small Armory Rack", Small = true,
+            Recipe = new[] { new Ingredient("FineWood", 10), new Ingredient("RoundLog", 5), new Ingredient("BronzeNails", 12),
+                             new Ingredient("Bronze", 3), new Ingredient("Resin", 6) },
+        };
+
+        // In the order the hammer menu shows them: the small rack before the standard one.
+        private static readonly Kind[] Kinds = { SmallKind, Standard };
+
+        /// <summary>The standard rack's prefab, once Phase 1 has cloned it; null before.</summary>
+        internal static GameObject Prefab => Standard.Clone;
+
+        /// <summary>Both prefabs, once cloned; whatever exists before.</summary>
+        internal static IEnumerable<GameObject> Prefabs
+        {
+            get { foreach (var k in Kinds) if (k.Clone != null) yield return k.Clone; }
+        }
+
         private static bool _clonesCreated;
         private static bool _piecesConfigured;
 
@@ -46,11 +89,16 @@ namespace Armory
             var basePrefab = PrefabManager.Instance.GetPrefab(BasePrefab);
             if (basePrefab == null)
             {
-                Jotunn.Logger.LogError("[Armory] Base prefab 'piece_chest_wood' not found.");
+                Jotunn.Logger.LogError($"[Armory] Base prefab '{BasePrefab}' not found.");
                 return;
             }
 
-            _clone = PrefabManager.Instance.CreateClonedPrefab(PieceName, basePrefab);
+            foreach (var kind in Kinds) CreateClone(kind, basePrefab);
+        }
+
+        private static void CreateClone(Kind kind, GameObject basePrefab)
+        {
+            var _clone = kind.Clone = PrefabManager.Instance.CreateClonedPrefab(kind.PrefabName, basePrefab);
 
             // Register in ZNetScene immediately so world ZDOs can resolve this prefab on load.
             var namedPrefabs = GetNamedPrefabs();
@@ -67,26 +115,25 @@ namespace Armory
             if (container != null)
                 UnityEngine.Object.DestroyImmediate(container);
 
-            _clone.AddComponent<ArmoryRack>();
+            // Which piece this is, before the look is drawn: RackVisual reads it for the scale.
+            _clone.AddComponent<ArmoryRack>().Small = kind.Small;
 
             // The chest's own look goes; its Piece, WearNTear and ZNetView stay on the root.
             foreach (var r in _clone.GetComponentsInChildren<Renderer>()) r.enabled = false;
 
-            // One collider for the whole rack, whatever look it wears.
-            var col = _clone.AddComponent<BoxCollider>();
-            col.center = new Vector3(0, RackVisual.Height / 2f, 0);
-            col.size   = new Vector3(RackVisual.Width, RackVisual.Height, RackVisual.Depth);
+            // One collider for the whole rack, whatever look it wears; RackVisual.Build sizes it.
+            _clone.AddComponent<BoxCollider>();
 
             RackVisual.Build(_clone);
 
             var piece = _clone.GetComponent<Piece>() ?? _clone.AddComponent<Piece>();
-            piece.m_name        = "$armory_rack_name";
-            piece.m_description = "$armory_rack_desc";
+            piece.m_name        = kind.NameKey;
+            piece.m_description = kind.DescKey;
             piece.m_groundOnly  = false;
             piece.m_groundPiece = false;
             piece.m_resources   = new Piece.Requirement[0];
 
-            Jotunn.Logger.LogInfo("[Armory] Phase 1 — cloned armory_rack");
+            Jotunn.Logger.LogInfo($"[Armory] Phase 1 — cloned {kind.PrefabName}");
         }
 
         // The original look (Rack Look = Panels): the armoire composed from vanilla wood floor
@@ -246,12 +293,32 @@ namespace Armory
             if (_piecesConfigured) return;
             _piecesConfigured = true;
 
-            if (_clone == null)
-            {
-                Jotunn.Logger.LogError("[Armory] Phase 2: no clone from Phase 1 — Armory Rack unavailable.");
-                return;
-            }
+            // Icon: a picture of the player's default rack (#86), else the drawn 256×256 one
+            // embedded here, else a vanilla icon so the entry doesn't disappear from the menu.
+            _drawnIcon = LoadEmbeddedIcon("armory.png")
+                      ?? ObjectDB.instance.GetItemPrefab("ArmorLeatherChest")?.GetComponent<ItemDrop>()
+                                ?.m_itemData?.m_shared?.m_icons?[0];
 
+            // Registered in Kinds order, which is the menu's order when Jotunn is the one that
+            // fills the table; EnsureInPieceTable settles it when it is not.
+            foreach (var kind in Kinds)
+            {
+                if (kind.Clone == null)
+                {
+                    Jotunn.Logger.LogError($"[Armory] Phase 2: no clone of {kind.PrefabName} from Phase 1 — piece unavailable.");
+                    continue;
+                }
+                Configure(kind);
+            }
+            RefreshIcon();
+
+            EnsureInPieceTable();
+            EnsureInNamedPrefabs();
+        }
+
+        private static void Configure(Kind kind)
+        {
+            var _clone = kind.Clone;
             var piece = _clone.GetComponent<Piece>();
             if (piece == null) return;
 
@@ -266,38 +333,25 @@ namespace Armory
                 wnt.m_hitEffect       = refWnT.m_hitEffect;
             }
 
-            // Build requirements — Black Forest tier (Bronze Age), priced to the piece: some
-            // 24 m² of board (about twice the game's wardrobe), a core-wood carcass, a full
-            // ingot's worth of nails, an ingot per strap hinge, and resin for the finish.
-            // Anything that fails the ObjectDB lookup is silently skipped (defensive — should
-            // never happen for these vanilla prefabs, but keeps the piece registerable even on
-            // a hypothetical Valheim build that renames one).
+            // Build requirements, from the kind's recipe.  Anything that fails the ObjectDB
+            // lookup is skipped with a warning (defensive — should never happen for these
+            // vanilla prefabs, but keeps the piece registerable even on a hypothetical Valheim
+            // build that renames one).
             var requirements = new List<Piece.Requirement>();
-            void AddReq(string prefabName, int amount)
+            foreach (var ing in kind.Recipe)
             {
-                var drop = ObjectDB.instance.GetItemPrefab(prefabName)?.GetComponent<ItemDrop>();
+                var drop = ObjectDB.instance.GetItemPrefab(ing.Item)?.GetComponent<ItemDrop>();
                 if (drop != null)
-                    requirements.Add(new Piece.Requirement { m_resItem = drop, m_amount = amount, m_recover = true });
+                    requirements.Add(new Piece.Requirement { m_resItem = drop, m_amount = ing.Amount, m_recover = true });
                 else
-                    Jotunn.Logger.LogWarning($"[Armory] Recipe ingredient '{prefabName}' not found in ObjectDB — skipped.");
+                    Jotunn.Logger.LogWarning($"[Armory] Recipe ingredient '{ing.Item}' not found in ObjectDB — skipped.");
             }
-            AddReq("FineWood",    16);
-            AddReq("RoundLog",    8);
-            AddReq("BronzeNails", 20);
-            AddReq("Bronze",      4);
-            AddReq("Resin",       10);
             piece.m_resources = requirements.ToArray();
 
             // Crafting station.
             piece.m_craftingStation = PrefabManager.Instance.GetPrefab("piece_workbench")?.GetComponent<CraftingStation>();
 
-            // Icon: a picture of the player's default rack (#86), else the drawn 256×256 one
-            // embedded here, else a vanilla icon so the entry doesn't disappear from the menu.
-            _drawnIcon = LoadEmbeddedIcon("armory.png")
-                      ?? ObjectDB.instance.GetItemPrefab("ArmorLeatherChest")?.GetComponent<ItemDrop>()
-                                ?.m_itemData?.m_shared?.m_icons?[0];
-            piece.m_icon = _drawnIcon;
-            RefreshIcon();
+            piece.m_icon = _drawnIcon;   // RefreshIcon replaces it with a photograph once both are configured
 
             // Place effects.
             var refPiece = PrefabManager.Instance.GetPrefab(BasePrefab)?.GetComponent<Piece>();
@@ -323,14 +377,14 @@ namespace Armory
                     storage.m_privacy            = refContainer.m_privacy;
                     storage.m_checkGuardStone    = refContainer.m_checkGuardStone;
                 }
-                storage.m_name   = "$armory_rack_name";
-                // The grid comes from the synced Rack Width / Rack Height settings (8×5 by
-                // default).  RackGridFitPatch draws a grid bigger than the vanilla container
-                // panel at a smaller cell size, which is what used to pin this at 8×4.  A change
-                // to the settings later goes through RackSize.Apply, onto this prefab and onto
-                // the racks already standing.
-                storage.m_width  = RackSize.Width;
-                storage.m_height = RackSize.Height;
+                storage.m_name   = kind.NameKey;
+                // The grid comes from the synced Rack Width / Rack Height settings (12×6 by
+                // default, 8×5 for the small rack).  RackGridFitPatch draws a grid bigger than
+                // the vanilla container panel at a smaller cell size, which is what used to pin
+                // this at 8×4.  A change to the settings later goes through RackSize.Apply, onto
+                // this prefab and onto the racks already standing.
+                storage.m_width  = RackSize.WidthFor(kind.Small);
+                storage.m_height = RackSize.HeightFor(kind.Small);
                 // Logged rather than assumed: these come out of the chest prefab's asset data,
                 // which is not readable from the assemblies, so the run itself is the record of
                 // what the rack inherited.
@@ -339,23 +393,20 @@ namespace Armory
 
             var pieceConfig = new PieceConfig
             {
-                Name       = "Armory Rack",
+                Name       = kind.DisplayName,
                 PieceTable = PieceTable,
                 Category   = Category,
             };
             PieceManager.Instance.AddPiece(new CustomPiece(_clone, false, pieceConfig));
-            Jotunn.Logger.LogInfo("[Armory] Phase 2 — registered armory_rack");
-
-            EnsureInPieceTable();
-            EnsureInNamedPrefabs();
+            Jotunn.Logger.LogInfo($"[Armory] Phase 2 — registered {kind.PrefabName}");
         }
 
         // Jotunn's PieceManager.AddPiece does not always insert the clone into the Hammer's
         // m_pieces list, so the Hammer build menu never shows it.  Force-insert here.  Same
-        // workaround pattern used by ForsakenShrines.
+        // workaround pattern used by ForsakenShrines.  The menu is this list in order, so the
+        // small rack is put directly before the standard one whichever path put them in.
         private static void EnsureInPieceTable()
         {
-            if (_clone == null) return;
             var table = ObjectDB.instance
                 ?.GetItemPrefab("Hammer")?
                 .GetComponent<ItemDrop>()
@@ -365,25 +416,37 @@ namespace Armory
                 Jotunn.Logger.LogInfo("[Armory] EnsureInPieceTable: Hammer not accessible yet.");
                 return;
             }
-            if (table.m_pieces.Contains(_clone))
+            var list = table.m_pieces;
+            foreach (var kind in Kinds)
             {
-                Jotunn.Logger.LogInfo("[Armory] EnsureInPieceTable: armory_rack already present.");
-                return;
+                if (kind.Clone == null || list.Contains(kind.Clone)) continue;
+                list.Add(kind.Clone);
+                Jotunn.Logger.LogInfo($"[Armory] EnsureInPieceTable: inserted {kind.PrefabName}.");
             }
-            table.m_pieces.Add(_clone);
-            Jotunn.Logger.LogInfo("[Armory] EnsureInPieceTable: inserted armory_rack.");
+            int small = SmallKind.Clone != null ? list.IndexOf(SmallKind.Clone) : -1;
+            int big   = Standard.Clone  != null ? list.IndexOf(Standard.Clone)  : -1;
+            if (small >= 0 && big >= 0 && small != big - 1)
+            {
+                list.RemoveAt(small);
+                list.Insert(list.IndexOf(Standard.Clone), SmallKind.Clone);
+                Jotunn.Logger.LogInfo("[Armory] EnsureInPieceTable: small rack moved before the standard one.");
+            }
         }
 
         private static Sprite _drawnIcon;
 
-        /// <summary>Photographs the default rack for the hammer menu; the Style settings call
-        /// this again when they change, so the icon shows what the player will build.</summary>
+        /// <summary>Photographs the default rack for the hammer menu, the small one at its own
+        /// size; the Style settings call this again when they change, so the icons show what
+        /// the player will build.</summary>
         internal static void RefreshIcon()
         {
-            var piece = _clone != null ? _clone.GetComponent<Piece>() : null;
-            if (piece == null) return;
-            var shot = ArmoryPreview.Icon(RackVisual.Defaults, 256);
-            piece.m_icon = shot != null ? shot : _drawnIcon;
+            foreach (var kind in Kinds)
+            {
+                var piece = kind.Clone != null ? kind.Clone.GetComponent<Piece>() : null;
+                if (piece == null) continue;
+                var shot = ArmoryPreview.Icon(RackVisual.Defaults, 256, kind.Small ? ArmoryRack.SmallScale : 1f);
+                piece.m_icon = shot != null ? shot : _drawnIcon;
+            }
         }
 
         // Load a 256×256 PNG embedded as a managed resource and return it as a Sprite.
@@ -434,14 +497,15 @@ namespace Armory
         // dictionary so loaded ZDOs (placed racks from previous sessions) can find it.
         private static void EnsureInNamedPrefabs()
         {
-            if (_clone == null) return;
             var namedPrefabs = GetNamedPrefabs();
             if (namedPrefabs == null) return;
-            var hash = _clone.name.GetStableHashCode();
-            if (!namedPrefabs.ContainsKey(hash))
+            foreach (var kind in Kinds)
             {
-                namedPrefabs[hash] = _clone;
-                Jotunn.Logger.LogInfo("[Armory] EnsureInNamedPrefabs: added armory_rack.");
+                if (kind.Clone == null) continue;
+                var hash = kind.Clone.name.GetStableHashCode();
+                if (namedPrefabs.ContainsKey(hash)) continue;
+                namedPrefabs[hash] = kind.Clone;
+                Jotunn.Logger.LogInfo($"[Armory] EnsureInNamedPrefabs: added {kind.PrefabName}.");
             }
         }
     }

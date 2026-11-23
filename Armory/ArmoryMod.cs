@@ -32,12 +32,13 @@ namespace Armory
     {
         public const string ModGuid    = "GBahns.Armory";
         public const string ModName    = "Armory";
-        public const string ModVersion = "2.4.0";
+        public const string ModVersion = "2.5.0";
 
         // 2.1.0: the rack's grid is a synced setting an older client does not have, and a client
-        // on a different grid than the rack's owner opens rows it cannot see.  A literal, raised
-        // only when a release changes what the server and the clients have to agree on.
-        public const string MinCompatibleVersion = "2.3.0";
+        // on a different grid than the rack's owner opens rows it cannot see.  2.5.0: a second
+        // prefab, which a client without it cannot spawn.  A literal, raised only when a release
+        // changes what the server and the clients have to agree on.
+        public const string MinCompatibleVersion = "2.5.0";
 
         private static ConfigSync _configSync;
 
@@ -162,12 +163,14 @@ namespace Armory
                 "(adminlist.txt) can change them from their client. Off lets any player change them.");
 
             RackWidth = BindSynced("Storage", "Rack Width", RackSize.DefaultWidth,
-                "Columns in a rack's storage grid. Every rack, built or not, takes the new size; " +
-                "items left outside a smaller grid are moved into it by whoever opens the rack.",
+                "Columns in an Armory Rack's storage grid. Every rack, built or not, takes the new size; " +
+                "items left outside a smaller grid are moved into it by whoever opens the rack. " +
+                "The Small Armory Rack follows at two thirds (8 columns at the default 12).",
                 new AcceptableValueRange<int>(1, RackSize.MaxWidth));
             RackHeight = BindSynced("Storage", "Rack Height", RackSize.DefaultHeight,
-                "Rows in a rack's storage grid. A grid taller than the container panel is drawn " +
-                "with smaller cells rather than a scroll bar.",
+                "Rows in an Armory Rack's storage grid. A grid taller than the container panel is drawn " +
+                "with smaller cells rather than a scroll bar. The Small Armory Rack follows at five " +
+                "sixths (5 rows at the default 6).",
                 new AcceptableValueRange<int>(1, RackSize.MaxHeight));
             RackWidth.SettingChanged  += (_, __) => RackSize.Apply();
             RackHeight.SettingChanged += (_, __) => RackSize.Apply();
@@ -233,6 +236,8 @@ namespace Armory
                 {
                     ["armory_rack_name"] = "Armory Rack",
                     ["armory_rack_desc"] = "A masterwork rack for storing and instantly recalling named equipment sets.",
+                    ["armory_rack_small_name"] = "Small Armory Rack",
+                    ["armory_rack_small_desc"] = "The armory rack at two thirds the size, with 40 slots: one viking's sets, in a corner.",
                     ["armory_rename_topic"] = "Armory Name",
                 });
             }

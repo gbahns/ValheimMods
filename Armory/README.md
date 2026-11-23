@@ -15,6 +15,7 @@ The rack is also a real storage container. Drop your alternate gear in, walk up,
 - **In-place swap** — when Load equips a new item, whatever was in that slot gets stored back at the exact grid position the new item came from. Nothing ends up on the action bar unless that's where it was sitting.
 - **Live status** — a green ● on the Load button means you're already wearing this loadout. Missing items show red in the summary text and red in the icon strip.
 - **Compare window** — side-by-side view of your current gear vs. the saved set, with color-coded availability.
+- **Two sizes** — the Armory Rack, 2 m wide and 3 m tall with 72 storage slots, and the Small Armory Rack at two thirds the size with 40, for one viking's sets in a corner. Both take every model, wood, decoration and crown.
 - **Named racks** — point at a rack and press **Shift+[Use]** to name it. The name shows on the hover text and heads both panels, so a wall of racks is readable at a glance.
 - **Personal or shared** — a button in the panel decides whether anyone may open the rack or only the player who built it. Build your own rack, set it to Personal, and your loadouts and the gear behind them are yours.
 - **Optional in-game pause** — config flag pauses the game while the panel is open, the way the ESC menu does. Works by itself solo or hosting alone; on a dedicated server it takes [Pause My Server](https://valheim.thunderstore.io/package/DeathMonger/PauseMyServer/).
@@ -24,7 +25,7 @@ The rack is also a real storage container. Drop your alternate gear in, walk up,
 
 ## How to Use
 
-1. Build an **Armory Rack** from the Hammer menu's **Furniture** tab. Requires a Workbench in range. See [Recipe](#recipe).
+1. Build an **Armory Rack** or a **Small Armory Rack** from the Hammer menu's **Furniture** tab. Requires a Workbench in range. See [Recipe](#recipe).
 2. Press **[Use]** on the rack to open the panel — your inventory and the rack's storage appear alongside it. Each loadout row has an **Equip** button and a menu button (three bars) with Save, Show all cells, Compare and Delete; the steps below say "click Save" and so on, meaning that menu, or the row buttons if you turn those on in the config.
 3. Click **Save** (↓) on a slot to capture what you're currently wearing and the items in hotbar slots 1–8.
 4. Click **Load** (↑) on a saved slot to equip that loadout. Items come from the rack first, then your inventory. Whatever you were wearing gets stored in the slot the loaded item came from.
@@ -43,13 +44,13 @@ Valheim enforces this itself, with the same rule it applies to a personal chest,
 
 ## Recipe
 
-| Material | Quantity |
-|---|---|
-| Fine Wood | 16 |
-| Core Wood | 8 |
-| Bronze Nails | 20 |
-| Bronze | 4 |
-| Resin | 10 |
+| Material | Armory Rack | Small Armory Rack |
+|---|---|---|
+| Fine Wood | 16 | 10 |
+| Core Wood | 8 | 5 |
+| Bronze Nails | 20 | 12 |
+| Bronze | 4 | 3 |
+| Resin | 10 | 6 |
 
 Buildable at the Workbench. Black Forest tier.
 
@@ -64,7 +65,7 @@ The config file is created at `BepInEx/config/GBahns.Armory.cfg` on first run.
 - `Pause Game While Armory Open` (default: false) — pauses the game while the rack panel is open, the way the ESC menu does. It asks the game for the pause rather than stopping your own clock, so it works by itself when you are playing solo or hosting alone, and on a dedicated server it takes [Pause My Server](https://valheim.thunderstore.io/package/DeathMonger/PauseMyServer/) to grant it. Without that mod the request is refused on a server, which is the point — your clock stopping while the server runs on would only desync you. While the pause is in effect, a craft started from the inventory screen cannot finish until you close the rack; the craft timer counts game time.
 
 **\[Storage\]** (synced from the server)
-- `Rack Width` / `Rack Height` (default: 12 × 6) — the rack's storage grid. Every rack takes the new size, standing or not; items left outside a smaller grid are moved into it by whoever opens the rack. A grid taller than the container panel is drawn with smaller cells.
+- `Rack Width` / `Rack Height` (default: 12 × 6) — the Armory Rack's storage grid; the Small Armory Rack follows at two thirds the columns and five sixths the rows (8 × 5 by default). Every rack takes the new size, standing or not; items left outside a smaller grid are moved into it by whoever opens the rack. A grid taller than the container panel is drawn with smaller cells.
 
 **\[Style\]**
 - **Style** button on the Manage Loadouts panel — picks the model, wood and decoration for that one rack, and for the Armoire its crown's shape and height, with a picture of the choice and the rack redrawn as you go, and everyone sees it that way. The metal decorations appear once you have reached that metal. `Use my default` makes it follow the Default settings again. Whoever can manage the rack's loadouts can restyle it, within a ward.

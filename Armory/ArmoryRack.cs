@@ -34,6 +34,18 @@ namespace Armory
         /// <summary>Every rack currently in the world, for settings that reach all of them.</summary>
         internal static readonly HashSet<ArmoryRack> Instances = new HashSet<ArmoryRack>();
 
+        // ── Which piece (#84) ──────────────────────────────────────────────────────────
+        //
+        // The Small Armory Rack is the same component on a second prefab: two thirds the size
+        // in the world and a grid that follows the Rack Width / Rack Height settings at the
+        // same proportion (8×5 at the default 12×6).  Public and unadorned on purpose: a
+        // field set on the prefab reaches every spawned copy only when Unity serializes it.
+        public bool Small;
+
+        /// <summary>The small rack's size against the standard one, in the world and for its icon.</summary>
+        public const float SmallScale = 2f / 3f;
+        public float VisualScale => Small ? SmallScale : 1f;
+
         private void Awake()
         {
             Instances.Add(this);
@@ -199,14 +211,17 @@ namespace Armory
         // publicized assembly would build fine and then throw at runtime.
         private static readonly FieldInfo _inventoryName = AccessTools.Field(typeof(Inventory), "m_name");
 
-        /// <summary>The rack's name, or "Armory" when it has not been given one.</summary>
+        /// <summary>What this rack is called until someone names it: "Armory", or "Small Armory".</summary>
+        public string DefaultRackName => Small ? "Small Armory" : DefaultName;
+
+        /// <summary>The rack's name, or its default when it has not been given one.</summary>
         public string RackName
         {
             get
             {
-                if (m_nview == null || !m_nview.IsValid()) return DefaultName;
+                if (m_nview == null || !m_nview.IsValid()) return DefaultRackName;
                 var stored = m_nview.GetZDO().GetString(NameKey, "");
-                return string.IsNullOrEmpty(stored) ? DefaultName : stored;
+                return string.IsNullOrEmpty(stored) ? DefaultRackName : stored;
             }
         }
 

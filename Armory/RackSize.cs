@@ -29,17 +29,26 @@ namespace Armory
         public static int Width  => Mathf.Clamp(ArmoryMod.RackWidth?.Value  ?? DefaultWidth,  1, MaxWidth);
         public static int Height => Mathf.Clamp(ArmoryMod.RackHeight?.Value ?? DefaultHeight, 1, MaxHeight);
 
-        /// <summary>Put the configured size on the prefab and on every rack in the world.</summary>
+        // The Small Armory Rack (#84) holds the 8×5 the standard rack had before 2.2.1, and
+        // follows the two settings at that proportion rather than with settings of its own.
+        public const float SmallWidthRatio  = 8f / 12f;
+        public const float SmallHeightRatio = 5f / 6f;
+        public static int SmallWidth  => Mathf.Max(1, Mathf.RoundToInt(Width  * SmallWidthRatio));
+        public static int SmallHeight => Mathf.Max(1, Mathf.RoundToInt(Height * SmallHeightRatio));
+
+        public static int WidthFor(bool small)  => small ? SmallWidth  : Width;
+        public static int HeightFor(bool small) => small ? SmallHeight : Height;
+
+        /// <summary>Put the configured size on both prefabs and on every rack in the world.</summary>
         internal static void Apply()
         {
-            int w = Width, h = Height;
-
-            var prefab = ArmoryPieces.Prefab;
-            var prefabContainer = prefab != null ? prefab.GetComponent<Container>() : null;
-            if (prefabContainer != null)
+            foreach (var prefab in ArmoryPieces.Prefabs)
             {
-                prefabContainer.m_width  = w;
-                prefabContainer.m_height = h;
+                var prefabContainer = prefab.GetComponent<Container>();
+                var kind            = prefab.GetComponent<ArmoryRack>();
+                if (prefabContainer == null || kind == null) continue;
+                prefabContainer.m_width  = WidthFor(kind.Small);
+                prefabContainer.m_height = HeightFor(kind.Small);
             }
 
             int updated = 0;
@@ -48,6 +57,7 @@ namespace Armory
                 if (rack == null) continue;
                 var storage = rack.GetStorage();
                 if (storage == null) continue;
+                int w = WidthFor(rack.Small), h = HeightFor(rack.Small);
                 if (storage.m_width == w && storage.m_height == h) continue;
                 storage.m_width  = w;
                 storage.m_height = h;
@@ -62,7 +72,7 @@ namespace Armory
                     LoadoutManager.MigrateOutOfBoundsItems(inventory);
                 updated++;
             }
-            Jotunn.Logger.LogInfo($"[Armory] Rack storage {w}x{h} ({w * h} slots); {updated} rack(s) in the world resized.");
+            Jotunn.Logger.LogInfo($"[Armory] Rack storage {Width}x{Height} ({Width * Height} slots), small {SmallWidth}x{SmallHeight} ({SmallWidth * SmallHeight}); {updated} rack(s) in the world resized.");
         }
     }
 

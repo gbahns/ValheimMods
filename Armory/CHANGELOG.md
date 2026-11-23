@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.5.0 — 2026-11-22
+
+**Everyone updates together:** a second piece, which a client without it cannot see, so 2.5.0 is the floor.
+
+- A **Small Armory Rack** (#84): two thirds the size, 40 storage slots (8×5) at the default settings and following `Rack Width` / `Rack Height` at that proportion, the same models, woods, decorations and Style picker, its own hammer icon, and a recipe of 10 fine wood, 5 core wood, 12 bronze nails, 3 bronze and 6 resin. It sits before the Armory Rack in the Furniture tab, and is called "Small Armory" until named.
+
 ## 2.4.0 — 2026-11-15
 
 - Copy and Paste carry loadouts between racks (#85): Copy on the panel takes every loadout here, a row's menu takes that one; Paste fills the other rack's empty slots and adds slots for the rest. The definitions travel, not the items, and gear the new rack does not hold shows as missing. The clipboard lives in your character's save, so it survives logout and goes to any world.

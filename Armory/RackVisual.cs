@@ -86,7 +86,8 @@ namespace Armory
 
         // The footprint both looks fill, and the collider: 2 m wide, 3 m tall, 1 m deep,
         // standing on y = 0 with the doors on +Z.  Tried shorter (2.2 and 2.6 m) and asked back
-        // to the Panels height.
+        // to the Panels height.  The Small Armory Rack is this at ArmoryRack.SmallScale: the
+        // whole look is built in these units and the ArmoryVisual child is scaled (#84).
         public const float Width = 2f, Height = 3f, Depth = 1f;
 
         // The settings: what a rack wears until someone gives it its own style.
@@ -140,6 +141,13 @@ namespace Armory
             Build(rack, own != null ? own.EffectiveStyle : Defaults);
         }
 
+        /// <summary>Builds the given look at the rack's own size: full, or the small rack's.</summary>
+        internal static void Build(GameObject rack, RackStyle style)
+        {
+            var own = rack.GetComponent<ArmoryRack>();
+            Build(rack, style, own != null ? own.VisualScale : 1f);
+        }
+
         /// <summary>Redraws one standing rack and tells the game's caches and the rack itself.</summary>
         internal static void Rebuild(ArmoryRack rack)
         {
@@ -150,8 +158,9 @@ namespace Armory
             rack.NoteApplied(style);
         }
 
-        /// <summary>Builds the given look under a fresh ArmoryVisual child, replacing any previous one.</summary>
-        internal static void Build(GameObject rack, RackStyle style)
+        /// <summary>Builds the given look under a fresh ArmoryVisual child, replacing any previous
+        /// one, at the given scale (1 = the standard rack's 2 × 3 × 1 m).</summary>
+        internal static void Build(GameObject rack, RackStyle style, float scale)
         {
             var model = style.Model; var decor = style.Decor; var wood = style.Wood;
             var old = rack.transform.Find(RootName);
@@ -160,12 +169,13 @@ namespace Armory
             var root = new GameObject(RootName);
             root.layer = rack.layer;
             root.transform.SetParent(rack.transform, false);
+            root.transform.localScale = Vector3.one * scale;
 
             var col = rack.GetComponent<BoxCollider>();
             if (col != null)
             {
-                col.center = new Vector3(0f, Height / 2f, 0f);
-                col.size   = new Vector3(Width, Height, Depth);
+                col.center = new Vector3(0f, Height * scale / 2f, 0f);
+                col.size   = new Vector3(Width, Height, Depth) * scale;
             }
 
             switch (model)
@@ -244,10 +254,10 @@ namespace Armory
             return float.IsInfinity(face) ? 0f : face;
         }
 
-        /// <summary>A style setting changed: redraw the prefab and every standing rack that follows it.</summary>
+        /// <summary>A style setting changed: redraw the prefabs and every standing rack that follows them.</summary>
         internal static void RebuildAll()
         {
-            if (ArmoryPieces.Prefab != null) Build(ArmoryPieces.Prefab);
+            foreach (var prefab in ArmoryPieces.Prefabs) Build(prefab);
             int n = 0;
             foreach (var rack in ArmoryRack.Instances)
             {
