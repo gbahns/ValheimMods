@@ -29,6 +29,13 @@ namespace TheGreatestMap
         Seeds,
         Plants,
         Campfire,
+        /// <summary>
+        /// Retired in 4.14.0, when it became Fish and BigGame, and kept because the word is in
+        /// every map that ever recorded one: a kind is stored as the name of its enum member,
+        /// so deleting this would turn a serpent somebody marked into a marker of no kind at
+        /// all. Nothing offers it, because Categories.All leaves it out; nothing is ever filed
+        /// under it, because SharedPin.KindCategory reads it as one of the other two.
+        /// </summary>
         Sighting,
         Player,
         Ship,
@@ -37,6 +44,11 @@ namespace TheGreatestMap
         Workbench,
         DrakeNest,
         HildirQuest,
+        // Added at the end, where a new kind belongs: a kind is stored as the name of its enum
+        // member rather than its number, so the order here is nobody's business but the
+        // reader's -- but there is no reason to make a diff of the whole list to find out.
+        Fish,
+        BigGame,
     }
 
     /// <summary>
@@ -137,6 +149,8 @@ namespace TheGreatestMap
                 case Category.Seeds:
                 case Category.Plants:
                 case Category.Ore:       return Group.Resources;
+                case Category.Fish:
+                case Category.BigGame:
                 case Category.Sighting:  return Group.Yours;
                 case Category.Ship:
                 case Category.Cart:
@@ -234,7 +248,25 @@ namespace TheGreatestMap
             }
         }
 
-        internal static readonly Category[] All = (Category[])Enum.GetValues(typeof(Category));
+        /// <summary>
+        /// Every kind still offered: the ones that get a row, a switch and their own settings.
+        ///
+        /// <para>Not simply every member of the enum, because a retired kind has to stay in the
+        /// enum to be read back out of a map that stored it. Offering one would give a player a
+        /// row nothing can ever be filed under and a pair of settings that do nothing.</para>
+        /// </summary>
+        internal static readonly Category[] All = StillOffered();
+
+        /// <summary>A kind no longer offered, kept in the enum so old maps still parse.</summary>
+        internal static bool Retired(Category c) => c == Category.Sighting;
+
+        private static Category[] StillOffered()
+        {
+            var all = (Category[])Enum.GetValues(typeof(Category));
+            var kept = new System.Collections.Generic.List<Category>(all.Length);
+            foreach (var c in all) if (!Retired(c)) kept.Add(c);
+            return kept.ToArray();
+        }
 
         internal static bool UsesPrefabList(Category c) =>
             c != Category.Runestone && c != Category.Portal && !IsPlacedOnly(c) && !IsLive(c);
@@ -323,7 +355,8 @@ namespace TheGreatestMap
         /// all be answers to a question never asked, and it is not listed in any prefab catalog.
         /// </summary>
         internal static bool IsPlacedOnly(Category c) =>
-            c == Category.Sighting || c == Category.Player;
+            c == Category.Fish || c == Category.BigGame
+            || c == Category.Sighting || c == Category.Player;
 
         internal static string Label(Category c)
         {
@@ -343,6 +376,9 @@ namespace TheGreatestMap
                 case Category.Campfire:  return "Campfires";
                 case Category.Workbench: return "Workbenches";
                 case Category.Sighting:  return "Sightings";
+                // Two words, and the space is deliberate: a label becomes part of a BepInEx
+                // config key ("Show Big Game"), where a space is fine and an apostrophe is not.
+                case Category.BigGame:   return "Big Game";
                 case Category.Player:    return "Players";
                 case Category.Ship:      return "Ships";
                 case Category.Cart:      return "Carts";
@@ -485,6 +521,10 @@ namespace TheGreatestMap
                 case Category.Campfire:  return "piece:fire_pit"; // the campfire's own build-menu picture
                 case Category.Workbench: return "piece:piece_workbench";
                 case Category.Sighting:  return "TrophySerpent";
+                case Category.BigGame:   return "TrophySerpent";
+                // A perch: the fish anybody has seen, standing for the rest. Only the fallback
+                // -- every fish in the list wears its own.
+                case Category.Fish:      return "Fish1";
                 // Not "pin:Player": that is the vanilla type the game draws other players with,
                 // and the game refuses to let a player place one by hand, so a marker armed with
                 // it is never taken onto the shared map. Same picture, our own pin.

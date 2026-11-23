@@ -593,7 +593,8 @@ namespace TheGreatestMap
                 list.Add(type);
             }
             AddPlaceTypes();
-            AddSightingOffers();
+            AddOffers(Category.Fish);
+            AddOffers(Category.BigGame);
 
             var panel = MenuKit.Panel(parent, "TGM_KindMenu");
             _root = panel.gameObject;
@@ -1046,12 +1047,11 @@ namespace TheGreatestMap
         }
 
         /// <summary>
-        /// The pictures a sighting can wear, as rows under Sightings whether one has been placed
-        /// or not.
+        /// The pictures a kind offers, as rows under it whether one has been placed or not.
         ///
-        /// <para>The only kind that needs this, and <see cref="Sightings"/> says why: nothing
+        /// <para>Only Fish and Big Game need this, and <see cref="Sightings"/> says why: nothing
         /// records a sighting, so reading the map can only ever list the pictures a player has
-        /// already managed to place, and until this there was one of those.</para>
+        /// already managed to place.</para>
         ///
         /// <para>The offered order wins, and rows read off the map are matched into it by
         /// picture so that a serpent you have marked is the serpent row rather than a second one
@@ -1059,18 +1059,23 @@ namespace TheGreatestMap
         /// sightings wearing it, and a list that dropped them would be hiding markers that are on
         /// the map.</para>
         /// </summary>
-        private static void AddSightingOffers()
+        private static void AddOffers(Category kind)
         {
-            var offered = Sightings.Offered();
+            var offered = Sightings.Offered(kind);
             if (offered.Count == 0) return;
             List<Focus.TypeCount> placed;
-            _types.TryGetValue(Category.Sighting, out placed);
+            _types.TryGetValue(kind, out placed);
             var rows = new List<Focus.TypeCount>();
-            foreach (var icon in offered)
+            foreach (var offer in offered)
             {
-                var have = placed != null ? Holding(placed, icon) : null;
+                var have = placed != null ? Holding(placed, offer.Icon) : null;
                 if (have != null)
                 {
+                    // The offered name wins over the one read back off the marker. A marker is
+                    // named after the item whose picture it wears unless something says
+                    // otherwise, and "Serpent trophy" over a row of serpent sightings is naming
+                    // the picture rather than the thing that was seen.
+                    have.Label = offer.Label;
                     rows.Add(have);
                     placed.Remove(have);
                     continue;
@@ -1084,14 +1089,14 @@ namespace TheGreatestMap
                     // Offering the row on that list would have hidden the row's own picture in a
                     // place nothing reads when the markers are drawn, so the switch would have
                     // looked like it worked and hidden nothing.
-                    Icon = icon,
+                    Icon = offer.Icon,
                     // Count left at zero, which is what keeps "(0)" off the row: see Named.
-                    Label = IconRegistry.DisplayName(icon) ?? Categories.Label(Category.Sighting),
-                    Kind = Category.Sighting,
+                    Label = offer.Label,
+                    Kind = kind,
                 });
             }
             if (placed != null) rows.AddRange(placed);
-            _types[Category.Sighting] = rows;
+            _types[kind] = rows;
         }
 
         /// <summary>The kinds whose recorded types this pass has already taken out, once each.</summary>
@@ -2135,6 +2140,11 @@ namespace TheGreatestMap
                 ClientPins.Restyle();
                 Refresh();
             });
+            // Right-click anywhere along the row does what its "+" does. The button is small and
+            // only shows under the pointer, while the row is the thing already being pointed at
+            // -- and a right click here has no other meaning, the marker menu being on the map
+            // rather than in this list.
+            if (onPlace != null) MenuKit.AlsoOnRightClick(row.gameObject, onPlace);
             Place(row, x, y, RowWidth, RowHeight);
             var entry = new Entry { Shown = shown, Caption = caption, Head = head, Tint = tint };
             MenuKit.Tip(row.gameObject, null, tip);

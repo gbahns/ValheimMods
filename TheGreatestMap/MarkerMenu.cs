@@ -957,6 +957,31 @@ namespace TheGreatestMap
             public void OnPointerExit(PointerEventData e) { if (Background != null) Background.color = RowColor; }
         }
 
+        /// <summary>
+        /// A second meaning for something already clickable: the same thing again, on a right
+        /// click.
+        ///
+        /// <para>A handler of its own beside the Button rather than a change to it. Unity's
+        /// Button is left-click only -- it returns on any other button -- so the two never
+        /// disagree about which one a click was.</para>
+        /// </summary>
+        internal static void AlsoOnRightClick(GameObject go, Action act)
+        {
+            if (go == null || act == null) return;
+            go.AddComponent<RightClick>().Act = act;
+        }
+
+        internal sealed class RightClick : MonoBehaviour, IPointerClickHandler
+        {
+            public Action Act;
+
+            public void OnPointerClick(PointerEventData e)
+            {
+                if (e == null || Act == null || e.button != PointerEventData.InputButton.Right) return;
+                Act();
+            }
+        }
+
         /// <summary>A clickable row; a disabled one is dimmed and inert.</summary>
         internal static RectTransform Row(Transform parent, string label, bool enabled, Action onClick)
         {

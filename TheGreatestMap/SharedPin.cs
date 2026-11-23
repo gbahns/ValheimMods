@@ -184,8 +184,23 @@ namespace TheGreatestMap
             {
                 if (!_kindParsed)
                 {
+                    if (!string.IsNullOrEmpty(Kind) && Enum.TryParse(Kind, true, out Category parsed))
+                    {
+                        if (parsed == Category.Sighting)
+                        {
+                            // Sightings were one kind until 4.14.0 and are Fish and Big Game
+                            // now. Read rather than rewritten: see Sightings.Refile. Until the
+                            // item database is up it cannot say which, and the answer would be
+                            // remembered, so nothing is settled yet and this is asked again --
+                            // the marker is briefly of no kind, which is what it would have
+                            // been anyway.
+                            var refiled = Sightings.Refile(Icon);
+                            if (!refiled.HasValue) return null;
+                            _kind = refiled;
+                        }
+                        else _kind = parsed;
+                    }
                     _kindParsed = true;
-                    if (!string.IsNullOrEmpty(Kind) && Enum.TryParse(Kind, true, out Category parsed)) _kind = parsed;
                 }
                 return _kind;
             }
