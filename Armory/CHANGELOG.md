@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.5.1 — 2026-11-23
+
+- The Armory Rack is an Iron Age piece: 20 iron nails and 5 iron in place of 20 bronze nails and 4 bronze. The Small Armory Rack keeps its bronze recipe, so it is the one a Black Forest base can build. Racks already built are unaffected and return the new amounts when dismantled.
+
 ## 2.5.0 — 2026-11-22
 
 **Everyone updates together:** a second piece, which a client without it cannot see, so 2.5.0 is the floor.

@@ -39,15 +39,16 @@ namespace Armory
             public GameObject   Clone;         // once Phase 1 has run
         }
 
-        // Black Forest tier (Bronze Age), priced to the piece: some 24 m² of board (about twice
-        // the game's wardrobe), a core-wood carcass, a full ingot's worth of nails, an ingot per
-        // strap hinge, and resin for the finish.  The small rack is two thirds of it.
+        // Priced to the piece: some 24 m² of board (about twice the game's wardrobe), a core-wood
+        // carcass, a full ingot's worth of nails, an ingot per strap hinge and one to spare, and
+        // resin for the finish.  The standard rack is Swamp tier (iron), the small one two thirds
+        // of it in bronze, so the small rack is the one a Bronze Age base can build.
         private static readonly Kind Standard = new Kind
         {
             PrefabName = "armory_rack", NameKey = "$armory_rack_name", DescKey = "$armory_rack_desc",
             DisplayName = "Armory Rack", Small = false,
-            Recipe = new[] { new Ingredient("FineWood", 16), new Ingredient("RoundLog", 8), new Ingredient("BronzeNails", 20),
-                             new Ingredient("Bronze", 4), new Ingredient("Resin", 10) },
+            Recipe = new[] { new Ingredient("FineWood", 16), new Ingredient("RoundLog", 8), new Ingredient("IronNails", 20),
+                             new Ingredient("Iron", 5), new Ingredient("Resin", 10) },
         };
         private static readonly Kind SmallKind = new Kind
         {

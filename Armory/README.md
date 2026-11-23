@@ -48,11 +48,13 @@ Valheim enforces this itself, with the same rule it applies to a personal chest,
 |---|---|---|
 | Fine Wood | 16 | 10 |
 | Core Wood | 8 | 5 |
-| Bronze Nails | 20 | 12 |
-| Bronze | 4 | 3 |
+| Iron Nails | 20 | — |
+| Iron | 5 | — |
+| Bronze Nails | — | 12 |
+| Bronze | — | 3 |
 | Resin | 10 | 6 |
 
-Buildable at the Workbench. Black Forest tier.
+Buildable at the Workbench. The Small Armory Rack is Black Forest tier; the Armory Rack is Swamp tier.
 
 ---
 

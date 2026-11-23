@@ -32,7 +32,7 @@ namespace Armory
     {
         public const string ModGuid    = "GBahns.Armory";
         public const string ModName    = "Armory";
-        public const string ModVersion = "2.5.0";
+        public const string ModVersion = "2.5.1";
 
         // 2.1.0: the rack's grid is a synced setting an older client does not have, and a client
         // on a different grid than the rack's owner opens rows it cannot see.  2.5.0: a second
