@@ -593,6 +593,7 @@ namespace TheGreatestMap
                 list.Add(type);
             }
             AddPlaceTypes();
+            AddSightingOffers();
 
             var panel = MenuKit.Panel(parent, "TGM_KindMenu");
             _root = panel.gameObject;
@@ -1042,6 +1043,55 @@ namespace TheGreatestMap
                 if (!_types.TryGetValue(kv.Key, out var list)) _types[kv.Key] = list = new List<Focus.TypeCount>();
                 list.AddRange(kv.Value);
             }
+        }
+
+        /// <summary>
+        /// The pictures a sighting can wear, as rows under Sightings whether one has been placed
+        /// or not.
+        ///
+        /// <para>The only kind that needs this, and <see cref="Sightings"/> says why: nothing
+        /// records a sighting, so reading the map can only ever list the pictures a player has
+        /// already managed to place, and until this there was one of those.</para>
+        ///
+        /// <para>The offered order wins, and rows read off the map are matched into it by
+        /// picture so that a serpent you have marked is the serpent row rather than a second one
+        /// beside it. A picture that is not offered keeps its row at the end: somebody has
+        /// sightings wearing it, and a list that dropped them would be hiding markers that are on
+        /// the map.</para>
+        /// </summary>
+        private static void AddSightingOffers()
+        {
+            var offered = Sightings.Offered();
+            if (offered.Count == 0) return;
+            List<Focus.TypeCount> placed;
+            _types.TryGetValue(Category.Sighting, out placed);
+            var rows = new List<Focus.TypeCount>();
+            foreach (var icon in offered)
+            {
+                var have = placed != null ? Holding(placed, icon) : null;
+                if (have != null)
+                {
+                    rows.Add(have);
+                    placed.Remove(have);
+                    continue;
+                }
+                rows.Add(new Focus.TypeCount
+                {
+                    // Place stays false, which is not a detail. It decides which list the row's
+                    // switch writes to, and a sighting is hidden by its picture like any other
+                    // marker this mod wrote -- Place is for the places the game marks itself,
+                    // which are switched on a list of their own (see TgmConfig.IsPlaceHidden).
+                    // Offering the row on that list would have hidden the row's own picture in a
+                    // place nothing reads when the markers are drawn, so the switch would have
+                    // looked like it worked and hidden nothing.
+                    Icon = icon,
+                    // Count left at zero, which is what keeps "(0)" off the row: see Named.
+                    Label = IconRegistry.DisplayName(icon) ?? Categories.Label(Category.Sighting),
+                    Kind = Category.Sighting,
+                });
+            }
+            if (placed != null) rows.AddRange(placed);
+            _types[Category.Sighting] = rows;
         }
 
         /// <summary>The kinds whose recorded types this pass has already taken out, once each.</summary>

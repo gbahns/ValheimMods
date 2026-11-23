@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.13.0 — unreleased
+
+- Sightings has a row for each thing you might have seen, instead of one serpent: every fish in
+  the game, both serpents, the bear, the vile and the gjall. Each row has its own picture, its own
+  switch, and a "+" to write down that you saw one.
+
 ## 4.12.1 — 2026-11-22
 
 - Fixed: with Sharing Mode on Table, a character arriving in a world for the first time was handed

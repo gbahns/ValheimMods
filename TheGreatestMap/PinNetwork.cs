@@ -462,6 +462,7 @@ namespace TheGreatestMap
             Buildings.Clear();
             Searched.Clear();
             KindInference.Invalidate();
+            Sightings.Invalidate();
             PocketMap.ResetState();
             TableSync.Reset();
             if (PinStore.IsServer) PinStore.Load();
