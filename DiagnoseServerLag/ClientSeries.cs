@@ -34,7 +34,17 @@ namespace DiagnoseServerLag
         // 1: five columns, uncompressed. 2: every field, compressed. Both are still read,
         // because clients update on their own schedule and an old one should be diminished
         // rather than refused.
-        private const byte Layout = 11;
+        //
+        // 12: the three ownership columns. ADDING A FIELD TO SampleWire REQUIRES A BUMP HERE.
+        // The samples are packed back to back inside one compressed block, so a reader that
+        // expects one more field than the writer sent takes those bytes out of the next
+        // sample and every sample after it is shifted, until the block runs out and the whole
+        // series is thrown away. 0.10.24 appended three fields without this bump and a server
+        // running it could not read a 0.10.23 client at all: three of five players vanished
+        // from a capture with nothing but "Unable to read beyond the end of the stream" to say
+        // why. The tail written past the compressed block below is the case where appending
+        // without a bump is safe; this is not that case.
+        private const byte Layout = 12;
 
         /// <summary>One second, as much of it as the group view needs.</summary>
         internal struct Second

@@ -412,9 +412,15 @@ namespace DiagnoseServerLag
                 s.Biome = pkg.ReadInt();
                 s.PosX = pkg.ReadInt();
                 s.PosZ = pkg.ReadInt();
-                s.UnownedAiTransient = pkg.ReadInt();
-                s.UnownedAiOutside = pkg.ReadInt();
-                s.UnownedAiClosest = pkg.ReadSingle();
+                // Gated, unlike the fields above it: these are per sample, and the samples are
+                // packed back to back, so reading three the writer never sent shifts every
+                // later sample. See the Layout note in ClientSeries.
+                if (layout >= 12)
+                {
+                    s.UnownedAiTransient = pkg.ReadInt();
+                    s.UnownedAiOutside = pkg.ReadInt();
+                    s.UnownedAiClosest = pkg.ReadSingle();
+                }
             }
             catch { }
             return s;

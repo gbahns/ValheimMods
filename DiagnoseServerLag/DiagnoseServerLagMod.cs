@@ -1,4 +1,4 @@
-﻿using BepInEx;
+using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
@@ -29,7 +29,7 @@ namespace DiagnoseServerLag
     {
         public const string ModGuid    = "DeathMonger.DiagnoseServerLag";
         public const string ModName    = "Diagnose Server Lag";
-        public const string ModVersion = "0.10.24";
+        public const string ModVersion = "0.10.25";
 
         internal static DiagnoseServerLagMod Instance { get; private set; }
         internal static ManualLogSource Log { get; private set; }

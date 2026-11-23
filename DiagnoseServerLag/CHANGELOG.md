@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.10.25 - 2026-11-23
+
+- **Fixed: a server on 0.10.24 could not read a client on 0.10.23.** The three ownership columns
+  were appended to each sample without bumping the series layout, so the server took those bytes
+  out of the next sample and lost the whole series. Three of five players vanished from a capture
+  on 2026-11-22. Mixed versions work again; a 0.10.23 client is simply missing the three columns.
+
 ## 0.10.24 - 2026-11-22
 
 - **`dsl_hotspots server ...` drives the server's timer** from a client console. The command was
