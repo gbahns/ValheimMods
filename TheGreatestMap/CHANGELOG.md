@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.13.0 — unreleased
+## 4.13.0 — 2026-11-22
 
 - Sightings has a row for each thing you might have seen, instead of one serpent: every fish in
   the game, both serpents, the bear, the vile and the gjall. Each row has its own picture, its own
