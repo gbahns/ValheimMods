@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.12.1 — unreleased
+## 4.12.1 — 2026-11-22
 
 - Fixed: with Sharing Mode on Table, a character arriving in a world for the first time was handed
   the whole shared map on spawn instead of starting blank and merging at a cartography table.
