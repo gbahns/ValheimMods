@@ -63,6 +63,7 @@ namespace DiagnoseServerLag
         private const string RpcClientSeries = "DSL_ClientSeries";     // client -> server, its window
         private const string RpcClientLeft = "DSL_ClientLeft";         // client -> server, its window on the way out
         private const string RpcSession = "DSL_Session";               // client -> server, arm or disarm session capture
+        private const string RpcHotspots = "DSL_Hotspots";             // client -> server, drive its hotspot timer
         private const string RpcEcho = "DSL_Echo";                     // client -> an object owner
         private const string RpcEchoReply = "DSL_EchoReply";           // that owner -> back
 
@@ -151,6 +152,7 @@ namespace DiagnoseServerLag
                 rpc.Register<ZPackage>(RpcClientSeries, RPC_ClientSeries);
                 rpc.Register<ZPackage>(RpcClientLeft, RPC_ClientLeft);
                 rpc.Register<ZPackage>(RpcSession, RPC_Session);
+                rpc.Register<ZPackage>(RpcHotspots, RPC_Hotspots);
                 rpc.Register<ZPackage>(RpcEcho, RPC_Echo);
                 rpc.Register<ZPackage>(RpcEchoReply, RPC_EchoReply);
                 DiagnoseServerLagMod.Log.LogInfo("[DiagnoseServerLag] Diagnostic RPCs registered.");
@@ -1049,6 +1051,45 @@ namespace DiagnoseServerLag
         }
 
         /// <summary>Client side: ask the server to start or stop a session capture.</summary>
+        /// <summary>
+        /// Drives the SERVER's hotspot timer from a client console. Without this the facility is
+        /// unreachable on a dedicated server: the command is local-only, and valheim_server.exe
+        /// runs as a service with no console to type into, so the one machine whose main thread
+        /// everybody shares was the one that could not be profiled.
+        /// </summary>
+        internal static void AskHotspots(string what, string arg)
+        {
+            var rpc = ZRoutedRpc.instance;
+            if (rpc == null) return;
+            var pkg = new ZPackage();
+            pkg.Write(what ?? "");
+            pkg.Write(arg ?? "");
+            rpc.InvokeRoutedRPC(RpcHotspots, pkg);
+        }
+
+        private static void RPC_Hotspots(long sender, ZPackage pkg)
+        {
+            try
+            {
+                if (!Sampler.IsServerHere || pkg == null) return;
+                string what = pkg.ReadString() ?? "";
+                string arg = "";
+                try { arg = pkg.ReadString() ?? ""; } catch { }
+                DiagnoseServerLagMod.Log.LogInfo("[DiagnoseServerLag] hotspots '"
+                    + what + (arg.Length > 0 ? " " + arg : "") + "' asked for by " + NameOfPeer(sender));
+                string reply = Hotspots.Run(what, arg);
+                // The report runs to a few KB, which is nowhere near the limit that kills a Steam
+                // socket - but it is big enough that sending it to everyone would be rude, so it
+                // goes only to the client that asked.
+                ZRoutedRpc.instance?.InvokeRoutedRPC(sender, RpcCaptureResult, Wrap(reply));
+            }
+            catch (Exception e)
+            {
+                DiagnoseServerLagMod.Log.LogWarning(
+                    "[DiagnoseServerLag] Could not run the hotspot command: " + e.Message);
+            }
+        }
+
         internal static void AskSession(bool on, int minutes, bool auto = false)
         {
             var rpc = ZRoutedRpc.instance;

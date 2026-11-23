@@ -32,7 +32,8 @@ namespace DiagnoseServerLag
             "owned_ai,nearby_ai,feed_ms,owned_objects,nearby_objects,unowned_objects,unowned_ai," +
             "system_cpu_pct,nearby_pieces,loading,free_memory_mb,terrain_zones,terrain_bytes," +
             "gpu_ms,cpu_main_ms,cpu_render_ms,main_cpu_ms_sec,settings_rev," +
-            "biome,pos_x,pos_z";
+            "biome,pos_x,pos_z," +
+            "unowned_ai_transient,unowned_ai_outside,unowned_ai_closest_m";
 
         internal static readonly string[] Columns = Header.Split(',');
 
@@ -169,6 +170,10 @@ namespace DiagnoseServerLag
                 BiomeName(s.Biome),
                 s.Biome != 0 ? s.PosX.ToString(c) : "",
                 s.Biome != 0 ? s.PosZ.ToString(c) : "",
+                // Why the ownerless creatures are ownerless. Blank, not zero, for the distance
+                // when there are none to measure - a nearest of 0 m would read as one underfoot.
+                s.UnownedAiTransient.ToString(c), s.UnownedAiOutside.ToString(c),
+                s.UnownedAiClosest >= 0f ? s.UnownedAiClosest.ToString("0.0", c) : "",
             });
 
         internal static string Iso(long ticks) =>

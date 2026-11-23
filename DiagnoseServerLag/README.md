@@ -34,6 +34,11 @@ The six causes it separates:
 | **World loading** | Objects being built into the scene at the moment the frame stalled |
 | **Your machine** | Frame times, but only claimed once the other five have been measured and ruled out |
 
+It also reports creatures **nobody owns**. Vanilla hides an ownerless creature, runs no AI for it
+and drops every hit on it, so one can be stood on and neither seen nor killed. The `unowned` line
+says how many there are, how many are out of ownership range, how many are transient ZDOs the
+game will never hand over, and how far off the nearest one is.
+
 More than one can be true at once and often is — a saturated link and heavy churn are usually one event seen from two ends — so the report ranks them and shows the rest under the headline.
 
 ## Why it needs the server
@@ -98,13 +103,19 @@ server      33.3 ms  412669 obj
 | `dsl_nearby [kinds]` | What is loaded around you, counted by prefab - pieces listed apart from everything else |
 | `dsl_cpu` | What this process is costing the machine, and how much headroom is left |
 | `dsl_dump` | Write every measured second to a CSV under `BepInEx/config/DiagnoseServerLag/` |
+| `dsl_hotspots on` / `off` | Time the main thread per named method. Off by default - it patches hot vanilla methods |
+| `dsl_hotspots` | Read the current window: ms/s, per call, calls/s, and the worst single call |
+| `dsl_hotspots mods` | Also time the per-frame methods other mods define, then reset |
+| `dsl_hotspots server ...` | Any of the above against the **server** instead of this client |
 | `dsl_reset` | Forget the history and rebuild the baseline |
 
 `dsl_bench start` exists because the capture worth having is usually the one covering the end of the evening, and by then whoever would have typed `dsl_bench` has logged off. The server keeps capturing on its own, each file picking up where the last one ended, and takes a final one shortly after the last player leaves. It stops itself there; nothing runs on a server whose admin did not ask for it.
 
 Turn **Session Capture** on and you never have to type it. Set on a server or a host it arms itself when the world comes up; set on a client it asks the server when you join, which is how to get session captures out of a server whose configuration you cannot edit. It is off by default, an empty server takes no periodic captures, and `dsl_bench stop` still ends it until the server restarts.
 
-A Valheim dedicated server has no console to type into — it reads nothing from stdin — so every command here runs on a **client**. To measure the server itself, an admin runs `dsl_bench`, which asks the server to capture itself and prints its reply in your console alongside the local capture.
+A Valheim dedicated server has no console to type into — it reads nothing from stdin — so every command here runs on a **client**. To measure the server itself, an admin runs `dsl_bench`, which asks the server to capture itself and prints its reply in your console alongside the local capture. `dsl_hotspots server ...` reaches it the same way, which is the only route to a per-method breakdown of the one main thread everybody shares.
+
+**`worst ms` is the column for a rare stall.** Everything else in the report is divided by the length of the window, so a 750 ms hitch once an hour reads as 0.2 ms/s and disappears. The worst single call does not shrink as the window grows, so leave the timer on and read it later rather than trying to be there when it happens.
 
 ## Diagnosing a session, not just a machine
 

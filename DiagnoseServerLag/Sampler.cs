@@ -622,11 +622,34 @@ namespace DiagnoseServerLag
         /// </summary>
         private static void CountOwnedAI(ref Sample s)
         {
+            // Set before anything can return early: 0 would read as a creature underfoot.
+            s.UnownedAiClosest = -1f;
             try
             {
                 var instances = BaseAI.Instances;
                 if (instances == null) return;
-                int owned = 0, near = 0, unownedAI = 0;
+                int owned = 0, near = 0, unownedAI = 0, transient = 0, outside = 0;
+                float closest = -1f;
+
+                // The centre vanilla measures its active area from. ZDOMan.IsInPeerActiveArea
+                // uses exactly this for the local session, and for a client the server runs the
+                // same test against the reference position this machine reported - so asking it
+                // here gives the answer the handout pass will give, not an approximation of it.
+                Vector3 area = Vector3.zero; bool haveArea = false;
+                try
+                {
+                    var net = ZNet.instance;
+                    if (net != null) { area = net.GetReferencePosition(); haveArea = true; }
+                }
+                catch { }
+
+                Vector3 me = Vector3.zero; bool haveMe = false;
+                try
+                {
+                    var who = Player.m_localPlayer;
+                    if (who != null) { me = who.transform.position; haveMe = true; }
+                }
+                catch { }
                 _otherOwners.Clear();
                 for (int i = 0; i < instances.Count; i++)
                 {
@@ -642,13 +665,31 @@ namespace DiagnoseServerLag
                     var zdo = view.GetZDO();
                     if (zdo == null) continue;
                     long other = zdo.GetOwner();
-                    if (other == 0L) { unownedAI++; continue; }   // nobody is running its AI
+                    if (other == 0L)
+                    {
+                        // Nobody is running its AI - and these three say why, which is the
+                        // difference between knowing a creature is inert and being able to fix it.
+                        unownedAI++;
+                        if (!zdo.Persistent) transient++;
+                        var at = zdo.GetPosition();
+                        if (haveArea && !ZNetScene.InActiveArea(at, area)) outside++;
+                        if (haveMe)
+                        {
+                            float dx = at.x - me.x, dz = at.z - me.z;
+                            float d = Mathf.Sqrt(dx * dx + dz * dz);
+                            if (closest < 0f || d < closest) closest = d;
+                        }
+                        continue;
+                    }
                     _otherOwners.TryGetValue(other, out int n);
                     _otherOwners[other] = n + 1;
                 }
                 s.OwnedAI = owned;
                 s.NearbyAI = near;
                 s.UnownedAI = unownedAI;
+                s.UnownedAiTransient = transient;
+                s.UnownedAiOutside = outside;
+                s.UnownedAiClosest = closest;
                 s.FeedMs = Feed.IntervalMs;
                 CountOwnedObjects(ref s);
                 CountPlayers();

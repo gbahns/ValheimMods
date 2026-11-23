@@ -227,93 +227,41 @@ namespace DiagnoseServerLag
             // the loss is spread across every frame rather than concentrated in a tail (so not GC
             // pauses), and that ZDO count, heap, travel and every graphics setting are correlates
             // that fail as causes.
-            new Terminal.ConsoleCommand("dsl_hotspots", "Diagnose Server Lag: time the main thread per method ('on', 'off', 'reset', 'patches', 'mods', 'drill Type.Method', or nothing to read it)",
+            new Terminal.ConsoleCommand("dsl_hotspots", "Diagnose Server Lag: time the main thread per method ('on', 'off', 'reset', 'patches', 'mods', 'drill Type.Method', or nothing to read it). Put 'server' first to drive the server's timer instead of this client's",
                 (Terminal.ConsoleEvent)(args =>
                 {
                     string what = args.Length > 1 ? args[1].ToLowerInvariant() : "";
-                    switch (what)
+
+                    // 'server' sends the rest to the server instead of timing this client. It is
+                    // opt-in rather than the default on purpose: this command exists to profile
+                    // the local main thread, which is what found Hud.Update at 26 ms a call, and
+                    // silently redirecting it would have taken that away.
+                    if (what == "server" || what == "srv")
                     {
-                        case "on":
-                        case "start":
-                            args.Context?.AddString(Hotspots.Start());
-                            return;
-                        case "off":
-                        case "stop":
-                            args.Context?.AddString(Hotspots.Stop());
-                            return;
-                        case "patches":
-                        case "who":
+                        if (!Sampler.IsServerHere && LagNetwork.Module == ServerModule.Absent)
                         {
-                            string who = Hotspots.Patches().TrimEnd();
-                            args.Context?.AddString(who);
-                            DiagnoseServerLagMod.Log.LogInfo("[DiagnoseServerLag] hotspot patches\n" + who);
-                            return;
-                        }
-                        case "mods":
-                        {
-                            // Times the per-frame methods mods define themselves, which drill
-                            // cannot reach: a MonoBehaviour.Update is dispatched by Unity, not
-                            // through a Harmony wrapper, so it has no patch record to walk.
-                            string filter = args.Length > 2 ? args[2] : "";
-                            string said = Hotspots.Mods(filter);
-                            args.Context?.AddString(said);
-                            return;
-                        }
-                        case "drill":
-                        {
-                            // Times each mod patch inside one method, so a hot entry names a
-                            // culprit rather than only a method. Harmony emits calls to patch
-                            // methods rather than inlining them, so they can be patched in turn.
-                            if (args.Length < 3)
-                            {
-                                args.Context?.AddString(
-                                    "dsl_hotspots drill needs a method, as Type.Method - for example " +
-                                    "'dsl_hotspots drill Hud.Update'. Run 'dsl_hotspots patches' to see " +
-                                    "which ones have anything worth drilling into.");
-                                return;
-                            }
-                            string spec = args[2];
-                            int dot = spec.LastIndexOf('.');
-                            if (dot <= 0 || dot == spec.Length - 1)
-                            {
-                                args.Context?.AddString(
-                                    "'" + spec + "' is not Type.Method - try 'dsl_hotspots drill Hud.Update'.");
-                                return;
-                            }
-                            string said = Hotspots.Drill(spec.Substring(0, dot), spec.Substring(dot + 1));
-                            args.Context?.AddString(said);
-                            return;
-                        }
-                        case "reset":
-                            if (!Hotspots.Running)
-                            {
-                                args.Context?.AddString("Hotspot timing is off. Run: dsl_hotspots on");
-                                return;
-                            }
-                            Hotspots.Reset();
-                            args.Context?.AddString("counters reset - play for a few minutes, then dsl_hotspots");
-                            return;
-                        case "":
-                        {
-                            // Logged as well as printed. The first real window of this was lost
-                            // because it only ever existed on screen: the console cannot be
-                            // copied out of easily, the counters live in the running process, and
-                            // a rebuild to add the logging would have restarted the game and
-                            // discarded them. Every other report here goes to both.
-                            string report = Hotspots.Report().TrimEnd();
-                            args.Context?.AddString(report);
-                            DiagnoseServerLagMod.Log.LogInfo(
-                                "[DiagnoseServerLag] hotspots\n" + report);
-                            return;
-                        }
-                        default:
                             args.Context?.AddString(
-                                "dsl_hotspots takes 'on', 'off', 'reset', 'patches', " +
-                                "'drill <Type>.<Method>', 'mods [name]', or nothing at all to read " +
-                                "the current window. '" + what + "' is none of those, so nothing " +
-                                "was changed.");
+                                "The server is not running Diagnose Server Lag, so it has no hotspot " +
+                                "timer to drive. Without 'server' this times your own client.");
                             return;
+                        }
+                        string sub = args.Length > 2 ? args[2].ToLowerInvariant() : "";
+                        string subArg = args.Length > 3 ? args[3] : "";
+                        if (Sampler.IsServerHere)
+                        {
+                            // Already on the machine being asked about - a host, or the dedicated
+                            // server's own console. Going out over the wire would come straight back.
+                            args.Context?.AddString(Hotspots.Run(sub, subArg));
+                            return;
+                        }
+                        LagNetwork.AskHotspots(sub, subArg);
+                        args.Context?.AddString("asked the server; its answer will print here. Silence means its Diagnose Server Lag predates this command.");
+                        return;
                     }
+
+                    // Every form of the command goes through one dispatcher, shared with the
+                    // routed RPC above, so the local and server paths cannot answer differently.
+                    args.Context?.AddString(Hotspots.Run(what, args.Length > 2 ? args[2] : ""));
                 }));
 
             new Terminal.ConsoleCommand("dsl_reset", "Diagnose Server Lag: forget the measurements and start again",
@@ -564,6 +512,21 @@ namespace DiagnoseServerLag
             Sampler.TryNewest(out var newestAi);
             if (newestAi.NearbyAI > 0)
                 sb.AppendLine($"  simulating      {newestAi.OwnedAI} of {newestAi.NearbyAI} creatures loaded nearby");
+
+            // An ownerless creature is not a slow creature, it is an absent one: vanilla hides
+            // it, runs no AI and drops every hit on it. Worth a line of its own, because the
+            // "simulating 5 of 26" above reads as a load figure and says nothing about that.
+            if (newestAi.UnownedAI > 0)
+            {
+                string split = newestAi.UnownedAiTransient > 0
+                    ? $"{newestAi.UnownedAiTransient} transient, {newestAi.UnownedAiOutside} out of range"
+                    : $"{newestAi.UnownedAiOutside} out of range";
+                string nearest = newestAi.UnownedAiClosest >= 0f
+                    ? $", nearest {newestAi.UnownedAiClosest:0} m"
+                    : "";
+                sb.AppendLine($"  unowned         {newestAi.UnownedAI} creature(s) nobody owns: {split}{nearest}");
+                sb.AppendLine("                  each one is invisible, runs no AI and ignores every hit.");
+            }
             sb.AppendLine($"  object traffic  {Stats.Median(window, x => x.ZdosSent):0}/s out, {Stats.Median(window, x => x.ZdosRecv):0}/s in");
             if (server) sb.AppendLine($"  worst queue     {Stats.Bytes(Stats.Max(window, x => x.SendQueue))}");
 

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.10.24 - 2026-11-22
+
+- **`dsl_hotspots server ...` drives the server's timer** from a client console. The command was
+  local-only, and a dedicated server has no console, so the one main thread everybody shares was
+  the only one that could not be profiled.
+- **An ownerless creature now says why.** `unowned_ai` counted them without separating the two
+  vanilla rules that cause it, so a Gjall that could be stood on but not seen or hurt could not
+  be explained. The bench and the HUD now add `unowned`, and the capture adds
+  `unowned_ai_transient`, `unowned_ai_outside` and `unowned_ai_closest_m`.
+- **The report has a `worst ms` column** - the slowest single call since the last reset. Totals
+  average a rare stall away; this does not, so a once-an-hour spike can be caught by leaving the
+  timer on instead of guessing when it will fire.
+
 ## 0.10.23 - 2026-11-18
 
 - **Fixed: the window a client hands over when it logs out never arrived.** It was sent, accepted,

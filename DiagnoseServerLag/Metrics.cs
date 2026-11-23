@@ -116,6 +116,36 @@ namespace DiagnoseServerLag
         internal int UnownedAI;
 
         /// <summary>
+        /// Why those creatures have no owner, which the count on its own cannot say.
+        ///
+        /// Two vanilla rules leave a creature ownerless and they have different cures.
+        /// ZDOMan.ReleaseNearbyZDOS opens its loop with `if (!tempNearObject.Persistent)
+        /// continue;`, so a transient ZDO is never offered to anybody at any distance. And it
+        /// only hands over what passes ZNetScene.InActiveArea, whose PointInsideActiveArea caps
+        /// the area at 1.5 zones from the zone centre however large the simulation distance is -
+        /// while ZNetScene instantiates out to the full distance. Whatever sits in that gap
+        /// exists and belongs to nobody.
+        ///
+        /// Either way Character.CustomFixedUpdate runs SetVisible(zDO.HasOwner()), which pushes
+        /// the LOD group a million metres away and leaves the colliders alone: the creature is
+        /// invisible, runs no AI, and discards every damage RPC because they are addressed to
+        /// owner 0. Greg met one on 2026-11-20 - a Gjall he could stand on and neither see nor
+        /// hurt - and telling the two causes apart needed a flag read, not more counting.
+        /// </summary>
+        internal int UnownedAiTransient;
+        internal int UnownedAiOutside;
+
+        /// <summary>
+        /// Metres to the nearest ownerless creature, or -1 when there are none or no local
+        /// player to measure from.
+        ///
+        /// This is the column that turns "I was standing on top of it" into a number. The
+        /// active-area rule accounts for a creature 150 m off; it cannot account for one at two
+        /// metres, and only a distance says which of those happened.
+        /// </summary>
+        internal float UnownedAiClosest;
+
+        /// <summary>
         /// The whole machine's busy share, 0 to 1, or -1 when it cannot be read. Everything else
         /// here measures this process; this is the only figure that can tell "the game paused
         /// itself" from "something else took the processor away".
@@ -280,6 +310,9 @@ namespace DiagnoseServerLag
             pkg.Write(s.Biome);
             pkg.Write(s.PosX);
             pkg.Write(s.PosZ);
+            pkg.Write(s.UnownedAiTransient);
+            pkg.Write(s.UnownedAiOutside);
+            pkg.Write(s.UnownedAiClosest);
         }
 
         internal static Sample Read(ZPackage pkg, int layout)
@@ -296,6 +329,7 @@ namespace DiagnoseServerLag
             s.CpuMainMs = -1f;
             s.CpuRenderMs = -1f;
             s.MainCpuMsPerSec = -1f;
+            s.UnownedAiClosest = -1f;
 
             s.At = pkg.ReadSingle();
             s.UtcTicks = pkg.ReadLong();
@@ -378,6 +412,9 @@ namespace DiagnoseServerLag
                 s.Biome = pkg.ReadInt();
                 s.PosX = pkg.ReadInt();
                 s.PosZ = pkg.ReadInt();
+                s.UnownedAiTransient = pkg.ReadInt();
+                s.UnownedAiOutside = pkg.ReadInt();
+                s.UnownedAiClosest = pkg.ReadSingle();
             }
             catch { }
             return s;

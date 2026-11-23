@@ -238,7 +238,7 @@ namespace DiagnoseServerLag
                 // Not an owner, but it belongs in the table or the arithmetic does not close: these
                 // are loaded and nobody is simulating them at all.
                 if (s.UnownedObjects > 0 || s.UnownedAI > 0)
-                    lines.Add(Line("unowned", Holding(s.UnownedObjects, s.UnownedAI, null), 0));
+                    lines.Add(Line("unowned", Holding(s.UnownedObjects, s.UnownedAI, UnownedWhy(s)), 0));
 
                 lines.Add(Line("total", Holding(s.NearbyObjects, s.NearbyAI, null), 0));
 
@@ -319,6 +319,24 @@ namespace DiagnoseServerLag
         /// <summary>One holding, in the shared column shape every row of the table uses.</summary>
         private static string Holding(int objects, int creatures, string cost) =>
             $"{objects,5} obj {creatures,3} mob" + (cost == null ? "" : $"   {cost}");
+
+        /// <summary>
+        /// Why the ownerless creatures are ownerless, in the width a HUD row has.
+        ///
+        /// The distance is the part worth reading in the moment: out of range explains a
+        /// creature across the valley, and nothing explains one at two metres, so seeing the
+        /// nearest while it is happening is what tells those apart without opening a capture.
+        /// </summary>
+        private static string UnownedWhy(Sample s)
+        {
+            if (s.UnownedAI <= 0) return null;
+            string why = s.UnownedAiTransient > 0 ? $"{s.UnownedAiTransient} transient" : "";
+            if (s.UnownedAiOutside > 0)
+                why += (why.Length > 0 ? ", " : "") + $"{s.UnownedAiOutside} out of range";
+            if (s.UnownedAiClosest >= 0f)
+                why += (why.Length > 0 ? ", " : "") + $"nearest {s.UnownedAiClosest:0} m";
+            return why.Length > 0 ? why : null;
+        }
 
         /// <summary>Your own name, so your row reads like everybody else's rather than "you".</summary>
         private static string LocalName()

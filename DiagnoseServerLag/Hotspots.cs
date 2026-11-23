@@ -51,6 +51,14 @@ namespace DiagnoseServerLag
             public int Depth;
             public long Ticks;
             public long Calls;
+            /// <summary>
+            /// The single slowest call in this window. Totals average a rare spike away: a
+            /// once-an-hour 750 ms call inside a method called every frame is 0.21 ms/s and
+            /// 0.003 ms per call over an hour, which reads as nothing at all. The worst call is
+            /// independent of how long the window is, so a spike can be caught by leaving the
+            /// timer on rather than by predicting when it will happen.
+            /// </summary>
+            public long WorstTicks;
             /// <summary>Set for entries added by <see cref="Drill"/>, so they can be grouped.</summary>
             public string ParentLabel;
             public Entry(string label, int depth, string parent = null)
@@ -361,6 +369,66 @@ namespace DiagnoseServerLag
             }
         }
 
+        /// <summary>
+        /// One dispatcher for every form of the command, so the console path and the routed RPC
+        /// cannot drift apart. Returns the text to show whoever asked, and logs the long reports
+        /// on the way out - the console cannot be copied out of easily, and a dedicated server has
+        /// no console to read at all.
+        /// </summary>
+        internal static string Run(string what, string arg)
+        {
+            switch (what ?? "")
+            {
+                case "on":
+                case "start":
+                    return Start();
+                case "off":
+                case "stop":
+                    return Stop();
+                case "patches":
+                case "who":
+                {
+                    string who = Patches().TrimEnd();
+                    DiagnoseServerLagMod.Log.LogInfo("[DiagnoseServerLag] hotspot patches\n" + who);
+                    return who;
+                }
+                case "mods":
+                    // Times the per-frame methods mods define themselves, which drill cannot
+                    // reach: a MonoBehaviour.Update is dispatched by Unity, not through a Harmony
+                    // wrapper, so it has no patch record to walk.
+                    return Mods(arg ?? "");
+                case "drill":
+                {
+                    // Times each mod patch inside one method, so a hot entry names a culprit
+                    // rather than only a method. Harmony emits calls to patch methods rather than
+                    // inlining them, so they can be patched in turn.
+                    if (string.IsNullOrEmpty(arg))
+                        return "dsl_hotspots drill needs a method, as Type.Method - for example " +
+                               "'dsl_hotspots drill Hud.Update'. Run 'dsl_hotspots patches' to see " +
+                               "which ones have anything worth drilling into.";
+                    int dot = arg.LastIndexOf('.');
+                    if (dot <= 0 || dot == arg.Length - 1)
+                        return "'" + arg + "' is not Type.Method - try 'dsl_hotspots drill Hud.Update'.";
+                    return Drill(arg.Substring(0, dot), arg.Substring(dot + 1));
+                }
+                case "reset":
+                    if (!Running) return "Hotspot timing is off. Run: dsl_hotspots on";
+                    Reset();
+                    return "counters reset - play for a few minutes, then dsl_hotspots";
+                case "":
+                {
+                    string report = Report().TrimEnd();
+                    DiagnoseServerLagMod.Log.LogInfo("[DiagnoseServerLag] hotspots\n" + report);
+                    return report;
+                }
+                default:
+                    return "dsl_hotspots takes 'on', 'off', 'reset', 'patches', " +
+                           "'drill <Type>.<Method>', 'mods [name]', or nothing at all to read " +
+                           "the current window. '" + what + "' is none of those, so nothing " +
+                           "was changed.";
+            }
+        }
+
         internal static string Stop()
         {
             if (_harmony == null) return "hotspot timing is already off.";
@@ -377,7 +445,7 @@ namespace DiagnoseServerLag
 
         internal static void Reset()
         {
-            foreach (var e in _entries) { e.Ticks = 0L; e.Calls = 0L; }
+            foreach (var e in _entries) { e.Ticks = 0L; e.Calls = 0L; e.WorstTicks = 0L; }
             _since = Time.unscaledTime;
         }
 
@@ -393,8 +461,10 @@ namespace DiagnoseServerLag
             int i;
             if (!_slot.TryGetValue(__originalMethod, out i)) return;
             var e = _entries[i];
-            e.Ticks += Stopwatch.GetTimestamp() - __state;
+            long took = Stopwatch.GetTimestamp() - __state;
+            e.Ticks += took;
             e.Calls++;
+            if (took > e.WorstTicks) e.WorstTicks = took;
         }
 
         /// <summary>
@@ -414,17 +484,19 @@ namespace DiagnoseServerLag
                           + (_harmony == null ? "  (timing is now OFF; this is the last window)" : ""));
             sb.AppendLine("  indented entries are INSIDE the one above - do not total the column");
             sb.AppendLine();
-            sb.AppendLine("  " + "method".PadRight(44) + "ms/s      per call     calls/s");
+            sb.AppendLine("  " + "method".PadRight(44) + "ms/s      per call     calls/s     worst ms");
 
             foreach (var e in _entries)
             {
                 if (e.Calls == 0L) continue;
                 double ms = e.Ticks * perSec / span;
                 double each = e.Ticks * perSec / e.Calls;
+                double worst = e.WorstTicks * perSec;
                 sb.AppendLine("  " + e.Label.PadRight(44)
                               + ms.ToString("0.00").PadLeft(6)
                               + each.ToString("0.000").PadLeft(12)
-                              + (e.Calls / span).ToString("0.0").PadLeft(12));
+                              + (e.Calls / span).ToString("0.0").PadLeft(12)
+                              + worst.ToString("0.0").PadLeft(13));
             }
 
             // For each drilled method, say how much of it the timed patches did NOT account for.
@@ -448,6 +520,10 @@ namespace DiagnoseServerLag
                               + " unattributed (vanilla body, transpilers, non-Harmony hooks)");
             }
 
+            sb.AppendLine();
+            sb.AppendLine("  worst ms is the slowest single call since the last reset, and unlike the other");
+            sb.AppendLine("  columns it does not shrink as the window grows - it is the one to read for a");
+            sb.AppendLine("  rare stall rather than for steady cost.");
             sb.AppendLine();
             sb.AppendLine("  Timing adds a little to each call, so these are slightly high in absolute");
             sb.AppendLine("  terms. Compare two windows rather than one against zero. Nothing per-object");
