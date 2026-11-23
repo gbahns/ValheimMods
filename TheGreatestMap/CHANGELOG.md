@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.14.0 — unreleased
+## 4.14.0 — 2026-11-23
 
 - Sightings is now two kinds with a switch each: Fish, and Big Game. Big Game offers the serpent,
   bonemaw serpent, bear, vile, gjall, deer, troll, fallen valkyrie, seeker soldier, lox, stone

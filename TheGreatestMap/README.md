@@ -199,9 +199,17 @@ depending on whether it takes ore through.
 next marker you place is a silver vein, in the silver picture, in the Silver row beside the ones
 you mined. That is what it is for -- a vein under a meter of snow has nothing to put a crosshair
 on, so no amount of looking will record it and only a hand can write it down. The arming lasts
-while the map is open, so eight veins take eight double-clicks and one press. Everything can be
+while the map is open, so eight veins take eight double-clicks and one press. Right-clicking
+anywhere along the row does the same thing, the button being small and the row being what your
+pointer is already resting on. Everything can be
 placed except ships and carts, which move, and a marker written where one of those was would be
 wrong by the next tide.
+
+**Fish** and **Big Game** are the two kinds nothing records for you, so they list what you could
+write down rather than what you have: a row for every fish the game has, and one for each creature
+worth remembering where you saw it -- serpent, bonemaw serpent, bear, vile, gjall, deer, troll,
+fallen valkyrie, seeker soldier, lox, stone golem, abomination, asksvin and morgen. A row is named
+after the creature and wears its trophy's picture, and places with its "+" like any other.
 
 A row exists once you have met the thing, so marking a deposit of a kind you have never seen means
 pressing the "+" on the kind itself and getting its picture -- a pickaxe for ore. The list is built
