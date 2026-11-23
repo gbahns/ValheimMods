@@ -35,7 +35,7 @@ Type these in the chat window.
 | Command | What it does |
 |---|---|
 | `/grab <piece or item> [count]`, `/g` | Materials for a piece (`/g portal`), or an amount of an item (`/g 10 wood`, `/g wood 10`). A pack by name or `/g pack 3` runs that pack. `/g new` takes one of every item in range you have never held, which teaches you their recipes. |
-| `/inventory [filter]`, `/i` | A panel of everything in the nearby containers, grouped by category with icons and counts. Filter by name or category (`/i wood`, `/i food`), `/i new` for items you have never held, `/i empty` to find and highlight the empty containers. |
+| `/inventory [filter]`, `/i` | A panel of everything in the nearby containers, grouped by category with icons and counts. Filter by name, category or section (`/i wood`, `/i food`, `/i combat`), `/i new` for items you have never held, `/i empty` to find and highlight the empty containers. |
 | `/listpacks` | A panel of your packs with their keys and items. Click a row to run the pack, or the pencil to edit its name, items and delta setting in game. |
 | `/search <text>`, `/s` | Highlights the containers holding anything matching the text. |
 | `/store` | Puts everything in your inventory except the top row into the nearby containers. |
@@ -43,17 +43,18 @@ Type these in the chat window.
 | `/sort` | Merges the stacks in the container you have open and sorts it. |
 | `/badges` | Steps the container badges through off, on, and on with contents. |
 | `/istyle` | Cycles the inventory panel between List and Table style. |
+| `/isections` | Shows or hides the section headers in the inventory panel. |
 | `/grabreset` | Forgets recent grabs, so the next delta grab looks only at your inventory. |
 
 ## The inventory panel
 
 `/i` opens a wood-styled panel listing the items in reach by category. Items this character has never held carry a blue **(new)** tag. Material queued in kilns, smelters and refineries, and material sitting in wood stacks, stone piles and the like, is counted and noted on the row.
 
-- **Left-click a row** to flash the containers that hold that item; click a category header for every container holding anything in it.
-- **Right-click a row** to grab that item: 1, 5, 10, 20 or an amount you type. Amounts the containers cannot cover are greyed out. The panel redraws so you can keep pulling.
+- **Left-click a row** to flash the containers that hold that item; click a category or section header for every container holding anything in it.
+- **Right-click a row** to grab that item: 1, a few round amounts below what is nearby, all of it, or an amount you type. The panel redraws so you can keep pulling.
 - **Escape** closes it. Movement and hotkeys keep working while it is open, and the cursor is free.
 - **Pause** while it is open with the button in its top-right corner. On a dedicated server this takes the Pause My Server mod.
-- Pick a List or Table style and a panel shape from single column to as wide as the screen under `Panel UI`. A panel taller than the screen scrolls.
+- Pick a List or Table style and a panel shape from single column to as wide as the screen under `Panel UI`. `Section Headers` there groups the categories under Combat, Materials, Food, Plants, Tools, Special and Misc. A panel taller than the screen scrolls.
 
 ## Pack HUD
 

@@ -15,6 +15,7 @@ namespace GrabMaterials
 			public int Needed;     // original request
 			public int Available;  // amount actually grabbed (success) or amount in containers (shortage)
 			public int Had;        // amount already in player inventory at request time (only > 0 with GrabDelta)
+			public int Carried;    // amount in the player inventory that did NOT count, because Grab Delta is off (#91)
 			public int Remaining;  // what the nearby containers still hold after the grab; -1 when nothing was looked for
 		}
 
@@ -42,6 +43,7 @@ namespace GrabMaterials
 		public struct InventoryGroup
 		{
 			public string CategoryName;
+			public string SectionName;   // the section this category sits in; null when sections are off
 			public List<InventoryItem> Items;
 		}
 
@@ -90,6 +92,8 @@ namespace GrabMaterials
 		private const float LineHeight = 26f;
 		private const float HeaderUnderlineHeight = 2f;
 		private const float CategorySpacing = 8f;     // gap between groups within a column
+		private const float SectionSpacing = 10f;     // on top of CategorySpacing, before a section header
+		private const int SectionFontSize = 20;       // section headers sit a step above the 18-point category headers
 		private const float ColumnSpacing = 20f;      // gap between columns when multi-column
 		private const float BottomPadding = 20f;
 		private const float ScrollbarWidth = 10f;     // vertical scrollbar beside the rows when they overflow the screen
@@ -109,6 +113,8 @@ namespace GrabMaterials
 
 		private static readonly Color CategoryColor = new Color(1f, 0.847f, 0.42f);          // #ffd86b
 		private static readonly Color UnderlineColor = new Color(1f, 0.847f, 0.42f, 0.55f);
+		private static readonly Color SectionColor = new Color(1f, 0.93f, 0.72f);               // a shade paler than the category gold
+		private static readonly Color SectionUnderlineColor = new Color(1f, 0.847f, 0.42f, 0.9f); // the category underline, solid
 
 		// An idle timeout of zero or less means the panel never fades on its own.  Taken literally
 		// it started the fade on the first frame, and with a fade of zero the panel was removed
@@ -623,12 +629,21 @@ namespace GrabMaterials
 			var countCol = ComputeListCountColumnWidth(groups);
 			var showUnderlines = ShowCategoryUnderlines;
 
-			// Per-group height (header + optional underline + items).
+			// A section header goes over the first group of each section (#44).  It is part of
+			// that group's height, so the column balancing below stays blind to sections: groups
+			// are its unit, and a section may run on into the next column like a newspaper's.
+			var sectionStarts = new bool[groups.Count];
+			for (int i = 0; i < groups.Count; i++)
+				sectionStarts[i] = groups[i].SectionName != null && (i == 0 || groups[i - 1].SectionName != groups[i].SectionName);
+
+			// Per-group height (section header, header + optional underline + items).
 			var groupHeights = new List<float>(groups.Count);
 			float totalHeight = 0f;
-			foreach (var group in groups)
+			for (int i = 0; i < groups.Count; i++)
 			{
+				var group = groups[i];
 				var h = LineHeight + (showUnderlines ? HeaderUnderlineHeight : 0f) + group.Items.Count * LineHeight;
+				if (sectionStarts[i]) h += SectionSpacing + LineHeight + HeaderUnderlineHeight;
 				groupHeights.Add(h);
 				totalHeight += h;
 			}
@@ -641,6 +656,7 @@ namespace GrabMaterials
 			foreach (var group in groups)
 			{
 				maxCategoryWidth = Mathf.Max(maxCategoryWidth, EstimateTextWidth(group.CategoryName));
+				if (group.SectionName != null) maxCategoryWidth = Mathf.Max(maxCategoryWidth, EstimateTextWidth(group.SectionName) * SectionFontSize / FontSize);
 				foreach (var item in group.Items)
 				{
 					maxNameWidth = Mathf.Max(maxNameWidth, EstimateTextWidth(ItemDisplayPlain(item.Name, item.InProcess, item.InProcessLocation, item.Undiscovered)));
@@ -678,6 +694,12 @@ namespace GrabMaterials
 					}
 					var groupIdx = colIndices[i];
 					var group = groups[groupIdx];
+					if (sectionStarts[groupIdx])
+					{
+						if (i > 0) AddSpacer(SectionSpacing);
+						BuildSectionRow(group.SectionName, SectionItems(groups, groupIdx), ListRowPadding);
+						colHeight += SectionSpacing + LineHeight + HeaderUnderlineHeight;
+					}
 					BuildHeaderRow(group.CategoryName, group.Items, showUnderlines, ListRowPadding);
 					colHeight += LineHeight + (showUnderlines ? HeaderUnderlineHeight : 0f);
 					foreach (var item in group.Items)
@@ -1174,6 +1196,36 @@ namespace GrabMaterials
 			}
 		}
 
+		// Every item in the section that starts at groups[first], for the section header's click.
+		private static List<InventoryItem> SectionItems(List<InventoryGroup> groups, int first)
+		{
+			var items = new List<InventoryItem>();
+			var section = groups[first].SectionName;
+			for (int i = first; i < groups.Count && groups[i].SectionName == section; i++) items.AddRange(groups[i].Items);
+			return items;
+		}
+
+		// A section header (#44): larger and paler than a category header, with a solid line
+		// under it.  Clicking it flashes every container holding anything in the section.
+		private static void BuildSectionRow(string sectionName, List<InventoryItem> items, float sidePadding)
+		{
+			var hdr = MakeRow("SectionHeader", sidePadding);
+			MakeHeaderClickable(hdr, items);
+			var text = MakeCellText(hdr, sectionName, TextAnchor.MiddleLeft, SectionColor, 0f, 1f);
+			text.fontSize = SectionFontSize;
+			text.fontStyle = FontStyle.Bold;
+
+			var line = new GameObject("SectionUnderline");
+			line.transform.SetParent(_currentBuildParent, false);
+			line.AddComponent<RectTransform>();
+			var img = line.AddComponent<Image>();
+			img.color = SectionUnderlineColor;
+			img.raycastTarget = false;
+			var lineLE = line.AddComponent<LayoutElement>();
+			lineLE.preferredHeight = HeaderUnderlineHeight;
+			lineLE.flexibleWidth = 1f;
+		}
+
 		// List style: count + (icon) + name. countWidth is dynamic so the column
 		// hugs the widest count string (eliminates the "indent" effect from a
 		// fixed-width column). Icon column is omitted when ShowItemIcons is off.
@@ -1504,6 +1556,8 @@ namespace GrabMaterials
 			var missing = item.Needed - totalCovered;
 			if (item.Had > 0)
 				return $"<color=#ff8888>✗ {totalCovered} of {item.Needed} {item.Name}</color> <color=#aaaaaa>(had {item.Had}, missing {missing})</color>";
+			if (item.Carried > 0)
+				return $"<color=#ff8888>✗ {item.Available} of {item.Needed} {item.Name} (missing {missing})</color> <color=#aaaaaa>(you carry {item.Carried}; Grab Delta is off, so the pack takes the full amount)</color>";
 			return $"<color=#ff8888>✗ {item.Available} of {item.Needed} {item.Name} (missing {missing})</color>";
 		}
 

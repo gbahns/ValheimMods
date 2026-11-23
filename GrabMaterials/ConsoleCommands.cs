@@ -542,19 +542,23 @@ namespace GrabMaterials
 			// subtracted too — see the pending-ledger comment up top.
 			if (grabDelta) MaybeExpirePendingLedger();
 			var had = new int[aggregated.Count];
+			var carried = new int[aggregated.Count];   // in the inventory whether or not it counts
 			var effectiveNeed = new int[aggregated.Count];
 			for (int i = 0; i < aggregated.Count; i++)
 			{
-				if (grabDelta && player != null)
+				// Counted even with Grab Delta off, so a shortage can say "you have 92" instead of
+				// leaving a player who is holding the nails to wonder why they were missed (#91).
+				var playerInv = player != null ? player.GetInventory() : null;
+				if (playerInv != null)
 				{
-					var playerInv = player.GetInventory();
-					if (playerInv != null)
+					foreach (var owned in playerInv.GetAllItems())
 					{
-						foreach (var owned in playerInv.GetAllItems())
-						{
-							if (owned.isMatch(aggregated[i].Name)) had[i] += owned.Count();
-						}
+						if (owned.isMatch(aggregated[i].Name)) carried[i] += owned.Count();
 					}
+				}
+				if (grabDelta)
+				{
+					had[i] = carried[i];
 					// Reserve out items already grabbed for in-progress builds.
 					var reserved = GetPending(aggregated[i].Name);
 					if (reserved > 0) had[i] = Math.Max(0, had[i] - reserved);
@@ -612,12 +616,13 @@ namespace GrabMaterials
 						Name = LocalizeItemName(aggregated[i]),
 						Needed = aggregated[i].Count,
 						Had = had[i],
+						Carried = grabDelta ? 0 : carried[i],
 						Available = available[i],
 						Remaining = -1,
 					});
 					if (effectiveNeed[i] > available[i])
 					{
-						debugShortages.Add($"{effectiveNeed[i] - available[i]} of {aggregated[i].Count} {aggregated[i].Name}");
+						debugShortages.Add($"{effectiveNeed[i] - available[i]} of {aggregated[i].Count} {aggregated[i].Name}{(carried[i] > 0 ? $" ({carried[i]} carried, delta {(grabDelta ? "on" : "off")})" : "")}");
 					}
 				}
 				Log.LogInfo($"Cannot grab{(string.IsNullOrEmpty(requestLabel) ? "" : $" for {requestLabel}")} - missing: {string.Join(", ", debugShortages)}");
@@ -966,8 +971,29 @@ namespace GrabMaterials
 					// And without spaces: a pack's item list is parsed with spaces stripped, so
 					// "Stone Cutter" arrives as "stonecutter", and a typed "/g stonecutter" should
 					// work as well as "/g stone cutter" does (#30).
-					var squeezedKey = key.Replace(" ", "");
-					if (squeezedKey != key && !pieceLookup.ContainsKey(squeezedKey)) pieceLookup[squeezedKey] = piece;
+					AddPieceKey(key.Replace(" ", ""), piece);
+					// A name the game writes with a dash, "Portal – Stone" since the Deep North
+					// release (it was "Stone Portal"), also answers without the dash and with its
+					// halves the other way round, so the old name and the default packs keep working.
+					var dash = key.IndexOf(" – ", StringComparison.Ordinal);
+					if (dash < 0) dash = key.IndexOf(" - ", StringComparison.Ordinal);
+					if (dash > 0)
+					{
+						var head = key.Substring(0, dash).Trim();
+						var tail = key.Substring(dash + 3).Trim();
+						if (head.Length > 0 && tail.Length > 0)
+							foreach (var alt in new[] { head + " " + tail, tail + " " + head })
+							{
+								AddPieceKey(alt, piece);
+								AddPieceKey(alt.Replace(" ", ""), piece);
+							}
+					}
+					// And the prefab name, "portal_stone", as it is and with its underscores as
+					// spaces or dropped, for whoever reads the game's own names.
+					var prefabKey = prefab.name.ToLowerInvariant();
+					AddPieceKey(prefabKey, piece);
+					AddPieceKey(prefabKey.Replace("_", " "), piece);
+					AddPieceKey(prefabKey.Replace("_", ""), piece);
 					//Log.LogInfo($"Piece: {piece.name} ({prefab.name})");
 				}
 				else
@@ -975,6 +1001,12 @@ namespace GrabMaterials
 					//Log.LogInfo($"Prefab {prefab.name} does not have a Piece component");
 				}
 			}
+		}
+
+		// An alternate spelling for a piece; the name the game shows always wins the key.
+		private static void AddPieceKey(string key, Piece piece)
+		{
+			if (!string.IsNullOrEmpty(key) && !pieceLookup.ContainsKey(key)) pieceLookup[key] = piece;
 		}
 
 		// In your GrabMaterialsPlugin class

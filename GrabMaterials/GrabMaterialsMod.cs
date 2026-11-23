@@ -19,7 +19,7 @@ using UnityEngine;
 namespace GrabMaterialsMod
 {
 
-	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.10.3")]
+	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.11.0")]
 	[BepInProcess("valheim.exe")]
 	public class GrabMaterialsMod : BaseUnityPlugin
 	{
@@ -46,6 +46,7 @@ namespace GrabMaterialsMod
 		public ConfigEntry<float> PanelFadeDuration;
 		public ConfigEntry<bool> PanelDismissOnMovement;
 		public ConfigEntry<bool> PanelCategoryUnderlines;
+		public ConfigEntry<bool> PanelSectionHeaders;
 		public ConfigEntry<bool> PanelShowItemIcons;
 		public ConfigEntry<bool> PanelMarkUndiscovered;
 		public ConfigEntry<bool> PanelPauseWhileOpen;
@@ -206,6 +207,7 @@ namespace GrabMaterialsMod
 			PanelDismissOnMovement = Config.Bind("Panel UI", "Dismiss On Movement", true, new ConfigDescription("Start fading the panel when the player begins moving, attacking, blocking, or jumping. If false, only the idle timeout dismisses the panel."));
 			InventoryStyle = Config.Bind("Panel UI", "Inventory Style", GrabMaterials.MaterialsPanel.InventoryStyle.List, new ConfigDescription("Display style for the /inventory panel. List = grouped by category, count + name per row (counts right-aligned). Table = flat 3-column table with Category / Item / Count headers."));
 			PanelCategoryUnderlines = Config.Bind("Panel UI", "Category Underlines", true, new ConfigDescription("In List mode, draw a thin orange line under each category name. Has no effect in Table mode."));
+			PanelSectionHeaders = Config.Bind("Panel UI", "Section Headers", false, new ConfigDescription("Group the categories in the /inventory panel under section headers: Combat, Materials, Food, Plants, Tools, Special and Misc. In Table mode the sections set only the order of the rows. /isections toggles this in game."));
 			InventoryShape = Config.Bind("Panel UI", "Inventory Shape", GrabMaterials.MaterialsPanel.InventoryShape.SlightlyWide, new ConfigDescription("Target shape for the inventory panel in List mode. The panel auto-picks the column count that produces the closest match. MaxHeight = always 1 column. MaxWidth = fan out as many columns as fit on the screen."));
 			PanelShowItemIcons = Config.Bind("Panel UI", "Show Item Icons", true, new ConfigDescription("Show each item's icon next to its name in the inventory panel."));
 			PanelMarkUndiscovered = Config.Bind("Panel UI", "Mark Undiscovered Items", true, new ConfigDescription("Mark items in the /inventory panel that this character has never held with a '(new)' tag. Handy in multiplayer, where a shared chest is often full of a friend's crafting you have never handled yourself."));
@@ -296,6 +298,7 @@ namespace GrabMaterialsMod
 			new Terminal.ConsoleCommand("inventory", "[filter] - counts of items in nearby containers. Filter by item name, by category, with 'new' for items you have never held, or with 'empty' to find and highlight empty containers.", (args) => { ListLocalInventory(args); });
 			new Terminal.ConsoleCommand("i", "[filter] - counts of items in nearby containers. Filter by item name, by category, with 'new' for items you have never held, or with 'empty' to find and highlight empty containers.", (args) => { ListLocalInventory(args); });
 			new Terminal.ConsoleCommand("istyle", "[1-2] - cycle inventory display style (1=List, 2=Table)", (args) => { SetInventoryStyle(args); });
+			new Terminal.ConsoleCommand("isections", "[on|off] - show or hide the section headers (Combat, Materials, Food...) in the inventory panel", (args) => { SetInventorySections(args); });
 
 			//for testing/learning
 			new Terminal.ConsoleCommand("search", "[search-text] - search for items matching this string in nearby containers", (args) => { FindContainersWithMatchingItems(args); });
@@ -529,6 +532,21 @@ namespace GrabMaterialsMod
 		}
 
 		// Convert an enum name like "RawMeat" to a display label "Raw Meat".
+		// "/isections", "/isections on", "/isections off": the Section Headers setting from chat.
+		private static void SetInventorySections(Terminal.ConsoleEventArgs args)
+		{
+			var on = !Instance.PanelSectionHeaders.Value;
+			if (args.Length > 1)
+			{
+				var word = args[1].ToLower();
+				if (word == "on" || word == "1" || word == "true") on = true;
+				else if (word == "off" || word == "0" || word == "false") on = false;
+			}
+			Instance.PanelSectionHeaders.Value = on;
+			Player.m_localPlayer?.Message(MessageHud.MessageType.Center, on ? "Inventory sections: on" : "Inventory sections: off");
+			RefreshInventoryPanel();
+		}
+
 		private static string FormatCategoryName(GrabMaterials.Extensions.ItemCategory cat)
 		{
 			var name = cat.ToString();
@@ -596,15 +614,21 @@ namespace GrabMaterialsMod
 			// "stack" for one and "stacks" for several.
 			var pileCountByNameByKind = new Dictionary<string, Dictionary<string, int>>();
 
-			// The same filter for an item wherever it sits: chest, smelter queue, or a pile.
+			// The same filter for an item wherever it sits: chest, smelter queue, or a pile.  A
+			// category name matches that category; a section name ("/i food") matches every
+			// category in the section, which is what the word means to the player: mead and raw
+			// meat are food, though no category is called that.
 			GrabMaterials.Extensions.ItemCategory searchCategory = GrabMaterials.Extensions.ItemCategory.None;
 			var isCategorySearch = text != null ? Enum.TryParse(text, true, out searchCategory) : false;
+			GrabMaterials.Extensions.ItemSection searchSection = GrabMaterials.Extensions.ItemSection.Misc;
+			var isSectionSearch = text != null && !isCategorySearch && Enum.TryParse(text, true, out searchSection);
 			bool Matches(ItemDrop.ItemData itemData)
 			{
 				var itemName = itemData.m_shared.m_name;
 				if (isNewSearch) return player != null && !player.IsMaterialKnown(itemName);
 				var itemCategory = itemData.GetCategory();
 				if (isCategorySearch) return itemCategory == searchCategory;
+				if (isSectionSearch) return itemCategory.GetSection() == searchSection;
 				if (text == null) return true;
 				var localizedName = GrabMaterials.Extensions.Localize(itemName).ToLower();
 				return itemData.Name().Contains(text) || itemName.Contains(text) || localizedName.Contains(text) || itemCategory.ToString().ToLower().Contains(text);
@@ -751,9 +775,22 @@ namespace GrabMaterialsMod
 			// set itself and fills it the first time an item enters your inventory.
 			var markUndiscovered = (Instance?.PanelMarkUndiscovered?.Value ?? true) && player != null && !isNewSearch;
 
-			// Iterate enum values in declaration order so the panel displays a stable, gameplay-grouped order.
+			// Categories in enum order so the panel displays a stable, gameplay-grouped order; with
+			// sections on, section by section (#44), each group naming its section so the panel can
+			// head the first group of each and the Table style keeps the same row order.
+			var sections = Instance?.PanelSectionHeaders?.Value ?? false;
+			var orderedCategories = new List<GrabMaterials.Extensions.ItemCategory>();
+			var allCategories = (GrabMaterials.Extensions.ItemCategory[])Enum.GetValues(typeof(GrabMaterials.Extensions.ItemCategory));
+			if (sections)
+			{
+				foreach (GrabMaterials.Extensions.ItemSection section in Enum.GetValues(typeof(GrabMaterials.Extensions.ItemSection)))
+					foreach (var cat in allCategories)
+						if (cat.GetSection() == section) orderedCategories.Add(cat);
+			}
+			else orderedCategories.AddRange(allCategories);
+
 			var groups = new List<GrabMaterials.MaterialsPanel.InventoryGroup>();
-			foreach (GrabMaterials.Extensions.ItemCategory cat in Enum.GetValues(typeof(GrabMaterials.Extensions.ItemCategory)))
+			foreach (var cat in orderedCategories)
 			{
 				if (cat == GrabMaterials.Extensions.ItemCategory.None) continue;
 				if (!byCategory.TryGetValue(cat, out var byName)) continue;
@@ -791,11 +828,26 @@ namespace GrabMaterialsMod
 				groups.Add(new GrabMaterials.MaterialsPanel.InventoryGroup
 				{
 					CategoryName = FormatCategoryName(cat),
+					SectionName = sections ? cat.GetSection().ToString() : null,
 					Items = items,
 				});
 			}
 
-				var title = string.IsNullOrEmpty(text) ? "Inventory"
+			// One section over everything, as after "/i combat", would only repeat the title.
+			if (sections && groups.Count > 0)
+			{
+				var lone = true;
+				for (int i = 1; i < groups.Count && lone; i++) lone = groups[i].SectionName == groups[0].SectionName;
+				if (lone)
+					for (int i = 0; i < groups.Count; i++)
+					{
+						var g = groups[i];
+						g.SectionName = null;
+						groups[i] = g;
+					}
+			}
+
+			var title = string.IsNullOrEmpty(text) ? "Inventory"
 				: isNewSearch ? "New Items"
 				: $"Inventory: {text}";
 			GrabMaterials.MaterialsPanel.ShowCategorizedInventory(title, groups, Instance.InventoryStyle.Value);

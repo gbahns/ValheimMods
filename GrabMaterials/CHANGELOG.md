@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.11.0 — unreleased
+
+- The inventory panel can group its categories under section headers: Combat, Materials, Food, Plants, Tools, Special and Misc (#44). Turn them on with `Section Headers` under `Panel UI` or `/isections` in chat. Click a section header to flash every container holding anything in it; the Table style only takes its row order from them.
+- `/i food`, `/i combat` and the other section names filter the panel to the whole section, so food includes mead and raw meat.
+- The right-click grab menu on an inventory row offers 1, a few round amounts below what is nearby, and "Grab all"; it no longer shows greyed-out amounts the containers cannot cover.
+- The pack HUD's icons sat lower than their names, by more with each line, on screens where the font's line height did not round to the HUD's row height; each line is now its own row, so nothing drifts (#91). The HUD is also sized to its widest line, so anchored to a right-hand corner it stays on the screen.
+- When a pack comes up short on a material you are carrying with Grab Delta off, the results say so, instead of "0 of 10" while you hold 92 (#91).
+- "Stone Portal" grabs and packs work again. The Deep North release renamed the piece "Portal – Stone"; a piece whose name has a dash now also answers to the name without it and with its halves swapped, and every piece answers to its prefab name.
+
 ## 2.10.3 — 2026-11-14
 
 - World badges with "Draw Badges In Front" and "Lit World Badges" both off could come up without their numbers, and stay that way through toggles: the white copy of the font that draws them was made before the digits had been added to the font, and the game adds them without saying so. The copy is now made again after a badge changes its number or size.

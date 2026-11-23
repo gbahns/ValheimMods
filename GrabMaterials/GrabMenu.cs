@@ -5,9 +5,10 @@ using UnityEngine.UI;
 
 namespace GrabMaterials
 {
-	// The right-click menu on an inventory row: grab 1, 5, 10 or 20 of that item from the
-	// nearby containers, or type an amount (#46).  Amounts the containers cannot cover are
-	// greyed out.  The grab runs through the same owned-container path as `/g`, the result
+	// The right-click menu on an inventory row: grab 1, a few round amounts below what the
+	// containers hold, all of it, or type an amount (#46).  The round amounts come from the
+	// count, so no button offers more than is there: 37 wood offers 1, 5, 10, 20 and all 37;
+	// 200 offers 1, 20, 50, 100 and all 200.  The grab runs through the same owned-container path as `/g`, the result
 	// arrives as a HUD message, and the inventory panel redraws with the new counts rather
 	// than closing, so you can keep pulling.
 	//
@@ -15,7 +16,10 @@ namespace GrabMaterials
 	// click sink under it: a click anywhere else closes the menu and nothing more.
 	internal static class GrabMenu
 	{
-		private static readonly int[] Amounts = { 1, 5, 10, 20 };
+		// The round amounts a button can offer; 1 is always offered, then the largest few of
+		// these below the count, then the count itself.
+		private static readonly int[] Ladder = { 5, 10, 20, 50, 100, 200, 500 };
+		private const int LadderButtons = 3;
 		private const float Width = 220f;
 		private const float RowHeight = 30f;
 		private const float Pad = 12f;
@@ -59,7 +63,8 @@ namespace GrabMaterials
 			catcherButton.transition = Selectable.Transition.None;
 			catcherButton.onClick.AddListener(Close);
 
-			var rows = 1 + Amounts.Length + 1;   // header, the fixed amounts, the typed amount
+			var amounts = AmountsFor(_grabbable);
+			var rows = 1 + Mathf.Max(1, amounts.Count) + 1;   // header, the amounts (or "nothing"), the typed amount
 			var height = Pad * 2f + rows * RowHeight + (rows - 1) * Gap;
 
 			_menu = GUIManager.Instance.CreateWoodpanel(
@@ -98,11 +103,16 @@ namespace GrabMaterials
 			headerText.raycastTarget = false;
 			y -= RowHeight + Gap;
 
-			foreach (var amount in Amounts)
+			if (amounts.Count == 0)
+			{
+				AddButton("Nothing nearby to grab", Pad, y, Width - Pad * 2f, false, null);
+				y -= RowHeight + Gap;
+			}
+			foreach (var amount in amounts)
 			{
 				var n = amount;
-				var enabled = n <= _grabbable;
-				AddButton($"Grab {n}", Pad, y, Width - Pad * 2f, enabled, () => Grab(n, remember: false));
+				var label = n == _grabbable && n > 1 ? $"Grab all {n}" : $"Grab {n}";
+				AddButton(label, Pad, y, Width - Pad * 2f, true, () => Grab(n, remember: false));
 				y -= RowHeight + Gap;
 			}
 
@@ -134,6 +144,20 @@ namespace GrabMaterials
 			AddButton("Grab", Pad + AmountFieldWidth + Gap, y, Width - Pad * 2f - AmountFieldWidth - Gap, _grabbable > 0, GrabTyped);
 
 			MaterialsPanel.KeepAlive();
+		}
+
+		// 1, then the largest LadderButtons rungs of the ladder below the count, then the count.
+		private static List<int> AmountsFor(int count)
+		{
+			var amounts = new List<int>();
+			if (count <= 0) return amounts;
+			var rungs = new List<int>();
+			foreach (var rung in Ladder) if (rung < count) rungs.Add(rung);
+			if (rungs.Count > LadderButtons) rungs.RemoveRange(0, rungs.Count - LadderButtons);
+			amounts.Add(1);
+			amounts.AddRange(rungs);
+			if (count > 1) amounts.Add(count);
+			return amounts;
 		}
 
 		internal static void Close()

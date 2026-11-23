@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Text;
 using Jotunn.Managers;
 using UnityEngine;
 using UnityEngine.UI;
@@ -18,6 +17,14 @@ namespace GrabMaterials
 	// With "Show Pack Contents" on, each pack line carries the icon of every piece or item in
 	// the pack after its name, with a count on the icon when the pack asks for more than one,
 	// so "Explore" reads as workbench, portal, two chests without opening the config (#81).
+	//
+	// Every line is its own row of fixed height, holding its key, its name and its icons.
+	// Until 2.11.0 the names were one multi-line Text and the icons were placed at a fixed
+	// pitch beside it; the text advanced by the font's own line height, which Unity rounds to
+	// whole pixels at the canvas scale, so on some screens the icons drifted half a pixel per
+	// line and sat on the wrong name ten rows down (#91).  Rows cannot accumulate anything.
+	// The box is sized to its widest row, so anchored to a right-hand corner the long names
+	// and their icons stay on the screen.
 	public static class PackHud
 	{
 		public enum Anchor
@@ -29,9 +36,8 @@ namespace GrabMaterials
 		}
 
 		private const float RefreshInterval = 0.5f;
-		private const float KeysWidth  = 120f;
+		private const float MinKeysWidth = 40f;
 		private const float Gap        = 10f;
-		private const float NamesWidth = 280f;
 		private const int   FontSize   = 16;
 		private const float LineHeight = 21f;
 		private const float IconSize   = 18f;
@@ -39,15 +45,22 @@ namespace GrabMaterials
 		private const float IconIndent = 8f;   // between the end of the name and the first icon
 		private const int   MaxIcons   = 8;    // per line; a pack longer than that shows its first eight
 
+		private class Row
+		{
+			public GameObject Root;
+			public RectTransform Rect;
+			public Text Keys;
+			public Text Name;
+			public readonly List<GameObject> Icons = new List<GameObject>();
+		}
+
 		private static GameObject    _root;
 		private static RectTransform _rect;
-		private static Text          _keys;
-		private static Text          _names;
-		private static RectTransform _icons;
-		private static readonly List<GameObject> _iconPool = new List<GameObject>();
+		private static readonly List<Row> _rows = new List<Row>();
 		private static readonly Dictionary<string, List<ConsoleCommands.PackEntry>> _entryCache = new Dictionary<string, List<ConsoleCommands.PackEntry>>();
 		private static float         _lastRefresh;
-		private static int           _lineCount;
+
+		private static readonly Color NameColor = new Color(0.95f, 0.90f, 0.78f);
 
 		private static GrabMaterialsMod.GrabMaterialsMod Mod => GrabMaterialsMod.GrabMaterialsMod.Instance;
 		private static bool   Enabled  => Mod?.ShowPackHud?.Value ?? true;
@@ -82,59 +95,87 @@ namespace GrabMaterials
 			_lastRefresh = 0f;
 		}
 
+		private struct Line
+		{
+			public string Key;
+			public string Name;
+			public List<ConsoleCommands.PackEntry> Entries;   // null on lines that are not a pack
+		}
+
 		private static void Rebuild()
 		{
 			if (Mod?.GrabPacks == null) return;
 
-			var keys  = new StringBuilder();
-			var names = new StringBuilder();
-			var lines = 0;
-			// Per line: the name as drawn (to measure where its icons start) and the pack's
-			// entries, null on lines that are not a pack.
-			var lineNames = new List<string>();
-			var lineEntries = new List<List<ConsoleCommands.PackEntry>>();
-
+			var lines = new List<Line>();
 			var toggle = Mod.PackHudToggleKey != null
 				? GrabMaterialsMod.GrabMaterialsMod.FormatShortcut(Mod.PackHudToggleKey.Value)
 				: "";
-			keys.AppendLine(toggle);
-			names.AppendLine("Grab Packs");
-			lineNames.Add("Grab Packs");
-			lineEntries.Add(null);
-			lines++;
+			lines.Add(new Line { Key = toggle, Name = "Grab Packs" });
 
 			foreach (var pack in Mod.GrabPacks)
 			{
 				if (string.IsNullOrWhiteSpace(pack.Items.Value)) continue;
 				if (HideUndiscovered && !ConsoleCommands.AreAllPackMaterialsKnown(pack.Items.Value, Player.m_localPlayer)) continue;
-				keys.AppendLine(GrabMaterialsMod.GrabMaterialsMod.FormatShortcut(pack.Key.Value));
-				names.AppendLine(pack.Name.Value);
-				lineNames.Add(pack.Name.Value);
-				lineEntries.Add(ShowContents ? EntriesFor(pack.Items.Value) : null);
-				lines++;
+				lines.Add(new Line
+				{
+					Key = GrabMaterialsMod.GrabMaterialsMod.FormatShortcut(pack.Key.Value),
+					Name = pack.Name.Value,
+					Entries = ShowContents ? EntriesFor(pack.Items.Value) : null,
+				});
 			}
 
 			if (ShowBuildPieceKey)
+				lines.Add(new Line { Key = Mod.GrabSelectedPieceKey.ToString(), Name = "Build piece under cursor" });
+
+			// Pass one: the texts, and the widest key, which sets where the names start.
+			var keysWidth = MinKeysWidth;
+			for (int i = 0; i < lines.Count; i++)
 			{
-				keys.AppendLine(Mod.GrabSelectedPieceKey.ToString());
-				names.AppendLine("Build piece under cursor");
-				lineNames.Add("Build piece under cursor");
-				lineEntries.Add(null);
-				lines++;
+				var row = i < _rows.Count ? _rows[i] : MakeRow();
+				row.Root.SetActive(true);
+				row.Keys.text = lines[i].Key;
+				row.Name.text = lines[i].Name;
+				keysWidth = Mathf.Max(keysWidth, row.Keys.preferredWidth);
+			}
+			for (int i = lines.Count; i < _rows.Count; i++) _rows[i].Root.SetActive(false);
+
+			// Pass two: place each row's parts and find the widest row.
+			var width = 0f;
+			for (int i = 0; i < lines.Count; i++)
+			{
+				var row = _rows[i];
+				row.Rect.anchoredPosition = new Vector2(0f, -i * LineHeight);
+				row.Keys.rectTransform.sizeDelta = new Vector2(keysWidth, LineHeight);
+				var nameX = keysWidth + Gap;
+				var nameWidth = row.Name.preferredWidth;
+				row.Name.rectTransform.anchoredPosition = new Vector2(nameX, 0f);
+				row.Name.rectTransform.sizeDelta = new Vector2(nameWidth, LineHeight);
+				var right = nameX + nameWidth;
+
+				var x = right + IconIndent;
+				var drawn = 0;
+				var entries = lines[i].Entries;
+				if (entries != null)
+					foreach (var entry in entries)
+					{
+						if (entry.Icon == null || drawn >= MaxIcons) continue;
+						var icon = drawn < row.Icons.Count ? row.Icons[drawn] : MakeIcon(row);
+						icon.SetActive(true);
+						icon.GetComponent<RectTransform>().anchoredPosition = new Vector2(x, -(LineHeight - IconSize) / 2f);
+						icon.GetComponent<Image>().sprite = entry.Icon;
+						var count = icon.transform.Find("Count").GetComponent<Text>();
+						count.text = entry.Count > 1 ? entry.Count.ToString() : string.Empty;
+						x += IconSize + IconGap;
+						drawn++;
+					}
+				for (int k = drawn; k < row.Icons.Count; k++) row.Icons[k].SetActive(false);
+				if (drawn > 0) right = x - IconGap;
+
+				row.Rect.sizeDelta = new Vector2(right, LineHeight);
+				width = Mathf.Max(width, right);
 			}
 
-			_keys.text  = keys.ToString().TrimEnd();
-			_names.text = names.ToString().TrimEnd();
-			LayoutIcons(lineNames, lineEntries);
-
-			if (lines != _lineCount)
-			{
-				_lineCount = lines;
-				var h = lines * LineHeight;
-				_rect.sizeDelta = new Vector2(KeysWidth + Gap + NamesWidth, h);
-				_keys.rectTransform.sizeDelta  = new Vector2(KeysWidth, h);
-				_names.rectTransform.sizeDelta = new Vector2(NamesWidth, h);
-			}
+			_rect.sizeDelta = new Vector2(width, lines.Count * LineHeight);
 		}
 
 		// A pack's entries, parsed once per distinct item list.  Nothing is cached before the
@@ -148,40 +189,26 @@ namespace GrabMaterials
 			return entries;
 		}
 
-		// Place one icon per entry after each line's name, reusing the pooled icon objects.
-		private static void LayoutIcons(List<string> lineNames, List<List<ConsoleCommands.PackEntry>> lineEntries)
+		private static Row MakeRow()
 		{
-			var used = 0;
-			var settings = _names.GetGenerationSettings(Vector2.zero);
-			var generator = _names.cachedTextGeneratorForLayout;
-			for (int line = 0; line < lineEntries.Count; line++)
-			{
-				var entries = lineEntries[line];
-				if (entries == null || entries.Count == 0) continue;
-				var x = generator.GetPreferredWidth(lineNames[line], settings) / _names.pixelsPerUnit + IconIndent;
-				var y = -(line * LineHeight + (LineHeight - IconSize) / 2f);
-				var drawn = 0;
-				foreach (var entry in entries)
-				{
-					if (entry.Icon == null || drawn >= MaxIcons) continue;
-					var icon = used < _iconPool.Count ? _iconPool[used] : MakeIcon();
-					used++;
-					icon.SetActive(true);
-					icon.GetComponent<RectTransform>().anchoredPosition = new Vector2(x, y);
-					icon.GetComponent<Image>().sprite = entry.Icon;
-					var count = icon.transform.Find("Count").GetComponent<Text>();
-					count.text = entry.Count > 1 ? entry.Count.ToString() : string.Empty;
-					x += IconSize + IconGap;
-					drawn++;
-				}
-			}
-			for (int i = used; i < _iconPool.Count; i++) _iconPool[i].SetActive(false);
+			var row = new Row();
+			row.Root = new GameObject("GrabMaterials_PackHud_Row", typeof(RectTransform));
+			row.Root.transform.SetParent(_root.transform, false);
+			row.Rect = row.Root.GetComponent<RectTransform>();
+			row.Rect.anchorMin = new Vector2(0f, 1f);
+			row.Rect.anchorMax = new Vector2(0f, 1f);
+			row.Rect.pivot = new Vector2(0f, 1f);
+			row.Rect.sizeDelta = new Vector2(0f, LineHeight);
+			row.Keys = MakeText(row.Root, "Keys", TextAnchor.MiddleRight, GUIManager.Instance.ValheimOrange);
+			row.Name = MakeText(row.Root, "Name", TextAnchor.MiddleLeft, NameColor);
+			_rows.Add(row);
+			return row;
 		}
 
-		private static GameObject MakeIcon()
+		private static GameObject MakeIcon(Row row)
 		{
 			var go = new GameObject("GrabMaterials_PackHud_Icon", typeof(RectTransform), typeof(Image));
-			go.transform.SetParent(_icons, false);
+			go.transform.SetParent(row.Root.transform, false);
 			var rt = go.GetComponent<RectTransform>();
 			rt.anchorMin = new Vector2(0f, 1f);
 			rt.anchorMax = new Vector2(0f, 1f);
@@ -211,7 +238,7 @@ namespace GrabMaterials
 			outline.effectColor = Color.black;
 			outline.effectDistance = new Vector2(1f, -1f);
 
-			_iconPool.Add(go);
+			row.Icons.Add(go);
 			return go;
 		}
 
@@ -240,49 +267,37 @@ namespace GrabMaterials
 			_root = new GameObject("GrabMaterials_PackHud", typeof(RectTransform));
 			_root.transform.SetParent(GUIManager.CustomGUIFront.transform, false);
 			_rect = _root.GetComponent<RectTransform>();
-			_rect.sizeDelta = new Vector2(KeysWidth + Gap + NamesWidth, LineHeight);
-
-			_keys  = MakeColumn("Keys",  0f,               KeysWidth,  TextAnchor.UpperRight, GUIManager.Instance.ValheimOrange);
-			_names = MakeColumn("Names", KeysWidth + Gap,  NamesWidth, TextAnchor.UpperLeft,  new Color(0.95f, 0.90f, 0.78f));
-
-			// Icons share the names column's origin, so an icon at x sits x pixels past the names' left edge.
-			var iconsObj = new GameObject("GrabMaterials_PackHud_Icons", typeof(RectTransform));
-			iconsObj.transform.SetParent(_root.transform, false);
-			_icons = iconsObj.GetComponent<RectTransform>();
-			_icons.anchorMin = new Vector2(0f, 1f);
-			_icons.anchorMax = new Vector2(0f, 1f);
-			_icons.pivot = new Vector2(0f, 1f);
-			_icons.anchoredPosition = new Vector2(KeysWidth + Gap, 0f);
-			_icons.sizeDelta = Vector2.zero;
-			_iconPool.Clear();
+			_rect.sizeDelta = new Vector2(0f, LineHeight);
+			_rows.Clear();
 			ApplyAnchor();
 		}
 
-		private static Text MakeColumn(string name, float x, float width, TextAnchor align, Color color)
+		// One cell of a row: a single line of text, centered on the row's height, so the font's
+		// own line height never decides where anything sits.
+		private static Text MakeText(GameObject row, string name, TextAnchor align, Color color)
 		{
 			var go = GUIManager.Instance.CreateText(
 				text: string.Empty,
-				parent: _root.transform,
+				parent: row.transform,
 				anchorMin: new Vector2(0f, 1f),
 				anchorMax: new Vector2(0f, 1f),
-				position: new Vector2(x, 0f),
+				position: Vector2.zero,
 				font: GUIManager.Instance.AveriaSerifBold,
 				fontSize: FontSize,
 				color: color,
 				outline: true,
 				outlineColor: Color.black,
-				width: width,
+				width: 0f,
 				height: LineHeight,
 				addContentSizeFitter: false);
 			go.name = "GrabMaterials_PackHud_" + name;
 			var rt = go.GetComponent<RectTransform>();
 			rt.pivot = new Vector2(0f, 1f);
-			rt.anchoredPosition = new Vector2(x, 0f);
+			rt.anchoredPosition = Vector2.zero;
 			var text = go.GetComponent<Text>();
 			text.alignment = align;
 			text.horizontalOverflow = HorizontalWrapMode.Overflow;
 			text.verticalOverflow   = VerticalWrapMode.Overflow;
-			text.lineSpacing = 1f;
 			text.raycastTarget = false;
 			return text;
 		}

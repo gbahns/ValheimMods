@@ -111,6 +111,65 @@ namespace GrabMaterials
 			Misc,
 		}
 
+		// The sections the inventory panel groups categories under (#44).  Declaration order is
+		// display order; within a section the categories keep ItemCategory's order.  The map is
+		// fixed in code: a configurable mapping would be one more setting only a tool could edit.
+		public enum ItemSection
+		{
+			Combat,
+			Materials,
+			Food,
+			Plants,
+			Tools,
+			Special,
+			Misc,
+		}
+
+		public static ItemSection GetSection(this ItemCategory category)
+		{
+			switch (category)
+			{
+				case ItemCategory.Weapon:
+				case ItemCategory.Armor:
+				case ItemCategory.Shield:
+				case ItemCategory.Arrow:
+				case ItemCategory.Bolt:
+					return ItemSection.Combat;
+				// Material is the biggest bucket in most bases (resin, bones, cores, everything
+				// unsorted), so it sits with the other materials rather than making Misc huge.
+				case ItemCategory.Metal:
+				case ItemCategory.Wood:
+				case ItemCategory.Stone:
+				case ItemCategory.Skin:
+				case ItemCategory.Material:
+					return ItemSection.Materials;
+				case ItemCategory.RawMeat:
+				case ItemCategory.CookedMeat:
+				case ItemCategory.BalancedFood:
+				case ItemCategory.HealthFood:
+				case ItemCategory.StaminaFood:
+				case ItemCategory.EitrFood:
+				case ItemCategory.Mead:
+				case ItemCategory.FoodIngredient:
+					return ItemSection.Food;
+				case ItemCategory.Plant:
+				case ItemCategory.Seed:
+				case ItemCategory.Weed:
+					return ItemSection.Plants;
+				// Utility is the belt and the wishbone: worn tools.
+				case ItemCategory.Tool:
+				case ItemCategory.Utility:
+				case ItemCategory.FishingBait:
+					return ItemSection.Tools;
+				case ItemCategory.Trophy:
+				case ItemCategory.Treasure:
+				case ItemCategory.Summoning:
+					return ItemSection.Special;
+				default:
+					return ItemSection.Misc;
+			}
+		}
+
 		// Pre-defined lists of prefab names for name-based checks.
 		// Using HashSet for fast lookups (O(1) average time complexity).
 		private static readonly HashSet<string> BossSummoningNames = new HashSet<string> { "trophydeer", "ancientseed", "witheredbone", "dragonegg", "goblintotem", "seekerbrood", "trophyfader", "bellfragment", "sealbreaker", "sealbreakerfragment" };
