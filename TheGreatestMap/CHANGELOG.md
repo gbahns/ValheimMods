@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.13.1 — unreleased
+## 4.13.1 — 2026-11-23
 
 - Fixed: with Show Player Developments on, the minimap could turn into a solid white square and
   stay that way, hiding the map underneath while the markers kept drawing on top.
