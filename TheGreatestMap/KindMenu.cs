@@ -1071,10 +1071,10 @@ namespace TheGreatestMap
                 var have = placed != null ? Holding(placed, offer.Icon) : null;
                 if (have != null)
                 {
-                    // The offered name wins over the one read back off the marker. A marker is
-                    // named after the item whose picture it wears unless something says
-                    // otherwise, and "Serpent trophy" over a row of serpent sightings is naming
-                    // the picture rather than the thing that was seen.
+                    // Said again here, though Focus.TypeLabel now reaches the same answer by
+                    // the same route: a row that exists whether or not anything is in it must
+                    // not change its name the moment something is, and one source saying it
+                    // twice is cheaper than finding out it did.
                     have.Label = offer.Label;
                     rows.Add(have);
                     placed.Remove(have);

@@ -57,6 +57,13 @@ namespace TheGreatestMap
             var kind = ClientPins.KindOf(pin);
             if (kind.HasValue)
             {
+                // A sighting is named after the thing seen rather than after the trophy whose
+                // picture it wears -- "Serpent", not "Serpent trophy". Asked first, and that is
+                // not tidiness: the serpent is Big Game's own picture, so without this it fell
+                // through to the test below and every serpent anybody had marked was called
+                // "Big Game", after the heading it sat under.
+                string seen = Sightings.NameFor(kind.Value, ClientPins.IconOf(pin));
+                if (seen != null) return seen;
                 string type = Catalog.TypeNameFor(kind.Value, ClientPins.IconOf(pin));
                 if (!string.IsNullOrEmpty(type)) return type;
                 if (CrossedOff.HasTypes(kind.Value)) return Categories.Label(kind.Value);

@@ -147,6 +147,17 @@ namespace TheGreatestMap
             return Category.BigGame;
         }
 
+        /// <summary>
+        /// What a marker of this kind wearing this picture is called -- the creature's name, or
+        /// the fish's. Null for a picture these kinds do not offer, and for every other kind.
+        /// </summary>
+        internal static string NameFor(Category kind, string icon)
+        {
+            if (kind != Category.Fish && kind != Category.BigGame) return null;
+            foreach (var one in Offered(kind)) if (IconRegistry.SameKey(one.Icon, icon)) return one.Label;
+            return null;
+        }
+
         private static List<Offer> Roaming()
         {
             var made = new List<Offer>();
