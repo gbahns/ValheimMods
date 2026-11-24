@@ -155,6 +155,12 @@
     "Neobotics-HUDCompass":                          { "side": "client", "why": "A heads-up compass drawn on the player's screen. No server install mentioned in its README." },
     "Neobotics-QuietPortals":                        { "side": "client", "why": "Portal volume and activation distance; Client-side on Thunderstore." },
     "Stonaar-ValheimSkipIntro":                      { "side": "client", "why": "Skips the startup cinematic. Nothing for a headless server to skip." },
+    "DrummerCraig-CreatureBait":                     { "side": "both", "why": "Added 2026-10-16. Jotunn mod that adds Bait items crafted at the cauldron; its README says the server is authoritative and pushes the rules to every client, so the server copy is the point and new items need the prefab on both sides." },
+    "OdinPlus-OdinHorse":                            { "side": "both", "why": "Added 2026-10-16. Adds a creature, items and a cart: prefabs the server must know or it deletes their ZDOs. Its README: 'All players need the mod' and settings 'sync from the server'." },
+    "GetOffMyLawn-SilenceTameWolfCub":               { "side": "client", "why": "Added 2026-10-16. Silences wolf howls near tame cubs: audio on the listening client, nothing for a server to do." },
+    "cjayride-GraphicsConfigPlus":                   { "side": "client", "why": "Added 2026-10-16. Graphics settings beyond the in-game menu; a headless server renders nothing." },
+    "BadgersValheimSkies":                           { "side": "client", "why": "Skybox textures; client only. The profile folder was an empty Nexus placeholder shell and was deleted 2026-10-16." },
+    "Onononoki-SleepThroughDay":                     { "side": "both", "why": "Added 2026-10-22 per Greg: required on both client and server. Sleeping is a server-side decision (the server runs the night skip), so the server copy is what makes it work." },
 
     "Advize-PlantEasily":                            { "side": "client", "why": "Client-side only on Thunderstore. Planting grid is a placement UI." },
     "Azumatt-AzuClock":                              { "side": "client", "why": "Client-side only. In-game clock." },
