@@ -54,6 +54,10 @@ namespace TheGreatestPortal
         /// </summary>
         private static bool _openPending;
         private static bool _openPendingOpen;
+        private static bool _privatePending;
+        private static bool _privatePendingOn;
+        private static bool _privatePendingWas;
+        private static float _privatePendingExpires;
         private static long _openPendingUntil;
         private static long _openPendingWas;
         private static float _openPendingExpires;
@@ -175,6 +179,7 @@ namespace TheGreatestPortal
             _catalogDirty = false;
             _confirmUntil = -1f;
             _openPending = false;   // a different portal; nothing has been asked of this one yet
+            _privatePending = false;
             _query = "";
 
             _title.text = "Portal";
@@ -233,7 +238,7 @@ namespace TheGreatestPortal
             }
             // The countdown on the open checkbox, once a second rather than every frame: it is
             // minutes it counts, and this runs for as long as the panel is up.
-            if (_openPending || Time.time >= _nextOpenTick)
+            if (_openPending || _privatePending || Time.time >= _nextOpenTick)
             {
                 _nextOpenTick = Time.time + 1f;
                 UpdateOpenToggle();   // every frame while an answer is outstanding, so it lands the moment it arrives
@@ -534,9 +539,27 @@ namespace TheGreatestPortal
         /// destination being chosen, and a player who clicks it and walks away has said what they
         /// meant. Set with SetToggle elsewhere, which does not call this back.
         /// </summary>
+        /// <summary>
+        /// Show the private state as asked for, for the reason <see cref="ExpectOpen"/> gives: the
+        /// server writes it, so unticking Private would otherwise leave "Open to everyone" sitting
+        /// under it, on a portal that is no longer private, until the answer arrived. Hiding it on
+        /// the spot is not enough on its own -- the countdown tick reads the ZDO, which still says
+        /// private, and would put it straight back.
+        /// </summary>
+        private static void ExpectPrivate(bool on)
+        {
+            var zdo = OwnZdo();
+            _privatePendingWas = zdo != null && PortalData.GetPrivate(zdo);
+            _privatePendingOn = on;
+            _privatePendingExpires = Time.time + 3f;
+            _privatePending = true;
+            _openPending = false;   // whatever was expected of the open state, this outranks it
+        }
+
         private static void OnPrivateToggle(bool on)
         {
             if (_id == 0L) return;
+            ExpectPrivate(on);
             PortalNetwork.SendPrivate(_id, on);
             TheGreatestPortalMod.Message(on
                 ? "This portal is private: only you can see or use it"
@@ -570,9 +593,15 @@ namespace TheGreatestPortal
                 if (until != _openPendingWas || Time.time >= _openPendingExpires) _openPending = false;
                 else { open = _openPendingOpen; until = _openPendingUntil; }
             }
+            bool priv = zdo != null && PortalData.GetPrivate(zdo);
+            if (_privatePending)
+            {
+                if (priv != _privatePendingWas || Time.time >= _privatePendingExpires) _privatePending = false;
+                else priv = _privatePendingOn;
+            }
             int minutes = PortalData.OpenMinutes;
             bool offer = PortalData.PrivateAllowed && mine && _id != 0L
-                         && zdo != null && PortalData.GetPrivate(zdo) && (open || minutes > 0);
+                         && priv && (open || minutes > 0);
             if (_open.gameObject.activeSelf != offer) _open.gameObject.SetActive(offer);
             if (!offer) return;
             // Without notifying: this runs on a tick, and a tick must not look like the player
