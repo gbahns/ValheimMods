@@ -36,6 +36,27 @@ namespace TheGreatestPortal
         private static Toggle _private;
         private static Toggle _open;
         private static float _nextOpenTick;
+
+        /// <summary>
+        /// What the player just asked the open state to be, shown until the server's answer gets
+        /// here.
+        ///
+        /// <para>The state lives in the portal's ZDO and only the server writes it, so a request
+        /// cannot come back in the frame it was made. Without this the box stayed exactly as it
+        /// was for a round trip to the server and then for up to a second more of the countdown
+        /// tick -- and a checkbox that does nothing for half a second reads as a click that
+        /// missed, which is how it was reported.</para>
+        ///
+        /// <para>Satisfied by the ZDO saying anything other than what it said when we asked, which
+        /// covers opening, shutting and reopening at a new length alike, and abandoned after a few
+        /// seconds in case the answer never comes: the server may refuse, and a box stuck on a lie
+        /// is worse than one that corrects itself.</para>
+        /// </summary>
+        private static bool _openPending;
+        private static bool _openPendingOpen;
+        private static long _openPendingUntil;
+        private static long _openPendingWas;
+        private static float _openPendingExpires;
         private static Button _star;
         private static Image _starImage;
         private static bool _starHover;
@@ -153,6 +174,7 @@ namespace TheGreatestPortal
             _pos = portal.transform.position;
             _catalogDirty = false;
             _confirmUntil = -1f;
+            _openPending = false;   // a different portal; nothing has been asked of this one yet
             _query = "";
 
             _title.text = "Portal";
@@ -211,10 +233,10 @@ namespace TheGreatestPortal
             }
             // The countdown on the open checkbox, once a second rather than every frame: it is
             // minutes it counts, and this runs for as long as the panel is up.
-            if (Time.time >= _nextOpenTick)
+            if (_openPending || Time.time >= _nextOpenTick)
             {
                 _nextOpenTick = Time.time + 1f;
-                UpdateOpenToggle();
+                UpdateOpenToggle();   // every frame while an answer is outstanding, so it lands the moment it arrives
             }
             if (UiKit.ContextMenu.IsOpen)
             {
@@ -543,6 +565,11 @@ namespace TheGreatestPortal
             bool mine = zdo != null && me != 0L && PortalData.GetCreator(zdo) == me;
             long until = zdo != null ? PortalData.GetOpenToAll(zdo) : 0L;
             bool open = PortalData.OpenToAllNow(until);
+            if (_openPending)
+            {
+                if (until != _openPendingWas || Time.time >= _openPendingExpires) _openPending = false;
+                else { open = _openPendingOpen; until = _openPendingUntil; }
+            }
             int minutes = PortalData.OpenMinutes;
             bool offer = PortalData.PrivateAllowed && mine && _id != 0L
                          && zdo != null && PortalData.GetPrivate(zdo) && (open || minutes > 0);
@@ -556,11 +583,28 @@ namespace TheGreatestPortal
                 : $"Open to everyone for {minutes} min");
         }
 
+        /// <summary>Whether the portal this panel is at is open to everyone as things stand.</summary>
+        private static bool OpenIsRunning()
+        {
+            var zdo = OwnZdo();
+            return zdo != null && PortalData.OpenToAllNow(PortalData.GetOpenToAll(zdo));
+        }
+
+        /// <summary>Show what was just asked for, rather than what the ZDO still says.</summary>
+        private static void ExpectOpen(bool open, int minutes)
+        {
+            var zdo = OwnZdo();
+            _openPendingWas = zdo != null ? PortalData.GetOpenToAll(zdo) : 0L;
+            _openPendingOpen = open;
+            _openPendingUntil = open ? PortalData.Now() + minutes * 60L : 0L;
+            _openPendingExpires = Time.time + 3f;
+            _openPending = true;
+        }
+
         private static void OnOpenToggle(bool want)
         {
             if (_id == 0L) return;
-            var zdo = OwnZdo();
-            bool open = zdo != null && PortalData.OpenToAllNow(PortalData.GetOpenToAll(zdo));
+            bool open = OpenIsRunning();
             if (want == open) return;
             int minutes = PortalData.OpenMinutes;
             if (want && minutes <= 0)
@@ -570,6 +614,7 @@ namespace TheGreatestPortal
                 UiKit.SetToggle(_open, false);
                 return;
             }
+            ExpectOpen(want, minutes);
             PortalNetwork.SendOpen(_id, want ? minutes : 0);
             TheGreatestPortalMod.Message(want
                 ? $"This portal is open to everyone for {minutes} min"
@@ -592,6 +637,7 @@ namespace TheGreatestPortal
             if (TgpConfig.OpenForMinutes == null || _open == null || !_open.gameObject.activeSelf) return;
             int cap = PortalData.MaxOpenMinutes;
             if (cap <= 0) return;
+            bool running = OpenIsRunning();
             var choices = new List<int>();
             foreach (int m in new[] { 5, 15, 30, 60, 120, 240, 480 })
                 if (m < cap) choices.Add(m);
@@ -600,8 +646,10 @@ namespace TheGreatestPortal
             foreach (int m in choices)
             {
                 int pick = m;
+                // "from now" while it is open, because that is what picking one does: it starts
+                // the length again rather than adding to what is left.
                 items.Add(new KeyValuePair<string, Action>(
-                    pick + " min" + (pick == cap ? " (all this server allows)" : ""),
+                    pick + " min" + (running ? " from now" : "") + (pick == cap ? " (max)" : ""),
                     () => SetOpenMinutes(pick)));
             }
             UiKit.ContextMenu.Show(_content, ZInput.pointerPosition, items);
@@ -611,10 +659,10 @@ namespace TheGreatestPortal
         {
             if (TgpConfig.OpenForMinutes == null) return;
             TgpConfig.OpenForMinutes.Value = minutes;
-            var zdo = OwnZdo();
-            if (_id != 0L && zdo != null && PortalData.OpenToAllNow(PortalData.GetOpenToAll(zdo)))
+            if (_id != 0L && OpenIsRunning())
             {
                 int now = PortalData.OpenMinutes;
+                ExpectOpen(true, now);
                 PortalNetwork.SendOpen(_id, now);
                 TheGreatestPortalMod.Message($"This portal is open to everyone for {now} min");
             }
@@ -899,9 +947,18 @@ namespace TheGreatestPortal
             openHover.OnRightClick = OpenDurationMenu;
             openHover.OnHoverChanged = over =>
             {
-                if (over) UiKit.ShowTip(_content, "Right-click to choose how long");
+                if (over) UiKit.ShowTip(_content, OpenIsRunning()
+                    ? "Right-click to change the time left"
+                    : "Right-click to choose how long");
                 else UiKit.HideTip();
             };
+            // The words are as much the checkbox as the box is. Without this the only thing either
+            // button can land on is the 26px box, which is a small target for a menu nobody can see
+            // is there. Pointer events bubble to this object, where the Toggle takes the left
+            // button and ignores the right, and Hover takes the right: so the label both ticks the
+            // box and opens the menu, and the hover tip follows the pointer across it.
+            var openLabel = _open.GetComponentInChildren<TMP_Text>(true);
+            if (openLabel != null) openLabel.raycastTarget = true;
             _open.gameObject.SetActive(false);
             _redirectAll = ok != null ? UiKit.CloneButton(ok, content.transform, "RedirectAll", RedirectLabel, RedirectAll)
                                       : UiKit.SimpleButton(content.transform, "RedirectAll", RedirectLabel, RedirectAll);
