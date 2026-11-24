@@ -1,9 +1,9 @@
 # Changelog
 
-## 1.8.0 — unreleased
+## 1.8.0 — 2026-11-23
 
 - "Open to everyone" is a checkbox beside the portal's other settings instead of a text button, and unticks itself when the time runs out.
-- Right-click it to choose how long, up to what the server allows.
+- Right-click it to choose how long, up to what the server allows; picking a length opens the portal for it.
 
 ## 1.7.1 — 2026-11-22
 
