@@ -675,10 +675,11 @@ namespace TheGreatestPortal
             foreach (int m in choices)
             {
                 int pick = m;
-                // "from now" while it is open, because that is what picking one does: it starts
-                // the length again rather than adding to what is left.
+                // Picking a length opens the portal for it, so the words say so while it is shut.
+                // While it is open, "from now" instead: it starts the length again rather than
+                // adding to what is left.
                 items.Add(new KeyValuePair<string, Action>(
-                    pick + " min" + (running ? " from now" : "") + (pick == cap ? " (max)" : ""),
+                    (running ? pick + " min from now" : "Open for " + pick + " min") + (pick == cap ? " (max)" : ""),
                     () => SetOpenMinutes(pick)));
             }
             UiKit.ContextMenu.Show(_content, ZInput.pointerPosition, items);
@@ -688,9 +689,16 @@ namespace TheGreatestPortal
         {
             if (TgpConfig.OpenForMinutes == null) return;
             TgpConfig.OpenForMinutes.Value = minutes;
-            if (_id != 0L && OpenIsRunning())
+            int now = PortalData.OpenMinutes;
+            // Choosing a length opens the portal for it, whether or not it was open already. The
+            // alternative was a menu that quietly set a number for next time, which is not what
+            // reaching for it says. Already open, this starts the length again.
+            //
+            // Guarded by the box being on offer rather than by its own conditions: that is the one
+            // thing that already knows this is the player's own private portal on a server that
+            // allows opening it at all.
+            if (_id != 0L && now > 0 && _open != null && _open.gameObject.activeSelf)
             {
-                int now = PortalData.OpenMinutes;
                 ExpectOpen(true, now);
                 PortalNetwork.SendOpen(_id, now);
                 TheGreatestPortalMod.Message($"This portal is open to everyone for {now} min");
