@@ -885,16 +885,16 @@ namespace TheGreatestPortal
 
             // Toggles and the redirect-all button
             _default = UiKit.SimpleToggle(content.transform, "Default", "Default new portals to point here", false, _ => UpdateRedirectButton());
-            UiKit.Place(_default.GetComponent<RectTransform>(), 30f, 418f, 400f, 30f);
+            UiKit.Place(_default.GetComponent<RectTransform>(), 30f, 418f, 330f, 30f);
             _private = UiKit.SimpleToggle(content.transform, "Private", "Private (only you)", false, OnPrivateToggle);
-            UiKit.Place(_private.GetComponent<RectTransform>(), 440f, 418f, 210f, 30f);
+            UiKit.Place(_private.GetComponent<RectTransform>(), 360f, 418f, 290f, 30f);
             // A checkbox, in the column and the style of Private above it, because it is the same
             // kind of thing: a state the portal is in, not an errand to run. It was the one control
             // in this panel drawn as a small text link -- the style meant for "Expand all" -- which
             // is what it looked like (issue #75, reported by ShadowTox). Being timed suits a box
             // that unticks itself when the time runs out, which it does on the countdown tick.
             _open = UiKit.SimpleToggle(content.transform, "OpenToAll", "Open to everyone", false, OnOpenToggle);
-            UiKit.Place(_open.GetComponent<RectTransform>(), 440f, 450f, 210f, 30f);
+            UiKit.Place(_open.GetComponent<RectTransform>(), 360f, 450f, 290f, 30f);
             var openHover = _open.gameObject.AddComponent<UiKit.Hover>();
             openHover.OnRightClick = OpenDurationMenu;
             openHover.OnHoverChanged = over =>
@@ -987,9 +987,9 @@ namespace TheGreatestPortal
             if (_expandAll != null) UiKit.Place(_expandAll.GetComponent<RectTransform>(), w - 202f, 150f, 82f, 22f);
             if (_collapseAll != null) UiKit.Place(_collapseAll.GetComponent<RectTransform>(), w - 116f, 150f, 86f, 22f);
             if (_scroll != null) UiKit.Place(_scroll.GetComponent<RectTransform>(), 30f, 176f, w - 60f, h - 370f);
-            if (_default != null) UiKit.Place(_default.GetComponent<RectTransform>(), 30f, h - 182f, 400f, 30f);
-            if (_private != null) UiKit.Place(_private.GetComponent<RectTransform>(), w - 240f, h - 182f, 210f, 30f);
-            if (_open != null) UiKit.Place(_open.GetComponent<RectTransform>(), w - 240f, h - 150f, 210f, 30f);
+            if (_default != null) UiKit.Place(_default.GetComponent<RectTransform>(), 30f, h - 182f, 330f, 30f);
+            if (_private != null) UiKit.Place(_private.GetComponent<RectTransform>(), w - 320f, h - 182f, 290f, 30f);
+            if (_open != null) UiKit.Place(_open.GetComponent<RectTransform>(), w - 320f, h - 150f, 290f, 30f);
             if (_redirectAll != null) UiKit.Place(_redirectAll.GetComponent<RectTransform>(), 30f, h - 144f, 250f, 36f);
             float by = h - 92f, bh = 44f;
             if (_pick != null) UiKit.Place(_pick.GetComponent<RectTransform>(), 30f, by, 160f, bh);
