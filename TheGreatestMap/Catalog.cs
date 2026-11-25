@@ -326,24 +326,26 @@ namespace TheGreatestMap
             c != Category.Ship && c != Category.Cart;
 
         /// <summary>
-        /// A kind the game puts on the map by itself, the moment you find one. Recording our own
-        /// on top is a second pin saying the same thing in a different picture, so nothing here
-        /// records these -- but they stay in the marker list, because "where is the nearest
-        /// trader" is the same question the list answers for everything else, and the catalog
-        /// line is still what says which of the world's locations are traders.
-        /// </summary>
-        internal static bool VanillaMarks(Category c) =>
-            c == Category.Trader || c == Category.HildirQuest;
-
-        /// <summary>
-        /// A kind the game draws its own pins for, whether or not this mod records one as well.
-        /// The altars and the traders: both are marked the moment you find one.
+        /// A kind the game puts on the map by itself, the moment you find one: the traders, the
+        /// boss altars, Hildir's quests.
         ///
-        /// <para>Kept apart from <see cref="VanillaMarks"/>, which is the stronger statement --
-        /// nothing records these at all, so they have no recording settings. Boss altars do
-        /// record, off by default, because this mod's marker says which boss it is in the trophy
-        /// it wears and the game's pin does not. So they are listed and pinged like a trader, and
-        /// still recordable like anything else.</para>
+        /// <para>Nothing records these, and they have none of the settings about recording. Our
+        /// own marker on top would be the same place twice in two pictures -- and the record was
+        /// not even that: nothing draws a recorded altar, the styling pass refuses it outright,
+        /// and <see cref="ClientPins.DropWhatTheGameMarks"/> erases any that exist at the next
+        /// login. So recording them wrote markers nobody could see and then erased them again,
+        /// over and over, for whoever turned the switch on.</para>
+        ///
+        /// <para>They are listed and pinged like everything else for all that, because "where is
+        /// the nearest trader" is the same question the list answers for every other kind. What
+        /// is drawn and listed is one marker per place the game has marked, taken from the game's
+        /// own pins in <see cref="OwnMarks"/> -- which is where the boss's trophy comes from, the
+        /// thing a bare vanilla pin does not tell you. The catalog line stays too: it is what
+        /// says which of the world's locations are altars, and a marker already on somebody's map
+        /// works out what it is from the catalog every time it is read.</para>
+        ///
+        /// <para>Boss altars were the exception until 4.15.0 -- recordable, off by default -- and
+        /// a second, weaker test existed to say so. Nothing else ever used the distinction.</para>
         /// </summary>
         internal static bool MarkedByGame(Category c) =>
             c == Category.Trader || c == Category.BossAltar || c == Category.HildirQuest;

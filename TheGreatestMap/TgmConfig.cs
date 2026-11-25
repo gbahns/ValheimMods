@@ -1228,7 +1228,7 @@ namespace TheGreatestMap
                 string label = Categories.Label(cat);
                 // A kind only ever placed by hand, or drawn live from the server, is never
                 // recorded, so none of the recording settings would mean anything for it.
-                if (!Categories.IsPlacedOnly(cat) && !Categories.IsLive(cat) && !Categories.VanillaMarks(cat))
+                if (!Categories.IsPlacedOnly(cat) && !Categories.IsLive(cat) && !Categories.MarkedByGame(cat))
                 {
                 CategoryEnabled[cat] = mod.BindLocal("Recording", "Record " + label, Categories.DefaultEnabled(cat),
                     "Record " + label.ToLowerInvariant() + " you have found." +
@@ -1257,8 +1257,11 @@ namespace TheGreatestMap
                     "with clear line of sight. Interacting, or having them under the crosshair within reach, always counts.");
                 }
                 // Size and minimap are about markers this mod drew into your map, which a live
-                // kind has none of: its pins are the server's answer, drawn and thrown away.
-                if (!Categories.IsLive(cat))
+                // kind has none of: its pins are the server's answer, drawn and thrown away. Nor
+                // has a kind the game marks itself: those are drawn from the game's own pins in
+                // OwnMarks, which puts them up as they come and reads neither setting, so both
+                // were a control wired to nothing.
+                if (!Categories.IsLive(cat) && !Categories.MarkedByGame(cat))
                 {
                 MarkerSize[cat] = mod.BindLocalRange("Recording", label + " Marker Size", Categories.DefaultSize(cat), 20, 100,
                     "Size of recorded " + label.ToLowerInvariant() + " markers on the map, as a percentage of the normal marker size.");
