@@ -80,7 +80,8 @@ namespace TheGreatestMap
     /// <para>And the cell is the distance over root two, floor-snapped to the ladder and never
     /// rounded up, because two markers in one cell can be a diagonal apart. A cell equal to the
     /// distance held markers back at up to 1.41x it; one rounded up the ladder, up to 1.22x again
-    /// on top. The two together reached 5.7 drawn widths at the old default -- markers a clear
+    /// on top -- 1.22x being the old ladder's step, which was finer than the powers of two it
+    /// uses now. The two together reached 5.7 drawn widths at the old default -- markers a clear
     /// five icons apart, one of them gone. Erring small instead means some touching pairs in
     /// neighboring cells both draw, which is the harmless direction: the cap bounds the cost, and
     /// nothing is ever held back that is not genuinely underneath something.</para>
@@ -89,19 +90,38 @@ namespace TheGreatestMap
     /// the zoom, but the cells themselves sit on fixed world lines, so panning does not move them
     /// and survivors do not flicker as the map is dragged. The size is snapped to a ladder of
     /// steps for the same reason in the other direction: zooming changes who survives in jumps
-    /// rather than continuously.</para>
+    /// rather than continuously. The ladder is powers of two so that each jump merges the cells
+    /// below it rather than redrawing the lines -- see <see cref="Steps"/>, which is where a
+    /// marker popping back in as the map was zoomed out turned out to live.</para>
     /// </summary>
     internal static class Thinning
     {
         /// <summary>
-        /// Cell sizes in meters. Every step is about half again the one before, so a cell is never
-        /// more than a quarter off the size the zoom asked for, and there are few enough of them
-        /// that zooming settles on one and stays there.
+        /// Cell sizes in meters: powers of two, and the fact that they are is the whole point.
+        ///
+        /// <para><b>Only doubling nests.</b> A grid of 2c is a grid of c taken in pairs --
+        /// floor(x / 2c) is floor(x / c) shifted down one, exactly -- so growing the cell merges
+        /// cells and never splits one. Two markers that share a patch therefore go on sharing it
+        /// however far out the map is zoomed, which is what makes a thinned marker stay thinned.
+        /// Any other ratio moves the lines instead of merging them, and a boundary that slides
+        /// out from between two markers brings a thinned one back.</para>
+        ///
+        /// <para>This was a ladder of alternating 1.5x and 1.333x steps until 4.15.0, chosen so
+        /// the cell followed the zoom closely, and markers visibly popped in and out while
+        /// zooming. Two troll caves 300 m apart are the worked case: at a 512 m cell they fall
+        /// either side of a line and both draw, at 768 m they share a cell and one goes, at
+        /// 1024 m the line at x=1024 falls between them again and both are back. Nothing freed
+        /// the second one up -- the grid had simply been redrawn. Monotone is worth more than
+        /// following the zoom closely.</para>
+        ///
+        /// <para>The price is that a cell can be half the width the zoom asked for rather than two
+        /// thirds of it, <see cref="Floor"/> snapping down. That errs small, which draws more
+        /// markers than asked rather than fewer -- the harmless direction, as below -- and the
+        /// limit bounds the count regardless.</para>
         /// </summary>
         private static readonly float[] Steps =
         {
-            1f, 1.5f, 2f, 3f, 4f, 6f, 8f, 12f, 16f, 24f, 32f, 48f, 64f, 96f, 128f, 192f,
-            256f, 384f, 512f, 768f, 1024f, 1536f, 2048f, 3072f, 4096f, 6144f, 8192f,
+            1f, 2f, 4f, 8f, 16f, 32f, 64f, 128f, 256f, 512f, 1024f, 2048f, 4096f, 8192f,
         };
 
         private const float Sqrt2 = 1.41421356f;

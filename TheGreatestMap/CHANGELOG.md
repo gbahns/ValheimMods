@@ -26,6 +26,9 @@
   patch with copper and silver in it draws both now, where before it drew one and left you to
   guess which ore was there -- and blueberries no longer lose their place to the raspberries
   beside them.
+- Markers no longer pop back onto the map as you zoom out. The patch sizes are powers of two now,
+  so zooming out merges patches instead of redrawing the grid lines under them -- a line could
+  previously slide out from between two markers and bring a thinned one back.
 
 ## 4.14.0 — 2026-11-23
 

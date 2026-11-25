@@ -99,7 +99,9 @@ nothing the first one did not, and drawing them all is what makes the full map s
 markers wearing the same picture are drawn on top of each other, one of them is drawn and the rest
 wait until you zoom in: you still see that there are blueberries *and* raspberries *and* tin here.
 By the picture rather than by the kind, because that is what repeats -- a patch with copper and
-silver in it draws both, where before it drew one and left you to guess which ore was there. Only ever markers whose pictures
+silver in it draws both, where before it drew one and left you to guess which ore was there. Zooming
+out only ever takes markers away, never brings one back: the patch doubles, so patches merge instead
+of the grid being redrawn under them. Only ever markers whose pictures
 are touching, measured in that kind's own marker width on screen -- nothing with a gap around it
 goes. Markers near you, markers you have just recorded and markers answering `tgm_locate` are never
 thinned. The checkbox is on the map's settings menu, and in Display as "Thin Overlapping Markers",

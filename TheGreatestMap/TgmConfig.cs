@@ -1178,9 +1178,11 @@ namespace TheGreatestMap
                 "How close two markers of the same kind have to be before one of them is held back, measured in " +
                 "that kind's own marker widths on screen. 1 means their pictures are touching, which is what being " +
                 "in the way means; below 1 they have to overlap outright, and above 1 they are thinned while a gap " +
-                "still shows -- 2 holds one back with a clear marker's width between them. Every marker drawn costs " +
-                "frames on a crowded map, so this is the dial between a readable map and a fast one. Only matters " +
-                "with Thin Overlapping Markers on.");
+                "still shows -- 2 holds one back with a clear marker's width between them. The patch is rounded down to " +
+                "a power of two in meters, so what you ask for is an upper bound and a little less is what you get: " +
+                "that draws more markers rather than fewer, and it is what keeps a thinned marker from reappearing " +
+                "as you zoom out. Every marker drawn costs frames on a crowded map, so this is the dial between a " +
+                "readable map and a fast one. Only matters with Thin Overlapping Markers on.");
             MostMarkersDrawn = mod.BindLocal("Display", "Most Markers Drawn", 800,
                 "A limit on how many markers are drawn at once, whatever the spacing allows. Each patch of ground " +
                 "keeps one marker of every picture, which is the point of it, so enough different things standing " +
