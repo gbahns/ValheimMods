@@ -301,13 +301,20 @@ namespace TheGreatestPortal
     /// its two callers are the inventory key and <c>Container.Interact</c>, and the panel already
     /// blocks interacting, so this costs nothing else. The button status is reset by the caller
     /// before we refuse, so the keystroke is spent rather than repeating.</para>
+    ///
+    /// <para>The map half asks the map, not just this mod: vanilla already refuses the inventory
+    /// key while the map is open, so pairing the two adds only the case of another mod calling
+    /// Show outright -- and it means a picker state left behind cannot keep the inventory shut. It
+    /// can be left behind: the per-frame tick that would clear it does not run with no local
+    /// player, or at all if the mod is switched off from a config manager while the map is up. An
+    /// inventory that never opens would be a worse bug than the one being fixed here.</para>
     /// </summary>
     [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.Show))]
     internal static class InventoryGui_Show_Patch
     {
         [HarmonyPrefix]
         private static bool Prefix() =>
-            !PortalPanel.IsOpen && !PortalPanel.JustClosed && !MapPicker.Active;
+            !PortalPanel.IsOpen && !PortalPanel.JustClosed && !(MapPicker.Active && Minimap.IsOpen());
     }
 
     // ── the map ───────────────────────────────────────────────────────────────────
