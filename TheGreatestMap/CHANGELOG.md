@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.15.0 — unreleased
+## 4.15.0 — 2026-11-25
 
 - Boss altars are no longer recorded, like traders and Hildir's quests before them: the game marks
   every altar it knows about and a record of our own was never drawn. Record Boss Altars, and the
