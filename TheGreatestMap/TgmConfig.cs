@@ -1187,7 +1187,12 @@ namespace TheGreatestMap
                 "A limit on how many markers are drawn at once, whatever the spacing allows. Each patch of ground " +
                 "keeps one marker of every picture, which is the point of it, so enough different things standing " +
                 "together can still add up; this is the backstop. Markers are given up from whichever kind has the " +
-                "most of them drawn. 0 turns the limit off.");
+                "most of them drawn. 0 turns the limit off. The patch doubles to come under this, and a doubling " +
+                "is four times the ground, so what gets drawn " +
+                "lands somewhere under the limit rather than on it -- and the patch widens as soon as the limit is " +
+                "passed but narrows again only once there is clear room, so a count wandering about the limit does " +
+                "not take the whole map with it each time. Raise this if the map is quieter than you want: the cost " +
+                "of a marker is in the hundreds nothing and in the thousands real.");
             ThinMarkers.SettingChanged += (_, __) => ClientPins.Restyle();
             ThinSpacing.SettingChanged += (_, __) => ClientPins.Restyle();
             MostMarkersDrawn.SettingChanged += (_, __) => ClientPins.Restyle();

@@ -106,7 +106,11 @@ are touching, measured in that kind's own marker width on screen -- nothing with
 goes. Markers near you, markers you have just recorded and markers answering `tgm_locate` are never
 thinned. The checkbox is on the map's settings menu, and in Display as "Thin Overlapping Markers",
 with "Marker Spacing On Screen" for how close two of a kind may be drawn and "Most Markers Drawn"
-as a hard limit. `tgm_status` says what it is doing right now.
+as a hard limit. Coming under that limit doubles the patch, which is four times the ground, so what
+you see lands under the limit rather than on it -- and it widens as soon as it must but narrows
+again only once there is clear room, so a map hovering around the limit does not keep switching
+between two densities. Raise the limit if the map is quieter than you want it. `tgm_status` says
+what it is doing right now.
 
 **The marker button.** In the row along the top-right corner of the large map, beside the
 maximize square, sits a map pin in the same pale gold as recorded markers. "Marker Button At Map

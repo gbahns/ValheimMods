@@ -29,6 +29,11 @@
 - Markers no longer pop back onto the map as you zoom out. The patch sizes are powers of two now,
   so zooming out merges patches instead of redrawing the grid lines under them -- a line could
   previously slide out from between two markers and bring a thinned one back.
+- And no longer while the map sits still. Coming under Most Markers Drawn doubles the patch, which
+  is four times the ground, so a map sitting just under the limit flipped the whole map between two
+  densities -- a marker you have just recorded counts against the limit while its reveal lasts, so
+  exploring was enough to set it off. The patch widens as soon as it must and narrows only once
+  there is clear room.
 
 ## 4.14.0 — 2026-11-23
 

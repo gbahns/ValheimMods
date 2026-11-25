@@ -160,6 +160,38 @@ namespace TheGreatestMap
         private static bool On => TgmConfig.ThinMarkers == null || TgmConfig.ThinMarkers.Value;
 
         /// <summary>
+        /// How far under the limit the narrower patch has to come before the map is allowed to
+        /// narrow to it. A dead band, and the whole of what stops the flapping.
+        ///
+        /// <para><b>Why one is needed.</b> A doubling is a factor of four in markers drawn, so
+        /// the step either side of the limit is enormous: on Greg's map, 2 doublings drew 954 and
+        /// 3 drew 655. The loop takes the narrowest patch that fits, so a map sitting a few
+        /// markers under the limit is balanced on that cliff -- and the count moves on its own,
+        /// because a marker just recorded is exempt from thinning and still counted against the
+        /// limit for the half minute its reveal lasts. Exploring therefore nudged the total past
+        /// the limit, every patch on the map quadrupled, the reveals expired, and every patch
+        /// quartered again. Which is a copper vein or a troll cave disappearing and coming back
+        /// while the player has not touched the zoom.</para>
+        ///
+        /// <para>With the band, the map widens as soon as it must and narrows only once there is
+        /// real room, so a count wandering around the limit moves it once instead of repeatedly.
+        /// The cost is drawing fewer markers than the limit allows for as long as the count stays
+        /// in the band -- which is the right way round: too few markers is a quieter map, while
+        /// the flapping was the bug.</para>
+        /// </summary>
+        private const float NarrowAt = 0.8f;
+
+        /// <summary>
+        /// The widening the last pass settled on, kept so this one can decline to undo it. One
+        /// each for the two maps: they are laid out separately, from different zooms, and sharing
+        /// a memory between them would have each resetting the other's -- which is the flapping
+        /// again, once per layout instead of once per reveal.
+        /// </summary>
+        private static int _wasLevelLarge;
+
+        private static int _wasLevelSmall;
+
+        /// <summary>
         /// Mark the markers of <paramref name="shown"/> that are standing where one of their own
         /// kind already stands. Returns how many were held back.
         /// </summary>
@@ -191,6 +223,14 @@ namespace TheGreatestMap
                 level++;
                 Merge(shown, level);
             }
+            // Narrower than last time, which is allowed only with room to spare: see NarrowAt.
+            bool large = map.m_mode == Minimap.MapMode.Large;
+            int was = large ? _wasLevelLarge : _wasLevelSmall;
+            if (most > 0 && level < was && always + _living.Count > most * NarrowAt)
+            {
+                while (level < was) { level++; Merge(shown, level); }
+            }
+            if (large) _wasLevelLarge = level; else _wasLevelSmall = level;
             LastStep = level;
             LastCell = CellFor(width, 1f) * (1 << level);
             int drawn = always + _living.Count;
