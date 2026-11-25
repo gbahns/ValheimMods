@@ -12,12 +12,25 @@ namespace TheGreatestMap
     /// marker is hidden, the edit removes the very thing you would click to reverse it, in the
     /// same frame, before the eye has found it.</para>
     ///
+    /// <para><b>Two ways it disappears, not one.</b> The hiding above is the obvious one. The
+    /// other is thinning, whose first rule is that a crossed-off marker loses its patch to any
+    /// neighbor that is not crossed off -- so the click does not hide the marker so much as make
+    /// it lose a contest it had been winning, and zoomed out, where the patches are wide, there
+    /// is nearly always a neighbor to lose to. That one fires whether or not crossed-off markers
+    /// are hidden, which makes it the one most players meet. A marker in its grace is held
+    /// against both.</para>
+    ///
     /// <para><b>Why it blinks.</b> Keeping it on the map solves that and causes a second problem:
     /// a crossed-off marker sitting there looks exactly like one the player has chosen to keep
     /// seeing, so somebody who hides theirs would read the grace as the hiding being broken.
     /// Blinking says "going" rather than "staying", which is a thing no ordinary marker does, and
     /// it makes the short window legible rather than mysterious -- the marker is visibly on its
     /// way out, so nobody waits for it to settle.</para>
+    ///
+    /// <para>Only the markers that would otherwise be gone blink, which is why <see cref="Paint"/>
+    /// asks the hiding question again: a marker rescued from thinning alone is one the player
+    /// expects to see anyway, and blinking it would be explaining something nobody noticed. The
+    /// blink is there to account for a marker that has no business being on the map.</para>
     ///
     /// <para><b>Separate from <see cref="Reveals"/>, which is the same shape for a different
     /// reason.</b> That one shows a marker you have just recorded though its kind is switched

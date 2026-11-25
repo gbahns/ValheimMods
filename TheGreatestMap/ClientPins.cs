@@ -1899,7 +1899,7 @@ namespace TheGreatestMap
             // The ones that just went off the map, collected rather than acted on in the loop:
             // revealing asks for a layout, and nothing should ask for one while the list the
             // layout reads is being walked.
-            List<SharedPin> vanished = null;
+            List<SharedPin> crossed = null;
             foreach (var kv in _idByPin)
             {
                 if (!Store.Pins.TryGetValue(kv.Value, out var shared)) continue;
@@ -1910,20 +1910,26 @@ namespace TheGreatestMap
                 changed = true;
                 // Crossing a marker off by clicking it is the one edit that can hide its own
                 // undo: the gesture that takes it back is another click on the same marker, and
-                // that kind of crossed-off marker being hidden means there is nothing left to
-                // click. Worse, it is the easiest edit to make by accident -- a left click
-                // anywhere near a marker -- and the fastest to lose, since the marker is gone
-                // before the eye finds it. So these two are kept together and nothing else is
-                // needed: the marker is held and blinking for a few seconds, and it is named.
-                if (crossedOff && CrossedOff.IsHidden(shared))
-                    (vanished ?? (vanished = new List<SharedPin>())).Add(shared);
+                // the marker can be gone before the eye has found it. It is also the easiest edit
+                // to make by accident, being a left click anywhere near a marker.
+                if (crossedOff) (crossed ?? (crossed = new List<SharedPin>())).Add(shared);
             }
             if (changed) PersonalMap.Touch();
-            if (vanished == null) return;
-            foreach (var shared in vanished) JustCrossedOff.Add(shared.Key);
-            TheGreatestMapMod.Message(vanished.Count == 1
-                ? $"Crossed off {Focus.TypeLabel(vanished[0])}. Click it again to put it back."
-                : $"Crossed off {vanished.Count} markers. Click one again to put it back.");
+            if (crossed == null) return;
+            // Every one of them, whatever the switches say. There are two ways the marker goes --
+            // hidden for being crossed off, or thinned away for losing its patch to a neighbor
+            // that is not -- and the second needs nothing switched on to happen.
+            foreach (var shared in crossed) JustCrossedOff.Add(shared.Key);
+            // Named only where it would have left the map outright. One held back from thinning is
+            // still there to be looked at, and a player working down a row of ruins does not want
+            // telling forty times what is in front of them.
+            int gone = 0;
+            SharedPin last = null;
+            foreach (var shared in crossed) if (CrossedOff.IsHidden(shared)) { gone++; last = shared; }
+            if (gone == 0) return;
+            TheGreatestMapMod.Message(gone == 1
+                ? $"Crossed off {Focus.TypeLabel(last)}. Click it again to put it back."
+                : $"Crossed off {gone} markers. Click one again to put it back.");
         }
 
         /// <summary>Sweeps stale player-placed pins that vanilla imported from a table before this mod.</summary>
@@ -2038,13 +2044,17 @@ namespace TheGreatestMap
                 // see JustCrossedOff. Asked here rather than beside the reveal above, which is a
                 // different window for a different reason, because this is decided after it.
                 //
-                // Exempt from thinning for the same few seconds: a marker held so it can be
-                // clicked is no use held and then thinned away under a neighbor.
-                if (!hidden && CrossedOff.IsHidden(shared))
-                {
-                    if (JustCrossedOff.Holds(kv.Value)) asked = true;
-                    else hidden = true;
-                }
+                bool grace = JustCrossedOff.Holds(kv.Value);
+                if (!hidden && CrossedOff.IsHidden(shared) && !grace) hidden = true;
+                // And exempt from thinning for the same few seconds, which is a second way the
+                // same marker disappears and the one that actually bit first. Thinning's very
+                // first rule is that a crossed-off marker loses its patch to any neighbor that is
+                // not crossed off -- so the click does not hide the marker, it makes it lose a
+                // contest it had been winning, and zoomed out the patches are wide enough that
+                // there is nearly always a neighbor to lose to. That happens whether or not
+                // crossed-off markers are hidden at all, so it is asked of every marker in its
+                // grace rather than only the ones the switch above would have taken away.
+                if (!hidden && grace) asked = true;
                 // Looking for one thing: it wins over every switch above, since a player who asks
                 // for frost caves means the frost caves whether or not dungeons are switched off.
                 // Not over the master switch or a marker put out by hand, which both mean "not

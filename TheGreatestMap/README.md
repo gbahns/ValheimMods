@@ -352,15 +352,18 @@ a thousand names on it is a wall of words -- so this is for the things nothing c
 still decides whether any of them are drawn.
 
 **An accidental cross-off is visible and reversible.** A left click on the map crosses the nearest
-marker off, which is easy to do by mistake -- and if that kind of crossed-off marker is hidden, the
-marker would go in the same frame, taking with it the only thing that undoes it, which is another
-click on the same marker. So it is held for ten seconds ("Reveal Crossed Off Seconds") and the map
-says what it was. Click it again and it is back.
+marker off, which is easy to do by mistake, and what undoes it is another click on the same marker
+-- so the edit can take away the only thing that reverses it, in the same frame, before you have
+seen which marker it was. Two ways it goes: hidden, if you hide that kind of crossed-off marker,
+and thinned away, because a crossed-off marker loses its place to any neighbor that is not one,
+which zoomed out is nearly always. So it is held against both for ten seconds ("Reveal Crossed Off
+Seconds"), and clicking it again puts it back.
 
-It blinks while it is held, which is the point of "Flash Crossed Off Markers" being on by default:
-a crossed-off marker sitting there looks exactly like one you have chosen to keep seeing, so anyone
-who hides theirs would read the pause as the hiding having failed. A blink is a thing no ordinary
-marker does, so it reads as on its way out.
+One that would have left the map outright also blinks and is named, which is the point of "Flash
+Crossed Off Markers" being on by default: a crossed-off marker sitting there looks exactly like one
+you have chosen to keep seeing, so anyone who hides theirs would read the pause as the hiding
+having failed. A blink is a thing no ordinary marker does, so it reads as on its way out. One held
+back only from thinning does neither -- it is a marker you expected to see anyway.
 
 **Hiding what you are done with.** Crossed-off markers stay on the map, and which of them are
 drawn is decided on the rows they already have in the marker button's list -- the "12 done" button
