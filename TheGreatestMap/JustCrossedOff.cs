@@ -27,10 +27,12 @@ namespace TheGreatestMap
     /// marker does, and it makes the short window legible rather than mysterious -- the marker is
     /// visibly on its way out, so nobody waits for it to settle.</para>
     ///
-    /// <para>Only the markers that would otherwise be gone pulse, which is why <see cref="Paint"/>
-    /// asks the hiding question again: a marker rescued from thinning alone is one the player
-    /// expects to see anyway, and pulsing it would be explaining something nobody noticed. The
-    /// pulse is there to account for a marker that has no business being on the map.</para>
+    /// <para>Every marker in its grace pulses, by whichever route it was going to disappear.
+    /// Holding one back from thinning alone looked at first like a case needing no explanation --
+    /// the player expected to see it -- but that is wrong in the way that matters: it is still
+    /// about to go, five seconds from now, and the pulse is what says so. A marker that sits
+    /// still and then vanishes is the thing this class exists to stop. Only the name is kept for
+    /// the hiding case, since a marker still on the map can be hovered.</para>
     ///
     /// <para><b>Separate from <see cref="Reveals"/>, which is the same shape for a different
     /// reason.</b> That one shows a marker you have just recorded though its kind is switched
@@ -68,12 +70,12 @@ namespace TheGreatestMap
         }
 
         /// <summary>
-        /// The blink, and the end of it.
+        /// The swell, and the end of the grace.
         ///
-        /// <para>Painted every frame while anything is held, like the locate ping and the portal
-        /// pulse, because the game redraws a marker's own color and alpha whenever it lays the map
-        /// out and anything written once would be wiped. Costs nothing while nothing is held,
-        /// which is almost always.</para>
+        /// <para>Every frame while anything is held, like the locate ping and the portal pulse,
+        /// because an animation has to be. Costs nothing while nothing is held, which is almost
+        /// always, and while something is it touches the one or two markers held rather than the
+        /// map.</para>
         /// </summary>
         internal static void Paint()
         {
@@ -92,32 +94,49 @@ namespace TheGreatestMap
             }
 
             if (!Pulsing) return;
-            // Size rather than brightness, and that is not a matter of taste. The styling pass
-            // fades a crossed-off marker from the color it already has, so an alpha written here
-            // every frame would be faded again at every layout and the marker would walk away
-            // darker each time -- the compounding Locate.Paint warns about, in the one place
-            // where the base is not recomputed. A marker's size is read from its kind's setting
-            // on every pass, so writing it is absolute and nothing accumulates.
-            //
-            // A plain sine, two beats every three seconds: the marker spends as long large as it
-            // does small, which reads as breathing. A sharper curve reads as an alarm, and this
-            // is a marker on its way out rather than something gone wrong.
-            float wave = (Mathf.Sin(now * Mathf.PI * 1.33f) + 1f) * 0.5f;
-            float grow = 1f + 0.45f * wave;
+            // Written here as well as by the styling pass, and the two cannot disagree because
+            // both take the number from ClientPins.ScaleOf. Both are needed: that pass runs only
+            // when the map lays out, which on a map nobody is panning is not every frame, so by
+            // itself the marker would swell in steps or sit still -- and asking for a layout
+            // every frame instead would run the styling pass over every marker on the map to
+            // animate one of them, which is the cost the thinning notes are about.
             foreach (var kv in _until)
             {
                 var pin = ClientPins.PinDataFor(kv.Key);
                 if (pin == null || pin.m_uiElement == null) continue;
                 if (!pin.m_uiElement.gameObject.activeSelf) continue;
-                // Still a marker the player would otherwise not be seeing. Switching crossed-off
-                // markers back on mid-grace makes this one ordinary again, and an ordinary marker
-                // has no business drawing attention to itself.
-                if (!ClientPins.TryGet(kv.Key, out var shared) || !CrossedOff.IsHidden(shared)) continue;
-                // Against the size the marker is configured to be, never against the size it is
-                // this frame, which would compound exactly as the alpha would have.
-                float size = ClientPins.ScaleOf(shared) * grow;
+                if (!ClientPins.TryGet(kv.Key, out var shared)) continue;
+                float size = ClientPins.ScaleOf(shared);
                 pin.m_uiElement.localScale = new Vector3(size, size, 1f);
             }
         }
+
+        /// <summary>
+        /// How much larger than its settled size this marker is drawn this frame. One for every
+        /// marker not in a grace, which is almost all of them.
+        ///
+        /// <para>Folded into <see cref="ClientPins.ScaleOf"/> rather than applied on top of it,
+        /// so that the styling pass and <see cref="Paint"/> write the same number instead of
+        /// overwriting each other -- the pass would otherwise wipe the swell at every layout.</para>
+        ///
+        /// <para>A plain sine, two beats every three seconds, swelling to just under half again:
+        /// the marker spends as long large as it does small, which reads as breathing. A sharper
+        /// curve reads as an alarm, and this is a marker on its way out rather than something
+        /// gone wrong. Size and not brightness because the styling pass fades a crossed-off
+        /// marker from the color it already has, so an alpha written every frame would be faded
+        /// again at every layout and the marker would walk away darker each time.</para>
+        /// </summary>
+        internal static float Grow(PinKey id)
+        {
+            // Emptiness first, and deliberately: this is asked of every marker on the map every
+            // time it lays out, and almost every one of those asks comes when nothing is held at
+            // all. One integer against a dictionary lookup and a config read.
+            if (_until.Count == 0) return 1f;
+            if (!Pulsing || !Holds(id)) return 1f;
+            float wave = (Mathf.Sin(Time.unscaledTime * Mathf.PI * 1.33f) + 1f) * 0.5f;
+            return 1f + 0.45f * wave;
+        }
+
+
     }
 }

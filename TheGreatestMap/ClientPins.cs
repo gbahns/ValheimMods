@@ -1253,7 +1253,13 @@ namespace TheGreatestMap
             // artwork fills more of its frame than the others looks a size bigger at the same
             // size. Here rather than at the styling pass, so everything that reads a marker's
             // size -- the ping's swell included -- reads the same number.
-            return scale * IconRegistry.SizeOf(IconOf(shared));
+            //
+            // The swell of a marker in its cross-off grace is in here for that reason and not
+            // only for tidiness. Written anywhere else it would be fighting this: the styling
+            // pass sets a marker's scale from this number whenever the map lays out, so a pulse
+            // applied on top would be wiped on every layout -- which on a map that is being
+            // panned, or a minimap, is every frame. Here, every writer agrees.
+            return scale * IconRegistry.SizeOf(IconOf(shared)) * JustCrossedOff.Grow(shared.Key);
         }
 
         /// <summary>The marker behind one of our vanilla pins, or null for a pin that is not ours.</summary>
