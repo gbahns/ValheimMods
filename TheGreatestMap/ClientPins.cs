@@ -270,11 +270,17 @@ namespace TheGreatestMap
         /// <see cref="DropWhatTheGameMarks"/>, which is a different statement -- those are not
         /// wanted on anybody's map rather than not wanted on this one.</para>
         /// </summary>
+        /// <summary>
+        /// Whose map this is, read once for the merge about to run rather than per marker. A
+        /// merge reads thousands of them, and asking the game for the local player each time is
+        /// the kind of per-marker cost the thinning notes are about.
+        /// </summary>
+        private static long _merging;
+
         private static string RefusedKind(SharedPin pin)
         {
             if (pin == null) return null;
-            long mine = WriterId();
-            if (mine != 0L && pin.OwnerId == mine) return null;
+            if (_merging != 0L && pin.OwnerId == _merging) return null;
             // Placed by hand, which is a decision of its own and not a kind: a marker somebody
             // dropped on a silver vein they guessed at is Ore, so no Record switch below can say
             // "recorded ore, yes; somebody's guess at ore, no". Asked before the kind for the
@@ -306,6 +312,7 @@ namespace TheGreatestMap
             // does, the first time a map catches up with a big edit -- is thousands of those.
             var clock = System.Diagnostics.Stopwatch.StartNew();
             MergeResult result;
+            _merging = WriterId();
             if (fromServer) PersonalMap.BeginQuiet();
             try { result = Store.Merge(incoming, RefusedKind); }
             finally { if (fromServer) PersonalMap.EndQuiet(); }
