@@ -7,6 +7,9 @@
   marker spacing, label spacing and look distance that went with it, are gone.
 - Gone with them: Boss Altars and Hildir Quests Marker Size and On Minimap, four settings that
   were wired to nothing.
+- A Record switch now decides what you copy as well as what you write down: markers of a kind you
+  do not record are no longer taken off a cartography table or another player's map, and a merge
+  says how many it turned away. Markers you recorded yourself always come back to you.
 
 ## 4.14.0 — 2026-11-23
 

@@ -33,6 +33,20 @@ namespace TheGreatestMap
         /// and it says which marker and from whom.
         /// </summary>
         public int RefusedByErasure, RefusedByOldErasure;
+
+        /// <summary>
+        /// Markers not copied onto this map because this player does not record that kind, and
+        /// which kinds they were.
+        ///
+        /// <para>Neither an erasure nor a judgement on the map they came from: a decision about
+        /// what to write on this one. Counted and named because a merge that silently keeps
+        /// nothing looks exactly like a merge that had nothing to give -- a player who wonders
+        /// where another's markers went deserves to be told they were turned away, and by which
+        /// switch.</para>
+        /// </summary>
+        public int RefusedByKind;
+
+        public readonly Dictionary<string, int> RefusedKinds = new Dictionary<string, int>(StringComparer.Ordinal);
         public readonly List<SharedPin> ChangedPins = new List<SharedPin>();
         public readonly List<Tombstone> NewTombstones = new List<Tombstone>();
         public readonly List<Suppression> NewSuppressions = new List<Suppression>();
@@ -41,6 +55,22 @@ namespace TheGreatestMap
         /// <summary>Whether an erasure turned anything away, which is worth saying even when
         /// nothing else changed: it is the only sign that the erasures are still doing work.</summary>
         public bool Refused => RefusedByErasure + RefusedByOldErasure > 0;
+
+        /// <summary>
+        /// Whether anything was turned away for being a kind this map does not record. Kept out
+        /// of <see cref="Any"/> on purpose: nothing changed here, so there is nothing to redraw
+        /// or to pass on -- it is only worth saying out loud.
+        /// </summary>
+        public bool TurnedAway => RefusedByKind > 0;
+
+        /// <summary>The kinds turned away and how many of each, for a line somebody reads.</summary>
+        public string KindsTurnedAway()
+        {
+            var named = new List<string>();
+            foreach (var kv in RefusedKinds) named.Add(kv.Key + " " + kv.Value);
+            named.Sort(StringComparer.Ordinal);
+            return string.Join(", ", named);
+        }
 
         /// <summary>
         /// Take another merge's tally into this one, for a map that arrived in several messages.
@@ -56,6 +86,12 @@ namespace TheGreatestMap
             Suppressed += other.Suppressed;
             RefusedByErasure += other.RefusedByErasure;
             RefusedByOldErasure += other.RefusedByOldErasure;
+            RefusedByKind += other.RefusedByKind;
+            foreach (var kv in other.RefusedKinds)
+            {
+                RefusedKinds.TryGetValue(kv.Key, out int had);
+                RefusedKinds[kv.Key] = had + kv.Value;
+            }
             ChangedPins.AddRange(other.ChangedPins);
             NewTombstones.AddRange(other.NewTombstones);
             NewSuppressions.AddRange(other.NewSuppressions);
@@ -79,6 +115,10 @@ namespace TheGreatestMap
             if (Deleted > 0) parts.Add($"{Deleted} erased");
             if (RefusedByErasure > 0) parts.Add($"{RefusedByErasure} refused by an erasure");
             if (RefusedByOldErasure > 0) parts.Add($"{RefusedByOldErasure} refused by a pre-rekey erasure");
+            if (RefusedByKind > 0)
+                parts.Add(RefusedKinds.Count == 1
+                    ? $"{KindsTurnedAway()} not copied"
+                    : $"{RefusedByKind} not copied ({KindsTurnedAway()})");
             return parts.Count > 0 ? string.Join(", ", parts) : "nothing new";
         }
     }
@@ -331,7 +371,15 @@ namespace TheGreatestMap
 
         // ── merging ─────────────────────────────────────────────────────────────────
 
-        public MergeResult Merge(MapStore other)
+        /// <summary>
+        /// Take another map's markers and erasures into this one.
+        ///
+        /// <para><paramref name="refusedAs"/> names the kind of a marker this map will not copy,
+        /// or returns null to take it in. Left out on the server, which holds the shared map and
+        /// has no settings of its own to apply -- and must not apply any player's, or one
+        /// person's switch would decide what the group's map is allowed to hold.</para>
+        /// </summary>
+        public MergeResult Merge(MapStore other, Func<SharedPin, string> refusedAs = null)
         {
             var result = new MergeResult();
             if (other == null) return result;
@@ -359,6 +407,27 @@ namespace TheGreatestMap
                         $"{theirs.Pos} erased, for {theirs.Author}. These are the erasures that cannot be " +
                         "retired yet; this line is the evidence that they are still needed.");
                     continue;
+                }
+                // Not a kind this map writes down. Asked after the erasures because working
+                // out a marker's kind costs more than either tombstone lookup, and asked at all
+                // because copying a marker off a table or another player's map is the same act
+                // as writing one down on seeing the thing itself: one decision, answered once,
+                // wherever the marker came from.
+                //
+                // Turned away rather than erased. Nothing is written, no tombstone is made and
+                // nothing travels, so the map it came from keeps its marker and this one simply
+                // never had it -- which is also what makes the switch free to change its mind:
+                // the next merge offers the same markers again.
+                if (refusedAs != null)
+                {
+                    string refused = refusedAs(theirs);
+                    if (refused != null)
+                    {
+                        result.RefusedByKind++;
+                        result.RefusedKinds.TryGetValue(refused, out int had);
+                        result.RefusedKinds[refused] = had + 1;
+                        continue;
+                    }
                 }
                 if (Pins.TryGetValue(key, out var mine))
                 {

@@ -215,7 +215,7 @@ namespace TheGreatestMap
             PersonalMap.Accepted();
             var result = _fromServer.Take();
             AfterMerge(result);
-            if (result.Any) TheGreatestMapMod.Message("Shared map: " + result);
+            if (result.Any || result.TurnedAway) TheGreatestMapMod.Message("Shared map: " + result);
             else if (_announcePending) TheGreatestMapMod.Message("Shared map: nothing new.");
             _announcePending = false;
         }
@@ -368,11 +368,12 @@ namespace TheGreatestMap
             // on the main thread. A long one here is a frame the game did not draw, which is worth
             // knowing about if anything odd happened at that moment.
             TheGreatestMapMod.Log.LogInfo(
-                $"[TheGreatestMap] Compared maps with {theirName}: {(result.Any ? result.ToString() : "no marker changes")}, " +
+                $"[TheGreatestMap] Compared maps with {theirName}: " +
+                $"{(result.Any || result.TurnedAway ? result.ToString() : "no marker changes")}, " +
                 $"{Bytes(exploration)} of their explored area{(newAreas ? " (new ground)" : "")}. " +
                 $"Markers {merged} ms, exploration {applied - merged} ms" +
                 (reply ? $", packing ours {packed - applied} ms" : "") + $", {clock.ElapsedMilliseconds} ms in all.");
-            string what = result.Any ? result.ToString() : "";
+            string what = result.Any || result.TurnedAway ? result.ToString() : "";
             if (newAreas) what = what.Length > 0 ? what + ", new map areas" : "new map areas";
             if (what.Length > 0) TheGreatestMapMod.Message($"Compared maps with {theirName}: {what}.");
             else if (_quietOnce.Add(sender)) TheGreatestMapMod.Message($"Compared maps with {theirName}: nothing new.");

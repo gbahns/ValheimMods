@@ -474,6 +474,12 @@ press the one you want, or press its "+" to write down just the one you are stan
 group on also fills in any of its places you have walked past recently, so changing your mind costs
 nothing.
 
+**What you do not record, you do not copy either.** A kind you are not recording is not taken off a
+cartography table or out of another player's map, so the switch answers one question rather than
+two: what goes on your map, however you came to hear of it. A merge says how many markers it turned
+away and which kinds they were. Markers you recorded yourself are never turned away -- one you
+wrote is already written, so your own map always comes back to you.
+
 ### Never recorded
 
 Catalogued so a marker written for one in an older version still knows what it is, and can
@@ -486,6 +492,9 @@ be named, pictured and hidden -- but never written, and not offered as a choice.
 | **Tar Puddles** | `Pickable_Tar` | Every one of them is inside a tar pit, and the pit is marked as a deposit. |
 | **Infested Trees** | `InfestedTree*` | 700 in a world. The guck on them is recorded as guck, which is what anyone goes for. |
 | **Places of Mystery** | `PlaceofMystery*` | Three in a world, and the game pins all three itself -- the same arrangement the boss altars and Hildir's quests have. |
+| **Boss Altars** | Eikthyr, The Elder, Bonemass, Moder, Yagluth, The Queen, Fader | The game pins every altar itself. The marker list's own row is drawn from those pins and wears the boss's trophy, so it is listed, found and pinged like anything else -- there is just no second marker of ours beside it. |
+| **Traders** | Haldor, Hildir, Bog Witch | Pinned by the game the moment you meet one, and listed here the same way the altars are. |
+| **Hildir Quests** | Howling Cavern, Smoldering Tomb, Sealed Tower | The same again. |
 
 ### Off until you ask
 
@@ -508,12 +517,10 @@ list's gear menu to see these rows and switch any of them on.
 | Kind | Groups |
 |---|---|
 | Berries | Raspberries, Blueberries, Cloudberries, Vineberries |
-| Boss Altars | Eikthyr, The Elder, Bonemass, Moder, Yagluth, The Queen, Fader |
 | Campfires | Campfire |
 | Dungeons | Burial Chambers, Sunken Crypt, Frost Cave, Troll Cave, Infested Mine, Bear Cave, Putrid Hole |
 | Enemy Bases | Fuling Village, Fuling Tower, Draugr Village, Greydwarf Camp, Dvergr Guard Tower, Dvergr Excavation, Dvergr Harbor, Dvergr Lighthouse, Charred Fortress |
 | Herbs | Dandelion, Thistle |
-| Hildir Quests | Howling Cavern, Smoldering Tomb, Sealed Tower |
 | Mushrooms | Mushrooms, Yellow Mushrooms, Blue Mushrooms, Magecap, Jotun Puffs, Smoke Puffs |
 | Nests | Drake Nest |
 | Ore | Copper, Tin, Scrap Pile, Silver, Obsidian, Meteorite, Tar Pit, Giant Brain, Giant Helmet, Giant Ribs, Giant Skull, Giant Sword, Yggdrasil Root, Guck, Gold, Frozen Troll, Leviathan, Flametal Vein |
@@ -521,7 +528,6 @@ list's gear menu to see these rows and switch any of them on.
 | Seeds | Carrot Seeds, Turnip Seeds, Onion Seeds |
 | Spawners | Greydwarf nest, Body pile, Evil bone pile, Monument of Torment, **Surtling Geysers** |
 | Structures | Abandoned Farm, Abandoned House, Log Cabin, **Onion Seed Ruins** |
-| Traders | Haldor, Hildir, Bog Witch |
 | Workbenches | Workbench |
 
 ## Console commands

@@ -239,6 +239,33 @@ namespace TheGreatestMap
             return IconRegistry.TypeFor(IconRegistry.KeyForVanilla(shared.Type));
         }
 
+        /// <summary>
+        /// The name of the kind of a marker this player does not record, or null to take it in.
+        /// Handed to the merge, which turns away whatever this names.
+        ///
+        /// <para><b>Your own markers are never turned away</b>, whatever the switches say. One
+        /// you recorded is already recorded, and the question a Record switch answers is what to
+        /// write down from somewhere else; turning your own copy back at the door would mean a
+        /// reinstall, or a fresh table visit, could not hand you back your own map.</para>
+        ///
+        /// <para>A kind with no Record switch at all is taken in, since nothing is being
+        /// declined: the ones only ever placed by hand have no switch because nothing records
+        /// them, and the ones the game marks itself are answered further down by
+        /// <see cref="DropWhatTheGameMarks"/>, which is a different statement -- those are not
+        /// wanted on anybody's map rather than not wanted on this one.</para>
+        /// </summary>
+        private static string RefusedKind(SharedPin pin)
+        {
+            if (pin == null) return null;
+            long mine = WriterId();
+            if (mine != 0L && pin.OwnerId == mine) return null;
+            var kind = KindOf(pin);
+            if (!kind.HasValue) return null;
+            return !TgmConfig.CategoryEnabled.TryGetValue(kind.Value, out var records) || records.Value
+                ? null
+                : Categories.Label(kind.Value);
+        }
+
         // ── merging in from the shared map or another player ────────────────────────
 
         /// <summary>
@@ -257,13 +284,17 @@ namespace TheGreatestMap
             var clock = System.Diagnostics.Stopwatch.StartNew();
             MergeResult result;
             if (fromServer) PersonalMap.BeginQuiet();
-            try { result = Store.Merge(incoming); }
+            try { result = Store.Merge(incoming, RefusedKind); }
             finally { if (fromServer) PersonalMap.EndQuiet(); }
             long mergeMs = clock.ElapsedMilliseconds;
             if (result.Refused)
                 TheGreatestMapMod.Log.LogInfo(
                     $"[TheGreatestMap] An erasure turned away {result.RefusedByErasure + result.RefusedByOldErasure} " +
                     "marker(s) offered by that map, which is erasures doing the job they exist for.");
+            if (result.TurnedAway)
+                TheGreatestMapMod.Log.LogInfo(
+                    $"[TheGreatestMap] {result.RefusedByKind} marker(s) that map offered were not copied onto " +
+                    $"this one, being kinds it does not record: {result.KindsTurnedAway()}.");
             if (!result.Any) return result;
             foreach (var t in result.NewTombstones) RemovePinData(t.Key);
             foreach (var pin in result.ChangedPins) ReplacePinData(pin);
