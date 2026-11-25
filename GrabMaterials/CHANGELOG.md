@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.12.0 — 2026-11-25
+
+- Dropping a stack of eggs on the ground drops them one at a time, scattered in front of you, so they can hatch; an egg in a stack never does. Chicken eggs, asksvin eggs and modded eggs alike. `Drop One At A Time` under `Eggs` turns it off.
+
 ## 2.11.0 — 2026-11-23
 
 - The inventory panel can group its categories under section headers: Combat, Materials, Food, Plants, Tools, Special and Misc (#44). Turn them on with `Section Headers` under `Panel UI` or `/isections` in chat. Click a section header to flash every container holding anything in it; the Table style only takes its row order from them.

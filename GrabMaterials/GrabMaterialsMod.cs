@@ -19,7 +19,7 @@ using UnityEngine;
 namespace GrabMaterialsMod
 {
 
-	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.11.0")]
+	[BepInPlugin(GrabMaterialsMod.ModGuid, "Grab Materials", "2.12.0")]
 	[BepInProcess("valheim.exe")]
 	public class GrabMaterialsMod : BaseUnityPlugin
 	{
@@ -47,6 +47,7 @@ namespace GrabMaterialsMod
 		public ConfigEntry<bool> PanelDismissOnMovement;
 		public ConfigEntry<bool> PanelCategoryUnderlines;
 		public ConfigEntry<bool> PanelSectionHeaders;
+		public ConfigEntry<bool> DropEggsSingly;
 		public ConfigEntry<bool> PanelShowItemIcons;
 		public ConfigEntry<bool> PanelMarkUndiscovered;
 		public ConfigEntry<bool> PanelPauseWhileOpen;
@@ -245,6 +246,7 @@ namespace GrabMaterialsMod
 			TidyOnOpen = Config.Bind("Tidy Containers", "Enabled", true, new ConfigDescription("Tidy a container when you open it: partial stacks of the same item are merged, then the items are laid out in the order below. /sort does the same on demand for the container you have open."));
 			TidySortOrder = Config.Bind("Tidy Containers", "Sort Order", GrabMaterials.ContainerTidy.Order.Category, new ConfigDescription("Category = the /inventory panel's categories, then name. Name, Weight and Value are what SimpleSort offered. Within one item, fuller stacks come first."));
 			TidySkipContainers = Config.Bind("Tidy Containers", "Skip Containers", "", new ConfigDescription("Prefab names of containers to leave alone, separated by commas, for chests whose slot positions you arrange yourself. Armory racks and tombstones are always skipped."));
+			DropEggsSingly = Config.Bind("Eggs", "Drop One At A Time", true, new ConfigDescription("Dropping a stack of eggs on the ground drops them as single eggs, scattered in front of you, because an egg in a stack never hatches. Chicken eggs, asksvin eggs and any modded egg that hatches."));
 
 			BadgeIconRange = Config.Bind("Container Badges", "Icon Range", 10f, new ConfigDescription("Within this many meters a badge also shows the icons of the one or two items that take the most slots in the container, so you can tell the wood chest from the stone chest without opening either. Only when Display is BadgesAndIcons.", new AcceptableValueRange<float>(1f, 100f)));
 			BadgeIconPosition = Config.Bind("Container Badges", "Icon Position", GrabMaterials.ContainerBadges.IconSide.Right, new ConfigDescription("Where the item icons go. Right, Left, Up and Down line them out from the disc on that side. BelowRow and AboveRow center them in a row under or over the disc, so the disc and two icons make a triangle."));

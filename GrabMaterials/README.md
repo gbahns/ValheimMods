@@ -72,6 +72,10 @@ Look at a chest and press **\\**. The item that chest mostly holds is pulled int
 
 Opening a chest merges its partial stacks and lays the items out by category and name, the way SimpleSort used to work. Choose Name, Weight or Value instead, turn it off, or list containers to leave alone under `Tidy Containers`. Armory racks and tombstones are never touched.
 
+## Eggs
+
+Drop a stack of eggs and they land as single eggs, scattered in front of you, because an egg in a stack never hatches. Chicken eggs, asksvin eggs and modded eggs alike. Turn it off under `Eggs`.
+
 ## Range and multiplayer
 
 `Container Range` (default 20 m) is how far away a container can be for everything in the mod. Set it to whatever your craft-from-containers and auto-store mods use so one distance means "in reach" everywhere.
