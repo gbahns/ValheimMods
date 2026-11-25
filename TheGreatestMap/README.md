@@ -356,14 +356,15 @@ marker off, which is easy to do by mistake, and what undoes it is another click 
 -- so the edit can take away the only thing that reverses it, in the same frame, before you have
 seen which marker it was. Two ways it goes: hidden, if you hide that kind of crossed-off marker,
 and thinned away, because a crossed-off marker loses its place to any neighbor that is not one,
-which zoomed out is nearly always. So it is held against both for ten seconds ("Reveal Crossed Off
+which zoomed out is nearly always. So it is held against both for five seconds ("Reveal Crossed Off
 Seconds"), and clicking it again puts it back.
 
-One that would have left the map outright also blinks and is named, which is the point of "Flash
-Crossed Off Markers" being on by default: a crossed-off marker sitting there looks exactly like one
-you have chosen to keep seeing, so anyone who hides theirs would read the pause as the hiding
-having failed. A blink is a thing no ordinary marker does, so it reads as on its way out. One held
-back only from thinning does neither -- it is a marker you expected to see anyway.
+One that would have left the map outright also swells and settles while it waits, and is named,
+which is the point of "Pulse Crossed Off Markers" being on by default: a crossed-off marker sitting
+there looks exactly like one you have chosen to keep seeing, so anyone who hides theirs would read
+the pause as the hiding having failed. Breathing is a thing no ordinary marker does, so it reads as
+on its way out. One held back only from thinning does neither -- it is a marker you expected to see
+anyway.
 
 **Hiding what you are done with.** Crossed-off markers stay on the map, and which of them are
 drawn is decided on the rows they already have in the marker button's list -- the "12 done" button

@@ -64,7 +64,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<bool> ShowAllMarkers;
         internal static ConfigEntry<bool> ShowManualFromOthers;
         internal static ConfigEntry<float> RevealCrossedOff;
-        internal static ConfigEntry<bool> FlashCrossedOff;
+        internal static ConfigEntry<bool> PulseCrossedOff;
         internal static ConfigEntry<int> CrossedOffFade;
         internal static ConfigEntry<bool> ShowClearedDeposits;
         internal static ConfigEntry<string> HiddenCleared;
@@ -1150,19 +1150,20 @@ namespace TheGreatestMap
                 "override the map-pin button's master switch or a marker you hid by hand, and it cannot show kinds " +
                 "drawn on a vanilla icon (structures, portals, camps, boss altars) while vanilla's own icon button " +
                 "has that icon switched off.");
-            RevealCrossedOff = mod.BindLocal("Display", "Reveal Crossed Off Seconds", 10f,
-                "How long a marker you have just crossed off by clicking it stays on the map when that kind of " +
-                "crossed-off marker is hidden. Without this it would go in the same frame, taking with it the thing " +
-                "that undoes it -- which is another click on the same marker. Short on purpose: it is an undo " +
-                "window rather than something to read. 0 turns it off and a cross-off hides at once, as it did " +
+            RevealCrossedOff = mod.BindLocal("Display", "Reveal Crossed Off Seconds", 5f,
+                "How long a marker you have just crossed off by clicking it stays on the map. Without this it can " +
+                "go in the same frame -- hidden, if you hide that kind of crossed-off marker, or thinned away, " +
+                "since a crossed-off marker loses its place to any neighbor that is not one -- taking with it the " +
+                "thing that undoes it, which is another click on the same marker. Short on purpose: it is an undo " +
+                "window rather than something to read. 0 turns it off and a cross-off goes at once, as it did " +
                 "before 4.15.0.");
-            FlashCrossedOff = mod.BindLocal("Display", "Flash Crossed Off Markers", true,
-                "Blink a marker through the seconds above, so it reads as one on its way off the map rather than " +
-                "one you have chosen to keep. Worth having on: held without blinking, a crossed-off marker looks " +
-                "exactly like a marker that is staying, and anybody who hides theirs would take the few seconds " +
-                "for the hiding having failed.");
+            PulseCrossedOff = mod.BindLocal("Display", "Pulse Crossed Off Markers", true,
+                "Swell and settle a marker through the seconds above, where it would otherwise have left the map, " +
+                "so it reads as one on its way out rather than one you have chosen to keep. Worth having on: held " +
+                "still, a crossed-off marker looks exactly like a marker that is staying, and anybody who hides " +
+                "theirs would take the few seconds for the hiding having failed.");
             RevealCrossedOff.SettingChanged += (_, __) => ClientPins.Restyle();
-            FlashCrossedOff.SettingChanged += (_, __) => ClientPins.Restyle();
+            PulseCrossedOff.SettingChanged += (_, __) => ClientPins.Restyle();
 
             // Three settings and not one for each kind, because the whole point of thinning by
             // cell is that it needs no per-kind tuning: the cell follows the zoom and the counts

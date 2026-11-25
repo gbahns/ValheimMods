@@ -20,17 +20,17 @@ namespace TheGreatestMap
     /// are hidden, which makes it the one most players meet. A marker in its grace is held
     /// against both.</para>
     ///
-    /// <para><b>Why it blinks.</b> Keeping it on the map solves that and causes a second problem:
+    /// <para><b>Why it pulses.</b> Keeping it on the map solves that and causes a second problem:
     /// a crossed-off marker sitting there looks exactly like one the player has chosen to keep
-    /// seeing, so somebody who hides theirs would read the grace as the hiding being broken.
-    /// Blinking says "going" rather than "staying", which is a thing no ordinary marker does, and
-    /// it makes the short window legible rather than mysterious -- the marker is visibly on its
-    /// way out, so nobody waits for it to settle.</para>
+    /// seeing, so somebody who hides theirs would read the grace as the hiding being broken. A
+    /// marker that breathes says "going" rather than "staying", which is a thing no ordinary
+    /// marker does, and it makes the short window legible rather than mysterious -- the marker is
+    /// visibly on its way out, so nobody waits for it to settle.</para>
     ///
-    /// <para>Only the markers that would otherwise be gone blink, which is why <see cref="Paint"/>
+    /// <para>Only the markers that would otherwise be gone pulse, which is why <see cref="Paint"/>
     /// asks the hiding question again: a marker rescued from thinning alone is one the player
-    /// expects to see anyway, and blinking it would be explaining something nobody noticed. The
-    /// blink is there to account for a marker that has no business being on the map.</para>
+    /// expects to see anyway, and pulsing it would be explaining something nobody noticed. The
+    /// pulse is there to account for a marker that has no business being on the map.</para>
     ///
     /// <para><b>Separate from <see cref="Reveals"/>, which is the same shape for a different
     /// reason.</b> That one shows a marker you have just recorded though its kind is switched
@@ -47,8 +47,8 @@ namespace TheGreatestMap
         private static float Seconds =>
             TgmConfig.RevealCrossedOff != null ? TgmConfig.RevealCrossedOff.Value : 0f;
 
-        private static bool Flashing =>
-            TgmConfig.FlashCrossedOff == null || TgmConfig.FlashCrossedOff.Value;
+        private static bool Pulsing =>
+            TgmConfig.PulseCrossedOff == null || TgmConfig.PulseCrossedOff.Value;
 
         internal static void Reset() => _until.Clear();
 
@@ -91,24 +91,32 @@ namespace TheGreatestMap
                 if (_until.Count == 0) return;
             }
 
-            if (!Flashing) return;
-            // On and off rather than a fade, for two reasons. It is a plain blink, which nothing
-            // else on the map does -- a marker that dimmed would read as one of the crossed-off
-            // markers that are drawn dim on purpose. And it writes nothing that can accumulate:
-            // the styling pass fades a crossed-off marker from the color it already has, so an
-            // alpha written here every frame would be faded again at every layout and the marker
-            // would walk away darker each time. Activity is absolute, and the pass sets it too.
-            bool lit = Mathf.Repeat(now, 0.7f) < 0.45f;
+            if (!Pulsing) return;
+            // Size rather than brightness, and that is not a matter of taste. The styling pass
+            // fades a crossed-off marker from the color it already has, so an alpha written here
+            // every frame would be faded again at every layout and the marker would walk away
+            // darker each time -- the compounding Locate.Paint warns about, in the one place
+            // where the base is not recomputed. A marker's size is read from its kind's setting
+            // on every pass, so writing it is absolute and nothing accumulates.
+            //
+            // A plain sine, two beats every three seconds: the marker spends as long large as it
+            // does small, which reads as breathing. A sharper curve reads as an alarm, and this
+            // is a marker on its way out rather than something gone wrong.
+            float wave = (Mathf.Sin(now * Mathf.PI * 1.33f) + 1f) * 0.5f;
+            float grow = 1f + 0.45f * wave;
             foreach (var kv in _until)
             {
                 var pin = ClientPins.PinDataFor(kv.Key);
                 if (pin == null || pin.m_uiElement == null) continue;
+                if (!pin.m_uiElement.gameObject.activeSelf) continue;
                 // Still a marker the player would otherwise not be seeing. Switching crossed-off
                 // markers back on mid-grace makes this one ordinary again, and an ordinary marker
-                // has no business blinking.
+                // has no business drawing attention to itself.
                 if (!ClientPins.TryGet(kv.Key, out var shared) || !CrossedOff.IsHidden(shared)) continue;
-                var icon = pin.m_uiElement.gameObject;
-                if (icon.activeSelf != lit) icon.SetActive(lit);
+                // Against the size the marker is configured to be, never against the size it is
+                // this frame, which would compound exactly as the alpha would have.
+                float size = ClientPins.ScaleOf(shared) * grow;
+                pin.m_uiElement.localScale = new Vector3(size, size, 1f);
             }
         }
     }

@@ -18,10 +18,10 @@
   setting, the two every other kind already had. Size goes to 400%, as the player marker does.
 - Crossing a marker off by clicking it no longer takes it off the map before you can see what it
   was -- whether it would have gone for being crossed off or for losing its place, zoomed out, to a
-  neighbor that is not. It stays for ten seconds and clicking it again puts it back. One that would
-  have gone outright blinks and is named, so it reads as on its way out rather than staying.
-- New: Reveal Crossed Off Seconds and Flash Crossed Off Markers (Display), for how long that
-  lasts and whether it blinks.
+  neighbor that is not. It stays for five seconds and clicking it again puts it back. One that would
+  have gone outright breathes and is named, so it reads as on its way out rather than staying.
+- New: Reveal Crossed Off Seconds and Pulse Crossed Off Markers (Display), for how long that
+  lasts and whether it pulses.
 
 ## 4.14.0 — 2026-11-23
 
