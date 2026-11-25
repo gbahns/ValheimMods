@@ -28,7 +28,7 @@ namespace TheGreatestMap
     /// <see cref="_wasChanging"/> is for, and <c>WorldPins.AfterLayout</c> carries the same latch
     /// for the same reason.</para>
     /// </summary>
-    internal static class LivePins
+    internal static class LiveMarkers
     {
         /// <summary>
         /// Whether the last pass had anything to do. One more runs after the answer turns to no,

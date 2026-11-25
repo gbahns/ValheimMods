@@ -17,7 +17,10 @@
 - New, under Dynamic Markers: Ships, Carts and Portals each get a Marker Size and an On Minimap
   setting, the two every other kind already had. Size goes to 400%, as the player marker does.
 - Crossing a marker off by clicking it no longer takes it off the map before you can see what it
-  was. It stays for a few seconds, the map says what it was, and clicking it again puts it back.
+  was. It blinks for ten seconds first, the map says what it was, and clicking it again puts it
+  back. The blink says it is on its way out rather than staying.
+- New: Reveal Crossed Off Seconds and Flash Crossed Off Markers (Display), for how long that
+  lasts and whether it blinks.
 
 ## 4.14.0 — 2026-11-23
 

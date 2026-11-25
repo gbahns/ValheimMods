@@ -57,7 +57,8 @@ namespace TheGreatestMap
             LabelEditor.Forget();
             MarkerTooltip.Reset();
             IconRegistry.ForgetPicks();
-            Reveals.Reset();
+            Reveals.Reset();
+            JustCrossedOff.Reset();
             Portals.Reset();
             Transports.Reset();
             Builds.Reset();
@@ -1913,13 +1914,13 @@ namespace TheGreatestMap
                 // click. Worse, it is the easiest edit to make by accident -- a left click
                 // anywhere near a marker -- and the fastest to lose, since the marker is gone
                 // before the eye finds it. So these two are kept together and nothing else is
-                // needed: the marker stays for the reveal's few seconds, and it is named.
+                // needed: the marker is held and blinking for a few seconds, and it is named.
                 if (crossedOff && CrossedOff.IsHidden(shared))
                     (vanished ?? (vanished = new List<SharedPin>())).Add(shared);
             }
             if (changed) PersonalMap.Touch();
             if (vanished == null) return;
-            foreach (var shared in vanished) Reveals.Add(shared.Key);
+            foreach (var shared in vanished) JustCrossedOff.Add(shared.Key);
             TheGreatestMapMod.Message(vanished.Count == 1
                 ? $"Crossed off {Focus.TypeLabel(vanished[0])}. Click it again to put it back."
                 : $"Crossed off {vanished.Count} markers. Click one again to put it back.");
@@ -2031,13 +2032,19 @@ namespace TheGreatestMap
                 // Crossed off, and the player would rather not see that kind of crossed-off marker
                 // any more: used-up deposits, or searched places by type.
                 //
-                // A reveal outranks it, which is what makes an accidental cross-off undoable. A
-                // left click on the map crosses a marker off, and if that kind of crossed-off
-                // marker is hidden the marker goes in the same frame -- so the gesture that
-                // undoes it, clicking the same marker again, has nothing left to click. Revealed,
-                // it stays for the reveal's few seconds and the same click puts it back. Asked
-                // here rather than with the reveal above because this is decided after it.
-                if (!hidden && CrossedOff.IsHidden(shared) && !Reveals.IsRevealed(kv.Value)) hidden = true;
+                // Unless it was crossed off a moment ago by a click, which is the edit that hides
+                // its own undo: what takes it back is another click on the same marker, and there
+                // would be nothing left to click. Held and blinking for a few seconds instead --
+                // see JustCrossedOff. Asked here rather than beside the reveal above, which is a
+                // different window for a different reason, because this is decided after it.
+                //
+                // Exempt from thinning for the same few seconds: a marker held so it can be
+                // clicked is no use held and then thinned away under a neighbor.
+                if (!hidden && CrossedOff.IsHidden(shared))
+                {
+                    if (JustCrossedOff.Holds(kv.Value)) asked = true;
+                    else hidden = true;
+                }
                 // Looking for one thing: it wins over every switch above, since a player who asks
                 // for frost caves means the frost caves whether or not dungeons are switched off.
                 // Not over the master switch or a marker put out by hand, which both mean "not
@@ -2638,7 +2645,7 @@ namespace TheGreatestMap
             m => Portals.BringToFront(),
             // The size and the minimap switch for the kinds drawn live from the server, which the
             // styling pass above never sees: they are pins rather than markers of ours.
-            m => LivePins.AfterLayout(m),
+            m => LiveMarkers.AfterLayout(m),
             m => Erasures.Paint(),
             // What a survey would write, if one has been asked for and not yet applied.
             m => SurveyPreview.Paint(),

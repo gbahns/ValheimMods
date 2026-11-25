@@ -63,6 +63,8 @@ namespace TheGreatestMap
         internal static ConfigEntry<string> LegendPosition;
         internal static ConfigEntry<bool> ShowAllMarkers;
         internal static ConfigEntry<bool> ShowManualFromOthers;
+        internal static ConfigEntry<float> RevealCrossedOff;
+        internal static ConfigEntry<bool> FlashCrossedOff;
         internal static ConfigEntry<int> CrossedOffFade;
         internal static ConfigEntry<bool> ShowClearedDeposits;
         internal static ConfigEntry<string> HiddenCleared;
@@ -707,7 +709,7 @@ namespace TheGreatestMap
         /// marker for the styling pass to read. Kept in dictionaries of their own rather than in
         /// the two above: the range is wider, and a 400 reaching the arithmetic that assumes a
         /// recorded marker's 20 to 100 would be a bug waiting rather than a saving. Applied in
-        /// <see cref="LivePins"/>.
+        /// <see cref="LiveMarkers"/>.
         /// </summary>
         internal static readonly Dictionary<Category, ConfigEntry<int>> LiveSize = new Dictionary<Category, ConfigEntry<int>>();
 
@@ -1144,12 +1146,24 @@ namespace TheGreatestMap
                 "0 stops the fade.");
             RevealNewMarkers = mod.BindLocal("Display", "Reveal New Markers Seconds", 30f,
                 "How long a marker you have just recorded is drawn on both maps even though its kind or its icon is " +
-                "hidden, so writing something down always shows you what you wrote. The same few seconds keep a " +
-                "marker you have just crossed off by clicking it, which would otherwise go off the map in the same " +
-                "frame and take the click that undoes it with it. 0 turns it off. It does not " +
+                "hidden, so writing something down always shows you what you wrote. 0 turns it off. It does not " +
                 "override the map-pin button's master switch or a marker you hid by hand, and it cannot show kinds " +
                 "drawn on a vanilla icon (structures, portals, camps, boss altars) while vanilla's own icon button " +
                 "has that icon switched off.");
+            RevealCrossedOff = mod.BindLocal("Display", "Reveal Crossed Off Seconds", 10f,
+                "How long a marker you have just crossed off by clicking it stays on the map when that kind of " +
+                "crossed-off marker is hidden. Without this it would go in the same frame, taking with it the thing " +
+                "that undoes it -- which is another click on the same marker. Short on purpose: it is an undo " +
+                "window rather than something to read. 0 turns it off and a cross-off hides at once, as it did " +
+                "before 4.15.0.");
+            FlashCrossedOff = mod.BindLocal("Display", "Flash Crossed Off Markers", true,
+                "Blink a marker through the seconds above, so it reads as one on its way off the map rather than " +
+                "one you have chosen to keep. Worth having on: held without blinking, a crossed-off marker looks " +
+                "exactly like a marker that is staying, and anybody who hides theirs would take the few seconds " +
+                "for the hiding having failed.");
+            RevealCrossedOff.SettingChanged += (_, __) => ClientPins.Restyle();
+            FlashCrossedOff.SettingChanged += (_, __) => ClientPins.Restyle();
+
             // Three settings and not one for each kind, because the whole point of thinning by
             // cell is that it needs no per-kind tuning: the cell follows the zoom and the counts
             // follow the ground. The mod has 121 settings already.

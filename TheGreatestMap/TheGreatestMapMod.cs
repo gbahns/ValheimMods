@@ -217,6 +217,7 @@ namespace TheGreatestMap
             PlayerArrow.Update();
             MarkerTooltip.Update();
             Reveals.Update();
+            JustCrossedOff.Paint();
             PocketMap.Update();
             MapOutStatus.Update();
             DiscoveryLedger.Update();

@@ -354,8 +354,13 @@ still decides whether any of them are drawn.
 **An accidental cross-off is visible and reversible.** A left click on the map crosses the nearest
 marker off, which is easy to do by mistake -- and if that kind of crossed-off marker is hidden, the
 marker would go in the same frame, taking with it the only thing that undoes it, which is another
-click on the same marker. So it stays for the few seconds of "Reveal New Markers Seconds" and the
-map says what it was. Click it again and it is back.
+click on the same marker. So it is held for ten seconds ("Reveal Crossed Off Seconds") and the map
+says what it was. Click it again and it is back.
+
+It blinks while it is held, which is the point of "Flash Crossed Off Markers" being on by default:
+a crossed-off marker sitting there looks exactly like one you have chosen to keep seeing, so anyone
+who hides theirs would read the pause as the hiding having failed. A blink is a thing no ordinary
+marker does, so it reads as on its way out.
 
 **Hiding what you are done with.** Crossed-off markers stay on the map, and which of them are
 drawn is decided on the rows they already have in the marker button's list -- the "12 done" button
