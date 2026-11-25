@@ -701,6 +701,17 @@ namespace TheGreatestMap
         internal static readonly Dictionary<Category, ConfigEntry<float>> LabelSpacing = new Dictionary<Category, ConfigEntry<float>>();
         internal static readonly Dictionary<Category, ConfigEntry<int>> MarkerSize = new Dictionary<Category, ConfigEntry<int>>();
         internal static readonly Dictionary<Category, ConfigEntry<bool>> ShowOnMinimap = new Dictionary<Category, ConfigEntry<bool>>();
+
+        /// <summary>
+        /// The same two questions for the kinds drawn live from the server, which have no stored
+        /// marker for the styling pass to read. Kept in dictionaries of their own rather than in
+        /// the two above: the range is wider, and a 400 reaching the arithmetic that assumes a
+        /// recorded marker's 20 to 100 would be a bug waiting rather than a saving. Applied in
+        /// <see cref="LivePins"/>.
+        /// </summary>
+        internal static readonly Dictionary<Category, ConfigEntry<int>> LiveSize = new Dictionary<Category, ConfigEntry<int>>();
+
+        internal static readonly Dictionary<Category, ConfigEntry<bool>> LiveOnMinimap = new Dictionary<Category, ConfigEntry<bool>>();
         internal static readonly Dictionary<Category, ConfigEntry<string>> CategoryPrefabs = new Dictionary<Category, ConfigEntry<string>>();
         internal static readonly Dictionary<Category, ConfigEntry<string>> CategoryIcon = new Dictionary<Category, ConfigEntry<string>>();
         /// <summary>The second portal picture. Not a category: stone portals are portals.</summary>
@@ -1275,11 +1286,12 @@ namespace TheGreatestMap
                     "How far away " + label.ToLowerInvariant() + " can be and still count as seen when you look straight at them " +
                     "with clear line of sight. Interacting, or having them under the crosshair within reach, always counts.");
                 }
-                // Size and minimap are about markers this mod drew into your map, which a live
-                // kind has none of: its pins are the server's answer, drawn and thrown away. Nor
-                // has a kind the game marks itself: those are drawn from the game's own pins in
-                // OwnMarks, which puts them up as they come and reads neither setting, so both
-                // were a control wired to nothing.
+                // Size and minimap for a marker this mod drew into your map, which is what the
+                // styling pass reads. A live kind has no such marker -- its pins are the server's
+                // answer, drawn and thrown away -- so it answers the same two questions in its own
+                // section, at its own range, applied after a layout in LivePins. A kind the game
+                // marks itself answers neither: those are drawn from the game's own pins in
+                // OwnMarks, which reads nothing of ours, so both were a control wired to nothing.
                 if (!Categories.IsLive(cat) && !Categories.MarkedByGame(cat))
                 {
                 MarkerSize[cat] = mod.BindLocalRange("Recording", label + " Marker Size", Categories.DefaultSize(cat), 20, 100,
@@ -1288,6 +1300,20 @@ namespace TheGreatestMap
                     "Show recorded " + label.ToLowerInvariant() + " markers on the small minimap (when they are shown at all).");
                 ShowOnMinimap[cat].SettingChanged += (_, __) => ClientPins.Restyle();
                 MarkerSize[cat].SettingChanged += (_, __) => ClientPins.Restyle();
+                }
+                else if (Categories.IsLive(cat))
+                {
+                LiveSize[cat] = mod.BindLocalRange(Dynamic, label + " Marker Size", 100, 50, 400,
+                    "Size of the " + label.ToLowerInvariant() + " drawn on the map, as a percentage of the normal " +
+                    "marker size. It goes to 400 where a recorded kind stops at 100, because these are the few " +
+                    "moving things on a map of still ones and there are a handful of them against thousands of " +
+                    "markers: a ship you are trying to find at sea is worth the room it takes, while a bigger " +
+                    "raspberry bush is only a crowded map made worse.");
+                LiveOnMinimap[cat] = mod.BindLocal(Dynamic, label + " On Minimap", true,
+                    "Show the " + label.ToLowerInvariant() + " on the small minimap, when they are shown at all. " +
+                    "Off leaves them on the large map alone.");
+                LiveSize[cat].SettingChanged += (_, __) => ClientPins.Restyle();
+                LiveOnMinimap[cat].SettingChanged += (_, __) => ClientPins.Restyle();
                 }
                 // A live kind's switch belongs with the other dynamic-marker settings rather than
                 // among the display ones, which are all about markers written on the map.

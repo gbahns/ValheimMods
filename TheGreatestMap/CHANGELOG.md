@@ -14,6 +14,8 @@
   placed by hand instead of copying them onto your map.
 - New: Show Manual Markers From Others (Display), on. Off hides the ones already there, without
   turning anything away.
+- New, under Dynamic Markers: Ships, Carts and Portals each get a Marker Size and an On Minimap
+  setting, the two every other kind already had. Size goes to 400%, as the player marker does.
 
 ## 4.14.0 — 2026-11-23
 

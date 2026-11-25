@@ -405,6 +405,22 @@ ship riding the swell at anchor does not count as having moved. Hovering one nam
 how to tell a knarr from a longship with the labels off. Their settings live together under
 "Dynamic Markers", apart from the settings for markers written on the map.
 
+**Ships, carts and portals each have a "Marker Size" and an "On Minimap" setting** of their own,
+in that same section. Size goes to 400% where a recorded kind stops at 100: these are the few
+moving things on a map of still ones, and there are a handful of them against thousands of
+markers, so a ship you are trying to find at sea is worth the room it takes. The other kinds under
+Dynamic Markers already had both -- a campfire and a workbench are recorded like anything else,
+and the other players' markers have "Player Marker Size".
+
+**"Icon Size Tweaks" is not a size control**, despite sitting among them. It corrects one picture
+against the others, as `Icon=percent` pairs, and what it says is multiplied by whatever size the
+kind is set to. It is there because every marker is drawn into a box of one size, so how big an
+icon looks is how much of its own frame the artwork fills: the draugr trophy reaches the edges
+where the skeleton trophy sits in a margin, and at the same size they read as two sizes. It
+applies to the markers this mod recorded and the ones you placed -- not to anything drawn live
+from the server. It is also the one way to draw a recorded marker above its normal size, since a
+kind's own "Marker Size" stops at 100.
+
 Portals get their own color, since they are the points you travel between and are worth spotting at
 a glance. By default they fade slowly between two shades of orange, which reads as a gentle pulse rather
 than a color change; set "Portal Marker Color" and

@@ -2601,7 +2601,7 @@ namespace TheGreatestMap
         /// </summary>
         private static readonly string[] _stageNames =
         {
-            "styling", "portals to the front", "erasures", "survey preview",
+            "styling", "portals to the front", "live markers", "erasures", "survey preview",
             "master switch", "world landmarks", "labels", "player spotlight",
         };
 
@@ -2610,6 +2610,9 @@ namespace TheGreatestMap
             m => ClientPins.StylePins(m),
             // Vanilla may have added or reordered elements, which would bury the portals again.
             m => Portals.BringToFront(),
+            // The size and the minimap switch for the kinds drawn live from the server, which the
+            // styling pass above never sees: they are pins rather than markers of ours.
+            m => LivePins.AfterLayout(m),
             m => Erasures.Paint(),
             // What a survey would write, if one has been asked for and not yet applied.
             m => SurveyPreview.Paint(),
