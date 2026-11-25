@@ -1281,7 +1281,6 @@ namespace TheGreatestMap
             if (TgmConfig.AnythingHidden())
                 items.Add(Item("Show all hidden", () =>
                 {
-                    ViewPrefs.Clear();
                     TgmConfig.ShowEverything();
                     ClientPins.Restyle();
                     Note("Showing every marker again.");

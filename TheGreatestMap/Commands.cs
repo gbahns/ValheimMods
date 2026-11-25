@@ -189,10 +189,25 @@ namespace TheGreatestMap
                 {
                     int single = ViewPrefs.Count, kinds = TgmConfig.HiddenKindCount();
                     int icons = TgmConfig.HiddenIconCount() + TgmConfig.HiddenOwnIconCount();
-                    ViewPrefs.Clear();
                     TgmConfig.ShowEverything();
                     ClientPins.Restyle();
-                    args.Context.AddString($"Showing everything again ({single} single markers, {icons} icons and {kinds} kinds were hidden).");
+                    args.Context.AddString($"Showing everything again ({single} single markers, {icons} icons and {kinds} kinds were hidden). " +
+                                           "tgm_hideagain puts it back.");
+                }));
+
+            new Terminal.ConsoleCommand("tgm_hideagain", "Put back the hiding that tgm_show or \"show all\" cleared: the same kinds, pictures, single markers, crossed-off groups and landmarks go back to hidden",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    if (!PutBack.Any)
+                    {
+                        args.Context.AddString("Nothing to put back: nothing has shown everything since this world was loaded.");
+                        return;
+                    }
+                    string counts = PutBack.Counts();
+                    PutBack.Apply();
+                    args.Context.AddString(counts.Length == 0
+                        ? "Put back, though nothing was hidden when everything was shown."
+                        : "Hidden again: " + counts + ".");
                 }));
 
             new Terminal.ConsoleCommand("tgm_erase","Erase recorded markers of one kind near you: tgm_erase Structures [radius, default 50]. Works even when erasing by click is off; carries to everyone at the next merge",

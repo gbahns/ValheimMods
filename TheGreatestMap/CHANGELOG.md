@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.16.0 — unreleased
+
+- "Show all" can be taken back. It used to empty every hidden list outright -- pictures, places,
+  biomes, every kind's switch, the crossed-off groups, the landmarks and the markers you had put
+  away one at a time -- with no way back from one press. The corner of the marker list now offers
+  to put it all back, and tgm_hideagain does the same from the console.
+
 ## 4.15.0 — 2026-11-25
 
 - Boss altars are no longer recorded, like traders and Hildir's quests before them: the game marks

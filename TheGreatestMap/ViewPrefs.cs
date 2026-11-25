@@ -19,6 +19,13 @@ namespace TheGreatestMap
 
         internal static bool IsHidden(PinKey id) => _hidden.Contains(id);
 
+        /// <summary>The markers put away one at a time, for <see cref="PutBack"/> to remember.</summary>
+        internal static void CopyInto(List<PinKey> into)
+        {
+            if (into == null) return;
+            foreach (var id in _hidden) into.Add(id);
+        }
+
         internal static void Hide(PinKey id)
         {
             if (id.IsNone || !_hidden.Add(id)) return;

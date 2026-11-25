@@ -73,6 +73,13 @@ kind it is and which icon it carries, whether it has been cleared or searched, a
 and when. Most markers carry no text label on purpose, since that is what keeps a map with hundreds
 of them readable, so hovering is where the detail lives. "Marker Tooltips" turns it off.
 
+**"Show all" can be taken back.** The button in the corner of the marker list shows everything you
+have hidden -- every picture, place and biome, each kind's switch, the crossed-off groups, the
+landmarks and the markers you put away one at a time. That is a lot to lose to one press, so once
+it has run the corner offers to **put back** what it showed, and `tgm_hideagain` does the same from
+the console. The offer lasts until you hide something again or the world is reloaded, and putting
+it back adds to whatever you have hidden since rather than replacing it.
+
 **Right-click a marker** from this mod on the map screen for its menu: hide this one marker, hide
 every marker with that icon (say all dandelions), hide the whole kind (all herbs), stop recording
 its group altogether, cross it off or

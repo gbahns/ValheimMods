@@ -295,7 +295,14 @@ namespace TheGreatestMap
 
         internal static void ShowEverything()
         {
+            // Before anything is written, so it can be taken back: see PutBack, and the reason
+            // this is here rather than at the three places that ask for it -- a way of showing
+            // everything that forgot to stash would be a one-way door again.
+            PutBack.Take();
             Focus.Clear();
+            // Here for the same reason. Every caller used to do this itself, immediately before
+            // calling this, which is three chances to leave one out.
+            ViewPrefs.Clear();
             if (!string.IsNullOrEmpty(HiddenIcons.Value)) HiddenIcons.Value = "";
             if (HiddenPlaces != null && !string.IsNullOrEmpty(HiddenPlaces.Value)) HiddenPlaces.Value = "";
             if (HiddenOwnIcons != null && !string.IsNullOrEmpty(HiddenOwnIcons.Value)) HiddenOwnIcons.Value = "";

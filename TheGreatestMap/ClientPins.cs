@@ -57,8 +57,9 @@ namespace TheGreatestMap
             LabelEditor.Forget();
             MarkerTooltip.Reset();
             IconRegistry.ForgetPicks();
-            Reveals.Reset();
+            Reveals.Reset();
             JustCrossedOff.Reset();
+            PutBack.Forget();
             Portals.Reset();
             Transports.Reset();
             Builds.Reset();

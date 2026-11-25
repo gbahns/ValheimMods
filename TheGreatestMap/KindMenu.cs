@@ -223,6 +223,13 @@ namespace TheGreatestMap
         /// </summary>
         private static bool _resetShown;
 
+        /// <summary>
+        /// Whether the corner is offering to put back what "show all" showed. Never at the same
+        /// time as the button above: one of them is always the wrong thing to press, and the
+        /// first thing hidden again puts "show all" back in the corner by itself.
+        /// </summary>
+        private static bool _putBackShown;
+
         /// <summary>Said once a session: a layout that does not fit is a bug, not a preference.</summary>
         private static bool _warnedTall;
 
@@ -606,6 +613,7 @@ namespace TheGreatestMap
             // The foot's height has to be known before the scrolling part can be given what is
             // left over, and whether the put-back row is there is part of that.
             _resetShown = AnythingPutBack();
+            _putBackShown = !_resetShown && PutBack.Any;
             float head = BuildHead(map);
             float foot = FootHeight();
 
@@ -744,13 +752,24 @@ namespace TheGreatestMap
                 HeadButton(Width - CornerButtons - 6f - 76f, -(17f - 20f * 0.5f), 76f, "show all",
                     () =>
                     {
-                        ViewPrefs.Clear();
                         TgmConfig.ShowEverything();
                         ClientPins.Restyle();
                         Refresh();
                     },
                     "Show all", PutBackText() + ". \"Hide your markers\", behind the gear, is left alone " +
-                    "by this, being an override of these switches rather than one of them.");
+                    "by this, being an override of these switches rather than one of them. It can be taken back: " +
+                    "the corner offers to put it all back afterwards.");
+            // The same corner, once there is nothing left to show: showing everything used to
+            // leave the button with nothing to say and take the hiding with it, which is a lot
+            // of work to lose to one press.
+            else if (_putBackShown)
+                HeadButton(Width - CornerButtons - 6f - 76f, -(17f - 20f * 0.5f), 76f, "put back",
+                    () =>
+                    {
+                        PutBack.Apply();
+                        Refresh();
+                    },
+                    "Put back", PutBackAgainText());
             y -= HeaderHeight;
 
             FindBox(0f, y);
@@ -3120,6 +3139,15 @@ namespace TheGreatestMap
                 : "Show everything hidden — " + string.Join(", ", parts.ToArray());
         }
 
+        /// <summary>What the corner's put-back button promises, counted the same way.</summary>
+        private static string PutBackAgainText()
+        {
+            string counts = PutBack.Counts();
+            return counts.Length == 0
+                ? "Hide again what \"show all\" showed"
+                : "Hide again what \"show all\" showed -- " + counts;
+        }
+
         private static string IconKeyFor(Category kind)
         {
             return TgmConfig.CategoryIcon.TryGetValue(kind, out var entry) ? entry.Value : Categories.DefaultIcon(kind);
@@ -3171,7 +3199,8 @@ namespace TheGreatestMap
             // The put-back row is drawn only while there is something to put back, and the press
             // that just happened may have been the one that changed that. A row coming or going is
             // a change to the rows rather than to their colors, so it takes a redraw in place.
-            if (AnythingPutBack() != _resetShown) _rebuildWanted = true;
+            bool reset = AnythingPutBack();
+            if (reset != _resetShown || (!reset && PutBack.Any) != _putBackShown) _rebuildWanted = true;
         }
 
         internal static void Close()
