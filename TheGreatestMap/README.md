@@ -351,6 +351,12 @@ a thousand names on it is a wall of words -- so this is for the things nothing c
 "good fishing", "Marco's base", "the tin we never finished". "Show Marker Labels" behind the gear
 still decides whether any of them are drawn.
 
+**An accidental cross-off is visible and reversible.** A left click on the map crosses the nearest
+marker off, which is easy to do by mistake -- and if that kind of crossed-off marker is hidden, the
+marker would go in the same frame, taking with it the only thing that undoes it, which is another
+click on the same marker. So it stays for the few seconds of "Reveal New Markers Seconds" and the
+map says what it was. Click it again and it is back.
+
 **Hiding what you are done with.** Crossed-off markers stay on the map, and which of them are
 drawn is decided on the rows they already have in the marker button's list -- the "12 done" button
 at the end of a kind's row, or of one of its type rows, plus the one row at the foot that covers

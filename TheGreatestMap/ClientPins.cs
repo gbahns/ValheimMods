@@ -1895,15 +1895,34 @@ namespace TheGreatestMap
         internal static void PushCheckedChanges()
         {
             bool changed = false;
+            // The ones that just went off the map, collected rather than acted on in the loop:
+            // revealing asks for a layout, and nothing should ask for one while the list the
+            // layout reads is being walked.
+            List<SharedPin> vanished = null;
             foreach (var kv in _idByPin)
             {
                 if (!Store.Pins.TryGetValue(kv.Value, out var shared)) continue;
                 if (kv.Key.m_checked == shared.Checked) continue;
+                bool crossedOff = kv.Key.m_checked;
                 shared.Checked = kv.Key.m_checked;
                 Store.Upsert(shared);
                 changed = true;
+                // Crossing a marker off by clicking it is the one edit that can hide its own
+                // undo: the gesture that takes it back is another click on the same marker, and
+                // that kind of crossed-off marker being hidden means there is nothing left to
+                // click. Worse, it is the easiest edit to make by accident -- a left click
+                // anywhere near a marker -- and the fastest to lose, since the marker is gone
+                // before the eye finds it. So these two are kept together and nothing else is
+                // needed: the marker stays for the reveal's few seconds, and it is named.
+                if (crossedOff && CrossedOff.IsHidden(shared))
+                    (vanished ?? (vanished = new List<SharedPin>())).Add(shared);
             }
             if (changed) PersonalMap.Touch();
+            if (vanished == null) return;
+            foreach (var shared in vanished) Reveals.Add(shared.Key);
+            TheGreatestMapMod.Message(vanished.Count == 1
+                ? $"Crossed off {Focus.TypeLabel(vanished[0])}. Click it again to put it back."
+                : $"Crossed off {vanished.Count} markers. Click one again to put it back.");
         }
 
         /// <summary>Sweeps stale player-placed pins that vanilla imported from a table before this mod.</summary>
@@ -2011,7 +2030,14 @@ namespace TheGreatestMap
                 }
                 // Crossed off, and the player would rather not see that kind of crossed-off marker
                 // any more: used-up deposits, or searched places by type.
-                if (!hidden && CrossedOff.IsHidden(shared)) hidden = true;
+                //
+                // A reveal outranks it, which is what makes an accidental cross-off undoable. A
+                // left click on the map crosses a marker off, and if that kind of crossed-off
+                // marker is hidden the marker goes in the same frame -- so the gesture that
+                // undoes it, clicking the same marker again, has nothing left to click. Revealed,
+                // it stays for the reveal's few seconds and the same click puts it back. Asked
+                // here rather than with the reveal above because this is decided after it.
+                if (!hidden && CrossedOff.IsHidden(shared) && !Reveals.IsRevealed(kv.Value)) hidden = true;
                 // Looking for one thing: it wins over every switch above, since a player who asks
                 // for frost caves means the frost caves whether or not dungeons are switched off.
                 // Not over the master switch or a marker put out by hand, which both mean "not

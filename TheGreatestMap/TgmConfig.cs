@@ -1144,7 +1144,9 @@ namespace TheGreatestMap
                 "0 stops the fade.");
             RevealNewMarkers = mod.BindLocal("Display", "Reveal New Markers Seconds", 30f,
                 "How long a marker you have just recorded is drawn on both maps even though its kind or its icon is " +
-                "hidden, so writing something down always shows you what you wrote. 0 turns it off. It does not " +
+                "hidden, so writing something down always shows you what you wrote. The same few seconds keep a " +
+                "marker you have just crossed off by clicking it, which would otherwise go off the map in the same " +
+                "frame and take the click that undoes it with it. 0 turns it off. It does not " +
                 "override the map-pin button's master switch or a marker you hid by hand, and it cannot show kinds " +
                 "drawn on a vanilla icon (structures, portals, camps, boss altars) while vanilla's own icon button " +
                 "has that icon switched off.");
