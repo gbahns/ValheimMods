@@ -22,6 +22,10 @@
   have gone outright breathes and is named, so it reads as on its way out rather than staying.
 - New: Reveal Crossed Off Seconds and Pulse Crossed Off Markers (Display), for how long that
   lasts and whether it pulses.
+- Thinning keeps one marker of each picture per patch of ground rather than one of each kind. A
+  patch with copper and silver in it draws both now, where before it drew one and left you to
+  guess which ore was there -- and blueberries no longer lose their place to the raspberries
+  beside them.
 
 ## 4.14.0 — 2026-11-23
 

@@ -26,7 +26,18 @@ namespace TheGreatestMap
     }
 
     /// <summary>
-    /// Draw one marker of each kind per patch of ground rather than every one of them.
+    /// Draw one marker of each picture per patch of ground rather than every one of them.
+    ///
+    /// <para><b>By the picture, not by the kind.</b> It was the kind until 4.15.0, and that threw
+    /// away more than the repetition it was aimed at: Ore is one kind wearing copper, tin, silver,
+    /// obsidian and a dozen more, so a patch holding copper and silver drew one of them and the
+    /// map said "ore here" while silently dropping which. Zoomed out, where the patch is widest,
+    /// it dropped the most. What is actually repetitive is the picture -- the same berry bush
+    /// forty times over one meadow is forty of one picture -- so keying on it removes exactly that
+    /// and keeps the distinctions. Costs little, because the types of a kind are mostly kept apart
+    /// by biome: raspberries in the meadows, blueberries in the forest, and only copper with tin
+    /// and silver with obsidian genuinely sharing ground. And nothing is uncapped by it -- the
+    /// limit below still bounds the count, so what changes is what the budget buys.</para>
     ///
     /// <para><b>Why.</b> Measured solo in GeniusWorld with 2,939 markers and the large map open:
     /// 13.9 fps with everything shown, 27.1 fps with every marker of ours hidden. 85% of the 35 ms
@@ -52,7 +63,7 @@ namespace TheGreatestMap
     ///
     /// <para><b>Why thinning rather than hiding more.</b> Zoomed out, berries and mushrooms and
     /// tin overlap into mush -- the same marker forty times over one meadow. Hiding a kind loses
-    /// "there is tin here"; thinning keeps one of each cluster, so only the repetition goes. And
+    /// "there is tin here"; thinning keeps one of each picture per cluster, so only the repetition goes. And
     /// it bounds the cost by screen area instead of by world size: drawn markers become screen
     /// area over cell area, so what a crowded map costs stops following how crowded it is.</para>
     ///
@@ -99,7 +110,7 @@ namespace TheGreatestMap
         private struct Placed
         {
             public int At;              // its place in the list handed to Hold
-            public int Kind, X, Z;
+            public int Kind, Pic, X, Z;
         }
 
         // What is still standing, and the list the next widening builds into. Swapped rather
@@ -146,7 +157,7 @@ namespace TheGreatestMap
             int most = TgmConfig.MostMarkersDrawn != null ? TgmConfig.MostMarkersDrawn.Value : 0;
             int always = Sweep(shown, width);
             // Too many still standing: widen the patch rather than picking off markers one at a
-            // time. Every patch keeps one of each kind in it however wide it gets, so a lone
+            // time. Every patch keeps one of each picture in it however wide it gets, so a lone
             // stand of four mushrooms in a swamp keeps its marker no matter how hard the limit
             // bites -- where giving up individuals would take all four and leave the swamp
             // looking as though nobody had ever found a mushroom in it.
@@ -188,21 +199,27 @@ namespace TheGreatestMap
                 // Last layout's answer is not this one's: the zoom may have changed under us.
                 if (mine.Held) { mine.Held = false; shown[i] = mine; }
                 int kind = mine.Kind.HasValue ? (int)mine.Kind.Value : -1;
-                // Each kind gets its own patch, sized to the width that kind is drawn at. The
-                // grid is already per kind, so this costs nothing structurally.
+                // And the picture, which is what the contest is actually between. The pin's own
+                // type is that picture: this mod mints one per icon and draws the marker with it,
+                // so it is already on the pin and costs nothing to read -- where asking the
+                // catalog for the icon again would be two string lookups per marker per layout.
+                int pic = (int)mine.Pin.m_type;
+                // Each picture of each kind gets its own patch, sized to the width that kind is
+                // drawn at: the size is a property of the kind, while what is repetitive is a
+                // property of the picture.
                 float cell = mine.Always ? 0f : CellOf(kind, width);
                 // Exempt, or nothing to measure with: drawn, and taking no part in the contest.
                 if (cell <= 0f) { always++; continue; }
                 // Floor, so the lines fall on multiples of the cell size in world space and
                 // stay where they are however the map is panned.
-                var spot = new Spot(kind,
+                var spot = new Spot(kind, pic,
                                     Mathf.FloorToInt(mine.Shared.Pos.x / cell),
                                     Mathf.FloorToInt(mine.Shared.Pos.z / cell));
                 int sitting;
                 if (!_taken.TryGetValue(spot, out sitting))
                 {
                     _taken[spot] = _living.Count;
-                    _living.Add(new Placed { At = i, Kind = kind, X = spot.X, Z = spot.Z });
+                    _living.Add(new Placed { At = i, Kind = kind, Pic = pic, X = spot.X, Z = spot.Z });
                     continue;
                 }
                 // One of the two goes. Not whichever came first: the same marker has to win
@@ -240,7 +257,7 @@ namespace TheGreatestMap
             for (int i = 0; i < _living.Count; i++)
             {
                 var one = _living[i];
-                var spot = new Spot(one.Kind, one.X >> level, one.Z >> level);
+                var spot = new Spot(one.Kind, one.Pic, one.X >> level, one.Z >> level);
                 int sitting;
                 if (!_taken.TryGetValue(spot, out sitting))
                 {
@@ -442,14 +459,18 @@ namespace TheGreatestMap
         private static readonly System.Comparison<int> _bestFirst =
             (x, y) => Compare(_sorting[x], _sorting[y]);
 
-        /// <summary>A patch of ground, for one kind. Equatable so the dictionary does not box it.</summary>
+        /// <summary>
+        /// A patch of ground, for one picture of one kind. Equatable so the dictionary does not
+        /// box it.
+        /// </summary>
         private struct Spot : System.IEquatable<Spot>
         {
-            private readonly int _kind, _x, _z;
+            private readonly int _kind, _pic, _x, _z;
 
-            internal Spot(int kind, int x, int z)
+            internal Spot(int kind, int pic, int x, int z)
             {
                 _kind = kind;
+                _pic = pic;
                 _x = x;
                 _z = z;
             }
@@ -457,7 +478,9 @@ namespace TheGreatestMap
             internal int X => _x;
             internal int Z => _z;
 
-            public bool Equals(Spot other) => _kind == other._kind && _x == other._x && _z == other._z;
+            public bool Equals(Spot other) =>
+                _kind == other._kind && _pic == other._pic && _x == other._x && _z == other._z;
+
             public override bool Equals(object other) => other is Spot && Equals((Spot)other);
 
             public override int GetHashCode()
@@ -465,6 +488,7 @@ namespace TheGreatestMap
                 unchecked
                 {
                     int h = _kind;
+                    h = (h * 397) ^ _pic;
                     h = (h * 397) ^ _x;
                     h = (h * 397) ^ _z;
                     return h;
@@ -485,7 +509,7 @@ namespace TheGreatestMap
                    (LastStep > 0 ? $", doubled {LastStep} time(s) to fit the limit of " +
                                    $"{TgmConfig.MostMarkersDrawn.Value}" : "") + "), " +
                    $"{drawn} of {LastConsidered} drawn " +
-                   $"({LastHeld} standing on one of their own kind" +
+                   $"({LastHeld} standing on another wearing the same picture" +
                    (LastCapped > 0 ? $", {LastCapped} over the limit of {TgmConfig.MostMarkersDrawn.Value}" : "") + ").";
         }
     }

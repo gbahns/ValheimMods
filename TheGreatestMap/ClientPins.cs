@@ -2216,7 +2216,7 @@ namespace TheGreatestMap
             // answered "no reason found -- which is itself worth reporting" instead, accusing the
             // mod of a bug for doing exactly what it was configured to do.
             if (_thinned.Contains(shared.Key))
-                return "another marker of its kind is already drawn in the same patch of ground and " +
+                return "another marker with the same picture is already drawn in the same patch of ground and " +
                        "\"Thin Overlapping Markers\" is on -- raise \"Most Markers Drawn\", lower " +
                        "\"Marker Spacing On Screen\", or stand within \"Show Hidden Markers Within\" of it";
             // Asked only of a marker whose icon exists and is switched off, so every way of
