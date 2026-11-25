@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.1 — unreleased
+
+- Opening the inventory on top of the portal panel and then going to the map no longer leaves both stuck on screen with no way to close them.
+
 ## 1.8.0 — 2026-11-23
 
 - "Open to everyone" is a checkbox beside the portal's other settings instead of a text button, and unticks itself when the time runs out.

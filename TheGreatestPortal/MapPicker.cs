@@ -176,7 +176,11 @@ namespace TheGreatestPortal
             _detour = false;
             Current = Mode.Browse;
             if (center.HasValue) OpenMapAt(center.Value);
-            else if (map.m_mode != Minimap.MapMode.Large) map.SetMapMode(Minimap.MapMode.Large);
+            else if (map.m_mode != Minimap.MapMode.Large)
+            {
+                ShutInventory();
+                map.SetMapMode(Minimap.MapMode.Large);
+            }
             Refresh();
         }
 
@@ -226,6 +230,9 @@ namespace TheGreatestPortal
                 End();
                 return;
             }
+            // Nothing should be able to open it over us now, but if something does, this is the
+            // frame it goes away in rather than the lock it used to be.
+            ShutInventory();
             UpdatePan(map);
             if (UiKit.ContextMenu.IsOpen)
             {
@@ -563,10 +570,31 @@ namespace TheGreatestPortal
 
 
 
+        /// <summary>
+        /// Puts the inventory away, because the large map and the inventory cannot both be up.
+        ///
+        /// <para>Vanilla keeps them apart by having each refuse input while the other is shown, so
+        /// both at once is a dead end with no key that closes either (issue #97). The patch on
+        /// InventoryGui.Show stops it opening over us; this is the other direction -- it was already
+        /// open when we opened the map, which is what stepping into a portal with the inventory up
+        /// does. Vanilla's own answer is the same one: it will not open the inventory over the map.
+        /// </para>
+        ///
+        /// <para>IsVisible stays true for about two more frames, since the count it reads only
+        /// advances in InventoryGui's own Update, so the map starts taking input a frame or two
+        /// after this rather than at once.</para>
+        /// </summary>
+        private static void ShutInventory()
+        {
+            var gui = InventoryGui.instance;
+            if (gui != null && InventoryGui.IsVisible()) gui.Hide();
+        }
+
         private static void OpenMapAt(Vector3 position)
         {
             var map = Minimap.instance;
             if (map == null) return;
+            ShutInventory();
             bool noMap = Game.m_noMap;
             Game.m_noMap = false;
             map.ShowPointOnMap(position);

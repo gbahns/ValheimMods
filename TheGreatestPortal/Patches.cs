@@ -286,6 +286,30 @@ namespace TheGreatestPortal
         }
     }
 
+    /// <summary>
+    /// The inventory does not open over the portal panel, or over the map this mod opened.
+    ///
+    /// <para>Vanilla gates every other key on <c>TextInput.IsVisible()</c>, which the patch above
+    /// makes true for the panel -- but <c>InventoryGui.Update</c> is the one place that does not
+    /// consult it, so Tab opened the inventory on top of the panel. From there a click on "Pick on
+    /// map" or "Show on map" opened the large map with the inventory still up, and that pair is a
+    /// dead end: the map refuses input while the inventory is visible, the inventory refuses input
+    /// while the map is open, and the ESC menu refuses to open while either is. Nothing could close
+    /// anything (issue #97, reported by Split-Pea-Soup on 1.8.0).</para>
+    ///
+    /// <para>Blocked here, at the one method that opens it, rather than by watching for the key:
+    /// its two callers are the inventory key and <c>Container.Interact</c>, and the panel already
+    /// blocks interacting, so this costs nothing else. The button status is reset by the caller
+    /// before we refuse, so the keystroke is spent rather than repeating.</para>
+    /// </summary>
+    [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.Show))]
+    internal static class InventoryGui_Show_Patch
+    {
+        [HarmonyPrefix]
+        private static bool Prefix() =>
+            !PortalPanel.IsOpen && !PortalPanel.JustClosed && !MapPicker.Active;
+    }
+
     // ── the map ───────────────────────────────────────────────────────────────────
 
     [HarmonyPatch(typeof(Minimap), "Start")]
