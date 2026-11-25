@@ -474,6 +474,13 @@ press the one you want, or press its "+" to write down just the one you are stan
 group on also fills in any of its places you have walked past recently, so changing your mind costs
 nothing.
 
+**The markers other players place by hand have two switches of their own**, because they are not a
+kind and no Record switch can reach them -- somebody's guess at a silver vein is Ore, the same as a
+vein you mined. "Record Manual Markers From Others" (Recording) decides whether they are copied
+onto your map at all, and "Show Manual Markers From Others" (Display) whether the ones already
+there are drawn. Both are yours alone and both are on by default. Reach for the second when the
+markers are already on your map: the first only ever decides what arrives next.
+
 **What you do not record, you do not copy either.** A kind you are not recording is not taken off a
 cartography table or out of another player's map, so the switch answers one question rather than
 two: what goes on your map, however you came to hear of it. A merge says how many markers it turned

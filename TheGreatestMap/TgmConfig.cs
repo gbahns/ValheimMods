@@ -62,6 +62,7 @@ namespace TheGreatestMap
         internal static ConfigEntry<string> LegendSize;
         internal static ConfigEntry<string> LegendPosition;
         internal static ConfigEntry<bool> ShowAllMarkers;
+        internal static ConfigEntry<bool> ShowManualFromOthers;
         internal static ConfigEntry<int> CrossedOffFade;
         internal static ConfigEntry<bool> ShowClearedDeposits;
         internal static ConfigEntry<string> HiddenCleared;
@@ -662,6 +663,7 @@ namespace TheGreatestMap
 
         // ── Recording ───────────────────────────────────────────────────────────────
         internal static ConfigEntry<bool> RecordEnabled;
+        internal static ConfigEntry<bool> RecordManualFromOthers;
         internal static ConfigEntry<float> RecordRadius;
         internal static ConfigEntry<float> RecordDwell;
         internal static ConfigEntry<bool> BlockWhileAttacked;
@@ -1017,6 +1019,13 @@ namespace TheGreatestMap
                 "say, including markers that have no kind; they stay on your map and keep syncing. This is what the " +
                 "map-pin button on the map screen toggles.");
             ShowAllMarkers.SettingChanged += (_, __) => ClientPins.Restyle();
+            ShowManualFromOthers = mod.BindLocal("Display", "Show Manual Markers From Others", true,
+                "Draw the markers other players placed by hand. Off hides them on the large map and the minimap " +
+                "alike; they stay on your map and keep syncing, so this is the one to reach for when the markers are " +
+                "already there -- and it can be switched back without having to meet anybody again. Your own placed " +
+                "markers are unaffected, and so are the markers this mod recorded. Searching for something still " +
+                "finds them, as it does for everything else hidden by a switch.");
+            ShowManualFromOthers.SettingChanged += (_, __) => ClientPins.Restyle();
             ClipMinimapMarkers = mod.BindLocal("Display", "Clip Minimap Markers", true,
                 "Hide any marker that falls outside the minimap's circle, whichever mod drew it. Only applies when " +
                 "something has made the minimap round, such as the Round Minimap mod: the game still decides what to " +
@@ -1195,6 +1204,16 @@ namespace TheGreatestMap
             RecordEnabled = mod.BindLocal("Recording", "Enabled", true,
                 "While the pocket map is out, automatically record things you have found. Nothing is ever recorded " +
                 "that you did not look at or interact with yourself.");
+            RecordManualFromOthers = mod.BindLocal("Recording", "Record Manual Markers From Others", true,
+                "Copy markers other players placed by hand onto your map, when you merge at a cartography table or " +
+                "compare maps standing together. A Record switch of the same sort as the ones below, because taking a " +
+                "marker off somebody else's map is the same act as writing one down on seeing the thing itself. " +
+                "Off turns them away as they arrive: nothing is erased, the other map keeps every one of them, and " +
+                "turning this back on takes them in at the next merge. Your own placed markers are never affected, " +
+                "nor is anything this mod recorded for something really in the world. A marker you do not copy is one " +
+                "you cannot pass on to a third player, which is the honest cost of not having it. To hide the ones " +
+                "already on your map, use \"Show Manual Markers From Others\" instead -- this one only ever decides " +
+                "what arrives next.");
             RecordRadius = mod.BindLocal("Recording", "Record Range", 0f,
                 "0 (default): taking the map out writes down everything you have found recently, wherever you are now. " +
                 "Otherwise only finds within this many meters of you are written down.");

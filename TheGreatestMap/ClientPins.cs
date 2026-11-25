@@ -184,6 +184,16 @@ namespace TheGreatestMap
             return TgmConfig.IsBiomeHidden(kind.Value, Biomes.Of(shared.Pos));
         }
 
+        /// <summary>Somebody else's marker, put on the map by their own hand rather than recorded.</summary>
+        internal static bool TheirsByHand(SharedPin shared)
+        {
+            if (shared == null || shared.Auto) return false;
+            long mine = WriterId();
+            // No local player means nothing is being drawn for anybody, and guessing "theirs"
+            // here would hide markers on the strength of not knowing whose they are.
+            return mine != 0L && shared.OwnerId != mine;
+        }
+
         internal static bool IsShown(SharedPin shared)
         {
             if (shared == null) return false;
@@ -198,6 +208,12 @@ namespace TheGreatestMap
             if (PictureHidden(shared)) return false;
             var kind = KindOf(shared);
             if (kind.HasValue && TgmConfig.ShowKind.TryGetValue(kind.Value, out var showKind) && !showKind.Value) return false;
+            // Another player's hand-placed marker, which this player would rather not look at.
+            // Hidden and not refused: it stays on the map, keeps syncing and still passes on, and
+            // the switch can be taken back without meeting anybody again. Refusing is the other
+            // switch's job -- see TgmConfig.RecordManualFromOthers, which decides what arrives.
+            if (TgmConfig.ShowManualFromOthers != null && !TgmConfig.ShowManualFromOthers.Value
+                && TheirsByHand(shared)) return false;
             if (BiomeHidden(shared, kind)) return false;
             // Never a recorded altar marker. The game marks every altar on every map from the
             // first minute, so one of ours beside it is the same stones twice -- and a swap that
@@ -259,6 +275,13 @@ namespace TheGreatestMap
             if (pin == null) return null;
             long mine = WriterId();
             if (mine != 0L && pin.OwnerId == mine) return null;
+            // Placed by hand, which is a decision of its own and not a kind: a marker somebody
+            // dropped on a silver vein they guessed at is Ore, so no Record switch below can say
+            // "recorded ore, yes; somebody's guess at ore, no". Asked before the kind for the
+            // same reason it exists -- it is also the only switch covering the kinds that are
+            // never anything but hand-placed, Fish and Big Game, which have no Record switch.
+            if (!pin.Auto && TgmConfig.RecordManualFromOthers != null
+                && !TgmConfig.RecordManualFromOthers.Value) return "placed by hand";
             var kind = KindOf(pin);
             if (!kind.HasValue) return null;
             return !TgmConfig.CategoryEnabled.TryGetValue(kind.Value, out var records) || records.Value

@@ -10,6 +10,10 @@
 - A Record switch now decides what you copy as well as what you write down: markers of a kind you
   do not record are no longer taken off a cartography table or another player's map, and a merge
   says how many it turned away. Markers you recorded yourself always come back to you.
+- New: Record Manual Markers From Others (Recording), on. Off turns away the markers other players
+  placed by hand instead of copying them onto your map.
+- New: Show Manual Markers From Others (Display), on. Off hides the ones already there, without
+  turning anything away.
 
 ## 4.14.0 — 2026-11-23
 

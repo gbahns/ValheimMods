@@ -66,10 +66,13 @@ namespace TheGreatestMap
         /// <summary>The kinds turned away and how many of each, for a line somebody reads.</summary>
         public string KindsTurnedAway()
         {
-            var named = new List<string>();
-            foreach (var kv in RefusedKinds) named.Add(kv.Key + " " + kv.Value);
-            named.Sort(StringComparer.Ordinal);
-            return string.Join(", ", named);
+            // Sorted by the kind rather than by the count, so the same two kinds come out in
+            // the same order every merge.
+            var kinds = new List<string>(RefusedKinds.Keys);
+            kinds.Sort(StringComparer.Ordinal);
+            var said = new List<string>();
+            foreach (var kind in kinds) said.Add(RefusedKinds[kind] + " " + kind);
+            return string.Join(", ", said);
         }
 
         /// <summary>
