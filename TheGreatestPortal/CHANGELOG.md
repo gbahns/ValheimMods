@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.8.1 — unreleased
+## 1.8.1 — 2026-11-25
 
 - Opening the inventory on top of the portal panel and then going to the map no longer leaves both stuck on screen with no way to close them.
 
