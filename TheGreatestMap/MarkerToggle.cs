@@ -250,6 +250,13 @@ namespace TheGreatestMap
             TheGreatestMapMod.Message(TgmConfig.ShowAllMarkers.Value ? "Showing this mod's markers." : "Hiding this mod's markers.");
             ClientPins.Restyle();
             Recolor();
+            // The marker list draws this same switch as "hide all" and lights it while it is on,
+            // so an open list has to hear about it however it was thrown -- the gear's checkbox,
+            // that button, or the right-click on the pin that can be done with the list open in
+            // front of it. Here rather than at each of the three, which is three chances to be
+            // the one that leaves the button lying about its own state. Does nothing when the
+            // list is closed.
+            KindMenu.Relayout();
         }
 
         /// <summary>

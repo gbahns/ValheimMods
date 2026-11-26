@@ -117,10 +117,10 @@ namespace TheGreatestMap
                 "the pins you placed by hand, your death markers and your bed. What the game pins for the world " +
                 "stays -- boss altars, traders, Hildir's quests, the center of the world -- and so do players, " +
                 "pings and shouts. It is not one of the switches in the marker list but an override of all of " +
-                "them, which is why it lives here: turning it back off leaves every switch in that list exactly " +
-                "as it was.",
+                "them: turning it back off leaves every switch in that list exactly as it was. The same switch " +
+                "as \"hide all\" in the list's title strip, and as a right-click on the map's pin button.",
                 () => TgmConfig.ShowAllMarkers != null && !TgmConfig.ShowAllMarkers.Value,
-                () => { MarkerToggle.ToggleAll(); KindMenu.Relayout(); });
+                MarkerToggle.ToggleAll);
             y = Row(y, "Show erased markers",
                 "Draw the markers somebody has erased, so you can see what went and put it back. For finding out " +
                 "why a marker is not where you left it rather than for reading the map.",

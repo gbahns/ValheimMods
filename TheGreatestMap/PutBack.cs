@@ -15,8 +15,8 @@ namespace TheGreatestMap
     ///
     /// <para><b>What it does not keep.</b> The find box, which "show all" also clears: a search
     /// is a question being asked rather than a setting, and nobody wants yesterday's question
-    /// back. And "Hide your markers" behind the gear, which "show all" has never touched, being
-    /// an override of these switches rather than one of them.</para>
+    /// back. Everything else is kept, the master override included -- "show all" turns that off
+    /// along with the rest and always has, whatever an earlier note here said.</para>
     ///
     /// <para><b>How long it lasts.</b> Until the next "show all", or until the world changes. Not
     /// written to the character: a stash that outlived the session would offer to undo something

@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.17.0 — unreleased
+
+- New: a "hide all" button in the marker list's title strip, beside "show all". It takes every
+  marker that is on the map because of you off it at once and lights up while they are off;
+  pressing it again brings all of it back exactly as it was. It is the switch that was already
+  behind the gear as "Hide your markers" and on a right-click of the map's pin button, in a place
+  where it can be found.
+
 ## 4.16.0 — 2026-11-25
 
 - "Show all" can be taken back. It used to empty every hidden list outright -- pictures, places,

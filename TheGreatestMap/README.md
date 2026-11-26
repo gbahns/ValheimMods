@@ -246,20 +246,24 @@ once.
 "Show all" at the right of the title strip, next to the stick pin, appears whenever something is
 hidden and puts all of it back -- the kinds, the types, the crossed-off groups, icons hidden one
 picture at a time and markers hidden one at a time, the same work as `tgm_show`. It is not drawn
-when there is nothing to put back.
+when there is nothing to put back. What it did can be taken back: with nothing left hidden the
+same corner offers **"put back"**, which hides again exactly what that press showed, and
+`tgm_hideagain` does it from the console. The offer lasts until you hide something yourself or
+the world changes, and it is never drawn beside "show all" -- the first thing you hide again
+replaces one with the other.
 
-The master switch lives behind the gear, as **"Hide your markers"**. It is named for what it does:
-everything on the map that is there because of you goes off at once -- this mod's recorded markers,
-the pins you placed by hand, your death marker and your bed -- while what the game pins for the
-world stays, which is the boss altars, the traders, Hildir's quests and the center of the world.
-Players, pings and shouts stay too. Turning it back off leaves every switch in the list exactly as
-it was: check it
-and everything you have put on the map comes off at once -- this mod's markers, the pins you
-placed by hand, your death markers and your bed -- whatever the switches below say. The game's own
-landmarks stay, since they are the map rather than notes on it: boss altars, traders, Hildir's
-camps and the center of the world. So do other players, their pings and their shouts. Uncheck it
-and everything comes back exactly as it was. It is a box to check rather than a button because it
-does not show everything -- it only stops holding everything off.
+**"Hide all"** sits beside it, and unlike "show all" it is always there. Everything on the map
+that is there because of you goes off at once -- this mod's recorded markers, the pins you placed
+by hand, your death markers and your bed -- whatever the switches in the list say. What the game
+pins for the world stays, since that is the map rather than notes on it: boss altars, traders,
+Hildir's quests and the center of the world. Other players, their pings and their shouts stay too.
+It lights up while they are off, and pressing it again brings everything back exactly as it was:
+it holds the markers off rather than switching any of them off, so it costs you none of the hiding
+you have set up. The same switch appears behind the gear as **"Hide your markers"**, and a
+right-click on the map's pin button throws it as well.
+
+Note that "show all" turns it off along with everything else, that being what showing everything
+means -- and "put back" will put it back on with the rest.
 
 Pressing a type row while its whole kind is hidden shows that type: the other types of that kind
 stay hidden, so the map changes by exactly the row you pressed rather than bringing the kind back

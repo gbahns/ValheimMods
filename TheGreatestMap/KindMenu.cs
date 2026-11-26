@@ -72,6 +72,17 @@ namespace TheGreatestMap
         private const float CornerButtons = 76f;
 
         /// <summary>
+        /// One word-button in the title strip, and where the two of them sit. The right slot
+        /// carries "show all" or "put back", whichever the hiding calls for and neither when
+        /// there is nothing to show; the left one carries "hide all" and is never empty.
+        /// Measured in from the right edge past the gear and the stick pin, so all four move
+        /// together if any of them is resized.
+        /// </summary>
+        private const float HeadSlot = 76f;
+        private const float RightSlot = Width - CornerButtons - 6f - HeadSlot;
+        private const float LeftSlot = RightSlot - HeadSlot - 4f;
+
+        /// <summary>
         /// A switch row is an icon and a name, drawn the way the map draws what it covers: full
         /// strength when shown, dimmed when hidden. An action row is gold text saying what a click
         /// will do, as the master row does.
@@ -749,27 +760,52 @@ namespace TheGreatestMap
             // sits 6 from the right edge and the gear 30, both 22 across, so the strip they
             // occupy is 52 wide and its middle is 17 below the top.
             if (_resetShown)
-                HeadButton(Width - CornerButtons - 6f - 76f, -(17f - 20f * 0.5f), 76f, "show all",
+                HeadButton(RightSlot, -(17f - 20f * 0.5f), HeadSlot, "show all",
                     () =>
                     {
                         TgmConfig.ShowEverything();
                         ClientPins.Restyle();
                         Refresh();
                     },
-                    "Show all", PutBackText() + ". \"Hide your markers\", behind the gear, is left alone " +
-                    "by this, being an override of these switches rather than one of them. It can be taken back: " +
-                    "the corner offers to put it all back afterwards.");
+                    // This used to say the master override was left alone by it. It is not:
+                    // ShowEverything turns that off with everything else, and always has.
+                    "Show all", PutBackText() + ". \"hide all\" beside it goes off too, so this is " +
+                    "everything on the map back at once. It can be taken back: the corner offers to put it " +
+                    "all back afterwards.");
             // The same corner, once there is nothing left to show: showing everything used to
             // leave the button with nothing to say and take the hiding with it, which is a lot
             // of work to lose to one press.
             else if (_putBackShown)
-                HeadButton(Width - CornerButtons - 6f - 76f, -(17f - 20f * 0.5f), 76f, "put back",
+                HeadButton(RightSlot, -(17f - 20f * 0.5f), HeadSlot, "put back",
                     () =>
                     {
                         PutBack.Apply();
                         Refresh();
                     },
                     "Put back", PutBackAgainText());
+
+            // The override, beside them and always drawn. It had three doors before this and all
+            // three were hard to find: a checkbox behind the gear, the config, and a right-click
+            // on the map's pin button whose left-click opens this very list -- a secondary
+            // gesture on a button whose primary one is spoken for. Greg wrote that right-click
+            // and then forgot it existed, which settled how discoverable it was.
+            //
+            // The word stays "hide all" whether it is on or off, and lights up while it is on,
+            // the way a row's "12 done" does. A label that flips to its own inverse is what made
+            // the old title strip confusing: "hide all" became "show all", and pressing it only
+            // turned the override off rather than showing all, which is a different thing that
+            // now has its own button four pixels away.
+            HeadButton(LeftSlot, -(17f - 20f * 0.5f), HeadSlot, "hide all",
+                MarkerToggle.ToggleAll,
+                "Hide your markers",
+                "Take every marker that is on the map because of you off it at once -- this mod's markers, the " +
+                "pins you placed by hand, your death markers and your bed -- whatever the switches in this list " +
+                "say. What the game marks for the world stays, and so do other players, their pings and their " +
+                "shouts. Press it again and all of it comes back exactly as it was: it holds the markers off " +
+                "rather than switching any of them off, so it costs you none of the hiding you have set up here. " +
+                "The same switch as \"Hide your markers\" behind the gear, and as a right-click on the map's " +
+                "pin button.",
+                lit: () => TgmConfig.ShowAllMarkers != null && !TgmConfig.ShowAllMarkers.Value);
             y -= HeaderHeight;
 
             FindBox(0f, y);
@@ -1696,7 +1732,7 @@ namespace TheGreatestMap
             img.raycastTarget = true;
             // Up to the master switch and no further, so the one word in the strip is still a
             // button rather than a place the panel can be grabbed by.
-            Place((RectTransform)go.transform, 0f, 0f, Width - CornerButtons - 6f - 76f, HeaderHeight + Pad);
+            Place((RectTransform)go.transform, 0f, 0f, LeftSlot, HeaderHeight + Pad);
             var handle = go.GetComponent<MenuKit.DragHandle>();
             handle.OnDrag = OnMoveDrag;
             handle.OnEnd = RememberSpot;
@@ -2486,7 +2522,7 @@ namespace TheGreatestMap
         /// idle, because the only one of these is drawn when there is work for it to do.
         /// </summary>
         private static void HeadButton(float x, float y, float width, string text, Action press,
-                                       string tipTopic, string tip)
+                                       string tipTopic, string tip, Func<bool> lit = null)
         {
             var go = new GameObject("HeadButton", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
             go.transform.SetParent(_root.transform, false);
@@ -2508,6 +2544,22 @@ namespace TheGreatestMap
             lrt.anchorMax = Vector2.one;
             lrt.offsetMin = Vector2.zero;
             lrt.offsetMax = Vector2.zero;
+
+            // A button that is always drawn has to say whether it is doing anything: dark while
+            // it is not, orange while it is, which is what every switch in the list below does.
+            // The buttons drawn only when they are worth pressing stay orange throughout, their
+            // being there at all being the thing they have to say.
+            if (lit != null)
+            {
+                Action paint = () =>
+                {
+                    bool on = lit();
+                    back.color = on ? MenuKit.ButtonOn : MenuKit.ButtonIdle;
+                    label.color = on ? MenuKit.GlyphOn : MenuKit.GlyphIdle;
+                };
+                paint();
+                _lights.Add(paint);
+            }
         }
 
         private static void CheckBox(float x, float y, float width, string text, Func<bool> on,
@@ -2614,7 +2666,7 @@ namespace TheGreatestMap
         private static void Header(string text, float x, float y)
         {
             var header = MenuKit.Text(_root.transform, "Header", text, 15f, MenuKit.Header);
-            Place(header.rectTransform, x + 10f, y, Width - CornerButtons - 6f - 76f - 20f, HeaderHeight);
+            Place(header.rectTransform, x + 10f, y, LeftSlot - 20f, HeaderHeight);
             header.alignment = TextAlignmentOptions.MidlineLeft;
         }
 
