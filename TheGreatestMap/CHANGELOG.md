@@ -7,6 +7,12 @@
   pressing it again brings all of it back exactly as it was. It is the switch that was already
   behind the gear as "Hide your markers" and on a right-click of the map's pin button, in a place
   where it can be found.
+- The two read the same way now. "Show all" no longer renames itself to "put back" once
+  everything is shown: it lights up instead, as "hide all" does, so in both buttons dark means
+  the thing named is not in effect and orange means it is. Pressing a lit one takes it back.
+- Only one of them can be lit, which was not true before: with the master switch on and nothing
+  else hidden, the corner showed no button at all while the right-click menu still offered to
+  show everything hidden.
 
 ## 4.16.0 — 2026-11-25
 

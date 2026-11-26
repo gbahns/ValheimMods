@@ -243,37 +243,35 @@ finished with can go while the sunken crypts you have cleared stay, and the copp
 out can go while the raspberry bushes you have picked stay. One row at the foot does the lot at
 once.
 
-"Show all" at the right of the title strip, next to the stick pin, appears whenever something is
-hidden and puts all of it back -- the kinds, the types, the crossed-off groups, icons hidden one
-picture at a time and markers hidden one at a time, the same work as `tgm_show`. It is not drawn
-when there is nothing to put back. What it did can be taken back: with nothing left hidden the
-same corner offers **"put back"**, which hides again exactly what that press showed, and
-`tgm_hideagain` does it from the console. The offer lasts until you hide something yourself or
-the world changes, and it is never drawn beside "show all" -- the first thing you hide again
-replaces one with the other.
+**Two buttons sit at the right of the title strip, next to the stick pin, and read the same
+way:** dark means the thing named is not in effect and a press puts it in effect; orange means it
+is, and a press takes it back.
 
-**"Hide all"** sits beside it, and unlike "show all" it is always there. Everything on the map
-that is there because of you goes off at once -- this mod's recorded markers, the pins you placed
-by hand, your death markers and your bed -- whatever the switches in the list say. What the game
-pins for the world stays, since that is the map rather than notes on it: boss altars, traders,
-Hildir's quests and the center of the world. Other players, their pings and their shouts stay too.
-It lights up while they are off, and pressing it again brings everything back exactly as it was:
-it holds the markers off rather than switching any of them off, so it costs you none of the hiding
-you have set up. The same switch appears behind the gear as **"Hide your markers"**, and a
-right-click on the map's pin button throws it as well.
+**"Hide all"** is always there. It takes everything that is on the map because of you off it at
+once -- this mod's recorded markers, the pins you placed by hand, your death markers and your bed
+-- whatever the switches in the list say. What the game pins for the world stays, since that is
+the map rather than notes on it: boss altars, traders, Hildir's quests and the center of the
+world. Other players, their pings and their shouts stay too. It holds the markers off rather than
+switching any of them off, so it costs you none of the hiding you have set up, and pressing it
+again brings everything back exactly as it was. It is the same switch as **"Hide your markers"**
+behind the gear, and as a right-click on the map's pin button.
 
-Note that "show all" turns it off along with everything else, that being what showing everything
-means -- and "put back" will put it back on with the rest.
+**"Show all"** puts back everything the switches are hiding -- the kinds, the types, the
+crossed-off groups, the master switch above, icons hidden one picture at a time and markers
+hidden one at a time, the same work as `tgm_show`. Once it has, it stays lit, and pressing it
+again hides exactly what it showed; `tgm_hideagain` does that from the console. The offer lasts
+until you hide something yourself or the world changes. The button is not drawn at all when there
+is nothing hidden and nothing to put back.
+
+Only one of the two is ever lit, since everything cannot be hidden and shown at the same time.
 
 Pressing a type row while its whole kind is hidden shows that type: the other types of that kind
 stay hidden, so the map changes by exactly the row you pressed rather than bringing the kind back
 wholesale.
 
-At the foot of the list is the row that puts back everything these switches hide -- the kinds, the
-crossed-off groups, icons hidden one picture at a time and markers hidden one at a time, the same
-as `tgm_show`. It names what it will put back ("Show everything hidden -- 2 kinds, 5 markers") and
-is there only while there is something to put back, so it cannot be read as another copy of the
-hide-all row above it. Config "Marker Button On Map" turns the button off.
+Either button names what it is about to do when you point at it -- "Show everything hidden -- 2
+kinds, 5 markers", or what hiding it would put back. Config "Marker Button On Map" turns the map's
+pin button, and with it this whole list, off.
 
 Drag the list by its title to move it, and it opens there from then on, pinned or not; the stick
 pin only decides whether it stays open when you click the map.
