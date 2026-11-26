@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.16.0 — unreleased
+## 4.16.0 — 2026-11-25
 
 - "Show all" can be taken back. It used to empty every hidden list outright -- pictures, places,
   biomes, every kind's switch, the crossed-off groups, the landmarks and the markers you had put
