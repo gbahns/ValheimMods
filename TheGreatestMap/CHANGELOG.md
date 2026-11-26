@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.17.1 — unreleased
+## 4.17.1 — 2026-11-26
 
 - Fixed: with "Show Custom Boss Markers" on, the boss names were written whatever "Show Boss
   Labels" said. The swapped-in markers are this mod's own rather than the game's pins, so nothing
