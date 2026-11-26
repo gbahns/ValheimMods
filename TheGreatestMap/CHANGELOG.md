@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.17.0 — unreleased
+## 4.17.0 — 2026-11-25
 
 - New: a "hide all" button in the marker list's title strip, beside "show all". It takes every
   marker that is on the map because of you off it at once and lights up while they are off;
