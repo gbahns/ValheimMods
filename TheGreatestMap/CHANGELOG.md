@@ -10,9 +10,11 @@
 - The two read the same way now. "Show all" no longer renames itself to "put back" once
   everything is shown: it lights up instead, as "hide all" does, so in both buttons dark means
   the thing named is not in effect and orange means it is. Pressing a lit one takes it back.
-- Only one of them can be lit, which was not true before: with the master switch on and nothing
-  else hidden, the corner showed no button at all while the right-click menu still offered to
-  show everything hidden.
+- Only one of them can be lit, and pressing the dark one takes the other back first. Before
+  this the pair worked out its own state twice over and could disagree: with the master switch
+  on and nothing else hidden, the corner showed no button at all while the right-click menu
+  went on offering to show everything hidden.
+- Both buttons are narrower, and both are always there.
 
 ## 4.16.0 — 2026-11-25
 

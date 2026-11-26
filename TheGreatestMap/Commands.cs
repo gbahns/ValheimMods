@@ -189,8 +189,7 @@ namespace TheGreatestMap
                 {
                     int single = ViewPrefs.Count, kinds = TgmConfig.HiddenKindCount();
                     int icons = TgmConfig.HiddenIconCount() + TgmConfig.HiddenOwnIconCount();
-                    TgmConfig.ShowEverything();
-                    ClientPins.Restyle();
+                    Corner.ShowAll();
                     args.Context.AddString($"Showing everything again ({single} single markers, {icons} icons and {kinds} kinds were hidden). " +
                                            "tgm_hideagain puts it back.");
                 }));
@@ -204,7 +203,7 @@ namespace TheGreatestMap
                         return;
                     }
                     string counts = PutBack.Counts();
-                    PutBack.Apply();
+                    Corner.HideAgain();
                     args.Context.AddString(counts.Length == 0
                         ? "Put back, though nothing was hidden when everything was shown."
                         : "Hidden again: " + counts + ".");

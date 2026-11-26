@@ -246,9 +246,12 @@ namespace TheGreatestMap
         internal static void ToggleAll()
         {
             if (TgmConfig.ShowAllMarkers == null) return;
-            TgmConfig.ShowAllMarkers.Value = !TgmConfig.ShowAllMarkers.Value;
+            // Through the title strip's rule rather than straight at the setting, so that the
+            // gear's checkbox, this right-click and the button itself are one gesture with one
+            // outcome -- including that pressing it while "show all" is lit puts the hiding back
+            // first, which is what that button being lit was promising.
+            Corner.Press(Corner.Mode.HideAll);
             TheGreatestMapMod.Message(TgmConfig.ShowAllMarkers.Value ? "Showing this mod's markers." : "Hiding this mod's markers.");
-            ClientPins.Restyle();
             Recolor();
             // The marker list draws this same switch as "hide all" and lights it while it is on,
             // so an open list has to hear about it however it was thrown -- the gear's checkbox,

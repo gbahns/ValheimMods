@@ -60,6 +60,7 @@ namespace TheGreatestMap
             Reveals.Reset();
             JustCrossedOff.Reset();
             PutBack.Forget();
+            Corner.Forget();
             Portals.Reset();
             Transports.Reset();
             Builds.Reset();

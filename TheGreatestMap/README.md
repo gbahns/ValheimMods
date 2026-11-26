@@ -259,11 +259,13 @@ behind the gear, and as a right-click on the map's pin button.
 **"Show all"** puts back everything the switches are hiding -- the kinds, the types, the
 crossed-off groups, the master switch above, icons hidden one picture at a time and markers
 hidden one at a time, the same work as `tgm_show`. Once it has, it stays lit, and pressing it
-again hides exactly what it showed; `tgm_hideagain` does that from the console. The offer lasts
-until you hide something yourself or the world changes. The button is not drawn at all when there
-is nothing hidden and nothing to put back.
+again hides exactly what it showed; `tgm_hideagain` does that from the console. The light goes
+out by itself if you hide something yourself, since everything is no longer shown, and what it
+cleared can still be put back from the console.
 
 Only one of the two is ever lit, since everything cannot be hidden and shown at the same time.
+Pressing the dark one while the other is lit turns that one off first, undoing it, and then does
+what you asked for.
 
 Pressing a type row while its whole kind is hidden shows that type: the other types of that kind
 stay hidden, so the map changes by exactly the row you pressed rather than bringing the kind back

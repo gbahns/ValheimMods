@@ -227,21 +227,6 @@ namespace TheGreatestMap
         /// </summary>
         private static readonly Dictionary<string, int> _doneOther = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-        /// <summary>
-        /// Whether the row that puts everything back was drawn. Checked on every refresh: that
-        /// row is there only while there is something to put back, and a press on any row above
-        /// it can change the answer.
-        /// </summary>
-        private static bool _resetShown;
-
-        /// <summary>
-        /// Whether "show all" is lit, meaning everything is being shown and a press would put
-        /// the hiding back. Never at the same time as <see cref="_resetShown"/>: one says
-        /// something is hidden and the other says nothing is, and between them they are the
-        /// button's two states rather than two buttons.
-        /// </summary>
-        private static bool _showAllLit;
-
         /// <summary>Said once a session: a layout that does not fit is a bug, not a preference.</summary>
         private static bool _warnedTall;
 
@@ -624,8 +609,6 @@ namespace TheGreatestMap
 
             // The foot's height has to be known before the scrolling part can be given what is
             // left over, and whether the put-back row is there is part of that.
-            _resetShown = AnythingPutBack();
-            _showAllLit = !_resetShown && PutBack.Any;
             float head = BuildHead(map);
             float foot = FootHeight();
 
@@ -755,48 +738,20 @@ namespace TheGreatestMap
             // reading. It used to be a row at the very foot of the list, below everything, which
             // is the last place anybody looks.
             //
-            // One button in two states rather than two buttons, so that it reads the same way
-            // as "hide all" beside it: dark means the thing named is not in effect and a press
-            // puts it in effect, orange means it is and a press takes it back. The word does not
-            // change with the state. It used to say "put back" once everything was shown, which
-            // made the corner a place where the label moved and the color did not, next to a
-            // button where the color moved and the label did not.
+            // Both always drawn, and both reading the one state in Corner: dark means the thing
+            // named is not in effect, orange means it is, and a press on the lit one takes it
+            // back. Neither word changes with its state. "Show all" used to become "put back",
+            // which made one button where the label moved and the color did not, beside one
+            // where the color moved and the label did not.
             //
             // Clear of the two round buttons in the corner and level with them: the stick pin
             // sits 6 from the right edge and the gear 30, both 22 across, so the strip they
             // occupy is 52 wide and its middle is 17 below the top.
-            if (_resetShown || _showAllLit)
-                HeadButton(RightSlot, -(17f - 20f * 0.5f), HeadSlot, "show all",
-                    () =>
-                    {
-                        // Which way the press goes is read fresh rather than captured: a rebuild
-                        // follows every change to this, but a press that arrived in the same
-                        // frame as one would otherwise run the stale half.
-                        if (!AnythingPutBack() && PutBack.Any) PutBack.Apply();
-                        else { TgmConfig.ShowEverything(); ClientPins.Restyle(); }
-                        Refresh();
-                    },
-                    // The old tip said the master override was left alone by this. It is not:
-                    // ShowEverything turns that off with everything else, and always has.
-                    "Show all",
-                    _showAllLit
-                        ? PutBackAgainText() + ". Everything is being shown, which is what the light means"
-                        : PutBackText() + ". \"hide all\" beside it goes off too, so this is everything " +
-                          "on the map back at once, and the light comes on. It can be taken back: press it " +
-                          "again and the hiding returns",
-                    lit: () => _showAllLit);
-
-            // The override, beside them and always drawn. It had three doors before this and all
-            // three were hard to find: a checkbox behind the gear, the config, and a right-click
-            // on the map's pin button whose left-click opens this very list -- a secondary
-            // gesture on a button whose primary one is spoken for. Greg wrote that right-click
-            // and then forgot it existed, which settled how discoverable it was.
             //
-            // The word stays "hide all" whether it is on or off, and lights up while it is on,
-            // the way a row's "12 done" does. A label that flips to its own inverse is what made
-            // the old title strip confusing: "hide all" became "show all", and pressing it only
-            // turned the override off rather than showing all, which is a different thing that
-            // now has its own button four pixels away.
+            // "Hide all" is here at all because the override's other doors were unfindable: a
+            // checkbox behind the gear, the config, and a right-click on the map's pin button
+            // whose left-click opens this very list. Greg wrote that right-click and then forgot
+            // it existed, which settled how discoverable it was.
             HeadButton(LeftSlot, -(17f - 20f * 0.5f), HeadSlot, "hide all",
                 MarkerToggle.ToggleAll,
                 "Hide your markers",
@@ -807,7 +762,21 @@ namespace TheGreatestMap
                 "rather than switching any of them off, so it costs you none of the hiding you have set up here. " +
                 "The same switch as \"Hide your markers\" behind the gear, and as a right-click on the map's " +
                 "pin button.",
-                lit: () => TgmConfig.ShowAllMarkers != null && !TgmConfig.ShowAllMarkers.Value);
+                lit: () => Corner.Now == Corner.Mode.HideAll);
+
+            HeadButton(RightSlot, -(17f - 20f * 0.5f), HeadSlot, "show all",
+                () => { Corner.Press(Corner.Mode.ShowAll); Refresh(); },
+                "Show all",
+                // The old tip said the master override was left alone by this. It is not:
+                // ShowEverything turns that off with everything else, and always has.
+                "Put back everything the switches are hiding, \"hide all\" included -- the same work as " +
+                "tgm_show. Press it again and the hiding returns, exactly what this cleared and nothing you " +
+                "have hidden since.",
+                tipNow: () => Corner.Now == Corner.Mode.ShowAll
+                    ? PutBackAgainText() + ". Everything is being shown, which is what the light means"
+                    : PutBackText() + ". \"hide all\" beside it goes off too, so this is everything on the " +
+                      "map back at once, and the light comes on. Press it again and the hiding returns",
+                lit: () => Corner.Now == Corner.Mode.ShowAll);
             y -= HeaderHeight;
 
             FindBox(0f, y);
@@ -2524,7 +2493,8 @@ namespace TheGreatestMap
         /// idle, because the only one of these is drawn when there is work for it to do.
         /// </summary>
         private static void HeadButton(float x, float y, float width, string text, Action press,
-                                       string tipTopic, string tip, Func<bool> lit = null)
+                                       string tipTopic, string tip, Func<bool> lit = null,
+                                       Func<string> tipNow = null)
         {
             var go = new GameObject("HeadButton", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
             go.transform.SetParent(_root.transform, false);
@@ -2561,6 +2531,15 @@ namespace TheGreatestMap
                 };
                 paint();
                 _lights.Add(paint);
+            }
+
+            // A button that is always drawn outlives the thing its tip counts, so the tip is
+            // written again whenever the lights are, rather than once when it was built.
+            var hint = tipNow != null ? go.GetComponent<MenuKit.Hint>() : null;
+            if (hint != null)
+            {
+                hint.Body = tipNow();
+                _lights.Add(() => hint.Body = tipNow());
             }
         }
 
@@ -3264,10 +3243,10 @@ namespace TheGreatestMap
             // The put-back row is drawn only while there is something to put back, and the press
             // that just happened may have been the one that changed that. A row coming or going is
             // a change to the rows rather than to their colors, so it takes a redraw in place.
-            // The light is painted every refresh, but which half of the button is armed, what
-            // its tip says and whether it is there at all are settled when it is built.
-            bool reset = AnythingPutBack();
-            if (reset != _resetShown || (!reset && PutBack.Any) != _showAllLit) _rebuildWanted = true;
+            // Both corner buttons are always drawn and paint themselves from Corner, so none of
+            // this needs a rebuild. What it does need is for the lit "show all" to stop claiming
+            // everything is shown the moment the player hides something by hand.
+            if (Corner.Now == Corner.Mode.ShowAll && AnythingPutBack()) Corner.Forget();
         }
 
         internal static void Close()
