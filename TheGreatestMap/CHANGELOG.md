@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.17.1 — unreleased
+
+- Fixed: with "Show Custom Boss Markers" on, the boss names were written whatever "Show Boss
+  Labels" said. The swapped-in markers are this mod's own rather than the game's pins, so nothing
+  recognized them as boss markers and their names followed the switch about recorded markers.
+
 ## 4.17.0 — 2026-11-25
 
 - New: a "hide all" button in the marker list's title strip, beside "show all". It takes every

@@ -1593,6 +1593,10 @@ namespace TheGreatestMap
         private static bool IsBossMarker(Minimap.PinData pin)
         {
             if (pin.m_type == Minimap.PinType.Boss) return true;
+            // This mod's own, drawn from the game's marks while the swap is on. Asked before the
+            // store because it is a live pin with no record behind it, so the lookups below can
+            // only say no -- and because it is the cheaper question of the two.
+            if (OwnMarks.IsBossMark(pin)) return true;
             if (!_idByPin.TryGetValue(pin, out var id)) return false;
             return Store.Pins.TryGetValue(id, out var shared)
                    && IconRegistry.BorrowedVanillaType(IconOf(shared), out int type)

@@ -68,6 +68,13 @@ namespace TheGreatestMap
 
         private static readonly List<Mark> _marks = new List<Mark>();
         private static readonly List<Minimap.PinData> _drawn = new List<Minimap.PinData>();
+
+        /// <summary>
+        /// Which of the drawn pins are boss altars. A set rather than a walk along the five of
+        /// them because the one thing that asks runs once per labelled pin per layout, and a map
+        /// with its names on has thousands of those.
+        /// </summary>
+        private static readonly HashSet<Minimap.PinData> _bossPins = new HashSet<Minimap.PinData>();
         private static float _next;
         private static string _was;
 
@@ -81,6 +88,7 @@ namespace TheGreatestMap
         {
             _marks.Clear();
             _drawn.Clear();
+            _bossPins.Clear();
             _next = 0f;
             _was = null;
             _sites = null;
@@ -99,8 +107,24 @@ namespace TheGreatestMap
         internal static void OnPinsCleared()
         {
             _drawn.Clear();
+            _bossPins.Clear();
             foreach (var mark in _marks) mark.Pin = null;
             _was = null;
+        }
+
+        /// <summary>
+        /// One of this mod's own boss markers, drawn in place of the game's while "Show Custom
+        /// Boss Markers" is on.
+        ///
+        /// <para>Nothing else can tell: it carries a type this mod minted for the trophy it
+        /// wears rather than <see cref="Minimap.PinType.Boss"/>, and it is a live pin with no
+        /// record behind it, so neither the type nor the marker store answers for it. Which is
+        /// how "Show Boss Labels" came to govern nothing while the swap was on -- the names fell
+        /// through to the switch about berry bushes.</para>
+        /// </summary>
+        internal static bool IsBossMark(Minimap.PinData pin)
+        {
+            return pin != null && _bossPins.Count > 0 && _bossPins.Contains(pin);
         }
 
         /// <summary>One of the game's own quest marks. Nothing else ever wears these three types.</summary>
@@ -558,6 +582,7 @@ namespace TheGreatestMap
             var pins = Access.Pins(map);
             foreach (var mine in _drawn) if (mine != null && pins.Contains(mine)) map.RemovePin(mine);
             _drawn.Clear();
+            _bossPins.Clear();
             _marks.Clear();
             _marks.AddRange(found);
 
@@ -569,6 +594,7 @@ namespace TheGreatestMap
                 if (pin == null) continue;
                 mark.Pin = pin;
                 _drawn.Add(pin);
+                if (mark.Kind == WorldPins.Kind.Boss) _bossPins.Add(pin);
             }
             ClientPins.Restyle();
         }
