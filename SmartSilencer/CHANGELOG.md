@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.0 — 2026-11-25
+
+- The game no longer warns about area damage it has itself switched off. An object with triggers
+  disabled but a collider still on it writes `AOE got OnTriggerStay but trigger damage is disabled
+  in <name>` for every collider touching it, every physics tick — a pufferfish lying in the wrong
+  place wrote 9,741 lines in four minutes. New setting "Quiet Disabled Trigger Damage" (Fixes, on).
+  No damage changes.
+
 ## 1.2.1 — 2026-11-04
 
 - The per-app level meters are now read on a thread of their own instead of from the game's frame. The poll was costing about 5 ms a second on the main thread, the most of any installed mod; the game now pays nothing for it. No change in behavior.

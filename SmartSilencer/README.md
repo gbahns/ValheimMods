@@ -56,8 +56,20 @@ Music and video are detected the same way the Windows volume mixer shows a movin
 | Sound Delay Seconds | 0.3 | How long a program must have been making sound before the game goes quiet. |
 | Silence Grace Seconds | 2 | How long everything must have been silent before the sound comes back. Covers the gap between songs and a video buffering. |
 | Quiet Missing Location Music | true | Stop the game asking for location music it does not have. See below. |
+| Quiet Disabled Trigger Damage | true | Stop the game warning about area damage it has itself switched off. See below. |
 
-## The log line it quiets
+## The log lines it quiets
+
+### Area damage that is switched off
+
+An object with area damage set to ignore triggers, but with a collider still on it, makes the game
+write `AOE got OnTriggerStay but trigger damage is disabled in <name>` for every collider touching
+it, every physics tick. Valheim ships at least one: a pufferfish lying where things touch it wrote
+9,741 lines in four minutes. In that case the game does nothing but write the line, so the check is
+skipped. No damage changes — the pufferfish still poisons whoever handles it. Turn *Quiet Disabled
+Trigger Damage* off to leave the game as it ships.
+
+### Location music that is not loaded
 
 A music volume names the track it wants, and names it again every tick you stand inside it. When
 that track is not loaded, the game writes `Location music missing: <name>` each time — thousands of

@@ -29,7 +29,7 @@ namespace SmartSilencer
     {
         public const string ModGuid    = "DeathMonger.SmartSilencer";
         public const string ModName    = "Smart Silencer";
-        public const string ModVersion = "1.2.1";
+        public const string ModVersion = "1.3.0";
 
         internal static ManualLogSource Log { get; private set; }
         internal static SmartSilencerMod Instance { get; private set; }
@@ -58,6 +58,7 @@ namespace SmartSilencer
 
         // [Fixes]
         internal static ConfigEntry<bool> QuietMissingLocationMusic;
+        internal static ConfigEntry<bool> QuietDisabledTriggerDamage;
 
         // [Detection]
         internal static ConfigEntry<float> PollInterval;
@@ -189,6 +190,15 @@ namespace SmartSilencer
                 "track exists. A name the game cannot play is dropped before it is set, which silences " +
                 "the log without silencing any music that could have played. Turn off to leave the game " +
                 "as it ships.");
+
+            QuietDisabledTriggerDamage = Config.Bind("Fixes", "Quiet Disabled Trigger Damage", true,
+                "Stop the game complaining about damage it has itself switched off. An object whose " +
+                "area damage is set to ignore triggers, but which still has a collider, makes the game " +
+                "write 'AOE got OnTriggerStay but trigger damage is disabled in <name>' for every " +
+                "collider touching it, every physics tick. Valheim ships at least one: a pufferfish " +
+                "lying where things touch it wrote 9,741 lines in four minutes. The game does nothing " +
+                "else in that case, so the check is skipped and the line is not written. No damage " +
+                "changes, the pufferfish included. Turn off to leave the game as it ships.");
 
             MusicApps.SettingChanged   += (_, __) => RebuildLists();
             VideoApps.SettingChanged   += (_, __) => RebuildLists();
