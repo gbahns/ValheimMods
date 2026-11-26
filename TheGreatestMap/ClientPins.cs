@@ -293,9 +293,24 @@ namespace TheGreatestMap
                 && !TgmConfig.RecordManualFromOthers.Value) return "placed by hand";
             var kind = KindOf(pin);
             if (!kind.HasValue) return null;
-            return !TgmConfig.CategoryEnabled.TryGetValue(kind.Value, out var records) || records.Value
-                ? null
-                : Categories.Label(kind.Value);
+            if (TgmConfig.CategoryEnabled.TryGetValue(kind.Value, out var records) && !records.Value)
+                return Categories.Label(kind.Value);
+            // And the per-type half of the same decision, which used to be enforced on one path
+            // only. With Record Structures on -- the default -- every Black Forest Ruin and
+            // Mountain Ruin on anybody else's map was copied onto this one however often they
+            // were deleted, because a type's own switch was asked where a marker is written from
+            // the world and nowhere else. Catalog.Records is that path's own predicate, asked
+            // here unchanged: what I record from the world and what I copy from another map are
+            // one decision, and 4.15.0 settled only the coarse half of it.
+            //
+            // The lookup costs what Recorder already pays per found object during play, against a
+            // merge that happens at a cartography table rather than every frame.
+            if (Catalog.Records(pin.Source)) return null;
+            // Named by its group, so a refusal reads "Mountain Ruins" rather than "Structure".
+            // Never null past here: null means take it, so a refused marker with no group name to
+            // show would quietly be copied after all.
+            string group = Catalog.GroupOf(pin.Source);
+            return string.IsNullOrEmpty(group) ? Categories.Label(kind.Value) : group;
         }
 
         // ── merging in from the shared map or another player ────────────────────────
@@ -327,7 +342,7 @@ namespace TheGreatestMap
             if (result.TurnedAway)
                 TheGreatestMapMod.Log.LogInfo(
                     $"[TheGreatestMap] {result.RefusedByKind} marker(s) that map offered were not copied onto " +
-                    $"this one, being kinds it does not record: {result.KindsTurnedAway()}.");
+                    $"this one, being kinds or types it does not record: {result.KindsTurnedAway()}.");
             if (!result.Any) return result;
             foreach (var t in result.NewTombstones) RemovePinData(t.Key);
             foreach (var pin in result.ChangedPins) ReplacePinData(pin);

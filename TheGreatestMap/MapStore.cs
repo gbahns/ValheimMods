@@ -63,15 +63,25 @@ namespace TheGreatestMap
         /// </summary>
         public bool TurnedAway => RefusedByKind > 0;
 
-        /// <summary>The kinds turned away and how many of each, for a line somebody reads.</summary>
-        public string KindsTurnedAway()
+        /// <summary>
+        /// The kinds and types turned away and how many of each, for a line somebody reads.
+        ///
+        /// <para>Capped because these are types now and not only kinds: there are nineteen kinds
+        /// but well over a hundred types, so a first merge against a map that records a lot more
+        /// than this one would otherwise put every one of them in a single log line.</para>
+        /// </summary>
+        public string KindsTurnedAway(int most = 6)
         {
-            // Sorted by the kind rather than by the count, so the same two kinds come out in
-            // the same order every merge.
+            // Sorted by the name rather than by the count, so the same ones come out in the same
+            // order every merge.
             var kinds = new List<string>(RefusedKinds.Keys);
             kinds.Sort(StringComparer.Ordinal);
             var said = new List<string>();
-            foreach (var kind in kinds) said.Add(RefusedKinds[kind] + " " + kind);
+            foreach (var kind in kinds)
+            {
+                if (said.Count >= most) { said.Add("and " + (kinds.Count - most) + " more"); break; }
+                said.Add(RefusedKinds[kind] + " " + kind);
+            }
             return string.Join(", ", said);
         }
 

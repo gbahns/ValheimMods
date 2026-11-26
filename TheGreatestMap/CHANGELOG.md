@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.17.2 — unreleased
+
+- Fixed: a type you had switched off kept arriving from other people's maps and from the
+  cartography table. The switch was only enforced where a marker is written from the world, so
+  with Record Structures on, every Black Forest Ruin and Mountain Ruin on somebody else's map was
+  copied onto yours however many times you deleted them.
+
 ## 4.17.1 — 2026-11-26
 
 - Fixed: with "Show Custom Boss Markers" on, the boss names were written whatever "Show Boss
