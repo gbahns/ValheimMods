@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.17.2 — unreleased
+## 4.17.2 — 2026-11-27
 
 - Fixed: a type you had switched off kept arriving from other people's maps and from the
   cartography table. The switch was only enforced where a marker is written from the world, so
